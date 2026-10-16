@@ -1,66 +1,41 @@
-import {
-  faCircleInfo,
-  faEllipsisH,
-  faEye,
-  faPencil,
-  faPlay,
-  faStop,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { EyeIcon, MoreHorizontalIcon, Trash2Icon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
+import { Td, Tr } from "@app/components/v2";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
-import { PkiAlertEventTypeV2, TPkiAlertV2, useUpdatePkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { PkiAlertEventTypeV2, TPkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
 
 import { formatAlertBefore, formatEventType } from "../utils/pki-alert-formatters";
 
 interface Props {
   alert: TPkiAlertV2;
   onView: () => void;
-  onEdit: () => void;
   onDelete: () => void;
 }
 
-export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
-  const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
-
-  const handleToggleAlert = async () => {
-    try {
-      await updateAlert({
-        alertId: alert.id,
-        enabled: !alert.enabled
-      });
-      createNotification({
-        text: `Alert ${!alert.enabled ? "enabled" : "disabled"} successfully`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to update alert status",
-        type: "error"
-      });
-    }
-  };
-
+export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
   return (
     <Tr>
       <Td>
         <div className="flex items-center gap-2">
           <div className="font-medium text-foreground-cool">{alert.name}</div>
           {alert.description && (
-            <Tooltip content={alert.description}>
-              <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">{alert.description}</TooltipContent>
             </Tooltip>
           )}
         </div>
@@ -82,8 +57,13 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
       </Td>
       <Td>
         {alert.lastRun ? (
-          <Tooltip
-            content={
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <Badge variant={alert.lastRun.status === "success" ? "success" : "danger"}>
+                {alert.lastRun.status === "success" ? "Success" : "Failed"}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
               <div className="max-w-sm">
                 <div className="text-xs text-label">
                   {new Date(alert.lastRun.timestamp)
@@ -97,11 +77,7 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
                   </div>
                 )}
               </div>
-            }
-          >
-            <Badge variant={alert.lastRun.status === "success" ? "success" : "danger"}>
-              {alert.lastRun.status === "success" ? "Success" : "Failed"}
-            </Badge>
+            </TooltipContent>
           </Tooltip>
         ) : (
           <span className="text-surface-selected">—</span>
@@ -110,25 +86,17 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
       <Td className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton size="sm" variant="plain" ariaLabel="Alert actions">
-              <FontAwesomeIcon icon={faEllipsisH} />
+            <IconButton size="xs" variant="ghost" aria-label="Alert actions">
+              <MoreHorizontalIcon />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onView}>
-              <FontAwesomeIcon icon={faEye} className="mr-2 h-4 w-4" />
+              <EyeIcon />
               View details
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onEdit}>
-              <FontAwesomeIcon icon={faPencil} className="mr-2 h-4 w-4" />
-              Edit alert
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleToggleAlert}>
-              <FontAwesomeIcon icon={alert.enabled ? faStop : faPlay} className="mr-2 h-4 w-4" />
-              {alert.enabled ? "Disable" : "Enable"} alert
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDelete} className="text-danger">
-              <FontAwesomeIcon icon={faTrash} className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onClick={onDelete} variant="danger">
+              <Trash2Icon />
               Delete alert
             </DropdownMenuItem>
           </DropdownMenuContent>

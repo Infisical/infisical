@@ -5,9 +5,12 @@ import {
   Combobox,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel
+  FieldLabel,
+  Label,
+  Toggle
 } from "@app/components/v3";
 import {
   useChefConnectionListDataBagItems,
@@ -115,6 +118,29 @@ export const ChefSyncFields = () => {
               />
               <FieldError id="secret-sync-chef-data-bag-item-name-error" errors={[error]} />
             </FieldContent>
+          </Field>
+        )}
+      />
+
+      <Controller
+        name="destinationConfig.shouldEncryptSecrets"
+        control={control}
+        render={({ field: { value, onChange } }) => (
+          <Field orientation="horizontal">
+            <FieldContent>
+              <Label htmlFor="secret-sync-chef-encrypt-secrets">Encrypt Secrets</Label>
+              <FieldDescription>
+                Write the item as a Chef encrypted data bag item. Add your data bag secret to the
+                selected Chef connection first, and copy the same secret to every node that reads
+                the item.
+              </FieldDescription>
+            </FieldContent>
+            <Toggle
+              id="secret-sync-chef-encrypt-secrets"
+              variant="project"
+              checked={Boolean(value)}
+              onCheckedChange={onChange}
+            />
           </Field>
         )}
       />

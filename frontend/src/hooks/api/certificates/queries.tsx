@@ -6,6 +6,7 @@ import {
   TActivityTrendResponse,
   TCertificate,
   TCertificateByIdResponse,
+  TCertificateRenewalPreview,
   TCertificateRequestDetails,
   TDashboardStats,
   TListCertificateRequestsParams,
@@ -18,6 +19,7 @@ export const certKeys = {
   getCertBody: (serialNumber: string) => [{ serialNumber }, "certBody"],
   getCertBundle: (serialNumber: string) => [{ serialNumber }, "certBundle"],
   getCertificateById: (certificateId: string) => [{ certificateId }, "certificateById"],
+  getRenewalPreview: (certificateId: string) => [{ certificateId }, "certificateRenewalSource"],
   getCertificateRequest: (requestId: string) => [{ requestId }, "certificateRequest"],
   listCertificateRequests: (params: TListCertificateRequestsParams) => [
     "certificateRequests",
@@ -84,6 +86,19 @@ export const useGetCertBundle = (serialNumber: string) => {
       return data;
     },
     enabled: Boolean(serialNumber)
+  });
+};
+
+export const useGetCertificateRenewalPreview = (certificateId: string, enabled = true) => {
+  return useQuery({
+    queryKey: certKeys.getRenewalPreview(certificateId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TCertificateRenewalPreview>(
+        `/api/v1/cert-manager/certificates/${certificateId}/renewal-preview`
+      );
+      return data;
+    },
+    enabled: enabled && Boolean(certificateId)
   });
 };
 

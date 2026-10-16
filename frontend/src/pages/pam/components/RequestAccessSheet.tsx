@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -179,6 +179,7 @@ export const RequestAccessSheet = ({
 }: Props) => {
   const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
+  const formId = useId();
   const breakGlass = useBreakGlassPamAccessRequest();
   const [bypassReason, setBypassReason] = useState("");
   const isCredentialRequest = accessType === PamAccessType.Credential;
@@ -277,6 +278,24 @@ export const RequestAccessSheet = ({
       badges={<AccessTypeBadge accessType={accessType} />}
       metadata={metadata}
       isDirty={isDirty && !isPending}
+      contentFooter={
+        !isPending && (
+          <>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form={formId}
+              variant={breakGlassOnSubmit ? "danger" : "pam"}
+              isPending={createRequest.isPending}
+            >
+              {!breakGlassOnSubmit && <Send className="mr-1.5 size-4" />}
+              {submitLabel}
+            </Button>
+          </>
+        )
+      }
     >
       <div className="flex h-full flex-1 flex-col p-6">
         {isPending ? (
@@ -332,7 +351,7 @@ export const RequestAccessSheet = ({
             )}
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
+          <form id={formId} onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
             <div className="flex flex-1 flex-col gap-6">
               {isCredentialRequest ? (
                 <Alert variant="warning">
@@ -439,19 +458,6 @@ export const RequestAccessSheet = ({
                   </Field>
                 </Card>
               )}
-            </div>
-            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant={breakGlassOnSubmit ? "danger" : "pam"}
-                isPending={createRequest.isPending}
-              >
-                {!breakGlassOnSubmit && <Send className="mr-1.5 size-4" />}
-                {submitLabel}
-              </Button>
             </div>
           </form>
         )}

@@ -167,7 +167,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
 
           <div>
             <div className="mb-3 flex items-start justify-between gap-3">
-              <h4 className="pt-2 text-sm font-medium text-foreground">Member Gateways</h4>
+              <h4 className="pt-2 text-sm font-normal text-foreground">Member Gateways</h4>
               <OrgPermissionCan
                 I={OrgGatewayPoolPermissionActions.EditGatewayPools}
                 a={OrgPermissionSubjects.GatewayPool}

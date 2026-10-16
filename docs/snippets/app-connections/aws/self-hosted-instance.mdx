@@ -1,0 +1,42 @@
+<Accordion title="If you self-host Infisical" id="if-you-self-host-infisical">
+    To assume a role, your Infisical instance needs AWS credentials of its own.
+
+    If your instance runs on AWS (for example on EC2, ECS, or EKS), leave `INF_APP_CONNECTION_AWS_ACCESS_KEY_ID` and `INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY` unset. Infisical then uses the credentials of the instance profile, task role, or IAM role for service accounts (IRSA), and that role needs the `sts:AssumeRole` policy below.
+
+    If your instance doesn't run on AWS, give it an IAM user:
+
+    <Steps>
+        <Step>
+            In the IAM console, [create an IAM user](https://console.aws.amazon.com/iam/home#/users/create) for your Infisical instance.
+        </Step>
+        <Step>
+            Attach this inline policy to the user, so it can assume the roles your connections use:
+
+            ```json
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "AllowAssumeAnyRole",
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Resource": "arn:aws:iam::*:role/*"
+                    }
+                ]
+            }
+            ```
+        </Step>
+        <Step>
+            Open the user's **Security credentials** tab and create an access key.
+
+            ![Access Key Step 1](/images/integrations/aws/integrations-aws-access-key-1.png)
+            ![Access Key Step 2](/images/integrations/aws/integrations-aws-access-key-2.png)
+            ![Access Key Step 3](/images/integrations/aws/integrations-aws-access-key-3.png)
+        </Step>
+        <Step>
+            Set the access key ID as `INF_APP_CONNECTION_AWS_ACCESS_KEY_ID` and the secret access key as `INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY` in your instance's environment, then restart the instance.
+        </Step>
+    </Steps>
+
+    When you create the role's trust policy, enter the AWS account ID of this IAM user or instance role, not an Infisical Cloud account ID.
+</Accordion>

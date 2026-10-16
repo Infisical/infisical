@@ -8,6 +8,7 @@ import {
   TAgentVaultServiceCustomHeaders,
   TAgentVaultServices,
   TAgentVaultServiceSubstitutions,
+  TAgentVaultServiceVariableReferencesInsert,
   TMemberships
 } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
@@ -17,13 +18,21 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import {
+  agentVaultActorKey,
+  resolveAgentVaultActorNames,
+  TAgentVaultActorName,
+  TAgentVaultActorNameDALs
+} from "../agent-vault/agent-vault-actor-name-fns";
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import {
   AgentVaultBearerConfigSchema,
@@ -35,15 +44,25 @@ import {
   AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultResourceRole,
-  AgentVaultSubstitutionSurface
+  AgentVaultSubstitutionSurface,
+  AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import {
+  findStoredVariableIds,
+  findVariableKeys,
+  toStoredVariableReferences,
+  toVariableReference
+} from "../agent-vault/agent-vault-variable-fns";
+import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { TAgentVaultAccessBundleActorRef, TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
 import {
   TAddMembersDTO,
   TAgentVaultCredentialInput,
   TAgentVaultCredentialSummary,
   TAgentVaultCredentialUpdate,
+  TAgentVaultVariableReferenceSummary,
   TCreateAccessBundleDTO,
   TCreateServiceDTO,
   TDeleteAccessBundleDTO,
@@ -58,6 +77,10 @@ import {
 import { TAgentVaultServiceCustomHeaderDALFactory } from "./agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceDALFactory } from "./agent-vault-service-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "./agent-vault-service-substitution-dal";
+import {
+  TAgentVaultServiceVariableReferenceDALFactory,
+  TAgentVaultVariableReferenceWithKey
+} from "./agent-vault-service-variable-reference-dal";
 import { planTransformationDiff, TTransformationWrite } from "./agent-vault-transformation-fns";
 
 type TAgentVaultAccessBundleServiceFactoryDep = {
@@ -65,6 +88,8 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultServiceDAL: TAgentVaultServiceDALFactory;
   agentVaultServiceCustomHeaderDAL: TAgentVaultServiceCustomHeaderDALFactory;
   agentVaultServiceSubstitutionDAL: TAgentVaultServiceSubstitutionDALFactory;
+  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeysByProjectId" | "lockForReference">;
+  agentVaultServiceVariableReferenceDAL: TAgentVaultServiceVariableReferenceDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   membershipDAL: Pick<
@@ -72,14 +97,21 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
     "findOne" | "find" | "insertMany" | "delete" | "deleteById" | "transaction" | "findResourceMembershipsForActor"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
+  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-};
+} & TAgentVaultActorNameDALs;
 
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
 
 // The old shape capped the array at 100 entries; the cap moves here now that the body is three lists.
 export const AGENT_VAULT_MAX_GRANTEES = 100;
+
+const ALL_GRANTEE_ACTOR_TYPES = [
+  AgentVaultMemberType.User,
+  AgentVaultMemberType.Group,
+  AgentVaultMemberType.MachineIdentity
+];
 
 export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBundleServiceFactoryDep) => {
   const {
@@ -87,12 +119,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     agentVaultServiceDAL,
     agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
+    agentVaultVariableDAL,
+    agentVaultServiceVariableReferenceDAL,
     permissionService,
     kmsService,
     membershipDAL,
     membershipRoleDAL,
+    agentVaultMemberDAL,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    userDAL,
+    groupDAL,
+    identityDAL
   } = deps;
 
   const bundleScope = (projectId: string, accessBundleId: string) => ({
@@ -109,11 +147,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const toMember = (row: TMemberships) => ({
-    id: row.id,
-    accessBundleId: row.scopeResourceId!,
-    createdAt: row.createdAt,
-    actor: toActorRef(row)
+    ...toActorRef(row),
+    grantedAt: row.createdAt
   });
+
+  // actorName is for the audit body; the response schemas do not select it.
+  const withActorNames = <T extends TAgentVaultAccessBundleActorRef>(
+    members: T[],
+    nameByKey: Map<string, TAgentVaultActorName>
+  ) => members.map((member) => ({ ...member, actorName: nameByKey.get(agentVaultActorKey(member)) }));
 
   type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
 
@@ -131,6 +173,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     type: ACTOR_TYPE_OF[actorColumn],
     id: actorId
   });
+
+  // Called before the write: a lookup that failed after commit would fail the request with the change made,
+  // and the retry finds the actor skipped, so that change would never be audited.
+  const resolveActorNames = (actors: TGrantActor[]) =>
+    resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, actors.map(toActorRefFromGrant));
 
   const ACTOR_FIELD_OF: Record<TGrantActorColumn, "userId" | "identityId" | "groupId"> = {
     actorUserId: "userId",
@@ -340,12 +387,38 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
+  const summarizeVariableReference = (
+    reference: TAgentVaultVariableReferenceWithKey
+  ): TAgentVaultVariableReferenceSummary => {
+    const base = { variableId: reference.variableId, key: reference.key };
+    // The field check constraint guarantees the id that matches the field is set.
+    switch (reference.field as AgentVaultVariableReferenceField) {
+      case AgentVaultVariableReferenceField.CustomHeader:
+        return {
+          ...base,
+          field: AgentVaultVariableReferenceField.CustomHeader,
+          customHeaderId: reference.customHeaderId!
+        };
+      case AgentVaultVariableReferenceField.Substitution:
+        return {
+          ...base,
+          field: AgentVaultVariableReferenceField.Substitution,
+          substitutionId: reference.substitutionId!
+        };
+      case AgentVaultVariableReferenceField.CredentialUsername:
+        return { ...base, field: AgentVaultVariableReferenceField.CredentialUsername };
+      default:
+        return { ...base, field: AgentVaultVariableReferenceField.CredentialValue };
+    }
+  };
+
   // Built by hand rather than spread, so the sealed columns stay off the wire even if the response schema is
   // later loosened.
   const projectService = (
     service: TAgentVaultServices,
     customHeaders: TAgentVaultServiceCustomHeaders[],
-    substitutions: TAgentVaultServiceSubstitutions[]
+    substitutions: TAgentVaultServiceSubstitutions[],
+    variableReferences: TAgentVaultVariableReferenceWithKey[]
   ) => ({
     id: service.id,
     accessBundleId: service.accessBundleId,
@@ -360,17 +433,158 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
     })),
+    variableReferences: variableReferences.map(summarizeVariableReference),
     createdAt: service.createdAt,
     updatedAt: service.updatedAt
   });
 
-  const loadTransformations = async (serviceIds: string[], tx?: Knex) => {
-    const [customHeaders, substitutions] = await Promise.all([
+  const loadTransformations = async (
+    serviceIds: string[],
+    tx?: Knex,
+    { withVariableReferences = true }: { withVariableReferences?: boolean } = {}
+  ) => {
+    const [customHeaders, substitutions, variableReferences] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds, tx),
-      agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds, tx)
+      agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds, tx),
+      withVariableReferences ? agentVaultServiceVariableReferenceDAL.findByServiceIds(serviceIds, tx) : []
     ]);
-    return { customHeaders, substitutions };
+    return { customHeaders, substitutions, variableReferences };
   };
+
+  // What a missing key's error calls the field. Never the value itself, which is secret.
+  type TReferencingText = { label: string; text: string };
+
+  type TReferenceTarget = {
+    field: AgentVaultVariableReferenceField;
+    customHeaderId?: string;
+    substitutionId?: string;
+  };
+
+  const credentialReferenceTexts = (credential: TAgentVaultCredentialUpdate): TReferencingText[] => {
+    switch (credential.type) {
+      case AgentVaultCredentialType.Bearer:
+        return credential.value === undefined ? [] : [{ label: "The token", text: credential.value }];
+      case AgentVaultCredentialType.Basic:
+        return [
+          ...(credential.username === undefined ? [] : [{ label: "The username", text: credential.username }]),
+          ...(credential.password === undefined ? [] : [{ label: "The password", text: credential.password }])
+        ];
+      default:
+        return [];
+    }
+  };
+
+  // A key Agent Vault does not define would reach the host as literal braces, so it fails the save instead.
+  // Stored text that a save keeps rather than writes needs the lookup only for the ids it holds.
+  const loadProjectVariables = async (projectId: string, texts: TReferencingText[], storedTexts: string[] = []) => {
+    if (
+      !texts.some(({ text }) => findVariableKeys(text).length) &&
+      !storedTexts.some((text) => findStoredVariableIds(text).length)
+    ) {
+      return { idOfKey: new Map<string, string>(), variableIds: new Set<string>() };
+    }
+
+    const variables = await agentVaultVariableDAL.findKeysByProjectId(projectId);
+    const idOfKey = new Map(variables.map((variable) => [variable.key, variable.id]));
+
+    texts.forEach(({ label, text }) => {
+      const missing = findVariableKeys(text).find((key) => !idOfKey.has(key));
+      if (missing) {
+        throw new BadRequestError({
+          message: `${label} uses ${toVariableReference(missing)}, but Agent Vault has no variable named '${missing}'. Add it under Variables, or correct the name.`
+        });
+      }
+    });
+
+    return { idOfKey, variableIds: new Set(variables.map((variable) => variable.id)) };
+  };
+
+  // Only text that arrived with the request is stored. A basic credential's kept half is already stored text,
+  // and one saved before variables existed has to keep reaching the host exactly as it was.
+  const storeCredentialReferences = (
+    credential: TAgentVaultCredentialUpdate,
+    store: (text: string) => string
+  ): TAgentVaultCredentialUpdate => {
+    switch (credential.type) {
+      case AgentVaultCredentialType.Bearer:
+        return credential.value === undefined ? credential : { ...credential, value: store(credential.value) };
+      case AgentVaultCredentialType.Basic:
+        return {
+          ...credential,
+          ...(credential.username === undefined ? {} : { username: store(credential.username) }),
+          ...(credential.password === undefined ? {} : { password: store(credential.password) })
+        };
+      default:
+        return credential;
+    }
+  };
+
+  // Read off the stored text the way resolve reads it, never off the request. Nothing in the database can check
+  // the rows against sealed text, and an id resolve expands without a row is a variable the delete refusal lets
+  // go while a service still uses it.
+  const referenceRowsOf = (
+    serviceId: string,
+    target: TReferenceTarget,
+    storedText: string,
+    variableIds: ReadonlySet<string>
+  ): TAgentVaultServiceVariableReferencesInsert[] =>
+    findStoredVariableIds(storedText)
+      // Resolve leaves an id that names no variable of this project as text, so it gets no row either.
+      .filter((variableId) => variableIds.has(variableId))
+      .map((variableId) => ({
+        serviceId,
+        variableId,
+        field: target.field,
+        customHeaderId: target.customHeaderId ?? null,
+        substitutionId: target.substitutionId ?? null
+      }));
+
+  const credentialReferenceRowsOf = (
+    serviceId: string,
+    storedSecret: TCredentialWrite["secret"],
+    variableIds: ReadonlySet<string>
+  ) =>
+    Object.entries(storedSecret ?? {}).flatMap(([part, text]) =>
+      referenceRowsOf(
+        serviceId,
+        {
+          field:
+            part === "username"
+              ? AgentVaultVariableReferenceField.CredentialUsername
+              : AgentVaultVariableReferenceField.CredentialValue
+        },
+        text,
+        variableIds
+      )
+    );
+
+  // The reference is stored by id, so a variable deleted after the key lookup is caught when the save locks the
+  // rows it references (insertReferenceRows). The deferred foreign key is only the backstop.
+  const VARIABLE_DELETED_DURING_SAVE_MESSAGE =
+    "A variable this service uses was deleted while it was being saved. Check its variable references and save again.";
+
+  // Every other foreign key a save can trip names a row the save wrote itself or, on update, the service, which
+  // a delete removes without taking the bundle lock. So only this one means a variable went away.
+  const VARIABLE_REFERENCE_VARIABLE_FOREIGN_KEY = "agent_vault_service_variable_references_variableid_foreign";
+
+  // A variable is deleted under its own row lock, not a bundle's, so a save holds the rows it references until it
+  // commits. A delete then waits for the save and sees its references, and an id already gone fails the save here.
+  const insertReferenceRows = async (
+    projectId: string,
+    rows: TAgentVaultServiceVariableReferencesInsert[],
+    tx: Knex
+  ) => {
+    if (!rows.length) return;
+    const variableIds = [...new Set(rows.map((row) => row.variableId))];
+    const present = await agentVaultVariableDAL.lockForReference({ projectId, variableIds }, tx);
+    if (present.length !== variableIds.length) {
+      throw new BadRequestError({ message: VARIABLE_DELETED_DURING_SAVE_MESSAGE });
+    }
+    await agentVaultServiceVariableReferenceDAL.insertMany(rows, tx);
+  };
+
+  const CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE =
+    "This service's credential was changed by another save while this one was in progress. Reload the service and save again.";
 
   // Basic has no header name in its config, but the proxy always writes Authorization.
   const credentialHeaderName = (credentialType: AgentVaultCredentialType, headerName?: string): string | null => {
@@ -439,9 +653,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.Read,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    // Variables are admin only, so a member's services leave variableReferences out. An empty list would claim
+    // they use no variables.
+    const canReadVariables = permission.can(
+      ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      ProjectPermissionSub.AgentVaultAccessBundles
+    );
 
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
-    const { customHeaders, substitutions } = await loadTransformations(services.map((service) => service.id));
+    const { customHeaders, substitutions, variableReferences } = await loadTransformations(
+      services.map((service) => service.id),
+      undefined,
+      { withVariableReferences: canReadVariables }
+    );
 
     return {
       id: bundle.id,
@@ -449,13 +673,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       description: bundle.description ?? null,
       createdAt: bundle.createdAt,
       updatedAt: bundle.updatedAt,
-      services: services.map((service) =>
-        projectService(
+      services: services.map((service) => {
+        const projected = projectService(
           service,
           customHeaders.filter((header) => header.serviceId === service.id),
-          substitutions.filter((substitution) => substitution.serviceId === service.id)
-        )
-      )
+          substitutions.filter((substitution) => substitution.serviceId === service.id),
+          variableReferences.filter((reference) => reference.serviceId === service.id)
+        );
+        return canReadVariables ? projected : { ...projected, variableReferences: undefined };
+      })
     };
   };
 
@@ -594,8 +820,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern });
 
+    const { idOfKey, variableIds } = await loadProjectVariables(rest.projectId, [
+      ...credentialReferenceTexts(credential),
+      ...(customHeaders ?? []).map((header) => ({ label: `The custom header '${header.name}'`, text: header.value })),
+      ...(substitutions ?? []).map((substitution) => ({
+        label: `The substitution for '${substitution.placeholder}'`,
+        text: substitution.value
+      }))
+    ]);
+    const store = (text: string) => toStoredVariableReferences(text, idOfKey);
+
     // Encrypt before the lock: KMS is a network call and the transaction has to stay short.
-    const { config, secret } = splitCredential(credential);
+    const { config, secret } = splitCredential(
+      storeCredentialReferences(credential, store) as TAgentVaultCredentialInput
+    );
     assertCustomHeadersDoNotShadowCredential(config, customHeaders);
 
     const { encryptor } = await getProjectCipher(rest.projectId);
@@ -604,17 +842,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const encryptedCredential = secret
       ? encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob
       : null;
+    // Stored once, so the sealed text and the references read off it are the same string.
+    const storedCustomHeaderValues = (customHeaders ?? []).map((header) => store(header.value));
+    const storedSubstitutionValues = (substitutions ?? []).map((substitution) => store(substitution.value));
     const customHeaderRows = (customHeaders ?? []).map((header, position) => ({
       name: header.name,
       prefix: header.prefix ?? "",
       position,
-      encryptedValue: seal(header.value)
+      encryptedValue: seal(storedCustomHeaderValues[position])
     }));
     const substitutionRows = (substitutions ?? []).map((substitution, position) => ({
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces,
       position,
-      encryptedValue: seal(substitution.value)
+      encryptedValue: seal(storedSubstitutionValues[position])
     }));
 
     // The pre-check above is only a fast failure. The authoritative one runs under the bundle row lock,
@@ -656,7 +897,31 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             )
           : [];
 
-        return { created, insertedCustomHeaders, insertedSubstitutions };
+        const referenceRows = [
+          ...credentialReferenceRowsOf(created.id, secret, variableIds),
+          ...insertedCustomHeaders.flatMap((row) =>
+            referenceRowsOf(
+              created.id,
+              { field: AgentVaultVariableReferenceField.CustomHeader, customHeaderId: row.id },
+              storedCustomHeaderValues[row.position],
+              variableIds
+            )
+          ),
+          ...insertedSubstitutions.flatMap((row) =>
+            referenceRowsOf(
+              created.id,
+              { field: AgentVaultVariableReferenceField.Substitution, substitutionId: row.id },
+              storedSubstitutionValues[row.position],
+              variableIds
+            )
+          )
+        ];
+        await insertReferenceRows(rest.projectId, referenceRows, tx);
+        const variableReferences = referenceRows.length
+          ? await agentVaultServiceVariableReferenceDAL.findByServiceIds([created.id], tx)
+          : [];
+
+        return { created, insertedCustomHeaders, insertedSubstitutions, variableReferences };
       });
 
     let result;
@@ -666,11 +931,26 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
+      if (
+        hasPostgresConstraintViolation(
+          err,
+          DatabaseErrorCode.ForeignKeyViolation,
+          VARIABLE_REFERENCE_VARIABLE_FOREIGN_KEY
+        )
+      ) {
+        throw new BadRequestError({ message: VARIABLE_DELETED_DURING_SAVE_MESSAGE });
+      }
       throw err;
     }
 
     return {
-      service: projectService(result.created, result.insertedCustomHeaders, result.insertedSubstitutions)
+      service: projectService(
+        result.created,
+        result.insertedCustomHeaders,
+        result.insertedSubstitutions,
+        result.variableReferences
+      ),
+      accessBundleName: bundle.name
     };
   };
 
@@ -692,7 +972,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const service = await agentVaultServiceDAL.findOne({ id: serviceId, accessBundleId: bundle.id });
+    const service = await agentVaultServiceDAL.findByIdInAccessBundle({ id: serviceId, accessBundleId: bundle.id });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
     if (name && name !== service.name) {
@@ -710,29 +990,51 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       });
     }
 
+    // A partial basic update keeps the other half from the sealed secret read here, before the lock, so the write
+    // re-checks under the lock that nothing replaced it since.
+    const needsStoredSecret =
+      credential?.type === AgentVaultCredentialType.Basic &&
+      service.credentialType === AgentVaultCredentialType.Basic &&
+      (credential.username === undefined) !== (credential.password === undefined) &&
+      Boolean(service.encryptedCredential);
+    const storedSecretCipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
+    const storedSecret = storedSecretCipher
+      ? (JSON.parse(
+          storedSecretCipher.decryptor({ cipherTextBlob: service.encryptedCredential! }).toString("utf-8")
+        ) as Record<string, string>)
+      : null;
+
+    // Only the values that arrived. One left out keeps what is sealed, and so keeps its references.
+    const { idOfKey, variableIds } = await loadProjectVariables(
+      rest.projectId,
+      [
+        ...(credential ? credentialReferenceTexts(credential) : []),
+        ...(customHeaders ?? []).flatMap((header) =>
+          header.value === undefined ? [] : [{ label: `The custom header '${header.name}'`, text: header.value }]
+        ),
+        ...(substitutions ?? []).flatMap((substitution) =>
+          substitution.value === undefined
+            ? []
+            : [{ label: `The substitution for '${substitution.placeholder}'`, text: substitution.value }]
+        )
+      ],
+      storedSecret ? Object.values(storedSecret) : []
+    );
+    const store = (text: string) => toStoredVariableReferences(text, idOfKey);
+
     let credentialUpdate = {};
+    // Undefined leaves the sealed secret, and the references read off it, as they are.
+    let writtenSecret: TCredentialWrite["secret"];
     let effectiveCredentialConfig = service.credentialConfig as TAgentVaultCredentialConfig;
     if (credential) {
-      const needsStoredSecret =
-        credential.type === AgentVaultCredentialType.Basic &&
-        service.credentialType === AgentVaultCredentialType.Basic &&
-        (credential.username === undefined) !== (credential.password === undefined) &&
-        Boolean(service.encryptedCredential);
-      const cipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
-      const storedSecret = cipher
-        ? (JSON.parse(cipher.decryptor({ cipherTextBlob: service.encryptedCredential! }).toString("utf-8")) as Record<
-            string,
-            string
-          >)
-        : null;
-
-      const { config, secret } = mergeCredential(credential, service, storedSecret);
+      const { config, secret } = mergeCredential(storeCredentialReferences(credential, store), service, storedSecret);
       let encryptedCredential: Buffer | null | undefined;
       if (secret === null) encryptedCredential = null;
       if (secret) {
-        const { encryptor } = cipher ?? (await getProjectCipher(rest.projectId));
+        const { encryptor } = storedSecretCipher ?? (await getProjectCipher(rest.projectId));
         encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
       }
+      writtenSecret = secret;
 
       credentialUpdate = {
         credentialType: credential.type,
@@ -744,29 +1046,40 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const cipherForTransformations =
       customHeaders?.length || substitutions?.length ? await getProjectCipher(rest.projectId) : null;
-    const seal = (value: string) =>
-      cipherForTransformations!.encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
+    const seal = (storedValue: string | undefined) =>
+      storedValue === undefined
+        ? undefined
+        : cipherForTransformations!.encryptor({ plainText: Buffer.from(JSON.stringify({ value: storedValue })) })
+            .cipherTextBlob;
+
+    // Stored once, so the sealed text and the references read off it are the same string.
+    const storedCustomHeaderValues = (customHeaders ?? []).map((header) =>
+      header.value === undefined ? undefined : store(header.value)
+    );
+    const storedSubstitutionValues = (substitutions ?? []).map((substitution) =>
+      substitution.value === undefined ? undefined : store(substitution.value)
+    );
 
     const customHeaderWrites: TTransformationWrite<{ name: string; prefix: string }>[] | undefined = customHeaders?.map(
-      (header) => ({
+      (header, index) => ({
         id: header.id,
         naturalKey: header.name.toLowerCase(),
         label: header.name,
         // An omitted prefix is cleared, not kept: it comes back in the response so a caller can resend it,
         // which is the thing a sealed value can never do.
         columns: { name: header.name, prefix: header.prefix ?? "" },
-        encryptedValue: header.value === undefined ? undefined : seal(header.value)
+        encryptedValue: seal(storedCustomHeaderValues[index])
       })
     );
 
     const substitutionWrites:
       | TTransformationWrite<{ placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }>[]
-      | undefined = substitutions?.map((substitution) => ({
+      | undefined = substitutions?.map((substitution, index) => ({
       id: substitution.id,
       naturalKey: substitution.placeholder,
       label: substitution.placeholder,
       columns: { placeholder: substitution.placeholder, surfaces: substitution.surfaces },
-      encryptedValue: substitution.value === undefined ? undefined : seal(substitution.value)
+      encryptedValue: seal(storedSubstitutionValues[index])
     }));
 
     // Same lock as create, and below the credential work so no KMS call sits inside the transaction. The
@@ -783,8 +1096,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern, excludeServiceId: service.id }, tx);
         }
 
-        // Both halves read under the lock and on the primary. The service read above the transaction came off
-        // a replica, and stale it would admit the very collision this check exists to stop.
+        // The credential was merged against the row read before the lock, whose type decided how the request
+        // reads. If another save changed it since, writing now would set a half this request left out back to
+        // an older value.
+        if (credential) {
+          const current = await agentVaultServiceDAL.findById(service.id, tx);
+          if (!current) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+          const secretChanged =
+            storedSecret !== null && !current.encryptedCredential?.equals(service.encryptedCredential!);
+          if (current.credentialType !== service.credentialType || secretChanged) {
+            throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+          }
+        }
+
+        // Both halves read under the lock. The service read above the transaction came before it, and stale it
+        // would admit the very collision this check exists to stop.
         if (credential || customHeaders) {
           const effectiveCustomHeaders =
             customHeaders ??
@@ -873,7 +1199,68 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           "substitution"
         );
 
-        return { updatedService, updatedCustomHeaders, updatedSubstitutions };
+        // Every value this save sealed has its rows rebuilt from what it sealed: the whole secret when it was
+        // rewritten, since a kept half is sealed again with it. A row's position is its index in the list just
+        // written, which is how a value finds its row, and a row dropped from the list takes its references
+        // with it through the foreign key.
+        const rewrittenCustomHeaders = updatedCustomHeaders.flatMap((row) => {
+          const storedValue = storedCustomHeaderValues[row.position];
+          return storedValue === undefined ? [] : [{ id: row.id, storedValue }];
+        });
+        const rewrittenSubstitutions = updatedSubstitutions.flatMap((row) => {
+          const storedValue = storedSubstitutionValues[row.position];
+          return storedValue === undefined ? [] : [{ id: row.id, storedValue }];
+        });
+
+        if (writtenSecret !== undefined) {
+          await agentVaultServiceVariableReferenceDAL.delete(
+            {
+              serviceId: service.id,
+              $in: {
+                field: [
+                  AgentVaultVariableReferenceField.CredentialValue,
+                  AgentVaultVariableReferenceField.CredentialUsername
+                ]
+              }
+            },
+            tx
+          );
+        }
+        if (rewrittenCustomHeaders.length) {
+          await agentVaultServiceVariableReferenceDAL.delete(
+            { $in: { customHeaderId: rewrittenCustomHeaders.map((row) => row.id) } },
+            tx
+          );
+        }
+        if (rewrittenSubstitutions.length) {
+          await agentVaultServiceVariableReferenceDAL.delete(
+            { $in: { substitutionId: rewrittenSubstitutions.map((row) => row.id) } },
+            tx
+          );
+        }
+        const referenceRows = [
+          ...(writtenSecret === undefined ? [] : credentialReferenceRowsOf(service.id, writtenSecret, variableIds)),
+          ...rewrittenCustomHeaders.flatMap(({ id, storedValue }) =>
+            referenceRowsOf(
+              service.id,
+              { field: AgentVaultVariableReferenceField.CustomHeader, customHeaderId: id },
+              storedValue,
+              variableIds
+            )
+          ),
+          ...rewrittenSubstitutions.flatMap(({ id, storedValue }) =>
+            referenceRowsOf(
+              service.id,
+              { field: AgentVaultVariableReferenceField.Substitution, substitutionId: id },
+              storedValue,
+              variableIds
+            )
+          )
+        ];
+        await insertReferenceRows(rest.projectId, referenceRows, tx);
+        const variableReferences = await agentVaultServiceVariableReferenceDAL.findByServiceIds([service.id], tx);
+
+        return { updatedService, updatedCustomHeaders, updatedSubstitutions, variableReferences };
       });
 
     let result;
@@ -883,11 +1270,29 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
+      if (
+        hasPostgresConstraintViolation(
+          err,
+          DatabaseErrorCode.ForeignKeyViolation,
+          VARIABLE_REFERENCE_VARIABLE_FOREIGN_KEY
+        )
+      ) {
+        throw new BadRequestError({ message: VARIABLE_DELETED_DURING_SAVE_MESSAGE });
+      }
+      if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
+        throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+      }
       throw err;
     }
 
     return {
-      service: projectService(result.updatedService, result.updatedCustomHeaders, result.updatedSubstitutions)
+      service: projectService(
+        result.updatedService,
+        result.updatedCustomHeaders,
+        result.updatedSubstitutions,
+        result.variableReferences
+      ),
+      accessBundleName: bundle.name
     };
   };
 
@@ -902,9 +1307,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
     // Read before the delete, since CASCADE takes these rows with the service.
-    const { customHeaders, substitutions } = await loadTransformations([service.id]);
+    const { customHeaders, substitutions, variableReferences } = await loadTransformations([service.id]);
     const deleted = await agentVaultServiceDAL.deleteById(service.id);
-    return projectService(deleted, customHeaders, substitutions);
+    return {
+      service: projectService(deleted, customHeaders, substitutions, variableReferences),
+      accessBundleName: bundle.name
+    };
   };
 
   const listMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
@@ -919,6 +1327,26 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       search,
       limit,
       offset
+    });
+  };
+
+  // The candidates for a grant are the product's own members, since addMembers refuses anyone else, minus
+  // whoever already holds this bundle. A member reaching it only through a granted group stays a
+  // candidate: an individual grant is a different thing, and it outlives the group membership.
+  const listAvailableMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
+    const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+      ProjectPermissionSub.AgentVaultAccessBundles
+    );
+    return agentVaultMemberDAL.findProductMembers({
+      projectId: rest.projectId,
+      orgId: rest.ctx.actorOrgId,
+      actorTypes: ALL_GRANTEE_ACTOR_TYPES,
+      search,
+      limit,
+      offset,
+      excludeAccessBundleId: bundle.id
     });
   };
 
@@ -944,6 +1372,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const actors = [...requested.values()];
     await assertActorsInProject({ projectId: rest.projectId, actors });
+    const nameByKey = await resolveActorNames(actors);
 
     // The bundle row lock serializes grants for this bundle, so reading the existing ones inside it is
     // enough to dedupe. The unique index per actor per bundle stays as the backstop, and its violation
@@ -989,7 +1418,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     return {
-      members: outcome.created.map(toMember),
+      members: withActorNames(outcome.created.map(toMember), nameByKey),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
@@ -1018,6 +1447,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ids.forEach((actorId) => requested.set(actorKey({ actorColumn, actorId }), { actorColumn, actorId }));
     });
     const actors = [...requested.values()];
+    const nameByKey = await resolveActorNames(actors);
 
     // The same row lock the grant path takes, so a revoke cannot race a grant or a bundle delete.
     const outcome = await membershipDAL.transaction(async (tx) => {
@@ -1052,7 +1482,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
 
     return {
-      members: outcome.removed.map(toMember),
+      members: withActorNames(outcome.removed.map(toActorRef), nameByKey),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
@@ -1068,6 +1498,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     updateService,
     deleteService,
     listMembers,
+    listAvailableMembers,
     addMembers,
     revokeMembers
   };

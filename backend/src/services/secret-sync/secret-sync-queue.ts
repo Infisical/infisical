@@ -34,6 +34,7 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
+import { resolveAzureKeyVaultImportedSecretKey } from "@app/services/secret-sync/azure-key-vault/azure-key-vault-secret-name";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import {
   SecretSync,
@@ -282,7 +283,7 @@ export const secretSyncQueueFactory = ({
     });
     const actorOrgId = secretSync.connection.orgId;
 
-    const decryptSecretValue = (value?: Buffer | undefined | null) =>
+    const decryptSecretValue = (value?: Buffer | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
 
     const { expandSecretReferences } = expandSecretReferencesFactory({
@@ -444,24 +445,27 @@ export const secretSyncQueueFactory = ({
 
     Object.entries(importedSecrets).forEach(([key, secretData]) => {
       const { value, comment = "", skipMultilineEncoding } = secretData;
+      const importKey =
+        destination === SecretSync.AzureKeyVault ? resolveAzureKeyVaultImportedSecretKey(key, secretMap) : key;
 
       const secret = {
-        secretName: key,
+        secretName: importKey,
         secretValue: value,
         type: SecretType.Shared,
         secretComment: comment,
         skipMultilineEncoding: skipMultilineEncoding ?? undefined
       };
 
-      if (Object.hasOwn(secretMap, key)) {
+      if (Object.hasOwn(secretMap, importKey)) {
         // Only update secrets if the source value is not empty
-        if (value && value !== secretMap[key].value) {
+        if (value && value !== secretMap[importKey].value) {
           secretsToUpdate.push(secret);
-          if (importBehavior === SecretSyncImportBehavior.PrioritizeDestination) importedSecretMap[key] = secretData;
+          if (importBehavior === SecretSyncImportBehavior.PrioritizeDestination)
+            importedSecretMap[importKey] = secretData;
         }
       } else {
         secretsToCreate.push(secret);
-        importedSecretMap[key] = secretData;
+        importedSecretMap[importKey] = secretData;
       }
     });
 
@@ -1064,6 +1068,7 @@ export const secretSyncQueueFactory = ({
     // A sync on the path itself always matches, whether or not it includes subfolders. A sync on an
     // ancestor folder only matches when it includes them, so a sync rooted above this path that does
     // not is never triggered by a change it was never configured to cover.
+    // The move and copy warnings in frontend/src/helpers/secretSyncCoverage.ts mirror this rule.
     const secretSyncs = candidateSyncs.filter(
       (sync) =>
         (folder && sync.folderId === folder.id) ||

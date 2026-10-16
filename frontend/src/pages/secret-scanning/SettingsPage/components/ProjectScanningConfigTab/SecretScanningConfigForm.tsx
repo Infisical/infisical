@@ -53,8 +53,8 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
     <div className="rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl font-medium text-foreground">Project Configuration</h2>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/usage#configuration" />
+          <h2 className="text-xl font-normal text-foreground">Scanning Configuration</h2>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/configuration" />
         </div>
         <p className="leading-5 text-muted">Configure rules and exceptions to customize scanning</p>
       </div>

@@ -33,12 +33,9 @@ const METHOD_OPTIONS: { value: SettableMethod; label: string }[] = [
   { value: "aws", label: "AWS Auth" }
 ];
 
-const DEFAULT_STS_ENDPOINT = "https://sts.amazonaws.com/";
-
 const schema = z
   .object({
     method: z.enum(["aws", "token"]),
-    stsEndpoint: z.string().max(255, "STS endpoint must be at most 255 characters"),
     allowedPrincipalArns: z
       .string()
       .max(4096, "Allowed principal ARNs must be at most 4096 characters"),
@@ -68,7 +65,6 @@ const toFormDefaults = (currentMethod: TKmipServerAuthMethodView): FormData => {
   const aws = currentMethod.method === "aws" ? currentMethod.config : null;
   return {
     method: currentMethod.method === "aws" ? "aws" : "token",
-    stsEndpoint: aws?.stsEndpoint ?? DEFAULT_STS_ENDPOINT,
     allowedPrincipalArns: aws?.allowedPrincipalArns ?? "",
     allowedAccountIds: aws?.allowedAccountIds ?? ""
   };
@@ -108,7 +104,6 @@ export const KmipServerAuthMethodModal = ({
           kmipServerId,
           authMethod: {
             method: "aws",
-            stsEndpoint: form.stsEndpoint,
             allowedPrincipalArns: form.allowedPrincipalArns,
             allowedAccountIds: form.allowedAccountIds
           }
@@ -197,22 +192,6 @@ export const KmipServerAuthMethodModal = ({
                       id="kmip-server-allowed-account-ids"
                       isError={Boolean(error)}
                       placeholder="123456789012, 210987654321"
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={control}
-                name="stsEndpoint"
-                render={({ field, fieldState: { error } }) => (
-                  <Field data-invalid={Boolean(error)}>
-                    <FieldLabel htmlFor="kmip-server-sts-endpoint">STS Endpoint</FieldLabel>
-                    <Input
-                      {...field}
-                      id="kmip-server-sts-endpoint"
-                      isError={Boolean(error)}
-                      placeholder={DEFAULT_STS_ENDPOINT}
                     />
                     <FieldError>{error?.message}</FieldError>
                   </Field>

@@ -1,10 +1,14 @@
+import { crypto } from "@app/lib/crypto/cryptography";
+
 import { PkiSync } from "./pki-sync-enums";
+import { PkiSyncExportFormat } from "./pki-sync-export-fns";
 import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";
 import {
   assertFiltersCannotExceedCertificateCap,
   assertPkiSyncCanHoldCertificateCount,
   getPkiSyncCertificateCap,
   getPkiSyncProviderCapabilities,
+  listPkiSyncOptions,
   matchesCertificateNameSchema,
   parsePkiSyncErrorMessage
 } from "./pki-sync-fns";
@@ -385,5 +389,25 @@ describe("assertFiltersCannotExceedCertificateCap", () => {
         certificateOrderIds: [...four, "e"]
       })
     ).toThrow("can name at most 4 certificate orders");
+  });
+});
+
+describe("listPkiSyncOptions", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const optionFor = (destination: PkiSync) => listPkiSyncOptions().find((o) => o.destination === destination);
+
+  test("marks JKS unsupported for server destinations in FIPS mode", () => {
+    vi.spyOn(crypto, "isFipsModeEnabled").mockReturnValue(true);
+    expect(optionFor(PkiSync.LinuxServer)).toMatchObject({ unsupportedExportFormats: [PkiSyncExportFormat.Jks] });
+    expect(optionFor(PkiSync.WindowsServer)).toMatchObject({ unsupportedExportFormats: [PkiSyncExportFormat.Jks] });
+    expect(optionFor(PkiSync.AzureKeyVault)).not.toHaveProperty("unsupportedExportFormats");
+  });
+
+  test("lists no unsupported formats outside FIPS mode", () => {
+    vi.spyOn(crypto, "isFipsModeEnabled").mockReturnValue(false);
+    expect(optionFor(PkiSync.LinuxServer)).not.toHaveProperty("unsupportedExportFormats");
   });
 });

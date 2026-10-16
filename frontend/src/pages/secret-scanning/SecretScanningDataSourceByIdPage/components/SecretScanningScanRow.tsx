@@ -19,7 +19,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
   SecretScanningScanStatus,
@@ -43,7 +43,6 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
     type
   } = scan;
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const totalFindings = resolvedFindings + unresolvedFindings;
   const navigate = useNavigate();
 
@@ -84,7 +83,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
         </div>
       </Td>
       <Td className="whitespace-nowrap">
-        {type === SecretScanningScanType.FullScan ? "Full Scan" : "Diff Scan"}
+        {type === SecretScanningScanType.Historical ? "Historical Scan" : "Realtime Scan"}
       </Td>
       <Td>
         {
@@ -99,10 +98,9 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
                   type="button"
                   onClick={() =>
                     navigate({
-                      to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
+                      to: "/organizations/$orgId/secret-scanning/findings",
                       params: {
-                        orgId: currentOrg.id,
-                        projectId: currentProject.id
+                        orgId: currentOrg.id
                       },
                       search: {
                         search: `scanId:${id}`

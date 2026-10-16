@@ -53,7 +53,7 @@ export const SecretScanningFindingRow = ({
     rule,
     status,
     details,
-    remarks
+    triageComment
   } = finding;
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
@@ -125,7 +125,7 @@ export const SecretScanningFindingRow = ({
         </Td>
         <Td className="whitespace-nowrap">{rule}</Td>
         <Td className="whitespace-nowrap">
-          <Tooltip position="left" content={remarks}>
+          <Tooltip position="left" content={triageComment}>
             <Badge variant={SECRET_SCANNING_FINDING_STATUS_MAP[status].variant}>
               <StatusIcon />
               <span className="capitalize">{status.replace("-", " ")}</span>
@@ -226,9 +226,9 @@ export const SecretScanningFindingRow = ({
                   </Button>
                 )}
               </ProjectPermissionCan>
-              {Boolean(remarks) && (
+              {Boolean(triageComment) && (
                 <GenericFieldLabel className="col-span-3" label="Remarks">
-                  {remarks}
+                  {triageComment}
                 </GenericFieldLabel>
               )}
             </div>

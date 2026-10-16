@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   CertificateAuthoritiesSchema,
+  DynamicSecretLeasesSchema,
   DynamicSecretsSchema,
   HoneyTokensSchema,
   IdentityProjectAdditionalPrivilegeSchema,
@@ -282,6 +283,10 @@ export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
+export const SanitizedDynamicSecretLeaseSchema = DynamicSecretLeasesSchema.omit({
+  encryptedLeaseData: true
+});
+
 export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   id: true,
   name: true,
@@ -331,6 +336,7 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   upgradeStatus: true,
   pitVersionLimit: true,
   kmsCertificateKeyId: true,
+  kmsSecretManagerKeyId: true,
   auditLogsRetentionDays: true,
   hasDeleteProtection: true,
   secretSharing: true,

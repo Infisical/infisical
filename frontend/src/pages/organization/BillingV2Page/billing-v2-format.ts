@@ -1,3 +1,5 @@
+import axios from "axios";
+
 import {
   BillingV2Cadence,
   BillingV2CatalogProduct,
@@ -19,8 +21,22 @@ export const catalogById = (
 export const byDisplayOrder = <T extends { displayOrder?: number }>(a: T, b: T): number =>
   (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
 
-export const fmtMoney = (n: number, maximumFractionDigits = 0): string =>
-  `$${Number(n).toLocaleString("en-US", { maximumFractionDigits })}`;
+// The license server's machine code (details.code) on a failed billing request, if any.
+export const billingV2ErrorCode = (error: unknown): string | undefined =>
+  axios.isAxiosError<{ details?: { code?: string } }>(error)
+    ? error.response?.data?.details?.code
+    : undefined;
+
+// Negative amounts put the sign before the currency symbol ("-$8.70", not "$-8.70").
+export const fmtMoney = (n: number, maximumFractionDigits = 0, minimumFractionDigits = 0): string =>
+  `${n < 0 ? "-" : ""}$${Math.abs(Number(n)).toLocaleString("en-US", {
+    minimumFractionDigits,
+    maximumFractionDigits
+  })}`;
+
+// Whole dollars stay whole ("$408"); any fractional amount always shows cents ("$22.20", "-$8.70").
+export const fmtMoneyCents = (n: number): string =>
+  Number.isInteger(n) ? fmtMoney(n) : fmtMoney(n, 2, 2);
 
 // Pluralize a singular dimension noun (the catalog's "noun" field) for display beside a count, since
 // a limit meter always reads as a plural quantity ("0 / 100 certificates"). Conservative: a noun that

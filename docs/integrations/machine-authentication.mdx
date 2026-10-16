@@ -3,6 +3,12 @@ title: "Overview"
 description: "Browse and search through all available machine authentication methods for Infisical."
 ---
 
-import { MachineAuthenticationBrowser } from "/snippets/MachineAuthenticationBrowser.jsx";
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { machineAuthMethods, machineAuthCategories } from "/snippets/catalogs/machine-authentication.jsx";
 
-<MachineAuthenticationBrowser />
+<CatalogBrowser
+  id="machine-authentication"
+  items={machineAuthMethods}
+  categories={machineAuthCategories}
+  noun="authentication method"
+/>

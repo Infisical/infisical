@@ -1,5 +1,6 @@
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -85,6 +86,13 @@ import {
   TFireworksApiKeyRotationListItem,
   TFireworksApiKeyRotationWithConnection
 } from "./fireworks-api-key";
+import {
+  TGcpServiceAccountKeyRotation,
+  TGcpServiceAccountKeyRotationGeneratedCredentials,
+  TGcpServiceAccountKeyRotationInput,
+  TGcpServiceAccountKeyRotationListItem,
+  TGcpServiceAccountKeyRotationWithConnection
+} from "./gcp-service-account-key";
 import {
   THpIloRotation,
   THpIloRotationGeneratedCredentials,
@@ -181,6 +189,13 @@ import {
   TSnowflakeUserKeyPairRotationWithConnection
 } from "./snowflake-user-key-pair";
 import {
+  TStripeApiKeyRotation,
+  TStripeApiKeyRotationGeneratedCredentials,
+  TStripeApiKeyRotationInput,
+  TStripeApiKeyRotationListItem,
+  TStripeApiKeyRotationWithConnection
+} from "./stripe-api-key";
+import {
   TSupabaseApiKeyRotation,
   TSupabaseApiKeyRotationGeneratedCredentials,
   TSupabaseApiKeyRotationInput,
@@ -230,7 +245,9 @@ export type TSecretRotationV2 =
   | TFireworksApiKeyRotation
   | TSnowflakeUserKeyPairRotation
   | TCloudflareApiTokenRotation
-  | TCloudflareR2AccessKeyRotation;
+  | TCloudflareR2AccessKeyRotation
+  | TStripeApiKeyRotation
+  | TGcpServiceAccountKeyRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -260,7 +277,9 @@ export type TSecretRotationV2WithConnection =
   | TFireworksApiKeyRotationWithConnection
   | TSnowflakeUserKeyPairRotationWithConnection
   | TCloudflareApiTokenRotationWithConnection
-  | TCloudflareR2AccessKeyRotationWithConnection;
+  | TCloudflareR2AccessKeyRotationWithConnection
+  | TStripeApiKeyRotationWithConnection
+  | TGcpServiceAccountKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -286,7 +305,9 @@ export type TSecretRotationV2GeneratedCredentials =
   | TFireworksApiKeyRotationGeneratedCredentials
   | TSnowflakeUserKeyPairRotationGeneratedCredentials
   | TCloudflareApiTokenRotationGeneratedCredentials
-  | TCloudflareR2AccessKeyRotationGeneratedCredentials;
+  | TCloudflareR2AccessKeyRotationGeneratedCredentials
+  | TStripeApiKeyRotationGeneratedCredentials
+  | TGcpServiceAccountKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -316,7 +337,9 @@ export type TSecretRotationV2Input =
   | TFireworksApiKeyRotationInput
   | TSnowflakeUserKeyPairRotationInput
   | TCloudflareApiTokenRotationInput
-  | TCloudflareR2AccessKeyRotationInput;
+  | TCloudflareR2AccessKeyRotationInput
+  | TStripeApiKeyRotationInput
+  | TGcpServiceAccountKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -346,7 +369,9 @@ export type TSecretRotationV2ListItem =
   | TFireworksApiKeyRotationListItem
   | TSnowflakeUserKeyPairRotationListItem
   | TCloudflareApiTokenRotationListItem
-  | TCloudflareR2AccessKeyRotationListItem;
+  | TCloudflareR2AccessKeyRotationListItem
+  | TStripeApiKeyRotationListItem
+  | TGcpServiceAccountKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
@@ -521,10 +546,11 @@ export type TRotationFactory<
   P extends TSecretRotationV2TemporaryParameters = undefined
 > = (
   secretRotation: T,
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">,
   passwordValidationContext?: TRotationPasswordValidationContext
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;

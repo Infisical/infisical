@@ -102,7 +102,7 @@ const BulkDeleteDialogContent = ({
   return (
     <AlertDialogContent className="max-w-3xl [&>*]:min-w-0">
       <AlertDialogHeader>
-        <AlertDialogTitle className="leading-none font-semibold">{title}</AlertDialogTitle>
+        <AlertDialogTitle className="leading-none font-normal">{title}</AlertDialogTitle>
         <AlertDialogDescription className="text-accent">{description}</AlertDialogDescription>
         {subTitle && (
           <Alert variant="warning">

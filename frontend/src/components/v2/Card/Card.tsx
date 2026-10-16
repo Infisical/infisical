@@ -10,7 +10,7 @@ export type CardTitleProps = {
 export const CardTitle = ({ children, className, subTitle }: CardTitleProps) => (
   <div
     className={twMerge(
-      "mb-5 border-b border-border-control px-6 py-4 font-sans text-lg font-normal break-words",
+      "mb-5 border-b border-border-control px-6 py-4 font-alliance text-lg font-normal break-words",
       className
     )}
   >
@@ -59,7 +59,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={twMerge(
-          "flex w-full flex-col bg-surface-raised font-inter text-foreground-cool shadow-md",
+          "flex w-full flex-col bg-surface-raised font-sans text-foreground-cool shadow-md",
           isFullHeight && "h-full",
           isRounded && "rounded-md",
           isPlain && "shadow-none",

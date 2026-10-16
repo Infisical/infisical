@@ -218,7 +218,7 @@ export const CommitDetailsView = ({
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex min-w-0 items-center gap-2">
-              <h2 className="truncate text-lg font-semibold text-foreground">
+              <h2 className="truncate text-lg font-normal text-foreground">
                 {commit.message || <span className="text-muted italic">No message</span>}
               </h2>
             </div>

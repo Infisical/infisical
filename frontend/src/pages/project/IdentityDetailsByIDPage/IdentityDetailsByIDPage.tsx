@@ -54,7 +54,12 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects,
+  supportsAssumePrivileges
+} from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectIdentityMembership,
@@ -107,15 +112,20 @@ const Page = () => {
   let removeMenuItemLabel = "Remove From Project";
   if (isProjectIdentity) {
     removeMenuItemLabel = "Delete Machine Identity";
+  } else if (isCertManager) {
+    removeMenuItemLabel = "Remove From Certificate Manager";
   } else if (isPam) {
     removeMenuItemLabel = "Remove From PAM";
   } else if (isAgentVault) {
     removeMenuItemLabel = "Remove From Agent Vault";
   }
 
+  const projectsHidden = hidesProjects(currentProject?.type);
+  const namesProduct = isStandaloneProduct || projectsHidden;
+
   let accessControlLabel = "project";
-  if (isCertManager) {
-    accessControlLabel = "certificate manager";
+  if (projectsHidden) {
+    accessControlLabel = getProjectLabel(currentProject?.type).toLowerCase();
   } else if (isPam) {
     accessControlLabel = "PAM";
   } else if (isAgentVault) {
@@ -165,7 +175,7 @@ const Page = () => {
       });
     }
     createNotification({
-      text: `Successfully removed machine identity from ${isStandaloneProduct ? accessControlLabel : "project"}`,
+      text: `Successfully removed machine identity from ${namesProduct ? accessControlLabel : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeIdentity");
@@ -199,7 +209,9 @@ const Page = () => {
     } catch {
       createNotification({
         type: "error",
-        text: "Failed to delete project machine identity"
+        text: isCertManager
+          ? "Failed to delete Certificate Manager machine identity"
+          : "Failed to delete project machine identity"
       });
     }
   };
@@ -215,7 +227,7 @@ const Page = () => {
     currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
   return (
-    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {identityMembershipDetails ? (
         <>
           <PageHeader
@@ -234,7 +246,7 @@ const Page = () => {
                 }}
               >
                 <ChevronLeftIcon aria-hidden className="size-4" />
-                {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
+                {namesProduct ? "Machine Identities" : "Project Machine Identities"}
               </Link>
             }
           >
@@ -422,10 +434,10 @@ const Page = () => {
           <IdentityActionConfirmationDialog
             open={popUp.removeIdentity.isOpen}
             title={`Remove ${identityMembershipDetails.identity.name} from ${
-              isStandaloneProduct ? accessControlLabel : "the project"
+              namesProduct ? accessControlLabel : "the project"
             }?`}
             description={`The machine identity will lose access to ${
-              isStandaloneProduct ? accessControlLabel : "this project"
+              namesProduct ? accessControlLabel : "this project"
             } but remain available in its organization.`}
             descriptionAsAlert
             confirmationText="remove"
@@ -442,7 +454,9 @@ const Page = () => {
           <IdentityActionConfirmationDialog
             open={popUp.deleteIdentity.isOpen}
             title={`Delete ${identity?.name || "machine identity"}?`}
-            description="This permanently deletes the project machine identity and revokes its access. This cannot be undone."
+            description={`This permanently deletes the ${
+              isCertManager ? "Certificate Manager" : "project"
+            } machine identity and revokes its access. This cannot be undone.`}
             descriptionAsAlert
             descriptionAlertVariant="danger"
             confirmationText="confirm"

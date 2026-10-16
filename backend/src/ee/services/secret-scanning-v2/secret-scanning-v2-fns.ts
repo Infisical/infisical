@@ -175,6 +175,28 @@ export type TCommitBatch = {
   prefixDigest: string;
 };
 
+/**
+ * An empty repository has an unborn HEAD, which `git rev-list HEAD` cannot resolve and then reports
+ * as an argument-order error, so history is only enumerated or scanned once this returns true.
+ */
+export const repositoryHasCommits = async (repoPath: string) => {
+  try {
+    await execFileBounded("git", ["rev-parse", "--verify", "--quiet", "HEAD"], {
+      phase: SecretScanningExecPhase.Enumerate,
+      cwd: repoPath,
+      timeoutMs: SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT,
+      env: GIT_PROCESS_ENV
+    });
+
+    return true;
+  } catch (error) {
+    // --quiet exits 1 when HEAD does not point at a commit; anything else is a real failure
+    if (error instanceof SecretScanningExecError && error.exitCode === 1) return false;
+
+    throw error;
+  }
+};
+
 const COMMIT_LOG_OPTS = COMMIT_LIST_ARGS.slice(1).join(" ");
 
 const buildCommitBatchLogOpts = ({ skip, maxCount }: TCommitBatch) =>
@@ -324,6 +346,27 @@ export async function scanFile(inputPath: string, configPath?: string): Promise<
   }
 }
 
+export const toFindingDetails = (finding: SecretMatch): unknown =>
+  titleCaseToCamelCase({
+    Description: finding.Description,
+    StartLine: finding.StartLine,
+    EndLine: finding.EndLine,
+    StartColumn: finding.StartColumn,
+    EndColumn: finding.EndColumn,
+    File: finding.File,
+    SymlinkFile: finding.SymlinkFile,
+    Commit: finding.Commit,
+    Entropy: finding.Entropy,
+    Author: finding.Author,
+    Email: finding.Email,
+    Date: finding.Date,
+    Message: finding.Message,
+    Tags: finding.Tags,
+    RuleID: finding.RuleID,
+    Fingerprint: finding.Fingerprint,
+    Link: finding.Attributes?.url ?? ""
+  });
+
 export const scanGitRepositoryAndGetFindings = async (
   scanPath: string,
   findingsPath: string,
@@ -335,19 +378,12 @@ export const scanGitRepositoryAndGetFindings = async (
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 
-  return findingsData.map(
-    ({
-      // discard match and secret as we don't want to store
-      Match,
-      Secret,
-      ...finding
-    }) => ({
-      details: titleCaseToCamelCase(finding),
-      fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    })
-  );
+  return findingsData.map((finding) => ({
+    details: toFindingDetails(finding),
+    fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
+    severity: SecretScanningFindingSeverity.High,
+    rule: finding.RuleID
+  }));
 };
 
 export const replaceNonChangesWithNewlines = (patch: string) => {

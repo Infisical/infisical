@@ -7,8 +7,8 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { ConfirmActionModal, ContentLoader, EmptyState } from "@app/components/v2";
-import { Badge, Button } from "@app/components/v3";
+import { ContentLoader, EmptyState } from "@app/components/v2";
+import { Badge, Button, DeleteConfirmDialog } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -34,7 +34,7 @@ import {
 } from "./components";
 
 const ROUTE_ID =
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals/$approvalRequestId" as const;
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/approvals/$approvalRequestId" as const;
 
 const CodeSigningDetailsSection = ({
   requestData,
@@ -48,7 +48,7 @@ const CodeSigningDetailsSection = ({
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h2 className="text-lg font-medium text-foreground">
+        <h2 className="text-lg font-normal text-foreground">
           Signing access for {requestData.signerName}
         </h2>
         <div className="mt-4 flex items-center gap-3">
@@ -67,7 +67,7 @@ const CodeSigningDetailsSection = ({
         </div>
       </div>
       <div className="rounded-lg border border-border-control bg-surface-base p-5">
-        <h3 className="mb-4 text-lg font-medium text-foreground">Signing Access Details</h3>
+        <h3 className="mb-4 text-lg font-normal text-foreground">Signing Access Details</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <span className="text-xs text-muted">Signer</span>
@@ -90,7 +90,7 @@ const CodeSigningDetailsSection = ({
         </div>
         {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
           <div className="mt-4 border-t border-border-control pt-4">
-            <h4 className="mb-1 text-sm font-medium text-foreground">Request Scope</h4>
+            <h4 className="mb-1 text-sm font-normal text-foreground">Request Scope</h4>
             <p className="mb-3 text-xs text-muted">
               Signing is only allowed when every parameter below matches exactly.
             </p>
@@ -158,10 +158,9 @@ const PageContent = () => {
           });
           if (applicationName) {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+              to: "/organizations/$orgId/cert-manager/applications/$applicationName",
               params: {
                 orgId: currentProject.orgId,
-                projectId: currentProject.id,
                 applicationName
               },
               search: { selectedTab: ApplicationTab.Requests }
@@ -170,17 +169,16 @@ const PageContent = () => {
           }
           if (from === "root-requests") {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
-              params: { orgId: currentProject.orgId, projectId: currentProject.id }
+              to: "/organizations/$orgId/cert-manager/requests",
+              params: { orgId: currentProject.orgId }
             });
             return;
           }
           if (signerId) {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+              to: "/organizations/$orgId/cert-manager/code-signing/$signerId",
               params: {
                 orgId: currentOrg.id,
-                projectId: currentProject.id,
                 signerId
               },
               search: { selectedTab: "approvals" }
@@ -189,11 +187,10 @@ const PageContent = () => {
           }
           navigate({
             to: isCodeSigning
-              ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
-              : "/organizations/$orgId/projects/cert-manager/$projectId/approvals",
+              ? "/organizations/$orgId/cert-manager/code-signing"
+              : "/organizations/$orgId/cert-manager/approvals",
             params: {
-              orgId: currentProject.orgId,
-              projectId: currentProject.id
+              orgId: currentProject.orgId
             },
             search: undefined
           });
@@ -250,7 +247,7 @@ const PageContent = () => {
       return (
         <>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-foreground">Signing Request</h1>
+            <h1 className="text-2xl font-normal text-foreground">Signing Request</h1>
             <Badge variant={getStatusBadgeVariant(request.status)}>
               {getStatusLabel(request.status)}
             </Badge>
@@ -268,7 +265,7 @@ const PageContent = () => {
     return (
       <>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-foreground">Certificate Approval Request</h1>
+          <h1 className="text-2xl font-normal text-foreground">Certificate Approval Request</h1>
           <Badge variant={getStatusBadgeVariant(request.status)}>
             {getStatusLabel(request.status)}
           </Badge>
@@ -284,10 +281,9 @@ const PageContent = () => {
               {" "}
               on application{" "}
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                to="/organizations/$orgId/cert-manager/applications/$applicationName"
                 params={{
                   orgId: currentOrg.id,
-                  projectId: currentProject.id,
                   applicationName: requestApplication.name
                 }}
                 className="font-medium text-foreground-secondary underline hover:text-foreground"
@@ -322,10 +318,9 @@ const PageContent = () => {
     if (applicationName) {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+          to="/organizations/$orgId/cert-manager/applications/$applicationName"
           params={{
             orgId: currentOrg.id,
-            projectId: currentProject.id,
             applicationName
           }}
           search={{ selectedTab: ApplicationTab.Requests }}
@@ -340,8 +335,8 @@ const PageContent = () => {
     if (from === "root-requests") {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/requests"
-          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+          to="/organizations/$orgId/cert-manager/requests"
+          params={{ orgId: currentOrg.id }}
           className={linkClass}
         >
           <FontAwesomeIcon icon={faChevronLeft} />
@@ -353,10 +348,9 @@ const PageContent = () => {
     if (signerId) {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId"
+          to="/organizations/$orgId/cert-manager/code-signing/$signerId"
           params={{
             orgId: currentOrg.id,
-            projectId: currentProject.id,
             signerId
           }}
           search={{ selectedTab: "approvals" }}
@@ -372,10 +366,10 @@ const PageContent = () => {
       <Link
         to={
           isCodeSigning
-            ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
-            : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
+            ? "/organizations/$orgId/cert-manager/code-signing"
+            : "/organizations/$orgId/cert-manager/approvals"
         }
-        params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+        params={{ orgId: currentOrg.id }}
         search={isCodeSigning ? undefined : { section: "certificates" }}
         className={linkClass}
       >
@@ -386,7 +380,7 @@ const PageContent = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-page font-inter text-foreground-inverse">
+    <div className="container mx-auto flex flex-col justify-between bg-page font-sans text-foreground-inverse">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         {renderBackLink()}
 
@@ -417,13 +411,15 @@ const PageContent = () => {
           </div>
         </div>
       </div>
-      <ConfirmActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.cancelRequest.isOpen}
+        confirmVariant="project"
+        description="This action is irreversible."
         confirmKey="cancel"
         title="Do you want to cancel this approval request?"
-        onChange={(isOpen) => handlePopUpToggle("cancelRequest", isOpen)}
-        onConfirmed={handleRequestCancel}
-        buttonText="Confirm"
+        onOpenChange={(isOpen) => handlePopUpToggle("cancelRequest", isOpen)}
+        onConfirm={handleRequestCancel}
+        confirmLabel="Confirm"
       />
     </div>
   );

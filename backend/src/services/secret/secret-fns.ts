@@ -9,7 +9,6 @@ import {
   SecretType,
   TableName,
   TSecretBlindIndexes,
-  TSecretFolders,
   TSecrets
 } from "@app/db/schemas";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
@@ -18,14 +17,15 @@ import { ProjectPermissionSecretActions } from "@app/ee/services/permission/proj
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
+  buildHierarchy,
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
-  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
+  generatePaths
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -35,7 +35,7 @@ import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   TCreateManySecretsRawFn,
@@ -83,67 +83,6 @@ type TGetPathsDTO = {
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string | undefined;
   };
-};
-
-// Introduce a new interface for mapping parent IDs to their children
-interface FolderMap {
-  [parentId: string]: TSecretFolders[];
-}
-const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
-  const map: FolderMap = {};
-  map.null = []; // Initialize mapping for root directory
-
-  folders.forEach((folder) => {
-    const parentId = folder.parentId || "null";
-    if (!map[parentId]) {
-      map[parentId] = [];
-    }
-    map[parentId].push(folder);
-  });
-
-  return map;
-};
-
-const generatePaths = (
-  map: FolderMap,
-  parentId: string = "null",
-  basePath: string = "",
-  currentDepth: number = 0
-): { path: string; folderId: string }[] => {
-  const children = map[parentId || "null"] || [];
-  let paths: { path: string; folderId: string }[] = [];
-
-  children.forEach((child) => {
-    // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
-    const isRootFolder = child.name === "root" && !child.parentId;
-
-    // Form the current path based on the base path and the current child
-    // eslint-disable-next-line no-nested-ternary
-    const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
-
-    // Add the current path
-    paths.push({
-      path: currPath,
-      folderId: child.id
-    });
-
-    // We make sure that the recursion depth doesn't exceed 20.
-    // We do this to create "circuit break", basically to ensure that we can't encounter any potential memory leaks.
-    if (currentDepth >= 20) {
-      logger.info(`generatePaths: Recursion depth exceeded 20, breaking out of recursion [map=${JSON.stringify(map)}]`);
-      return;
-    }
-    // Recursively generate paths for children, passing down the formatted path
-    const childPaths = generatePaths(map, child.id, currPath, currentDepth + 1);
-    paths = paths.concat(
-      childPaths.map((p) => ({
-        path: p.path,
-        folderId: p.folderId
-      }))
-    );
-  });
-
-  return paths;
 };
 
 export const recursivelyGetSecretPaths = ({
@@ -214,13 +153,20 @@ type TInterpolateSecretArg = {
   secretEncKey: string;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  abortSignal?: AbortSignal;
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 5;
 const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
 const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
-export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
+export const interpolateSecrets = ({
+  projectId,
+  secretEncKey,
+  secretDAL,
+  folderDAL,
+  abortSignal
+}: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, string>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
 
@@ -234,7 +180,9 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return "";
+    throwIfClientDisconnected(abortSignal);
     const secrets = await secretDAL.findByFolderId(folder.id);
+    throwIfClientDisconnected(abortSignal);
 
     const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
       const decryptedSecretKey = crypto.encryption().symmetric().decrypt({
@@ -288,6 +236,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
     let expandedValue = value;
     if (refs.length > 0) {
       for (const interpolationSyntax of refs) {
+        throwIfClientDisconnected(abortSignal);
         const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
         const entities = interpolationKey.trim().split(".");
 
@@ -410,7 +359,6 @@ export const decryptSecretRaw = (
     id: secret.id,
     user: secret.userId,
     tags: secret.tags?.map((el) => ({ ...el, name: el.slug })),
-    secretReminderRecipients: [],
     skipMultilineEncoding: secret.skipMultilineEncoding,
     secretReminderRepeatDays: secret.secretReminderRepeatDays,
     secretReminderNote: secret.secretReminderNote,
@@ -806,11 +754,11 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -825,7 +773,7 @@ export const createManySecretsRawFnFactory = ({
         });
 
       const blindIndexes = await Promise.all(
-        secrets.map((secret) => generateSecretBlindIndex(Buffer.from(secret.secretValue)))
+        secrets.map((secret) => blindIndexer.generateBlindIndexes(Buffer.from(secret.secretValue)))
       );
 
       const inputSecrets = secrets.map((secret, idx) => {
@@ -835,7 +783,7 @@ export const createManySecretsRawFnFactory = ({
           userId: secret.type === SecretType.Personal ? userId : null,
           key: secret.secretName,
           encryptedValue,
-          secretValueBlindIndex: blindIndexes[idx],
+          blindIndexes: blindIndexes[idx],
           encryptedComent: secret.secretComment
             ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
             : null,
@@ -997,11 +945,11 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -1033,7 +981,7 @@ export const updateManySecretsRawFnFactory = ({
       const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
 
       const blindIndexes = await Promise.all(
-        secrets.map((secret) => generateSecretBlindIndex(Buffer.from(secret.secretValue)))
+        secrets.map((secret) => blindIndexer.generateBlindIndexes(Buffer.from(secret.secretValue)))
       );
 
       const inputSecrets = secrets.map((secret, idx) => {
@@ -1047,7 +995,7 @@ export const updateManySecretsRawFnFactory = ({
           userId: secret.type === SecretType.Personal ? userId : null,
           key: secret.newSecretName || secret.secretName,
           encryptedValue,
-          secretValueBlindIndex: blindIndexes[idx],
+          blindIndexes: blindIndexes[idx],
           encryptedComent: secret.secretComment
             ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
             : null,
@@ -1245,7 +1193,6 @@ export const decryptSecretWithBot = (
 
 type TFnDeleteProjectSecretReminders = {
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
@@ -1253,27 +1200,19 @@ type TFnDeleteProjectSecretReminders = {
 
 export const fnDeleteProjectSecretReminders = async (
   projectId: string,
-  { secretDAL, secretV2BridgeDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+  { secretDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
 ) => {
-  const projectFolders = await folderDAL.findByProjectId(projectId);
   const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
+  if (shouldUseSecretV2Bridge) return;
 
-  const projectSecrets = shouldUseSecretV2Bridge
-    ? await secretV2BridgeDAL.find({
-        $in: { folderId: projectFolders.map((folder) => folder.id) },
-        $notNull: ["reminderRepeatDays"]
-      })
-    : await secretDAL.find({
-        $in: { folderId: projectFolders.map((folder) => folder.id) },
-        $notNull: ["secretReminderRepeatDays"]
-      });
+  const projectFolders = await folderDAL.findByProjectId(projectId);
+  const projectSecrets = await secretDAL.find({
+    $in: { folderId: projectFolders.map((folder) => folder.id) },
+    $notNull: ["secretReminderRepeatDays"]
+  });
 
   for await (const secret of projectSecrets) {
-    const repeatDays = shouldUseSecretV2Bridge
-      ? (secret as { reminderRepeatDays: number }).reminderRepeatDays
-      : (secret as { secretReminderRepeatDays: number }).secretReminderRepeatDays;
-
-    if (repeatDays) {
+    if (secret.secretReminderRepeatDays) {
       await reminderService.deleteReminderBySecretId(secret.id, projectId);
     }
   }

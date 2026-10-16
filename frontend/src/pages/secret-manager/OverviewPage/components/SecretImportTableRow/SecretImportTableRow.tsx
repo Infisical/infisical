@@ -83,7 +83,6 @@ type Props = {
     importPath: string,
     env: string
   ) => TSecretImport | undefined;
-  tableWidth: number;
   secretPath: string;
   searchFilter: string;
   onDelete: (secretImport: TSecretImport) => void;
@@ -102,7 +101,6 @@ export const SecretImportTableRow = ({
   environments = [],
   isSecretImportInEnv,
   getSecretImportByEnv,
-  tableWidth,
   secretPath,
   searchFilter,
   onDelete,
@@ -605,12 +603,17 @@ export const SecretImportTableRow = ({
       return (
         <>
           {renderReplicationEnvSelector()}
-          <Table containerClassName="rounded-none border-0">
+          <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+            <colgroup>
+              <col className="w-10" />
+              <col className="w-[var(--name-column-width,180px)]" />
+              <col />
+            </colgroup>
             <TableHeader className="bg-container-hover">
               <TableRow>
                 <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                 <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
-                <TableHead className="w-full">Value</TableHead>
+                <TableHead>Value</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -658,12 +661,17 @@ export const SecretImportTableRow = ({
 
     return (
       <>
-        <Table containerClassName="rounded-none border-0">
+        <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[var(--name-column-width,180px)]" />
+            <col />
+          </colgroup>
           <TableHeader className="bg-container-hover">
             <TableRow>
               <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
               <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
-              <TableHead className="w-full">Value</TableHead>
+              <TableHead>Value</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -730,12 +738,17 @@ export const SecretImportTableRow = ({
     }
 
     return (
-      <Table containerClassName="rounded-none border-0">
+      <Table className="w-full table-fixed" containerClassName="rounded-none border-0">
+        <colgroup>
+          <col className="w-10" />
+          <col className="w-[var(--name-column-width,180px)]" />
+          <col />
+        </colgroup>
         <TableHeader className="bg-container-hover">
           <TableRow>
             <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
             <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
-            <TableHead className="w-full">Value</TableHead>
+            <TableHead>Value</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -824,7 +837,7 @@ export const SecretImportTableRow = ({
               singleEnvImport?.isReplication &&
               singleEnvImport.lastReplicated && (
                 <div className="mr-16 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16">
-                  <Tooltip disableHoverableContent>
+                  <Tooltip>
                     <TooltipTrigger>
                       <div
                         className={twMerge(
@@ -899,10 +912,7 @@ export const SecretImportTableRow = ({
             className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
           >
             <TableCell colSpan={totalCols} className="border-0 p-0">
-              <div
-                style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 border-b border-border bg-container"
-              >
+              <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-b border-border bg-container">
                 {renderExpandedSecrets(singleEnvSlug)}
               </div>
             </TableCell>
@@ -912,10 +922,7 @@ export const SecretImportTableRow = ({
             className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
           >
             <TableCell colSpan={totalCols} className="border-0 p-0">
-              <div
-                style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 border-y border-border bg-container"
-              >
+              <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border bg-container">
                 <div className="flex min-h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-11">
                   <span className="text-xs text-muted">Imported in:</span>
                   {environments

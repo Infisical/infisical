@@ -62,7 +62,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       hide: true,
       operationId: "listCertificateInventoryViews",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "List system and custom certificate inventory views for a project.",
+      description: "List system and custom certificate inventory views.",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
         applicationId: z.string().uuid().optional()

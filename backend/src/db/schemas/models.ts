@@ -72,7 +72,6 @@ export enum TableName {
   UserSecretActivation = "user_secret_activation",
   SignupOnboardingResponse = "signup_onboarding_responses",
   SuperAdmin = "super_admin",
-  RateLimit = "rate_limit",
   // dropped with the SSH product; member kept for historical migrations
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
@@ -153,6 +152,7 @@ export enum TableName {
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",
   AuditLogStreamOutbox = "audit_log_stream_outbox",
+  AuditLogSettings = "audit_log_settings",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
@@ -278,11 +278,15 @@ export enum TableName {
   AgentVaultService = "agent_vault_services",
   AgentVaultServiceCustomHeader = "agent_vault_service_custom_headers",
   AgentVaultServiceSubstitution = "agent_vault_service_substitutions",
+  AgentVaultVariable = "agent_vault_variables",
+  AgentVaultServiceVariableReference = "agent_vault_service_variable_references",
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
+  AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  // Dropped; kept only for the migrations that create and drop it.
+  AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
-  VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME
@@ -319,11 +323,13 @@ export enum TableName {
   ApprovalPolicySteps = "approval_policy_steps",
   ApprovalPolicyStepApprovers = "approval_policy_step_approvers",
   ApprovalPolicyBypassers = "approval_policy_bypassers",
+  ApprovalPolicySecretEnvironment = "approval_policy_secret_environments",
   ApprovalRequests = "approval_requests",
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
+  SecretChangeRequests = "secret_change_requests",
 
   // Code Signing
   PkiSigners = "pki_signers",
@@ -355,7 +361,8 @@ export enum TableName {
   DeprecatedSecretRotationV1 = "secret_rotations",
   DeprecatedSecretRotationOutput = "secret_rotation_outputs",
   DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2",
-  DeprecatedApiKey = "api_keys"
+  DeprecatedApiKey = "api_keys",
+  DeprecatedRateLimit = "rate_limit"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

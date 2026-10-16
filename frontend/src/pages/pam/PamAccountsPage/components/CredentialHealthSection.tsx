@@ -88,7 +88,7 @@ export const CredentialHealthSection = ({ accountId, onBeforeCheck }: Props) => 
     <div className="mt-2 border-t border-border pt-4">
       <div className="mb-2 flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Credential health</h3>
+          <h3 className="text-sm font-normal text-foreground">Credential health</h3>
           <p className="text-xs text-muted">
             {heartbeat.enabled
               ? `Checked every ${formatRotationInterval(heartbeat.intervalSeconds)}, from ${heartbeat.templateName}.`

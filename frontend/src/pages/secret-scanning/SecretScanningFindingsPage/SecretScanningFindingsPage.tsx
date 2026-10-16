@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -27,7 +27,7 @@ export const SecretScanningFindingsPage = () => {
               <PageHeader
                 scope={ProjectType.SecretScanning}
                 title="Findings"
-                description="View Secret Leaks across your project."
+                description="View secret leaks across your data sources."
               />
               <SecretScanningFindingsSection />
             </div>

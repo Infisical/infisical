@@ -5,10 +5,10 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -44,10 +44,11 @@ import {
 
 const Page = () => {
   const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
-  const { discoveryId, projectId, orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId"
+  const { discoveryId, orgId } = useParams({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/$discoveryId"
   });
 
   const queryClient = useQueryClient();
@@ -95,8 +96,8 @@ const Page = () => {
       await deleteDiscovery.mutateAsync({ discoveryId });
       handlePopUpClose("deleteJob");
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery",
-        params: { orgId, projectId }
+        to: "/organizations/$orgId/cert-manager/discovery",
+        params: { orgId }
       });
     } catch {
       // Error handled by mutation
@@ -105,12 +106,12 @@ const Page = () => {
 
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
-      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           backLink={
             <Link
-              to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
-              params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+              to="/organizations/$orgId/cert-manager/discovery"
+              params={{ orgId: currentOrg.id }}
             >
               <ChevronLeftIcon size={16} />
               Jobs
@@ -197,13 +198,13 @@ const Page = () => {
         discovery={popUp.editJob.data as TPkiDiscovery | undefined}
       />
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteJob.isOpen}
         title="Are you sure you want to delete this discovery job?"
-        subTitle="This action cannot be undone. The discovery configuration will be permanently deleted."
-        onChange={(isOpen) => handlePopUpToggle("deleteJob", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action cannot be undone. The discovery configuration will be permanently deleted."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteJob", isOpen)}
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </div>
   );

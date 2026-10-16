@@ -28,6 +28,7 @@ import {
 import {
   appendCustomExtensions,
   describeCustomExtensionValue,
+  isIssuerGeneratedExtensionOid,
   isReservedExtensionOid,
   TIssuedCustomExtension
 } from "./certificate-extension-fns";
@@ -124,8 +125,10 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
     };
   }
 
+  // openssl x509 -x509toreq copies the old issuer's extensions in. Asking a new CA to repeat them
+  // gets the request rejected or produces a certificate that fails validation.
   const csrCustomExtensions = csrObj.extensions
-    .filter((extension) => !isReservedExtensionOid(extension.type))
+    .filter((extension) => !isReservedExtensionOid(extension.type) && !isIssuerGeneratedExtensionOid(extension.type))
     .map((extension) => ({
       oid: extension.type,
       value:

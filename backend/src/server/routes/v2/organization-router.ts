@@ -529,6 +529,21 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         ipAddress: req.realIp
       });
 
+      if (organization.rootOrgId) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: organization.rootOrgId,
+          event: {
+            type: EventType.DELETE_SUB_ORGANIZATION,
+            metadata: {
+              name: organization.name,
+              slug: organization.slug,
+              organizationId: organization.id
+            }
+          }
+        });
+      }
+
       void res.setCookie("jid", tokens.refreshToken, {
         httpOnly: true,
         path: "/api",

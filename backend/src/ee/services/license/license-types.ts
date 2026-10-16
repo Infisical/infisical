@@ -28,6 +28,15 @@ export type TOfflineLicense = {
   entitlements?: TEntitlementsResponse;
 };
 
+export type TPlanNotice = {
+  type: "trial_payment_failed";
+  productKey: string;
+  trialPlanKey: string | null;
+  accessEndsAt: string;
+  nextAttemptAt: string | null;
+  cause: string | null;
+};
+
 export type TOrgSeatUsage = {
   membersUsed: number;
   identitiesUsed: number;
@@ -36,6 +45,14 @@ export type TOrgSeatUsage = {
 export type TFeatureSet = {
   _id: null;
   slug: string | null;
+  productPlans?: {
+    productKey: string;
+    planKey: string | null;
+    status: string | null;
+    trialPlanKey: string | null;
+    trialEndsAt: string | null;
+  }[];
+  notices?: TPlanNotice[];
   // True when features are sourced from an offline (air-gapped) license; the billing UI renders a
   // read-only offline banner instead of the live billing surface.
   isOffline?: boolean;
@@ -53,10 +70,9 @@ export type TFeatureSet = {
   pitRecovery: false;
   ipAllowlisting: false;
   rbac: false;
-  customRateLimits: false;
   customAlerts: false;
   auditLogs: false;
-  auditLogsRetentionDays: 0;
+  auditLogsRetentionDays: number | null;
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   githubOrgSync: false;
@@ -86,7 +102,7 @@ export type TFeatureSet = {
   kmip: false;
   gateway: false;
   gatewayPool: false;
-  pamSlackNotifications: boolean;
+  pamEnterpriseAlerting: boolean;
   secretScanning: false;
   enterpriseSecretSyncs: false;
   enterpriseAppConnections: false;
@@ -97,6 +113,7 @@ export type TFeatureSet = {
   honeyTokens: false;
   honeyTokenLimit: 0;
   secretsBrokering: true;
+  agentVaultByoS3: false;
   secretSyncLimit: null;
   maxPamAccounts: null;
 
@@ -108,6 +125,8 @@ export type TFeatureSet = {
   // caCrl defaults on, so self-hosted OSS keeps it; the License Server's free-plan default is what
   // withholds it on cloud.
   caCrl: boolean;
+  pkiOcsp: false;
+  pkiAwsKmsSigning: false;
   pkiEnterpriseCaIntegrations: false;
   pkiExternalIntermediateCa: false;
   pkiDiscovery: false;

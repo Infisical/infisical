@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, linkOptions, useParams } from "@tanstack/react-router";
 import { Check, Plus, Star } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
@@ -126,6 +126,7 @@ const ProjectSelectInner = () => {
 
   if (
     currentWorkspace.type === ProjectType.CertificateManager ||
+    currentWorkspace.type === ProjectType.SecretScanning ||
     isOrgScopedProduct(currentWorkspace.type)
   ) {
     return null;
@@ -226,7 +227,7 @@ const ProjectSelectInner = () => {
                 ))}
               </CommandGroup>
             </CommandList>
-            <div className="border-t border-border p-1">
+            <div className="border-t border-border-soft p-1">
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
                 {(isOldProjectPermissionAllowed) => (
                   <OrgPermissionCan
@@ -254,11 +255,11 @@ const ProjectSelectInner = () => {
           </Command>
         </NavbarSwitcherContent>
       </NavbarSwitcher>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.limit"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You've reached the maximum number of projects available on the Free plan. Upgrade to the Infisical Pro plan to create more projects."
+        intent={ProjectLimitUpgradeIntent}
       />
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}

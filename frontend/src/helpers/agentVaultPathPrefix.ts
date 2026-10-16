@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Mirrors backend/src/ee/services/agent-vault/agent-vault-path-prefix.ts, which stays the grammar of record.
+// Mirrors backend/src/ee/services/agent-vault/agent-vault-path-prefix-schemas.ts, which stays the grammar of record.
 // Kept here so a bad prefix is caught before the request rather than coming back as a server error.
 
 const PATH_PREFIX_RE = /^\/[A-Za-z0-9\-._~$&+/:=@]*$/;

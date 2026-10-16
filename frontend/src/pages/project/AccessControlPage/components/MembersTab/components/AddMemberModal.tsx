@@ -36,13 +36,15 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { isValidEmail } from "@app/helpers/email";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
@@ -81,8 +83,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const {
     data: members,
@@ -190,7 +192,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       if (inviteeEmails.length !== selectedMembers.length) {
         createNotification({
-          text: "Failed to add users to project. One or more users were invalid.",
+          text: `Failed to add users to ${projectsHidden ? productLabel : "project"}. One or more users were invalid.`,
           type: "error"
         });
         return;
@@ -207,7 +209,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }
     }
     createNotification({
-      text: `Successfully added user to ${isCertManager ? productLabel : "the project"}`,
+      text: `Successfully added user to ${projectsHidden ? productLabel : "the project"}`,
       type: "success"
     });
     handlePopUpToggle("addMember", false);
@@ -262,8 +264,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {isCertManager
-              ? "Add Members to Certificate Manager"
+            {projectsHidden
+              ? `Add Members to ${productLabel}`
               : (t("section.members.add-dialog.add-member-to-project") as string)}
           </DialogTitle>
           <DialogDescription>{t("section.members.add-dialog.user-will-email")}</DialogDescription>
@@ -314,7 +316,10 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       noOptionsMessage={() => (
                         <>
                           {!projectInviteList.list.length && (
-                            <p>All organization members are already assigned to this project.</p>
+                            <p>
+                              All organization members are already assigned to{" "}
+                              {projectsHidden ? productLabel : "this project"}.
+                            </p>
                           )}
                           <p>
                             Invite new users to your organization by typing out their email address.
@@ -327,7 +332,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
                       isValidNewOption={(input) =>
                         Boolean(input) &&
-                        z.string().email().safeParse(input).success &&
+                        isValidEmail(input) &&
                         !orgUsers
                           ?.flatMap(({ user }) => {
                             const emails: string[] = [];
@@ -399,17 +404,23 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           />
           {requesterEmail && projectInviteList.requesterStatus.isProjectUser && (
             <Alert variant="danger">
-              <AlertDescription>Requested user is part of the project.</AlertDescription>
-            </Alert>
-          )}
-          {requesterEmail && !projectInviteList.requesterStatus.isProjectUser && (
-            <Alert>
               <AlertDescription>
-                Assign a role to provide access to requesting user{" "}
-                <b>{projectInviteList.requesterStatus.userLabel}</b>.
+                Requested user is part of {projectsHidden ? productLabel : "the project"}.
               </AlertDescription>
             </Alert>
           )}
+          {requesterEmail &&
+            !projectInviteList.requesterStatus.isProjectUser &&
+            projectInviteList.requesterStatus.userId && (
+              <Alert>
+                <AlertDescription>
+                  <p>
+                    Assign a role to provide access to requesting user{" "}
+                    <b>{projectInviteList.requesterStatus.userLabel}</b>.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
           <DialogFooter>
             <Button
               variant="ghost"

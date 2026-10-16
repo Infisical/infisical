@@ -12,7 +12,7 @@ import { ExternalLinkIcon } from "lucide-react";
 
 import { Skeleton } from "@app/components/v2";
 import { Badge, ButtonGroup } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import {
@@ -61,7 +61,6 @@ const formatValidity = (ttl: string): string => {
 
 export const CertificateDetailsSection = ({ request }: Props) => {
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const requestData = request.requestData.requestData as CertRequestRequestData;
   const certRequest = requestData.certificateRequest;
 
@@ -101,7 +100,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h2 className="text-lg font-medium text-foreground">
+        <h2 className="text-lg font-normal text-foreground">
           Request for {certRequest?.altNames?.[0]?.value || certRequest?.commonName || "-"}
         </h2>
 
@@ -124,7 +123,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
       </div>
 
       <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
           <FontAwesomeIcon icon={faLock} className="text-sm text-muted" />
           Certificate Specifications
         </h3>
@@ -158,10 +157,9 @@ export const CertificateDetailsSection = ({ request }: Props) => {
             {!isProfileLoading && isInternalCa && caId && (
               <Badge variant="outline" asChild className="mt-1">
                 <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
+                  to="/organizations/$orgId/cert-manager/ca/$caId"
                   params={{
                     orgId: currentOrg.id,
-                    projectId: currentProject.id,
                     caId
                   }}
                 >
@@ -184,7 +182,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
       </div>
 
       <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
           <FontAwesomeIcon icon={faGlobe} className="text-sm text-muted" />
           Subject Information
         </h3>
@@ -272,7 +270,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
 
       {customExtensions.length > 0 && (
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-mineshaft-100">
             <FontAwesomeIcon icon={faPuzzlePiece} className="text-sm text-mineshaft-400" />
             Custom Extensions
           </h3>
@@ -282,7 +280,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
 
       {basicConstraints?.isCA && (
         <div className="rounded-lg border border-border-control bg-surface-base p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
             <FontAwesomeIcon icon={faShieldHalved} className="text-sm text-muted" />
             Basic Constraints
           </h3>
@@ -304,7 +302,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
 
       {(hasKeyUsages || hasExtendedKeyUsages) && (
         <div className="rounded-lg border border-border-control bg-surface-base p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
             <FontAwesomeIcon icon={faKey} className="text-sm text-muted" />
             Key Usages
           </h3>
@@ -344,7 +342,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
       )}
 
       <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
           <FontAwesomeIcon icon={faTags} className="text-sm text-muted" />
           Metadata
         </h3>

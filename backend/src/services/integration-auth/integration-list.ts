@@ -64,10 +64,13 @@ export enum IntegrationUrls {
   GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token",
   BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth2/access_token",
   CAMUNDA_TOKEN_URL = "https://login.cloud.camunda.io/oauth/token",
+  STRIPE_TOKEN_URL = "https://api.stripe.com/v1/oauth/token",
+  STRIPE_APP_AUTHORIZE_URL = "https://marketplace.stripe.com/oauth/v2/authorize",
 
   // integration apps endpoints
   GCP_API_URL = "https://cloudresourcemanager.googleapis.com",
   HEROKU_API_URL = "https://api.heroku.com",
+  STRIPE_API_URL = "https://api.stripe.com",
   GITLAB_URL = "https://gitlab.com",
   GITLAB_API_URL = `${GITLAB_URL}/api`,
   GITHUB_API_URL = "https://api.github.com",
@@ -111,13 +114,18 @@ export enum IntegrationUrls {
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,
   GCP_CERTIFICATE_MANAGER_SERVICE_NAME = "certificatemanager.googleapis.com",
   GCP_CERTIFICATE_MANAGER_URL = `https://${GCP_CERTIFICATE_MANAGER_SERVICE_NAME}`,
+  GCP_CLOUD_DNS_SERVICE_NAME = "dns.googleapis.com",
+  GCP_CLOUD_DNS_URL = `https://${GCP_CLOUD_DNS_SERVICE_NAME}`,
   GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com",
+  GCP_IAM_URL = "https://iam.googleapis.com",
   GCP_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform",
 
   GITHUB_USER_INSTALLATIONS = "https://api.github.com/user/installations",
   CHEF_API_URL = "https://api.chef.io",
   DNS_MADE_EASY_API_URL = "https://api.dnsmadeeasy.com",
-  DNS_MADE_EASY_SANDBOX_API_URL = "https://api.sandbox.dnsmadeeasy.com"
+  DNS_MADE_EASY_SANDBOX_API_URL = "https://api.sandbox.dnsmadeeasy.com",
+  ULTRADNS_API_URL = "https://api.ultradns.com",
+  ULTRADNS_TEST_API_URL = "https://test-api.ultradns.com"
 }
 
 export const getIntegrationOptions = async () => {

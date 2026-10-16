@@ -4,10 +4,13 @@ import { PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   buildGatewayConnectionTest,
   ORACLE_MAX_PASSWORD_LENGTH,
-  TestConnectionMode
+  TestConnectionMode,
+  testVerifiesCredential
 } from "./pam-account-connection-test";
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
+
+const wireKeys = (request: unknown): string[] => Object.keys(JSON.parse(JSON.stringify(request)) as object);
 
 describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {
   const connectionDetails = {
@@ -240,5 +243,108 @@ describe("buildGatewayConnectionTest: Oracle", () => {
     );
 
     expect(result?.request).toMatchObject({ mode: TestConnectionMode.SQL, dialect: "postgres" });
+  });
+});
+
+describe("buildGatewayConnectionTest: ClickHouse", () => {
+  const connectionDetails = {
+    host: "clickhouse.example.com",
+    port: 8123,
+    database: "analytics",
+    sslEnabled: false,
+    sslRejectUnauthorized: true
+  };
+
+  test("carries the native port so both interfaces are checked before the account saves", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      { ...connectionDetails, nativePort: 9000 },
+      { username: "default", password: "pw" },
+      ORG_ID
+    );
+
+    expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
+    expect(result?.request).toMatchObject({
+      httpPort: 8123,
+      nativePort: 9000,
+      username: "default",
+      database: "analytics",
+      sslEnabled: false
+    });
+    expect(result?.port).toBe(8123);
+    expect(result?.additionalPorts).toEqual([8123, 9000]);
+  });
+
+  test("a native-only account targets the native port and sends no HTTP port", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      {
+        host: "clickhouse.example.com",
+        nativePort: 9440,
+        database: "analytics",
+        sslEnabled: true,
+        sslRejectUnauthorized: true
+      },
+      { username: "default", password: "pw" },
+      ORG_ID
+    );
+
+    expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
+    expect(result?.port).toBe(9440);
+    expect(result?.request).toMatchObject({ nativePort: 9440, sslEnabled: true });
+    expect(result?.additionalPorts).toEqual([9440]);
+    expect(wireKeys(result!.request)).not.toContain("httpPort");
+  });
+
+  test("omits the native port when the server only serves HTTP", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      connectionDetails,
+      { username: "default", password: "pw" },
+      ORG_ID
+    );
+
+    expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
+    expect(result?.request).toMatchObject({ httpPort: 8123 });
+    expect(result?.additionalPorts).toEqual([8123]);
+    expect(wireKeys(result!.request)).not.toContain("nativePort");
+  });
+
+  test("an edit without a new password still checks both ports, sending no credential", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      { ...connectionDetails, nativePort: 9000 },
+      { username: "default" },
+      ORG_ID
+    );
+
+    expect(result?.request).toMatchObject({
+      mode: TestConnectionMode.ClickHouse,
+      probeOnly: true,
+      httpPort: 8123,
+      nativePort: 9000
+    });
+    expect(result?.additionalPorts).toEqual([8123, 9000]);
+    expect(wireKeys(result!.request)).not.toContain("username");
+    expect(wireKeys(result!.request)).not.toContain("password");
+    expect(testVerifiesCredential(result!.request)).toBe(false);
+  });
+
+  test("an http-only edit without a new password stays a reachability check older gateways understand", async () => {
+    const result = await buildGatewayConnectionTest(PamAccountType.ClickHouse, connectionDetails, null, ORG_ID);
+
+    expect(result?.request).toEqual({ mode: TestConnectionMode.Tcp });
+    expect(testVerifiesCredential(result!.request)).toBe(false);
+  });
+
+  test("a supplied password is a real credential check", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      { ...connectionDetails, nativePort: 9000 },
+      { username: "default", password: "pw" },
+      ORG_ID
+    );
+
+    expect(testVerifiesCredential(result!.request)).toBe(true);
   });
 });

@@ -14,11 +14,11 @@ const fetchWsTag = async (projectID: string) => {
   return data.tags;
 };
 
-export const useGetWsTags = (projectID: string) => {
+export const useGetWsTags = (projectID: string, enabled = true) => {
   return useQuery({
     queryKey: projectTags.getWsTags(projectID),
     queryFn: () => fetchWsTag(projectID),
-    enabled: Boolean(projectID)
+    enabled: Boolean(projectID) && enabled
   });
 };
 

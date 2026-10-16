@@ -254,9 +254,7 @@ export const pitServiceFactory = ({
     projectId,
     commitId,
     folderId,
-    environment,
-    deepRollback,
-    secretPath
+    deepRollback
   }: {
     actor: ActorType;
     actorId: string;
@@ -265,9 +263,7 @@ export const pitServiceFactory = ({
     projectId: string;
     commitId: string;
     folderId: string;
-    environment: string;
     deepRollback: boolean;
-    secretPath: string;
   }) => {
     const latestCommit = await folderCommitService.getLatestCommit({
       folderId,
@@ -287,14 +283,28 @@ export const pitServiceFactory = ({
       projectId
     });
 
+    if (targetCommit.folderId !== folderId) {
+      throw new BadRequestError({
+        message: `Commit with ID '${commitId}' does not belong to folder with ID '${folderId}'`
+      });
+    }
+
     const env = await projectEnvDAL.findOne({
       projectId,
-      slug: environment
+      id: targetCommit.envId
     });
 
     if (!latestCommit) {
       throw new NotFoundError({ message: "Latest commit not found" });
     }
+
+    const folderData = await folderService.getFolderById({
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      id: folderId
+    });
 
     let diffs;
     if (deepRollback) {
@@ -304,19 +314,11 @@ export const pitServiceFactory = ({
         projectId
       });
     } else {
-      const folderData = await folderService.getFolderById({
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
-        id: folderId
-      });
-
       diffs = [
         {
           folderId: folderData.id,
           folderName: folderData.name,
-          folderPath: secretPath,
+          folderPath: folderData.path,
           changes: await folderCommitService.compareFolderStates({
             targetCommitId: commitId,
             currentCommitId: latestCommit.id
@@ -358,7 +360,7 @@ export const pitServiceFactory = ({
       }
     }
 
-    return diffs;
+    return { diffs, environment: env.slug, folderPath: folderData.path };
   };
 
   const rollbackToCommit = async ({

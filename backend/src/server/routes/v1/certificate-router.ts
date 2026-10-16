@@ -240,6 +240,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
+          auditLogInfo: req.auditLogInfo,
           profileId: requestBody.profileId,
           applicationId: requestBody.applicationId,
           certificateOrder: certificateOrderObject,
@@ -293,6 +294,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
+          auditLogInfo: req.auditLogInfo,
           profileId: requestBody.profileId,
           applicationId: requestBody.applicationId,
           csr,
@@ -384,6 +386,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: requestBody.profileId,
         applicationId: requestBody.applicationId,
         certificateRequest: mappedCertificateRequest,
@@ -934,6 +937,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateRequest: mappedCertificateRequest,
         removeRootsFromChain: req.body.removeRootsFromChain
@@ -1028,6 +1032,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         csr: req.body.csr,
         validity: {
@@ -1148,6 +1153,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateOrder: certificateOrderObject,
         removeRootsFromChain: req.body.removeRootsFromChain
@@ -1171,6 +1177,60 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
       return data;
     }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id/renewal-preview",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      hide: true,
+      operationId: "getCertificateRenewalPreview",
+      tags: [ApiDocsTags.PkiCertificates],
+      description:
+        "Get the values a renewal of this certificate will request, taken from the request that produced it, together with the fields the issuing authority changed.",
+      params: z.object({
+        id: z.string().trim().uuid().describe(CERTIFICATES.RENEWAL_PREVIEW.id)
+      }),
+      response: {
+        200: z.object({
+          hasOriginatingRequest: z.boolean().describe(CERTIFICATES.RENEWAL_PREVIEW.hasOriginatingRequest),
+          request: z
+            .object({
+              commonName: z.string().optional(),
+              organization: z.string().optional(),
+              organizationalUnit: z.string().optional(),
+              country: z.string().optional(),
+              state: z.string().optional(),
+              locality: z.string().optional(),
+              domainComponents: z.array(z.string()).optional(),
+              altNames: z.array(z.object({ type: z.string(), value: z.string() })),
+              keyUsages: z.array(z.string()),
+              extendedKeyUsages: z.array(z.string()),
+              keyAlgorithm: z.string().optional(),
+              signatureAlgorithm: z.string().optional(),
+              customExtensions: z.array(
+                z.object({ oid: z.string(), value: z.string().optional(), critical: z.boolean().optional() })
+              )
+            })
+            .describe(CERTIFICATES.RENEWAL_PREVIEW.request),
+          issuerModifiedFields: z
+            .array(z.object({ field: z.string(), requested: z.string(), issued: z.string() }))
+            .describe(CERTIFICATES.RENEWAL_PREVIEW.issuerModifiedFields)
+        })
+      }
+    },
+    handler: async (req) =>
+      server.services.certificateV3.getRenewalPreview({
+        certificateId: req.params.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
   });
 
   server.route({
@@ -1218,6 +1278,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         certificateId: req.params.id,
         removeRootsFromChain: req.body?.removeRootsFromChain,
         renewalKeySource: req.body?.renewalKeySource,

@@ -1,7 +1,7 @@
 import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Spinner, Tooltip } from "@app/components/v2";
+import { HoverCard, HoverCardContent, HoverCardTrigger, Loader } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
@@ -19,7 +19,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-surface-selected" />
+        <Loader size="md" label="Loading data source options" />
         <p className="mt-4 text-sm text-muted">Loading options...</p>
       </div>
     );
@@ -44,44 +44,41 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
           </button>
         );
       })}
-      <Tooltip
-        side="bottom"
-        className="max-w-sm py-4"
-        content={
-          <>
-            <p className="mb-2">Infisical is constantly adding support for more services.</p>
-            <p>
-              {`If you don't see the third-party
-            service you're looking for,`}{" "}
-              <a
-                target="_blank"
-                className="underline hover:text-label"
-                href="https://infisical.com/slack"
-                rel="noopener noreferrer"
-              >
-                let us know on Slack
-              </a>{" "}
-              or{" "}
-              <a
-                target="_blank"
-                className="underline hover:text-label"
-                href="https://github.com/Infisical/infisical/discussions"
-                rel="noopener noreferrer"
-              >
-                make a request on GitHub
-              </a>
-              .
-            </p>
-          </>
-        }
-      >
-        <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-border-control bg-surface-raised p-4 hover:bg-surface-base/50">
-          <FontAwesomeIcon className="mt-auto text-3xl" icon={faWrench} />
-          <div className="mt-auto max-w-xs text-center text-xs font-medium text-label-cool duration-200 group-hover:text-foreground-cool">
-            Coming Soon
+      <HoverCard openDelay={50}>
+        <HoverCardTrigger asChild>
+          <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-border-control bg-surface-raised p-4 hover:bg-surface-base/50">
+            <FontAwesomeIcon className="mt-auto text-3xl" icon={faWrench} />
+            <div className="mt-auto max-w-xs text-center text-xs font-medium text-label-cool duration-200 group-hover:text-foreground-cool">
+              Coming Soon
+            </div>
           </div>
-        </div>
-      </Tooltip>
+        </HoverCardTrigger>
+        <HoverCardContent side="bottom">
+          <p className="mb-2">Infisical is constantly adding support for more services.</p>
+          <p>
+            {`If you don't see the third-party
+            service you're looking for,`}{" "}
+            <a
+              target="_blank"
+              className="underline hover:text-label"
+              href="https://community.infisical.com"
+              rel="noopener noreferrer"
+            >
+              let us know in the community forum
+            </a>{" "}
+            or{" "}
+            <a
+              target="_blank"
+              className="underline hover:text-label"
+              href="https://github.com/Infisical/infisical/discussions"
+              rel="noopener noreferrer"
+            >
+              make a request on GitHub
+            </a>
+            .
+          </p>
+        </HoverCardContent>
+      </HoverCard>
     </div>
   );
 };

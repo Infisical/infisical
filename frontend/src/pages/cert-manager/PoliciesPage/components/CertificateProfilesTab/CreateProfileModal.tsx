@@ -4,6 +4,7 @@ import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
+import axios from "axios";
 import { Check, ChevronRight, FileBadge, ShieldCheck } from "lucide-react";
 import { z } from "zod";
 
@@ -15,6 +16,7 @@ import {
   FieldContent,
   FieldDescription,
   FieldError,
+  FieldFeedback,
   FieldLabel,
   FilterableSelect,
   Input,
@@ -67,6 +69,8 @@ import {
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
+import { ApiErrorTypes } from "@app/hooks/api/types";
+import { normalizeSlugInput } from "@app/lib/schemas";
 import { filterUsages } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import {
   CertPolicyState,
@@ -172,16 +176,6 @@ const STEPS = [
   }
 ] as const;
 
-const slugSchema = z
-  .string()
-  .trim()
-  .min(1, "Profile slug is required")
-  .max(255, "Profile slug must be less than 255 characters")
-  .regex(
-    /^[a-zA-Z0-9-_]+$/,
-    "Profile slug must contain only letters, numbers, hyphens, and underscores"
-  );
-
 const descriptionSchema = z
   .string()
   .trim()
@@ -189,7 +183,12 @@ const descriptionSchema = z
   .optional();
 
 const baseProfileSchema = z.object({
-  slug: slugSchema,
+  slug: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(255, "Name must be 255 characters or fewer")
+    .regex(/^[a-z0-9-]+$/, "Name can only contain lowercase letters, numbers, and hyphens"),
   description: descriptionSchema,
   issuerType: z.nativeEnum(IssuerType),
   certificateAuthorityId: z.string().nullable().optional(),
@@ -551,10 +550,7 @@ export const CreateProfileModal = ({
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { orgId, projectId } = useParams({ strict: false }) as {
-    orgId?: string;
-    projectId?: string;
-  };
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
   const [policyStepIndex, setPolicyStepIndex] = useState<number | null>(null);
   const [isPolicySubmitting, setIsPolicySubmitting] = useState(false);
   const policyWizardRef = useRef<CertificatePolicyWizardHandle>(null);
@@ -609,7 +605,8 @@ export const CreateProfileModal = ({
     }
   };
 
-  const { control, handleSubmit, reset, watch, setValue, trigger } = useForm<FormData>({
+  const { control, handleSubmit, reset, watch, setValue, setError, trigger } = useForm<FormData>({
+    mode: "onTouched",
     resolver: zodResolver(isEdit ? editSchema : createSchema),
     defaultValues:
       (isEdit || isClone) && profile
@@ -812,7 +809,7 @@ export const CreateProfileModal = ({
     }
   }, [isAwsAcmPublicCa, watchedPolicyId, setValue]);
 
-  const onFormSubmit = async (data: FormData) => {
+  const saveProfile = async (data: FormData) => {
     if (!currentProject?.id && !isEdit) return;
 
     // Both AD CS variants require a template on the profile's external config.
@@ -878,7 +875,7 @@ export const CreateProfileModal = ({
       await updateProfile.mutateAsync(updateData);
     } else {
       if (!currentProject?.id) {
-        throw new Error("Project ID is required for creating a profile");
+        throw new Error("Certificate Manager could not be loaded. Please refresh and try again.");
       }
 
       const createData: TCreateCertificateProfileDTO = {
@@ -911,6 +908,17 @@ export const CreateProfileModal = ({
 
     reset();
     onClose();
+  };
+
+  const onFormSubmit = async (data: FormData) => {
+    try {
+      await saveProfile(data);
+    } catch (error) {
+      if (!axios.isAxiosError(error) || error.response?.data?.error !== ApiErrorTypes.ConflictError)
+        throw error;
+      setSelectedStepIndex(0);
+      setError("slug", { type: "server", message: error.response.data?.message });
+    }
   };
 
   const isStepValid = async (index: number) => {
@@ -1079,7 +1087,7 @@ export const CreateProfileModal = ({
             ) : (
               <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
                 <div className="mb-6">
-                  <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                  <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
                   <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
                 </div>
 
@@ -1089,17 +1097,25 @@ export const CreateProfileModal = ({
                       control={control}
                       name="slug"
                       render={({ field, fieldState: { error } }) => (
-                        <Field>
+                        <Field data-invalid={Boolean(error)}>
                           <FieldLabel>
                             Name <span className="text-danger">*</span>
                           </FieldLabel>
                           <FieldContent>
                             <Input
                               {...field}
+                              onChange={(event) =>
+                                field.onChange(normalizeSlugInput(event.target.value))
+                              }
+                              aria-describedby="certificate-profile-name-feedback"
                               placeholder="your-profile-name"
                               isError={Boolean(error)}
                             />
-                            <FieldError errors={[error]} />
+                            <FieldFeedback
+                              id="certificate-profile-name-feedback"
+                              description="Use lowercase letters, numbers, and hyphens. Spaces become hyphens."
+                              error={error?.message}
+                            />
                           </FieldContent>
                         </Field>
                       )}
@@ -1216,8 +1232,8 @@ export const CreateProfileModal = ({
                                   <FieldDescription className="text-warning">
                                     No certificate authorities available.{" "}
                                     <Link
-                                      to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
-                                      params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                                      to="/organizations/$orgId/cert-manager/certificate-authorities"
+                                      params={{ orgId: orgId ?? "" }}
                                       className="underline hover:text-warning"
                                     >
                                       Create one in Certificate Authorities

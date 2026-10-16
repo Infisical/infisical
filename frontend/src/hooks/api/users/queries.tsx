@@ -170,11 +170,11 @@ export const useGetUserProjectFavorites = (orgId: string) =>
     queryFn: () => fetchUserProjectFavorites(orgId)
   });
 
-export const useGetOrgUsers = (orgId: string) =>
+export const useGetOrgUsers = (orgId: string, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: userKeys.getOrgUsers(orgId),
     queryFn: () => fetchOrgUsers(orgId),
-    enabled: Boolean(orgId)
+    enabled: Boolean(orgId) && (options?.enabled ?? true)
   });
 
 // mutation

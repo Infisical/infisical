@@ -63,7 +63,10 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
           certificateId: z.string().uuid().optional(),
           certificate: z
             .object({
-              keySource: z.nativeEnum(CertKeySource).optional().default(CertKeySource.Infisical),
+              keySource: z
+                .enum([CertKeySource.Infisical, CertKeySource.Hsm])
+                .optional()
+                .default(CertKeySource.Infisical),
               hsmConnectorId: z.string().uuid().optional()
             })
             .optional(),
@@ -152,7 +155,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "listSigners",
       tags: [ApiDocsTags.PkiSigners],
-      description: "List code signing signers for a project",
+      description: "List code signing signers",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
         offset: z.coerce.number().int().min(0).default(0),

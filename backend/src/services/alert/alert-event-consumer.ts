@@ -19,7 +19,7 @@ export const AlertEventPayloadSchema = z.object({
   orgId: z.string().uuid(),
   projectId: z.string().trim().min(1).max(255).nullish(),
   resourceType: z.string().trim().min(1).max(255),
-  resourceId: z.string().trim().min(1).max(255),
+  resourceId: z.string().trim().min(1).max(255).nullish(),
   targetIds: z.array(z.string().trim().min(1).max(255)).min(1).max(MAX_TARGET_IDS_PER_EVENT)
 });
 
@@ -28,7 +28,7 @@ type TAlertEventPayload = z.infer<typeof AlertEventPayloadSchema>;
 export type TAlertEventConsumerDep = {
   alertDAL: Pick<TAlertDALFactory, "findEnabledForEvent">;
   alertEngine: Pick<TAlertEngine, "runAlertForEvent">;
-  alertProviderRegistry: Pick<TAlertProviderRegistry, "get" | "eventTriggeredKeys">;
+  alertProviderRegistry: Pick<TAlertProviderRegistry, "get" | "eventTriggeredKeys" | "findEventsBySource">;
 };
 
 type TAlertLookup = TAlertDALFactory["findEnabledForEvent"];
@@ -70,13 +70,16 @@ export const alertEventConsumerFactory = ({
       };
     }
 
-    const alerts = await findAlerts({
-      orgId,
-      projectId,
-      resourceType,
-      resourceId,
-      eventType: event.eventType
-    });
+    const sourcedEvents = alertProviderRegistry.findEventsBySource({ resourceType, eventKey: event.eventType });
+    const lookups = [
+      { resourceType, resourceId, eventType: event.eventType },
+      ...sourcedEvents.map((sourced) => ({
+        resourceType: sourced.resourceType,
+        resourceId: null,
+        eventType: sourced.eventKey
+      }))
+    ];
+    const alerts = (await Promise.all(lookups.map((lookup) => findAlerts({ orgId, projectId, ...lookup })))).flat();
 
     if (alerts.length === 0) {
       recordAlertDispatchOutcomeMetric({ resourceType, outcome: AlertDispatchOutcome.NoMatchingAlert });
@@ -86,10 +89,11 @@ export const alertEventConsumerFactory = ({
     const errors: string[] = [];
 
     for (const alert of alerts) {
-      // eslint-disable-next-line no-await-in-loop -- at most a project- and an org-scoped alert
+      // eslint-disable-next-line no-await-in-loop -- bounds DB connection use; a retry skips channels already delivered for this event
       const outcome = await alertEngine.runAlertForEvent(alert, {
         eventId: id,
-        eventType: event.eventType,
+        eventType: alert.eventType,
+        occurredAt: event.occurredAt,
         targetIds,
         payload: (event.payload ?? {}) as Record<string, unknown>
       });
@@ -113,7 +117,7 @@ export const alertEventConsumerFactory = ({
         filter.orgId,
         filter.projectId ?? null,
         filter.resourceType,
-        filter.resourceId,
+        filter.resourceId ?? null,
         filter.eventType
       ]);
       let lookup = alertsByFilter.get(key);

@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateAuthoritiesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -15,6 +17,7 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
@@ -48,20 +51,22 @@ export const CaSection = () => {
     "caCert",
     "installCaCert",
     "deleteCa",
-    "caStatus", // enable / disable
-    "upgradePlan"
+    "caStatus" // enable / disable
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const { data: caQuota } = useGetCaQuota();
   // An internal CA counts against both caps, so whichever runs out first blocks it. The message names
   // that one, since "1 of 1 internal CAs" and "1 of 1 CAs" call for different upgrades.
   const exhausted = [
     {
+      key: "maxCas" as const,
       one: "certificate authority",
       many: "certificate authorities",
       ...caQuota?.certificateAuthorities
     },
     {
+      key: "maxInternalCas" as const,
       one: "internal certificate authority",
       many: "internal certificate authorities",
       ...caQuota?.internalCertificateAuthorities
@@ -72,8 +77,9 @@ export const CaSection = () => {
     if (exhausted) {
       // The allowance is shared across the organization and any sub-organizations, while this table
       // shows one project, so the count is named rather than left to look like a mismatch.
-      handlePopUpOpen("upgradePlan", {
-        text: `Your plan includes ${exhausted.limit} ${exhausted.limit === 1 ? exhausted.one : exhausted.many}. Your organization is using ${exhausted.used}. Upgrade to add more.`
+      openUpgradeGate({
+        intent: CertificateAuthoritiesUpgradeIntent,
+        paywallKey: "cert-manager.ca"
       });
       return;
     }
@@ -89,7 +95,11 @@ export const CaSection = () => {
   const caPendingDelete = caPendingDeleteData as TInternalCertificateAuthority | undefined;
   const pendingDeleteHsmKeyLabel =
     caPendingDelete?.configuration?.keySource === CertKeySource.Hsm
-      ? caPendingDelete?.configuration?.hsmKeyLabel
+      ? caPendingDelete?.configuration?.externalKeyId
+      : undefined;
+  const pendingDeleteAwsKmsKeyArn =
+    caPendingDelete?.configuration?.keySource === CertKeySource.AwsKms
+      ? caPendingDelete?.configuration?.externalKeyId
       : undefined;
 
   const onRemoveCaSubmit = async (id: string) => {
@@ -147,44 +157,43 @@ export const CaSection = () => {
         <CaTable handlePopUpOpen={handlePopUpOpen} />
       </CardContent>
       <CreateCaWizard isOpen={isCreateWizardOpen} onOpenChange={setIsCreateWizardOpen} />
-      <UpgradePlanModal
-        paywallKey="cert-manager.ca"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
+      {upgradeGate}
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
         }?`}
-        subTitle={`This action will delete other CAs and certificates below it in your CA hierarchy.${
+        description={`This action will delete other CAs and certificates below it in your CA hierarchy.${
           pendingDeleteHsmKeyLabel
             ? ` This CA's key on the HSM (label: ${pendingDeleteHsmKeyLabel}) is not removed automatically and will remain as an orphaned key.`
             : ""
+        }${
+          pendingDeleteAwsKmsKeyArn
+            ? ` Deleting this CA also schedules its signing key (${pendingDeleteAwsKmsKeyArn}) for deletion in AWS KMS. You can cancel that deletion in AWS KMS within 30 days.`
+            : ""
         }`}
-        onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.caStatus.isOpen}
         title={`Are you sure you want to ${
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "enable"
             : "disable"
         } the CA ${(popUp?.caStatus?.data as { dn: string })?.dn || ""}?`}
-        subTitle={
+        description={
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "This action will allow the CA to start issuing certificates again."
             : "This action will prevent the CA from issuing new certificates."
         }
-        onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
-        buttonText="Confirm"
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
+        confirmLabel="Confirm"
+        confirmKey="confirm"
+        onConfirm={() =>
           onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })
         }
       />

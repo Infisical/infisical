@@ -1,4 +1,12 @@
-import { SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
@@ -11,9 +19,14 @@ import { AxiosError } from "axios";
 import {
   ArrowDownZAIcon,
   ArrowUpAZIcon,
+  ArrowUpDownIcon,
+  CalendarArrowDownIcon,
+  CalendarArrowUpIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClockArrowDownIcon,
+  ClockArrowUpIcon,
   CopyIcon,
   DownloadIcon,
   EyeIcon,
@@ -34,7 +47,21 @@ import {
   HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal
 } from "@app/components/honey-tokens";
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  DynamicSecretsUpgradeIntent,
+  EnterpriseSecretSyncsUpgradeIntent,
+  EnvironmentLimitUpgradeIntent,
+  FolderAccessControlsUpgradeIntent,
+  hasEnvironmentCapacity,
+  HoneyTokensUpgradeIntent,
+  PointInTimeRecoveryUpgradeIntent,
+  SecretAccessInsightsUpgradeIntent,
+  SecretImportReplicationUpgradeIntent,
+  SecretRotationsUpgradeIntent,
+  SecretsBrokeringUpgradeIntent,
+  UpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -82,6 +109,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   PageHeader,
   Pagination,
@@ -200,6 +231,7 @@ import {
   useSecretRotationOverview
 } from "@app/hooks/utils";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -258,8 +290,17 @@ import {
   SecretRotationTableRow,
   SecretSyncStatusBadgeOverview,
   SecretTableRow,
-  TableEmptyRow
+  TableEmptyRow,
+  TableFilteredEmptyRow
 } from "./components";
+import {
+  createOverviewTelemetry,
+  observeOverviewRequest,
+  overviewCountBucket,
+  OverviewFlowState,
+  overviewResponsePhase,
+  withOverviewTelemetry
+} from "./OverviewTelemetry";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -298,7 +339,7 @@ const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 const getSecretSortValue = (orderBy: DashboardSecretsOrderBy, orderDirection: OrderByDirection) =>
   `${orderBy}:${orderDirection}`;
 
-const SECRET_NAME_SORT_OPTIONS = [
+const SECRET_SORT_OPTIONS = [
   {
     label: "Name (A to Z)",
     Icon: ArrowUpAZIcon,
@@ -310,10 +351,36 @@ const SECRET_NAME_SORT_OPTIONS = [
     Icon: ArrowDownZAIcon,
     orderBy: DashboardSecretsOrderBy.Name,
     orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Last Edited (New)",
+    Icon: ClockArrowUpIcon,
+    orderBy: DashboardSecretsOrderBy.UpdatedAt,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Last Edited (Old)",
+    Icon: ClockArrowDownIcon,
+    orderBy: DashboardSecretsOrderBy.UpdatedAt,
+    orderDirection: OrderByDirection.ASC
+  },
+  {
+    label: "Created (New)",
+    Icon: CalendarArrowUpIcon,
+    orderBy: DashboardSecretsOrderBy.CreatedAt,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Created (Old)",
+    Icon: CalendarArrowDownIcon,
+    orderBy: DashboardSecretsOrderBy.CreatedAt,
+    orderDirection: OrderByDirection.ASC
   }
 ] as const;
 
-const SECRET_SORT_OPTIONS = SECRET_NAME_SORT_OPTIONS;
+type UpgradeRequest = {
+  intent: UpgradeIntent;
+};
 
 const OverviewPageContent = () => {
   const { t } = useTranslation();
@@ -358,6 +425,7 @@ const OverviewPageContent = () => {
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
+  const [isSearchAllFoldersOpen, setIsSearchAllFoldersOpen] = useState(false);
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
@@ -416,6 +484,7 @@ const OverviewPageContent = () => {
   } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name, {
     initPerPage: getUserTablePreference("secretOverviewTable", PreferenceKey.PerPage, 100)
   });
+  const [sortEnvironment, setSortEnvironment] = useState<string>();
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -475,9 +544,10 @@ const OverviewPageContent = () => {
   }, []);
 
   const userAvailableEnvs = currentProject?.environments || [];
-  const isMoreEnvironmentsAllowed = subscription?.environmentLimit
-    ? userAvailableEnvs.length < subscription.environmentLimit
-    : true;
+  const isMoreEnvironmentsAllowed = hasEnvironmentCapacity(
+    subscription?.environmentLimit,
+    userAvailableEnvs.length
+  );
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
@@ -576,8 +646,39 @@ const OverviewPageContent = () => {
     [userAvailableEnvs]
   );
 
+  const shouldClearSortEnvironment = Boolean(
+    sortEnvironment &&
+      (visibleEnvs.length === 1 ||
+        !visibleEnvs.some((environment) => environment.slug === sortEnvironment))
+  );
+  const isTimestampSort =
+    orderBy === DashboardSecretsOrderBy.CreatedAt || orderBy === DashboardSecretsOrderBy.UpdatedAt;
+  const shouldResetTimestampSort =
+    isTimestampSort && visibleEnvs.length > 1 && (!sortEnvironment || shouldClearSortEnvironment);
+
+  useEffect(() => {
+    if (shouldClearSortEnvironment) {
+      setSortEnvironment(undefined);
+    }
+
+    if (shouldResetTimestampSort) {
+      setOrderBy(DashboardSecretsOrderBy.Name);
+      setOrderDirection(OrderByDirection.ASC);
+    }
+
+    if (shouldClearSortEnvironment || shouldResetTimestampSort) {
+      setPage(1);
+    }
+  }, [
+    shouldClearSortEnvironment,
+    shouldResetTimestampSort,
+    setOrderBy,
+    setOrderDirection,
+    setPage
+  ]);
+
   const handleSecretSortChange = useCallback(
-    (value: string) => {
+    (value: string, environment?: string) => {
       const option = SECRET_SORT_OPTIONS.find(
         ({ orderBy: nextOrderBy, orderDirection: nextOrderDirection }) =>
           getSecretSortValue(nextOrderBy, nextOrderDirection) === value
@@ -587,6 +688,7 @@ const OverviewPageContent = () => {
 
       setOrderBy(option.orderBy);
       setOrderDirection(option.orderDirection);
+      setSortEnvironment(environment);
       setPage(1);
     },
     [setOrderBy, setOrderDirection, setPage]
@@ -597,6 +699,15 @@ const OverviewPageContent = () => {
       getSecretSortValue(option.orderBy, option.orderDirection) ===
       getSecretSortValue(orderBy, orderDirection)
   );
+  const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
+  let activeSecretSortScope = "";
+  if (sortEnvironment) {
+    activeSecretSortScope = ` in ${
+      visibleEnvs.find((environment) => environment.slug === sortEnvironment)?.name ??
+      sortEnvironment
+    }`;
+  }
+
   const relevantPendingApprovalsCount = useMemo(() => {
     // Reviewers see project-wide pending requests (existing behavior).
     if (canApproveAny) return pendingApprovalsCount;
@@ -868,6 +979,7 @@ const OverviewPageContent = () => {
     secretPath,
     orderDirection,
     orderBy,
+    sortEnvironment,
     includeFolders: isFilteredByResources ? filter.folder : true,
     includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
     includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
@@ -883,10 +995,13 @@ const OverviewPageContent = () => {
 
   const {
     isPending: isOverviewLoading,
+    isError: isOverviewError,
     data: overview,
     isPlaceholderData,
     isFetching: isOverviewFetching
-  } = useGetProjectSecretsOverview(overviewQueryParams, { enabled: isProjectV3 });
+  } = useGetProjectSecretsOverview(overviewQueryParams, {
+    enabled: isProjectV3 && !shouldClearSortEnvironment && !shouldResetTimestampSort
+  });
   const isOverviewPending = isOverviewLoading || isPlaceholderData;
   const showDelayedOverviewSkeleton = useDelayedLoading(isPlaceholderData, {
     resetKey: JSON.stringify(overviewQueryParams)
@@ -956,6 +1071,7 @@ const OverviewPageContent = () => {
 
   const [folderAccessTarget, setFolderAccessTarget] = useState<{
     folderPath: string;
+    environmentSlug: string;
   } | null>(null);
   const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
 
@@ -1049,6 +1165,68 @@ const OverviewPageContent = () => {
   const { mutateAsync: createCommit, isPending: isCommitPending } = useCreateCommit();
 
   const isBatchModeActive = isOverviewBatchMode && isSingleEnvView;
+  const telemetryScope = useMemo<OverviewScopeProperties>(() => {
+    let environmentMode: OverviewScopeProperties["environmentMode"] = "none";
+    if (visibleEnvs.length === 1) environmentMode = "single";
+    if (visibleEnvs.length > 1) environmentMode = "multiple";
+    return {
+      projectId,
+      route: "/organizations/$orgId/projects/secret-management/$projectId/overview",
+      environmentMode,
+      folderScope: secretPath === "/" ? "root" : "nested",
+      editMode: isBatchModeActive ? "batch" : "immediate"
+    };
+  }, [projectId, visibleEnvs.length, secretPath, isBatchModeActive]);
+  const telemetryFlowScope = `${projectId}:${secretPath}:${visibleEnvs.map((env) => env.slug).join(",")}`;
+  const telemetryFlows = useMemo<OverviewFlowState>(() => new Map(), [telemetryFlowScope]);
+  const overviewTelemetry = useMemo(
+    () => createOverviewTelemetry(orgId, telemetryScope, telemetryFlows),
+    [orgId, telemetryScope, telemetryFlows]
+  );
+  const previousTelemetry = useRef<{
+    telemetry: typeof overviewTelemetry;
+    flows: typeof telemetryFlows;
+  }>();
+  useEffect(() => {
+    if (previousTelemetry.current && previousTelemetry.current.flows !== telemetryFlows)
+      previousTelemetry.current.telemetry.cancelOpenFlows();
+    previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
+  }, [overviewTelemetry, telemetryFlows]);
+  const viewedProjectRef = useRef<string>();
+  const loadedProjectRef = useRef<string>();
+  useEffect(() => {
+    if (!isProjectV3 || viewedProjectRef.current === projectId) return;
+    viewedProjectRef.current = projectId;
+    loadedProjectRef.current = undefined;
+    analytics.captureForOrganization(AnalyticsEvent.SecretsOverviewViewed, orgId, telemetryScope);
+  }, [isProjectV3, projectId, orgId, telemetryScope]);
+  useEffect(() => {
+    if (
+      !isProjectV3 ||
+      !visibleEnvs.length ||
+      isOverviewError ||
+      isOverviewPending ||
+      !overview ||
+      loadedProjectRef.current === projectId
+    )
+      return;
+    loadedProjectRef.current = projectId;
+    analytics.captureForOrganization(AnalyticsEvent.SecretsOverviewLoaded, orgId, {
+      ...telemetryScope,
+      resourceCountBucket: overviewCountBucket(totalCount),
+      state: totalCount === 0 ? "empty" : "populated"
+    });
+  }, [
+    isProjectV3,
+    visibleEnvs.length,
+    isOverviewError,
+    isOverviewPending,
+    overview,
+    projectId,
+    orgId,
+    telemetryScope,
+    totalCount
+  ]);
   const hasPendingBatchChanges =
     isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
@@ -1119,7 +1297,12 @@ const OverviewPageContent = () => {
     "upload"
   );
 
-  const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
+  const {
+    handlePopUpOpen: openPopUp,
+    handlePopUpToggle: togglePopUp,
+    handlePopUpClose: closePopUp,
+    popUp
+  } = usePopUp([
     "addSecretsInAllEnvs",
     "addFolder",
     "misc",
@@ -1136,7 +1319,6 @@ const OverviewPageContent = () => {
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
     "deleteSecretRotation",
-    "upgradePlan",
     "reconcileSecretRotation",
     "importSecrets",
     "editDynamicSecret",
@@ -1156,12 +1338,78 @@ const OverviewPageContent = () => {
     "revokeHoneyToken",
     "createEnvironment"
   ] as const);
-
-  const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+  const popupFlows = useMemo<
+    Partial<Record<keyof typeof popUp, Omit<OverviewFlowProperties, "phase">>>
+  >(
+    () => ({
+      addSecretsInAllEnvs: { action: "create", resourceType: "secret", source: "form" },
+      addFolder: { action: "create", resourceType: "folder", source: "form" },
+      updateFolder: { action: "update", resourceType: "folder", source: "form" },
+      deleteFolder: { action: "delete", resourceType: "folder", source: "form" }
+    }),
+    []
+  );
+  const popupOwners = useRef<{
+    scope: OverviewFlowState;
+    current: Partial<Record<keyof typeof popUp, object>>;
+  }>({ scope: telemetryFlows, current: {} });
+  if (popupOwners.current.scope !== telemetryFlows)
+    popupOwners.current = { scope: telemetryFlows, current: {} };
+  const popupOwnership = useMemo(
+    () => ({ ...popupOwners.current.current }),
+    [popUp, telemetryFlows]
+  );
+  const isPopupCurrent = useCallback(
+    (name: keyof typeof popUp) => popupOwners.current.current[name] === popupOwnership[name],
+    [popupOwnership]
+  );
+  const handlePopUpOpen: typeof openPopUp = useCallback(
+    (name, data) => {
+      popupOwners.current.current[name] = {};
+      const flow = popupFlows[name];
+      if (flow) overviewTelemetry.flow({ ...flow, phase: "opened" });
+      openPopUp(name, data);
+    },
+    [popupFlows, overviewTelemetry, openPopUp]
+  );
+  const handlePopUpClose: typeof closePopUp = useCallback(
+    (name) => {
+      if (!isPopupCurrent(name)) return;
+      const flow = popupFlows[name];
+      if (flow) overviewTelemetry.flow({ ...flow, phase: "canceled" });
+      closePopUp(name);
+      delete popupOwners.current.current[name];
+    },
+    [popupFlows, overviewTelemetry, closePopUp, isPopupCurrent]
+  );
+  const handlePopUpToggle: typeof togglePopUp = (name, isOpen) => {
+    const flow = popupFlows[name];
+    const opening = isOpen ?? !popUp[name].isOpen;
+    if (!opening) {
+      handlePopUpClose(name);
+      return;
+    }
+    if (!popUp[name].isOpen) popupOwners.current.current[name] = {};
+    if (flow) overviewTelemetry.flow({ ...flow, phase: opening ? "opened" : "canceled" });
+    togglePopUp(name, isOpen);
+  };
+  const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
     null
   );
 
+  const openUpgradeGate = useCallback(
+    (request: UpgradeRequest) => {
+      openSharedUpgradeGate({ ...request, paywallKey: "secret-manager.overview" });
+    },
+    [openSharedUpgradeGate]
+  );
+
+  const getEnvironmentUpgradeRequest = (): UpgradeRequest => ({
+    intent: EnvironmentLimitUpgradeIntent
+  });
+
+  const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
     if (routerSearch.honeyTokenId) {
@@ -1181,51 +1429,84 @@ const OverviewPageContent = () => {
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
 
   const handleViewCommitHistory = (envSlug: string) => {
+    if (!canReadCommits) return;
+    overviewTelemetry.interaction({ action: "history", source: "header" });
+
+    const openCommitHistory = () => {
+      const env = userAvailableEnvs.find((el) => el.slug === envSlug);
+      setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
+    };
+
     if (!subscription?.pitRecovery) {
-      handlePopUpOpen("upgradePlan", {
-        text: "You can use point-in-time recovery if you upgrade your Infisical plan."
+      openUpgradeGate({
+        intent: PointInTimeRecoveryUpgradeIntent
       });
       return;
     }
 
-    if (!canReadCommits) return;
-
-    const env = userAvailableEnvs.find((el) => el.slug === envSlug);
-    setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
+    openCommitHistory();
   };
-
-  const ensureFolderRbacPlan = useCallback(() => {
-    if (subscription?.secretsFolderRbac) return true;
-    handlePopUpOpen("upgradePlan", {
-      text: "Folder-level access controls can be unlocked if you upgrade to Infisical Pro plan."
-    });
-    return false;
-  }, [subscription?.secretsFolderRbac, handlePopUpOpen]);
 
   const handleFolderAccessOpen = useCallback(
     (folderName: string) => {
-      if (!ensureFolderRbacPlan()) return;
-      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
-      if (!folder) return;
-      setFolderAccessTarget({
-        folderPath: childFolderPath(folderName)
-      });
-      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "folder_row",
-        projectId
-      });
+      const openFolderAccess = () => {
+        const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+        if (!folder) return;
+        setFolderAccessTarget({
+          folderPath: childFolderPath(folderName),
+          environmentSlug: singleEnvSlug
+        });
+        analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+          source: "folder_row",
+          projectId
+        });
+      };
+
+      if (!subscription?.secretsFolderRbac) {
+        openUpgradeGate({
+          intent: FolderAccessControlsUpgradeIntent
+        });
+        return;
+      }
+
+      openFolderAccess();
     },
-    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
+    [
+      getFolderByNameAndEnv,
+      singleEnvSlug,
+      childFolderPath,
+      orgId,
+      projectId,
+      subscription?.secretsFolderRbac,
+      openUpgradeGate
+    ]
   );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
-    if (!ensureFolderRbacPlan()) return;
-    setIsCurrentFolderAccessOpen(true);
-    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-      source: "breadcrumb",
-      projectId
-    });
-  }, [ensureFolderRbacPlan, orgId, projectId]);
+    const openCurrentFolderAccess = () => {
+      setIsCurrentFolderAccessOpen(true);
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "breadcrumb",
+        projectId
+      });
+    };
+
+    if (!subscription?.secretsFolderRbac) {
+      openUpgradeGate({
+        intent: FolderAccessControlsUpgradeIntent
+      });
+      return;
+    }
+
+    openCurrentFolderAccess();
+  }, [
+    openUpgradeGate,
+    orgId,
+    projectId,
+    secretPath,
+    singleEnvSlug,
+    subscription?.secretsFolderRbac
+  ]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -1295,9 +1576,16 @@ const OverviewPageContent = () => {
   };
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
+    const flow = {
+      action: "create" as const,
+      resourceType: "folder" as const,
+      source: "form" as const
+    };
+    const attempt = overviewTelemetry.startFlow(flow);
     if (isBatchModeActive && singleVisibleEnv) {
       if (isFolderPresentInEnv(folderName, singleVisibleEnv.slug)) {
         createNotification({ type: "info", text: "Folder already exists" });
+        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
         handlePopUpClose("addFolder");
         return;
       }
@@ -1313,6 +1601,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("addFolder");
       return;
     }
@@ -1336,6 +1625,7 @@ const OverviewPageContent = () => {
       .filter((promise) => promise !== undefined);
 
     if (promises.length === 0) {
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       handlePopUpClose("addFolder");
       createNotification({
         type: "info",
@@ -1346,6 +1636,14 @@ const OverviewPageContent = () => {
 
     const results = await Promise.allSettled(promises);
     const isFoldersAdded = results.some((result) => result.status === "fulfilled");
+    const responseCount = results.filter((result) => result.status === "fulfilled").length;
+    attempt.flow({
+      ...flow,
+      phase: overviewResponsePhase(responseCount, 0, results.length - responseCount),
+      responseCountBucket: overviewCountBucket(responseCount),
+      failureCountBucket: overviewCountBucket(results.length - responseCount),
+      countBucket: overviewCountBucket(promises.length)
+    });
 
     if (isFoldersAdded) {
       handlePopUpClose("addFolder");
@@ -1362,6 +1660,12 @@ const OverviewPageContent = () => {
   };
 
   const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
+    const flow = {
+      action: "update" as const,
+      resourceType: "folder" as const,
+      source: "form" as const
+    };
+    const attempt = overviewTelemetry.startFlow(flow);
     if (isBatchModeActive && singleVisibleEnv) {
       const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
       const folder = getFolderByNameAndEnv(oldFolderName, singleVisibleEnv.slug);
@@ -1385,6 +1689,7 @@ const OverviewPageContent = () => {
             },
             { projectId, environment: singleVisibleEnv.slug, secretPath }
           );
+          attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
           handlePopUpClose("updateFolder");
           return;
         }
@@ -1407,10 +1712,12 @@ const OverviewPageContent = () => {
             },
             { projectId, environment: singleVisibleEnv.slug, secretPath }
           );
+          attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
           handlePopUpClose("updateFolder");
           return;
         }
 
+        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
         handlePopUpClose("updateFolder");
         return;
       }
@@ -1428,6 +1735,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("updateFolder");
       return;
     }
@@ -1456,6 +1764,7 @@ const OverviewPageContent = () => {
     });
 
     if (updatedFolders.length === 0) {
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       createNotification({
         type: "info",
         text: "You don't have access to rename selected folder"
@@ -1470,11 +1779,21 @@ const OverviewPageContent = () => {
         folders: updatedFolders,
         projectId
       });
+      attempt.flow({
+        ...flow,
+        phase: "response-received",
+        countBucket: overviewCountBucket(updatedFolders.length)
+      });
       createNotification({
         type: "success",
         text: "Successfully renamed folder across environments"
       });
     } catch {
+      attempt.flow({
+        ...flow,
+        phase: "failed",
+        countBucket: overviewCountBucket(updatedFolders.length)
+      });
       createNotification({
         type: "error",
         text: "Failed to rename folder across environments"
@@ -1487,6 +1806,12 @@ const OverviewPageContent = () => {
   const handleFolderDelete = async () => {
     const folderName = (popUp.deleteFolder?.data as { name: string })?.name;
     if (!folderName) return;
+    const flow = {
+      action: "delete" as const,
+      resourceType: "folder" as const,
+      source: "form" as const
+    };
+    const attempt = overviewTelemetry.startFlow(flow);
 
     if (isBatchModeActive && singleVisibleEnv) {
       const folder = getFolderByNameAndEnv(folderName, singleVisibleEnv.slug);
@@ -1503,6 +1828,12 @@ const OverviewPageContent = () => {
             secretPath
           });
         }
+        attempt.flow({
+          ...flow,
+          phase: pendingCreate ? "discarded" : "empty",
+          countBucket: pendingCreate ? "1" : "0",
+          provenance: "pending"
+        });
         handlePopUpClose("deleteFolder");
         return;
       }
@@ -1518,6 +1849,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("deleteFolder");
       return;
     }
@@ -1546,6 +1878,7 @@ const OverviewPageContent = () => {
       .filter(Boolean);
 
     if (promises.length === 0) {
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       createNotification({
         type: "info",
         text: "You don't have access to delete this folder in any environment"
@@ -1554,6 +1887,16 @@ const OverviewPageContent = () => {
       return;
     }
 
+    Promise.allSettled(promises).then((results) => {
+      const responseCount = results.filter((result) => result.status === "fulfilled").length;
+      attempt.flow({
+        ...flow,
+        phase: overviewResponsePhase(responseCount, 0, results.length - responseCount),
+        countBucket: overviewCountBucket(promises.length),
+        responseCountBucket: overviewCountBucket(responseCount),
+        failureCountBucket: overviewCountBucket(results.length - responseCount)
+      });
+    });
     try {
       await Promise.all(promises);
       createNotification({
@@ -1654,7 +1997,8 @@ const OverviewPageContent = () => {
     key: string,
     value: string,
     type = SecretType.Shared,
-    comment = ""
+    comment = "",
+    source: "row" | "quick-add" = "row"
   ) => {
     if (isBatchModeActive && type !== SecretType.Personal) {
       addPendingChange(
@@ -1669,6 +2013,13 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: env, secretPath }
       );
+      overviewTelemetry.flow({
+        action: "create",
+        resourceType: "secret",
+        source,
+        phase: "staged",
+        countBucket: "1"
+      });
       return;
     }
 
@@ -1694,15 +2045,20 @@ const OverviewPageContent = () => {
         });
       }
     }
-    const result = await createSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretValue: value,
-      secretComment: comment,
-      type
-    });
+    const result = await observeOverviewRequest(
+      overviewTelemetry,
+      { action: "create", resourceType: "secret", source, countBucket: "1" },
+      () =>
+        createSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretValue: value,
+          secretComment: comment,
+          type
+        })
+    );
 
     if ("approval" in result) {
       createNotification({
@@ -1780,6 +2136,13 @@ const OverviewPageContent = () => {
           },
           { projectId, environment: env, secretPath }
         );
+        overviewTelemetry.flow({
+          action: "update",
+          resourceType: "secret",
+          source: "row",
+          phase: "staged",
+          countBucket: "1"
+        });
         return;
       }
 
@@ -1811,6 +2174,13 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: env, secretPath }
       );
+      overviewTelemetry.flow({
+        action: "update",
+        resourceType: "secret",
+        source: "row",
+        phase: "staged",
+        countBucket: "1"
+      });
       return;
     }
 
@@ -1823,15 +2193,24 @@ const OverviewPageContent = () => {
       secretValue = undefined;
     }
 
-    const result = await updateSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretValue,
-      type,
-      newSecretName
-    });
+    const result = await observeOverviewRequest(
+      overviewTelemetry,
+      { action: "update", resourceType: "secret", source: "row", countBucket: "1" },
+      () =>
+        updateSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretValue,
+          type,
+          newSecretName,
+          secretComment,
+          tagIds: updatedTags?.map((tag) => tag.id),
+          secretMetadata: updatedMetadata,
+          skipMultilineEncoding: updatedSkipMultilineEncoding
+        })
+    );
 
     if ("approval" in result) {
       createNotification({
@@ -1866,6 +2245,14 @@ const OverviewPageContent = () => {
             environment: env,
             secretPath
           });
+          overviewTelemetry.flow({
+            action: "discard",
+            resourceType: "secret",
+            source: "row",
+            phase: "discarded",
+            countBucket: "1",
+            provenance: "pending"
+          });
         }
         return;
       }
@@ -1886,17 +2273,29 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: env, secretPath }
       );
+      overviewTelemetry.flow({
+        action: "delete",
+        resourceType: "secret",
+        source: "row",
+        phase: "staged",
+        countBucket: "1"
+      });
       return;
     }
 
-    const result = await deleteSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretId,
-      type
-    });
+    const result = await observeOverviewRequest(
+      overviewTelemetry,
+      { action: "delete", resourceType: "secret", source: "row", countBucket: "1" },
+      () =>
+        deleteSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretId,
+          type
+        })
+    );
 
     if ("approval" in result) {
       createNotification({
@@ -2120,13 +2519,21 @@ const OverviewPageContent = () => {
     async (changes: PendingChanges, message: string) => {
       if (!singleVisibleEnv) return;
 
-      await createCommit({
-        projectId,
-        environment: singleVisibleEnv.slug,
-        secretPath,
-        pendingChanges: changes,
-        message
-      });
+      const flow = {
+        action: "commit" as const,
+        resourceType: "mixed" as const,
+        source: "bulk" as const,
+        countBucket: overviewCountBucket(changes.secrets.length + changes.folders.length)
+      };
+      await observeOverviewRequest(overviewTelemetry, flow, () =>
+        createCommit({
+          projectId,
+          environment: singleVisibleEnv.slug,
+          secretPath,
+          pendingChanges: changes,
+          message
+        })
+      );
 
       const hasOnlyFolderChanges = changes.folders.length > 0 && changes.secrets.length === 0;
       const requiresApproval = isProtectedBranch && !hasOnlyFolderChanges;
@@ -2168,6 +2575,7 @@ const OverviewPageContent = () => {
       }
     },
     [
+      overviewTelemetry,
       singleVisibleEnv,
       projectId,
       secretPath,
@@ -2193,9 +2601,24 @@ const OverviewPageContent = () => {
       else localStorage.removeItem(OVERVIEW_BATCH_MODE_KEY);
       return next;
     });
-  }, [isOverviewBatchMode, singleVisibleEnv, pendingChanges, handlePopUpOpen]);
+    overviewTelemetry.interaction({
+      action: isOverviewBatchMode ? "batch-mode-disabled" : "batch-mode-enabled",
+      source: "header"
+    });
+  }, [isOverviewBatchMode, singleVisibleEnv, pendingChanges, handlePopUpOpen, overviewTelemetry]);
 
   const handleConfirmDisableBatchMode = useCallback(() => {
+    overviewTelemetry.interaction({ action: "batch-mode-disabled", source: "header" });
+    overviewTelemetry.flow({
+      action: "discard",
+      resourceType: "mixed",
+      source: "bulk",
+      phase: "discarded",
+      countBucket: overviewCountBucket(
+        pendingChanges.secrets.length + pendingChanges.folders.length
+      ),
+      provenance: "pending"
+    });
     if (singleVisibleEnv) {
       clearAllPendingChanges({
         projectId,
@@ -2206,10 +2629,23 @@ const OverviewPageContent = () => {
     setIsOverviewBatchMode(false);
     localStorage.removeItem(OVERVIEW_BATCH_MODE_KEY);
     handlePopUpClose("confirmDisableBatchMode");
-  }, [singleVisibleEnv, clearAllPendingChanges, projectId, secretPath, handlePopUpClose]);
+  }, [
+    singleVisibleEnv,
+    clearAllPendingChanges,
+    projectId,
+    secretPath,
+    handlePopUpClose,
+    overviewTelemetry,
+    pendingChanges
+  ]);
 
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
+    overviewTelemetry.interaction({
+      action: "folder-navigation",
+      source: "row",
+      resourceType: "folder"
+    });
 
     setSearchFilter("");
     navigate({
@@ -2224,11 +2660,13 @@ const OverviewPageContent = () => {
   };
 
   const handleClearTags = useCallback(() => {
+    overviewTelemetry.interaction({ action: "clear-tags", source: "header" });
     setTagFilter({});
-  }, []);
+  }, [overviewTelemetry]);
 
   const handleToggleRowType = useCallback(
-    (rowType: RowType) =>
+    (rowType: RowType) => {
+      overviewTelemetry.interaction({ action: "resource-filter", source: "header" });
       setFilter((state) => {
         const newValue = !state[rowType];
         if (rowType === RowType.Secret && !newValue) {
@@ -2238,19 +2676,24 @@ const OverviewPageContent = () => {
           ...state,
           [rowType]: newValue
         };
-      }),
-    []
+      });
+    },
+    [overviewTelemetry]
   );
 
-  const handleToggleTag = useCallback((tagSlug: string) => {
-    setTagFilter((state) => {
-      const isActivating = !state[tagSlug];
-      if (isActivating) {
-        setFilter((filterState) => ({ ...filterState, [RowType.Secret]: true }));
-      }
-      return { ...state, [tagSlug]: isActivating };
-    });
-  }, []);
+  const handleToggleTag = useCallback(
+    (tagSlug: string) => {
+      overviewTelemetry.interaction({ action: "tag-filter", source: "header" });
+      setTagFilter((state) => {
+        const isActivating = !state[tagSlug];
+        if (isActivating) {
+          setFilter((filterState) => ({ ...filterState, [RowType.Secret]: true }));
+        }
+        return { ...state, [tagSlug]: isActivating };
+      });
+    },
+    [overviewTelemetry]
+  );
 
   const hasSelectableRows = Boolean(
     secrets?.length || folders?.length || secretRotationNames?.length
@@ -2298,6 +2741,7 @@ const OverviewPageContent = () => {
 
   const toggleSelectedEntry = useCallback(
     (type: EntryType, key: string, isShiftKey = false) => {
+      overviewTelemetry.interaction({ action: "selection", source: "row" });
       const currentEntry = { type, key };
       const anchor = lastSelectedEntryRef.current;
       const anchorIndex = anchor
@@ -2355,6 +2799,7 @@ const OverviewPageContent = () => {
       if (!isShiftKey || anchorIndex < 0) lastSelectedEntryRef.current = currentEntry;
     },
     [
+      overviewTelemetry,
       selectableRows,
       userAvailableEnvs,
       getFolderByNameAndEnv,
@@ -2379,6 +2824,11 @@ const OverviewPageContent = () => {
   );
 
   const toggleSelectAllRows = () => {
+    overviewTelemetry.interaction({
+      action: "select-page",
+      source: "bulk",
+      countBucket: overviewCountBucket(selectableRows.length)
+    });
     const newChecks = { ...selectedEntries };
 
     userAvailableEnvs.forEach((env) => {
@@ -2534,7 +2984,163 @@ const OverviewPageContent = () => {
   //   localStorage.setItem("overview-header-height", debouncedHeaderHeight.toString());
   // }, [debouncedHeaderHeight]);
 
-  const [tableWidth, setTableWidth] = useState(0);
+  const [storedColumnWidths, setStoredColumnWidths] = useLocalStorageState<
+    Record<string, number[]>
+  >(`overview-column-widths-${projectId}`, {});
+  const columnResize = useRef<{
+    index: number;
+    startX: number;
+    widths: number[];
+    next?: number[];
+    handle: HTMLElement;
+    columnKey: string;
+  } | null>(null);
+  const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
+  const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
+  const minColumnTotal = columnMinWidths.reduce((total, width) => total + width, 0);
+  const savedWidths = storedColumnWidths?.[columnKey];
+  const getNameMaxWidth = (tableWidth: number) =>
+    Math.max(isSingleEnvView ? 280 : 240, tableWidth * 0.8);
+
+  const getColumnWidths = (tableWidth: number, saved: number[] | undefined) => {
+    const hasSavedWidths =
+      Array.isArray(saved) &&
+      saved.length === columnMinWidths.length &&
+      saved.every((width) => Number.isFinite(width) && width > 0);
+    const defaultWidth =
+      tableWidth >= 40 + minColumnTotal ? (tableWidth - 40) / columnMinWidths.length : 0;
+    const widths = columnMinWidths.map((minWidth, index) =>
+      Math.min(
+        index === 0 ? getNameMaxWidth(tableWidth) : Infinity,
+        Math.max(minWidth, hasSavedWidths ? saved[index] : defaultWidth)
+      )
+    );
+    if (tableWidth < 40 + minColumnTotal) return widths;
+
+    widths[widths.length - 1] += Math.max(
+      0,
+      tableWidth - 40 - widths.reduce((total, width) => total + width, 0)
+    );
+    let excess = Math.max(0, widths.reduce((total, width) => total + width, 0) - (tableWidth - 40));
+    for (let index = widths.length - 1; index >= 0 && excess > 0; index -= 1) {
+      const shrink = Math.min(excess, widths[index] - columnMinWidths[index]);
+      widths[index] -= shrink;
+      excess -= shrink;
+    }
+    return widths;
+  };
+
+  // Column and table widths are written to the DOM directly so resizing a column or the
+  // page doesn't re-render every row on each frame
+  const applyColumnWidths = (
+    saved: number[] | undefined,
+    tableWidth = tableRef.current?.clientWidth ?? 0
+  ) => {
+    const element = tableRef.current;
+    const table = element?.querySelector<HTMLTableElement>(":scope > table");
+    if (!element || !table) return;
+    const widths = getColumnWidths(tableWidth, saved);
+    element.style.setProperty("--overview-table-width", `${tableWidth}px`);
+    element.style.setProperty("--name-column-width", `${widths[0]}px`);
+    table.querySelectorAll<HTMLTableColElement>(":scope > colgroup > col").forEach((col, index) => {
+      if (index > 0) col.style.setProperty("width", `${widths[index - 1]}px`);
+    });
+    table.style.width = `max(100%, ${40 + widths.reduce((total, width) => total + width, 0)}px)`;
+  };
+
+  const getCurrentColumnWidths = () =>
+    Array.from(tableRef.current?.querySelectorAll(":scope > table > thead > tr > th") ?? [])
+      .slice(1)
+      .map((header) => header.getBoundingClientRect().width);
+
+  const getResizedColumnWidths = (widths: number[], index: number, delta: number) => {
+    const next = [...widths];
+    const tableWidth = tableRef.current?.clientWidth ?? 40;
+    const availableWidth = tableWidth - 40;
+    const spareWidth = Math.max(
+      0,
+      availableWidth - widths.reduce((total, width) => total + width, 0)
+    );
+    const maxGrowth = widths[index + 1] - columnMinWidths[index + 1] + spareWidth;
+    const left = Math.max(
+      columnMinWidths[index],
+      Math.min(
+        widths[index] + delta,
+        availableWidth >= minColumnTotal ? widths[index] + maxGrowth : Infinity,
+        index === 0 ? getNameMaxWidth(tableWidth) : Infinity
+      )
+    );
+    next[index] = left;
+    if (left < widths[index]) {
+      const overflow = Math.max(
+        0,
+        widths.reduce((total, width) => total + width, 0) - availableWidth
+      );
+      next[index + 1] = widths[index + 1] + Math.max(0, widths[index] - left - overflow);
+    } else {
+      next[index + 1] = Math.max(
+        columnMinWidths[index + 1],
+        widths[index + 1] - (left - widths[index])
+      );
+    }
+    return next;
+  };
+
+  const saveColumnWidths = (widths: number[]) =>
+    setStoredColumnWidths((current) => ({ ...current, [columnKey]: widths }));
+
+  const resizeHandle = (index: number) => (
+    <button
+      type="button"
+      aria-label={`Resize ${index === 0 ? "Name" : visibleEnvs[index - 1].name} column`}
+      title="Drag or use arrow keys to resize"
+      className="group absolute top-0 -right-1 z-20 h-full w-2 cursor-col-resize touch-none focus-visible:outline-none"
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        columnResize.current = {
+          index,
+          startX: event.clientX,
+          widths: getCurrentColumnWidths(),
+          handle: event.currentTarget,
+          columnKey
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!columnResize.current) return;
+        if (Math.abs(event.clientX - columnResize.current.startX) < 3) return;
+        columnResize.current.next = getResizedColumnWidths(
+          columnResize.current.widths,
+          columnResize.current.index,
+          event.clientX - columnResize.current.startX
+        );
+        applyColumnWidths(columnResize.current.next);
+      }}
+      onPointerUp={() => {
+        if (columnResize.current?.next) saveColumnWidths(columnResize.current.next);
+        columnResize.current = null;
+      }}
+      onPointerCancel={() => {
+        columnResize.current = null;
+        applyColumnWidths(savedWidths);
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        saveColumnWidths(
+          getResizedColumnWidths(
+            getCurrentColumnWidths(),
+            index,
+            event.key === "ArrowRight" ? 16 : -16
+          )
+        );
+      }}
+    >
+      <span className="pointer-events-none absolute top-0 left-0 h-full w-full group-focus-visible:outline-2 group-focus-visible:outline-ring" />
+    </button>
+  );
 
   const hasPendingCreates =
     mergedSecKeys.length > secKeys.length ||
@@ -2557,23 +3163,6 @@ const OverviewPageContent = () => {
     if (!isOverviewPending) prevPageSize.current = Math.min(perPage, totalCount);
   }, [isOverviewPending, totalCount, perPage]);
 
-  useEffect(() => {
-    const element = tableRef.current;
-    if (!element) return;
-
-    const handleResize = () => {
-      setTableWidth(element.clientWidth);
-    };
-
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(element);
-
-    // eslint-disable-next-line consistent-return
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [tableRef, isTableEmpty]);
-
   // This is needed to also show imports from other paths – right now those are missing.
   // const combinedKeys = [...secKeys, ...secretImports.map((impSecrets) => impSecrets?.data?.map((impSec) => impSec.secrets?.map((impSecKey) => impSecKey.key))).flat().flat()];
 
@@ -2588,6 +3177,27 @@ const OverviewPageContent = () => {
     }
     return "table" as const;
   })();
+  const isTableVisible = tableView !== "no-environments";
+
+  useLayoutEffect(() => {
+    const element = tableRef.current;
+    if (!element) return;
+
+    // Sizes come from the observer entry: reading layout here would force an extra full-table
+    // layout on every frame of a sidebar or window resize
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      if (!columnResize.current) applyColumnWidths(savedWidths, entry.contentRect.width);
+    });
+    resizeObserver.observe(element);
+    applyColumnWidths(savedWidths);
+
+    // eslint-disable-next-line consistent-return
+    return () => {
+      resizeObserver.disconnect();
+      if (!columnResize.current?.handle.isConnected || columnResize.current.columnKey !== columnKey)
+        columnResize.current = null;
+    };
+  }, [tableRef, tableView, isTableEmpty, columnKey, savedWidths?.join(",")]);
 
   let quickAddSaveLabel: string | undefined;
   if (isBatchModeActive) quickAddSaveLabel = "Add Pending Change";
@@ -2609,6 +3219,44 @@ const OverviewPageContent = () => {
   const dynamicSecretDeleteData = popUp.deleteDynamicSecret?.data as
     | (TDynamicSecret & { environment: string; isForced?: boolean })
     | undefined;
+
+  async function handleAddHoneyToken(): Promise<void> {
+    if (!subscription?.honeyTokens) {
+      openUpgradeGate({
+        intent: HoneyTokensUpgradeIntent
+      });
+      return;
+    }
+
+    try {
+      const { data } = await apiRequest.get<{ used: number; limit: number }>(
+        "/api/v1/honey-tokens/limits",
+        {
+          params: { projectId }
+        }
+      );
+
+      if (data.limit !== null && data.used >= data.limit) {
+        openUpgradeGate({
+          intent: {
+            ...HoneyTokensUpgradeIntent,
+            upgradeLabel: "Increase Honey Token Limit",
+            quota: data,
+            quotaNotice: `You have used ${data.used} out of the ${data.limit} honey token limit.`
+          }
+        });
+        return;
+      }
+    } catch {
+      createNotification({
+        text: "Failed to check honey token limits. Please try again.",
+        type: "error"
+      });
+      return;
+    }
+
+    handlePopUpOpen("addHoneyToken");
+  }
 
   const addResourceButtonsProps: AddResourceButtonsProps = {
     onMenuOpen: (source, menuLevel) =>
@@ -2633,9 +3281,8 @@ const OverviewPageContent = () => {
         handlePopUpOpen("addDynamicSecret");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Upgrade to the Infisical Secret Management advanced plan to unlock dynamic secrets."
+      openUpgradeGate({
+        intent: DynamicSecretsUpgradeIntent
       });
     },
     onAddSecretRotation: () => {
@@ -2643,49 +3290,18 @@ const OverviewPageContent = () => {
         handlePopUpOpen("addSecretRotation");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
+      openUpgradeGate({
+        intent: SecretRotationsUpgradeIntent
       });
     },
-    onAddHoneyToken: async () => {
-      if (subscription?.honeyTokens) {
-        try {
-          const { data } = await apiRequest.get<{ used: number; limit: number }>(
-            "/api/v1/honey-tokens/limits",
-            {
-              params: { projectId }
-            }
-          );
-
-          if (data.used >= data.limit) {
-            handlePopUpOpen("upgradePlan", {
-              text: `You have used ${data.used} out of the ${data.limit} honey token limit.`
-            });
-            return;
-          }
-        } catch {
-          createNotification({
-            text: "Failed to check honey token limits. Please try again.",
-            type: "error"
-          });
-          return;
-        }
-
-        handlePopUpOpen("addHoneyToken");
-        return;
-      }
-      handlePopUpOpen("upgradePlan", {
-        text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
-      });
-    },
+    onAddHoneyToken: handleAddHoneyToken,
     onAddProxiedService: () => {
       if (subscription?.secretsBrokering) {
         handlePopUpOpen("addProxiedService");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
+      openUpgradeGate({
+        intent: SecretsBrokeringUpgradeIntent
       });
     },
     onCopySecrets: () =>
@@ -2716,14 +3332,16 @@ const OverviewPageContent = () => {
     onImportFromDoppler: () => handlePopUpOpen("importFromDoppler")
   };
 
-  return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-6 md:gap-8">
+  return withOverviewTelemetry(
+    overviewTelemetry,
+    <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
       <PageHeader
+        className="mb-6 md:mb-10"
         scope={ProjectType.SecretManager}
         title={currentProject.name}
         description={currentProject.description}
@@ -2739,53 +3357,84 @@ const OverviewPageContent = () => {
       />
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
-          <div className="flex min-w-0 flex-col gap-2">
-            <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="flex min-w-0 flex-wrap items-center gap-2 md:flex-nowrap">
-                <div className="max-w-full shrink-0">
-                  <EnvironmentSelect
-                    selectedEnvs={filteredEnvs}
-                    setSelectedEnvs={setFilteredEnvs}
-                    isDisabled={
-                      isBatchModeActive &&
-                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                    }
-                  />
-                </div>
-                <ResourceSearchInput
-                  key={secretPath}
-                  className="max-w-2xl min-w-0 flex-1 basis-48"
-                  value={searchFilter}
-                  tags={tags}
-                  onChange={setSearchFilter}
-                  onSelectResult={({ search }) => setSearchFilter(search)}
-                  environments={userAvailableEnvs}
-                  projectId={currentProject?.id}
-                />
-                {userAvailableEnvs.length > 0 && (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <ResourceFilter
-                      rowTypeFilter={filter}
-                      onToggleRowType={handleToggleRowType}
-                      tags={tags}
-                      selectedTagSlugs={tagFilter}
-                      onToggleTag={handleToggleTag}
-                      onClearTags={handleClearTags}
-                    />
-                    <DownloadEnvButton
-                      secretPath={secretPath}
-                      environments={visibleEnvs}
-                      projectId={projectId}
-                    />
-                  </div>
-                )}
-              </div>
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 @min-[48rem]/card-header:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <div className="col-start-1 row-start-1 min-w-0">
+              <EnvironmentSelect
+                selectedEnvs={filteredEnvs}
+                setSelectedEnvs={(value) => {
+                  overviewTelemetry.interaction({
+                    action: "environment-selection",
+                    source: "header"
+                  });
+                  setFilteredEnvs(value);
+                }}
+                onUpgradePlan={() => openUpgradeGate(getEnvironmentUpgradeRequest())}
+                isDisabled={
+                  isBatchModeActive &&
+                  (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                }
+              />
+            </div>
+            <div
+              className={`col-span-2 flex min-w-0 items-center gap-2 @min-[48rem]/card-header:col-span-1 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1 ${
+                userAvailableEnvs.length > 0
+                  ? "row-start-3 @min-[15rem]/card-header:row-start-2"
+                  : "row-start-2"
+              }`}
+            >
+              <ResourceSearchInput
+                key={secretPath}
+                className="min-w-0 flex-1"
+                value={searchFilter}
+                tags={tags}
+                onChange={(value) => {
+                  if (Boolean(value.trim()) !== Boolean(searchFilter.trim()))
+                    overviewTelemetry.interaction({
+                      action: value.trim() ? "search-started" : "search-cleared",
+                      source: "search"
+                    });
+                  setSearchFilter(value);
+                }}
+                onSelectResult={({ search }) => {
+                  if (search.trim() && !searchFilter.trim())
+                    overviewTelemetry.interaction({ action: "search-started", source: "search" });
+                  setSearchFilter(search);
+                }}
+                isSearchAllFoldersOpen={isSearchAllFoldersOpen}
+                onSearchAllFoldersOpenChange={(isOpen) => {
+                  if (isOpen && !isSearchAllFoldersOpen)
+                    overviewTelemetry.interaction({
+                      action: "search-all-folders",
+                      source: "search"
+                    });
+                  setIsSearchAllFoldersOpen(isOpen);
+                }}
+                environments={userAvailableEnvs}
+                projectId={currentProject?.id}
+              />
               {userAvailableEnvs.length > 0 && (
-                <div className="flex justify-end">
-                  <AddResourceButtons {...addResourceButtonsProps} />
-                </div>
+                <>
+                  <ResourceFilter
+                    rowTypeFilter={filter}
+                    onToggleRowType={handleToggleRowType}
+                    tags={tags}
+                    selectedTagSlugs={tagFilter}
+                    onToggleTag={handleToggleTag}
+                    onClearTags={handleClearTags}
+                  />
+                  <DownloadEnvButton
+                    secretPath={secretPath}
+                    environments={visibleEnvs}
+                    projectId={projectId}
+                  />
+                </>
               )}
             </div>
+            {userAvailableEnvs.length > 0 && (
+              <div className="col-start-2 row-start-2 justify-self-end @min-[15rem]/card-header:row-start-1 @min-[48rem]/card-header:col-start-3">
+                <AddResourceButtons {...addResourceButtonsProps} />
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="min-w-0">
@@ -2869,7 +3518,7 @@ const OverviewPageContent = () => {
           <div
             className={twMerge(
               "flex h-10 min-w-0 items-center border border-border bg-container-hover whitespace-nowrap",
-              tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
+              isTableVisible ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
             )}
           >
             <FolderBreadcrumb secretPath={secretPath} />
@@ -2891,27 +3540,27 @@ const OverviewPageContent = () => {
                 if (isMoreEnvironmentsAllowed) {
                   handlePopUpOpen("createEnvironment");
                 } else {
-                  handlePopUpOpen("upgradePlan", {
-                    text: "Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
-                  });
+                  openUpgradeGate(getEnvironmentUpgradeRequest());
                 }
               }}
             />
           )}
-          {tableView === "tag-filter-empty" && <EmptyResourceDisplay isFiltered />}
-          {tableView === "filter-empty" && (
-            <EmptyResourceDisplay isFiltered={isTableFiltered || Boolean(searchFilter)} />
-          )}
-          {tableView === "table" && (
+          {isTableVisible && (
             <>
               <DragDropProvider onDragEnd={handleSecretImportReorder}>
                 <Table
                   ref={tableRef}
-                  className="border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
+                  className="w-full table-fixed border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
                   containerClassName="overscroll-x-none rounded-t-none"
+                  style={{ minWidth: 40 + minColumnTotal }}
                 >
-                  <TableHeader>
-                    <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-foreground/5">
+                  <colgroup>
+                    <col className="w-10" />
+                    <col />
+                    {isSingleEnvView ? <col /> : visibleEnvs.map(({ id }) => <col key={id} />)}
+                  </colgroup>
+                  <TableHeader className="relative z-20">
+                    <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-container-hover">
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
@@ -2931,8 +3580,10 @@ const OverviewPageContent = () => {
                       </TableHead>
                       <TableHead
                         className={twMerge(
-                          !isSingleEnvView && "sticky",
-                          "left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container p-0 lg:w-96 lg:max-w-96 lg:min-w-96"
+                          isSingleEnvView
+                            ? "relative min-w-[280px]"
+                            : "sticky left-10 min-w-[240px]",
+                          "z-10 border-r bg-container p-0"
                         )}
                       >
                         <DropdownMenu>
@@ -2940,9 +3591,9 @@ const OverviewPageContent = () => {
                             <button
                               type="button"
                               className="flex h-full w-full cursor-pointer items-center justify-between px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                              aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}`}
+                              aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}${activeSecretSortScope}`}
                             >
-                              <span className="text-foreground">Name</span>
+                              <span className="text-sm font-medium text-muted">Name</span>
                               <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
                             </button>
                           </DropdownMenuTrigger>
@@ -2955,10 +3606,19 @@ const OverviewPageContent = () => {
                               {visibleEnvs.length > 1 ? "Sort secret names" : "Sort secrets"}
                             </DropdownMenuLabel>
                             <DropdownMenuRadioGroup
-                              value={getSecretSortValue(orderBy, orderDirection)}
-                              onValueChange={(value) => handleSecretSortChange(value)}
+                              value={
+                                sortEnvironment ? "" : getSecretSortValue(orderBy, orderDirection)
+                              }
+                              onValueChange={(value) => {
+                                overviewTelemetry.interaction({ action: "sort", source: "header" });
+                                handleSecretSortChange(value);
+                              }}
                             >
-                              {SECRET_SORT_OPTIONS.map((option) => (
+                              {SECRET_SORT_OPTIONS.filter(
+                                ({ orderBy: sortField }) =>
+                                  visibleEnvs.length === 1 ||
+                                  sortField === DashboardSecretsOrderBy.Name
+                              ).map((option) => (
                                 <DropdownMenuRadioItem
                                   key={getSecretSortValue(option.orderBy, option.orderDirection)}
                                   value={getSecretSortValue(option.orderBy, option.orderDirection)}
@@ -2970,12 +3630,13 @@ const OverviewPageContent = () => {
                             </DropdownMenuRadioGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        {resizeHandle(0)}
                       </TableHead>
                       {visibleEnvs.length > 1 ? (
                         visibleEnvs?.map(({ name, slug, id }, index) => {
                           return (
                             <TableHead
-                              className="w-max min-w-40 border-r p-0 text-center whitespace-nowrap last:border-r-0"
+                              className="relative min-w-[240px] border-r p-0 text-center whitespace-nowrap last:border-r-0"
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
@@ -2983,17 +3644,71 @@ const OverviewPageContent = () => {
                                   <button
                                     type="button"
                                     title={name}
-                                    aria-label={`Open ${name} environment menu`}
-                                    className="flex h-full w-full min-w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                                    aria-label={`Open ${name} environment menu${
+                                      sortEnvironment === slug
+                                        ? `. Currently sorting by ${activeSecretSort?.label ?? "recency"}`
+                                        : ""
+                                    }`}
+                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-center gap-x-2 px-3 text-sm font-medium text-muted hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                   >
-                                    <span className="whitespace-nowrap">{name}</span>
-                                    <ChevronDownIcon className="size-3.5 shrink-0" />
+                                    <span
+                                      className={twMerge(
+                                        "min-w-0 truncate",
+                                        sortEnvironment === slug && "text-foreground"
+                                      )}
+                                    >
+                                      {name}
+                                    </span>
+                                    {sortEnvironment === slug ? (
+                                      <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                                    ) : (
+                                      <ChevronDownIcon className="size-3.5 shrink-0" />
+                                    )}
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                   align="end"
                                   onCloseAutoFocus={(event) => event.preventDefault()}
                                 >
+                                  <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                      <ArrowUpDownIcon />
+                                      Sort Secrets by Recency
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                      <DropdownMenuLabel>Use {name} Timestamps</DropdownMenuLabel>
+                                      <DropdownMenuRadioGroup
+                                        value={
+                                          sortEnvironment === slug
+                                            ? getSecretSortValue(orderBy, orderDirection)
+                                            : ""
+                                        }
+                                        onValueChange={(value) =>
+                                          handleSecretSortChange(value, slug)
+                                        }
+                                      >
+                                        {SECRET_SORT_OPTIONS.filter(
+                                          ({ orderBy: sortField }) =>
+                                            sortField !== DashboardSecretsOrderBy.Name
+                                        ).map((option) => (
+                                          <DropdownMenuRadioItem
+                                            key={getSecretSortValue(
+                                              option.orderBy,
+                                              option.orderDirection
+                                            )}
+                                            value={getSecretSortValue(
+                                              option.orderBy,
+                                              option.orderDirection
+                                            )}
+                                          >
+                                            <option.Icon />
+                                            {option.label}
+                                          </DropdownMenuRadioItem>
+                                        ))}
+                                      </DropdownMenuRadioGroup>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuSub>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     onClick={() => {
                                       navigator.clipboard.writeText(slug);
@@ -3079,16 +3794,27 @@ const OverviewPageContent = () => {
                                   </ProjectPermissionCan>
                                 </DropdownMenuContent>
                               </DropdownMenu>
+                              {index < visibleEnvs.length - 1 && resizeHandle(index + 1)}
                             </TableHead>
                           );
                         })
                       ) : (
-                        <TableHead className="w-full">
+                        <TableHead className="min-w-[368px] text-sm font-medium text-muted">
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
                             <div className="flex items-center gap-2">
                               <Badge variant="ghost" asChild>
-                                <button type="button" onClick={setIsSingleEnvSecretsVisible.toggle}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    overviewTelemetry.interaction({
+                                      action: isSingleEnvSecretsVisible ? "hide" : "reveal",
+                                      source: "header",
+                                      resourceType: "secret"
+                                    });
+                                    setIsSingleEnvSecretsVisible.toggle();
+                                  }}
+                                >
                                   {isSingleEnvSecretsVisible ? (
                                     <>
                                       <EyeOffIcon />
@@ -3173,6 +3899,18 @@ const OverviewPageContent = () => {
                         "[&>tr>td>*:not([data-table-row-filter-contents])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:filter-[opacity(40%)]"
                     )}
                   >
+                    {tableView !== "table" && (
+                      <TableFilteredEmptyRow
+                        colSpan={visibleEnvs.length + 2}
+                        isFiltered={
+                          tableView === "tag-filter-empty" ||
+                          isTableFiltered ||
+                          Boolean(searchFilter.trim())
+                        }
+                        hasSearch={Boolean(searchFilter.trim())}
+                        onSearchAllFolders={() => setIsSearchAllFoldersOpen(true)}
+                      />
+                    )}
                     {showOverviewSkeleton ? (
                       Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
                         <TableRow className="group" key={`loading-row-${index + 1}`}>
@@ -3218,7 +3956,6 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               isSecretImportInEnv={isSecretImportInEnv}
                               getSecretImportByEnv={getSecretImportByEnv}
-                              tableWidth={tableWidth}
                               secretPath={secretPath}
                               searchFilter={searchFilter}
                               onDelete={(secretImport) =>
@@ -3242,7 +3979,6 @@ const OverviewPageContent = () => {
                                 environments={visibleEnvs}
                                 isSecretImportInEnv={isSecretImportInEnv}
                                 getSecretImportByEnv={getSecretImportByEnv}
-                                tableWidth={tableWidth}
                                 secretPath={secretPath}
                                 searchFilter={searchFilter}
                                 onDelete={(secretImport) =>
@@ -3303,7 +4039,6 @@ const OverviewPageContent = () => {
                             getDynamicSecretByName={getDynamicSecretByName}
                             getDynamicSecretStatusesByName={getDynamicSecretStatusesByName}
                             environments={visibleEnvs}
-                            tableWidth={tableWidth}
                             secretPath={secretPath}
                             key={`overview-${dynamicSecretName}-${index + 1}`}
                             onEdit={(dynamicSecret) =>
@@ -3334,7 +4069,6 @@ const OverviewPageContent = () => {
                             getSecretRotationByName={getSecretRotationByName}
                             getSecretRotationStatusesByName={getSecretRotationStatusesByName}
                             key={`overview-${secretRotationName}-${index + 1}`}
-                            tableWidth={tableWidth}
                             isSelected={Boolean(selectedEntries.secretRotation[secretRotationName])}
                             onToggleRotationSelect={(_, isShiftKey) =>
                               toggleSelectedEntry(
@@ -3385,7 +4119,6 @@ const OverviewPageContent = () => {
                             isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                             environments={visibleEnvs}
                             getHoneyTokenByName={getHoneyTokenByName}
-                            tableWidth={tableWidth}
                             key={`overview-ht-${honeyTokenName}-${index + 1}`}
                             onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                             onRevoke={(honeyToken) =>
@@ -3403,7 +4136,6 @@ const OverviewPageContent = () => {
                             environments={visibleEnvs}
                             isProxiedServiceInEnv={isProxiedServicePresentInEnv}
                             getProxiedServiceByName={getProxiedServiceByName}
-                            tableWidth={tableWidth}
                             onEdit={(proxiedService) =>
                               handlePopUpOpen("editProxiedService", proxiedService)
                             }
@@ -3431,32 +4163,39 @@ const OverviewPageContent = () => {
                             environments={visibleEnvs}
                             secretKey={key}
                             getSecretByKey={getSecretByKeyWithPending}
-                            tableWidth={tableWidth}
                             importedBy={importedBy}
                             isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
                             isBatchMode={isBatchModeActive}
                             onBatchRevert={handleBatchRevert}
                             isSelectionDisabled={hasPendingBatchChanges}
                             onCopySecret={handleCopySecret}
+                            onAccessInsightsUpgrade={() =>
+                              openUpgradeGate({
+                                intent: SecretAccessInsightsUpgradeIntent
+                              })
+                            }
                             activityId={getTableRowActivityId("secret", key)}
                             onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
-                        <SecretNoAccessTableRow
-                          environments={visibleEnvs}
-                          count={Math.max(
-                            (page * perPage > totalCount ? totalCount % perPage : perPage) -
-                              (totalUniqueFoldersInPage || 0) -
-                              (totalUniqueDynamicSecretsInPage || 0) -
-                              (totalUniqueSecretsInPage || 0) -
-                              (totalUniqueSecretImportsInPage || 0) -
-                              (totalUniqueSecretRotationsInPage || 0) -
-                              (totalUniqueHoneyTokensInPage || 0) -
-                              (totalUniqueProxiedServicesInPage || 0),
-                            0
-                          )}
-                        />
+                        {tableView === "table" && (
+                          <SecretNoAccessTableRow
+                            environments={visibleEnvs}
+                            count={Math.max(
+                              (page * perPage > totalCount ? totalCount % perPage : perPage) -
+                                (totalUniqueFoldersInPage || 0) -
+                                (totalUniqueDynamicSecretsInPage || 0) -
+                                (totalUniqueSecretsInPage || 0) -
+                                (totalUniqueSecretImportsInPage || 0) -
+                                (totalUniqueSecretRotationsInPage || 0) -
+                                (totalUniqueHoneyTokensInPage || 0) -
+                                (totalUniqueProxiedServicesInPage || 0),
+                              0
+                            )}
+                          />
+                        )}
                         {visibleEnvs.length > 0 &&
+                          tableView === "table" &&
                           canCreateSecretsInAllVisibleEnvs &&
                           isLastPage &&
                           !isTableEmpty && (
@@ -3473,10 +4212,18 @@ const OverviewPageContent = () => {
                                   key,
                                   value,
                                   SecretType.Shared,
-                                  comment
+                                  comment,
+                                  "quick-add"
                                 )
                               }
                               onPasteSecrets={(env) => {
+                                overviewTelemetry.flow({
+                                  action: "import",
+                                  resourceType: "mixed",
+                                  source: "paste",
+                                  phase: "input-received",
+                                  countBucket: overviewCountBucket(Object.keys(env).length)
+                                });
                                 setImportParsedSecrets(env);
                                 setImportSecretsInitialStep("paste");
                                 handlePopUpOpen("importSecrets");
@@ -3491,18 +4238,36 @@ const OverviewPageContent = () => {
                               secretPath={secretPath}
                             />
                           )}
-                        {isTableEmpty && (
+                        {tableView === "table" && isTableEmpty && (
                           <TableEmptyRow
                             colSpan={visibleEnvs.length + 2}
                             onImportSecrets={(step) => {
+                              overviewTelemetry.interaction({
+                                action: "import-entry",
+                                resourceType: "mixed",
+                                source: "empty-state"
+                              });
                               setImportSecretsInitialStep(step);
                               handlePopUpOpen("importSecrets");
                             }}
                             onImportFile={(file) => {
+                              overviewTelemetry.flow({
+                                action: "import",
+                                resourceType: "mixed",
+                                source: "drop",
+                                phase: "input-received"
+                              });
                               setImportSecretsInitialFile(file);
                               handlePopUpOpen("importSecrets");
                             }}
-                            onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                            onAddSecret={() => {
+                              overviewTelemetry.interaction({
+                                action: "create-entry",
+                                resourceType: "secret",
+                                source: "empty-state"
+                              });
+                              handlePopUpOpen("addSecretsInAllEnvs");
+                            }}
                           />
                         )}
                       </>
@@ -3512,7 +4277,7 @@ const OverviewPageContent = () => {
                 <DragOverlay
                   tag="table"
                   className="w-full caption-bottom text-sm"
-                  style={{ width: tableWidth }}
+                  style={{ width: tableRef.current?.clientWidth }}
                 >
                   {null}
                 </DragOverlay>
@@ -3532,7 +4297,10 @@ const OverviewPageContent = () => {
                   count={totalCount}
                   page={page}
                   perPage={perPage}
-                  onChangePage={(newPage) => setPage(newPage)}
+                  onChangePage={(newPage) => {
+                    overviewTelemetry.interaction({ action: "pagination", source: "header" });
+                    setPage(newPage);
+                  }}
                   onChangePerPage={handlePerPageChange}
                 />
               )}
@@ -3555,7 +4323,13 @@ const OverviewPageContent = () => {
         open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
-        <SheetContent className="flex h-full min-h-0 flex-col gap-y-0 overflow-hidden sm:max-w-lg">
+        <SheetContent
+          className="flex h-full min-h-0 flex-col gap-y-0 overflow-hidden sm:max-w-lg"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            document.getElementById("create-secret-0-key")?.focus();
+          }}
+        >
           <SheetHeader className="border-b">
             <SheetTitle>Create Secret</SheetTitle>
           </SheetHeader>
@@ -3787,8 +4561,8 @@ const OverviewPageContent = () => {
           }
         }}
         onUpgradePlan={() =>
-          handlePopUpOpen("upgradePlan", {
-            text: "Secret import replication requires an upgraded plan."
+          openUpgradeGate({
+            intent: SecretImportReplicationUpgradeIntent
           })
         }
       />
@@ -3802,16 +4576,13 @@ const OverviewPageContent = () => {
         initialFormDataIsDirty={false}
         startOnDestination={false}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretSync", isOpen)}
+        onEnterpriseUpgrade={() =>
+          openUpgradeGate({
+            intent: EnterpriseSecretSyncsUpgradeIntent
+          })
+        }
       />
-      {subscription && (
-        <UpgradePlanModal
-          paywallKey="secret-manager.overview"
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={popUp.upgradePlan.data?.text}
-        />
-      )}
+      {upgradeGate}
       <AddEnvironmentModal
         isOpen={popUp.createEnvironment.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("createEnvironment", isOpen)}
@@ -3928,12 +4699,16 @@ const OverviewPageContent = () => {
         canCreateFoldersAt={canCreateFoldersAt}
         onCompleted={handleCopySecretsCompleted}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setCopySecretsInvocation(null);
+          if (!isOpen)
+            setCopySecretsInvocation((current) =>
+              current === copySecretsInvocation ? null : current
+            );
         }}
       />
       <ImportSecretsSheet
         isOpen={popUp.importSecrets.isOpen}
         onOpenChange={(isOpen) => {
+          if (!isPopupCurrent("importSecrets")) return;
           handlePopUpToggle("importSecrets", isOpen);
           if (!isOpen) {
             setImportParsedSecrets(null);
@@ -4007,6 +4782,7 @@ const OverviewPageContent = () => {
         environments={userAvailableEnvs}
         visibleEnvs={visibleEnvs}
         projectId={projectId}
+        projectName={currentProject.name}
         projectSlug={projectSlug}
         sourceSecretPath={secretPath}
         secrets={{}}
@@ -4024,9 +4800,12 @@ const OverviewPageContent = () => {
             if (!isOpen) setFolderAccessTarget(null);
           }}
           projectId={projectId}
-          environmentSlug={singleEnvSlug}
+          environmentSlug={folderAccessTarget.environmentSlug}
           folderPath={folderAccessTarget.folderPath}
-          environmentName={singleEnvName}
+          environmentName={
+            userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
+              ?.name ?? folderAccessTarget.environmentSlug
+          }
         />
       )}
       {isCurrentFolderAccessOpen && (

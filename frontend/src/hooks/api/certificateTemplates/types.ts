@@ -87,6 +87,7 @@ export type TUpdateCertificateTemplateV2DTO = {
 
 export type TDeleteCertificateTemplateV2DTO = {
   templateName: string;
+  projectId: string;
 };
 
 export type TCreateEstConfigDTO = {
@@ -114,6 +115,7 @@ export type TEstConfig = {
 };
 
 export type TListCertificateTemplatesDTO = {
+  projectId: string;
   limit?: number;
   offset?: number;
 };

@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "cva";
 import { cn } from "@app/components/v3/utils";
 
 import { Loader } from "../Loader";
+import { getButtonLoaderVariant } from "./getButtonLoaderVariant";
 
 const buttonVariants = cva(
   cn(
@@ -23,6 +24,7 @@ const buttonVariants = cva(
         ghost:
           "text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:bg-foreground/10 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:transparent]",
         link: "h-auto! rounded-none border-transparent bg-transparent p-0! text-foreground hover:bg-transparent hover:underline data-[state=open]:bg-transparent active:scale-100 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:transparent]",
+        text: "h-auto! rounded-none border-0 bg-transparent p-0! text-foreground hover:text-accent active:text-muted active:scale-100 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:transparent]",
         neutral:
           "border-neutral/25 bg-neutral/10 text-foreground hover:bg-neutral/15 hover:border-neutral/30 data-[state=open]:bg-neutral/15 data-[state=open]:border-neutral/30 [--control-variant-color:var(--color-neutral)] [--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_25%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_30%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_30%,transparent)]",
         project:
@@ -105,7 +107,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ) : (
       <>
         {_children}
-        {isPending && <Loader aria-hidden size="sm" className="absolute rounded-xl" />}
+        {isPending && (
+          <Loader
+            aria-hidden
+            variant={getButtonLoaderVariant(variant)}
+            size="sm"
+            className="absolute rounded-xl"
+          />
+        )}
       </>
     );
 

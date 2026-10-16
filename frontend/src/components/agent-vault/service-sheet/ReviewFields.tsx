@@ -10,7 +10,6 @@ import {
 } from "@app/components/v3";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
-import { credentialPreview } from "./CredentialFields";
 import {
   CREDENTIAL_LABELS,
   isAllMethods,
@@ -20,6 +19,17 @@ import {
 } from "./serviceSchema";
 
 const MASK = "\u2022".repeat(8);
+
+const credentialPreview = (form: {
+  credentialType: AgentVaultCredentialType;
+  headerName?: string;
+  headerPrefix?: string;
+}): string | null => {
+  if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
+  if (form.credentialType === AgentVaultCredentialType.Basic) return `Authorization: Basic ${MASK}`;
+  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
+  return `${form.headerName || "Authorization"}: ${prefix}${MASK}`;
+};
 
 const alignColumns = (rows: string[][]) => {
   const widths = rows[0].map((_, column) => Math.max(...rows.map((row) => row[column].length)));

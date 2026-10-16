@@ -21,13 +21,15 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertKeyAlgorithm,
   CertKeyUsage,
-  CertSignatureAlgorithm,
   CertStatus,
   CrlReason
 } from "@app/services/certificate/certificate-types";
@@ -35,7 +37,6 @@ import { generateLeafKeypairAndCsr } from "@app/services/certificate-common/cert
 import {
   findCsrCustomExtensionMismatch,
   findUnsatisfiedCustomExtensionOids,
-  parseIssuedCustomExtensions,
   TCsrCustomExtensionMismatch,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
@@ -57,20 +58,6 @@ import {
 } from "./adcs-certificate-authority-types";
 import { getAdcsConnectionCredentials } from "./adcs-connection-credentials";
 
-// @peculiar/x509 reports the signature algorithm as { name, hash }; map it to the stored enum.
-const SIG_ALG_MAP: Record<string, Record<string, CertSignatureAlgorithm>> = {
-  "RSASSA-PKCS1-v1_5": {
-    "SHA-256": CertSignatureAlgorithm.RSA_SHA256,
-    "SHA-384": CertSignatureAlgorithm.RSA_SHA384,
-    "SHA-512": CertSignatureAlgorithm.RSA_SHA512
-  },
-  ECDSA: {
-    "SHA-256": CertSignatureAlgorithm.ECDSA_SHA256,
-    "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
-    "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
-  }
-};
-
 // RFC 5280 section 5.3.1 CRLReason codes, which MS-CSRA ICertAdminD::RevokeCertificate expects as `Reason`.
 const ADCS_CRL_REASON_CODES: Record<CrlReason, number> = {
   [CrlReason.UNSPECIFIED]: 0,
@@ -82,18 +69,6 @@ const ADCS_CRL_REASON_CODES: Record<CrlReason, number> = {
   [CrlReason.CERTIFICATE_HOLD]: 6,
   [CrlReason.PRIVILEGE_WITHDRAWN]: 9,
   [CrlReason.A_A_COMPROMISE]: 10
-};
-
-// The CA (not the request) decides how it signs, so read the algorithm off the issued certificate.
-const extractIssuedSignatureAlgorithm = (certObj: x509.X509Certificate): CertSignatureAlgorithm | undefined => {
-  try {
-    const { name } = certObj.signatureAlgorithm;
-    const hashName = (certObj.signatureAlgorithm as { hash?: { name?: string } }).hash?.name;
-    if (!hashName) return undefined;
-    return SIG_ALG_MAP[name]?.[hashName];
-  } catch {
-    return undefined;
-  }
 };
 
 const buildSubjectDN = (commonName: string): string => {
@@ -585,27 +560,23 @@ export const ADCSCertificateAuthorityFns = ({
     let certificateId: string;
 
     const unsatisfiedOids = findUnsatisfiedCustomExtensionOids(Buffer.from(cleanedCertificatePem), customExtensions);
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj, customExtensions);
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: commonName,
-          commonName,
-          altNames: altNames.join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
-          keyUsages,
-          extendedKeyUsages,
-          keyAlgorithm,
-          signatureAlgorithm: extractIssuedSignatureAlgorithm(certObj) ?? signatureAlgorithm,
           projectId: ca.projectId,
-          customExtensions: JSON.stringify(
-            parseIssuedCustomExtensions(Buffer.from(cleanedCertificatePem), customExtensions)
-          ),
+          friendlyName: parsedFields.commonName ?? commonName,
+          commonName: parsedFields.commonName ?? commonName,
+          altNames: parsedFields.altNames ?? altNames.join(","),
+          keyUsages: parsedFields.keyUsages ?? keyUsages,
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? extendedKeyUsages,
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx

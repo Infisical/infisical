@@ -233,7 +233,7 @@ export const ViewSecretRequestByIDPage = () => {
               color: brandingTheme?.textColor
             }}
           >
-            <h1 className="mb-1 text-lg font-semibold" style={{ color: brandingTheme?.textColor }}>
+            <h1 className="mb-1 text-lg font-normal" style={{ color: brandingTheme?.textColor }}>
               {step === "set-value" ? "Secret Request" : "Secret request shared"}
             </h1>
             {secretRequest?.request && (

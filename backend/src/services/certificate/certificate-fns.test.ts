@@ -1,4 +1,4 @@
-import { webcrypto } from "node:crypto";
+import { createPrivateKey, generateKeyPairSync, webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
@@ -9,11 +9,14 @@ import {
   buildCertificateBundle,
   CertificateThumbprintAlgorithm,
   extractCertificateFields,
+  extractExternallyIssuedCertificateFields,
+  normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
+  parsePemCertificateChain,
   resolveCertificateDeletionEligibility
 } from "./certificate-fns";
-import { CertificateDeletionEligibility, CertStatus } from "./certificate-types";
+import { CertExtendedKeyUsage, CertificateDeletionEligibility, CertKeyUsage, CertStatus } from "./certificate-types";
 
 describe("normalizeThumbprint", () => {
   const sha1Hex = "a".repeat(40);
@@ -149,6 +152,134 @@ describe("parseCertificateBody usages", () => {
   });
 });
 
+describe("extractExternallyIssuedCertificateFields", () => {
+  x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+
+  const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
+  const TEMPLATE_NAME_OID = "1.3.6.1.4.1.311.20.2";
+
+  const buildIssuedCert = async (extensions: x509.Extension[], name = "CN=issued.example.com,O=Issued Corp") => {
+    const keys = await webcrypto.subtle.generateKey(
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: "SHA-384",
+        publicExponent: new Uint8Array([1, 0, 1]),
+        modulusLength: 3072
+      },
+      true,
+      ["sign", "verify"]
+    );
+
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "02",
+      name,
+      notBefore: new Date("2026-01-01"),
+      notAfter: new Date("2027-01-01"),
+      keys: keys as CryptoKeyPair,
+      signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-384" },
+      extensions
+    });
+
+    return cert;
+  };
+
+  test("records every extension the certificate carries, flagging the ones the request never asked for", async () => {
+    const requestedValue = Buffer.from([0x0c, 0x07, 0x4d, 0x61, 0x63, 0x68, 0x69, 0x6e, 0x65]);
+    const issued = await buildIssuedCert([
+      new x509.Extension(TEMPLATE_NAME_OID, false, requestedValue),
+      new x509.Extension(SCT_LIST_OID, false, Buffer.from([0x04, 0x02, 0x00, 0x42]))
+    ]);
+
+    const fields = extractExternallyIssuedCertificateFields(issued, [
+      { oid: TEMPLATE_NAME_OID, critical: false, value: requestedValue.toString("base64") }
+    ]);
+
+    expect(JSON.parse(fields.customExtensions as string)).toEqual([
+      { oid: SCT_LIST_OID, critical: false, value: "BAIAQg==", issuerAdded: true },
+      { oid: TEMPLATE_NAME_OID, critical: false, value: requestedValue.toString("base64") }
+    ]);
+  });
+
+  test("reads the subject, algorithms and subject alternative names the CA actually issued", async () => {
+    const issued = await buildIssuedCert([
+      new x509.SubjectAlternativeNameExtension([
+        { type: "dns", value: "issued.example.com" },
+        { type: "dns", value: "added-by-ca.example.com" }
+      ])
+    ]);
+
+    const fields = extractExternallyIssuedCertificateFields(issued);
+
+    expect(fields.commonName).toBe("issued.example.com");
+    expect(fields.subjectOrganization).toBe("Issued Corp");
+    expect(fields.altNames).toBe("issued.example.com,added-by-ca.example.com");
+    expect(fields.keyAlgorithm).toBe("RSA_3072");
+    expect(fields.signatureAlgorithm).toBe("RSA-SHA384");
+  });
+
+  // Otherwise each renewal asks for the duplicate again and the list grows until it overruns 4096.
+  test("collapses a repeated subject alternative name so renewals cannot accumulate copies", async () => {
+    const issued = await buildIssuedCert([
+      new x509.SubjectAlternativeNameExtension([
+        { type: "dns", value: "issued.example.com" },
+        { type: "dns", value: "added.example.com" },
+        { type: "dns", value: "issued.example.com" }
+      ])
+    ]);
+
+    const fields = extractExternallyIssuedCertificateFields(issued);
+
+    expect(fields.altNames).toBe("issued.example.com,added.example.com");
+  });
+
+  // The column is text, so a long list from a public CA is recorded in full rather than trimmed to
+  // whatever fit. Requests stay bounded at 4096 characters by the policy schema.
+  test("records every subject alternative name, past the old column width", async () => {
+    const many = Array.from({ length: 200 }, (_, index) => ({
+      type: "dns" as const,
+      value: `host-${String(index).padStart(3, "0")}.${"padding".repeat(4)}.example.com`
+    }));
+    const issued = await buildIssuedCert([new x509.SubjectAlternativeNameExtension(many)]);
+
+    const fields = extractExternallyIssuedCertificateFields(issued);
+
+    expect(many.map((san) => san.value).join(",").length).toBeGreaterThan(4096);
+    expect(fields.altNames).toBe(many.map((san) => san.value).join(","));
+  });
+
+  test("leaves the requested subject alternative names in place when the certificate carries none", async () => {
+    const issued = await buildIssuedCert([new x509.BasicConstraintsExtension(false)]);
+
+    const fields = extractExternallyIssuedCertificateFields(issued);
+
+    expect(fields).not.toHaveProperty("altNames");
+    expect(fields.altNames ?? "requested.example.com").toBe("requested.example.com");
+  });
+
+  test("omits a field the certificate does not carry rather than carrying it as null", async () => {
+    const issued = await buildIssuedCert([new x509.BasicConstraintsExtension(false)], "O=No Common Name Corp");
+
+    const fields = extractExternallyIssuedCertificateFields(issued);
+
+    for (const field of ["commonName", "altNames", "keyUsages", "extendedKeyUsages"]) {
+      expect(fields).not.toHaveProperty(field);
+    }
+
+    expect(fields.commonName ?? "requested.example.com").toBe("requested.example.com");
+    expect(fields.keyUsages ?? [CertKeyUsage.KEY_AGREEMENT]).toEqual([CertKeyUsage.KEY_AGREEMENT]);
+    expect(fields.extendedKeyUsages ?? [CertExtendedKeyUsage.CLIENT_AUTH]).toEqual([CertExtendedKeyUsage.CLIENT_AUTH]);
+  });
+
+  test("always names the algorithms, so a create payload never falls back to the requested ones", async () => {
+    const issued = await buildIssuedCert([new x509.BasicConstraintsExtension(false)]);
+
+    const fields = extractExternallyIssuedCertificateFields(issued);
+
+    expect(fields.keyAlgorithm ?? "RSA_2048").toBe("RSA_3072");
+    expect(fields.signatureAlgorithm ?? "RSA-SHA256").toBe("RSA-SHA384");
+  });
+});
+
 describe("resolveCertificateDeletionEligibility", () => {
   const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -219,5 +350,87 @@ describe("resolveCertificateDeletionEligibility", () => {
     expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: past })).toBe(
       CertificateDeletionEligibility.Expired
     );
+  });
+});
+
+describe("normalizePemText", () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const pkcs8Pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString().trim();
+  const pkcs1Pem = privateKey.export({ type: "pkcs1", format: "pem" }).toString().trim();
+  const lines = pkcs8Pem.split("\n");
+
+  const damagedVariants: Record<string, string> = {
+    "newlines removed": lines.join(""),
+    "newlines replaced with spaces": lines.join(" "),
+    "double-escaped newlines": lines.join("\\n"),
+    "indented lines": lines.map((line) => `    ${line}`).join("\n"),
+    "non-breaking spaces": lines.join("\n\u00a0"),
+    "zero-width spaces": lines.join("\n\u200b"),
+    "en dashes in the armor": pkcs8Pem.replace(/-----/g, "\u2013\u2013\u2013\u2013\u2013"),
+    "blank line in the body": [...lines.slice(0, 3), "", ...lines.slice(3)].join("\n")
+  };
+
+  test.each(Object.entries(damagedVariants))("repairs a private key with %s", (_, damaged) => {
+    expect(() => createPrivateKey(damaged)).toThrow();
+    expect(normalizePemText(damaged)).toBe(pkcs8Pem);
+    expect(() => createPrivateKey(normalizePemText(damaged))).not.toThrow();
+  });
+
+  test("canonicalizes parseable variants", () => {
+    expect(normalizePemText(lines.join("\r\n"))).toBe(pkcs8Pem);
+    expect(normalizePemText(`Bag Attributes\n    localKeyID: 01 02\n${pkcs8Pem}`)).toBe(pkcs8Pem);
+  });
+
+  test("leaves well-formed PEM unchanged", () => {
+    expect(normalizePemText(pkcs8Pem)).toBe(pkcs8Pem);
+    expect(normalizePemText(pkcs1Pem)).toBe(pkcs1Pem);
+  });
+
+  test("keeps every block of a multi-block bundle in order", () => {
+    const bundle = `${pkcs8Pem}\n${pkcs1Pem}`;
+    expect(normalizePemText(bundle.replace(/\n/g, ""))).toBe(bundle);
+  });
+
+  test("returns trimmed input when no PEM block is found", () => {
+    expect(normalizePemText("  not a pem  ")).toBe("not a pem");
+  });
+
+  test("returns the input untouched when any block cannot be rebuilt", () => {
+    const damagedSecond = `${pkcs8Pem}\n${pkcs1Pem.replace("END RSA PRIVATE KEY", "END PRIVATE KEY")}`;
+    expect(normalizePemText(`  ${damagedSecond}  `)).toBe(damagedSecond);
+  });
+});
+
+describe("parsePemCertificateChain", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+  });
+
+  const makeCertPem = async (commonName: string) => {
+    const keys = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      name: `CN=${commonName}`,
+      keys: keys as CryptoKeyPair,
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + 86_400_000)
+    });
+    return cert.toString("pem");
+  };
+
+  test("parses every certificate in the chain", async () => {
+    const chain = `${await makeCertPem("Intermediate")}\n${await makeCertPem("Root")}`;
+    expect(parsePemCertificateChain(chain)?.map((cert) => cert.subject)).toEqual(["CN=Intermediate", "CN=Root"]);
+  });
+
+  test("rejects a chain with a block that does not split out", async () => {
+    const root = (await makeCertPem("Root")).replace("END CERTIFICATE", "END X509 CERTIFICATE");
+    expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${root}`)).toBeNull();
+  });
+
+  test("rejects a chain with a block that does not parse", async () => {
+    const rootLines = (await makeCertPem("Root")).split("\n");
+    rootLines[2] = `${rootLines[2].slice(0, 5)}!${rootLines[2].slice(6)}`;
+    expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${rootLines.join("\n")}`)).toBeNull();
   });
 });

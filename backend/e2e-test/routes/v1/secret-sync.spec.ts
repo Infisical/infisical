@@ -1,12 +1,11 @@
 import { randomUUID } from "crypto";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
+import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
 import { createSecretImport } from "e2e-test/testUtils/secret-imports";
 import {
-  createAwsAppConnection,
   createSecretSync,
-  deleteAppConnection,
   deleteSecretSync,
   expectDestinationUnchanged,
   importSecretsForSync,
@@ -124,7 +123,7 @@ describe("Secret syncs", async () => {
       await deleteSecretSync({ syncId, authToken });
     }
 
-    await deleteAppConnection({ connectionId, authToken });
+    await deleteAwsAppConnection({ connectionId, authToken });
     await cleanupOrg();
   });
 

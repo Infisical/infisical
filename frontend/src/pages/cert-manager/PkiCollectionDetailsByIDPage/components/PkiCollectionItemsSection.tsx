@@ -2,7 +2,8 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, IconButton } from "@app/components/v2";
+import { IconButton } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { useGetPkiCollectionById, useRemoveItemFromPkiCollection } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -47,11 +48,10 @@ export const PkiCollectionItemsSection = ({ collectionId, type }: Props) => {
   return pkiCollection ? (
     <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
       <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
-        <h3 className="text-lg font-medium text-foreground">{sectionName}</h3>
+        <h3 className="text-lg font-normal text-foreground">{sectionName}</h3>
         <IconButton
-          ariaLabel="copy icon"
-          variant="plain"
-          className="group relative"
+          aria-label={`Add to ${sectionName.toLowerCase()}`}
+          variant="ghost"
           onClick={() => {
             handlePopUpOpen("addPkiCollectionItem");
           }}
@@ -72,12 +72,13 @@ export const PkiCollectionItemsSection = ({ collectionId, type }: Props) => {
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deletePkiCollectionItem.isOpen}
         title={`Are you sure you want to remove the item from the collection ${pkiCollection.name}?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiCollectionItem", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => {
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiCollectionItem", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => {
           const popupData = popUp?.deletePkiCollectionItem?.data as {
             itemId: string;
           };

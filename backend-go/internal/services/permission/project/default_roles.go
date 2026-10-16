@@ -51,7 +51,7 @@ var AdminPermissions = []gocasl.JSONRule{
 	{Action: ss(PamResourceActionRead.Name(), PamResourceActionCreate.Name(), PamResourceActionEdit.Name(), PamResourceActionDelete.Name()), Subject: ss(SubPamResources)},
 
 	// AuditLogs
-	{Action: ss(AuditLogsActionRead.Name()), Subject: ss(SubAuditLogs)},
+	{Action: ss(AuditLogsActionRead.Name(), AuditLogsActionEdit.Name()), Subject: ss(SubAuditLogs)},
 
 	// CertificateAuthorities
 	{Action: ss(CaActionRead.Name(), CaActionCreate.Name(), CaActionEdit.Name(), CaActionDelete.Name(), CaActionIssueCACert.Name(), CaActionSignIntermediate.Name()), Subject: ss(SubCertificateAuthorities)},

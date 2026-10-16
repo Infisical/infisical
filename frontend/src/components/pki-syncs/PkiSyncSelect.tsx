@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Loader2Icon, Search } from "lucide-react";
 
+import { CertificateSyncsUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import {
   Empty,
   EmptyDescription,
@@ -14,10 +15,7 @@ import {
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { useSubscription } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { usePopUp } from "@app/hooks";
 import { PkiSync, usePkiSyncOptions } from "@app/hooks/api/pkiSyncs";
-
-import { UpgradePlanModal } from "../license/UpgradePlanModal";
 
 type Props = {
   onSelect: (destination: PkiSync) => void;
@@ -51,14 +49,14 @@ const SyncCard = ({ destination, onClick }: { destination: PkiSync; onClick: () 
 export const PkiSyncSelect = ({ onSelect }: Props) => {
   const { subscription } = useSubscription();
   const { isPending, data: pkiSyncOptions } = usePkiSyncOptions();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const [search, setSearch] = useState("");
 
   const handleSelect = (destination: PkiSync) => {
     if (!subscription.pkiSyncs) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Certificate Syncs can be unlocked if you switch to Infisical Enterprise plan."
+      openUpgradeGate({
+        intent: CertificateSyncsUpgradeIntent,
+        paywallKey: "pki.sync-provider"
       });
       return;
     }
@@ -128,10 +126,10 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
         <a
           target="_blank"
           rel="noopener noreferrer"
-          href="https://infisical.com/slack"
+          href="https://community.infisical.com"
           className="underline underline-offset-2 hover:text-foreground"
         >
-          Let us know on Slack
+          Let us know in the community forum
         </a>{" "}
         or{" "}
         <a
@@ -145,13 +143,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
         .
       </p>
 
-      <UpgradePlanModal
-        paywallKey="pki.sync-provider"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text={popUp.upgradePlan.data?.text}
-      />
+      {upgradeGate}
     </div>
   );
 };

@@ -4,7 +4,7 @@ import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -188,7 +188,7 @@ const Content = ({ role, onClose }: ContentProps) => {
             />
           </FieldGroup>
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
           <SheetClose asChild>
             <Button variant="ghost" isDisabled={isSubmitting}>
               Cancel
@@ -199,11 +199,14 @@ const Content = ({ role, onClose }: ContentProps) => {
           </Button>
         </SheetFooter>
       </form>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.duplicate-project-role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan."
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );
@@ -244,7 +247,7 @@ export const DuplicateProjectRoleModal = ({ isOpen, onOpenChange, roleSlug }: Pr
             <p className="p-4 text-sm text-danger">
               Could not find a role with the slug &quot;{roleSlug}&quot;.
             </p>
-            <SheetFooter className="border-t">
+            <SheetFooter className="justify-end border-t">
               <SheetClose asChild>
                 <Button variant="ghost">Close</Button>
               </SheetClose>

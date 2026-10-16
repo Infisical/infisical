@@ -35,6 +35,7 @@ const meta = {
         "outline",
         "ghost",
         "link",
+        "text",
         "neutral",
         "success",
         "info",
@@ -85,6 +86,22 @@ export const Outline: Story = {
     docs: {
       description: {
         story: "Use this variant for general page actions."
+      }
+    }
+  }
+};
+
+export const Text: Story = {
+  name: "Variant: Text",
+  args: {
+    variant: "text",
+    children: "Copy value"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use for compact text actions without padding or an underline. Hover and pressed colors indicate interaction; keyboard focus remains visible."
       }
     }
   }

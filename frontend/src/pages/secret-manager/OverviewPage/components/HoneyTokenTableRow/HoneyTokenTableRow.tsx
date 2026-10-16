@@ -65,7 +65,6 @@ type Props = {
   environments: { name: string; slug: string }[];
   isHoneyTokenInEnv: (name: string, env: string) => boolean;
   getHoneyTokenByName: (slug: string, name: string) => TDashboardHoneyToken | undefined;
-  tableWidth: number;
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
@@ -76,13 +75,12 @@ export const HoneyTokenTableRow = ({
   environments = [],
   isHoneyTokenInEnv,
   getHoneyTokenByName,
-  tableWidth,
   onEdit,
   onRevoke,
   onViewDetails
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
-  const [, isNameCopied, setIsNameCopied] = useTimedReset({ initialState: false });
+  const [, isNameCopied, setIsNameCopied] = useTimedReset<boolean>({ initialState: false });
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
@@ -322,7 +320,7 @@ export const HoneyTokenTableRow = ({
                 TABLE_ROW_ACTION_BAR_CLASS_NAME
               )}
             >
-              <Tooltip disableHoverableContent>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <IconButton
                     variant="ghost"
@@ -366,18 +364,23 @@ export const HoneyTokenTableRow = ({
       {!isSingleEnvView && isExpanded && (
         <TableRow className="border-0 hover:bg-transparent">
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
-              <Table containerClassName="rounded-none border-0">
+            <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border">
+              <Table
+                className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
+                containerClassName="rounded-none border-0"
+              >
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col />
+                </colgroup>
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
                       Environment
                     </TableHead>
-                    <TableHead className="w-full" />
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>

@@ -6,10 +6,14 @@ import RE2 from "re2";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { SUPPORTED_GENERAL_NAME_TYPES } from "@app/services/certificate-common/certificate-constants";
 import {
+  parseExternallyIssuedCustomExtensions,
   parseIssuedCustomExtensions,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import { TCertificateSource, toX509Certificate } from "@app/services/certificate-common/certificate-parse-utils";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
@@ -100,10 +104,46 @@ export const buildCertificateBundle = (cert: string, privateKey: string, certifi
   return `${parts.join("\n")}\n`;
 };
 
+export const normalizePemText = (pemText: string) => {
+  const cleaned = pemText
+    .replace(new RE2("\\\\r\\\\n|\\\\n|\\\\r", "g"), "\n")
+    .replace(new RE2("[\\x{2010}-\\x{2015}\\x{2212}]", "g"), "-")
+    .replace(new RE2("[\\x{00A0}\\x{2007}\\x{202F}]", "g"), " ")
+    .replace(new RE2("[\\x{200B}-\\x{200D}\\x{2060}\\x{FEFF}]", "g"), "");
+
+  const blockPattern = new RE2("-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=\\s]*)-----END ([A-Z0-9 ]+)-----", "g");
+  const whitespace = new RE2("\\s", "g");
+  const blocks: string[] = [];
+  let match = blockPattern.exec(cleaned);
+  while (match) {
+    const [, beginLabel, body, endLabel] = match;
+    if (beginLabel === endLabel) {
+      const base64Body = body.replace(whitespace, "");
+      const lines = base64Body.match(/.{1,64}/g) ?? [];
+      blocks.push([`-----BEGIN ${beginLabel}-----`, ...lines, `-----END ${endLabel}-----`].join("\n"));
+    }
+    match = blockPattern.exec(cleaned);
+  }
+
+  const beginMarkerCount = (cleaned.match(/-----BEGIN /g) ?? []).length;
+  return blocks.length && blocks.length === beginMarkerCount ? blocks.join("\n") : pemText.trim();
+};
+
 export const splitPemChain = (pemText: string) => {
   const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
 
   return re2Pattern.match(pemText) || [];
+};
+
+export const parsePemCertificateChain = (chainPem: string): x509.X509Certificate[] | null => {
+  const chainBlocks = splitPemChain(chainPem);
+  if (chainBlocks.length !== (chainPem.match(/-----BEGIN /g) ?? []).length) return null;
+
+  try {
+    return chainBlocks.map((pem) => new x509.X509Certificate(pem));
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -258,9 +298,9 @@ export const normalizeThumbprint = (thumbprint: string) => {
  * Parse and extract subject, fingerprints, and basicConstraints from a decrypted certificate.
  * Returns empty object on failure (graceful degradation).
  */
-export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCertificateBody => {
+export const parseCertificateBody = (source: TCertificateSource): TParsedCertificateBody => {
   try {
-    const certObj = new x509.X509Certificate(decryptedCertificate);
+    const certObj = toX509Certificate(source);
 
     // Extract subject DN attributes directly from the x509 Name object
     const parsedDn = extractDnParts(certObj.subjectName);
@@ -315,6 +355,9 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
   }
 };
 
+const KEY_ALGORITHM_VALUES = new Set<string>(Object.values(CertKeyAlgorithm));
+const SIGNATURE_ALGORITHM_VALUES = new Set<string>(Object.values(CertSignatureAlgorithm));
+
 const EC_CURVE_KEY_ALGORITHMS: Record<string, CertKeyAlgorithm> = {
   "P-256": CertKeyAlgorithm.ECDSA_P256,
   "P-384": CertKeyAlgorithm.ECDSA_P384,
@@ -333,7 +376,7 @@ const RSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
   "SHA-512": CertSignatureAlgorithm.RSA_SHA512
 };
 
-const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+export const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
   "SHA-256": CertSignatureAlgorithm.ECDSA_SHA256,
   "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
   "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
@@ -342,10 +385,10 @@ const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
 // Import accepts certificates the issuance enums do not cover, such as Ed25519 and secp256k1, so an
 // unrecognised algorithm is recorded under its own name rather than rejected. The UI falls back to
 // the raw value when it is not one it has a label for.
-export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
+export const extractCertificateAlgorithms = (source: TCertificateSource) => {
   let certObj: x509.X509Certificate;
   try {
-    certObj = new x509.X509Certificate(decryptedCertificate);
+    certObj = toX509Certificate(source);
   } catch {
     return {};
   }
@@ -368,7 +411,7 @@ export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
   }
 
   let signatureAlgorithm: string = signature.name;
-  if (signature.name.startsWith("RSA")) {
+  if (signature.name === "RSASSA-PKCS1-v1_5") {
     signatureAlgorithm = RSA_SIGNATURE_ALGORITHMS[hashName] ?? `RSA-${hashName || "UNKNOWN"}`;
   } else if (signature.name === "ECDSA") {
     signatureAlgorithm = ECDSA_SIGNATURE_ALGORITHMS[hashName] ?? `ECDSA-${hashName || "UNKNOWN"}`;
@@ -381,10 +424,10 @@ export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
  * Extract certificate fields including subject attributes, fingerprints, and basic constraints.
  * Returns all parsed fields as separate properties.
  */
-export const extractCertificateFields = (decryptedCertificate: Buffer, resolved?: TResolvedCustomExtension[]) => {
-  const parsed = parseCertificateBody(decryptedCertificate);
+export const extractCertificateFields = (source: TCertificateSource, resolved?: TResolvedCustomExtension[]) => {
+  const parsed = parseCertificateBody(source);
 
-  const issuedCustomExtensions = parseIssuedCustomExtensions(decryptedCertificate, resolved);
+  const issuedCustomExtensions = parseIssuedCustomExtensions(source, resolved);
 
   return {
     // Subject attributes
@@ -413,6 +456,77 @@ export const extractCertificateFields = (decryptedCertificate: Buffer, resolved?
     ...(parsed.subject?.commonName && { commonName: parsed.subject.commonName }),
     ...(parsed.keyUsages && { keyUsages: parsed.keyUsages }),
     ...(parsed.extendedKeyUsages && { extendedKeyUsages: parsed.extendedKeyUsages })
+  };
+};
+
+const extractIssuedAltNames = (issued: x509.X509Certificate): string | null => {
+  try {
+    const sanExtension = issued.getExtension("2.5.29.17");
+    if (!sanExtension) return null;
+
+    const { items } = new x509.GeneralNames(sanExtension.value);
+    const values = [
+      ...new Set(items.filter((item) => SUPPORTED_GENERAL_NAME_TYPES.has(item.type)).map((item) => item.value))
+    ];
+
+    if (items.length > values.length) {
+      logger?.warn(
+        `Issued certificate carries ${items.length - values.length} subject alternative name(s) of a kind this column cannot hold, so they were not recorded [serialNumber=${issued.serialNumber}]`
+      );
+    }
+
+    return values.length ? values.join(",") : null;
+  } catch (err) {
+    logger?.warn(
+      err,
+      `Could not read the subject alternative names off an issued certificate [serialNumber=${issued.serialNumber}]`
+    );
+    return null;
+  }
+};
+
+const safeExtractCertificateAlgorithms = (issued: x509.X509Certificate) => {
+  try {
+    const algorithms = extractCertificateAlgorithms(issued);
+
+    const offEnum = [
+      !!algorithms.keyAlgorithm && !KEY_ALGORITHM_VALUES.has(algorithms.keyAlgorithm) && algorithms.keyAlgorithm,
+      !!algorithms.signatureAlgorithm &&
+        !SIGNATURE_ALGORITHM_VALUES.has(algorithms.signatureAlgorithm) &&
+        algorithms.signatureAlgorithm
+    ].filter(Boolean);
+
+    if (offEnum.length) {
+      logger?.warn(
+        `Issued certificate uses ${offEnum.join(" and ")}, which is outside the algorithms this platform can request, so a renewal cannot ask for it again [serialNumber=${issued.serialNumber}]`
+      );
+    }
+
+    return algorithms;
+  } catch (err) {
+    logger?.warn(
+      err,
+      `Could not name the algorithms on an issued certificate, so the requested ones stand [serialNumber=${issued.serialNumber}]`
+    );
+    return {};
+  }
+};
+
+export const extractExternallyIssuedCertificateFields = (
+  issued: x509.X509Certificate,
+  requestedCustomExtensions?: TResolvedCustomExtension[]
+) => {
+  const issuedCustomExtensions = parseExternallyIssuedCustomExtensions(issued, requestedCustomExtensions);
+  const altNames = extractIssuedAltNames(issued);
+
+  return {
+    ...extractCertificateFields(issued),
+    ...safeExtractCertificateAlgorithms(issued),
+    ...(altNames !== null && { altNames }),
+    serialNumber: issued.serialNumber,
+    notBefore: issued.notBefore,
+    notAfter: issued.notAfter,
+    customExtensions: issuedCustomExtensions.length ? JSON.stringify(issuedCustomExtensions) : null
   };
 };
 

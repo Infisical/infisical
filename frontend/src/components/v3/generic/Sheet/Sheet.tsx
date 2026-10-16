@@ -5,6 +5,11 @@ import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import {
+  OverlayLayerContext,
+  useOverlayIsPending,
+  useOverlayLayer
+} from "../../utils/overlay-layer";
 
 const isAllowedOutsideInteraction = (target: EventTarget | null) =>
   Boolean(
@@ -22,7 +27,15 @@ function SheetTrigger({ ...props }: React.ComponentProps<typeof SheetPrimitive.T
 }
 
 function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Close>) {
-  return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
+  const isPending = useOverlayIsPending();
+
+  return (
+    <SheetPrimitive.Close
+      data-slot="sheet-close"
+      {...props}
+      {...(isPending && { disabled: true })}
+    />
+  );
 }
 
 function SheetPortal({ ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
@@ -49,30 +62,43 @@ function SheetContent({
   className,
   children,
   side = "right",
+  size,
+  isPending = false,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
   onPointerDownOutside,
   onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
+  size?: "form" | "wide" | "workspace";
+  isPending?: boolean;
 }) {
+  const { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn } =
+    useOverlayLayer(isPending);
+
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        onOpenAutoFocus={(e) => captureFocusReturn(e, onOpenAutoFocus)}
+        onCloseAutoFocus={(e) => restoreFocusReturn(e, onCloseAutoFocus)}
+        onEscapeKeyDown={(e) => guardDismiss(e, onEscapeKeyDown)}
         onPointerDownOutside={(e) => {
           if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
-          onPointerDownOutside?.(e);
+          guardDismiss(e, onPointerDownOutside);
         }}
         onInteractOutside={(e) => {
           if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
-          onInteractOutside?.(e);
+          guardDismiss(e, onInteractOutside);
         }}
         className={cn(
           "fixed z-[var(--z-index-modal)] flex thin-scrollbar flex-col border-border bg-popover text-foreground shadow-lg outline-0 transition data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:ease-in data-[state=closed]:fade-out-50 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:ease-out",
@@ -84,12 +110,18 @@ function SheetContent({
             "inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-2",
           side === "bottom" &&
             "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom-full data-[state=open]:slide-in-from-bottom-2",
+          (side === "right" || side === "left") && size === "form" && "w-full sm:max-w-3xl",
+          (side === "right" || side === "left") && size === "wide" && "sm:max-w-[1100px]",
+          (side === "right" || side === "left") && size === "workspace" && "sm:max-w-[1500px]",
           className
         )}
         {...props}
       >
-        {children}
-        <SheetPrimitive.Close className="data-[state=open]:bg-secondary absolute top-4 right-4 z-20 cursor-pointer rounded-xs text-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+        <OverlayLayerContext.Provider value={contextValue}>{children}</OverlayLayerContext.Provider>
+        <SheetPrimitive.Close
+          disabled={isPending}
+          className="data-[state=open]:bg-secondary absolute top-4 right-4 z-20 cursor-pointer rounded-xs text-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
+        >
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
@@ -122,7 +154,7 @@ function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPr
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("font-semibold text-foreground", className)}
+      className={cn("font-alliance font-normal text-foreground", className)}
       {...props}
     />
   );

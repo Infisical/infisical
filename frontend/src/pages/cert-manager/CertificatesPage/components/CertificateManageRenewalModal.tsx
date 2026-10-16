@@ -165,7 +165,7 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
   const onUpdateRenewal = async (data: FormData) => {
     if (!currentProject?.slug) {
       createNotification({
-        text: "Unable to update auto-renewal: Project not found. Please refresh the page and try again.",
+        text: "Unable to update auto-renewal: Certificate Manager could not be loaded. Please refresh the page and try again.",
         type: "error"
       });
       return;
@@ -215,7 +215,7 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
                 <span className="text-xs font-bold text-white">!</span>
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-danger">Automatic Renewal Failed</h3>
+                <h3 className="font-normal text-danger">Automatic Renewal Failed</h3>
                 <p className="mt-1 text-sm text-danger">
                   The last automatic renewal attempt failed: {certificateData.renewalError}
                 </p>

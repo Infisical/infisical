@@ -20,9 +20,26 @@ export const initPostHog = (): PostHog | undefined => {
   try {
     if (!isPostHogEnabled()) return undefined;
 
+    // Every automatic capture is pinned off here rather than left unset: the options
+    // defaulting to `undefined` fall back to the PostHog project's remote config, so a
+    // toggle in the PostHog UI would otherwise start collecting without a code change.
     posthog.init(envConfig.POSTHOG_API_KEY!, {
       api_host: envConfig.POSTHOG_HOST,
-      persistence: "localStorage+cookie"
+      persistence: "localStorage+cookie",
+      autocapture: false,
+      rageclick: false,
+      capture_pageview: false,
+      capture_pageleave: false,
+      capture_dead_clicks: false,
+      capture_heatmaps: false,
+      capture_performance: false,
+      capture_exceptions: false,
+      disable_scroll_properties: true,
+      disable_session_recording: true,
+      disable_surveys: true,
+      disable_conversations: true,
+      disable_web_experiments: true,
+      disable_external_dependency_loading: true
     });
     postHogClient = posthog;
   } catch (error) {

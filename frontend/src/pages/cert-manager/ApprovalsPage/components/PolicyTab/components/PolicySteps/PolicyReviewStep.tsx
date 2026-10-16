@@ -45,7 +45,7 @@ export const PolicyReviewStep = () => {
     <div className="space-y-6">
       <div>
         <div className="mb-3 border-b border-border-control pb-2">
-          <h3 className="text-sm font-medium text-foreground-secondary">Policy Configuration</h3>
+          <h3 className="text-sm font-normal text-foreground-secondary">Policy Configuration</h3>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
@@ -65,7 +65,7 @@ export const PolicyReviewStep = () => {
 
       <div>
         <div className="mb-3 border-b border-border-control pb-2">
-          <h3 className="text-sm font-medium text-foreground-secondary">Approval Sequence</h3>
+          <h3 className="text-sm font-normal text-foreground-secondary">Approval Sequence</h3>
         </div>
         <div className="space-y-3">
           {steps.map((step, index) => {

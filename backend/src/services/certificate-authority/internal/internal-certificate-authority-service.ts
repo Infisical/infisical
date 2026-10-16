@@ -33,7 +33,6 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common/certificate-constants";
-import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -64,18 +63,26 @@ import {
 } from "../../certificate-common/certificate-constants";
 import { appendCustomExtensions } from "../../certificate-common/certificate-extension-fns";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
+import { TCertificateProfileDALFactory } from "../../certificate-profile/certificate-profile-dal";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
-import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "../ca-signer";
+import { isExternalCaKeySource } from "../ca-key-source/ca-key-source-fns";
+import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
+import { TExternalCaKeyReference } from "../ca-key-source/ca-key-source-types";
+import { buildLocalCaSigner, TCaSigner } from "../ca-signer";
 import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-config-dal";
 import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
+  assertNoCertificateProfilesUsingCa,
+  buildAuthorityInfoAccessExtension,
   buildCrlDistributionPointUrls,
+  buildOcspResponderUrl,
   createDistinguishedName,
   createSerialNumber,
+  deleteCaAndReleaseExternalKey,
   expandInternalCa,
   extractDnParts,
   getCaCertChain, // TODO: consider rename
@@ -131,9 +138,10 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     TCertificateAuthorityCertDALFactory,
     "create" | "findOne" | "transaction" | "find" | "findById"
   >;
-  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -146,9 +154,9 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
-  hsmConnectorService: Pick<
-    THsmConnectorServiceFactory,
-    "generateKeyPair" | "sign" | "getPublicKey" | "assertAttachPermission"
+  caKeySourceService: Pick<
+    TCaKeySourceServiceFactory,
+    "createKey" | "buildSigner" | "describeKey" | "prepareKeyReleases"
   >;
 };
 
@@ -160,6 +168,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificateTemplateDAL,
+  certificateProfileDAL,
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
@@ -172,7 +181,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   licenseService,
   caSigningConfigDAL,
   usageMeteringService,
-  hsmConnectorService
+  caKeySourceService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
@@ -184,6 +193,14 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const plan = await licenseService.getPlan(project.orgId);
     return plan.caCrl;
+  };
+
+  const $isOcspAllowed = async (projectId: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const plan = await licenseService.getPlan(project.orgId);
+    return plan.pkiOcsp;
   };
 
   // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
@@ -320,6 +337,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     name,
     crlDistributionPointUrls,
     disableManagedCrlDistributionPointUrl,
+    isOcspEnabled,
     ...dto
   }: TCreateCaDTO) => {
     let projectId: string;
@@ -375,6 +393,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
+    const isOcspAllowed = await $isOcspAllowed(projectId);
+    if (isOcspEnabled && !isOcspAllowed) {
+      throw new BadRequestError({
+        message:
+          "Failed to create certificate authority with OCSP enabled due to plan restriction. Upgrade plan to use OCSP."
+      });
+    }
+
+    const resolvedIsOcspEnabled = isOcspEnabled ?? isOcspAllowed;
+
     const dn = createDistinguishedName({
       commonName,
       organization,
@@ -396,249 +424,216 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const resolvedCaName = name || slugify(`${(friendlyName || dn).slice(0, 16)}-${alphaNumericNanoId(8)}`);
 
-    const keySource = dto.keySource ?? CertKeySource.Infisical;
-    const useHsm = keySource === CertKeySource.Hsm;
+    const keySource = dto.isInternal ? (dto.keySource ?? CertKeySource.Infisical) : CertKeySource.Infisical;
 
     let caSigner: TCaSigner;
     let localKeys: CryptoKeyPair | undefined;
-    let hsmKey: { keyLabel: string; publicKeySpkiDer: Buffer } | undefined;
+    let externalKeyReference: Partial<TExternalCaKeyReference> | undefined;
 
-    if (useHsm) {
-      if (!dto.hsmConnectorId) {
-        throw new BadRequestError({ message: "An HSM Connector is required when the key source is HSM." });
-      }
-      if (isPqcAlgorithm(keyAlgorithm)) {
-        throw new BadRequestError({
-          message: "Post-quantum algorithms are not supported for HSM-backed certificate authorities."
-        });
-      }
-      const shape = caKeyAlgorithmToHsmShape(keyAlgorithm);
-
-      if (!dto.isInternal) {
-        await hsmConnectorService.assertAttachPermission(
-          { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
-          dto.hsmConnectorId,
-          projectId
-        );
-      }
-
-      // A duplicate name only fails the (name, projectId) unique constraint after the key is
-      // generated, and an HSM key cannot be auto-removed, so reject a taken name before keygen to
-      // avoid leaving an orphaned key on the HSM.
-      if (name) {
-        const existingCa = await certificateAuthorityDAL.findOne({ projectId, name });
-        if (existingCa) {
-          throw new BadRequestError({
-            message: `A certificate authority named "${name}" already exists in this project.`
-          });
-        }
-      }
-
-      const generated = await hsmConnectorService.generateKeyPair({
-        connectorId: dto.hsmConnectorId,
-        projectId,
-        keyLabel: `ca-${resolvedCaName}-${alphaNumericNanoId(5)}`,
-        keyAlgorithm: shape.hsmKeyAlgorithm
-      });
-      hsmKey = generated;
-
-      const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
-        "spki",
-        generated.publicKeySpkiDer,
-        shape.importParams,
-        true,
-        ["verify"]
-      );
-      const connectorId = dto.hsmConnectorId;
-      const { keyLabel } = generated;
-      caSigner = buildHsmCaSigner({
-        caPublicKey,
-        keyAlgorithm,
-        sign: (data, mechanism, isDigest) =>
-          hsmConnectorService.sign({ connectorId, projectId, keyLabel, mechanism, data, isDigest })
-      });
-    } else {
-      const cryptoEngine = isPqcAlgorithm(keyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
-      localKeys = await cryptoEngine.subtle.generateKey(alg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
-      caSigner = buildLocalCaSigner({
-        privateKey: localKeys.privateKey,
-        publicKey: localKeys.publicKey,
-        signingAlgorithm: alg
-      });
-    }
-
-    let notBeforeDate: Date | undefined;
-    let notAfterDate: Date | undefined;
-    if (notAfter) {
-      notBeforeDate = notBefore ? new Date(notBefore) : new Date();
-      // if undefined, set [notAfterDate] to 10 years from now
-      notAfterDate = new Date(notAfter);
-    }
-    const serialNumber = createSerialNumber();
-
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
-      kmsId: certificateManagerKmsId
-    });
-
-    let encryptedPrivateKey: Buffer | undefined;
-    if (!useHsm) {
-      const localPrivateKey = (localKeys as CryptoKeyPair).privateKey;
-      // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
-      let privateKeyDer: Buffer;
-      if (isPqcCryptoKey(localPrivateKey)) {
-        privateKeyDer = await exportPqcKeyToDer(localPrivateKey);
-      } else {
-        const skObj = crypto.nativeCrypto.KeyObject.from(localPrivateKey);
-        privateKeyDer = skObj.export({ type: "pkcs8", format: "der" });
-      }
-      encryptedPrivateKey = (await kmsEncryptor({ plainText: privateKeyDer })).cipherTextBlob;
-    }
-
-    let rootCertMaterial: { encryptedCertificate: Buffer; encryptedCertificateChain: Buffer } | undefined;
-    if (type === InternalCaType.ROOT && notAfter) {
-      const cert = await caSigner.createCertificate({
-        subject: dn,
-        issuer: dn,
-        serialNumber,
-        notBefore: notBeforeDate,
-        notAfter: notAfterDate,
-        publicKey: caSigner.caPublicKey,
-        extensions: [
-          new x509.BasicConstraintsExtension(
-            true,
-            maxPathLength === -1 || maxPathLength === null ? undefined : maxPathLength,
-            true
-          ),
-          new x509.KeyUsagesExtension(isPqcAlgorithm(keyAlgorithm) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES, true),
-          await x509.SubjectKeyIdentifierExtension.create(caSigner.caPublicKey)
-        ]
-      });
-
-      rootCertMaterial = {
-        encryptedCertificate: (await kmsEncryptor({ plainText: Buffer.from(new Uint8Array(cert.rawData)) }))
-          .cipherTextBlob,
-        encryptedCertificateChain: (await kmsEncryptor({ plainText: Buffer.alloc(0) })).cipherTextBlob
-      };
-    }
-
-    const thisUpdate = new Date();
-    const nextUpdate = new Date(thisUpdate);
-    nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
-    const crl = await caSigner.createCrl({
-      issuer: dn,
-      thisUpdate,
-      nextUpdate,
-      entries: []
-    });
-    const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
-      plainText: Buffer.from(new Uint8Array(crl.rawData))
-    });
-
-    const newCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      const ca = await certificateAuthorityDAL
-        .create(
-          {
-            projectId,
-            name: resolvedCaName,
-            status: notAfter && type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
-            enableDirectIssuance: false
-          },
-          tx
-        )
-        .catch((error) => {
-          // unique_violation: same CA name in the same project
-          if (
-            error instanceof DatabaseError &&
-            (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
-          ) {
+    try {
+      if (dto.isInternal && isExternalCaKeySource(keySource)) {
+        // A duplicate name only fails the (name, projectId) unique constraint after the external key
+        // is created. HSM keys cannot be removed again and AWS KMS keys can only be scheduled for
+        // deletion, so reject a taken name before creating any key.
+        if (name) {
+          const existingCa = await certificateAuthorityDAL.findOne({ projectId, name });
+          if (existingCa) {
             throw new BadRequestError({
-              message: `A certificate authority named "${resolvedCaName}" already exists.`
+              message: `A certificate authority named "${name}" already exists in this project.`
             });
           }
-          throw error;
+        }
+
+        externalKeyReference = await caKeySourceService.createKey({
+          keySource,
+          projectId,
+          caName: resolvedCaName,
+          keyAlgorithm,
+          input: dto
+        });
+        caSigner = await caKeySourceService.buildSigner({
+          keySource,
+          projectId,
+          keyAlgorithm,
+          reference: externalKeyReference
+        });
+      } else {
+        const cryptoEngine = isPqcAlgorithm(keyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
+        localKeys = await cryptoEngine.subtle.generateKey(alg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
+        caSigner = buildLocalCaSigner({
+          privateKey: localKeys.privateKey,
+          publicKey: localKeys.publicKey,
+          signingAlgorithm: alg
+        });
+      }
+
+      let notBeforeDate: Date | undefined;
+      let notAfterDate: Date | undefined;
+      if (notAfter) {
+        notBeforeDate = notBefore ? new Date(notBefore) : new Date();
+        // if undefined, set [notAfterDate] to 10 years from now
+        notAfterDate = new Date(notAfter);
+      }
+      const serialNumber = createSerialNumber();
+
+      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+        projectId,
+        projectDAL,
+        kmsService
+      });
+      const kmsEncryptor = await kmsService.encryptWithKmsKey({
+        kmsId: certificateManagerKmsId
+      });
+
+      let encryptedPrivateKey: Buffer | undefined;
+      if (localKeys) {
+        const localPrivateKey = localKeys.privateKey;
+        // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
+        let privateKeyDer: Buffer;
+        if (isPqcCryptoKey(localPrivateKey)) {
+          privateKeyDer = await exportPqcKeyToDer(localPrivateKey);
+        } else {
+          const skObj = crypto.nativeCrypto.KeyObject.from(localPrivateKey);
+          privateKeyDer = skObj.export({ type: "pkcs8", format: "der" });
+        }
+        encryptedPrivateKey = (await kmsEncryptor({ plainText: privateKeyDer })).cipherTextBlob;
+      }
+
+      let rootCertMaterial: { encryptedCertificate: Buffer; encryptedCertificateChain: Buffer } | undefined;
+      if (type === InternalCaType.ROOT && notAfter) {
+        const cert = await caSigner.createCertificate({
+          subject: dn,
+          issuer: dn,
+          serialNumber,
+          notBefore: notBeforeDate,
+          notAfter: notAfterDate,
+          publicKey: caSigner.caPublicKey,
+          extensions: [
+            new x509.BasicConstraintsExtension(
+              true,
+              maxPathLength === -1 || maxPathLength === null ? undefined : maxPathLength,
+              true
+            ),
+            new x509.KeyUsagesExtension(
+              isPqcAlgorithm(keyAlgorithm) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES,
+              true
+            ),
+            await x509.SubjectKeyIdentifierExtension.create(caSigner.caPublicKey)
+          ]
         });
 
-      const internalCa = await internalCertificateAuthorityDAL.create(
-        {
-          caId: ca.id,
-          type,
-          organization,
-          ou,
-          country,
-          province,
-          locality,
-          friendlyName: friendlyName || dn,
-          commonName,
-          dn,
-          keyAlgorithm,
-          crlDistributionPointUrls: crlDistributionPointUrls ?? [],
-          disableManagedCrlDistributionPointUrl: disableManagedCrlDistributionPointUrl ?? false,
-          ...(type === InternalCaType.ROOT && {
-            maxPathLength,
-            ...(notAfter && {
-              notBefore: notBeforeDate,
-              notAfter: notAfterDate,
-              serialNumber
-            })
-          })
-        },
-        tx
-      );
+        rootCertMaterial = {
+          encryptedCertificate: (await kmsEncryptor({ plainText: Buffer.from(new Uint8Array(cert.rawData)) }))
+            .cipherTextBlob,
+          encryptedCertificateChain: (await kmsEncryptor({ plainText: Buffer.alloc(0) })).cipherTextBlob
+        };
+      }
 
-      const caSecret =
-        useHsm && hsmKey
-          ? await certificateAuthoritySecretDAL.create(
-              {
-                caId: ca.id,
-                keySource: CertKeySource.Hsm,
-                hsmConnectorId: dto.hsmConnectorId,
-                hsmKeyLabel: hsmKey.keyLabel,
-                hsmPublicKeySpki: hsmKey.publicKeySpkiDer
-              },
-              tx
-            )
-          : await certificateAuthoritySecretDAL.create(
-              {
-                caId: ca.id,
-                keySource: CertKeySource.Infisical,
-                encryptedPrivateKey
-              },
-              tx
-            );
+      const thisUpdate = new Date();
+      const nextUpdate = new Date(thisUpdate);
+      nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
+      const crl = await caSigner.createCrl({
+        issuer: dn,
+        thisUpdate,
+        nextUpdate,
+        entries: []
+      });
+      const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
+        plainText: Buffer.from(new Uint8Array(crl.rawData))
+      });
 
-      if (rootCertMaterial) {
-        const caCert = await certificateAuthorityCertDAL.create(
+      const newCa = await certificateAuthorityDAL.transaction(async (tx) => {
+        const ca = await certificateAuthorityDAL
+          .create(
+            {
+              projectId,
+              name: resolvedCaName,
+              status: notAfter && type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
+              enableDirectIssuance: false
+            },
+            tx
+          )
+          .catch((error) => {
+            // unique_violation: same CA name in the same project
+            if (
+              error instanceof DatabaseError &&
+              (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+            ) {
+              throw new BadRequestError({
+                message: `A certificate authority named "${resolvedCaName}" already exists.`
+              });
+            }
+            throw error;
+          });
+
+        const internalCa = await internalCertificateAuthorityDAL.create(
           {
             caId: ca.id,
-            encryptedCertificate: rootCertMaterial.encryptedCertificate,
-            encryptedCertificateChain: rootCertMaterial.encryptedCertificateChain,
-            version: 1,
+            type,
+            organization,
+            ou,
+            country,
+            province,
+            locality,
+            friendlyName: friendlyName || dn,
+            commonName,
+            dn,
+            keyAlgorithm,
+            crlDistributionPointUrls: crlDistributionPointUrls ?? [],
+            disableManagedCrlDistributionPointUrl: disableManagedCrlDistributionPointUrl ?? false,
+            isOcspEnabled: resolvedIsOcspEnabled,
+            ...(type === InternalCaType.ROOT && {
+              maxPathLength,
+              ...(notAfter && {
+                notBefore: notBeforeDate,
+                notAfter: notAfterDate,
+                serialNumber
+              })
+            })
+          },
+          tx
+        );
+
+        const caSecret = await certificateAuthoritySecretDAL.create(
+          { caId: ca.id, keySource, encryptedPrivateKey, ...externalKeyReference },
+          tx
+        );
+
+        if (rootCertMaterial) {
+          const caCert = await certificateAuthorityCertDAL.create(
+            {
+              caId: ca.id,
+              encryptedCertificate: rootCertMaterial.encryptedCertificate,
+              encryptedCertificateChain: rootCertMaterial.encryptedCertificateChain,
+              version: 1,
+              caSecretId: caSecret.id
+            },
+            tx
+          );
+
+          await internalCertificateAuthorityDAL.updateById(internalCa.id, { activeCaCertId: caCert.id }, tx);
+        }
+
+        await certificateAuthorityCrlDAL.create(
+          {
+            caId: ca.id,
+            encryptedCrl,
             caSecretId: caSecret.id
           },
           tx
         );
 
-        await internalCertificateAuthorityDAL.updateById(internalCa.id, { activeCaCertId: caCert.id }, tx);
+        return certificateAuthorityDAL.findByIdWithAssociatedCa(ca.id, tx);
+      });
+
+      return expandInternalCa(newCa);
+    } catch (error) {
+      if (externalKeyReference) {
+        const releaseKey = await caKeySourceService.prepareKeyReleases([{ keySource, ...externalKeyReference }]);
+        await releaseKey();
       }
-
-      await certificateAuthorityCrlDAL.create(
-        {
-          caId: ca.id,
-          encryptedCrl,
-          caSecretId: caSecret.id
-        },
-        tx
-      );
-
-      return certificateAuthorityDAL.findByIdWithAssociatedCa(ca.id, tx);
-    });
-
-    return expandInternalCa(newCa);
+      throw error;
+    }
   };
 
   /**
@@ -674,6 +669,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     name,
     crlDistributionPointUrls,
     disableManagedCrlDistributionPointUrl,
+    isOcspEnabled,
     ...dto
   }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -706,17 +702,30 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
+    if (isOcspEnabled && !ca.internalCa.isOcspEnabled) {
+      if (!(await $isOcspAllowed(ca.projectId))) {
+        throw new BadRequestError({
+          message: "Failed to enable OCSP due to plan restriction. Upgrade plan to use OCSP."
+        });
+      }
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (status !== undefined || name !== undefined) {
         await certificateAuthorityDAL.updateById(ca.id, { status, name }, tx);
       }
 
-      if (crlDistributionPointUrls !== undefined || disableManagedCrlDistributionPointUrl !== undefined) {
+      if (
+        crlDistributionPointUrls !== undefined ||
+        disableManagedCrlDistributionPointUrl !== undefined ||
+        isOcspEnabled !== undefined
+      ) {
         await internalCertificateAuthorityDAL.update(
           { caId: ca.id },
           {
             ...(crlDistributionPointUrls !== undefined && { crlDistributionPointUrls }),
-            ...(disableManagedCrlDistributionPointUrl !== undefined && { disableManagedCrlDistributionPointUrl })
+            ...(disableManagedCrlDistributionPointUrl !== undefined && { disableManagedCrlDistributionPointUrl }),
+            ...(isOcspEnabled !== undefined && { isOcspEnabled })
           },
           tx
         );
@@ -749,9 +758,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
-    await certificateAuthorityDAL.deleteById(ca.id);
+    await assertNoCertificateProfilesUsingCa(certificateProfileDAL, ca.id, ca.name);
 
-    return expandInternalCa(ca);
+    const keyDetails = await deleteCaAndReleaseExternalKey({
+      caId: ca.id,
+      certificateAuthorityDAL,
+      certificateAuthoritySecretDAL,
+      caKeySourceService
+    });
+
+    return { ca: expandInternalCa(ca), keyDetails };
   };
 
   /**
@@ -791,7 +807,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       kmsService,
-      hsmConnectorService
+      caKeySourceService
     });
 
     const effectivePathLength =
@@ -881,7 +897,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       kmsService,
-      hsmConnectorService
+      caKeySourceService
     });
 
     const kmsDecryptor = await kmsService.decryptWithKmsKey({
@@ -983,7 +999,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           certificateAuthoritySecretDAL,
           projectDAL,
           kmsService,
-          hsmConnectorService
+          caKeySourceService
         });
 
         if (!parentCa.internalCa) {
@@ -1495,7 +1511,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       kmsService,
-      hsmConnectorService
+      caKeySourceService
     });
 
     const serialNumber = createSerialNumber();
@@ -1525,9 +1541,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
         await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
         ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
-        new x509.AuthorityInfoAccessExtension({
-          caIssuers: new x509.GeneralName("url", caIssuerUrl)
-        })
+        buildAuthorityInfoAccessExtension({ caIssuerUrl })
       ]
     });
 
@@ -1668,7 +1682,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       kmsService,
-      hsmConnectorService
+      caKeySourceService
     });
     const { caPublicKey } = signer;
 
@@ -1787,7 +1801,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       kmsService,
-      hsmConnectorService
+      caKeySourceService
     });
 
     const caKeyAlg = intermediateCa.internalCa.keyAlgorithm as CertKeyAlgorithm;
@@ -2059,7 +2073,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       kmsService,
-      hsmConnectorService,
+      caKeySourceService,
       signatureAlgorithm: signingAlg
     });
 
@@ -2074,6 +2088,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
     );
 
+    const ocspResponderUrl =
+      ca.internalCa.isOcspEnabled && appCfg.SITE_URL ? buildOcspResponderUrl(appCfg.SITE_URL, ca.id) : null;
+
     const basicConstraintsExtension = $createBasicConstraintsExtension({
       basicConstraints,
       pathLength,
@@ -2085,9 +2102,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
-      new x509.AuthorityInfoAccessExtension({
-        caIssuers: new x509.GeneralName("url", caIssuerUrl)
-      }),
+      buildAuthorityInfoAccessExtension({ caIssuerUrl, ocspResponderUrl }),
       new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
 
@@ -2487,7 +2502,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       kmsService,
-      hsmConnectorService,
+      caKeySourceService,
       signatureAlgorithm: alg
     });
 
@@ -2500,6 +2515,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
     );
 
+    const ocspResponderUrl =
+      ca.internalCa.isOcspEnabled && appCfg.SITE_URL ? buildOcspResponderUrl(appCfg.SITE_URL, ca.id) : null;
+
     const basicConstraintsExtension = $createBasicConstraintsExtension({
       basicConstraints,
       pathLength,
@@ -2511,9 +2529,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
       ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
-      new x509.AuthorityInfoAccessExtension({
-        caIssuers: new x509.GeneralName("url", caIssuerUrl)
-      }),
+      buildAuthorityInfoAccessExtension({ caIssuerUrl, ocspResponderUrl }),
       new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
 
@@ -2905,7 +2921,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       kmsService,
-      hsmConnectorService
+      caKeySourceService
     });
 
     const rootKeyAlg = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;

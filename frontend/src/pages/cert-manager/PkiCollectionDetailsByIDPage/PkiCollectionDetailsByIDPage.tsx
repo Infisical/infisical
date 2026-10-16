@@ -9,14 +9,13 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import { PageHeader } from "@app/components/v3";
+import { DeleteConfirmDialog, PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -63,10 +62,9 @@ export const PkiCollectionPage = () => {
     });
     handlePopUpClose("deletePkiCollection");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/policies",
+      to: "/organizations/$orgId/cert-manager/policies",
       params: {
-        orgId: currentOrg.id,
-        projectId: params.projectId
+        orgId: currentOrg.id
       }
     });
   };
@@ -74,14 +72,13 @@ export const PkiCollectionPage = () => {
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
-        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             backLink={
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/policies"
+                to="/organizations/$orgId/cert-manager/policies"
                 params={{
-                  orgId: currentOrg.id,
-                  projectId: params.projectId
+                  orgId: currentOrg.id
                 }}
               >
                 <FontAwesomeIcon icon={faChevronLeft} />
@@ -167,12 +164,13 @@ export const PkiCollectionPage = () => {
         </div>
       )}
       <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deletePkiCollection.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to delete the PKI collection ${data?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeletePkiCollectionSubmit(
             (popUp.deletePkiCollection.data as { collectionId: string })?.collectionId
           )

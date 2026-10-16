@@ -23,7 +23,7 @@ import {
 
 const PageContent = () => {
   const navigate = useNavigate();
-  const { type, dataSourceId, projectId, orgId } = useParams({
+  const { type, dataSourceId, orgId } = useParams({
     from: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.id,
     select: (params) => ({
       ...params,
@@ -56,7 +56,7 @@ const PageContent = () => {
   }
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-page font-inter text-foreground-inverse">
+    <div className="mx-auto flex flex-col justify-between bg-page font-sans text-foreground-inverse">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <Button
           variant="link"
@@ -64,11 +64,8 @@ const PageContent = () => {
           leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
           onClick={() => {
             navigate({
-              to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-              params: {
-                orgId,
-                projectId
-              }
+              to: "/organizations/$orgId/secret-scanning/data-sources",
+              params: { orgId }
             });
           }}
         >

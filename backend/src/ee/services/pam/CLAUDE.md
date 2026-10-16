@@ -23,7 +23,7 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 | `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
 | `pam-membership/`                  | Product + resource membership management                                                                               |
 | `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
-| `pam-access-request/`              | Folder approval config, access-request lifecycle, chat notifications                                                   |
+| `pam-access-request/`              | PAM's face on the shared approvals system: folder config, notifications, read models, approval resource               |
 | `pam-discovery/`                   | Discovery sources → staged accounts for import                                                                         |
 
 Routes: `backend/src/ee/routes/v1/pam-routers/`. DI wiring: `backend/src/server/routes/index.ts` (narrow
@@ -36,7 +36,13 @@ folder or account (`PamResourceRole`: Admin/Operator/Connector/Auditor; Operator
 `ViewCredentials`, with no approval rights so credential approval can't be self-served). Shared helpers live in
 `pam/pam-permission.ts` (`verifyProductMembership`, `checkAccountAccess`, `getResourceIdsWithActions`, …) —
 use them instead of re-implementing. Every list/mutation endpoint checks an **action**, not just
-membership. There is **no org-admin fallback**: permission needs project-scoped membership.
+membership. There is **no org-admin fallback**: permission needs project-scoped membership. Instead, a user
+(never a machine identity) holding the org Admin role (the role itself, checked with `hasRole`, not a
+permission) can list every folder
+(`includeNonMemberFolders`, which only the Accounts page sends, adds `callerAccess`) and join one explicitly
+through `POST /pam/folders/:folderId/grant-admin-access`. That writes a real Admin membership, its own audit
+event (`org-admin-accessed-pam-folder`, with the role it replaced) and notifies the folder's admins, so never
+add an implicit fallback instead. A PAM product admin alone cannot join folders.
 
 Gotchas:
 
@@ -138,11 +144,39 @@ live in a process-wide map keyed by the driver's request id rather than on the p
 test compares the login's `sessionInfo` against what was asked for, because Snowflake accepts a warehouse
 or role the credential can't use and silently leaves it unset.
 
-**ClickHouse is brokered over its HTTP interface (8123/8443), never the native protocol on 9000**, so the
-gateway can read the statement as text to block and record it (CLI `packages/pam/handlers/clickhouse/`).
-Only the first megabyte of a request body is inspected, so an account carrying a command-blocking policy
-refuses a body longer than that rather than forward the remainder unread. Databases stand in for schemas, and the explorer grid is read-only for every table
-(`supportsRowEditing`): `is_in_primary_key` is a sorting key, not a unique constraint.
+**ClickHouse is brokered over both its interfaces, HTTP (8123/8443) and the native TCP protocol
+(9000/9440)**, and an account may carry either port or both. One local port serves both: the gateway
+routes a connection by its first byte (CLI `packages/pam/handlers/clickhouse/`). Over HTTP the statement
+is read as text, and only the first megabyte of a request body is inspected, so an account carrying a
+command-blocking policy refuses a longer body rather than forward the remainder unread. Over native the
+statement arrives in its own Query packet; a packet the gateway cannot parse ends the session rather than
+being relayed uninspected. Two consequences worth knowing: **Web Access needs the HTTP port**, because the
+browser client speaks HTTP and nothing translates for it (`webAccessUnavailableReason`), and a native port
+may only be saved against a gateway advertising the `clickhouseNativeProtocol` capability. Databases stand
+in for schemas, and the explorer grid is read-only for every table (`supportsRowEditing`):
+`is_in_primary_key` is a sorting key, not a unique constraint.
+
+## Approvals
+
+**PAM approvals run on the shared approval system** (`backend/src/services/approval-policy/`), which
+owns the whole lifecycle. PAM's contribution is one `TApprovalResource`
+(`pam-access-request/pam-access-approval-resource.ts`), with its schemas under `approval-policy/pam-access/`.
+
+`pam-access-request-service.ts` is the product-facing entry point, not a second implementation: it
+resolves the account a CLI path names, delegates to `approvalPolicyService`, sends PAM's notifications,
+and owns the access read models (`checkGrant`, `getAccessStatusBatch`, …). **A new PAM approval rule
+belongs in the resource, never in that service**, or the CLI, the dashboard and the shared API stop
+agreeing about what is allowed.
+
+PAM is registered on the generic `/v1/approval-policies/pam-access/...` endpoints, which the dashboard
+uses for approve, reject and grant revocation; the resource's `buildAuditEvent` is what keeps those
+routes emitting PAM's own audit events, so folder and account auditors still see them. `/v1/pam/access-requests`
+keeps only what the generic API cannot express: the CLI's `folderName/accountName` create, the paginated
+folder list, the approver queue and count, the approver roster, and the folder notification configs.
+
+**Folder alerts are the `pam.folder` provider on the shared alert module**, fed by the resource's `buildEvent`.
+The older per-folder Slack configs (`pam_folder_notification_configs`) are legacy: they still post and can be
+removed, never added or edited.
 
 ## Policies & Settings
 
@@ -152,14 +186,22 @@ policies apply before the session starts; gateway-enforced ones flow to the gate
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
 
+**External recording storage** is the `aws-s3` backend whether the connection is AWS or S3-Compatible Storage
+(`resolveS3RecordingAccess`). Don't add a backend per provider: the value is in each chunk's AAD and in the
+backend list gateways read. Hosts beyond the built-in providers come from the server admin's
+`allowedStorageHostnames`, which `serve-ui.ts` also adds to the CSP `connect-src`, since browsers fetch chunks directly.
+
 **Break-glass** lets a requester self-approve their own pending request, and needs **both** gates open:
 the account's template carries `allow-break-glass`, *and* the folder's approval policy names the actor in
 `approval_policy_bypassers`. Neither alone is sufficient, and an empty bypasser list means **nobody** —
-the shared `approval-policy-service` treats an empty list as everybody, which is the opposite rule, so do
-not reuse its predicate. `allow-break-glass` resolves to false without `requires-approval`, since there is
-then no approval to skip. Saving the folder config keeps the policy's `enforcementLevel` in step with the
-list (`soft` when non-empty), and omitting `breakGlassUsers` entirely leaves the stored list alone so a
-steps-only client can't switch break-glass off by accident. The grant records `isBreakGlass` +
+the shared service's default reads an empty list as everybody, which is the opposite rule, so PAM
+overrides it from the resource (`isBreakGlassEligible`) rather than anyone re-deriving the predicate. The
+resource settles it once and exposes it two ways: a predicate for the `canBreakGlass` affordance, and an
+assertion that names the failing gate. `allow-break-glass` resolves to false without `requires-approval`, since there is
+then no approval to skip. `enforcementLevel` is **not** part of this: the shared default treats `soft` as
+the opt-in to bypass, but PAM's two gates are the whole rule, so the folder config never writes that
+column and the resource never reads it (a PAM policy stays `hard`). Omitting `breakGlassUsers` entirely
+leaves the stored list alone so a steps-only client can't switch break-glass off by accident. The grant records `isBreakGlass` +
 `bypassReason`, and `PAM_ACCESS_POLICY_BYPASSED` must carry `accountId`/`folderId` or the event is hidden
 from folder and account auditors (see the audit-log gotcha under Permissions).
 
@@ -170,7 +212,8 @@ for import into a folder. Type registry is `DISCOVERY_TYPE_CONFIGS`; providers r
 `{ validateConnection, scan }` and never touch the DB — the service owns encryption, staging, and
 fingerprint dedupe. Discovery runs everything **through the gateway** (SSH-exec / port-sweep / WinRM RPCs),
 so `ssh2` is never used on the backend and scans produce no session rows, recordings, or session audits.
-Current types: Active Directory and Unix.
+Current types: Active Directory, Unix, PostgreSQL, and Microsoft SQL Server. `withGatewayV2Proxy` rethrows a callback's
+error as a `BadRequestError` carrying only its message, so a provider maps driver error codes inside the callback.
 
 **Staleness (Windows).** After a completed scan, discovered accounts it no longer finds are reconciled:
 never-imported ones are deleted, imported ones are flagged stale (reappearing self-heals). Only accounts in a
@@ -193,6 +236,13 @@ are reused from `app-connection/shared/sql`, and rotation is brokered through th
 `pam-session/` + `pam-web-access/`. Sessions reference accounts via nullable `accountId` (history survives
 account deletion). Duration is capped at the template max; expiration is enforced by a delayed BullMQ job
 scheduled at session creation.
+
+**Nothing re-checks the actor mid-session**, so every path that takes access away has to close sessions
+itself. `pam-session-access-fns.ts` holds the two: `terminatePamSessionsWithoutLaunchAccess` re-derives
+`LaunchSessions` after a membership or role change, and `terminatePamSessionsForUsers` drops everything a
+user holds when they leave the org (SCIM deactivate/delete, org deactivate/remove). Both run inside the
+caller's transaction and hand back a callback to fire after COMMIT — the row flip rolls back, the gateway
+signal does not.
 
 **An orphaned session (null `accountId`) is scoped to product admin.** Every
 resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Admin` stands in on the

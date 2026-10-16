@@ -165,6 +165,7 @@ Jamf Pro
 Ivanti
 WinRM
 PowerShell
+PSReadLine
 Authenticode
 signtool
 DevOps
@@ -194,10 +195,12 @@ Render
 Railway
 Qovery
 Northflank
+Portainer
 Fly.io
 DigitalOcean
 Cloudflare
 Cloudflare Pages
+Cloudflare Secrets Store
 Cloudflare Workers
 Windmill
 Humanitec
@@ -251,6 +254,7 @@ Daytona
 DBT
 Ab Initio
 Initio
+Keeper Password Manager
 
 # --- Identity ---
 Okta
@@ -307,6 +311,10 @@ Kemp
 LoadMaster
 NetScaler
 Citrix
+Palo Alto Networks
+Alto
+PAN-OS
+Panorama
 F5
 BIG-IP
 iControl
@@ -314,7 +322,9 @@ Dell
 PowerEdge
 iDRAC
 HP
+HPE
 iLO
+Redfish
 Patroni
 
 # --- Databases ---
@@ -352,6 +362,7 @@ DeepSeek
 Gemini
 Grok
 Groq
+Hermes
 Hermes Agent
 Mistral
 OpenClaw
@@ -393,7 +404,7 @@ Notion
 # The `(?:s|'s)?` suffix accepts the plural and possessive forms.
 2FA
 ABAC
-ACL
+ACL(?:s|'s)?
 ACM
 ACME
 AD
@@ -672,3 +683,6 @@ MSBuild
 # --- Surfaced by the PAM Snowflake page ---
 DBeaver
 snowsql
+
+# --- Surfaced by the Stripe API key rotation pages ---
+Stripe

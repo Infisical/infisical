@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -25,6 +25,7 @@ import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useUpdateProjectRole } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -106,7 +107,7 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
       }
     });
     createNotification({
-      text: `Project role "${name}" updated`,
+      text: `${currentProject.type === ProjectType.CertificateManager ? "Role" : "Project role"} "${name}" updated`,
       type: "success"
     });
   };
@@ -195,7 +196,7 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
                 />
               </FieldGroup>
             </div>
-            <SheetFooter className="border-t">
+            <SheetFooter className="justify-end border-t">
               <SheetClose asChild>
                 <Button variant="ghost" isDisabled={isSubmitting}>
                   Cancel
@@ -208,11 +209,14 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
           </form>
         </SheetContent>
       </Sheet>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.edit-project-role-dialog"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan."
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );

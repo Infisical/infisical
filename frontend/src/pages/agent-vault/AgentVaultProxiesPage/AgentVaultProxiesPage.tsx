@@ -9,7 +9,7 @@ import {
   PencilIcon,
   PlusIcon,
   RefreshCwIcon,
-  RouteIcon,
+  ServerIcon,
   TrashIcon,
   TriangleAlertIcon
 } from "lucide-react";
@@ -223,13 +223,13 @@ export const AgentVaultProxiesPage = () => {
   };
 
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: "Proxies" })}</title>
       </Helmet>
       <PageHeader
         scope={ProjectType.AgentVault}
-        icon={RouteIcon}
+        icon={ServerIcon}
         title="Proxies"
         description="Manage the proxies your agents route their requests through."
       />

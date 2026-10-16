@@ -51,7 +51,6 @@ type Props = {
   getDynamicSecretStatusesByName: (
     name: string
   ) => (DynamicSecretStatus | null | undefined)[] | undefined;
-  tableWidth: number;
   secretPath: string;
   onEdit: (dynamicSecret: DynamicSecretWithEnv) => void;
   onGenerateLease: (dynamicSecret: DynamicSecretWithEnv) => void;
@@ -66,7 +65,6 @@ export const DynamicSecretTableRow = ({
   isDynamicSecretInEnv,
   getDynamicSecretByName,
   getDynamicSecretStatusesByName,
-  tableWidth,
   secretPath,
   onEdit,
   onGenerateLease,
@@ -367,18 +365,23 @@ export const DynamicSecretTableRow = ({
       {!isSingleEnvView && isExpanded && (
         <TableRow className="border-0 hover:bg-transparent">
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
-              <Table containerClassName="rounded-none border-0">
+            <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border">
+              <Table
+                className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
+                containerClassName="rounded-none border-0"
+              >
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col />
+                </colgroup>
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
                       Environment
                     </TableHead>
-                    <TableHead className="w-full" />
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>

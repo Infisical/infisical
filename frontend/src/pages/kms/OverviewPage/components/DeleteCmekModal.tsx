@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
+import { DeleteConfirmDialog } from "@app/components/v3";
 import { TCmek, useDeleteCmek } from "@app/hooks/api/cmeks";
 
 type Props = {
@@ -32,12 +32,13 @@ export const DeleteCmekModal = ({ isOpen, onOpenChange, cmek, onDeleted }: Props
   };
 
   return (
-    <DeleteActionModal
+    <DeleteConfirmDialog
       isOpen={isOpen}
       title={`Are you sure you want to delete ${name}?`}
-      onChange={onOpenChange}
-      deleteKey="confirm"
-      onDeleteApproved={handleDeleteCmek}
+      description="This action is irreversible."
+      onOpenChange={onOpenChange}
+      confirmKey="confirm"
+      onConfirm={handleDeleteCmek}
     />
   );
 };

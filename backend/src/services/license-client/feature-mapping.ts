@@ -14,6 +14,8 @@ export type TFeatureMapping = {
   // The TFeatureSet field this maps to (drives the completeness test); dotted for nested fields
   // (e.g. "rateLimits.readLimit"). null when the feature has no plan field to write.
   v1Field: string | null;
+  // Registry keys a boolean feature was previously sold under; any of them being on turns the feature on.
+  legacyV2Keys?: string[];
 };
 
 // Org-wide capabilities that are not tied to a single product: identity and access, audit, KMS/HSM,
@@ -137,10 +139,6 @@ const platformMappings: TFeatureMapping[] = [
     v1Field: "gatewayPool"
   },
   {
-    v2Key: "custom_rate_limits",
-    v1Field: "customRateLimits"
-  },
-  {
     v2Key: "custom_alerts",
     v1Field: "customAlerts"
   },
@@ -251,6 +249,14 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "caCrl"
   },
   {
+    v2Key: "pki_ocsp",
+    v1Field: "pkiOcsp"
+  },
+  {
+    v2Key: "pki_aws_kms_signing",
+    v1Field: "pkiAwsKmsSigning"
+  },
+  {
     v2Key: "pki_est",
     v1Field: "pkiEst"
   },
@@ -349,8 +355,9 @@ const pamMappings: TFeatureMapping[] = [
     v1Field: "enterprisePamAccount"
   },
   {
-    v2Key: "pam_slack_notifications",
-    v1Field: "pamSlackNotifications"
+    v2Key: "pam_enterprise_alerting",
+    v1Field: "pamEnterpriseAlerting",
+    legacyV2Keys: ["pam_slack_notifications"]
   },
   {
     // Max PAM accounts allowed. null (v1 default) means uncapped.
@@ -359,11 +366,20 @@ const pamMappings: TFeatureMapping[] = [
   }
 ];
 
+// Agent Vault: session logs written to the customer's own bucket.
+const agentVaultMappings: TFeatureMapping[] = [
+  {
+    v2Key: "agent_vault_byo_s3",
+    v1Field: "agentVaultByoS3"
+  }
+];
+
 export const FEATURE_MAPPINGS: TFeatureMapping[] = [
   ...platformMappings,
   ...secretManagerMappings,
   ...certManagerMappings,
-  ...pamMappings
+  ...pamMappings,
+  ...agentVaultMappings
 ];
 
 // v1 TFeatureSet keys intentionally not compared: live usage counters, plan metadata, and v1 fields

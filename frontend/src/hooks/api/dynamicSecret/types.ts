@@ -45,7 +45,54 @@ export enum DynamicSecretProviders {
   Milvus = "milvus",
   Ssh = "ssh",
   IbmApiConnect = "ibm-api-connect",
-  Tailscale = "tailscale"
+  Tailscale = "tailscale",
+  OAuth2 = "oauth2",
+  Kafka = "kafka"
+}
+
+export enum KafkaSaslMechanism {
+  Plain = "PLAIN",
+  ScramSha256 = "SCRAM-SHA-256",
+  ScramSha512 = "SCRAM-SHA-512"
+}
+
+export enum KafkaAclResourceType {
+  Topic = "TOPIC",
+  Group = "GROUP",
+  Cluster = "CLUSTER",
+  TransactionalId = "TRANSACTIONAL_ID"
+}
+
+export enum KafkaAclPatternType {
+  Literal = "LITERAL",
+  Prefixed = "PREFIXED"
+}
+
+export enum KafkaAclOperation {
+  All = "ALL",
+  Read = "READ",
+  Write = "WRITE",
+  Create = "CREATE",
+  Delete = "DELETE",
+  Alter = "ALTER",
+  Describe = "DESCRIBE",
+  DescribeConfigs = "DESCRIBE_CONFIGS",
+  AlterConfigs = "ALTER_CONFIGS",
+  IdempotentWrite = "IDEMPOTENT_WRITE"
+}
+
+export enum KafkaAclPermissionType {
+  Allow = "ALLOW",
+  Deny = "DENY"
+}
+
+export enum OAuth2GrantType {
+  ClientCredentials = "client-credentials"
+}
+
+export enum OAuth2ClientAuthMethod {
+  ClientSecretBasic = "client_secret_basic",
+  ClientSecretPost = "client_secret_post"
 }
 
 export enum TailscaleKeyAuthType {
@@ -576,6 +623,40 @@ export type TDynamicSecretProvider =
             subject: string;
             audience?: string;
           };
+    }
+  | {
+      type: DynamicSecretProviders.OAuth2;
+      inputs: {
+        grantType: OAuth2GrantType.ClientCredentials;
+        tokenUrl: string;
+        revocationUrl: string;
+        clientId: string;
+        clientAuth: {
+          method: OAuth2ClientAuthMethod;
+          clientSecret?: string;
+        };
+        scope?: string;
+        extraParams: { key: string; value: string }[];
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Kafka;
+      inputs: {
+        bootstrapServers: { host: string; port: number }[];
+        saslMechanism: KafkaSaslMechanism;
+        username: string;
+        password: string;
+        acls: {
+          resourceType: KafkaAclResourceType;
+          patternType: KafkaAclPatternType;
+          resourceName: string;
+          operation: KafkaAclOperation;
+          permissionType: KafkaAclPermissionType;
+        }[];
+        sslEnabled?: boolean;
+        ca?: string;
+        sslRejectUnauthorized?: boolean;
+      };
     };
 
 export type TCreateDynamicSecretDTO = {

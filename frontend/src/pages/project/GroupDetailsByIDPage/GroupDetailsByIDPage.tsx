@@ -25,11 +25,10 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { GroupDetailsSection } from "./components/GroupDetailsSection";
@@ -72,9 +71,7 @@ const Page = () => {
     }
 
     createNotification({
-      text: `Successfully removed group from ${
-        currentProject.type === ProjectType.CertificateManager ? "certificate manager" : "project"
-      }`,
+      text: `Successfully removed group from ${getProjectLabel(currentProject.type).toLowerCase()}`,
       type: "success"
     });
 
@@ -92,8 +89,7 @@ const Page = () => {
     });
   };
 
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject.type);
 
   if (isPending) {
     return (
@@ -126,20 +122,16 @@ const Page = () => {
       selectedTab: ProjectAccessControlTabs.Groups
     }
   } as const;
-  const backLinkLabel = isCertManager ? "Groups" : "Project Groups";
+  const backLinkLabel = hidesProjects(currentProject.type) ? "Groups" : "Project Groups";
 
   return (
-    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {groupMembership ? (
         <>
           <PageHeader
             scope={currentProject.type}
             title={groupMembership.group.name}
-            description={
-              isCertManager
-                ? "Configure and manage certificate manager access control"
-                : "Configure and manage project access control"
-            }
+            description={`Configure and manage ${productLabel.toLowerCase()} access control`}
             backLink={
               <Link {...backLinkProps}>
                 <ChevronLeftIcon aria-hidden className="size-4" />
@@ -190,7 +182,7 @@ const Page = () => {
           </div>
         </>
       ) : (
-        <>
+        <div className="flex flex-col gap-8">
           <Link
             {...backLinkProps}
             className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -207,7 +199,7 @@ const Page = () => {
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
-        </>
+        </div>
       )}
       <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
@@ -227,10 +219,14 @@ const Page = () => {
 
 export const GroupDetailsByIDPage = () => {
   const { t } = useTranslation();
+  const { currentProject } = useProject();
+  const projectsHidden = hidesProjects(currentProject.type);
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: "Project Group" })}</title>
+        <title>
+          {t("common.head-title", { title: projectsHidden ? "Group" : "Project Group" })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <ProjectPermissionCan

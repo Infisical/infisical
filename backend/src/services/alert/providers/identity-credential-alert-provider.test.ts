@@ -15,7 +15,7 @@ import {
   MAX_DEDUP_WINDOW_HOURS,
   TAlertContext
 } from "../alert-types";
-import { TExpiringUaClientSecret } from "./identity-credential-alert-dal";
+import { TExpiringTokenAuthToken, TExpiringUaClientSecret } from "./identity-credential-alert-dal";
 import {
   IDENTITY_AUTH_METHOD_CHANGED_EVENT,
   IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
@@ -40,6 +40,15 @@ const sampleSecret = (overrides: Partial<TExpiringUaClientSecret> = {}): TExpiri
   ...overrides
 });
 
+const sampleToken = (overrides: Partial<TExpiringTokenAuthToken> = {}): TExpiringTokenAuthToken => ({
+  id: "tok-1",
+  name: "release-token",
+  identityId: "ident-1",
+  identityName: "ci-runner",
+  expiresAt: futureDate(5),
+  ...overrides
+});
+
 const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => ({
   id: "alert-1",
   name: "ua-expiry",
@@ -51,8 +60,19 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
   ...overrides
 });
 
+type TScanArgs = {
+  orgId: string;
+  projectId?: string | null;
+  identityId?: string | null;
+  alertBeforeInterval: string;
+  leadInterval: string;
+  asOf: Date;
+};
+
 const buildProvider = (opts?: {
   secrets?: TExpiringUaClientSecret[];
+  tokens?: TExpiringTokenAuthToken[];
+  onFindTokens?: (args: TScanArgs) => void;
   onFind?: (args: {
     orgId: string;
     projectId?: string | null;
@@ -75,8 +95,10 @@ const buildProvider = (opts?: {
   userLabel?: string;
 }) => {
   const dal = {
-    findIdentitiesByIds: async (ids: string[]) =>
-      (opts?.identities ?? [{ id: "ident-1", name: "ci-runner" }]).filter((identity) => ids.includes(identity.id)),
+    findIdentitiesByIds: async (ids: string[], orgId: string) =>
+      orgId === "org-1"
+        ? (opts?.identities ?? [{ id: "ident-1", name: "ci-runner" }]).filter((identity) => ids.includes(identity.id))
+        : [],
     findUserLabelById: async () => opts?.userLabel,
     findExpiringUaClientSecrets: async (args: {
       orgId: string;
@@ -88,6 +110,17 @@ const buildProvider = (opts?: {
     }) => {
       opts?.onFind?.(args);
       return opts?.secrets ?? [];
+    },
+    findExpiringTokenAuthTokens: async (args: {
+      orgId: string;
+      projectId?: string | null;
+      identityId?: string | null;
+      alertBeforeInterval: string;
+      leadInterval: string;
+      asOf: Date;
+    }) => {
+      opts?.onFindTokens?.(args);
+      return opts?.tokens ?? [];
     },
     findIdentityInOrg: async () =>
       (opts?.inOrg ?? true)
@@ -123,6 +156,14 @@ const changePayload = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("identity credential alert provider", () => {
+  test("getResourceNames returns identity names only from the caller's org", async () => {
+    const provider = buildProvider();
+    const names = await provider.getResourceNames?.({ orgId: "org-1", resourceIds: ["ident-1"] });
+    expect(names?.get("ident-1")).toBe("ci-runner");
+    const foreign = await provider.getResourceNames?.({ orgId: "org-2", resourceIds: ["ident-1"] });
+    expect(foreign?.size).toBe(0);
+  });
+
   test("expiry condition schema accepts 1d-90d and rejects everything else", () => {
     const schema = eventSchema(buildProvider(), IDENTITY_AUTHENTICATION_EXPIRY_EVENT);
     expect(schema.safeParse({ alertBefore: "1d" }).success).toBe(true);
@@ -191,10 +232,10 @@ describe("identity credential alert provider", () => {
     }
   });
 
-  test("findTargetsByIds rehydrates the identity and the change from the event payload", async () => {
+  test("findEventTargets rehydrates the identity and the change from the event payload", async () => {
     const provider = buildProvider({ userLabel: "alice@example.com" });
 
-    const targets = await provider.findTargetsByIds({
+    const targets = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -215,9 +256,9 @@ describe("identity credential alert provider", () => {
     expect(provider.targetId(target)).toBe("auth-method-change:ident-1:universal-auth:added");
   });
 
-  test("findTargetsByIds drops an identity deleted between emit and delivery", async () => {
+  test("findEventTargets drops an identity deleted between emit and delivery", async () => {
     const provider = buildProvider({ identities: [] });
-    const targets = await provider.findTargetsByIds({
+    const targets = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -228,14 +269,14 @@ describe("identity credential alert provider", () => {
     expect(targets).toEqual([]);
   });
 
-  test("findTargetsByIds names a machine identity actor and falls back to the actor type", async () => {
+  test("findEventTargets names a machine identity actor and falls back to the actor type", async () => {
     const provider = buildProvider({
       identities: [
         { id: "ident-1", name: "ci-runner" },
         { id: "ident-admin", name: "terraform" }
       ]
     });
-    const byIdentity = await provider.findTargetsByIds({
+    const byIdentity = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -247,7 +288,7 @@ describe("identity credential alert provider", () => {
       "terraform (machine identity)"
     );
 
-    const byPlatform = await provider.findTargetsByIds({
+    const byPlatform = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -259,10 +300,10 @@ describe("identity credential alert provider", () => {
   });
 
   // A drifted emit site must fail the event with a clear error, not send a notification with blank fields.
-  test("findTargetsByIds rejects a payload the emitter contract does not describe", async () => {
+  test("findEventTargets rejects a payload the emitter contract does not describe", async () => {
     const provider = buildProvider();
     await expect(
-      provider.findTargetsByIds({
+      provider.findEventTargets({
         orgId: "org-1",
         resourceId: "ident-1",
         eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -275,7 +316,7 @@ describe("identity credential alert provider", () => {
 
   test("a credential change carries the credential through the payload, the target id, and the fields", async () => {
     const provider = buildProvider({ userLabel: "alice@example.com" });
-    const [target] = await provider.findTargetsByIds({
+    const [target] = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -384,7 +425,7 @@ describe("identity credential alert provider", () => {
     expect(item.fields?.find((f) => f.label === "Changed At")?.value).toContain("2026");
   });
 
-  test("findDueTargets converts alertBefore to a postgres interval and tags credential type", async () => {
+  test("findScheduledTargets converts alertBefore to a postgres interval and tags credential type", async () => {
     let seenArgs:
       | {
           alertBeforeInterval: string;
@@ -402,7 +443,7 @@ describe("identity credential alert provider", () => {
     });
 
     const asOf = new Date("2026-07-24T00:00:00.000Z");
-    const targets = await provider.findDueTargets({
+    const targets = await provider.findScheduledTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
@@ -418,7 +459,7 @@ describe("identity credential alert provider", () => {
     expect(provider.targetId(targets[0])).toBe("ua-client-secret:sec-1");
   });
 
-  test("findDueTargets scopes the query to the alert's project so it cannot leak org-wide credentials", async () => {
+  test("findScheduledTargets scopes the query to the alert's project so it cannot leak org-wide credentials", async () => {
     let seenArgs: { projectId?: string | null } | undefined;
     const provider = buildProvider({
       onFind: (args) => {
@@ -426,7 +467,7 @@ describe("identity credential alert provider", () => {
       }
     });
 
-    await provider.findDueTargets({
+    await provider.findScheduledTargets({
       orgId: "org-1",
       projectId: "proj-1",
       resourceId: null,
@@ -462,6 +503,84 @@ describe("identity credential alert provider", () => {
     const expires = item.fields?.find((f) => f.label === "Expires")?.value;
     expect(expires).toContain(String(expiresAt.getUTCFullYear()));
     expect(expires).toContain("UTC");
+  });
+
+  test("findScheduledTargets scans Token Auth tokens with the same window and scope as client secrets", async () => {
+    let secretArgs: TScanArgs | undefined;
+    let tokenArgs: TScanArgs | undefined;
+    const provider = buildProvider({
+      tokens: [sampleToken()],
+      onFind: (args) => {
+        secretArgs = args;
+      },
+      onFindTokens: (args) => {
+        tokenArgs = args;
+      }
+    });
+
+    const targets = await provider.findScheduledTargets({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
+      condition: { alertBefore: "14d" },
+      asOf: new Date("2026-07-24T00:00:00.000Z")
+    });
+
+    expect(tokenArgs).toEqual(secretArgs);
+    expect(tokenArgs?.alertBeforeInterval).toBe("14 days");
+    expect(tokenArgs?.projectId).toBe("proj-1");
+    expect(tokenArgs?.identityId).toBe("ident-1");
+    expect(targets).toHaveLength(1);
+    expect(provider.targetId(targets[0])).toBe("token-auth-token:tok-1");
+  });
+
+  test("findScheduledTargets merges client secrets and tokens ordered by soonest expiry", async () => {
+    const provider = buildProvider({
+      secrets: [sampleSecret({ id: "sec-late", expiresAt: futureDate(20) })],
+      tokens: [
+        sampleToken({ id: "tok-soon", expiresAt: futureDate(2) }),
+        sampleToken({ id: "tok-mid", expiresAt: futureDate(10) })
+      ]
+    });
+
+    const targets = await provider.findScheduledTargets({
+      orgId: "org-1",
+      resourceId: null,
+      eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
+      condition: { alertBefore: "30d" },
+      asOf: new Date()
+    });
+
+    expect(targets.map((target) => provider.targetId(target))).toEqual([
+      "token-auth-token:tok-soon",
+      "token-auth-token:tok-mid",
+      "ua-client-secret:sec-late"
+    ]);
+  });
+
+  test("buildPayload names a Token Auth token by its name and falls back to its id", async () => {
+    const provider = buildProvider();
+    const viewUrl = await provider.buildViewUrl(alertContext());
+    const named = {
+      kind: "expiring-credential" as const,
+      credentialType: "token-auth-token" as const,
+      ...sampleToken({ expiresAt: futureDate(10) })
+    };
+    const unnamed = {
+      kind: "expiring-credential" as const,
+      credentialType: "token-auth-token" as const,
+      ...sampleToken({ id: "tok-2", name: null, expiresAt: futureDate(10) })
+    };
+
+    const payload = provider.buildPayload(alertContext(), [named, unnamed], viewUrl);
+
+    expect(payload.severity).toBe("error"); // 10 days out
+    expect(payload.summary).toBe("2 machine identity authentication(s) expiring within 30 days");
+    expect(payload.items[0].fields?.find((f) => f.label === "Secret Name")?.value).toBe("release-token");
+    expect(payload.items[0].fields?.find((f) => f.label === "Secret Type")?.value).toBe("Token Auth Access Token");
+    expect(payload.items[1].id).toBe("token-auth-token:tok-2");
+    expect(payload.items[1].fields?.find((f) => f.label === "Secret Name")?.value).toBe("tok-2");
   });
 
   test("buildViewUrl points to the org identities tab for an org-scoped alert", async () => {

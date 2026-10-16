@@ -2,10 +2,12 @@ import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
+  AgentVaultSessionLogDecision,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface,
-  AgentVaultTrafficPolicy
+  AgentVaultTrafficPolicy,
+  AgentVaultVariableReferenceField
 } from "./enums";
 
 export type TAgentVaultCredentialSummary =
@@ -57,6 +59,19 @@ export type TAgentVaultSubstitutionInput = {
   value?: string;
 };
 
+export type TAgentVaultVariableReference = {
+  variableId: string;
+  key: string;
+} & (
+  | {
+      field:
+        | AgentVaultVariableReferenceField.CredentialValue
+        | AgentVaultVariableReferenceField.CredentialUsername;
+    }
+  | { field: AgentVaultVariableReferenceField.CustomHeader; customHeaderId: string }
+  | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
+);
+
 export type TAgentVaultService = {
   id: string;
   accessBundleId: string;
@@ -68,6 +83,8 @@ export type TAgentVaultService = {
   credential: TAgentVaultCredentialSummary;
   customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
+  // Left out for a member, who can't see variables.
+  variableReferences?: TAgentVaultVariableReference[];
   createdAt: string;
   updatedAt: string;
 };
@@ -86,11 +103,7 @@ export type TAgentVaultActor =
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
-export type TAgentVaultMember = {
-  id: string;
-  createdAt: string;
-  actor: TAgentVaultActor;
-};
+export type TAgentVaultMember = TAgentVaultActor & { grantedAt: string };
 
 export type TAgentVaultProductActor =
   | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
@@ -102,20 +115,16 @@ export type TAgentVaultProductActor =
     })
   | Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>;
 
-export type TAgentVaultProductMember = {
-  id: string;
+export type TAgentVaultProductMember = TAgentVaultProductActor & {
   role: string;
   isActive: boolean;
-  createdAt: string;
-  actor: TAgentVaultProductActor;
+  addedAt: string;
 };
 
-export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Omit<
+export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Extract<
   TAgentVaultProductMember,
-  "actor"
-> & {
-  actor: Extract<TAgentVaultProductActor, { type: T }>;
-};
+  { type: T }
+>;
 
 export type TListAgentVaultProxiesDTO = {
   search?: string;
@@ -127,6 +136,16 @@ export type TListAgentVaultProxiesDTO = {
 
 export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "orderBy"> & {
   orderBy?: "name" | "serviceCount" | "createdAt";
+};
+
+export type TListAgentVaultVariablesDTO = {
+  search?: string;
+  /** Exact keys. A key that doesn't exist is left out of the response. */
+  keys?: string[];
+  orderBy?: "key" | "serviceCount";
+  orderDirection?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
 };
 
 export type TListAgentVaultMembersDTO = {
@@ -147,16 +166,15 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
-export type TAgentVaultWrittenMember = {
-  id: string;
-  role: string;
-  createdAt: string;
-  actor: TAgentVaultActorRef;
-};
+export type TUpdateAgentVaultMemberRolesDTO = TAgentVaultActorIdsDTO & { role: string };
 
-export type TAgentVaultMemberWriteResult<T> = {
-  members: T[];
-  skipped: (TAgentVaultActorRef & { identifier: string })[];
+export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
+
+export type TAgentVaultGrantedMember = TAgentVaultActorRef & { grantedAt: string };
+
+export type TAgentVaultMemberWriteResult<TMember, TSkipped = TAgentVaultActorRef> = {
+  members: TMember[];
+  skipped: TSkipped[];
 };
 
 export type TAgentVaultAccessBundle = {
@@ -183,12 +201,17 @@ export type TAgentVaultSessionAccessBundle = {
   position: number;
 };
 
+export type TAgentVaultSessionActor =
+  | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
+      id: string | null;
+    })
+  | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.MachineIdentity }>, "id"> & {
+      id: string | null;
+    });
+
 export type TAgentVaultSession = {
   id: string;
-  userId: string | null;
-  identityId: string | null;
-  actorName: string;
-  actorEmail: string | null;
+  actor: TAgentVaultSessionActor;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;
@@ -224,7 +247,7 @@ export type TAgentVaultEnrollment = {
 
 export type TListAgentVaultSessionsDTO = {
   scope?: AgentVaultSessionScope;
-  status?: AgentVaultSessionStatus;
+  statuses?: AgentVaultSessionStatus[];
   limit?: number;
   offset?: number;
   search?: string;
@@ -278,4 +301,135 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TAgentVaultSessionLogSettings = {
+  enabled: boolean;
+  appConnectionId: string | null;
+  bucket: string | null;
+  region: string | null;
+  keyPrefix: string | null;
+};
+
+export type TAgentVaultSessionLogHealth = {
+  connectionError: string | null;
+};
+
+export type TAgentVaultSessionLogCorsProbe = {
+  url: string;
+  expiresInSeconds: number;
+} | null;
+
+export type TAgentVaultSessionLogReadAccess =
+  | "readable"
+  | "cors-missing"
+  | "access-denied"
+  | "host-blocked";
+
+export type TAgentVaultSessionLogReadCheck = {
+  status: TAgentVaultSessionLogReadAccess;
+  host: string;
+};
+
+export type TUpdateAgentVaultSessionLogSettingsDTO = {
+  enabled?: boolean;
+  appConnectionId?: string | null;
+  bucket?: string;
+  region?: string;
+  keyPrefix?: string;
+};
+
+export type TAgentVaultSessionLogChunk = {
+  chunkId: string;
+  proxyId: string;
+  ciphertextBytes: number;
+  presignedGetUrl: string;
+};
+
+export type TAgentVaultSessionLog = {
+  enabled: boolean;
+  isRecordable: boolean;
+  sessionKey: string | null;
+};
+
+export type TAgentVaultSessionLogPage = {
+  sessionLogs: TAgentVaultSessionLog;
+  chunks: TAgentVaultSessionLogChunk[];
+};
+
+export type TAgentVaultSessionLogHistoryPage = TAgentVaultSessionLogPage & {
+  nextCursor: string | null;
+};
+
+export type TAgentVaultSessionLogTailPage = TAgentVaultSessionLogPage & {
+  nextCursor: string;
+};
+
+export type TAgentVaultSessionLogRecord = {
+  ts: string;
+  seq: number;
+  proxyId: string;
+  method: string;
+  host: string;
+  port: string;
+  path: string;
+  status: number;
+  decision: AgentVaultSessionLogDecision;
+  service: string | null;
+  accessBundle: string | null;
+};
+
+export type TAgentVaultSessionLogGapReason =
+  | "fetch"
+  | "missing"
+  | "refused"
+  | "size"
+  | "gcm"
+  | "json"
+  | "mismatch";
+
+export type TAgentVaultSessionLogGap = {
+  reason: TAgentVaultSessionLogGapReason;
+  // When this browser first saw the chunk on the live tail; null for chunks listed from the bucket.
+  firstSeenAt: number | null;
+};
+
+export type TAgentVaultDecryptedChunk = {
+  records: TAgentVaultSessionLogRecord[];
+  gap: TAgentVaultSessionLogGap | null;
+  arrivedAt: number | null;
+};
+
+export type TAgentVaultDecryptedSessionLogPage<
+  P extends TAgentVaultSessionLogPage = TAgentVaultSessionLogPage
+> = P & {
+  decrypted: Record<string, TAgentVaultDecryptedChunk>;
+};
+
+export type TAgentVaultVariableUsedByService = {
+  id: string;
+  name: string;
+  hostPattern: string;
+  accessBundleId: string;
+  accessBundleName: string;
+};
+
+export type TAgentVaultVariable = {
+  id: string;
+  key: string;
+  // Every service that references the variable, across all access bundles.
+  usedByServices: TAgentVaultVariableUsedByService[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCreateAgentVaultVariableDTO = {
+  key: string;
+  value: string;
+};
+
+export type TUpdateAgentVaultVariableDTO = {
+  variableId: string;
+  key?: string;
+  value?: string;
 };

@@ -1,4 +1,6 @@
 import { webcrypto } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -16,10 +18,16 @@ import {
   buildCsrRenewalCertificateRequest,
   buildRenewalAuditChanges,
   buildRenewalCertificateRequest,
+  buildRenewalPreview,
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
-  resolveRenewalKeySource
+  resolveRenewalAlgorithms,
+  resolveRenewalAltNames,
+  resolveRenewalCustomExtensions,
+  resolveRenewalKeySource,
+  resolveRenewalSubject,
+  resolveRenewalUsages
 } from "./certificate-renewal-fns";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
 
@@ -42,6 +50,243 @@ const original: TCertificateRequest = {
   keyAlgorithm: "RSA_2048",
   signatureAlgorithm: "RSA-SHA256"
 };
+
+describe("resolveRenewalAltNames", () => {
+  const issued = "ca-added.example.com";
+
+  it("keeps an empty request list, so an authority's own names are not re-requested", () => {
+    expect(resolveRenewalAltNames({ exists: true, altNames: [] }, issued)).toEqual([]);
+  });
+
+  it("uses the names the request asked for when it has any", () => {
+    const asked = [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "mine.example.com" }];
+    expect(resolveRenewalAltNames({ exists: true, altNames: asked }, issued)).toEqual(asked);
+  });
+
+  it("falls back to the certificate only when there is no request behind it", () => {
+    expect(resolveRenewalAltNames({ exists: false, altNames: null }, issued)).toEqual([
+      { type: CertSubjectAlternativeNameType.DNS_NAME, value: issued }
+    ]);
+    expect(resolveRenewalAltNames({ exists: false, altNames: null }, null)).toEqual([]);
+  });
+});
+
+describe("renewal never re-evaluates profile defaults", () => {
+  const renewalPreviews = ["certificate-renewal-service.ts", "certificate-renewal-fns.ts"];
+
+  it("keeps applyProfileDefaults and profile.defaults out of the renewal path", () => {
+    for (const file of renewalPreviews) {
+      const source = readFileSync(join(__dirname, file), "utf8");
+
+      expect(source, `${file} must not apply profile defaults during a renewal`).not.toMatch(
+        /applyProfileDefaults|profile\.defaults/
+      );
+    }
+  });
+});
+
+describe("resolveRenewalAlgorithms", () => {
+  const issued = { keyAlgorithm: "RSA_4096", signatureAlgorithm: "RSA-SHA384" };
+  const base = { exists: true, keyAlgorithm: null, signatureAlgorithm: null };
+
+  it("keeps what the request asked for, so a swap by the authority stays visible", () => {
+    expect(
+      resolveRenewalAlgorithms({ ...base, keyAlgorithm: "RSA_2048", signatureAlgorithm: "RSA-SHA256" }, issued)
+    ).toEqual({ keyAlgorithm: CertKeyAlgorithm.RSA_2048, signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256 });
+  });
+
+  it("reads the certificate when the request recorded no algorithm, rather than renewing at the platform default", () => {
+    expect(resolveRenewalAlgorithms(base, issued)).toEqual({
+      keyAlgorithm: CertKeyAlgorithm.RSA_4096,
+      signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA384
+    });
+  });
+
+  it("falls back per field, so one recorded algorithm does not suppress the other", () => {
+    expect(resolveRenewalAlgorithms({ ...base, keyAlgorithm: "RSA_2048" }, issued)).toEqual({
+      keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+      signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA384
+    });
+  });
+
+  it("ignores a legacy value that is not an algorithm this platform can request", () => {
+    expect(
+      resolveRenewalAlgorithms({ ...base, signatureAlgorithm: "RSA_2048" }, { signatureAlgorithm: "RSA_2048" })
+    ).toEqual({ keyAlgorithm: undefined, signatureAlgorithm: undefined });
+  });
+});
+
+describe("resolveRenewalSubject", () => {
+  const issuerWritten = {
+    subjectOrganization: "Mock Issuer Corp",
+    subjectOrganizationalUnit: "Issued By CA",
+    subjectCountry: "US",
+    subjectState: "CA",
+    subjectLocality: "San Francisco",
+    subjectDomainComponents: "ca,added"
+  };
+
+  const emptyRequest = {
+    exists: true,
+    organization: null,
+    organizationalUnit: null,
+    country: null,
+    state: null,
+    locality: null,
+    domainComponents: null
+  };
+
+  it("keeps an empty request empty, so an authority's own subject is not re-requested", () => {
+    expect(resolveRenewalSubject(emptyRequest, issuerWritten)).toEqual({
+      organization: undefined,
+      organizationalUnit: undefined,
+      country: undefined,
+      state: undefined,
+      locality: undefined,
+      domainComponents: undefined
+    });
+  });
+
+  it("uses what the request asked for when it asked for anything", () => {
+    expect(resolveRenewalSubject({ ...emptyRequest, organization: "Mine Inc", country: "GB" }, issuerWritten)).toEqual({
+      organization: "Mine Inc",
+      organizationalUnit: undefined,
+      country: "GB",
+      state: undefined,
+      locality: undefined,
+      domainComponents: undefined
+    });
+  });
+
+  it("never mixes the request and the certificate for one renewal", () => {
+    const resolved = resolveRenewalSubject({ ...emptyRequest, organization: "Mine Inc" }, issuerWritten);
+
+    expect(resolved.organizationalUnit).toBeUndefined();
+    expect(resolved.state).toBeUndefined();
+  });
+
+  it("falls back to the certificate only when there is no request behind it", () => {
+    expect(resolveRenewalSubject({ ...emptyRequest, exists: false }, issuerWritten)).toEqual({
+      organization: "Mock Issuer Corp",
+      organizationalUnit: "Issued By CA",
+      country: "US",
+      state: "CA",
+      locality: "San Francisco",
+      domainComponents: ["ca", "added"]
+    });
+  });
+
+  it("returns nothing when neither the request nor the certificate carries a subject", () => {
+    expect(resolveRenewalSubject({ ...emptyRequest, exists: false }, {})).toEqual({
+      organization: undefined,
+      organizationalUnit: undefined,
+      country: undefined,
+      state: undefined,
+      locality: undefined,
+      domainComponents: undefined
+    });
+  });
+});
+
+describe("resolveRenewalCustomExtensions", () => {
+  const CUSTOM_OID = "1.3.6.1.4.1.99001.1";
+  const SCT_OID = "1.3.6.1.4.1.11129.2.4.2";
+  const asked = { oid: CUSTOM_OID, value: encodeCustomExtensionValue(CUSTOM_OID, "mine"), critical: false };
+
+  it("keeps what the request asked for even when the authority dropped it", () => {
+    expect(
+      resolveRenewalCustomExtensions({ exists: true, customExtensions: [asked] }, { customExtensions: null })
+    ).toEqual([{ oid: CUSTOM_OID, value: "mine", critical: false }]);
+  });
+
+  it("asks for nothing when the request asked for nothing, whatever the authority stamped on", () => {
+    expect(
+      resolveRenewalCustomExtensions(
+        { exists: true, customExtensions: null },
+        { customExtensions: [{ oid: SCT_OID, value: "BAIAQg==", critical: false, issuerAdded: true }] }
+      )
+    ).toEqual([]);
+  });
+
+  it("omits an unreadable value rather than blocking the renewal, whichever side it came from", () => {
+    const unreadable = [{ oid: CUSTOM_OID, value: "BQA=", critical: false }];
+
+    expect(resolveRenewalCustomExtensions({ exists: true, customExtensions: unreadable }, {})).toEqual([]);
+    expect(
+      resolveRenewalCustomExtensions({ exists: false, customExtensions: null }, { customExtensions: unreadable })
+    ).toEqual([]);
+  });
+
+  it("reads the certificate back when there is no request behind it, for imports and discovery", () => {
+    expect(
+      resolveRenewalCustomExtensions({ exists: false, customExtensions: null }, { customExtensions: [asked] })
+    ).toEqual([{ oid: CUSTOM_OID, value: "mine", critical: false }]);
+  });
+
+  it("still drops an issuer-generated oid when falling back to the certificate", () => {
+    expect(
+      resolveRenewalCustomExtensions(
+        { exists: false, customExtensions: null },
+        { customExtensions: [{ oid: SCT_OID, value: "BAIAQg==", critical: false }] }
+      )
+    ).toEqual([]);
+  });
+});
+
+describe("resolveRenewalUsages", () => {
+  const issued = { keyUsages: ["digitalSignature", "keyEncipherment"], extendedKeyUsages: ["serverAuth"] };
+
+  it("keeps the usages the request asked for, not the ones the authority issued", () => {
+    expect(
+      resolveRenewalUsages(
+        { exists: true, keyUsages: ["digital_signature"], extendedKeyUsages: ["client_auth"] },
+        issued
+      )
+    ).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+      extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+    });
+  });
+
+  it("reads the certificate back only when the column is null, which means nothing was ever recorded", () => {
+    expect(resolveRenewalUsages({ exists: true, keyUsages: null, extendedKeyUsages: null }, issued)).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    });
+  });
+
+  it("asks for no usages again when the request recorded none, so the authority chooses as it did before", () => {
+    expect(resolveRenewalUsages({ exists: true, keyUsages: [], extendedKeyUsages: [] }, issued)).toEqual({
+      keyUsages: [],
+      extendedKeyUsages: []
+    });
+  });
+
+  it("keeps a request's extended usages when it recorded no key usages, resolving the two independently", () => {
+    expect(resolveRenewalUsages({ exists: true, keyUsages: null, extendedKeyUsages: ["client_auth"] }, issued)).toEqual(
+      {
+        keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+        extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+      }
+    );
+  });
+
+  it("keeps a request's key usages when it recorded no extended ones, resolving the two independently", () => {
+    expect(
+      resolveRenewalUsages({ exists: true, keyUsages: ["digital_signature"], extendedKeyUsages: null }, issued)
+    ).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    });
+  });
+
+  it("falls back to the certificate only when there is no request behind it", () => {
+    expect(resolveRenewalUsages({ exists: false, keyUsages: null, extendedKeyUsages: null }, issued)).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    });
+  });
+});
 
 describe("resolveRenewalKeySource", () => {
   it("defaults to a new key pair", () => {
@@ -231,25 +476,6 @@ r5EYNQvwLPvpPtwb6/5hKykcW6t2IDZNu8d5cg2hXI74eBjZCo8M+W+E/SDi8A==
 -----END CERTIFICATE REQUEST-----`;
 
 describe("buildRenewalAuditChanges", () => {
-  const cert = {
-    commonName: "web.example.com",
-    altNames: "web.example.com",
-    keyUsages: ["digitalSignature"],
-    extendedKeyUsages: ["serverAuth"],
-    signatureAlgorithm: "RSA-SHA256",
-    keyAlgorithm: "RSA_2048",
-    subjectOrganization: "Example Corp",
-    subjectOrganizationalUnit: null,
-    subjectCountry: "US",
-    subjectState: null,
-    subjectLocality: null,
-    subjectDomainComponents: null,
-    isCA: false,
-    pathLength: null,
-    notBefore: new Date("2026-01-01T00:00:00Z"),
-    notAfter: new Date("2026-01-31T00:00:00Z")
-  };
-
   const unchangedRequest: TCertificateRequest = {
     commonName: "web.example.com",
     organization: "Example Corp",
@@ -262,23 +488,23 @@ describe("buildRenewalAuditChanges", () => {
     validity: { ttl: "30d" }
   };
 
-  it("records nothing when the renewal reproduces the certificate", () => {
-    expect(buildRenewalAuditChanges(cert, unchangedRequest)).toEqual([]);
+  it("records nothing when the renewal replays the request unchanged", () => {
+    expect(buildRenewalAuditChanges(unchangedRequest, unchangedRequest)).toEqual([]);
+  });
+
+  it("records nothing when the authority rewrote the certificate but the caller edited nothing", () => {
+    const replayed = { ...unchangedRequest };
+
+    expect(buildRenewalAuditChanges(replayed, { ...replayed })).toEqual([]);
   });
 
   it("records a custom extension change with the readable values, not their DER", () => {
-    const withExtension = {
-      ...cert,
-      customExtensions: [
-        {
-          oid: "1.3.6.1.4.1.99001.1",
-          critical: false,
-          value: encodeCustomExtensionValue("1.3.6.1.4.1.99001.1", "before")
-        }
-      ]
+    const withExtensionRequest: TCertificateRequest = {
+      ...unchangedRequest,
+      customExtensions: [{ oid: "1.3.6.1.4.1.99001.1", value: "before" }]
     };
 
-    const changes = buildRenewalAuditChanges(withExtension, {
+    const changes = buildRenewalAuditChanges(withExtensionRequest, {
       ...unchangedRequest,
       customExtensions: [{ oid: "1.3.6.1.4.1.99001.1", value: "after" }]
     });
@@ -289,19 +515,13 @@ describe("buildRenewalAuditChanges", () => {
   });
 
   it("records nothing when the custom extensions are unchanged", () => {
-    const withExtension = {
-      ...cert,
-      customExtensions: [
-        {
-          oid: "1.3.6.1.4.1.99001.1",
-          critical: false,
-          value: encodeCustomExtensionValue("1.3.6.1.4.1.99001.1", "same")
-        }
-      ]
+    const withExtensionRequest: TCertificateRequest = {
+      ...unchangedRequest,
+      customExtensions: [{ oid: "1.3.6.1.4.1.99001.1", value: "same" }]
     };
 
     expect(
-      buildRenewalAuditChanges(withExtension, {
+      buildRenewalAuditChanges(withExtensionRequest, {
         ...unchangedRequest,
         customExtensions: [{ oid: "1.3.6.1.4.1.99001.1", value: "same" }]
       })
@@ -310,13 +530,16 @@ describe("buildRenewalAuditChanges", () => {
 
   it("does not report a change when stored legacy usage names resolve to the same usages", () => {
     expect(
-      buildRenewalAuditChanges(cert, { ...unchangedRequest, keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE] })
+      buildRenewalAuditChanges(unchangedRequest, {
+        ...unchangedRequest,
+        keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE]
+      })
     ).toEqual([]);
   });
 
   it("records before and after for each changed attribute", () => {
     expect(
-      buildRenewalAuditChanges(cert, {
+      buildRenewalAuditChanges(unchangedRequest, {
         ...unchangedRequest,
         commonName: "api.example.com",
         subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" }],
@@ -330,14 +553,14 @@ describe("buildRenewalAuditChanges", () => {
   });
 
   it("records a cleared field as an empty value", () => {
-    expect(buildRenewalAuditChanges(cert, { ...unchangedRequest, organization: undefined })).toEqual([
+    expect(buildRenewalAuditChanges(unchangedRequest, { ...unchangedRequest, organization: undefined })).toEqual([
       { field: "organization", from: "Example Corp", to: "" }
     ]);
   });
 
   it("renders basic constraints and lists readably", () => {
     expect(
-      buildRenewalAuditChanges(cert, {
+      buildRenewalAuditChanges(unchangedRequest, {
         ...unchangedRequest,
         basicConstraints: { isCA: true, pathLength: 2 },
         keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT]
@@ -351,7 +574,7 @@ describe("buildRenewalAuditChanges", () => {
   it("records the subject a CSR renewal rewrites, which never appears in the request attributes", () => {
     const fromCsr = buildCsrRenewalCertificateRequest({ csr: CSR_PEM, attributes: { ttl: "30d" } });
 
-    expect(buildRenewalAuditChanges(cert, fromCsr)).toEqual(
+    expect(buildRenewalAuditChanges(unchangedRequest, fromCsr)).toEqual(
       expect.arrayContaining([
         { field: "commonName", from: "web.example.com", to: "from-csr.example.com" },
         { field: "altNames", from: "web.example.com", to: "csr-a.example.com,csr-b.example.com" }
@@ -378,5 +601,133 @@ describe("isCertificateContentEdit", () => {
 
   it("is true for a CSR renewal, which rewrites the subject from the CSR", () => {
     expect(isCertificateContentEdit({ keySource: CertificateRenewalKeySource.Csr })).toBe(true);
+  });
+});
+
+describe("buildRenewalPreview", () => {
+  const certificate = {
+    commonName: "issued.example.com",
+    altNames: "issued.example.com",
+    subjectOrganization: null,
+    subjectOrganizationalUnit: null,
+    subjectCountry: null,
+    subjectState: null,
+    subjectLocality: null,
+    subjectDomainComponents: null,
+    keyUsages: ["digitalSignature"],
+    extendedKeyUsages: ["serverAuth"],
+    keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+    signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256,
+    customExtensions: []
+  };
+
+  const requested = {
+    exists: true,
+    commonName: "issued.example.com",
+    organization: null,
+    organizationalUnit: null,
+    country: null,
+    state: null,
+    locality: null,
+    domainComponents: null,
+    altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "issued.example.com" }],
+    keyUsages: ["digital_signature"],
+    extendedKeyUsages: ["server_auth"],
+    keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+    signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256,
+    customExtensions: null
+  };
+
+  it("reports nothing when the authority issued what was asked for", () => {
+    expect(buildRenewalPreview(requested, certificate).issuerModifiedFields).toEqual([]);
+  });
+
+  it("does not read a legacy value the form cannot offer as an authority change", () => {
+    const legacy = "RSA_2048";
+    const { request, issuerModifiedFields } = buildRenewalPreview(
+      { ...requested, signatureAlgorithm: legacy },
+      { ...certificate, signatureAlgorithm: legacy }
+    );
+
+    expect(request.signatureAlgorithm).toBeUndefined();
+    expect(issuerModifiedFields.map((entry) => entry.field)).not.toContain("signatureAlgorithm");
+  });
+
+  it("does not report a reordering or a stray space as an authority change", () => {
+    const reordered = buildRenewalPreview(
+      { ...requested, keyUsages: ["key_encipherment", "digital_signature"] },
+      { ...certificate, keyUsages: ["digitalSignature", "keyEncipherment"] }
+    );
+    expect(reordered.issuerModifiedFields.map((entry) => entry.field)).not.toContain("keyUsages");
+
+    const spaced = buildRenewalPreview(requested, { ...certificate, altNames: " issued.example.com " });
+    expect(spaced.issuerModifiedFields.map((entry) => entry.field)).not.toContain("altNames");
+  });
+
+  it("keeps domain component order significant, since it is part of the distinguished name", () => {
+    const { issuerModifiedFields } = buildRenewalPreview(
+      { ...requested, domainComponents: "example,com" },
+      { ...certificate, subjectDomainComponents: "com,example" }
+    );
+    expect(issuerModifiedFields.map((entry) => entry.field)).toContain("domainComponents");
+  });
+
+  it("reports a usage the authority swapped, in one vocabulary", () => {
+    const { issuerModifiedFields } = buildRenewalPreview(
+      { ...requested, extendedKeyUsages: ["client_auth"] },
+      certificate
+    );
+
+    expect(issuerModifiedFields).toContainEqual({
+      field: "extendedKeyUsages",
+      requested: "client_auth",
+      issued: "server_auth"
+    });
+  });
+
+  it("offers the requested custom extensions with their criticality, not what the authority stamped on", () => {
+    const customOid = "1.3.6.1.4.1.99001.1";
+    const { request } = buildRenewalPreview(
+      {
+        ...requested,
+        customExtensions: [{ oid: customOid, value: encodeCustomExtensionValue(customOid, "mine"), critical: true }]
+      },
+      {
+        ...certificate,
+        customExtensions: [{ oid: "1.3.6.1.4.1.11129.2.4.2", value: "BAIAQg==", critical: false, issuerAdded: true }]
+      }
+    );
+
+    expect(request.customExtensions).toEqual([{ oid: customOid, value: "mine", critical: true }]);
+  });
+
+  it("reports a custom extension the authority stamped on, like any other issuer change", () => {
+    const addedOid = "1.3.6.1.4.1.99001.7";
+    const { issuerModifiedFields } = buildRenewalPreview(requested, {
+      ...certificate,
+      customExtensions: [{ oid: addedOid, value: "DAR0ZXN0", critical: false, issuerAdded: true }]
+    });
+
+    expect(issuerModifiedFields).toContainEqual({ field: "customExtensions", requested: "", issued: addedOid });
+  });
+
+  it("does not report issuer-generated extensions, which no request could ever carry", () => {
+    const { issuerModifiedFields } = buildRenewalPreview(requested, {
+      ...certificate,
+      customExtensions: [{ oid: "1.3.6.1.4.1.11129.2.4.2", value: "BAIAQg==", critical: false, issuerAdded: true }]
+    });
+
+    expect(issuerModifiedFields.map((entry) => entry.field)).not.toContain("customExtensions");
+  });
+
+  it("does not report custom extensions the authority issued exactly as requested", () => {
+    const customOid = "1.3.6.1.4.1.99001.1";
+    const extension = { oid: customOid, value: encodeCustomExtensionValue(customOid, "mine"), critical: false };
+    const { issuerModifiedFields } = buildRenewalPreview(
+      { ...requested, customExtensions: [extension] },
+      { ...certificate, customExtensions: [extension] }
+    );
+
+    expect(issuerModifiedFields.map((entry) => entry.field)).not.toContain("customExtensions");
   });
 });

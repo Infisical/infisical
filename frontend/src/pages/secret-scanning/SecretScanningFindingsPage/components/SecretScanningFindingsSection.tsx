@@ -23,7 +23,7 @@ export const SecretScanningFindingsSection = () => {
         <div>
           <div className="flex items-center gap-x-2">
             <p className="text-xl font-medium text-foreground">Findings</p>
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/usage#findings" />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/findings" />
           </div>
           <p className="text-sm text-label-secondary">
             Secret leaks discovered across your data sources

@@ -3,9 +3,9 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,10 +27,11 @@ import { InstallationCertificatesSection, InstallationDetailsSection } from "./c
 
 const Page = () => {
   const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
-  const { installationId, projectId, orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/installations/$installationId"
+  const { installationId, orgId } = useParams({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/installations/$installationId"
   });
 
   const { data: installation, isLoading } = useGetPkiInstallation({ installationId });
@@ -56,8 +57,8 @@ const Page = () => {
       });
       handlePopUpClose("deleteInstallation");
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery",
-        params: { orgId, projectId },
+        to: "/organizations/$orgId/cert-manager/discovery",
+        params: { orgId },
         search: { selectedTab: "installations" }
       });
     } catch {
@@ -74,12 +75,12 @@ const Page = () => {
 
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
-      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           backLink={
             <Link
-              to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
-              params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+              to="/organizations/$orgId/cert-manager/discovery"
+              params={{ orgId: currentOrg.id }}
               search={{ selectedTab: "installations" }}
             >
               <ChevronLeftIcon size={16} />
@@ -126,13 +127,13 @@ const Page = () => {
         </div>
       </div>
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteInstallation.isOpen}
         title="Are you sure you want to delete this installation?"
-        subTitle="This action cannot be undone. The installation record will be permanently deleted."
-        onChange={(isOpen) => handlePopUpToggle("deleteInstallation", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action cannot be undone. The installation record will be permanently deleted."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteInstallation", isOpen)}
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </div>
   );

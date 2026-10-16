@@ -271,7 +271,8 @@ export enum ProjectPermissionSecretEventActions {
 }
 
 export enum ProjectPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 export enum ProjectPermissionInsightsActions {
@@ -417,7 +418,8 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
       "assignableAction"
     ],
     [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
-    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"],
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"]
   },
   [ProjectPermissionSub.Identity]: {
     [ProjectPermissionIdentityActions.Read]: ["identityId"],

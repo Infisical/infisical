@@ -7,6 +7,7 @@ import {
   DocumentationLinkBadge,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
@@ -227,7 +228,7 @@ export const EditSignerPolicyModal = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+      <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -306,7 +307,7 @@ export const EditSignerPolicyModal = ({
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-muted">
               {/* eslint-disable-next-line no-nested-ternary */}
               {hasEmptyStep
@@ -349,7 +350,7 @@ export const EditSignerPolicyModal = ({
                 </Button>
               )}
             </div>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>

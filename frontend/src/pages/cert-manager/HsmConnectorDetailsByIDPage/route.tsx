@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { HsmConnectorDetailsByIDPage } from "./HsmConnectorDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/hsm-connectors/$connectorId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/hsm-connectors/$connectorId"
 )({
   component: HsmConnectorDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -13,10 +13,9 @@ export const Route = createFileRoute(
         {
           label: "HSM Connectors",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+            to: "/organizations/$orgId/cert-manager/settings",
             params: {
-              orgId: params.orgId,
-              projectId: params.projectId
+              orgId: params.orgId
             },
             search: { selectedTab: "hsm-connectors" }
           })

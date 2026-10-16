@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { RESOURCE_SCOPE, TableName, TMemberships } from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE, TableName, TMemberships } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -159,5 +159,79 @@ export const membershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findResourceMembershipsForActor, findResourceMembershipsForActors, findResourceMembershipsForGroup };
+  // Locks the row so a concurrent deactivation or removal of the same membership serializes behind the
+  // caller. Always reads the primary, so it also bypasses the cached permission blob.
+  const lockOrgMembershipForUser = async (
+    orgId: string,
+    userId: string,
+    tx: Knex
+  ): Promise<TMemberships | undefined> => {
+    try {
+      return await tx(TableName.Membership)
+        .where({ scope: AccessScope.Organization, scopeOrgId: orgId, actorUserId: userId })
+        .select(selectAllTableCols(TableName.Membership))
+        .forUpdate()
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "LockOrgMembershipForUser" });
+    }
+  };
+
+  // Same as lockOrgMembershipForUser, for an actor's direct membership on one resource.
+  const lockResourceMembershipForActor = async (
+    {
+      projectId,
+      resourceType,
+      resourceId,
+      actorType,
+      actorId
+    }: {
+      projectId: string;
+      resourceType: string;
+      resourceId: string;
+      actorType: ActorType;
+      actorId: string;
+    },
+    tx: Knex
+  ): Promise<TMemberships | undefined> => {
+    try {
+      return await tx(TableName.Membership)
+        .where({
+          scope: RESOURCE_SCOPE,
+          scopeProjectId: projectId,
+          scopeResourceType: resourceType,
+          scopeResourceId: resourceId,
+          ...(actorType === ActorType.USER ? { actorUserId: actorId } : { actorIdentityId: actorId })
+        })
+        .select(selectAllTableCols(TableName.Membership))
+        .forUpdate()
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "LockResourceMembershipForActor" });
+    }
+  };
+
+  // For deletes that must take the membership row lock before touching its roles, the same order
+  // lockResourceMembershipForActor callers use, so the two can't deadlock.
+  const lockById = async (id: string, tx: Knex): Promise<TMemberships | undefined> => {
+    try {
+      return await tx(TableName.Membership)
+        .where({ id })
+        .select(selectAllTableCols(TableName.Membership))
+        .forUpdate()
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "LockMembershipById" });
+    }
+  };
+
+  return {
+    ...orm,
+    lockById,
+    findResourceMembershipsForActor,
+    findResourceMembershipsForActors,
+    findResourceMembershipsForGroup,
+    lockOrgMembershipForUser,
+    lockResourceMembershipForActor
+  };
 };

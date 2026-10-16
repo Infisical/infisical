@@ -14,11 +14,11 @@ import {
   Info,
   LogOut,
   Mail,
+  MessagesSquare,
   Monitor,
   Moon,
   Plus,
   Settings,
-  Slack,
   Sun,
   TriangleAlertIcon,
   User,
@@ -71,6 +71,7 @@ import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { envConfig } from "@app/config/env";
 import {
+  OrgPermissionBillingActions,
   OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
@@ -82,20 +83,11 @@ import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/ty
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getOrgScopedProductFromPath } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
-import {
-  adminQueryKeys,
-  projectKeys,
-  subOrganizationsQuery,
-  useGetOrganizations,
-  useLogoutUser
-} from "@app/hooks/api";
-import { appConnectionKeys } from "@app/hooks/api/appConnections";
-import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
+import { subOrganizationsQuery, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
+import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { pamKeys } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
@@ -112,6 +104,7 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { OrganizationProductPlans } from "./OrganizationProductPlans";
 import { VersionBadge } from "./VersionBadge";
 
 const getFormattedSupportEmailLink = (variables: {
@@ -142,7 +135,7 @@ Thank you,
 };
 
 export const INFISICAL_SUPPORT_OPTIONS = [
-  [Slack, "Support Forum", () => "https://infisical.com/slack"],
+  [MessagesSquare, "Support Forum", () => "https://community.infisical.com"],
   [
     Book,
     "Read Docs",
@@ -211,10 +204,12 @@ export const Navbar = () => {
   const handleOrgSelection = async ({
     organizationId,
     navigateTo,
+    isSubOrganization: targetIsSubOrganization = false,
     onSuccess
   }: {
     organizationId?: string;
     navigateTo?: string;
+    isSubOrganization?: boolean;
     onSuccess?: () => void | Promise<void>;
   }) => {
     if (!organizationId) return;
@@ -230,24 +225,30 @@ export const Navbar = () => {
       }
       toggleShowMfa.on();
       setMfaSuccessCallback(() => async () => {
-        await handleOrgSelection({ organizationId, onSuccess });
+        await handleOrgSelection({
+          organizationId,
+          navigateTo,
+          isSubOrganization: targetIsSubOrganization,
+          onSuccess
+        });
       });
       return;
     }
 
     SecurityClient.setToken(token);
-    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
-    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
-    // PAM's keys carry no org, so a stale entry would render another org's data until it goes stale.
-    queryClient.removeQueries({ queryKey: pamKeys.all });
+    await queryClient.fetchQuery({
+      queryKey: authKeys.getAuthToken,
+      queryFn: fetchAuthToken,
+      staleTime: 0
+    });
 
-    await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
-    await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
-
-    await navigateUserToOrg({ navigate, organizationId, navigateTo });
-    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
+    await navigateUserToOrg({
+      navigate,
+      organizationId,
+      navigateTo,
+      switchFrom: location,
+      isSubOrganization: targetIsSubOrganization
+    });
 
     if (onSuccess) {
       await onSuccess();
@@ -267,7 +268,11 @@ export const Navbar = () => {
     };
 
     if (isSubOrganization) {
-      await handleOrgSelection({ organizationId: rootOrg.id, onSuccess });
+      await handleOrgSelection({
+        organizationId: rootOrg.id,
+        navigateTo: "/organizations/$orgId/billing",
+        onSuccess
+      });
     } else {
       await navigateToBilling();
     }
@@ -362,11 +367,15 @@ export const Navbar = () => {
   return (
     <div
       className={twMerge(
-        "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
+        "z-10 flex min-h-12 items-center border-b border-border-soft bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
         !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
-        !isServerAdminPanel && isProjectScope && !orgScopedProduct && "from-project/5",
+        !isServerAdminPanel &&
+          isProjectScope &&
+          !isPamScope &&
+          !isAgentVaultScope &&
+          "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
@@ -380,7 +389,7 @@ export const Navbar = () => {
                 <Link
                   to="/organizations/$orgId/projects"
                   params={{ orgId: currentOrg.id }}
-                  className="flex h-full items-center gap-x-1 border-r border-border pr-4 pl-2 text-muted transition-colors hover:text-foreground"
+                  className="flex h-full items-center gap-x-1 border-r border-border-soft pr-4 pl-2 text-muted transition-colors hover:text-foreground"
                 >
                   <ChevronLeft className="size-4" />
                   <OrgIcon className="size-3.5" />
@@ -400,8 +409,8 @@ export const Navbar = () => {
           <>
             <div
               className={twMerge(
-                "flex h-full min-w-0 items-center overflow-hidden border-border pr-2 pl-4 transition-all duration-300 ease-in-out",
-                isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
+                "flex h-full min-w-0 items-center overflow-hidden border-border-soft pr-2 pl-4 transition-all duration-300 ease-in-out",
+                isProjectScope ? "mr-2 max-w-52 border-r" : "mr-4 max-w-96"
               )}
             >
               <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
@@ -435,12 +444,14 @@ export const Navbar = () => {
                     <span className="truncate">
                       {isSubOrganization ? currentOrg?.name : rootOrg?.name}
                     </span>
-                    <Badge
-                      variant={isSubOrganization ? "sub-org" : "org"}
-                      className="hidden lg:inline-flex"
-                    >
-                      {isSubOrganization ? "Sub-Organization" : "Organization"}
-                    </Badge>
+                    {!isProjectScope && (
+                      <Badge
+                        variant={isSubOrganization ? "sub-org" : "org"}
+                        className="hidden lg:inline-flex"
+                      >
+                        {isSubOrganization ? "Sub" : "Org"}
+                      </Badge>
+                    )}
                   </button>
                   {subscription.cardDeclined && !isProjectScope && !isSubOrganization && (
                     <Tooltip>
@@ -537,7 +548,10 @@ export const Navbar = () => {
                                 keywords={[subOrg.name]}
                                 onSelect={() => {
                                   setIsOrgSelectOpen(false);
-                                  handleOrgSelection({ organizationId: subOrg.id });
+                                  handleOrgSelection({
+                                    organizationId: subOrg.id,
+                                    isSubOrganization: true
+                                  });
                                 }}
                               >
                                 <Check
@@ -553,7 +567,7 @@ export const Navbar = () => {
                               a={OrgPermissionSubjects.SubOrganization}
                             >
                               {(isAllowed) =>
-                                isAllowed ? (
+                                isAllowed && !isSubOrganization ? (
                                   <CommandItem
                                     className="text-muted"
                                     onSelect={() => {
@@ -605,6 +619,20 @@ export const Navbar = () => {
                 </NavbarSwitcherContent>
               </NavbarSwitcher>
             </div>
+            {!isProjectScope && (
+              <OrgPermissionCan
+                I={OrgPermissionBillingActions.Read}
+                a={OrgPermissionSubjects.Billing}
+              >
+                {(isAllowed) => (
+                  <OrganizationProductPlans
+                    plans={subscription.productPlans}
+                    isSubOrganization={isSubOrganization}
+                    billingOrgId={isAllowed ? (currentOrg.rootOrgId ?? currentOrg.id) : undefined}
+                  />
+                )}
+              </OrgPermissionCan>
+            )}
             {isProjectScope && (
               <>
                 <TypeSelect />
@@ -617,9 +645,6 @@ export const Navbar = () => {
       </div>
 
       <VersionBadge />
-      <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-        {getSubscriptionPlanLabel(subscription)}
-      </Badge>
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>
@@ -805,9 +830,9 @@ export const Navbar = () => {
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <a href="https://infisical.com/slack" target="_blank" rel="noopener noreferrer">
-                <Slack />
-                Join Slack Community
+              <a href="https://community.infisical.com" target="_blank" rel="noopener noreferrer">
+                <MessagesSquare />
+                Join Community
                 <ExternalLink className="ml-auto size-3.5 opacity-50" />
               </a>
             </DropdownMenuItem>
@@ -867,7 +892,7 @@ export const Navbar = () => {
       <NewSubOrganizationModal
         isOpen={showSubOrgForm}
         onOpenChange={setShowSubOrgForm}
-        onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
+        onCreated={({ id }) => handleOrgSelection({ organizationId: id, isSubOrganization: true })}
       />
       <Dialog open={showAdminsModal} onOpenChange={setShowAdminsModal}>
         <DialogContent>

@@ -4,7 +4,6 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { ApiErrorTypes } from "../types";
-import { AgentVaultMemberType } from "./enums";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
@@ -13,17 +12,24 @@ import {
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
   TAgentVaultEnrollment,
+  TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultService,
+  TAgentVaultSessionLogSettings,
+  TAgentVaultVariable,
   TAgentVaultWrittenMember,
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
+  TCreateAgentVaultVariableDTO,
   TUpdateAgentVaultAccessBundleDTO,
-  TUpdateAgentVaultServiceDTO
+  TUpdateAgentVaultMemberRolesDTO,
+  TUpdateAgentVaultServiceDTO,
+  TUpdateAgentVaultSessionLogSettingsDTO,
+  TUpdateAgentVaultVariableDTO
 } from "./types";
 
 export const useCreateAgentVaultAccessBundle = () => {
@@ -59,6 +65,8 @@ export const useUpdateAgentVaultAccessBundle = () => {
       queryClient.invalidateQueries({
         queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
       });
+      // A variable's usedByServices names each service's bundle.
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
     }
   });
 };
@@ -76,6 +84,7 @@ export const useDeleteAgentVaultAccessBundle = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
     }
   });
 };
@@ -99,6 +108,7 @@ export const useCreateAgentVaultService = () => {
         queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
       });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
     }
   });
 };
@@ -122,6 +132,7 @@ export const useUpdateAgentVaultService = () => {
         queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
       });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
     }
   });
 };
@@ -147,14 +158,9 @@ export const useDeleteAgentVaultService = () => {
         queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
       });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
     }
   });
-};
-
-const ACTOR_PATH: Record<AgentVaultMemberType, string> = {
-  [AgentVaultMemberType.User]: "users",
-  [AgentVaultMemberType.Group]: "groups",
-  [AgentVaultMemberType.MachineIdentity]: "machine-identities"
 };
 
 export const useAddAgentVaultAccessBundleMembers = () => {
@@ -162,10 +168,9 @@ export const useAddAgentVaultAccessBundleMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
-      const { data } = await apiRequest.post<{
-        members: { id: string }[];
-        skipped: { type: AgentVaultMemberType; id: string }[];
-      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
+      const { data } = await apiRequest.post<
+        TAgentVaultMemberWriteResult<TAgentVaultGrantedMember>
+      >(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
       return data;
     },
     onSuccess: (_, { accessBundleId }) => {
@@ -182,9 +187,10 @@ export const useRevokeAgentVaultAccessBundleMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
-      const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<{ id: string; actor: TAgentVaultActorRef }>
-      >(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`, params);
+      const { data } = await apiRequest.delete<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
+        { data: params }
+      );
       return data;
     },
     onSuccess: (_, { accessBundleId }) => {
@@ -309,8 +315,6 @@ export const useRevokeAgentVaultProxyAccess = () => {
   });
 };
 
-// The member is named in the URL, so a call with no actor has nowhere to go. The role dialogs pass an
-// empty actor while closed, which cannot reach a mutation, so this only fires on a genuine mistake.
 // Removing a product member strips their bundle grants, so the bundle queries go too.
 const invalidateMembers = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) => {
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId) });
@@ -323,7 +327,10 @@ export const useAddAgentVaultMembers = () => {
   return useMutation({
     mutationFn: async (dto: TAddAgentVaultProductMembersDTO) => {
       const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
+        TAgentVaultMemberWriteResult<
+          TAgentVaultWrittenMember,
+          TAgentVaultActorRef & { identifier: string }
+        >
       >("/api/v1/agent-vault/members", dto);
       return data;
     },
@@ -331,16 +338,15 @@ export const useAddAgentVaultMembers = () => {
   });
 };
 
-export const useUpdateAgentVaultMemberRole = () => {
+export const useUpdateAgentVaultMemberRoles = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ actor, role }: { actor: TAgentVaultActorRef; role: string }) => {
-      const { data } = await apiRequest.patch<{ member: TAgentVaultWrittenMember }>(
-        `/api/v1/agent-vault/members/${ACTOR_PATH[actor.type]}/${actor.id}`,
-        { role }
-      );
-      return data.member;
+    mutationFn: async (dto: TUpdateAgentVaultMemberRolesDTO) => {
+      const { data } = await apiRequest.patch<
+        TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
+      >("/api/v1/agent-vault/members", dto);
+      return data;
     },
     onSuccess: () => invalidateMembers(queryClient, currentOrg.id)
   });
@@ -351,11 +357,100 @@ export const useRevokeAgentVaultMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dto: TAgentVaultActorIdsDTO) => {
-      const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
-      >("/api/v1/agent-vault/members/revoke", dto);
+      const { data } = await apiRequest.delete<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
+        "/api/v1/agent-vault/members",
+        { data: dto }
+      );
       return data;
     },
     onSuccess: () => invalidateMembers(queryClient, currentOrg.id)
   });
 };
+
+export const useUpdateAgentVaultSessionLogSettings = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: TUpdateAgentVaultSessionLogSettingsDTO) => {
+      const { data } = await apiRequest.patch<{ settings: TAgentVaultSessionLogSettings }>(
+        "/api/v1/agent-vault/settings/session-logs",
+        params
+      );
+      return data.settings;
+    },
+    onSuccess: (settings) => {
+      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id), settings);
+      // Reset, not invalidate: the cached result may be for the previous bucket.
+      queryClient.resetQueries({
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)
+      });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.sessionLogHealth(currentOrg.id)
+      });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+    }
+  });
+};
+
+// A rename changes the keys each service's variableReferences reports, so the bundles refresh too.
+const invalidateVariables = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) })
+  ]);
+
+export const useCreateAgentVaultVariable = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: TCreateAgentVaultVariableDTO) => {
+      const { data } = await apiRequest.post<{ variable: TAgentVaultVariable }>(
+        "/api/v1/agent-vault/variables",
+        params
+      );
+      return data.variable;
+    },
+    onSuccess: () => invalidateVariables(queryClient, currentOrg.id)
+  });
+};
+
+export const useUpdateAgentVaultVariable = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ variableId, ...params }: TUpdateAgentVaultVariableDTO) => {
+      const { data } = await apiRequest.patch<{ variable: TAgentVaultVariable }>(
+        `/api/v1/agent-vault/variables/${variableId}`,
+        params
+      );
+      return data.variable;
+    },
+    onSuccess: () => invalidateVariables(queryClient, currentOrg.id)
+  });
+};
+
+export const useDeleteAgentVaultVariable = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (variableId: string) => {
+      const { data } = await apiRequest.delete<{ variable: TAgentVaultVariable }>(
+        `/api/v1/agent-vault/variables/${variableId}`
+      );
+      return data.variable;
+    },
+    onSuccess: () => invalidateVariables(queryClient, currentOrg.id)
+  });
+};
+
+// A mutation rather than a query, so a revealed value never enters the query cache.
+export const useRevealAgentVaultVariableValue = () =>
+  useMutation({
+    mutationFn: async (variableId: string) => {
+      const { data } = await apiRequest.get<{ value: string }>(
+        `/api/v1/agent-vault/variables/${variableId}/value`
+      );
+      return data.value;
+    }
+  });

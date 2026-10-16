@@ -5,6 +5,8 @@ export const GATEWAY_ROUTING_INFO_OID = "1.3.6.1.4.1.12345.100.1";
 export const GATEWAY_ACTOR_OID = "1.3.6.1.4.1.12345.100.2";
 export const PAM_INFO_OID = "1.3.6.1.4.1.12345.100.3";
 
+export const GATEWAY_IDENTITY_URI_PREFIX = "urn:infisical:gateway:";
+
 export enum GatewayTransport {
   Direct = "direct",
   Relay = "relay"

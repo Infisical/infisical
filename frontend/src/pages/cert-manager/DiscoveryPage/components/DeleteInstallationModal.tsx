@@ -1,4 +1,4 @@
-import { DeleteActionModal } from "@app/components/v2";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 
 type Props = {
   isOpen: boolean;
@@ -14,13 +14,13 @@ export const DeleteInstallationModal = ({
   installationName
 }: Props) => {
   return (
-    <DeleteActionModal
+    <DeleteConfirmDialog
       isOpen={isOpen}
-      onChange={onOpenChange}
+      onOpenChange={onOpenChange}
       title={`Delete installation "${installationName}"?`}
-      subTitle="This will remove the installation record and its certificate associations."
-      deleteKey="confirm"
-      onDeleteApproved={onConfirm}
+      description="This will remove the installation record and its certificate associations."
+      confirmKey="confirm"
+      onConfirm={onConfirm}
     />
   );
 };

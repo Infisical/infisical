@@ -1,9 +1,11 @@
-import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { Button } from "@app/components/v2";
+import { DeleteConfirmDialog } from "@app/components/v3";
+import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
@@ -13,25 +15,25 @@ import { useDeletePkiSubscriber, useUpdatePkiSubscriber } from "@app/hooks/api";
 import { PkiSubscriberStatus } from "@app/hooks/api/pkiSubscriber/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { LegacyPkiCreationBlockedModal } from "../../components/LegacyPkiCreationBlockedModal";
 import { PkiSubscriberModal } from "./PkiSubscriberModal";
 import { PkiSubscribersTable } from "./PkiSubscribersTable";
 
 export const PkiSubscriberSection = () => {
   const { currentProject } = useProject();
 
-  // TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation
-  const canCreateLegacySubscribers = true;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "pkiSubscriber",
     "pkiSubscriberStatus", // enable / disable
-    "deletePkiSubscriber"
+    "deletePkiSubscriber",
+    "creationBlocked"
   ] as const);
 
   const onRemovePkiSubscriberSubmit = async (subscriberName: string) => {
-    const subscriber = await deletePkiSubscriber({ subscriberName });
+    const subscriber = await deletePkiSubscriber({ subscriberName, projectId: currentProject.id });
 
     createNotification({
       text: `Successfully deleted PKI subscriber: ${subscriber.name}`,
@@ -73,62 +75,53 @@ export const PkiSubscriberSection = () => {
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-medium text-foreground">Subscribers</p>
         <div className="flex w-full justify-end">
-          <a
-            target="_blank"
-            rel="noopener noreferrer"
-            href="https://infisical.com/docs/documentation/platform/pki/subscribers"
+          <ProjectPermissionCan
+            I={ProjectPermissionPkiSubscriberActions.Create}
+            a={ProjectPermissionSub.PkiSubscribers}
           >
-            <span className="flex w-max cursor-pointer items-center rounded-md border border-border-strong bg-surface-active px-4 py-2 text-foreground-secondary duration-200 hover:border-project/40 hover:bg-project/10 hover:text-foreground-inverse">
-              Documentation{" "}
-              <FontAwesomeIcon
-                icon={faArrowUpRightFromSquare}
-                className="mb-[0.06rem] ml-1 text-xs"
-              />
-            </span>
-          </a>
-          {canCreateLegacySubscribers && (
-            <ProjectPermissionCan
-              I={ProjectPermissionPkiSubscriberActions.Create}
-              a={ProjectPermissionSub.PkiSubscribers}
-            >
-              {(isAllowed) => (
-                <Button
-                  colorSchema="primary"
-                  type="submit"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => handlePopUpOpen("pkiSubscriber")}
-                  isDisabled={!isAllowed}
-                  className="ml-4"
-                >
-                  Add Subscriber
-                </Button>
-              )}
-            </ProjectPermissionCan>
-          )}
+            {(isAllowed) => (
+              <Button
+                colorSchema="primary"
+                type="submit"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handlePopUpOpen("creationBlocked")}
+                isDisabled={!isAllowed}
+                className="ml-4"
+              >
+                Add Subscriber
+              </Button>
+            )}
+          </ProjectPermissionCan>
         </div>
       </div>
       <PkiSubscribersTable handlePopUpOpen={handlePopUpOpen} />
       <PkiSubscriberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <LegacyPkiCreationBlockedModal
+        resource={LegacyPkiResource.PkiSubscriber}
+        isOpen={popUp.creationBlocked.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("creationBlocked", isOpen)}
+      />
+      <DeleteConfirmDialog
         isOpen={popUp.pkiSubscriberStatus.isOpen}
         title={`Are you sure you want to ${isEnabling ? "enable" : "disable"} the subscriber ${subscriberName}?`}
-        subTitle={
+        description={
           isEnabling
             ? "This action will allow issuing certificates for this subscriber again."
             : "This action will prevent issuing certificates for this subscriber."
         }
-        onChange={(isOpen) => handlePopUpToggle("pkiSubscriberStatus", isOpen)}
-        deleteKey="confirm"
-        buttonColorSchema={isEnabling ? "primary" : "danger"}
-        buttonText={isEnabling ? "Enable" : "Disable"}
-        onDeleteApproved={() => onUpdatePkiSubscriberStatus(subscriberStatusData)}
+        onOpenChange={(isOpen) => handlePopUpToggle("pkiSubscriberStatus", isOpen)}
+        confirmKey="confirm"
+        confirmVariant={isEnabling ? "project" : "danger"}
+        confirmLabel={isEnabling ? "Enable" : "Disable"}
+        onConfirm={() => onUpdatePkiSubscriberStatus(subscriberStatusData)}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deletePkiSubscriber.isOpen}
+        description="This action is irreversible."
         title="Are you sure you want to remove the PKI subscriber?"
-        onChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemovePkiSubscriberSubmit(
             (popUp?.deletePkiSubscriber?.data as { subscriberName: string })?.subscriberName
           )

@@ -78,14 +78,14 @@ const DonutChart = ({
         (certKeyAlgorithmToNameMap as Record<string, string>)[label] ?? label.replace(/_/g, " ")
       );
     }
-    if (chartKey === "enrollmentMethod") return label.toUpperCase();
+    if (chartKey === "enrollmentMethod" && label !== "Other") return label.toUpperCase();
     return label;
   };
 
   return (
     <Card className="flex h-auto min-w-0 flex-col">
       <CardHeader className="pb-0">
-        <CardTitle className="text-base font-semibold">{title}</CardTitle>
+        <CardTitle className="text-base font-normal">{title}</CardTitle>
         {subtitle && <CardDescription className="text-xs">{subtitle}</CardDescription>}
       </CardHeader>
       <CardContent className="flex flex-1 items-center pt-2">
@@ -237,7 +237,7 @@ export const DistributionCharts = ({ stats, onNavigate }: Props) => {
           chartKey={chart.chartKey}
           data={chart.data}
           onSegmentClick={(entry) => {
-            if (chart.chartKey === "enrollmentMethod") {
+            if (chart.chartKey === "enrollmentMethod" && entry.label !== "Other") {
               onNavigate({ filterEnrollmentType: entry.label });
             } else if (chart.chartKey === "algorithm" && entry.label !== "Unknown") {
               onNavigate({ filterKeyAlgorithm: entry.label });

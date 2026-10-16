@@ -5,14 +5,14 @@ import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secr
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import {
   SecretScanningDataSource,
-  SecretScanningFindingSeverity,
-  SecretScanningResource
+  SecretScanningFindingSeverity
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
-  replaceNonChangesWithNewlines
+  replaceNonChangesWithNewlines,
+  toFindingDetails
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
@@ -26,7 +26,6 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { titleCaseToCamelCase } from "@app/lib/fn";
 import { BasicRepositoryRegex } from "@app/lib/regex";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
 
@@ -95,8 +94,7 @@ export const GitHubSecretScanningFactory = () => {
 
     return filteredRepos.map(({ id, full_name }) => ({
       name: full_name,
-      externalId: id.toString(),
-      type: SecretScanningResource.Repository
+      externalId: id.toString()
     }));
   };
 
@@ -154,8 +152,7 @@ export const GitHubSecretScanningFactory = () => {
   > = ({ repository }) => {
     return {
       name: repository.full_name,
-      externalId: repository.id.toString(),
-      type: SecretScanningResource.Repository
+      externalId: repository.id.toString()
     };
   };
 
@@ -225,7 +222,10 @@ export const GitHubSecretScanningFactory = () => {
               Message: commit.message,
               Fingerprint: `${commit.id}:${file.filename}:${finding.RuleID}:${startLine}:${startColumn}`,
               Date: commit.timestamp,
-              Link: `https://github.com/${resourceName}/blob/${commit.id}/${file.filename}#L${startLine}`
+              Attributes: {
+                ...finding.Attributes,
+                url: `https://github.com/${resourceName}/blob/${commit.id}/${file.filename}#L${startLine}`
+              }
             };
           });
 
@@ -234,19 +234,12 @@ export const GitHubSecretScanningFactory = () => {
       }
     }
 
-    return allFindings.map(
-      ({
-        // discard match and secret as we don't want to store
-        Match,
-        Secret,
-        ...finding
-      }) => ({
-        details: titleCaseToCamelCase(finding),
-        fingerprint: finding.Fingerprint,
-        severity: SecretScanningFindingSeverity.High,
-        rule: finding.RuleID
-      })
-    );
+    return allFindings.map((finding) => ({
+      details: toFindingDetails(finding),
+      fingerprint: finding.Fingerprint,
+      severity: SecretScanningFindingSeverity.High,
+      rule: finding.RuleID
+    }));
   };
 
   return {

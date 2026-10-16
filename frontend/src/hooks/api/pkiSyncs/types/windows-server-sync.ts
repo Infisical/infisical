@@ -17,6 +17,8 @@ export type TWindowsServerPkiSync = TRootPkiSync & {
     exportFormat?: PkiSyncExportFormat;
     pemCertificateExtension?: PemCertificateExtension;
     combineCertificateChain?: boolean;
+    keystoreAlias?: string;
+    includeTruststore?: boolean;
     includePrivateKey?: boolean;
     fileAccessRules?: { identity: string; access: WindowsFileAccess }[];
     healthCheckCommand?: string | null;

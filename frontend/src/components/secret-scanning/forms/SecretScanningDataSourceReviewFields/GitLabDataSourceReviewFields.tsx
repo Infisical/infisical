@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
@@ -20,11 +20,20 @@ export const GitLabDataSourceReviewFields = () => {
     const { projectName, projectId } = config;
     return (
       <SecretScanningDataSourceConfigReviewSection>
-        {connection && <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>}
-        <GenericFieldLabel label="Scope" className="capitalize">
-          {config.scope}
-        </GenericFieldLabel>
-        <GenericFieldLabel label="Project">{projectName || projectId}</GenericFieldLabel>
+        {connection && (
+          <Detail>
+            <DetailLabel>Connection</DetailLabel>
+            <DetailValue>{connection.name || "None"}</DetailValue>
+          </Detail>
+        )}
+        <Detail>
+          <DetailLabel>Scope</DetailLabel>
+          <DetailValue>Project</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Project</DetailLabel>
+          <DetailValue>{projectName || projectId || "None"}</DetailValue>
+        </Detail>
       </SecretScanningDataSourceConfigReviewSection>
     );
   }
@@ -36,14 +45,24 @@ export const GitLabDataSourceReviewFields = () => {
 
   return (
     <SecretScanningDataSourceConfigReviewSection>
-      {connection && <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>}
-      <GenericFieldLabel label="Scope" className="capitalize">
-        {config.scope}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Group">{groupName || groupId}</GenericFieldLabel>
-      <GenericFieldLabel label="Scan Projects">
-        {shouldScanAll ? "All" : includeProjects.join(", ")}
-      </GenericFieldLabel>
+      {connection && (
+        <Detail>
+          <DetailLabel>Connection</DetailLabel>
+          <DetailValue>{connection.name || "None"}</DetailValue>
+        </Detail>
+      )}
+      <Detail>
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue>Group</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Group</DetailLabel>
+        <DetailValue>{groupName || groupId || "None"}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Scan Projects</DetailLabel>
+        <DetailValue>{shouldScanAll ? "All" : includeProjects.join(", ") || "None"}</DetailValue>
+      </Detail>
     </SecretScanningDataSourceConfigReviewSection>
   );
 };

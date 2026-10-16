@@ -41,7 +41,8 @@ export enum OrgPermissionAppConnectionActions {
 }
 
 export enum OrgPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 // TODO: remove once KMIP clients are fully migrated to KMIP servers (OrgPermissionKmipServerActions).
@@ -159,7 +160,8 @@ export enum OrgPermissionHoneyTokenActions {
 export enum OrgPermissionSecretsManagementInsightsActions {
   Read = "read",
   GenerateReport = "generate-report",
-  DeleteReport = "delete-report"
+  DeleteReport = "delete-report",
+  SearchAllSecretValues = "search-all-secret-values"
 }
 
 export enum OrgPermissionProjectActions {
@@ -541,7 +543,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
-  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+  can([OrgPermissionAuditLogsActions.Read, OrgPermissionAuditLogsActions.Edit], OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
@@ -624,6 +626,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionSecretsManagementInsightsActions.Read, OrgPermissionSubjects.SecretsManagementInsights);
   can(OrgPermissionSecretsManagementInsightsActions.GenerateReport, OrgPermissionSubjects.SecretsManagementInsights);
   can(OrgPermissionSecretsManagementInsightsActions.DeleteReport, OrgPermissionSubjects.SecretsManagementInsights);
+  can(
+    OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+    OrgPermissionSubjects.SecretsManagementInsights
+  );
 
   return rules;
 };

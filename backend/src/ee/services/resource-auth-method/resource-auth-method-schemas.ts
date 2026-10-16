@@ -4,7 +4,6 @@ import { ResourceAuthMethodType } from "./resource-auth-method-fns";
 
 export const AwsAuthMethodConfigSchema = z.object({
   id: z.string().uuid(),
-  stsEndpoint: z.string(),
   allowedPrincipalArns: z.string(),
   allowedAccountIds: z.string(),
   createdAt: z.date(),

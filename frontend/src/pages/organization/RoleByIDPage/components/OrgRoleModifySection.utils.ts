@@ -39,7 +39,12 @@ const generalPermissionSchema = z
   .optional();
 
 const auditLogsPermissionSchema = z
-  .array(z.object({ [OrgPermissionAuditLogsActions.Read]: z.boolean().optional() }))
+  .array(
+    z.object({
+      [OrgPermissionAuditLogsActions.Read]: z.boolean().optional(),
+      [OrgPermissionAuditLogsActions.Edit]: z.boolean().optional()
+    })
+  )
   .optional();
 
 const billingPermissionSchema = z
@@ -213,7 +218,8 @@ const secretsManagementInsightsPermissionSchema = z
     z.object({
       [OrgPermissionSecretsManagementInsightsActions.Read]: z.boolean().optional(),
       [OrgPermissionSecretsManagementInsightsActions.GenerateReport]: z.boolean().optional(),
-      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional()
+      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues]: z.boolean().optional()
     })
   )
   .optional();
@@ -617,12 +623,17 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
   },
   [OrgPermissionSubjects.AuditLogs]: {
     title: "Audit Logs",
-    description: "View organization activity and audit trail",
+    description: "View organization activity and audit trail, and choose which events are recorded",
     actions: [
       {
         value: OrgPermissionAuditLogsActions.Read,
         label: "Read",
         description: "View organization activity and audit events"
+      },
+      {
+        value: OrgPermissionAuditLogsActions.Edit,
+        label: "Edit",
+        description: "Choose which audit log event classes the organization records"
       }
     ]
   },
@@ -960,6 +971,12 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionSecretsManagementInsightsActions.DeleteReport,
         label: "Delete Report",
         description: "Delete secrets management insight reports"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+        label: "Search All Secret Values",
+        description:
+          "Locate secrets that share a value in any project, including projects the user isn't a member of"
       }
     ]
   },

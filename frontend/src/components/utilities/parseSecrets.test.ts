@@ -114,6 +114,24 @@ describe("parseDotEnv", () => {
     assert.equal(env.MULTI.value, "one\ntwo");
     assert.equal(env.BARE.value, "plain");
   });
+
+  it("keeps a hash that is not preceded by whitespace in unquoted values", () => {
+    const env = parseDotEnv(
+      [
+        "INLINE=abc#def",
+        "URL=https://example.com/#/path",
+        "HASH=#leading",
+        "SPACED=one two#three # trailing",
+        "EMPTY= # only a comment"
+      ].join("\n")
+    );
+
+    assert.equal(env.INLINE.value, "abc#def");
+    assert.equal(env.URL.value, "https://example.com/#/path");
+    assert.equal(env.HASH.value, "#leading");
+    assert.equal(env.SPACED.value, "one two#three");
+    assert.equal(env.EMPTY.value, "");
+  });
 });
 
 describe("parsePastedSecrets", () => {

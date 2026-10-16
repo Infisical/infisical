@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
+import { Alert, AlertDescription, DeleteConfirmDialog } from "@app/components/v3";
 import { useDeleteKmipClients } from "@app/hooks/api/kmip";
 import { TKmipClient } from "@app/hooks/api/kmip/types";
 
@@ -31,12 +31,21 @@ export const DeleteKmipClientModal = ({ isOpen, onOpenChange, kmipClient }: Prop
   };
 
   return (
-    <DeleteActionModal
+    <DeleteConfirmDialog
       isOpen={isOpen}
-      title={`Are you sure you want to delete ${name}?`}
-      onChange={onOpenChange}
-      deleteKey="confirm"
-      onDeleteApproved={handleDeleteKmipClient}
+      title={`Delete KMIP Client ${name}?`}
+      description={
+        <Alert variant="danger" appearance="borderless">
+          <AlertDescription>
+            This permanently removes the KMIP client {name}. This cannot be undone.
+          </AlertDescription>
+        </Alert>
+      }
+      onOpenChange={onOpenChange}
+      confirmKey="confirm"
+      confirmLabel="Delete KMIP Client"
+      isPending={deleteKmipClients.isPending}
+      onConfirm={handleDeleteKmipClient}
     />
   );
 };

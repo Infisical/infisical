@@ -6,6 +6,7 @@ import { twMerge } from "tailwind-merge";
 
 import { cn } from "@app/components/v3/utils";
 
+import { getButtonLoaderVariant } from "../Button/getButtonLoaderVariant";
 import { Loader } from "../Loader";
 
 const iconButtonVariants = cva(
@@ -105,7 +106,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         {isPending && (
           <Loader
             aria-hidden
-            variant={variant === "default" ? "inverse" : "default"}
+            variant={getButtonLoaderVariant(variant)}
             size="xs"
             className={twMerge(
               "absolute rounded-xl",
@@ -123,12 +124,12 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     return (
       <Comp
         ref={ref}
-        data-slot="icon-button"
         type={type}
         className={cn(iconButtonVariants({ variant, size, isPending }), className)}
         aria-busy={isPending || undefined}
         disabled={isPending || disabled || isDisabled}
         {...props}
+        data-slot="icon-button"
       >
         {content}
       </Comp>

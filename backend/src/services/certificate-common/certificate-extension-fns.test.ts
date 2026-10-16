@@ -12,6 +12,8 @@ import {
   findUnsatisfiedCustomExtensionOids,
   isReservedExtensionOid,
   parseCustomExtensionsFromCertificate,
+  parseExternallyIssuedCustomExtensions,
+  parseImportedCustomExtensions,
   resolveCustomExtensions,
   TCustomExtensionRule,
   toRequestCustomExtensions,
@@ -24,8 +26,28 @@ const TEMPLATE_NAME_OID = "1.3.6.1.4.1.311.20.2";
 const TEMPLATE_INFO_OID = "1.3.6.1.4.1.311.21.7";
 const CUSTOM_OID = "1.3.6.1.4.1.99999.7.1";
 const OPAQUE_OID = "1.3.6.1.4.1.311.21.20";
+const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
 
 const SID = "S-1-5-21-1004336348-1177238915-682003330-1103";
+
+const buildCertificateWithExtension = async (oid: string, der: Buffer) => {
+  const keys = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    true,
+    ["sign", "verify"]
+  );
+  const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+    serialNumber: "01",
+    name: "CN=custom-extension-test",
+    notBefore: new Date(),
+    notAfter: new Date(Date.now() + 60 * 60 * 1000),
+    keys,
+    signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    extensions: [new x509.Extension(oid, false, der)]
+  });
+
+  return Buffer.from(certificate.toString("pem"));
+};
 
 describe("certificateExtensionOidSchema", () => {
   it.each(["1.3.6.1.4.1.311.25.2", "2.999.1", "0.9.2342"])("accepts %s", (oid) => {
@@ -89,6 +111,7 @@ describe("preset encoders", () => {
 
   it("every preset declares a spec-correct criticality", () => {
     expect(Object.values(CUSTOM_EXTENSION_PRESETS_BY_OID).map((preset) => preset.critical)).toEqual([
+      false,
       false,
       false,
       false
@@ -423,10 +446,36 @@ describe("resolveCustomExtensions", () => {
     expect(toRequestCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID, SID_OID]);
   });
 
-  it("refuses to reissue an extension whose stored value cannot be read back", () => {
+  it("accepts no value it cannot read back, so a renewal can always reissue what a user asked for", () => {
+    const candidates = [
+      "ops-prod",
+      "a".repeat(200),
+      "h\u00e9llo",
+      "  ",
+      "0",
+      "*",
+      "a,b",
+      "5",
+      "S-1-5-21-1-2-3-4",
+      "WebServer"
+    ];
+
+    for (const oid of ["1.3.6.1.4.1.99001.7", ...Object.keys(CUSTOM_EXTENSION_PRESETS_BY_OID)]) {
+      for (const candidate of candidates) {
+        if (validateCustomExtensionValue(oid, candidate) !== null) continue;
+        const stored = encodeCustomExtensionValue(oid, candidate);
+        expect(
+          describeCustomExtensionValue(oid, stored),
+          `${oid} accepted '${candidate}' but cannot read it back`
+        ).not.toBeNull();
+      }
+    }
+  });
+
+  it("omits an extension whose stored value cannot be read back", () => {
     const stored = [{ oid: SID_OID, critical: false, value: Buffer.from([0x05, 0x00]).toString("base64") }];
 
-    expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
   });
 
   it("keeps the profile default and the request's own OID side by side", () => {
@@ -648,6 +697,7 @@ describe("findUnsatisfiedCustomExtensionOids", () => {
 describe("preset registry", () => {
   it("round-trips every preset through encode and describe", () => {
     const samples: Record<string, string> = {
+      "1.3.6.1.5.5.7.1.24": "5",
       [SID_OID]: SID,
       [TEMPLATE_NAME_OID]: "Machine",
       [TEMPLATE_INFO_OID]: "1.3.6.1.4.1.311.21.8.1.2:100.3"
@@ -659,5 +709,95 @@ describe("preset registry", () => {
       expect(validateCustomExtensionValue(oid, sample)).toBeNull();
       expect(describeCustomExtensionValue(oid, encodeCustomExtensionValue(oid, sample))).toBe(sample);
     });
+  });
+});
+
+describe("toRequestCustomExtensions", () => {
+  it("never carries an extension the upstream CA added of its own accord", () => {
+    const stored = [
+      { oid: OPAQUE_OID, critical: false, value: "BAIAQg==", issuerAdded: true },
+      { oid: CUSTOM_OID, critical: false, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
+    ];
+
+    expect(toRequestCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID]);
+  });
+
+  // Certificates stored before the flag existed rely on the OID list alone.
+  it.each([
+    [SCT_LIST_OID, "signed certificate timestamps"],
+    ["1.3.6.1.4.1.11129.2.4.3", "precertificate poison"],
+    ["1.3.101.75", "certificate transparency information"],
+    ["1.3.6.1.4.1.311.21.1", "ADCS certification authority version"],
+    ["1.3.6.1.4.1.311.21.2", "ADCS previous certification authority certificate hash"]
+  ])("never copies %s (%s) from one certificate to the next", (oid) => {
+    expect(toRequestCustomExtensions([{ oid, critical: false, value: "BQA=" }])).toEqual([]);
+  });
+
+  // toRequestCustomExtensions throws on a non-text value, so the filter has to run before it.
+  it("does not throw on a binary issuer-written value that a plain reissue would refuse", () => {
+    const stored = [
+      { oid: SCT_LIST_OID, critical: false, value: Buffer.from([0x04, 0x02, 0x00, 0x42]).toString("base64") }
+    ];
+
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
+  });
+});
+
+// This used to fail renewal with the very error this change removes.
+describe("parseImportedCustomExtensions", () => {
+  it("invents no provenance, and a renewal drops what it cannot express rather than refusing", async () => {
+    const qcStatements = Buffer.from([0x30, 0x08, 0x30, 0x06, 0x06, 0x04, 0x00, 0x8e, 0x46, 0x01]);
+    const certificate = await buildCertificateWithExtension("1.3.6.1.5.5.7.1.3", qcStatements);
+
+    const stored = parseImportedCustomExtensions(certificate);
+
+    expect(stored).toEqual([{ oid: "1.3.6.1.5.5.7.1.3", critical: false, value: qcStatements.toString("base64") }]);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
+  });
+
+  // Dropping must-staple would hand back a renewed certificate with a weaker security posture than
+  // the one it replaces, so TLS Feature has a preset and round-trips.
+  it("carries must-staple rather than dropping it", () => {
+    const mustStaple = [{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=" }];
+
+    expect(toRequestCustomExtensions(mustStaple)).toEqual([{ oid: "1.3.6.1.5.5.7.1.24", value: "5", critical: false }]);
+    expect(toRequestCustomExtensions([{ ...mustStaple[0], issuerAdded: true }])).toEqual([]);
+  });
+
+  it("keeps a readable extension an import carried, since nothing says the issuer wrote it", async () => {
+    const certificate = await buildCertificateWithExtension(
+      CUSTOM_OID,
+      Buffer.from(encodeCustomExtensionValue(CUSTOM_OID, "retain-me"), "base64")
+    );
+
+    expect(toRequestCustomExtensions(parseImportedCustomExtensions(certificate))).toEqual([
+      { oid: CUSTOM_OID, value: "retain-me", critical: false }
+    ]);
+  });
+});
+
+describe("parseExternallyIssuedCustomExtensions", () => {
+  it("flags an extension the upstream CA added and leaves a requested one unmarked", async () => {
+    const certificate = await buildCertificateWithExtension(SCT_LIST_OID, Buffer.from([0x04, 0x02, 0x00, 0x42]));
+
+    expect(parseExternallyIssuedCustomExtensions(certificate)).toEqual([
+      { oid: SCT_LIST_OID, critical: false, value: "BAIAQg==", issuerAdded: true }
+    ]);
+    expect(
+      parseExternallyIssuedCustomExtensions(certificate, [{ oid: SCT_LIST_OID, critical: false, value: "BAIAQg==" }])
+    ).toEqual([{ oid: SCT_LIST_OID, critical: false, value: "BAIAQg==" }]);
+  });
+
+  // The CA can rewrite what it was asked for, so the record has to come off the certificate. Matching on
+  // the OID alone would treat the rewritten value as the requester's own and replay it on renewal.
+  it("records the value the certificate carries and flags it when the CA rewrote a requested extension", async () => {
+    const certificate = await buildCertificateWithExtension(CUSTOM_OID, Buffer.from([0x04, 0x02, 0x00, 0x43]));
+
+    const stored = parseExternallyIssuedCustomExtensions(certificate, [
+      { oid: CUSTOM_OID, critical: false, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
+    ]);
+
+    expect(stored).toEqual([{ oid: CUSTOM_OID, critical: false, value: "BAIAQw==", issuerAdded: true }]);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
   });
 });

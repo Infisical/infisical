@@ -21,6 +21,7 @@ const DEFAULT_ACCOUNT_ID = "000000000000";
 type TFakeAwsConnectionState = {
   accountId: string | null;
   validationError: string | null;
+  configError: string | null;
 };
 
 // Shared through globalThis for the same reason as the Parameter Store fake: the alias makes
@@ -32,7 +33,8 @@ const globalScope = globalThis as typeof globalThis & {
 
 globalScope.infisicalFakeAwsConnection ??= {
   accountId: DEFAULT_ACCOUNT_ID,
-  validationError: null
+  validationError: null,
+  configError: null
 };
 
 const state = globalScope.infisicalFakeAwsConnection;
@@ -43,6 +45,7 @@ export const fakeAwsConnection = {
   reset: () => {
     state.accountId = DEFAULT_ACCOUNT_ID;
     state.validationError = null;
+    state.configError = null;
   },
 
   // What getAwsAccountId reports. null reproduces the real module's behavior when STS fails.
@@ -54,12 +57,19 @@ export const fakeAwsConnection = {
   // Pass null to go back to accepting.
   failsValidationWith: (message: string | null) => {
     state.validationError = message;
+  },
+
+  // Make loading the connection's credentials reject, as the real provider does when AWS refuses to
+  // let Infisical assume the role. Pass null to go back to accepting.
+  failsConfigWith: (message: string | null) => {
+    state.configError = message;
   }
 };
 
 // Mirrors the real access-key branch, which hands back whatever the connection carries and
 // makes no request. The assume-role branch is the one that calls STS, and no spec uses it.
 export const getAwsConnectionConfig = (appConnection: TAwsConnectionConfig, region = AWSRegion.US_EAST_1) => {
+  if (state.configError) return Promise.reject(new BadRequestError({ message: state.configError }));
   const { credentials } = appConnection;
 
   return Promise.resolve({

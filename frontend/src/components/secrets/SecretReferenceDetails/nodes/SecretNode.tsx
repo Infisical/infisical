@@ -95,7 +95,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
   );
 
   const nodeClassName = twMerge(
-    "flex h-full w-full items-stretch gap-2.5 rounded-md border border-border bg-container p-2 font-inter",
+    "flex h-full w-full items-stretch gap-2.5 rounded-md border border-border bg-container p-2 font-sans",
     isCircular && "border-danger/40",
     isRoot && "border-project/40",
     !isRoot && "cursor-pointer transition-colors hover:border-accent"

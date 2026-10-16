@@ -1,7 +1,8 @@
-import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
+import { TGenericPermission } from "@app/lib/types";
+
 import { AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 
-export type TAgentVaultProxyScoped = { projectId: string; ctx: TAgentVaultActorContext };
+export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultProxyConfig = {
   trafficPolicy: AgentVaultTrafficPolicy;
@@ -47,6 +48,7 @@ export type TResolveSessionDTO = {
   proxyId: string;
   orgId: string;
   sessionToken: string;
+  hasSessionLogKey: boolean;
 };
 
 export type TResolvedService = {

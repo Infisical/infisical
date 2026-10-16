@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -11,14 +10,19 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
+  CopyButton,
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -50,7 +54,12 @@ export const OrgNameChangeSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
 
-  const { handleSubmit, control, reset } = useForm<FormData>({
+  const {
+    handleSubmit,
+    control,
+    reset,
+    formState: { isDirty }
+  } = useForm<FormData>({
     resolver: zodResolver(formSchema)
   });
   const { mutateAsync, isPending } = useUpdateOrg();
@@ -89,28 +98,26 @@ export const OrgNameChangeSection = (): JSX.Element => {
       text: "Successfully updated organization details",
       type: "success"
     });
+    reset({ name, slug, defaultMembershipRole }, { keepDirtyValues: true });
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <Building2 className="size-4 text-accent" />
-          Organization Details
-        </CardTitle>
-        <CardDescription>
-          Update your organization&apos;s name, slug, and default member role.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!isFormInitialized ? (
-          <FieldGroup>
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-          </FieldGroup>
-        ) : (
-          <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle>Organization Details</CardTitle>
+          <CardDescription>
+            Update your organization&apos;s name, slug, and default member role.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="max-w-md px-6 pb-6">
+          {!isFormInitialized ? (
+            <FieldGroup>
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </FieldGroup>
+          ) : (
             <FieldGroup>
               <Controller
                 defaultValue=""
@@ -133,7 +140,17 @@ export const OrgNameChangeSection = (): JSX.Element => {
               />
               <Field>
                 <FieldLabel htmlFor="org-id">Organization ID</FieldLabel>
-                <Input id="org-id" value={currentOrg.id} disabled />
+                <InputGroup>
+                  <InputGroupInput id="org-id" value={currentOrg.id} readOnly />
+                  <InputGroupAddon align="inline-end">
+                    <CopyButton
+                      key={currentOrg.id}
+                      type="button"
+                      value={currentOrg.id}
+                      ariaLabel="Copy organization ID"
+                    />
+                  </InputGroupAddon>
+                </InputGroup>
               </Field>
               <Controller
                 defaultValue=""
@@ -187,18 +204,24 @@ export const OrgNameChangeSection = (): JSX.Element => {
                 />
               )}
             </FieldGroup>
-            <div className="mt-6 flex">
-              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-                {(isAllowed) => (
-                  <Button variant="org" type="submit" isPending={isPending} isDisabled={!isAllowed}>
-                    Save
-                  </Button>
-                )}
-              </OrgPermissionCan>
-            </div>
-          </form>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+            {(isAllowed) => (
+              <Button
+                variant="org"
+                size="sm"
+                type="submit"
+                isPending={isPending}
+                isDisabled={!isAllowed || !isDirty}
+              >
+                Save Changes
+              </Button>
+            )}
+          </OrgPermissionCan>
+        </CardFooter>
+      </Card>
+    </form>
   );
 };

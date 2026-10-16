@@ -46,3 +46,11 @@ export enum AgentVaultSessionScope {
   Mine = "mine",
   All = "all"
 }
+
+/** Which part of a service a variable reference sits in. A basic credential's password is its value. */
+export enum AgentVaultVariableReferenceField {
+  CredentialValue = "credential-value",
+  CredentialUsername = "credential-username",
+  CustomHeader = "custom-header",
+  Substitution = "substitution"
+}

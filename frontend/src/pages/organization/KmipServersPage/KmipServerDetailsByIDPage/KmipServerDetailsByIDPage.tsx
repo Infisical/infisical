@@ -62,7 +62,7 @@ const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <KmipServerPageHeader
         kmipServer={kmipServer}
         orgId={orgId}

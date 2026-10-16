@@ -28,6 +28,12 @@ export enum PamProductRole {
   Member = "member"
 }
 
+export enum PamFolderCallerAccess {
+  Admin = "admin",
+  Member = "member",
+  None = "none"
+}
+
 export enum PamHeartbeatStatus {
   Healthy = "healthy",
   InvalidCredentials = "invalid-credentials",
@@ -77,13 +83,6 @@ export enum PamPostgresAuthMethod {
 export enum PamAccessType {
   Session = "session",
   Credential = "credential"
-}
-
-// The caller's just-in-time approval state for an account gated behind an access request flow
-export enum PamAccessStatus {
-  None = "none",
-  Pending = "pending",
-  Granted = "granted"
 }
 
 export enum PamMemberKind {

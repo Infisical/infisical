@@ -1,6 +1,6 @@
 import { Controller, useFormContext } from "react-hook-form";
 
-import { FormControl, Switch } from "@app/components/v2";
+import { Field, FieldDescription, FieldError, FieldLabel, Toggle } from "@app/components/v3";
 import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
@@ -30,27 +30,32 @@ export const SecretScanningDataSourceConfigFields = () => {
       <Controller
         control={control}
         name="isAutoScanEnabled"
-        render={({ field: { value, onChange }, fieldState: { error } }) => {
+        render={({ field: { value, onChange, onBlur, ref, name }, fieldState: { error } }) => {
           return (
-            <FormControl
-              helperText={
-                value
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <div className="flex items-center gap-3">
+                <Toggle
+                  ref={ref}
+                  name={name}
+                  id="auto-scan-enabled"
+                  variant="success"
+                  onCheckedChange={onChange}
+                  onBlur={onBlur}
+                  checked={value}
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={`auto-scan-enabled-help${error ? " auto-scan-enabled-error" : ""}`}
+                />
+                <FieldLabel htmlFor="auto-scan-enabled">
+                  Auto-Scan {value ? "Enabled" : "Disabled"}
+                </FieldLabel>
+              </div>
+              <FieldDescription id="auto-scan-enabled-help">
+                {value
                   ? `Scans will automatically be triggered when a ${autoScanDescription.verb} occurs to ${autoScanDescription.pluralNoun} associated with this data source.`
-                  : "Manually trigger scans to detect secret leaks."
-              }
-              isError={Boolean(error)}
-              errorText={error?.message}
-            >
-              <Switch
-                className="bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
-                id="auto-scan-enabled"
-                thumbClassName="bg-surface-raised"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p className="w-[9.6rem]">Auto-Scan {value ? "Enabled" : "Disabled"}</p>
-              </Switch>
-            </FormControl>
+                  : "Manually trigger scans to detect secret leaks."}
+              </FieldDescription>
+              <FieldError id="auto-scan-enabled-error">{error?.message}</FieldError>
+            </Field>
           );
         }}
       />

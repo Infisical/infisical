@@ -1,11 +1,14 @@
 import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 
-import { subscriptionQueryKeys } from "../subscriptions/queries";
+import { fetchOrgSubscription, subscriptionQueryKeys } from "../subscriptions/queries";
 import { billingV2Keys } from "./queries";
 import {
   BillingV2CheckoutResult,
+  BillingV2ConfirmTrialPaymentResult,
+  BillingV2ErrorCode,
   BillingV2MutationResult,
   BillingV2Preview,
   BillingV2TrialCancelResult,
@@ -16,6 +19,7 @@ import {
   TBuyBillingV2ProductDTO,
   TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
+  TConfirmBillingV2TrialPaymentDTO,
   TCreateBillingV2PortalSessionDTO,
   TPreviewBillingV2ChangeDTO,
   TRemoveBillingV2ProductDTO,
@@ -29,6 +33,14 @@ import {
 const invalidateBillingV2 = (queryClient: QueryClient, orgId: string) => {
   queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
   queryClient.invalidateQueries({ queryKey: billingV2Keys.catalog(orgId) });
+  const queryKey = subscriptionQueryKeys.getOrgSubsription(orgId);
+  return queryClient
+    .fetchQuery({
+      queryKey,
+      queryFn: () => fetchOrgSubscription(orgId, true),
+      staleTime: 0
+    })
+    .catch(() => queryClient.invalidateQueries({ queryKey }));
 };
 
 export const useCreateBillingV2PortalSession = () => {
@@ -171,16 +183,46 @@ export const useChangeBillingV2Commitment = () => {
 export const useStartBillingV2Trial = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orgId, productId, plan }: TStartBillingV2TrialDTO) => {
+    mutationFn: async ({ orgId, productId, plan, returnPath }: TStartBillingV2TrialDTO) => {
       const { data } = await apiRequest.post<BillingV2TrialResult>(
         `/api/v1/organizations/${orgId}/billing/v2/trial`,
-        { productId, plan }
+        { productId, plan, returnPath }
       );
 
       return data;
     },
     onSuccess: (_data, { orgId }) => {
       invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+// Opens a Stripe Checkout where the customer approves a trial conversion charge their bank is holding.
+// A no_trial_awaiting_payment error means the payment already went through, so refetch to drop the
+// stale banner; the global handler still shows the message.
+export const useConfirmBillingV2TrialPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, returnPath }: TConfirmBillingV2TrialPaymentDTO) => {
+      const { data } = await apiRequest.post<BillingV2ConfirmTrialPaymentResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/trial/confirm-payment`,
+        { returnPath }
+      );
+
+      return data;
+    },
+    onSuccess: (data, { orgId }) => {
+      if (data.outcome === "upgraded") {
+        invalidateBillingV2(queryClient, orgId);
+      }
+    },
+    onError: (error, { orgId }) => {
+      if (
+        axios.isAxiosError<{ details?: { code?: string } }>(error) &&
+        error.response?.data?.details?.code === BillingV2ErrorCode.NoTrialAwaitingPayment
+      ) {
+        invalidateBillingV2(queryClient, orgId);
+      }
     }
   });
 };

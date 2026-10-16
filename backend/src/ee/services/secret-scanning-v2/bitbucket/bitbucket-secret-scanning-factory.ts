@@ -3,15 +3,13 @@ import RE2 from "re2";
 
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import {
-  SecretScanningFindingSeverity,
-  SecretScanningResource
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
-  replaceNonChangesWithNewlines
+  replaceNonChangesWithNewlines,
+  toFindingDetails
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
@@ -25,7 +23,6 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { BasicRepositoryRegex } from "@app/lib/regex";
@@ -157,8 +154,7 @@ export const BitbucketSecretScanningFactory = () => {
 
     return filteredRepos.map(({ full_name, uuid }) => ({
       name: full_name,
-      externalId: uuid,
-      type: SecretScanningResource.Repository
+      externalId: uuid
     }));
   };
 
@@ -213,8 +209,7 @@ export const BitbucketSecretScanningFactory = () => {
   > = ({ repository }) => {
     return {
       name: repository.full_name,
-      externalId: repository.uuid,
-      type: SecretScanningResource.Repository
+      externalId: repository.uuid
     };
   };
 
@@ -309,7 +304,10 @@ export const BitbucketSecretScanningFactory = () => {
                 Message: commit.message,
                 Fingerprint: `${commit.hash}:${filePath}:${finding.RuleID}:${startLine}:${startColumn}`,
                 Date: commit.date,
-                Link: `https://bitbucket.org/${resourceName}/src/${commit.hash}/${filePath}#lines-${startLine}`
+                Attributes: {
+                  ...finding.Attributes,
+                  url: `https://bitbucket.org/${resourceName}/src/${commit.hash}/${filePath}#lines-${startLine}`
+                }
               };
             });
 
@@ -319,19 +317,12 @@ export const BitbucketSecretScanningFactory = () => {
       }
     }
 
-    return allFindings.map(
-      ({
-        // discard match and secret as we don't want to store
-        Match,
-        Secret,
-        ...finding
-      }) => ({
-        details: titleCaseToCamelCase(finding),
-        fingerprint: finding.Fingerprint,
-        severity: SecretScanningFindingSeverity.High,
-        rule: finding.RuleID
-      })
-    );
+    return allFindings.map((finding) => ({
+      details: toFindingDetails(finding),
+      fingerprint: finding.Fingerprint,
+      severity: SecretScanningFindingSeverity.High,
+      rule: finding.RuleID
+    }));
   };
 
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<

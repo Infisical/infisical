@@ -138,6 +138,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
             .object({
               pkcs11: z.boolean().optional(),
               sessionLogMaskingBuiltInDetection: z.boolean().optional(),
+              clickhouseNativeProtocol: z.boolean().optional(),
               supported_account_types: z.array(z.string().trim().max(64)).max(64).optional()
             })
             .optional()
@@ -206,6 +207,16 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         orgPermission: req.permission,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_DELETE,
+          metadata: { gatewayId: gateway.id, name: gateway.name }
+        }
+      });
+
       return gateway;
     }
   });
@@ -305,6 +316,21 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               name: z.string(),
               projectId: z.string(),
               projectName: z.string()
+            })
+          ),
+          pamAccounts: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              accountType: z.string(),
+              folderName: z.string().nullable()
+            })
+          ),
+          pamAccountTemplates: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              type: z.string()
             })
           )
         })

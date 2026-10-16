@@ -58,7 +58,7 @@ export const EventInputSchema = z.object({
 export type TEventInput = z.input<typeof EventInputSchema>;
 
 export type TEventEmitter = {
-  emit: (event: TEventInput, tx: Knex) => Promise<void>;
+  emit: (event: TEventInput, tx?: Knex) => Promise<void>;
 };
 
 // What a consumer sees. Lock, attempt and status columns are the outbox's business.

@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useId, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "../../generic/AlertDialog";
-import { Button } from "../../generic/Button";
+import { Button, type ButtonProps } from "../../generic/Button";
 import { Field } from "../../generic/Field";
 import { Input } from "../../generic/Input";
 
@@ -22,20 +22,29 @@ type Props = {
   description?: ReactNode;
   confirmKey: string;
   confirmLabel?: string;
+  confirmVariant?: ButtonProps["variant"];
   isPending?: boolean;
   onConfirm: () => void | Promise<void>;
+  children?: ReactNode;
 };
 
 export const DeleteConfirmDialog = ({
   isOpen,
   onOpenChange,
-  title,
-  description,
-  confirmKey,
-  confirmLabel = "Delete",
   isPending,
-  onConfirm
+  onConfirm,
+  ...contentProps
 }: Props) => {
+  const lastOpenContent = useRef(contentProps);
+  if (isOpen) lastOpenContent.current = contentProps;
+  const {
+    title,
+    description,
+    confirmKey,
+    confirmLabel = "Delete",
+    confirmVariant = "danger",
+    children
+  } = isOpen ? contentProps : lastOpenContent.current;
   const [typedValue, setTypedValue] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
   const confirmationInputId = useId();
@@ -85,7 +94,6 @@ export const DeleteConfirmDialog = ({
               <Input
                 id={confirmationInputId}
                 autoComplete="off"
-                autoFocus
                 disabled={isActionPending}
                 placeholder={confirmKey}
                 spellCheck={false}
@@ -94,11 +102,12 @@ export const DeleteConfirmDialog = ({
               />
             </Field>
           </AlertDialogConfirmationField>
+          {children}
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
             <Button
               type="submit"
-              variant="danger"
+              variant={confirmVariant}
               size="sm"
               isDisabled={!canConfirm}
               isPending={isActionPending}

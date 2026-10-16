@@ -21,7 +21,7 @@ const hostKey = (raw: string): string | null => {
 
 /**
  * A partial pre-check, so a malformed host is caught on the field that holds it rather than bounced
- * back from a submit. agent-vault-host-pattern.ts stays the grammar of record.
+ * back from a submit. agent-vault-host-pattern-fns.ts stays the grammar of record.
  *
  * `existing` must never contain the value being checked: the duplicate is reported on the second
  * occurrence, matching the server.

@@ -32,7 +32,9 @@ export const OrgSidebar = () => {
   const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);
   const projectType = effectiveTypeSlug ? urlSlugToProjectType(effectiveTypeSlug) : null;
   const isOnProjectTypeListing =
-    !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
+    !isInsideProject &&
+    Boolean(projectType) &&
+    (hasIntermediateProjectsView(projectType!) || pathname.includes("/product-settings"));
   const { isSubOrganization } = useOrganization();
 
   let scope: "project" | "sub-org" | "org" | "pam" | "agent-vault" = "org";
@@ -49,7 +51,7 @@ export const OrgSidebar = () => {
   return (
     <Sidebar scope={scope} collapsible="none" side="left">
       <SidebarContent>{body}</SidebarContent>
-      <SidebarFooter className="border-t border-border p-2">
+      <SidebarFooter className="border-t border-border-soft p-2">
         <SidebarTrigger variant="ghost" className="w-full" />
       </SidebarFooter>
     </Sidebar>

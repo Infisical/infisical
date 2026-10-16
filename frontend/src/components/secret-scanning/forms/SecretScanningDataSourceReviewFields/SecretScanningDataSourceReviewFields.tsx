@@ -1,6 +1,12 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/v2";
+import {
+  Detail,
+  DetailGroup,
+  DetailGroupHeader,
+  DetailLabel,
+  DetailValue
+} from "@app/components/v3";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
 import { TSecretScanningDataSourceForm } from "../schemas";
@@ -24,15 +30,19 @@ export const SecretScanningDataSourceReviewFields = () => {
   return (
     <div className="mb-4 flex flex-col gap-6">
       <Component />
-      <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-border-control">
-          <span className="text-sm text-label">Details</span>
-        </div>
+      <DetailGroup>
+        <DetailGroupHeader>Details</DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
-          <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Name</DetailLabel>
+            <DetailValue>{name || "None"}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Description</DetailLabel>
+            <DetailValue>{description || "None"}</DetailValue>
+          </Detail>
         </div>
-      </div>
+      </DetailGroup>
     </div>
   );
 };

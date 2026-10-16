@@ -1,6 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
-import { AccessRestrictedDialog } from "@app/components/v3";
+import { AccessRestrictedDialog, DeleteConfirmDialog } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies";
@@ -26,7 +25,7 @@ export const PolicyTab = () => {
 
   if (!isAdmin) {
     return (
-      <AccessRestrictedDialog description="Only project admins can view and manage certificate approval policies." />
+      <AccessRestrictedDialog description="Only Certificate Manager admins can view and manage certificate approval policies." />
     );
   }
 
@@ -54,20 +53,21 @@ export const PolicyTab = () => {
             <p className="text-xl font-medium text-foreground">Certificate Approval Policies</p>
           </div>
           <p className="text-sm text-label-secondary">
-            Existing project-level policies remain editable. Create new approval policies inside an
-            Application.
+            Existing policies created outside an Application remain editable. Create new approval
+            policies inside an Application.
           </p>
         </div>
       </div>
 
       <PoliciesTable handlePopUpOpen={handlePopUpOpen} />
       <PolicyModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deletePolicy.isOpen}
-        deleteKey="delete"
+        description="This action is irreversible."
+        confirmKey="delete"
         title="Are you sure you want to delete this policy?"
-        onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
-        onDeleteApproved={handleDeletePolicy}
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
+        onConfirm={handleDeletePolicy}
       />
     </div>
   );

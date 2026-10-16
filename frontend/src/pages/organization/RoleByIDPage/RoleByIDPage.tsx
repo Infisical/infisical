@@ -6,14 +6,15 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
@@ -180,12 +181,13 @@ export const Page = () => {
         </div>
       )}
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteOrgRole.isOpen}
         title={`Are you sure you want to delete the organization role ${data?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => onDeleteOrgRoleSubmit()}
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => onDeleteOrgRoleSubmit()}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}

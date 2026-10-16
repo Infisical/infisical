@@ -316,6 +316,8 @@ const envSchema = z
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     BDD_NOCK_API_ENABLED: zodStrBool.default("false").optional(),
+
+    OPENAPI_FULL_SPEC: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
@@ -557,6 +559,7 @@ const envSchema = z
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
     ),
@@ -631,6 +634,11 @@ const envSchema = z
     // Heroku App Connection
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // Stripe App Connection
+    INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_STRIPE_SECRET_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL: zpStr(z.string().optional()),
 
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
@@ -732,6 +740,7 @@ const envSchema = z
     isSecretScanningRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.SecretScanning),
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
+    isOpenApiFullSpec: data.NODE_ENV !== "production" && data.OPENAPI_FULL_SPEC,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
       ?.split(",")
       .map((el) => {
@@ -1140,6 +1149,25 @@ export const overwriteSchema: {
       }
     ]
   },
+  stripe: {
+    name: "Stripe",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID",
+        description: "The Client ID of your Stripe app."
+      },
+      {
+        key: "INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL",
+        description:
+          "Optional. Overrides the Stripe App Marketplace install link, which is otherwise derived from the Client ID above. Set it to the test-mode or sandbox link from the Stripe dashboard when the secret key below is not a live-mode key."
+      },
+      {
+        key: "INF_APP_CONNECTION_STRIPE_SECRET_KEY",
+        description:
+          "The secret API key of the Stripe account that owns your Stripe app. Infisical authenticates as this account and names the customer's account with Stripe-Context."
+      }
+    ]
+  },
   secretSharing: {
     name: "Secret Sharing",
     fields: [
@@ -1212,7 +1240,7 @@ export const formatSmtpConfig = () => {
     secure: envCfg.SMTP_PORT === 465,
     from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
     ignoreTLS: envCfg.SMTP_IGNORE_TLS,
-    requireTLS: envCfg.SMTP_REQUIRE_TLS,
+    requireTLS: envCfg.SMTP_REQUIRE_TLS && !envCfg.SMTP_IGNORE_TLS,
     tls: tlsOptions
   };
 };

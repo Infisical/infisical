@@ -39,6 +39,9 @@ export const parseSecretPathSearch = (search?: string) => {
 /** Case-insensitive because the search path derived by `parseSecretPathSearch` is lowercased. */
 export const isSecretPathMatch = (path: string, searchPath: string) => path.toLowerCase().endsWith(searchPath);
 
+export const isInSecretSearchScope = (path: string, searchPath: string, rootPath: string) =>
+  searchPath === "/" ? path.toLowerCase() === rootPath.toLowerCase() : isSecretPathMatch(path, searchPath);
+
 /**
  * Resolves a deep search query into the free-text search term and the folder path scope.
  *

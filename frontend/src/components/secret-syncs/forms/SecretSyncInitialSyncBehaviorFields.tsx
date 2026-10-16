@@ -33,7 +33,9 @@ const getGraphicVariant = (key: string): GraphicVariant => {
   return "prioritize-destination";
 };
 
-const getShortDestinationName = (name: string) => name.split(" ")[0];
+// "Digital Ocean" is a two-word vendor; the first word alone is not the name.
+const getShortDestinationName = (name: string) =>
+  name.startsWith("Digital Ocean") ? "Digital Ocean" : name.split(" ")[0];
 
 const getBehaviorCopy = (
   key: SecretSyncInitialSyncBehavior,

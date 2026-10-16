@@ -34,6 +34,7 @@ export enum AppConnection {
   GitLab = "gitlab",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",
+  UltraDNS = "ultradns",
   Bitbucket = "bitbucket",
   Zabbix = "zabbix",
   Railway = "railway",
@@ -61,6 +62,7 @@ export enum AppConnection {
   ExternalInfisical = "external-infisical",
   Doppler = "doppler",
   NetScaler = "netscaler",
+  PaloAltoNetworks = "palo-alto-networks",
   KempLoadMaster = "kemp-loadmaster",
   Anthropic = "anthropic",
   OVH = "ovh",
@@ -76,6 +78,7 @@ export enum AppConnection {
   Convex = "convex",
   TriggerDev = "trigger-dev",
   Rundeck = "rundeck",
+  Portainer = "portainer",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
@@ -83,5 +86,9 @@ export enum AppConnection {
   Fireworks = "fireworks",
   NutanixPrismCentral = "nutanix-prism-central",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  Stripe = "stripe",
+  Keeper = "keeper",
+  HpeIloRedFish = "hpe-ilo",
+  S3Compatible = "s3-compatible"
 }

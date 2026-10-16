@@ -15,12 +15,14 @@ import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
 import { GithubProvider } from "./github";
 import { IbmApiConnectProvider } from "./ibm-api-connect";
+import { KafkaProvider } from "./kafka";
 import { KubernetesProvider } from "./kubernetes";
 import { LdapProvider } from "./ldap";
 import { MilvusProvider } from "./milvus";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
+import { OAuth2Provider } from "./oauth2";
 import { RabbitMqProvider } from "./rabbit-mq";
 import { RedisDatabaseProvider } from "./redis";
 import { SapAseProvider } from "./sap-ase";
@@ -68,5 +70,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Ssh]: SshProvider(),
   [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider(),
-  [DynamicSecretProviders.Tailscale]: TailscaleProvider()
+  [DynamicSecretProviders.Tailscale]: TailscaleProvider(),
+  [DynamicSecretProviders.OAuth2]: OAuth2Provider(),
+  [DynamicSecretProviders.Kafka]: KafkaProvider()
 });

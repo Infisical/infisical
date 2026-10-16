@@ -33,6 +33,7 @@ export enum AppConnection {
   GitLab = "gitlab",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",
+  UltraDNS = "ultradns",
   Zabbix = "zabbix",
   Railway = "railway",
   Bitbucket = "bitbucket",
@@ -60,6 +61,7 @@ export enum AppConnection {
   ExternalInfisical = "external-infisical",
   Doppler = "doppler",
   NetScaler = "netscaler",
+  PaloAltoNetworks = "palo-alto-networks",
   Anthropic = "anthropic",
   OVH = "ovh",
   Devin = "devin",
@@ -73,6 +75,7 @@ export enum AppConnection {
   GoDaddy = "godaddy",
   Convex = "convex",
   Rundeck = "rundeck",
+  Portainer = "portainer",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
@@ -83,7 +86,11 @@ export enum AppConnection {
   NutanixPrismCentral = "nutanix-prism-central",
   PowerDns = "powerdns",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  Stripe = "stripe",
+  Keeper = "keeper",
+  HpeIloRedFish = "hpe-ilo",
+  S3Compatible = "s3-compatible"
 }
 
 export enum AWSRegion {

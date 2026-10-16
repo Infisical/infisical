@@ -110,13 +110,13 @@ Removes a prefix from the beginning of a string. If the string doesn't start wit
 Given `identity.auth.kubernetes.namespace` = `production-us-east`:
 
 ```handlebars
-{{stripPrefix identity.auth.kubernetes.namespace "production-"}} -> us-east
+{{stripPrefix identity.auth.kubernetes.namespace 'production-'}} -> us-east
 ```
 
 Given `identity.auth.aws.arn` = `arn:aws:iam::123456789012:user/example-user`:
 
 ```handlebars
-{{stripPrefix identity.auth.aws.arn "arn:aws:iam::123456789012:"}}
+{{stripPrefix identity.auth.aws.arn 'arn:aws:iam::123456789012:'}}
 -> user/example-user
 ```
 
@@ -134,25 +134,25 @@ wildcards trims nothing.
 Given `identity.auth.kubernetes.namespace` = `myapp-pr-42`:
 
 ```handlebars
-{{trimSuffix identity.auth.kubernetes.namespace "-pr-*"}} -> myapp
+{{trimSuffix identity.auth.kubernetes.namespace '-pr-*'}} -> myapp
 ```
 
 Given `identity.auth.kubernetes.namespace` = `myapp` (nothing matches the pattern):
 
 ```handlebars
-{{trimSuffix identity.auth.kubernetes.namespace "-pr-*"}} -> myapp
+{{trimSuffix identity.auth.kubernetes.namespace '-pr-*'}} -> myapp
 ```
 
 Given `identity.auth.kubernetes.namespace` = `myapp-pr-1`, where `-*` matches both `-pr-1`
 and `-1`, the shorter suffix is removed:
 
 ```handlebars
-{{trimSuffix identity.auth.kubernetes.namespace "-*"}} -> myapp-pr
+{{trimSuffix identity.auth.kubernetes.namespace '-*'}} -> myapp-pr
 ```
 
 You can combine this with a secret path condition so both the base namespace and its pull request
 namespaces read from one path:
 
 ```handlebars
-/{{trimSuffix identity.auth.kubernetes.namespace "-pr-*"}}/**
+/{{trimSuffix identity.auth.kubernetes.namespace '-pr-*'}}/**
 ```
