@@ -1,3 +1,7 @@
+## 1.11.1 (October 13, 2026)
+Changes:
+* Fix `infisical.redisConnectionString` template helper in `_helpers.tpl` to use `$serviceName` (resolved from `infisical.redisServiceName`) instead of hardcoding `"redis-master"`. This ensures the Redis connection URI properly respects custom release names and `redis.fullnameOverride`.
+
 ## 1.11.0 (September 17, 2026)
 Changes:
 * `infisical.autoBootstrap.secretDestination.namespace` now defaults to `""` instead of the literal `"default"`. Helm's `default` function only substitutes on an empty value, so the non-empty `"default"` meant the template's documented fall back to the release namespace never applied. Every install that left this key alone wrote the root identity token to the `default` namespace and created the bootstrap Role and RoleBinding there, and the bootstrap Job still reported success. Fresh installs now place the secret and its RBAC in the release namespace.
