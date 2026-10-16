@@ -10,7 +10,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ExternalApprovalSchema } from "@app/services/external-approval/external-approval-schemas";
+import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const maxTimePeriodSchema = z
@@ -72,7 +72,7 @@ const requestExpirationTimeSchema = z
   });
 
 const accessApprovalPolicyPubSchema = sapPubSchema.extend({
-  externalApproval: ExternalApprovalSchema.nullable().optional()
+  delegatedApproval: DelegatedApprovalSchema.nullable().optional()
 });
 
 export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvider) => {
@@ -117,7 +117,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               "Must provide either username or id"
             )
             .optional()
-            .describe("Required unless externalApproval is set, and must be omitted when it is."),
+            .describe("Required unless delegatedApproval is set, and must be omitted when it is."),
           bypassers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -142,8 +142,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           allowedSelfApprovals: z.boolean().default(true),
           maxTimePeriod: maxTimePeriodSchema,
           requestExpirationTime: requestExpirationTimeSchema,
-          externalApproval: ExternalApprovalSchema.optional().describe(
-            "Hand requests made against this policy to an external approval system."
+          delegatedApproval: DelegatedApprovalSchema.optional().describe(
+            "Hand requests made against this policy to a delegated approval system."
           )
         })
         .refine(
@@ -151,7 +151,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           "Must provide either environment or environments"
         )
         .refine(
-          (val) => Boolean(val.externalApproval) || Boolean(val.approvers?.length),
+          (val) => Boolean(val.delegatedApproval) || Boolean(val.approvers?.length),
           "At least one approver should be provided"
         ),
       response: {
@@ -318,7 +318,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           )
           .optional()
           .describe(
-            "Required unless the policy is handled by an external approval system, and must be omitted when it is."
+            "Required unless the policy is handled by a delegated approval system, and must be omitted when it is."
           ),
         bypassers: z
           .discriminatedUnion("type", [
@@ -341,10 +341,10 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional(),
         maxTimePeriod: maxTimePeriodSchema,
         requestExpirationTime: requestExpirationTimeSchema,
-        externalApproval: ExternalApprovalSchema.nullable()
+        delegatedApproval: DelegatedApprovalSchema.nullable()
           .optional()
           .describe(
-            "Hand requests made against this policy to an external approval system. Send null to stop using one."
+            "Hand requests made against this policy to a delegated approval system. Send null to stop using one."
           )
       }),
       response: {

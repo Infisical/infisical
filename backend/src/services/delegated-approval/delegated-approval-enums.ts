@@ -1,8 +1,8 @@
-export enum ExternalApprovalPolicyType {
+export enum DelegatedApprovalPolicyType {
   ServiceNow = "servicenow"
 }
 
-export enum ExternalApprovalRequestStatus {
+export enum DelegatedApprovalRequestStatus {
   PendingDispatch = "pending_dispatch",
   WaitingApproval = "waiting_approval",
   FailedDispatch = "failed_dispatch",

@@ -9,7 +9,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ExternalApprovalSchema } from "@app/services/external-approval/external-approval-schemas";
+import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
@@ -59,8 +59,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
           bypassForMachineIdentities: z.boolean().default(false),
-          externalApproval: ExternalApprovalSchema.optional().describe(
-            "Not supported on secret change policies. Only secret access policies can be handled by an external approval system, so sending this returns an error."
+          delegatedApproval: DelegatedApprovalSchema.optional().describe(
+            "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."
           )
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
@@ -143,8 +143,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         allowedSelfApprovals: z.boolean().default(true),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional(),
-        externalApproval: ExternalApprovalSchema.optional().describe(
-          "Not supported on secret change policies. Only secret access policies can be handled by an external approval system, so sending this returns an error."
+        delegatedApproval: DelegatedApprovalSchema.optional().describe(
+          "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."
         )
       }),
       response: {

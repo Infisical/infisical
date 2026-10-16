@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const ExternalApprovalPoliciesSchema = z.object({
+export const DelegatedApprovalPoliciesSchema = z.object({
   id: z.string().uuid(),
   policyId: z.string().uuid(),
   type: z.string(),
@@ -16,8 +16,8 @@ export const ExternalApprovalPoliciesSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TExternalApprovalPolicies = z.infer<typeof ExternalApprovalPoliciesSchema>;
-export type TExternalApprovalPoliciesInsert = Omit<z.input<typeof ExternalApprovalPoliciesSchema>, TImmutableDBKeys>;
-export type TExternalApprovalPoliciesUpdate = Partial<
-  Omit<z.input<typeof ExternalApprovalPoliciesSchema>, TImmutableDBKeys>
+export type TDelegatedApprovalPolicies = z.infer<typeof DelegatedApprovalPoliciesSchema>;
+export type TDelegatedApprovalPoliciesInsert = Omit<z.input<typeof DelegatedApprovalPoliciesSchema>, TImmutableDBKeys>;
+export type TDelegatedApprovalPoliciesUpdate = Partial<
+  Omit<z.input<typeof DelegatedApprovalPoliciesSchema>, TImmutableDBKeys>
 >;

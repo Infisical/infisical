@@ -23,7 +23,7 @@ import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
-import { EXTERNAL_APPROVAL_CONNECTION_MAP } from "@app/services/external-approval/external-approval-maps";
+import { DELEGATED_APPROVAL_CONNECTION_MAP } from "@app/services/delegated-approval/delegated-approval-maps";
 import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
@@ -370,8 +370,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
-const EXTERNAL_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
-  Object.entries(EXTERNAL_APPROVAL_CONNECTION_MAP).map(([key, value]) => [value, key])
+const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
+  Object.entries(DELEGATED_APPROVAL_CONNECTION_MAP).map(([key, value]) => [value, key])
 );
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
@@ -383,7 +383,7 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
         Boolean(SECRET_SYNC_APP_CONNECTION_MAP[app]) ||
         Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[app]) ||
         EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app) ||
-        Boolean(EXTERNAL_APPROVAL_POLICY_APP_CONNECTION_MAP[app])
+        Boolean(DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP[app])
       );
     case ProjectType.SecretScanning:
       return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[app]);

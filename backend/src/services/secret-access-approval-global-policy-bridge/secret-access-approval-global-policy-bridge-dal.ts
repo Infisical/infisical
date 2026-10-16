@@ -8,7 +8,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { SecretAccessPolicyConstraintsSchema } from "@app/services/approval-policy/secret-access/secret-access-policy-schemas";
-import { ExternalApprovalPolicyType } from "@app/services/external-approval/external-approval-enums";
+import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
 
 const StoredConstraintsSchema = z.object({ version: z.literal(1), constraints: SecretAccessPolicyConstraintsSchema });
 
@@ -76,9 +76,9 @@ export const secretAccessApprovalGlobalPolicyBridgeDALFactory = (db: TDbClient) 
           "bypasserUsers.id"
         )
         .leftJoin(
-          TableName.ExternalApprovalPolicies,
+          TableName.DelegatedApprovalPolicies,
           `${TableName.ApprovalPolicies}.id`,
-          `${TableName.ExternalApprovalPolicies}.policyId`
+          `${TableName.DelegatedApprovalPolicies}.policyId`
         )
         .select(selectAllTableCols(TableName.ApprovalPolicies))
         .select(
@@ -96,8 +96,8 @@ export const secretAccessApprovalGlobalPolicyBridgeDALFactory = (db: TDbClient) 
           db.ref("userId").withSchema(TableName.ApprovalPolicyBypassers).as("bypasserUserId"),
           db.ref("groupId").withSchema(TableName.ApprovalPolicyBypassers).as("bypasserGroupId"),
           db.ref("username").withSchema("bypasserUsers").as("bypasserUsername"),
-          db.ref("type").withSchema(TableName.ExternalApprovalPolicies).as("externalApprovalType"),
-          db.ref("connectionId").withSchema(TableName.ExternalApprovalPolicies).as("externalApprovalConnectionId")
+          db.ref("type").withSchema(TableName.DelegatedApprovalPolicies).as("delegatedApprovalType"),
+          db.ref("connectionId").withSchema(TableName.DelegatedApprovalPolicies).as("delegatedApprovalConnectionId")
         )
         .orderBy(`${TableName.ApprovalPolicySteps}.stepNumber`, "asc");
 
@@ -120,10 +120,10 @@ export const secretAccessApprovalGlobalPolicyBridgeDALFactory = (db: TDbClient) 
             maxTimePeriod,
             allowedSelfApprovals,
             requestExpirationTime,
-            externalApproval: data.externalApprovalType
+            delegatedApproval: data.delegatedApprovalType
               ? {
-                  type: data.externalApprovalType as ExternalApprovalPolicyType,
-                  connectionId: data.externalApprovalConnectionId as string
+                  type: data.delegatedApprovalType as DelegatedApprovalPolicyType,
+                  connectionId: data.delegatedApprovalConnectionId as string
                 }
               : null
           };

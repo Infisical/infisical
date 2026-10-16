@@ -381,7 +381,7 @@ export const accessApprovalPolicyServiceFactory = ({
     environments,
     maxTimePeriod,
     requestExpirationTime,
-    externalApproval,
+    delegatedApproval,
     orgActor
   }: TUpdateAccessApprovalPolicy) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
@@ -402,14 +402,14 @@ export const accessApprovalPolicyServiceFactory = ({
         environments,
         maxTimePeriod,
         requestExpirationTime,
-        externalApproval,
+        delegatedApproval,
         orgActor
       });
     }
 
-    if (externalApproval) {
+    if (delegatedApproval) {
       throw new BadRequestError({
-        message: `Access approval policy with ID '${policyId}' is on the legacy approval system and cannot be handled by an external approval system.`
+        message: `Access approval policy with ID '${policyId}' is on the legacy approval system and cannot be handled by a delegated approval system.`
       });
     }
     if (!approvers.length) {

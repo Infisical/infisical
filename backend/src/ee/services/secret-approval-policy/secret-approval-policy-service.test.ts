@@ -6,7 +6,7 @@ import { ProjectVersion } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { ExternalApprovalPolicyType } from "@app/services/external-approval/external-approval-enums";
+import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
 
 import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
 import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
@@ -107,15 +107,15 @@ describe("secretApprovalPolicyService createSecretApprovalPolicy", () => {
     expect(deps.secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath).not.toHaveBeenCalled();
   });
 
-  test("rejects external approval before reaching either approval system", async () => {
+  test("rejects delegated approval before reaching either approval system", async () => {
     const { service, deps } = buildService({ projectVersion: ProjectVersion.V3 });
 
     await expect(
       service.createSecretApprovalPolicy({
         ...createDto,
-        externalApproval: { type: ExternalApprovalPolicyType.ServiceNow, connectionId: "connection-1" }
+        delegatedApproval: { type: DelegatedApprovalPolicyType.ServiceNow, connectionId: "connection-1" }
       })
-    ).rejects.toThrow("Only secret access policies can be handled by an external approval system");
+    ).rejects.toThrow("Only secret access policies can be handled by a delegated approval system");
 
     expect(deps.secretChangeGlobalPolicyBridgeService.createSecretChangePolicy).not.toHaveBeenCalled();
     expect(deps.projectDAL.findById).not.toHaveBeenCalled();

@@ -144,15 +144,15 @@ func (e ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType) Val
 	}
 }
 
-// Defines values for ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType.
+// Defines values for ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType.
 const (
-	ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalTypeServicenow ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType = "servicenow"
+	ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalTypeServicenow ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType = "servicenow"
 )
 
-// Valid indicates whether the value is a known member of the ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType enum.
-func (e ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType) Valid() bool {
+// Valid indicates whether the value is a known member of the ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType enum.
+func (e ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType) Valid() bool {
 	switch e {
-	case ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalTypeServicenow:
+	case ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -309,6 +309,21 @@ func (e CreateAccessApprovalPolicyJSONBodyBypassers1Type) Valid() bool {
 	}
 }
 
+// Defines values for CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType.
+const (
+	CreateAccessApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType enum.
+func (e CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case CreateAccessApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateAccessApprovalPolicyJSONBodyEnforcementLevel.
 const (
 	CreateAccessApprovalPolicyJSONBodyEnforcementLevelHard CreateAccessApprovalPolicyJSONBodyEnforcementLevel = "hard"
@@ -327,30 +342,15 @@ func (e CreateAccessApprovalPolicyJSONBodyEnforcementLevel) Valid() bool {
 	}
 }
 
-// Defines values for CreateAccessApprovalPolicyJSONBodyExternalApprovalType.
+// Defines values for CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType.
 const (
-	CreateAccessApprovalPolicyJSONBodyExternalApprovalTypeServicenow CreateAccessApprovalPolicyJSONBodyExternalApprovalType = "servicenow"
+	CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType = "servicenow"
 )
 
-// Valid indicates whether the value is a known member of the CreateAccessApprovalPolicyJSONBodyExternalApprovalType enum.
-func (e CreateAccessApprovalPolicyJSONBodyExternalApprovalType) Valid() bool {
+// Valid indicates whether the value is a known member of the CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType enum.
+func (e CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType) Valid() bool {
 	switch e {
-	case CreateAccessApprovalPolicyJSONBodyExternalApprovalTypeServicenow:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType.
-const (
-	CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalTypeServicenow CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType = "servicenow"
-)
-
-// Valid indicates whether the value is a known member of the CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType enum.
-func (e CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType) Valid() bool {
-	switch e {
-	case CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalTypeServicenow:
+	case CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -483,15 +483,15 @@ func (e GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType) Valid()
 	}
 }
 
-// Defines values for GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType.
+// Defines values for GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType.
 const (
-	GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalTypeServicenow GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType = "servicenow"
+	GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType = "servicenow"
 )
 
-// Valid indicates whether the value is a known member of the GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType enum.
-func (e GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType) Valid() bool {
+// Valid indicates whether the value is a known member of the GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType enum.
+func (e GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType) Valid() bool {
 	switch e {
-	case GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalTypeServicenow:
+	case GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -648,6 +648,21 @@ func (e UpdateAccessApprovalPolicyJSONBodyBypassers1Type) Valid() bool {
 	}
 }
 
+// Defines values for UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType.
+const (
+	UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType enum.
+func (e UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateAccessApprovalPolicyJSONBodyEnforcementLevel.
 const (
 	UpdateAccessApprovalPolicyJSONBodyEnforcementLevelHard UpdateAccessApprovalPolicyJSONBodyEnforcementLevel = "hard"
@@ -666,30 +681,15 @@ func (e UpdateAccessApprovalPolicyJSONBodyEnforcementLevel) Valid() bool {
 	}
 }
 
-// Defines values for UpdateAccessApprovalPolicyJSONBodyExternalApprovalType.
+// Defines values for UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType.
 const (
-	UpdateAccessApprovalPolicyJSONBodyExternalApprovalTypeServicenow UpdateAccessApprovalPolicyJSONBodyExternalApprovalType = "servicenow"
+	UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType = "servicenow"
 )
 
-// Valid indicates whether the value is a known member of the UpdateAccessApprovalPolicyJSONBodyExternalApprovalType enum.
-func (e UpdateAccessApprovalPolicyJSONBodyExternalApprovalType) Valid() bool {
+// Valid indicates whether the value is a known member of the UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType enum.
+func (e UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType) Valid() bool {
 	switch e {
-	case UpdateAccessApprovalPolicyJSONBodyExternalApprovalTypeServicenow:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType.
-const (
-	UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalTypeServicenow UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType = "servicenow"
-)
-
-// Valid indicates whether the value is a known member of the UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType enum.
-func (e UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType) Valid() bool {
-	switch e {
-	case UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalTypeServicenow:
+	case UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -7473,6 +7473,21 @@ func (e CreateSecretApprovalPolicyJSONBodyBypassers1Type) Valid() bool {
 	}
 }
 
+// Defines values for CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType.
+const (
+	CreateSecretApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType enum.
+func (e CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case CreateSecretApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateSecretApprovalPolicyJSONBodyEnforcementLevel.
 const (
 	CreateSecretApprovalPolicyJSONBodyEnforcementLevelHard CreateSecretApprovalPolicyJSONBodyEnforcementLevel = "hard"
@@ -7485,21 +7500,6 @@ func (e CreateSecretApprovalPolicyJSONBodyEnforcementLevel) Valid() bool {
 	case CreateSecretApprovalPolicyJSONBodyEnforcementLevelHard:
 		return true
 	case CreateSecretApprovalPolicyJSONBodyEnforcementLevelSoft:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateSecretApprovalPolicyJSONBodyExternalApprovalType.
-const (
-	CreateSecretApprovalPolicyJSONBodyExternalApprovalTypeServicenow CreateSecretApprovalPolicyJSONBodyExternalApprovalType = "servicenow"
-)
-
-// Valid indicates whether the value is a known member of the CreateSecretApprovalPolicyJSONBodyExternalApprovalType enum.
-func (e CreateSecretApprovalPolicyJSONBodyExternalApprovalType) Valid() bool {
-	switch e {
-	case CreateSecretApprovalPolicyJSONBodyExternalApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -7962,6 +7962,21 @@ func (e UpdateSecretApprovalPolicyJSONBodyBypassers1Type) Valid() bool {
 	}
 }
 
+// Defines values for UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType.
+const (
+	UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType enum.
+func (e UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateSecretApprovalPolicyJSONBodyEnforcementLevel.
 const (
 	UpdateSecretApprovalPolicyJSONBodyEnforcementLevelHard UpdateSecretApprovalPolicyJSONBodyEnforcementLevel = "hard"
@@ -7974,21 +7989,6 @@ func (e UpdateSecretApprovalPolicyJSONBodyEnforcementLevel) Valid() bool {
 	case UpdateSecretApprovalPolicyJSONBodyEnforcementLevelHard:
 		return true
 	case UpdateSecretApprovalPolicyJSONBodyEnforcementLevelSoft:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateSecretApprovalPolicyJSONBodyExternalApprovalType.
-const (
-	UpdateSecretApprovalPolicyJSONBodyExternalApprovalTypeServicenow UpdateSecretApprovalPolicyJSONBodyExternalApprovalType = "servicenow"
-)
-
-// Valid indicates whether the value is a known member of the UpdateSecretApprovalPolicyJSONBodyExternalApprovalType enum.
-func (e UpdateSecretApprovalPolicyJSONBodyExternalApprovalType) Valid() bool {
-	switch e {
-	case UpdateSecretApprovalPolicyJSONBodyExternalApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -10214,8 +10214,8 @@ type ListAccessApprovalPolicies200JSONResponseBodyApprovalsApproversType string
 // ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType defines parameters for ListAccessApprovalPolicies.
 type ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType string
 
-// ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType defines parameters for ListAccessApprovalPolicies.
-type ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType string
+// ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType defines parameters for ListAccessApprovalPolicies.
+type ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType string
 
 // ListAccessApprovalPolicies400JSONResponseBodyStatusCode defines parameters for ListAccessApprovalPolicies.
 type ListAccessApprovalPolicies400JSONResponseBodyStatusCode float32
@@ -10244,26 +10244,26 @@ type CreateAccessApprovalPolicyJSONBody struct {
 		StepNumber        int `json:"stepNumber"`
 	} `json:"approvalsRequired,omitempty"`
 
-	// Approvers Required unless externalApproval is set, and must be omitted when it is.
-	Approvers        *[]CreateAccessApprovalPolicyJSONBody_Approvers_Item `json:"approvers,omitempty"`
-	Bypassers        *[]CreateAccessApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
-	EnforcementLevel *CreateAccessApprovalPolicyJSONBodyEnforcementLevel  `json:"enforcementLevel,omitempty"`
-	Environment      *string                                              `json:"environment,omitempty"`
-	Environments     *[]string                                            `json:"environments,omitempty"`
+	// Approvers Required unless delegatedApproval is set, and must be omitted when it is.
+	Approvers *[]CreateAccessApprovalPolicyJSONBody_Approvers_Item `json:"approvers,omitempty"`
+	Bypassers *[]CreateAccessApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
 
-	// ExternalApproval Hand requests made against this policy to an external approval system.
-	ExternalApproval *struct {
-		// ConnectionId The ID of the App Connection used to reach the external approval system.
+	// DelegatedApproval Hand requests made against this policy to a delegated approval system.
+	DelegatedApproval *struct {
+		// ConnectionId The ID of the App Connection used to reach the delegated approval system.
 		ConnectionId openapi_types.UUID `json:"connectionId"`
 
-		// Type The external approval system that reviews requests made against this policy.
-		Type CreateAccessApprovalPolicyJSONBodyExternalApprovalType `json:"type"`
-	} `json:"externalApproval,omitempty"`
-	MaxTimePeriod         *string `json:"maxTimePeriod,omitempty"`
-	Name                  *string `json:"name,omitempty"`
-	ProjectSlug           string  `json:"projectSlug"`
-	RequestExpirationTime *string `json:"requestExpirationTime,omitempty"`
-	SecretPath            string  `json:"secretPath"`
+		// Type The delegated approval system that reviews requests made against this policy.
+		Type CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
+	} `json:"delegatedApproval,omitempty"`
+	EnforcementLevel      *CreateAccessApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environment           *string                                             `json:"environment,omitempty"`
+	Environments          *[]string                                           `json:"environments,omitempty"`
+	MaxTimePeriod         *string                                             `json:"maxTimePeriod,omitempty"`
+	Name                  *string                                             `json:"name,omitempty"`
+	ProjectSlug           string                                              `json:"projectSlug"`
+	RequestExpirationTime *string                                             `json:"requestExpirationTime,omitempty"`
+	SecretPath            string                                              `json:"secretPath"`
 }
 
 // CreateAccessApprovalPolicyJSONBodyApprovers0 defines parameters for CreateAccessApprovalPolicy.
@@ -10316,14 +10316,14 @@ type CreateAccessApprovalPolicyJSONBody_Bypassers_Item struct {
 	union json.RawMessage
 }
 
+// CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType defines parameters for CreateAccessApprovalPolicy.
+type CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType string
+
 // CreateAccessApprovalPolicyJSONBodyEnforcementLevel defines parameters for CreateAccessApprovalPolicy.
 type CreateAccessApprovalPolicyJSONBodyEnforcementLevel string
 
-// CreateAccessApprovalPolicyJSONBodyExternalApprovalType defines parameters for CreateAccessApprovalPolicy.
-type CreateAccessApprovalPolicyJSONBodyExternalApprovalType string
-
-// CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType defines parameters for CreateAccessApprovalPolicy.
-type CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType string
+// CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType defines parameters for CreateAccessApprovalPolicy.
+type CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType string
 
 // CreateAccessApprovalPolicy400JSONResponseBodyStatusCode defines parameters for CreateAccessApprovalPolicy.
 type CreateAccessApprovalPolicy400JSONResponseBodyStatusCode float32
@@ -10349,8 +10349,8 @@ type GetAccessApprovalPolicy200JSONResponseBodyApprovalApproversType string
 // GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType defines parameters for GetAccessApprovalPolicy.
 type GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType string
 
-// GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType defines parameters for GetAccessApprovalPolicy.
-type GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType string
+// GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType defines parameters for GetAccessApprovalPolicy.
+type GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType string
 
 // GetAccessApprovalPolicy400JSONResponseBodyStatusCode defines parameters for GetAccessApprovalPolicy.
 type GetAccessApprovalPolicy400JSONResponseBodyStatusCode float32
@@ -10379,24 +10379,24 @@ type UpdateAccessApprovalPolicyJSONBody struct {
 		StepNumber        int `json:"stepNumber"`
 	} `json:"approvalsRequired,omitempty"`
 
-	// Approvers Required unless the policy is handled by an external approval system, and must be omitted when it is.
-	Approvers        *[]UpdateAccessApprovalPolicyJSONBody_Approvers_Item `json:"approvers,omitempty"`
-	Bypassers        *[]UpdateAccessApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
-	EnforcementLevel *UpdateAccessApprovalPolicyJSONBodyEnforcementLevel  `json:"enforcementLevel,omitempty"`
-	Environments     *[]string                                            `json:"environments,omitempty"`
+	// Approvers Required unless the policy is handled by a delegated approval system, and must be omitted when it is.
+	Approvers *[]UpdateAccessApprovalPolicyJSONBody_Approvers_Item `json:"approvers,omitempty"`
+	Bypassers *[]UpdateAccessApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
 
-	// ExternalApproval Hand requests made against this policy to an external approval system. Send null to stop using one.
-	ExternalApproval *struct {
-		// ConnectionId The ID of the App Connection used to reach the external approval system.
+	// DelegatedApproval Hand requests made against this policy to a delegated approval system. Send null to stop using one.
+	DelegatedApproval *struct {
+		// ConnectionId The ID of the App Connection used to reach the delegated approval system.
 		ConnectionId openapi_types.UUID `json:"connectionId"`
 
-		// Type The external approval system that reviews requests made against this policy.
-		Type UpdateAccessApprovalPolicyJSONBodyExternalApprovalType `json:"type"`
-	} `json:"externalApproval,omitempty"`
-	MaxTimePeriod         *string `json:"maxTimePeriod,omitempty"`
-	Name                  *string `json:"name,omitempty"`
-	RequestExpirationTime *string `json:"requestExpirationTime,omitempty"`
-	SecretPath            *string `json:"secretPath,omitempty"`
+		// Type The delegated approval system that reviews requests made against this policy.
+		Type UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
+	} `json:"delegatedApproval,omitempty"`
+	EnforcementLevel      *UpdateAccessApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environments          *[]string                                           `json:"environments,omitempty"`
+	MaxTimePeriod         *string                                             `json:"maxTimePeriod,omitempty"`
+	Name                  *string                                             `json:"name,omitempty"`
+	RequestExpirationTime *string                                             `json:"requestExpirationTime,omitempty"`
+	SecretPath            *string                                             `json:"secretPath,omitempty"`
 }
 
 // UpdateAccessApprovalPolicyJSONBodyApprovers0 defines parameters for UpdateAccessApprovalPolicy.
@@ -10449,14 +10449,14 @@ type UpdateAccessApprovalPolicyJSONBody_Bypassers_Item struct {
 	union json.RawMessage
 }
 
+// UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType defines parameters for UpdateAccessApprovalPolicy.
+type UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType string
+
 // UpdateAccessApprovalPolicyJSONBodyEnforcementLevel defines parameters for UpdateAccessApprovalPolicy.
 type UpdateAccessApprovalPolicyJSONBodyEnforcementLevel string
 
-// UpdateAccessApprovalPolicyJSONBodyExternalApprovalType defines parameters for UpdateAccessApprovalPolicy.
-type UpdateAccessApprovalPolicyJSONBodyExternalApprovalType string
-
-// UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType defines parameters for UpdateAccessApprovalPolicy.
-type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType string
+// UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType defines parameters for UpdateAccessApprovalPolicy.
+type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType string
 
 // UpdateAccessApprovalPolicy400JSONResponseBodyStatusCode defines parameters for UpdateAccessApprovalPolicy.
 type UpdateAccessApprovalPolicy400JSONResponseBodyStatusCode float32
@@ -13368,21 +13368,21 @@ type CreateSecretApprovalPolicyJSONBody struct {
 	Approvers                  []CreateSecretApprovalPolicyJSONBody_Approvers_Item  `json:"approvers"`
 	BypassForMachineIdentities *bool                                                `json:"bypassForMachineIdentities,omitempty"`
 	Bypassers                  *[]CreateSecretApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
-	EnforcementLevel           *CreateSecretApprovalPolicyJSONBodyEnforcementLevel  `json:"enforcementLevel,omitempty"`
-	Environment                *string                                              `json:"environment,omitempty"`
-	Environments               *[]string                                            `json:"environments,omitempty"`
 
-	// ExternalApproval Not supported on secret change policies. Only secret access policies can be handled by an external approval system, so sending this returns an error.
-	ExternalApproval *struct {
-		// ConnectionId The ID of the App Connection used to reach the external approval system.
+	// DelegatedApproval Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error.
+	DelegatedApproval *struct {
+		// ConnectionId The ID of the App Connection used to reach the delegated approval system.
 		ConnectionId openapi_types.UUID `json:"connectionId"`
 
-		// Type The external approval system that reviews requests made against this policy.
-		Type CreateSecretApprovalPolicyJSONBodyExternalApprovalType `json:"type"`
-	} `json:"externalApproval,omitempty"`
-	Name       *string `json:"name,omitempty"`
-	ProjectId  string  `json:"projectId"`
-	SecretPath string  `json:"secretPath"`
+		// Type The delegated approval system that reviews requests made against this policy.
+		Type CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
+	} `json:"delegatedApproval,omitempty"`
+	EnforcementLevel *CreateSecretApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environment      *string                                             `json:"environment,omitempty"`
+	Environments     *[]string                                           `json:"environments,omitempty"`
+	Name             *string                                             `json:"name,omitempty"`
+	ProjectId        string                                              `json:"projectId"`
+	SecretPath       string                                              `json:"secretPath"`
 }
 
 // CreateSecretApprovalPolicyJSONBodyApprovers0 defines parameters for CreateSecretApprovalPolicy.
@@ -13433,11 +13433,11 @@ type CreateSecretApprovalPolicyJSONBody_Bypassers_Item struct {
 	union json.RawMessage
 }
 
+// CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType defines parameters for CreateSecretApprovalPolicy.
+type CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType string
+
 // CreateSecretApprovalPolicyJSONBodyEnforcementLevel defines parameters for CreateSecretApprovalPolicy.
 type CreateSecretApprovalPolicyJSONBodyEnforcementLevel string
-
-// CreateSecretApprovalPolicyJSONBodyExternalApprovalType defines parameters for CreateSecretApprovalPolicy.
-type CreateSecretApprovalPolicyJSONBodyExternalApprovalType string
 
 // CreateSecretApprovalPolicy400JSONResponseBodyStatusCode defines parameters for CreateSecretApprovalPolicy.
 type CreateSecretApprovalPolicy400JSONResponseBodyStatusCode float32
@@ -13531,19 +13531,19 @@ type UpdateSecretApprovalPolicyJSONBody struct {
 	Approvers                  []UpdateSecretApprovalPolicyJSONBody_Approvers_Item  `json:"approvers"`
 	BypassForMachineIdentities *bool                                                `json:"bypassForMachineIdentities,omitempty"`
 	Bypassers                  *[]UpdateSecretApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
-	EnforcementLevel           *UpdateSecretApprovalPolicyJSONBodyEnforcementLevel  `json:"enforcementLevel,omitempty"`
-	Environments               *[]string                                            `json:"environments,omitempty"`
 
-	// ExternalApproval Not supported on secret change policies. Only secret access policies can be handled by an external approval system, so sending this returns an error.
-	ExternalApproval *struct {
-		// ConnectionId The ID of the App Connection used to reach the external approval system.
+	// DelegatedApproval Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error.
+	DelegatedApproval *struct {
+		// ConnectionId The ID of the App Connection used to reach the delegated approval system.
 		ConnectionId openapi_types.UUID `json:"connectionId"`
 
-		// Type The external approval system that reviews requests made against this policy.
-		Type UpdateSecretApprovalPolicyJSONBodyExternalApprovalType `json:"type"`
-	} `json:"externalApproval,omitempty"`
-	Name       *string `json:"name,omitempty"`
-	SecretPath *string `json:"secretPath,omitempty"`
+		// Type The delegated approval system that reviews requests made against this policy.
+		Type UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
+	} `json:"delegatedApproval,omitempty"`
+	EnforcementLevel *UpdateSecretApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environments     *[]string                                           `json:"environments,omitempty"`
+	Name             *string                                             `json:"name,omitempty"`
+	SecretPath       *string                                             `json:"secretPath,omitempty"`
 }
 
 // UpdateSecretApprovalPolicyJSONBodyApprovers0 defines parameters for UpdateSecretApprovalPolicy.
@@ -13594,11 +13594,11 @@ type UpdateSecretApprovalPolicyJSONBody_Bypassers_Item struct {
 	union json.RawMessage
 }
 
+// UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType defines parameters for UpdateSecretApprovalPolicy.
+type UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType string
+
 // UpdateSecretApprovalPolicyJSONBodyEnforcementLevel defines parameters for UpdateSecretApprovalPolicy.
 type UpdateSecretApprovalPolicyJSONBodyEnforcementLevel string
-
-// UpdateSecretApprovalPolicyJSONBodyExternalApprovalType defines parameters for UpdateSecretApprovalPolicy.
-type UpdateSecretApprovalPolicyJSONBodyExternalApprovalType string
 
 // UpdateSecretApprovalPolicy400JSONResponseBodyStatusCode defines parameters for UpdateSecretApprovalPolicy.
 type UpdateSecretApprovalPolicy400JSONResponseBodyStatusCode float32
@@ -26398,7 +26398,14 @@ type ListAccessApprovalPoliciesResponse struct {
 				Id   *string                                                             `json:"id,omitempty"`
 				Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 			} `json:"bypassers"`
-			CreatedAt        time.Time          `json:"createdAt"`
+			CreatedAt         time.Time `json:"createdAt"`
+			DelegatedApproval *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
 			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 			EnvId            openapi_types.UUID `json:"envId"`
@@ -26412,13 +26419,6 @@ type ListAccessApprovalPoliciesResponse struct {
 				Name string `json:"name"`
 				Slug string `json:"slug"`
 			} `json:"environments"`
-			ExternalApproval *struct {
-				// ConnectionId The ID of the App Connection used to reach the external approval system.
-				ConnectionId openapi_types.UUID `json:"connectionId"`
-
-				// Type The external approval system that reviews requests made against this policy.
-				Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType `json:"type"`
-			} `json:"externalApproval,omitempty"`
 			Id                    openapi_types.UUID `json:"id"`
 			MaxTimePeriod         *string            `json:"maxTimePeriod,omitempty"`
 			Name                  string             `json:"name"`
@@ -26491,7 +26491,14 @@ func (r ListAccessApprovalPoliciesResponse) GetJSON200() *struct {
 			Id   *string                                                             `json:"id,omitempty"`
 			Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 		} `json:"bypassers"`
-		CreatedAt        time.Time          `json:"createdAt"`
+		CreatedAt         time.Time `json:"createdAt"`
+		DelegatedApproval *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
 		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 		EnvId            openapi_types.UUID `json:"envId"`
@@ -26505,13 +26512,6 @@ func (r ListAccessApprovalPoliciesResponse) GetJSON200() *struct {
 			Name string `json:"name"`
 			Slug string `json:"slug"`
 		} `json:"environments"`
-		ExternalApproval *struct {
-			// ConnectionId The ID of the App Connection used to reach the external approval system.
-			ConnectionId openapi_types.UUID `json:"connectionId"`
-
-			// Type The external approval system that reviews requests made against this policy.
-			Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType `json:"type"`
-		} `json:"externalApproval,omitempty"`
 		Id                    openapi_types.UUID `json:"id"`
 		MaxTimePeriod         *string            `json:"maxTimePeriod,omitempty"`
 		Name                  string             `json:"name"`
@@ -26621,14 +26621,21 @@ type CreateAccessApprovalPolicyResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Approval struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32  `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time `json:"createdAt"`
+			DelegatedApproval          *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
+			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+			EnvId            openapi_types.UUID `json:"envId"`
+			Environment      struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -26638,13 +26645,6 @@ type CreateAccessApprovalPolicyResponse struct {
 				Name string `json:"name"`
 				Slug string `json:"slug"`
 			} `json:"environments"`
-			ExternalApproval *struct {
-				// ConnectionId The ID of the App Connection used to reach the external approval system.
-				ConnectionId openapi_types.UUID `json:"connectionId"`
-
-				// Type The external approval system that reviews requests made against this policy.
-				Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-			} `json:"externalApproval,omitempty"`
 			Id         openapi_types.UUID `json:"id"`
 			Name       string             `json:"name"`
 			ProjectId  string             `json:"projectId"`
@@ -26701,14 +26701,21 @@ type CreateAccessApprovalPolicyResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateAccessApprovalPolicyResponse) GetJSON200() *struct {
 	Approval struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32  `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time `json:"createdAt"`
+		DelegatedApproval          *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
+		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+		EnvId            openapi_types.UUID `json:"envId"`
+		Environment      struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -26718,13 +26725,6 @@ func (r CreateAccessApprovalPolicyResponse) GetJSON200() *struct {
 			Name string `json:"name"`
 			Slug string `json:"slug"`
 		} `json:"environments"`
-		ExternalApproval *struct {
-			// ConnectionId The ID of the App Connection used to reach the external approval system.
-			ConnectionId openapi_types.UUID `json:"connectionId"`
-
-			// Type The external approval system that reviews requests made against this policy.
-			Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-		} `json:"externalApproval,omitempty"`
 		Id         openapi_types.UUID `json:"id"`
 		Name       string             `json:"name"`
 		ProjectId  string             `json:"projectId"`
@@ -26847,7 +26847,14 @@ type GetAccessApprovalPolicyResponse struct {
 				Name *string                                                         `json:"name,omitempty"`
 				Type GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 			} `json:"bypassers,omitempty"`
-			CreatedAt        time.Time          `json:"createdAt"`
+			CreatedAt         time.Time `json:"createdAt"`
+			DelegatedApproval *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
 			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 			EnvId            openapi_types.UUID `json:"envId"`
@@ -26861,13 +26868,6 @@ type GetAccessApprovalPolicyResponse struct {
 				Name string `json:"name"`
 				Slug string `json:"slug"`
 			} `json:"environments"`
-			ExternalApproval *struct {
-				// ConnectionId The ID of the App Connection used to reach the external approval system.
-				ConnectionId openapi_types.UUID `json:"connectionId"`
-
-				// Type The external approval system that reviews requests made against this policy.
-				Type GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-			} `json:"externalApproval,omitempty"`
 			Id                    openapi_types.UUID `json:"id"`
 			MaxTimePeriod         *string            `json:"maxTimePeriod,omitempty"`
 			Name                  string             `json:"name"`
@@ -26941,7 +26941,14 @@ func (r GetAccessApprovalPolicyResponse) GetJSON200() *struct {
 			Name *string                                                         `json:"name,omitempty"`
 			Type GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 		} `json:"bypassers,omitempty"`
-		CreatedAt        time.Time          `json:"createdAt"`
+		CreatedAt         time.Time `json:"createdAt"`
+		DelegatedApproval *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
 		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 		EnvId            openapi_types.UUID `json:"envId"`
@@ -26955,13 +26962,6 @@ func (r GetAccessApprovalPolicyResponse) GetJSON200() *struct {
 			Name string `json:"name"`
 			Slug string `json:"slug"`
 		} `json:"environments"`
-		ExternalApproval *struct {
-			// ConnectionId The ID of the App Connection used to reach the external approval system.
-			ConnectionId openapi_types.UUID `json:"connectionId"`
-
-			// Type The external approval system that reviews requests made against this policy.
-			Type GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-		} `json:"externalApproval,omitempty"`
 		Id                    openapi_types.UUID `json:"id"`
 		MaxTimePeriod         *string            `json:"maxTimePeriod,omitempty"`
 		Name                  string             `json:"name"`
@@ -27071,14 +27071,21 @@ type UpdateAccessApprovalPolicyResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Approval struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32  `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time `json:"createdAt"`
+			DelegatedApproval          *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
+			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+			EnvId            openapi_types.UUID `json:"envId"`
+			Environment      struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -27088,13 +27095,6 @@ type UpdateAccessApprovalPolicyResponse struct {
 				Name string `json:"name"`
 				Slug string `json:"slug"`
 			} `json:"environments"`
-			ExternalApproval *struct {
-				// ConnectionId The ID of the App Connection used to reach the external approval system.
-				ConnectionId openapi_types.UUID `json:"connectionId"`
-
-				// Type The external approval system that reviews requests made against this policy.
-				Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-			} `json:"externalApproval,omitempty"`
 			Id         openapi_types.UUID `json:"id"`
 			Name       string             `json:"name"`
 			ProjectId  string             `json:"projectId"`
@@ -27151,14 +27151,21 @@ type UpdateAccessApprovalPolicyResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateAccessApprovalPolicyResponse) GetJSON200() *struct {
 	Approval struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32  `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time `json:"createdAt"`
+		DelegatedApproval          *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
+		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+		EnvId            openapi_types.UUID `json:"envId"`
+		Environment      struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -27168,13 +27175,6 @@ func (r UpdateAccessApprovalPolicyResponse) GetJSON200() *struct {
 			Name string `json:"name"`
 			Slug string `json:"slug"`
 		} `json:"environments"`
-		ExternalApproval *struct {
-			// ConnectionId The ID of the App Connection used to reach the external approval system.
-			ConnectionId openapi_types.UUID `json:"connectionId"`
-
-			// Type The external approval system that reviews requests made against this policy.
-			Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-		} `json:"externalApproval,omitempty"`
 		Id         openapi_types.UUID `json:"id"`
 		Name       string             `json:"name"`
 		ProjectId  string             `json:"projectId"`
@@ -43726,7 +43726,14 @@ func ParseListAccessApprovalPoliciesResponse(rsp *http.Response) (*ListAccessApp
 					Id   *string                                                             `json:"id,omitempty"`
 					Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 				} `json:"bypassers"`
-				CreatedAt        time.Time          `json:"createdAt"`
+				CreatedAt         time.Time `json:"createdAt"`
+				DelegatedApproval *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
 				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 				EnvId            openapi_types.UUID `json:"envId"`
@@ -43740,13 +43747,6 @@ func ParseListAccessApprovalPoliciesResponse(rsp *http.Response) (*ListAccessApp
 					Name string `json:"name"`
 					Slug string `json:"slug"`
 				} `json:"environments"`
-				ExternalApproval *struct {
-					// ConnectionId The ID of the App Connection used to reach the external approval system.
-					ConnectionId openapi_types.UUID `json:"connectionId"`
-
-					// Type The external approval system that reviews requests made against this policy.
-					Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsExternalApprovalType `json:"type"`
-				} `json:"externalApproval,omitempty"`
 				Id                    openapi_types.UUID `json:"id"`
 				MaxTimePeriod         *string            `json:"maxTimePeriod,omitempty"`
 				Name                  string             `json:"name"`
@@ -43857,14 +43857,21 @@ func ParseCreateAccessApprovalPolicyResponse(rsp *http.Response) (*CreateAccessA
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Approval struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32  `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time `json:"createdAt"`
+				DelegatedApproval          *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
+				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+				EnvId            openapi_types.UUID `json:"envId"`
+				Environment      struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -43874,13 +43881,6 @@ func ParseCreateAccessApprovalPolicyResponse(rsp *http.Response) (*CreateAccessA
 					Name string `json:"name"`
 					Slug string `json:"slug"`
 				} `json:"environments"`
-				ExternalApproval *struct {
-					// ConnectionId The ID of the App Connection used to reach the external approval system.
-					ConnectionId openapi_types.UUID `json:"connectionId"`
-
-					// Type The external approval system that reviews requests made against this policy.
-					Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-				} `json:"externalApproval,omitempty"`
 				Id         openapi_types.UUID `json:"id"`
 				Name       string             `json:"name"`
 				ProjectId  string             `json:"projectId"`
@@ -44004,7 +44004,14 @@ func ParseGetAccessApprovalPolicyResponse(rsp *http.Response) (*GetAccessApprova
 					Name *string                                                         `json:"name,omitempty"`
 					Type GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 				} `json:"bypassers,omitempty"`
-				CreatedAt        time.Time          `json:"createdAt"`
+				CreatedAt         time.Time `json:"createdAt"`
+				DelegatedApproval *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
 				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 				EnvId            openapi_types.UUID `json:"envId"`
@@ -44018,13 +44025,6 @@ func ParseGetAccessApprovalPolicyResponse(rsp *http.Response) (*GetAccessApprova
 					Name string `json:"name"`
 					Slug string `json:"slug"`
 				} `json:"environments"`
-				ExternalApproval *struct {
-					// ConnectionId The ID of the App Connection used to reach the external approval system.
-					ConnectionId openapi_types.UUID `json:"connectionId"`
-
-					// Type The external approval system that reviews requests made against this policy.
-					Type GetAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-				} `json:"externalApproval,omitempty"`
 				Id                    openapi_types.UUID `json:"id"`
 				MaxTimePeriod         *string            `json:"maxTimePeriod,omitempty"`
 				Name                  string             `json:"name"`
@@ -44135,14 +44135,21 @@ func ParseUpdateAccessApprovalPolicyResponse(rsp *http.Response) (*UpdateAccessA
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Approval struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32  `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time `json:"createdAt"`
+				DelegatedApproval          *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
+				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+				EnvId            openapi_types.UUID `json:"envId"`
+				Environment      struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -44152,13 +44159,6 @@ func ParseUpdateAccessApprovalPolicyResponse(rsp *http.Response) (*UpdateAccessA
 					Name string `json:"name"`
 					Slug string `json:"slug"`
 				} `json:"environments"`
-				ExternalApproval *struct {
-					// ConnectionId The ID of the App Connection used to reach the external approval system.
-					ConnectionId openapi_types.UUID `json:"connectionId"`
-
-					// Type The external approval system that reviews requests made against this policy.
-					Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalExternalApprovalType `json:"type"`
-				} `json:"externalApproval,omitempty"`
 				Id         openapi_types.UUID `json:"id"`
 				Name       string             `json:"name"`
 				ProjectId  string             `json:"projectId"`

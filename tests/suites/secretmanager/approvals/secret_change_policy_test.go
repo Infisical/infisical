@@ -333,30 +333,30 @@ func TestSecretApprovalPolicy_Create(t *testing.T) {
 		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.As(committer))
 	})
 
-	t.Run("should refuse and create no policy when a secret change policy receives an external approval", func(t *testing.T) {
+	t.Run("should refuse and create no policy when a secret change policy receives a delegated approval", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
-		conn := newExternalSystem(t, tn)
+		conn := newDelegatedApprovalSystem(t, tn)
 
 		// Action
 		res, err := tn.Admin.API.CreateSecretApprovalPolicyWithBodyWithResponse(t.Context(), "application/json",
 			jsonBody(t, map[string]any{
-				"projectId":        proj.ID,
-				"environment":      "dev",
-				"secretPath":       "/",
-				"approvers":        []map[string]any{{"type": "user", "id": reviewer.ID}},
-				"externalApproval": externalSystem(conn),
+				"projectId":         proj.ID,
+				"environment":       "dev",
+				"secretPath":        "/",
+				"approvers":         []map[string]any{{"type": "user", "id": reviewer.ID}},
+				"delegatedApproval": delegatedApproval(conn),
 			}))
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", apierr.Body(res.Body))
 		require.Equal(t,
-			"Only secret access policies can be handled by an external approval system. Remove externalApproval from the request.",
+			"Only secret access policies can be handled by a delegated approval system. Remove delegatedApproval from the request.",
 			res.JSON400.Message)
 		require.Nil(t, policyAt(t, proj, "dev", "/"))
 	})

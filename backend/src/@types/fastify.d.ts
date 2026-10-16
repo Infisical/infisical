@@ -111,8 +111,8 @@ import { TCertificateTemplateServiceFactory } from "@app/services/certificate-te
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
+import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { TEncryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
-import { TExternalApprovalServiceFactory } from "@app/services/external-approval/external-approval-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
@@ -490,7 +490,7 @@ declare module "fastify" {
       subOrganization: TSubOrgServiceFactory;
       pkiAlertV2: TPkiAlertV2ServiceFactory;
       approvalPolicy: TApprovalPolicyServiceFactory;
-      externalApproval: TExternalApprovalServiceFactory;
+      delegatedApproval: TDelegatedApprovalServiceFactory;
       appConnectionCredentialRotation: TAppConnectionCredentialRotationServiceFactory;
       caSigningConfig: TCaSigningConfigServiceFactory;
       caAutoRenewalQueue: TCaAutoRenewalQueueFactory;

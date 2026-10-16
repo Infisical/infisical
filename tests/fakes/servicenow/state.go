@@ -1,7 +1,7 @@
 // Package servicenow fakes the parts of a ServiceNow instance's REST API that Infisical
 // calls.
 //
-// One fake for the service, not one per feature. The App Connection and external
+// One fake for the service, not one per feature. The App Connection and delegated
 // approval both reach the same instance as the same integration user.
 package servicenow
 

@@ -13,19 +13,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAccessApprovalPolicy_ExternalApproval(t *testing.T) {
+func TestAccessApprovalPolicy_DelegatedApproval(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should refuse to update a policy handled by an external system while it has a pending request", func(t *testing.T) {
+	t.Run("should refuse to update a policy handled by a delegated approval system while it has a pending request", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		requester := proj.NewUser(t, fixture.WithPrincipalName("requester"))
-		conn := newExternalSystem(t, tn)
-		policyID, name := newExternalAccessPolicy(t, proj, conn)
+		conn := newDelegatedApprovalSystem(t, tn)
+		policyID, name := newDelegatedAccessPolicy(t, proj, conn)
 		requestAccess(t, requester, proj, "dev", "/")
 
 		// Action
@@ -51,7 +51,7 @@ func TestAccessApprovalPolicy_ExternalApproval(t *testing.T) {
 				approver := proj.NewUser(t, fixture.WithPrincipalName("approver"))
 				body["approvers"] = []map[string]any{{"type": "user", "id": approver.ID}}
 			},
-			message: "Policies handled by an external approval system cannot have approvers, since the external approval system reviews their requests. Remove the approvers.",
+			message: "Policies handled by a delegated approval system cannot have approvers, since the delegated approval system reviews their requests. Remove the approvers.",
 		},
 		{
 			managedBy: "bypassers",
@@ -59,31 +59,31 @@ func TestAccessApprovalPolicy_ExternalApproval(t *testing.T) {
 				bypasser := proj.NewUser(t, fixture.WithPrincipalName("bypasser"))
 				body["bypassers"] = []map[string]any{{"type": "user", "id": bypasser.ID}}
 			},
-			message: "Policies handled by an external approval system cannot have bypassers, since break glass is not available for them.",
+			message: "Policies handled by a delegated approval system cannot have bypassers, since break glass is not available for them.",
 		},
 		{
 			managedBy: "self approvals",
 			configure: func(_ *testing.T, _ *fixture.Project, body map[string]any) {
 				body["allowedSelfApprovals"] = true
 			},
-			message: "Policies handled by an external approval system cannot allow self approvals. Set allowedSelfApprovals to false.",
+			message: "Policies handled by a delegated approval system cannot allow self approvals. Set allowedSelfApprovals to false.",
 		},
 		{
 			managedBy: "soft enforcement",
 			configure: func(_ *testing.T, _ *fixture.Project, body map[string]any) {
 				body["enforcementLevel"] = "soft"
 			},
-			message: "Policies handled by an external approval system cannot use soft enforcement, since break glass is not available for them. Set enforcementLevel to 'hard'.",
+			message: "Policies handled by a delegated approval system cannot use soft enforcement, since break glass is not available for them. Set enforcementLevel to 'hard'.",
 		},
 	} {
-		t.Run("should refuse and create no policy when one handled by an external system also has "+tc.managedBy, func(t *testing.T) {
+		t.Run("should refuse and create no policy when one handled by a delegated approval system also has "+tc.managedBy, func(t *testing.T) {
 			t.Parallel()
 
 			// Setup
 			tn := h.NewTenant(t)
 			proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-			conn := newExternalSystem(t, tn)
-			body := externalAccessPolicyBody(proj, conn)
+			conn := newDelegatedApprovalSystem(t, tn)
+			body := delegatedAccessPolicyBody(proj, conn)
 			tc.configure(t, proj, body)
 
 			// Action
@@ -99,26 +99,26 @@ func TestAccessApprovalPolicy_ExternalApproval(t *testing.T) {
 	}
 }
 
-// externalAccessPolicyBody hands dev:/ to an external system with nothing for
+// delegatedAccessPolicyBody hands dev:/ to a delegated approval system with nothing for
 // Infisical to review itself, which is the only shape such a policy may take.
 //
-// A map rather than the typed body because externalApproval is generated as an
+// A map rather than the typed body because delegatedApproval is generated as an
 // anonymous struct, which a test cannot name without restating its tags.
-func externalAccessPolicyBody(proj *fixture.Project, conn *fixture.AppConnection) map[string]any {
+func delegatedAccessPolicyBody(proj *fixture.Project, conn *fixture.AppConnection) map[string]any {
 	return map[string]any{
 		"projectSlug":          proj.Slug,
 		"environment":          "dev",
 		"secretPath":           "/",
 		"enforcementLevel":     "hard",
 		"allowedSelfApprovals": false,
-		"externalApproval":     externalSystem(conn),
+		"delegatedApproval":    delegatedApproval(conn),
 	}
 }
 
-func newExternalAccessPolicy(t *testing.T, proj *fixture.Project, conn *fixture.AppConnection) (uuid.UUID, string) {
+func newDelegatedAccessPolicy(t *testing.T, proj *fixture.Project, conn *fixture.AppConnection) (uuid.UUID, string) {
 	t.Helper()
 	res, err := proj.Tenant().Admin.API.CreateAccessApprovalPolicyWithBodyWithResponse(t.Context(), "application/json",
-		jsonBody(t, externalAccessPolicyBody(proj, conn)))
+		jsonBody(t, delegatedAccessPolicyBody(proj, conn)))
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.Approval.Id, res.JSON200.Approval.Name

@@ -148,14 +148,14 @@ for product vocabulary only: resolving the resource a request names, notificatio
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
 
-A policy on the global approval system can hand its requests to an external approval system (ServiceNow)
-through `backend/src/services/external-approval/`, which owns the `external_approval_policies` and
-`external_approval_requests` rows. Secret access policies opt in with `externalApproval: { type, connectionId }`
-on create and update (`secret-access-approval-global-policy-bridge-service.ts`). An external policy has no
+A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
+through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
+`delegated_approval_requests` rows. Secret access policies opt in with `delegatedApproval: { type, connectionId }`
+on create and update (`secret-access-approval-global-policy-bridge-service.ts`). A delegated policy has no
 Infisical approvers, cannot use break glass (soft enforcement or bypassers) or self approval, cannot be updated
-while it has pending requests, and a policy on the legacy approval system can never be external. Keep those
-rules in `assertExternalApprovalPolicyConstraints` when another policy type opts in. Only secret access
-policies may opt in today: `assertPolicyTypeSupportsExternalApproval` refuses the rest, and secret change
+while it has pending requests, and a policy on the legacy approval system can never be delegated. Keep those
+rules in `assertDelegatedApprovalPolicyConstraints` when another policy type opts in. Only secret access
+policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses the rest, and secret change
 policies return it as a 400 rather than dropping the field.
 
 ### API Layer (Frontend)

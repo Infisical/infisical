@@ -352,6 +352,9 @@ import { certificateV3QueueServiceFactory } from "@app/services/certificate-v3/c
 import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
+import { delegatedApprovalPolicyDALFactory } from "@app/services/delegated-approval/delegated-approval-policy-dal";
+import { delegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
+import { delegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { encryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -361,9 +364,6 @@ import { eventOutboxDALFactory } from "@app/services/event-outbox/event-outbox-d
 import { eventOutboxQueueFactory } from "@app/services/event-outbox/event-outbox-queue";
 import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
 import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
-import { externalApprovalPolicyDALFactory } from "@app/services/external-approval/external-approval-policy-dal";
-import { externalApprovalRequestDALFactory } from "@app/services/external-approval/external-approval-request-dal";
-import { externalApprovalServiceFactory } from "@app/services/external-approval/external-approval-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -860,8 +860,8 @@ export const registerRoutes = async (
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
   const approvalPolicySecretEnvironmentDAL = approvalPolicySecretEnvironmentDALFactory(db);
   const approvalRequestDAL = approvalRequestDALFactory(db);
-  const externalApprovalPolicyDAL = externalApprovalPolicyDALFactory(db);
-  const externalApprovalRequestDAL = externalApprovalRequestDALFactory(db);
+  const delegatedApprovalPolicyDAL = delegatedApprovalPolicyDALFactory(db);
+  const delegatedApprovalRequestDAL = delegatedApprovalRequestDALFactory(db);
   const secretChangeGlobalPolicyBridgeDAL = secretChangeGlobalPolicyBridgeDALFactory(db);
   const roleDAL = roleDALFactory(db);
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
@@ -2664,7 +2664,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     secretAccessApprovalGlobalPolicyBridgeDAL,
     secretAccessApprovalGlobalRequestBridgeDAL,
-    externalApprovalPolicyDAL,
+    delegatedApprovalPolicyDAL,
     smtpService,
     notificationService,
     kmsService,
@@ -3287,9 +3287,9 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const externalApprovalService = externalApprovalServiceFactory({
-    externalApprovalPolicyDAL,
-    externalApprovalRequestDAL,
+  const delegatedApprovalService = delegatedApprovalServiceFactory({
+    delegatedApprovalPolicyDAL,
+    delegatedApprovalRequestDAL,
     approvalPolicyDAL,
     approvalRequestDAL,
     appConnectionDAL,
@@ -3314,7 +3314,7 @@ export const registerRoutes = async (
     approvalRequestStepEligibleApproversDAL,
     approvalRequestGrantsDAL,
     additionalPrivilegeDAL,
-    externalApprovalService
+    delegatedApprovalService
   });
 
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
@@ -4792,7 +4792,7 @@ export const registerRoutes = async (
     convertor: convertorService,
     pkiAlertV2: pkiAlertV2Service,
     approvalPolicy: approvalPolicyService,
-    externalApproval: externalApprovalService,
+    delegatedApproval: delegatedApprovalService,
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
     caAutoRenewalQueue
   });
