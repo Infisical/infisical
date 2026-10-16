@@ -491,6 +491,8 @@ Show whether the CLI is authenticated to Infisical and, when available, the orga
 
 End a login session. The CLI removes the profile's stored credentials from this machine, and revokes its session on the server unless another profile still uses that session.
 
+The command also deletes the secrets the CLI saved for offline use. Every profile on this machine shares them, so they're deleted even when other profiles stay logged in, and the CLI saves them again the next time a profile fetches secrets.
+
 The profile itself is kept, so `infisical login --profile <name>` signs back in without setting it up again. To remove the profile, run [infisical profile delete](/cli/reference#profile-delete).
 
 Without `--all` or `--profile`, the command logs out of the profile in effect. See [infisical profile](/cli/reference#profile) for how that profile is chosen.

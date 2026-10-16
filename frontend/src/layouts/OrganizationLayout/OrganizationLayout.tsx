@@ -30,8 +30,12 @@ export const OrganizationLayout = () => {
     select: (el) => el?.projectId
   });
   const implicitProduct = useImplicitProduct();
-  // Certificate Manager brings its own scroll container, so it keeps the project page chrome.
-  const isInsideProject = Boolean(projectId) || implicitProduct === ProjectType.CertificateManager;
+  // Certificate Manager and Secret Scanning bring their own scroll container, so they keep the project
+  // page chrome.
+  const isInsideProject =
+    Boolean(projectId) ||
+    implicitProduct === ProjectType.CertificateManager ||
+    implicitProduct === ProjectType.SecretScanning;
   const isCertManagerOverview = useRouterState({
     select: (state) =>
       state.matches.some(
@@ -46,7 +50,7 @@ export const OrganizationLayout = () => {
       state.matches.some(
         (match) =>
           match.routeId ===
-          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout"
+          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout"
       )
   });
 

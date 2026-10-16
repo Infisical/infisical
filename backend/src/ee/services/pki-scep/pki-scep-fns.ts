@@ -9,6 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCaSigner } from "@app/services/certificate-authority/ca-signer";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -16,7 +17,6 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { getCaCertChains, getCaSigner } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { SUPPORTED_GENERAL_NAME_TYPES } from "@app/services/certificate-common/certificate-constants";
-import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -127,7 +127,7 @@ type TGenerateScepRaCertificateDeps = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Parameters<typeof getCaCertChains>[0]["kmsService"] &
     Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">;
-  hsmConnectorService: THsmConnectorServiceFactory;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
 };
 
 // Whether Infisical can CA-sign the SCEP RA for a CA type so it chains to the CA (RFC 8894).
@@ -180,7 +180,7 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     certificateAuthoritySecretDAL: deps.certificateAuthoritySecretDAL,
     projectDAL: deps.projectDAL,
     kmsService: deps.kmsService,
-    hsmConnectorService: deps.hsmConnectorService
+    caKeySourceService: deps.caKeySourceService
   });
 
   const chains = await getCaCertChains({

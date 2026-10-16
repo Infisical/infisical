@@ -571,6 +571,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
         onClearSelection={() => clearAllPendingChanges({ projectId, environment, secretPath })}
         selectionLabel={`${totalChangesCount} pending change${totalChangesCount !== 1 ? "s" : ""}`}
         clearLabel="Discard"
+        iconOnlyClear={false}
         aria-label="Pending change actions"
       >
         <Button variant="outline" size="xs" onClick={handleSaveChanges}>

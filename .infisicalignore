@@ -74,3 +74,6 @@ frontend/src/hooks/api/agentVault/sessionLogDecrypt.test.ts:generic-api-key:161
 docs/documentation/platform/secret-scanning/scan-locally.mdx:generic-api-key:65
 backend/src/ee/services/secret-sync/chef/chef-sync-fns.test.ts:generic-api-key:28
 backend/src/ee/services/secret-sync/chef/chef-sync-fns.test.ts:generic-api-key:35
+docs/documentation/platform/pki/ca/private-ca.mdx:generic-api-key:334
+docs/snippets/documentation/platform/secret-scanning/ignore-one-line.mdx:generic-api-key:6
+frontend/src/pages/secret-scanning/layout.tsx:generic-api-key:9

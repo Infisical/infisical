@@ -144,6 +144,47 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
             : []),
           { label: "Reason", value: requestData?.reason || "No reason provided" }
         ]}
+        contentFooter={
+          (isPending || canRevoke) && (
+            <>
+              {isPending && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
+                    isPending={reviewMutation.isPending}
+                  >
+                    <X className="mr-1.5 size-4" />
+                    Deny
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Button
+                          variant="pam"
+                          onClick={() => handleReview(PamAccessRequestDecision.Approved)}
+                          isPending={reviewMutation.isPending}
+                          isDisabled={isOwnRequest}
+                        >
+                          <Check className="mr-1.5 size-4" />
+                          Approve
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {isOwnRequest && (
+                      <TooltipContent>You cannot approve your own request</TooltipContent>
+                    )}
+                  </Tooltip>
+                </>
+              )}
+              {canRevoke && (
+                <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
+                  Revoke Access
+                </Button>
+              )}
+            </>
+          )
+        }
       >
         <div className="flex h-full flex-1 flex-col p-6">
           <div className="flex flex-1 flex-col gap-6">
@@ -207,46 +248,6 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
               </p>
             )}
           </div>
-
-          {(isPending || canRevoke) && (
-            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              {isPending && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
-                    isPending={reviewMutation.isPending}
-                  >
-                    <X className="mr-1.5 size-4" />
-                    Deny
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <Button
-                          variant="pam"
-                          onClick={() => handleReview(PamAccessRequestDecision.Approved)}
-                          isPending={reviewMutation.isPending}
-                          isDisabled={isOwnRequest}
-                        >
-                          <Check className="mr-1.5 size-4" />
-                          Approve
-                        </Button>
-                      </div>
-                    </TooltipTrigger>
-                    {isOwnRequest && (
-                      <TooltipContent>You cannot approve your own request</TooltipContent>
-                    )}
-                  </Tooltip>
-                </>
-              )}
-              {canRevoke && (
-                <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
-                  Revoke Access
-                </Button>
-              )}
-            </div>
-          )}
         </div>
       </PamDetailSheet>
     </>

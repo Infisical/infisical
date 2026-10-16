@@ -6,14 +6,18 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { pick } from "@app/lib/fn";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
-import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
-import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "./ca-signer";
+import { isExternalCaKeySource } from "./ca-key-source/ca-key-source-fns";
+import type { TCaKeySourceServiceFactory } from "./ca-key-source/ca-key-source-service";
+import { TCaKeyDetails } from "./ca-key-source/ca-key-source-types";
+import { buildLocalCaSigner, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
+import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TDNParts,
   TGetCaCertChainDTO,
@@ -352,7 +356,7 @@ export const getCaCredentials = async ({
   if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
   if (!caSecret.encryptedPrivateKey) {
     throw new BadRequestError({
-      message: `Certificate authority '${caId}' is HSM-backed; its signing key is not available locally.`
+      message: `Certificate authority '${caId}' signs with a key held outside Infisical; its signing key is not available locally.`
     });
   }
 
@@ -417,8 +421,8 @@ export const getCaCredentials = async ({
 
 /**
  * Return a signer for CA with id [caId] that abstracts over where the signing key lives.
- * For locally-keyed CAs it decrypts the KMS-stored private key; for HSM-backed CAs it routes
- * signing through the HSM Connector. Every issuance / renewal / CRL path uses this so the
+ * For locally-keyed CAs it decrypts the KMS-stored private key; for CAs whose key lives outside
+ * Infisical (HSM, AWS KMS) it routes signing through that key source. Every issuance / renewal / CRL path uses this so the
  * call sites never branch on key source.
  */
 export const getCaSigner = async ({
@@ -427,7 +431,7 @@ export const getCaSigner = async ({
   certificateAuthoritySecretDAL,
   projectDAL,
   kmsService,
-  hsmConnectorService,
+  caKeySourceService,
   signatureAlgorithm,
   prefetched
 }: TGetCaSignerDTO): Promise<{
@@ -442,35 +446,13 @@ export const getCaSigner = async ({
 
   const keyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
 
-  if (caSecret.keySource === CertKeySource.Hsm) {
-    if (!caSecret.hsmConnectorId || !caSecret.hsmKeyLabel || !caSecret.hsmPublicKeySpki) {
-      throw new BadRequestError({ message: "HSM-backed CA secret is missing its connector, key label, or public key" });
-    }
-
-    const shape = caKeyAlgorithmToHsmShape(keyAlgorithm);
-    const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
-      "spki",
-      caSecret.hsmPublicKeySpki,
-      shape.importParams,
-      true,
-      ["verify"]
-    );
-
-    const connectorId = caSecret.hsmConnectorId;
-    const keyLabel = caSecret.hsmKeyLabel;
-    const signer = buildHsmCaSigner({
-      caPublicKey,
+  if (isExternalCaKeySource(caSecret.keySource)) {
+    const signer = await caKeySourceService.buildSigner({
+      keySource: caSecret.keySource,
+      projectId: ca.projectId,
       keyAlgorithm,
-      signingAlgorithm: signatureAlgorithm,
-      sign: (data, mechanism, isDigest) =>
-        hsmConnectorService.sign({
-          connectorId,
-          projectId: ca.projectId,
-          keyLabel,
-          mechanism,
-          data,
-          isDigest
-        })
+      reference: caSecret,
+      signatureAlgorithm
     });
 
     return { caSecret, signer };
@@ -593,7 +575,7 @@ export const rebuildCaCrl = async ({
   projectDAL,
   certificateDAL,
   kmsService,
-  hsmConnectorService
+  caKeySourceService
 }: TRebuildCaCrlDTO) => {
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
@@ -604,7 +586,7 @@ export const rebuildCaCrl = async ({
     certificateAuthoritySecretDAL,
     projectDAL,
     kmsService,
-    hsmConnectorService
+    caKeySourceService
   });
 
   const keyId = await getProjectKmsCertificateKeyId({
@@ -744,4 +726,38 @@ export const rethrowCaDeleteError = (error: unknown): never => {
     }
   }
   throw error;
+};
+
+const CA_KEY_SOURCE_AUDIT_FIELDS = [
+  "keySource",
+  "hsmConnectorId",
+  "hsmConnectorName",
+  "appConnectionId",
+  "appConnectionName",
+  "externalKeyId",
+  "region"
+] as const;
+
+export const getCaKeySourceAuditMetadata = (configuration: unknown) =>
+  pick((configuration ?? {}) as TCaKeyDetails & { keySource?: string }, [...CA_KEY_SOURCE_AUDIT_FIELDS]);
+
+export const deleteCaAndReleaseExternalKey = async ({
+  caId,
+  certificateAuthorityDAL,
+  certificateAuthoritySecretDAL,
+  caKeySourceService
+}: {
+  caId: string;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "deleteById">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "describeKey" | "prepareKeyReleases">;
+}) => {
+  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId }, certificateAuthoritySecretDAL.primaryNode());
+  const keyDetails = await caKeySourceService.describeKey(caSecret);
+  const releaseKeys = await caKeySourceService.prepareKeyReleases(caSecret ? [caSecret] : []);
+
+  await certificateAuthorityDAL.deleteById(caId).catch(rethrowCaDeleteError);
+  await releaseKeys();
+
+  return keyDetails;
 };

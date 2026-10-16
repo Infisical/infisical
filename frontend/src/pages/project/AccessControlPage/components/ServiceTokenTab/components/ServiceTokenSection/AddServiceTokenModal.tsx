@@ -405,7 +405,7 @@ const ServiceTokenForm = () => {
           )}
         </div>
       </form>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
         {hasServiceToken ? (
           <SheetClose asChild>
             <Button type="button" variant="project">
@@ -414,6 +414,11 @@ const ServiceTokenForm = () => {
           </SheetClose>
         ) : (
           <>
+            <SheetClose asChild>
+              <Button type="button" variant="outline" isDisabled={isSubmitting}>
+                Cancel
+              </Button>
+            </SheetClose>
             <Button
               type="submit"
               form="add-service-token-form"
@@ -423,11 +428,6 @@ const ServiceTokenForm = () => {
             >
               Create
             </Button>
-            <SheetClose asChild>
-              <Button type="button" variant="outline" isDisabled={isSubmitting}>
-                Cancel
-              </Button>
-            </SheetClose>
           </>
         )}
       </SheetFooter>

@@ -226,6 +226,20 @@ export const TypeSelect = () => {
     );
   }
 
+  if (orgScopedProduct === ProjectType.SecretScanning) {
+    const project = projects.find((p) => p.id === implicitProjectId);
+    const isLegacySecretScanningProject =
+      Boolean(project) &&
+      Boolean(secretScanningInstance?.isMultiInstance) &&
+      secretScanningInstance?.activeProjectId !== project?.id;
+    return (
+      <TypeSelectInner
+        currentType={ProjectType.SecretScanning}
+        currentProjectName={isLegacySecretScanningProject ? project?.name : undefined}
+      />
+    );
+  }
+
   if (!params.projectId && orgScopedProduct) {
     return <TypeSelectInner currentType={orgScopedProduct} />;
   }
@@ -233,17 +247,7 @@ export const TypeSelect = () => {
   if (params.projectId) {
     const project = projects.find((p) => p.id === params.projectId);
     if (project) {
-      const isLegacySecretScanningProject =
-        project.type === ProjectType.SecretScanning &&
-        Boolean(secretScanningInstance?.isMultiInstance) &&
-        secretScanningInstance?.activeProjectId !== project.id;
-      return (
-        <TypeSelectInner
-          currentType={project.type}
-          currentProjectName={isLegacySecretScanningProject ? project.name : undefined}
-          showDivider={project.type !== ProjectType.SecretScanning}
-        />
-      );
+      return <TypeSelectInner currentType={project.type} showDivider />;
     }
   }
 

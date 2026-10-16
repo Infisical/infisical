@@ -23,6 +23,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
@@ -1134,7 +1135,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   />
                 )}
               </div>
-              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <SheetFooter className="shrink-0 items-center justify-end border-t">
                 <Button
                   type="button"
                   variant="outline"
@@ -1150,7 +1151,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 >
                   {isEditMode ? "Update" : "Create"}
                 </Button>
-              </div>
+              </SheetFooter>
             </form>
           )}
         </SheetContent>

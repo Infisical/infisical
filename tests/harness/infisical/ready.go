@@ -28,7 +28,8 @@ type status struct {
 func readyStrategy() infra.Ready {
 	return infra.ForHTTP("/api/status").
 		WithPort(fmt.Sprintf("%d/tcp", port)).
-		WithStatusCodeMatcher(func(code int) bool { return code == http.StatusOK })
+		WithStatusCodeMatcher(func(code int) bool { return code == http.StatusOK }).
+		WithStartupTimeout(2 * time.Minute)
 }
 
 // checkStatus runs once the application is up and asserts that Redis and SMTP

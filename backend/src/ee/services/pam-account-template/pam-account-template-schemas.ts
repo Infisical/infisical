@@ -21,7 +21,8 @@ export const DEFAULT_HEARTBEAT_CONFIG: TPamHeartbeatConfig = { enabled: true, in
 
 export const PamRecordingS3ConfigSchema = z.object({
   bucket: z.string().trim().min(1),
-  region: z.nativeEnum(AWSRegion),
+  // S3-compatible connections take the region from their endpoint
+  region: z.nativeEnum(AWSRegion).optional(),
   keyPrefix: z.string().trim().optional()
 });
 

@@ -1,18 +1,25 @@
 import { Controller, useForm } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FilterableSelect,
-  FormControl,
+  Combobox,
+  DialogBody,
+  DialogClose,
+  DialogFooter,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
-import { Combobox, Field, FieldError, FieldLabel } from "@app/components/v3";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   CaSigningConfigType,
@@ -24,8 +31,6 @@ import {
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
-  TVenafiApplication,
-  TVenafiIssuingTemplate,
   useVenafiConnectionListApplications,
   useVenafiConnectionListIssuingTemplates
 } from "@app/hooks/api/appConnections/venafi";
@@ -154,142 +159,141 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        name="appConnectionId"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>
-              Venafi Connection <span className="text-danger">*</span>
-            </FieldLabel>
-            <Combobox
-              isError={Boolean(error)}
-              modal
-              isClearable={false}
-              isLoading={isVenafiPending}
-              value={(availableVenafiConnections || []).find((conn) => conn.id === value) ?? null}
-              onValueChange={(option) => {
-                onChange(option.id);
-                setValue("applicationId", "");
-                setValue("issuingTemplateId", "");
-              }}
-              options={availableVenafiConnections || []}
-              placeholder="Select a Venafi connection..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              creation={connectionCreation}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-      <Controller
-        control={control}
-        name="applicationId"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Application"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            isRequired
-          >
-            <FilterableSelect
-              isLoading={isApplicationsLoading && !!selectedConnectionId}
-              isDisabled={!selectedConnectionId}
-              value={applications.find((app) => app.id === value)}
-              onChange={(option) => {
-                const selected = option as SingleValue<TVenafiApplication>;
-                onChange(selected?.id ?? "");
-                setValue("issuingTemplateId", "");
-              }}
-              options={applications}
-              placeholder={
-                selectedConnectionId ? "Select an application..." : "Select a connection first"
-              }
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="issuingTemplateId"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Issuing Template"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            isRequired
-          >
-            <FilterableSelect
-              isLoading={isTemplatesLoading && !!selectedApplicationId}
-              isDisabled={!selectedApplicationId}
-              value={issuingTemplates.find((tmpl) => tmpl.id === value)}
-              onChange={(option) => {
-                const selected = option as SingleValue<TVenafiIssuingTemplate>;
-                onChange(selected?.id ?? "");
-              }}
-              options={issuingTemplates}
-              placeholder={
-                selectedApplicationId
-                  ? "Select an issuing template..."
-                  : "Select an application first"
-              }
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="validityPeriod"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Validity Period (Days)"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            helperText="Number of days the certificate should be valid"
-          >
-            <Input {...field} type="number" placeholder="365" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="maxPathLength"
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Path Length" errorText={error?.message} isError={Boolean(error)}>
-            <Select {...field} onValueChange={onChange} className="w-full">
-              {[-1, 0, 1, 2, 3].map((value) => (
-                <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
-                  {String(value)}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
+    <form className="contents" onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogBody>
+        <Controller
+          control={control}
+          name="appConnectionId"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Venafi Connection <span className="text-danger">*</span>
+              </FieldLabel>
+              <Combobox
+                isError={Boolean(error)}
+                modal
+                isClearable={false}
+                isLoading={isVenafiPending}
+                value={(availableVenafiConnections || []).find((conn) => conn.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.id);
+                  setValue("applicationId", "");
+                  setValue("issuingTemplateId", "");
+                }}
+                options={availableVenafiConnections || []}
+                placeholder="Select a Venafi connection..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                creation={connectionCreation}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="applicationId"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Application <span className="text-danger">*</span>
+              </FieldLabel>
+              <Combobox
+                isError={Boolean(error)}
+                isLoading={isApplicationsLoading && !!selectedConnectionId}
+                isDisabled={!selectedConnectionId}
+                modal
+                isClearable={false}
+                value={applications.find((app) => app.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.id);
+                  setValue("issuingTemplateId", "");
+                }}
+                options={applications}
+                placeholder={
+                  selectedConnectionId ? "Select an application..." : "Select a connection first"
+                }
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="issuingTemplateId"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Issuing Template <span className="text-danger">*</span>
+              </FieldLabel>
+              <Combobox
+                isError={Boolean(error)}
+                isLoading={isTemplatesLoading && !!selectedApplicationId}
+                isDisabled={!selectedApplicationId}
+                modal
+                isClearable={false}
+                value={issuingTemplates.find((tmpl) => tmpl.id === value) ?? null}
+                onValueChange={(option) => onChange(option.id)}
+                options={issuingTemplates}
+                placeholder={
+                  selectedApplicationId
+                    ? "Select an issuing template..."
+                    : "Select an application first"
+                }
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="validityPeriod"
+          render={({ field, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>Validity Period (Days)</FieldLabel>
+              <Input {...field} isError={Boolean(error)} type="number" placeholder="365" />
+              <FieldDescription>Number of days the certificate should be valid</FieldDescription>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="maxPathLength"
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>Path Length</FieldLabel>
+              <Select value={field.value} onValueChange={onChange}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {[-1, 0, 1, 2, 3].map((value) => (
+                    <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
+                      {String(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost" type="button">
+            Cancel
+          </Button>
+        </DialogClose>
+        <Button variant="neutral" type="submit" isPending={isSubmitting}>
           Install
         </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("installCaCert", false)}
-        >
-          Cancel
-        </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 };

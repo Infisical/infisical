@@ -174,6 +174,10 @@ routes emitting PAM's own audit events, so folder and account auditors still see
 keeps only what the generic API cannot express: the CLI's `folderName/accountName` create, the paginated
 folder list, the approver queue and count, the approver roster, and the folder notification configs.
 
+**Folder alerts are the `pam.folder` provider on the shared alert module**, fed by the resource's `buildEvent`.
+The older per-folder Slack configs (`pam_folder_notification_configs`) are legacy: they still post and can be
+removed, never added or edited.
+
 ## Policies & Settings
 
 **Policies** are governance controls on a template (MFA, reason, session duration, command-blocking),
@@ -181,6 +185,11 @@ registry-driven in `pam/pam-policies.ts` and stored in the template's `policies`
 policies apply before the session starts; gateway-enforced ones flow to the gateway via `policyRules`.
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
+
+**External recording storage** is the `aws-s3` backend whether the connection is AWS or S3-Compatible Storage
+(`resolveS3RecordingAccess`). Don't add a backend per provider: the value is in each chunk's AAD and in the
+backend list gateways read. Hosts beyond the built-in providers come from the server admin's
+`allowedStorageHostnames`, which `serve-ui.ts` also adds to the CSP `connect-src`, since browsers fetch chunks directly.
 
 **Break-glass** lets a requester self-approve their own pending request, and needs **both** gates open:
 the account's template carries `allow-break-glass`, *and* the folder's approval policy names the actor in

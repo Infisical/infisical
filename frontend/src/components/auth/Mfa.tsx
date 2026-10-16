@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
+import { CircleXIcon } from "lucide-react";
 
-import Error from "@app/components/basic/Error";
 import { MfaEnrollment } from "@app/components/mfa/MfaEnrollment";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
+  Alert,
+  AlertDescription,
   Button,
   CardContent,
   Tooltip,
@@ -303,7 +305,11 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               labelClassName: "text-foreground-soft",
               onConfirm: async () => {
                 setIsLoading(true);
-                await completeLogin();
+                try {
+                  await completeLogin();
+                } finally {
+                  setIsLoading(false);
+                }
               }
             }}
           />
@@ -420,9 +426,12 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
           {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
             <div className="flex flex-col gap-5">
               {typeof triesLeft === "number" && (
-                <Error
-                  text={`Failed authentication. You have ${triesLeft} attempt(s) remaining.`}
-                />
+                <Alert variant="danger">
+                  <CircleXIcon />
+                  <AlertDescription>
+                    {`Failed authentication. You have ${triesLeft} attempt(s) remaining.`}
+                  </AlertDescription>
+                </Alert>
               )}
               <Button
                 size="lg"
