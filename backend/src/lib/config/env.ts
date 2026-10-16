@@ -1240,7 +1240,7 @@ export const formatSmtpConfig = () => {
     secure: envCfg.SMTP_PORT === 465,
     from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
     ignoreTLS: envCfg.SMTP_IGNORE_TLS,
-    requireTLS: envCfg.SMTP_REQUIRE_TLS,
+    requireTLS: envCfg.SMTP_REQUIRE_TLS && !envCfg.SMTP_IGNORE_TLS,
     tls: tlsOptions
   };
 };
