@@ -208,7 +208,7 @@ import {
 } from "@app/hooks/api/secretRotationsV2";
 import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
-import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
+import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import {
   ApiErrorTypes,
   ProjectEnv,
@@ -249,6 +249,7 @@ import {
   PendingChanges,
   PendingFolderUpdate,
   PendingSecretCreate,
+  PendingSecretUpdate,
   StoreProvider,
   useBatchMode,
   useBatchModeActions,
@@ -2516,7 +2517,7 @@ const OverviewPageContent = () => {
   const [isSavingPending, setIsSavingPending] = useState(false);
   const savePendingChanges = useCallback(
     async (changes: PendingChanges, message: string, source: "bulk" | "row") => {
-      if (!singleVisibleEnv) return;
+      if (!singleVisibleEnv) return [];
       if (isSavingPendingRef.current) throw new Error("A save is already in progress");
       isSavingPendingRef.current = true;
       setIsSavingPending(true);
@@ -2581,8 +2582,7 @@ const OverviewPageContent = () => {
                 secretComment: secretChange.secretComment,
                 skipMultilineEncoding: secretChange.skipMultilineEncoding,
                 tagIds: secretChange.tags?.map((tag) => tag.id),
-                secretMetadata:
-                  secretChange.secretMetadata ?? secretChange.existingSecret.secretMetadata
+                secretMetadata: secretChange.secretMetadata
               });
             } else {
               result = await deleteSecretV3({
@@ -2652,7 +2652,7 @@ const OverviewPageContent = () => {
               ? "Requested change has been sent for review"
               : "Requested changes have been sent for review"
           });
-          return;
+          return [];
         }
 
         if (isSingleChange) {
@@ -2673,6 +2673,7 @@ const OverviewPageContent = () => {
         if (changes.secrets.some((secret) => secret.type === PendingAction.Create)) {
           checkSecretsActivation();
         }
+        return appliedSecrets;
       } finally {
         isSavingPendingRef.current = false;
         setIsSavingPending(false);
@@ -2703,18 +2704,68 @@ const OverviewPageContent = () => {
           pendingChangeId ? c.id === pendingChangeId : c.secretKey === key
         );
       if (!pendingSecret) return;
-      await savePendingChanges({ secrets: [pendingSecret], folders: [] }, "", "row");
-      const isDraftUnchanged = batchStoreApi
+      const appliedSecrets = await savePendingChanges(
+        { secrets: [pendingSecret], folders: [] },
+        "",
+        "row"
+      );
+      const context = { projectId, environment: env, secretPath };
+      const draft = batchStoreApi
         .getState()
-        .pendingChanges.secrets.some((change) => change === pendingSecret);
-      if (!isDraftUnchanged) return;
-      removePendingChange(pendingSecret.id, "secret", {
-        projectId,
-        environment: env,
-        secretPath
-      });
+        .pendingChanges.secrets.find((change) => change.id === pendingSecret.id);
+      if (draft === pendingSecret) {
+        removePendingChange(pendingSecret.id, "secret", context);
+        return;
+      }
+
+      const [createdSecret] = appliedSecrets;
+      if (
+        pendingSecret.type !== PendingAction.Create ||
+        draft?.type !== PendingAction.Create ||
+        !createdSecret
+      )
+        return;
+
+      const [existingSecret] = mergePersonalSecrets([createdSecret]);
+      const originalSecretMetadata = existingSecret.secretMetadata?.map((m) => ({
+        key: m.key,
+        value: m.value
+      }));
+      const isMetadataUnchanged =
+        JSON.stringify(draft.secretMetadata?.map((m) => ({ key: m.key, value: m.value })) ?? []) ===
+        JSON.stringify(originalSecretMetadata ?? []);
+      removePendingChange(draft.id, "secret", context);
+      addPendingChange(
+        {
+          id: existingSecret.id,
+          resourceType: "secret",
+          type: PendingAction.Update,
+          secretKey: existingSecret.key,
+          newSecretName: draft.secretKey,
+          originalValue: existingSecret.value,
+          secretValue: draft.secretValue,
+          originalComment: existingSecret.comment,
+          secretComment: draft.secretComment,
+          originalSkipMultilineEncoding: existingSecret.skipMultilineEncoding ?? false,
+          skipMultilineEncoding: draft.skipMultilineEncoding ?? false,
+          originalTags: existingSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })),
+          tags: draft.tags,
+          originalSecretMetadata,
+          secretMetadata: isMetadataUnchanged ? undefined : draft.secretMetadata,
+          existingSecret,
+          timestamp: Date.now()
+        } satisfies PendingSecretUpdate,
+        context
+      );
     },
-    [batchStoreApi, savePendingChanges, removePendingChange, projectId, secretPath]
+    [
+      batchStoreApi,
+      savePendingChanges,
+      removePendingChange,
+      addPendingChange,
+      projectId,
+      secretPath
+    ]
   );
 
   const handlePendingFolderSave = useCallback(
@@ -4933,7 +4984,9 @@ const OverviewPageContent = () => {
       />
       {isSingleEnvView && singleVisibleEnv && (
         <CommitForm
-          onCommit={(changes, message) => savePendingChanges(changes, message, "bulk")}
+          onCommit={async (changes, message) => {
+            await savePendingChanges(changes, message, "bulk");
+          }}
           environment={singleVisibleEnv.slug}
           projectId={projectId}
           secretPath={secretPath}
