@@ -194,7 +194,9 @@ export const secretRotationV2DALFactory = (
     const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
       .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .join(
         TableName.SecretRotationV2SecretMapping,
         `${TableName.SecretRotationV2SecretMapping}.rotationId`,
@@ -495,7 +497,9 @@ export const secretRotationV2DALFactory = (
       const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
         .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,
@@ -586,6 +590,8 @@ export const secretRotationV2DALFactory = (
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
         .join(
           TableName.SecretRotationV2SecretMapping,
@@ -670,6 +676,8 @@ export const secretRotationV2DALFactory = (
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .countDistinct(`${TableName.SecretRotationV2}.id`)
         .first();
