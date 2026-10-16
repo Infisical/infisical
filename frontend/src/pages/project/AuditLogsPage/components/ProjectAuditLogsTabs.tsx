@@ -13,7 +13,7 @@ export enum ProjectAuditLogsTab {
 }
 
 type Props = {
-  variant: "project" | "pam" | "av";
+  variant: "project" | "pam" | "av" | "ss";
 };
 
 export const ProjectAuditLogsTabs = ({ variant }: Props) => {

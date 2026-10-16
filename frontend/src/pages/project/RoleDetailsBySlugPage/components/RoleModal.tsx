@@ -23,6 +23,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateProjectRole } from "@app/hooks/api";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -43,6 +44,7 @@ type Props = {
 };
 
 export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -193,7 +195,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                   Cancel
                 </Button>
               </SheetClose>
-              <Button type="submit" variant="project" isPending={isSubmitting}>
+              <Button type="submit" variant={scopeVariant} isPending={isSubmitting}>
                 Create Role
               </Button>
             </SheetFooter>

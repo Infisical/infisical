@@ -37,6 +37,7 @@ import {
   useProjectPermission
 } from "@app/context";
 import { getProjectLabel, hidesProjects } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
@@ -69,6 +70,7 @@ type Props = {
 };
 
 export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -430,7 +432,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             </Button>
             <Button
               type="submit"
-              variant="project"
+              variant={scopeVariant}
               isPending={isSubmitting}
               isDisabled={
                 isSubmitting ||

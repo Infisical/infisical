@@ -162,9 +162,11 @@ export const AddSecretScanningResourceSheet = ({ dataSource, isOpen, onOpenChang
         {availableResources.map(({ externalId, name }) => (
           <Item key={externalId} variant="outline" size="sm">
             <ItemContent className="min-w-0">
-              <ItemTitle className="truncate">{name}</ItemTitle>
+              <ItemTitle className="block w-full truncate" title={name}>
+                {name}
+              </ItemTitle>
             </ItemContent>
-            <ItemActions>
+            <ItemActions className="shrink-0">
               <Button
                 variant="outline"
                 size="xs"

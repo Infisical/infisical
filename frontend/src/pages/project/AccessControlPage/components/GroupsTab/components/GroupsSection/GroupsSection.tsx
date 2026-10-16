@@ -21,13 +21,14 @@ import {
   useSubscription
 } from "@app/context";
 import { getProjectLabel, hidesProjects } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 
 import { GroupModal } from "./GroupModal";
 import { GroupTable } from "./GroupsTable";
 
 export const GroupsSection = () => {
+  const scopeVariant = useScopeVariant();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
   const productLabel = getProjectLabel(currentProject?.type);
@@ -90,7 +91,7 @@ export const GroupsSection = () => {
             >
               {(isAllowed) => (
                 <Button
-                  variant="project"
+                  variant={scopeVariant}
                   onClick={() => handleAddGroupModal()}
                   isDisabled={!isAllowed}
                 >

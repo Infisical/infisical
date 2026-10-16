@@ -23,7 +23,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
@@ -46,6 +46,7 @@ type Props = {
 };
 
 export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -202,7 +203,7 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
                   Cancel
                 </Button>
               </SheetClose>
-              <Button type="submit" variant="project" isPending={isSubmitting}>
+              <Button type="submit" variant={scopeVariant} isPending={isSubmitting}>
                 Save Changes
               </Button>
             </SheetFooter>
