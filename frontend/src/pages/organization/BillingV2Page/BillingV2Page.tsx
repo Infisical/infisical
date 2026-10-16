@@ -131,7 +131,7 @@ export const BillingV2Page = () => {
         Boolean(overview?.selfServe) &&
         Boolean(trialPlan?.selfServe && trialPlan.trialable);
       if (!canTrial) {
-        if (upgradeReturnPath) window.location.assign(upgradeReturnPath);
+        if (upgradeReturnPath) window.location.replace(upgradeReturnPath);
         return;
       }
     } else if (!hasProduct) {
