@@ -41,7 +41,7 @@ export const useVariableAutocomplete = ({
 
   // Searched on the server, so the list never has to hold every variable. The last page stays up while the next
   // loads, filtered to the new text, which a longer query only narrows.
-  const { data } = useListAgentVaultVariables(
+  const { data, isPlaceholderData } = useListAgentVaultVariables(
     { search: debouncedQuery || undefined, limit: SUGGESTION_LIMIT },
     { enabled: isOpen }
   );
@@ -49,7 +49,7 @@ export const useVariableAutocomplete = ({
   // asked of that key alone.
   const { existing } = useAgentVaultVariableKeyStatus(
     isOpen && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
-    isOpen
+    { enabled: isOpen }
   );
   const [activeIndex, setActiveIndex] = useState(0);
   // Escape closes the list for the reference being typed, not for the field: it opens again at the next {{.
@@ -77,15 +77,15 @@ export const useVariableAutocomplete = ({
       .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
       .map((candidate) => ({ type: "variable" as const, key: candidate }));
 
-    if (!requestVariable || keyExists) return matches;
+    if (!key || keyExists) return matches;
     return [...matches, { type: "create", key, isKeyValid: VARIABLE_KEY_RE.test(key) }];
-  }, [openReference, query, data, existing, requestVariable]);
+  }, [openReference, query, data, existing]);
 
   // The search returns one page, plus the exact key when it exists. When matches are still left out, the list says
-  // how many it shows and how to narrow it. Not while the text is ahead of the results, whose count it isn't.
+  // how many it shows and how to narrow it.
   const shownCount = suggestions.filter((suggestion) => suggestion.type === "variable").length;
   const truncation =
-    data && query === debouncedQuery && data.totalCount > shownCount
+    data && !isPlaceholderData && query === debouncedQuery && data.totalCount > shownCount
       ? { shown: shownCount, total: data.totalCount }
       : null;
 
@@ -151,7 +151,7 @@ export const useVariableAutocomplete = ({
 
     // Settles once the dialog has closed. The field cannot change while it is open, so what surrounded
     // the reference still does, and focus comes back to where the caret was.
-    const created = await requestVariable?.(suggestion.key);
+    const created = await requestVariable(suggestion.key);
     input.focus();
     if (created) insert(created.key);
     else input.setSelectionRange(caret, caret);
@@ -180,7 +180,6 @@ export const useVariableAutocomplete = ({
   return {
     isOpen,
     isLoading: isOpen && !data,
-    query,
     truncation,
     suggestions,
     activeIndex,
@@ -209,7 +208,6 @@ export const VariableSuggestions = ({
   const {
     isOpen,
     isLoading,
-    query,
     truncation,
     suggestions,
     activeIndex,
@@ -311,11 +309,7 @@ export const VariableSuggestions = ({
             </>
           ) : (
             <p className="px-2 py-1.5 text-xs text-muted">
-              {(() => {
-                if (isLoading) return "Loading variables...";
-                if (query) return "No variable matches that name.";
-                return "No variables yet. Add one under Variables.";
-              })()}
+              {isLoading ? "Loading variables..." : "No variables yet. Type a key to create one."}
             </p>
           )}
         </PopoverContent>

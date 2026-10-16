@@ -66,7 +66,7 @@ import { UsedByBundleBadges } from "./UsedByBundleBadges";
 
 enum SortColumn {
   Key = "key",
-  UsedBy = "usedBy"
+  ServiceCount = "serviceCount"
 }
 
 const MASK = "•".repeat(8);
@@ -236,6 +236,8 @@ export const VariablesCard = () => {
   const displayed = data?.variables ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
+  // A search narrows totalCount, so whether the cap is reached is read off an unfiltered count.
+  const { data: unfilteredData } = useListAgentVaultVariables({ limit: 1 });
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
     setPage(1);
@@ -301,8 +303,7 @@ export const VariablesCard = () => {
   };
 
   const hasVariables = totalCount > 0 || Boolean(searchTerm);
-  // A search narrows totalCount, so only an unfiltered count says whether the cap is reached.
-  const isAtLimit = !searchTerm && totalCount >= MAX_VARIABLES;
+  const isAtLimit = (unfilteredData?.totalCount ?? 0) >= MAX_VARIABLES;
 
   const openForm = (variable: TAgentVaultVariable | null) => {
     setVariableToEdit(variable);
@@ -391,11 +392,11 @@ export const VariablesCard = () => {
               </TableHead>
               <TableHead className="w-[35%]">Value</TableHead>
               <TableHead
-                sortDirection={sortColumn === SortColumn.UsedBy ? sortDirection : "none"}
-                onSortChange={(direction) => handleSort(SortColumn.UsedBy, direction)}
+                sortDirection={sortColumn === SortColumn.ServiceCount ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(SortColumn.ServiceCount, direction)}
               >
                 Used By
-                <ChevronDownIcon className={sortIconClassName(SortColumn.UsedBy)} />
+                <ChevronDownIcon className={sortIconClassName(SortColumn.ServiceCount)} />
               </TableHead>
               <TableHead variant="action" className="w-12" />
             </TableRow>
@@ -439,7 +440,7 @@ export const VariablesCard = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <UsedByBundleBadges usedBy={variable.usedBy} />
+                      <UsedByBundleBadges usedByServices={variable.usedByServices} />
                     </TableCell>
                     <TableCell variant="action">
                       <DropdownMenu>

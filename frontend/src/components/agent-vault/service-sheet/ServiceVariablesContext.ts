@@ -13,7 +13,7 @@ type TServiceVariables = {
     substitutions: Record<string, string[]>;
   };
   /** Opens the new-variable dialog on top of the sheet. Resolves to null if it is dismissed. */
-  requestVariable?: (key: string) => Promise<TAgentVaultVariable | null>;
+  requestVariable: (key: string) => Promise<TAgentVaultVariable | null>;
 };
 
 export const NO_STORED_KEYS: TServiceVariables["storedKeys"] = {
@@ -25,9 +25,11 @@ export const NO_STORED_KEYS: TServiceVariables["storedKeys"] = {
 
 export const NO_MISSING_KEYS: ReadonlySet<string> = new Set();
 
+// Only the previews outside the credential step read the default, and they never ask for a variable.
 export const ServiceVariablesContext = createContext<TServiceVariables>({
   missingKeys: NO_MISSING_KEYS,
-  storedKeys: NO_STORED_KEYS
+  storedKeys: NO_STORED_KEYS,
+  requestVariable: async () => null
 });
 
 export const useServiceVariables = () => useContext(ServiceVariablesContext);

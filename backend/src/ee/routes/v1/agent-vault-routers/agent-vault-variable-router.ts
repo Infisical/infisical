@@ -32,16 +32,19 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       description: "List the variables in Agent Vault",
       tags: [ApiDocsTags.AgentVaultVariables],
       querystring: z.object({
-        orderBy: z.enum(["key", "usedBy"]).default("key").describe(AGENT_VAULT.VARIABLE.orderBy),
+        orderBy: z.enum(["key", "serviceCount"]).default("key").describe(AGENT_VAULT.VARIABLE.orderBy),
         orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.VARIABLE.orderDirection),
         keys: z
           .string()
           .max(AGENT_VAULT_LIST_MAX_KEYS * (AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH + 1))
-          .transform((val) => [...new Set(val.split(",").map((key) => key.trim()))])
+          // Empty entries, as from a trailing comma, are dropped rather than refused.
+          .transform((val) => [...new Set(val.split(",").map((key) => key.trim()))].filter(Boolean))
           .pipe(AgentVaultVariableKeySchema.array().min(1).max(AGENT_VAULT_LIST_MAX_KEYS))
           .optional()
           .describe(AGENT_VAULT.VARIABLE.keys),
-        ...agentVaultListQuery(AGENT_VAULT.VARIABLE)
+        ...agentVaultListQuery(AGENT_VAULT.VARIABLE),
+        // No default here: the service defaults it to the number of keys for a lookup, and to 20 otherwise.
+        limit: z.coerce.number().int().min(1).max(100).optional().describe(AGENT_VAULT.VARIABLE.limit)
       }),
       response: {
         200: z.object({
@@ -154,7 +157,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
           variableId: variable.id,
           keyChanged: previousKey !== variable.key,
           valueReplaced: req.body.value !== undefined,
-          usedByServiceCount: variable.usedBy.length
+          usedByServiceCount: variable.usedByServices.length
         }
       });
 

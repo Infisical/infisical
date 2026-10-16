@@ -177,9 +177,7 @@ path decides what a service can reach, so it stays literal.
 - **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
   boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
   primary, since a variable created a moment earlier may not be on a replica yet. So a rename is one row.
-- The variable list and its Used By rows read the primary too. The service sheet refetches the list the moment
-  it creates a variable, and a replica that has not caught up would drop the new key and fail the reference
-  to it.
+- The variable list and its Used By rows read the primary too.
 - `agent_vault_service_variable_references` holds a row per field per variable. It drives Used By, the delete
   refusal, and the keys the service sheet lists under a stored value. **Resolve does not read it**: it pulls
   the ids out of the decrypted fields, so a service saved mid-poll can never leave the two describing
@@ -188,12 +186,10 @@ path decides what a service can reach, so it stays literal.
   project's own variables, which is exactly what resolve expands. Nothing in the database can compare the
   rows with sealed text, and an id with no row is a variable the delete refusal lets go while a service still
   sends it. Any new path that seals a service field derives its rows the same way. Resolve expands only the
-  session project's variables, so a service can move between bundles without remapping its ids.
-- **A variable delete and a service save meet on the variable row, not the bundle.** The delete takes it `FOR
-  UPDATE` and then reads the references; a save takes the rows it is about to reference `FOR SHARE` right before
-  inserting them (`insertReferenceRows`). So the delete waits for an in-flight save and refuses with a 409 naming
-  each service and its bundle, and a save whose variable went first fails with a 400. Create serialises on a
-  per-project advisory lock for the cap and the key check; the `(projectId, key)` unique index is the backstop.
+  session project's variables.
+- **A variable delete and a service save meet on the variable row**: the delete locks it `FOR UPDATE`, a save
+  locks what it references `FOR SHARE` (`insertReferenceRows`). Create serialises on a per-project advisory lock;
+  the `(projectId, key)` unique index is the backstop.
 - A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
   field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
   reference back in its field made it the one stored field that shows, and left a field mixing text with a
@@ -212,11 +208,8 @@ path decides what a service can reach, so it stays literal.
   to its variables in one statement, and an immediate check can fire before the service cascade has removed the
   rows, depending on which constraint was created first. The refusal that matters is the one under the variable
   row lock; the deferred key is the backstop and only raises at commit. Deleting a bundle keeps its variables.
-- **Variables were per bundle until AGE2-130.** The migration gave each its bundle's project and, where two
-  bundles shared a key, kept it on the oldest and renamed the rest `KEY_1`, `KEY_2`, ... (skipping any key already
-  taken). That was safe only because sealed text names ids. `accessBundleId` survives, nullable and `SET NULL`,
-  so a pod on the previous release keeps resolving during the rollout; nothing reads or writes it, and a follow-up
-  migration drops it. Audit events from before the move still carry `accessBundleId` and `accessBundleName`.
+- `accessBundleId` on `agent_vault_variables` is a dead column kept for one release; nothing reads or writes it.
+  Older variable audit events still carry `accessBundleId` and `accessBundleName`.
 - Every `{{...}}` in a value must be an existing, well-formed key, or the save fails. A malformed one is
   refused without quoting it, because the text was cut from a secret. Placeholders and header prefixes (the
   bearer prefix and custom header prefixes) can't contain double braces, which would read as a reference the

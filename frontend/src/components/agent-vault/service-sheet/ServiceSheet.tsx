@@ -221,7 +221,7 @@ export const ServiceSheet = ({
   const [debouncedReferencedKeys] = useDebounce(referencedKeys, 300);
   const { missing: missingKeys } = useAgentVaultVariableKeyStatus(
     debouncedReferencedKeys ? debouncedReferencedKeys.split(",") : [],
-    isOpen
+    { enabled: isOpen }
   );
   missingKeysRef.current = missingKeys;
 

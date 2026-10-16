@@ -251,16 +251,16 @@ export const AgentVaultVariableValueSchema = z
 export const AgentVaultVariableSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
   key: z.string().describe(AGENT_VAULT.VARIABLE.key),
-  usedBy: z
+  usedByServices: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedById),
-      name: z.string().describe(AGENT_VAULT.VARIABLE.usedByName),
-      hostPattern: z.string().describe(AGENT_VAULT.VARIABLE.usedByHostPattern),
-      accessBundleId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByAccessBundleId),
-      accessBundleName: z.string().describe(AGENT_VAULT.VARIABLE.usedByAccessBundleName)
+      id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceId),
+      name: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceName),
+      hostPattern: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceHostPattern),
+      accessBundleId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleId),
+      accessBundleName: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleName)
     })
     .array()
-    .describe(AGENT_VAULT.VARIABLE.usedBy),
+    .describe(AGENT_VAULT.VARIABLE.usedByServices),
   createdAt: z.date().describe(AGENT_VAULT.VARIABLE.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.VARIABLE.updatedAt)
 });

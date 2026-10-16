@@ -1118,7 +1118,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(renamed.statusCode).toBe(200);
       expect(JSON.parse(renamed.payload).variable).toMatchObject({
         key: "NEW_NAME",
-        usedBy: [{ id: serviceId, name: "echo", accessBundleId: bundle.id, accessBundleName: bundle.name }]
+        usedByServices: [{ id: serviceId, name: "echo", accessBundleId: bundle.id, accessBundleName: bundle.name }]
       });
 
       const detail = JSON.parse((await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload) as {
@@ -1255,7 +1255,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(listed.statusCode).toBe(200);
       expect(listed.payload).not.toContain("hidden_value");
       const [listedVariable] = JSON.parse(listed.payload).variables;
-      expect(listedVariable).toMatchObject({ key: "HIDDEN", usedBy: [] });
+      expect(listedVariable).toMatchObject({ key: "HIDDEN", usedByServices: [] });
       expect(listedVariable).not.toHaveProperty("accessBundleId");
       expect(listedVariable).not.toHaveProperty("value");
       expect(listedVariable).not.toHaveProperty("isSecret");
@@ -1336,7 +1336,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(await list("limit=2&offset=2")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 3 });
       expect(await list("search=token")).toEqual({ keys: ["ALPHA_TOKEN", "BETA_TOKEN"], totalCount: 2 });
       expect(await list("search=%25")).toEqual({ keys: [], totalCount: 0 });
-      expect(await list("orderBy=usedBy&orderDirection=desc")).toEqual({
+      expect(await list("orderBy=serviceCount&orderDirection=desc")).toEqual({
         keys: ["GAMMA_KEY", "BETA_TOKEN", "ALPHA_TOKEN"],
         totalCount: 3
       });
@@ -1349,6 +1349,27 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(await list("keys=TOKEN")).toEqual({ keys: [], totalCount: 0 });
       expect((await inject("GET", `${variablesUrl}?keys=lower_case`)).statusCode).toBe(422);
+      // A trailing comma's empty entry is dropped rather than refused.
+      expect(await list("keys=GAMMA_KEY,")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 1 });
+    });
+
+    test("a lookup by keys returns every key that exists, past the default page size", async () => {
+      const keys = Array.from({ length: 25 }, (_, index) => `LOOKUP_KEY_${String(index).padStart(2, "0")}`);
+      await Promise.all(keys.map((key) => createVariable({ key, value: "v" })));
+
+      const res = await inject("GET", `${variablesUrl}?keys=${keys.join(",")}`);
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload) as { variables: { key: string }[]; totalCount: number };
+      expect(body.totalCount).toBe(25);
+      expect(body.variables.map((variable) => variable.key)).toEqual(keys);
+
+      // An explicit limit still caps it.
+      const capped = JSON.parse((await inject("GET", `${variablesUrl}?keys=${keys.join(",")}&limit=5`)).payload) as {
+        variables: unknown[];
+        totalCount: number;
+      };
+      expect(capped).toMatchObject({ totalCount: 25 });
+      expect(capped.variables).toHaveLength(5);
     });
 
     test("services in different bundles share a variable, and each resolves it", async () => {
@@ -1371,9 +1392,9 @@ describe("Agent Vault V1 Router", async () => {
       await expectReferencesMatchSealedText(second.id);
 
       const listed = JSON.parse((await inject("GET", variablesUrl)).payload) as {
-        variables: { id: string; usedBy: Record<string, string>[] }[];
+        variables: { id: string; usedByServices: Record<string, string>[] }[];
       };
-      expect(listed.variables.find((entry) => entry.id === variable.id)?.usedBy).toEqual([
+      expect(listed.variables.find((entry) => entry.id === variable.id)?.usedByServices).toEqual([
         {
           id: firstService.id,
           name: "shared-one",
@@ -1682,9 +1703,11 @@ describe("Agent Vault V1 Router", async () => {
       );
 
       const listed = JSON.parse((await inject("GET", variablesUrl)).payload) as {
-        variables: { id: string; usedBy: unknown[] }[];
+        variables: { id: string; usedByServices: unknown[] }[];
       };
-      expect(listed.variables).toEqual([expect.objectContaining({ id: variable.id, key: "TOKEN", usedBy: [] })]);
+      expect(listed.variables).toEqual([
+        expect.objectContaining({ id: variable.id, key: "TOKEN", usedByServices: [] })
+      ]);
       expect((await inject("DELETE", `${variablesUrl}/${variable.id}`)).statusCode).toBe(200);
     });
 

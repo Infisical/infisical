@@ -33,10 +33,10 @@ To add a variable:
 
   </Step>
   <Step>
-    Enter a **Key** and a **Value**. The value is hidden once you save it. To view the value later, select the eye icon next to it. Each time someone views or copies a value, Infisical adds an event to the audit log.
+    Enter a **Key** and a **Value**. To view the value later, select the eye icon next to it. Each time someone views or copies a value, Infisical adds an event to the audit log.
 
     <Note>
-    A key must start with a letter, use only uppercase letters, numbers, and underscores, and can be up to 64 characters long. No two variables can have the same key.
+    A key can be up to 64 characters long. It must start with a letter and use only uppercase letters, numbers, and underscores. No two variables can have the same key.
     </Note>
 
   </Step>
@@ -44,7 +44,7 @@ To add a variable:
     Select **Add Variable**. The variable appears in the list on the **Variables** page.
 
     <Frame>
-      <img src="/images/platform/agent-vault/variables.png" alt="The Variables page listing seven variables with hidden values. The Used By column shows access bundle badges, such as code-review, on-call, and +1 more for GITHUB_TOKEN, with a tooltip listing the github service in code-review. SENTRY_AUTH_TOKEN shows Unused." />
+      <img src="/images/platform/agent-vault/variables.png" alt="The Variables page listing seven variables with hidden values. The Used By column shows access bundle badges, such as code-review, on-call, and release-notes for GITHUB_TOKEN, with a tooltip listing the github service in code-review. SLACK_BOT_TOKEN shows three badges and +1 for one more access bundle. SENTRY_AUTH_TOKEN shows Unused." />
     </Frame>
 
   </Step>
@@ -101,7 +101,7 @@ To check which services are using a variable:
     In Agent Vault, go to **Variables**.
   </Step>
   <Step>
-    In the variable's **Used By** column, find the access bundles whose services use the variable. Hover over an access bundle to see those services, or select it to open the access bundle. If more access bundles use the variable than the column can show, select **+N more** to see the rest. If no service uses the variable, the column shows **Unused**.
+    In the variable's **Used By** column, hover over an access bundle to see which of the access bundle's services use the variable.
   </Step>
 </Steps>
 
@@ -125,7 +125,7 @@ To update a variable:
 </Steps>
 
 <Note>
-If you rename a variable, the services that use it keep working without changes. If you change a variable's value, the proxy sends the new value within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default), so you don't need to restart running agents.
+If you rename a variable, the services that use it keep working without changes. If you change a variable's value, the proxy starts using the new value within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default), so you don't need to restart running agents.
 </Note>
 
 ## Delete a variable

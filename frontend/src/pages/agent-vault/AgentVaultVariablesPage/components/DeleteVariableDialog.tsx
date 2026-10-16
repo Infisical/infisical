@@ -24,8 +24,8 @@ type Props = {
 export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
   const deleteVariable = useDeleteAgentVaultVariable();
-  const usedBy = variable?.usedBy ?? [];
-  const isInUse = usedBy.length > 0;
+  const usedByServices = variable?.usedByServices ?? [];
+  const isInUse = usedByServices.length > 0;
 
   const handleDelete = async () => {
     if (!variable) return;
@@ -45,14 +45,14 @@ export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
           <AlertDialogTitle>Delete &quot;{variable?.key}&quot;</AlertDialogTitle>
           <AlertDialogDescription>
             {isInUse
-              ? `${usedBy.length === 1 ? "A service uses" : `${usedBy.length} services use`} this variable. Remove the reference from ${usedBy.length === 1 ? "it" : "them"} before you delete it.`
+              ? `${usedByServices.length === 1 ? "A service uses" : `${usedByServices.length} services use`} this variable. Remove the reference from ${usedByServices.length === 1 ? "it" : "them"} before you delete it.`
               : "Its value is deleted with it. This cannot be undone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {isInUse && (
           <ul className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-container/50 p-3">
-            {usedBy.map((service) => (
+            {usedByServices.map((service) => (
               <li key={service.id} className="flex items-center gap-2">
                 <ServiceIcon hostPattern={service.hostPattern} />
                 <div className="flex min-w-0 flex-col">

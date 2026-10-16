@@ -1,13 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  InfiniteData,
-  SkipToken,
-  skipToken,
-  useInfiniteQuery,
-  useQueries,
-  useQuery,
-  useQueryClient
-} from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
+import { InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -101,8 +93,8 @@ export const agentVaultKeys = {
   variables: (orgId: string) => [...agentVaultKeys.all(orgId), "variables"] as const,
   variableList: (orgId: string, params: TListAgentVaultVariablesDTO) =>
     [...agentVaultKeys.variables(orgId), "list", params] as const,
-  variableKeyStatus: (orgId: string, key: string) =>
-    [...agentVaultKeys.variables(orgId), "key-status", key] as const,
+  variableKeyStatus: (orgId: string, keys: string[]) =>
+    [...agentVaultKeys.variables(orgId), "key-status", keys] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -566,110 +558,52 @@ export const useListAgentVaultVariables = (
 
 const KEY_LOOKUP_BATCH_SIZE = 100;
 
-// Bumped by every variable create, rename and delete. A lookup that was in flight across a change drops its answers
-// rather than writing them, since they may predate it: otherwise one sent just before a variable was created could
-// land after it and mark the new key missing. The change also invalidates the answers, so a fresh lookup asks again.
-const variableChangeCounts = new Map<string, number>();
-
-export const markAgentVaultVariablesChanged = (orgId: string) => {
-  variableChangeCounts.set(orgId, (variableChangeCounts.get(orgId) ?? 0) + 1);
-};
-
 // The API refuses a whole batch that holds one key it would never accept, so such a key isn't sent. No variable can
 // have it, so it counts as missing, as the API says on save.
 const isPossibleVariableKey = (key: string) =>
   key.length <= VARIABLE_KEY_MAX_LENGTH && VARIABLE_KEY_RE.test(key);
 
-// A missing answer blocks a save, and another admin may create the key at any time, so it is asked again when the
-// window regains focus and on this interval while any key is flagged. An existing answer never blocks anything.
-const MISSING_RECHECK_MS = 30_000;
-
-// Whether each key exists. Each key's answer is cached on its own, so a key checked once isn't asked about again
-// until a variable changes, but the keys still to check go out together through the keys filter, in batches of
-// the API's maximum, rather than a request each. Only keys whose answer has arrived are in either set.
-export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled = true) => {
+// Whether each key exists, asked through the keys filter in one request per 100 keys. Asked again on window focus
+// and whenever the variables are invalidated, since another admin may create or delete one at any time. A key is in
+// neither set until an answer that asked about it arrives; the previous answer stays up meanwhile, so a key it
+// already covered doesn't flicker while the next set loads.
+export const useAgentVaultVariableKeyStatus = (
+  keys: readonly string[],
+  { enabled = true, isCached = true }: { enabled?: boolean; isCached?: boolean } = {}
+) => {
   const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
-  const statusKey = (key: string) => agentVaultKeys.variableKeyStatus(currentOrg.id, key);
-  const possibleKeys = keys.filter(isPossibleVariableKey);
-  const impossibleKeys = keys.filter((key) => !isPossibleVariableKey(key));
+  const possibleKeys = [...new Set(keys.filter(isPossibleVariableKey))].sort();
 
-  // Read-only: these never fetch, the batch below fills them.
-  const { existing, missing, hasRecheckableMissing } = useQueries({
-    queries: possibleKeys.map((key) => ({
-      queryKey: statusKey(key),
-      queryFn: skipToken as SkipToken
-    })),
-    combine: (results) => ({
-      existing: possibleKeys.filter((_, index) => results[index]?.data === true).join(","),
-      missing: [
-        ...impossibleKeys,
-        ...possibleKeys.filter((_, index) => results[index]?.data === false)
-      ].join(","),
-      hasRecheckableMissing: possibleKeys.some((_, index) => results[index]?.data === false)
-    })
-  });
-
-  const [recheckMissingAt, setRecheckMissingAt] = useState(() => Date.now());
-  useEffect(() => {
-    if (!enabled || !hasRecheckableMissing) return undefined;
-    const recheck = () => setRecheckMissingAt(Date.now());
-    const recheckIfVisible = () => {
-      if (document.visibilityState === "visible") recheck();
-    };
-    window.addEventListener("focus", recheck);
-    document.addEventListener("visibilitychange", recheckIfVisible);
-    const interval = window.setInterval(recheck, MISSING_RECHECK_MS);
-    return () => {
-      window.removeEventListener("focus", recheck);
-      document.removeEventListener("visibilitychange", recheckIfVisible);
-      window.clearInterval(interval);
-    };
-  }, [enabled, hasRecheckableMissing]);
-
-  // Unanswered keys, answered ones a variable change has invalidated since, and missing ones answered before the
-  // last recheck.
-  const unchecked = [...possibleKeys]
-    .filter((key) => {
-      const state = queryClient.getQueryState(statusKey(key));
-      if (state?.data === undefined || state.isInvalidated) return true;
-      return state.data === false && state.dataUpdatedAt < recheckMissingAt;
-    })
-    .sort();
-
-  // The change count is part of the key, so a change starts a new lookup instead of joining one still in flight,
-  // whose answers that change has made stale.
-  const changeCount = variableChangeCounts.get(currentOrg.id) ?? 0;
-  useQuery({
-    queryKey: [
-      ...agentVaultKeys.variables(currentOrg.id),
-      "key-status-batch",
-      changeCount,
-      recheckMissingAt,
-      unchecked
-    ],
+  const { data } = useQuery({
+    queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, possibleKeys),
     queryFn: async () => {
-      const found = new Set<string>();
-      for (let i = 0; i < unchecked.length; i += KEY_LOOKUP_BATCH_SIZE) {
+      const found: string[] = [];
+      for (let i = 0; i < possibleKeys.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
         const page = await fetchAgentVaultVariables({
-          keys: unchecked.slice(i, i + KEY_LOOKUP_BATCH_SIZE),
-          limit: KEY_LOOKUP_BATCH_SIZE
+          keys: possibleKeys.slice(i, i + KEY_LOOKUP_BATCH_SIZE)
         });
-        page.variables.forEach((variable) => found.add(variable.key));
+        found.push(...page.variables.map((variable) => variable.key));
       }
-      if ((variableChangeCounts.get(currentOrg.id) ?? 0) !== changeCount) return 0;
-      unchecked.forEach((key) => queryClient.setQueryData<boolean>(statusKey(key), found.has(key)));
-      return unchecked.length;
+      return { asked: possibleKeys, found };
     },
-    enabled: enabled && unchecked.length > 0
+    enabled: enabled && possibleKeys.length > 0,
+    placeholderData: (prev) => prev,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    ...(isCached ? {} : { gcTime: 0 })
   });
 
-  return useMemo(
-    () => ({
-      existing: new Set(existing ? existing.split(",") : []) as ReadonlySet<string>,
-      missing: new Set(missing ? missing.split(",") : []) as ReadonlySet<string>
-    }),
-    [existing, missing]
-  );
+  const keySignature = keys.join(",");
+  return useMemo(() => {
+    const asked = new Set(data?.asked);
+    const found = new Set(data?.found);
+    const current = keySignature ? keySignature.split(",") : [];
+    return {
+      existing: new Set(current.filter((key) => found.has(key))) as ReadonlySet<string>,
+      missing: new Set(
+        current.filter((key) => !isPossibleVariableKey(key) || (asked.has(key) && !found.has(key)))
+      ) as ReadonlySet<string>
+    };
+  }, [data, keySignature]);
 };

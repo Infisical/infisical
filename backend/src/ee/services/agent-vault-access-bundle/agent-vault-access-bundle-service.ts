@@ -558,8 +558,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       )
     );
 
-  // The reference is stored by id, so a variable deleted between the key lookup and the commit only shows
-  // up at commit, as the deferred foreign key.
+  // The reference is stored by id, so a variable deleted after the key lookup is caught when the save locks the
+  // rows it references (insertReferenceRows). The deferred foreign key is only the backstop.
   const VARIABLE_DELETED_DURING_SAVE_MESSAGE =
     "A variable this service uses was deleted while it was being saved. Check its variable references and save again.";
 

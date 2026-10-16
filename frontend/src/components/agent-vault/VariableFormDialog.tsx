@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -39,6 +40,7 @@ import {
   useUpdateAgentVaultVariable
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
+import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 // eslint-disable-next-line no-control-regex
 const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
@@ -82,18 +84,19 @@ type Props = {
   onCloseAutoFocus?: (event: Event) => void;
 };
 
-export const VariableFormDialog = ({
+// Mounted with the dialog's content, which unmounts while the dialog is closed, so every open starts from a fresh
+// form: no key, lookup or error is carried over from the last one.
+const VariableForm = ({
   isOpen,
   onOpenChange,
   variable,
   initialKey,
-  onCreated,
-  onCloseAutoFocus
-}: Props) => {
+  onCreated
+}: Omit<Props, "onCloseAutoFocus">) => {
   const createVariable = useCreateAgentVaultVariable();
   const updateVariable = useUpdateAgentVaultVariable();
   const isUpdate = Boolean(variable);
-  const usedByCount = variable?.usedBy.length ?? 0;
+  const usedByCount = variable?.usedByServices.length ?? 0;
   const [isValueVisible, setIsValueVisible] = useState(false);
 
   const takenKeysRef = useRef<ReadonlySet<string>>(new Set());
@@ -102,23 +105,32 @@ export const VariableFormDialog = ({
   const {
     control,
     handleSubmit,
-    reset,
+    setError,
     setFocus,
     trigger,
     getFieldState,
     formState: { isDirty, isSubmitting }
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { key: variable?.key ?? initialKey ?? "", value: "" }
+  });
 
   const key = useWatch({ control, name: "key" });
 
-  // Checked against that one key, not a list, so it holds however many variables there are. The API refuses a
-  // duplicate that is saved before the answer comes back.
+  // Asked of the server each time typing pauses, never from a cache, since another admin can add or delete the key
+  // at any time. A duplicate saved before the answer arrives is refused by the API and flagged under the field.
   const [debouncedKey] = useDebounce(key ?? "", 300);
   const lookupKey =
-    isOpen && VARIABLE_KEY_RE.test(debouncedKey) && debouncedKey !== variable?.key
-      ? debouncedKey
+    isOpen &&
+    !isSubmitting &&
+    debouncedKey === key &&
+    VARIABLE_KEY_RE.test(key) &&
+    key !== variable?.key
+      ? key
       : null;
-  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], isOpen);
+  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], {
+    isCached: false
+  });
   takenKeysRef.current = existing;
   // Re-checked when the answer flags the key, and when a key that was flagged is changed, so the message comes
   // and goes with the lookup rather than waiting for a submit.
@@ -128,14 +140,10 @@ export const VariableFormDialog = ({
   }, [lookupKey, existing, trigger, getFieldState]);
   const isRenaming = Boolean(variable) && Boolean(key) && key !== variable?.key;
 
+  // A key that arrives filled in leaves the value as the one thing left to type.
   useEffect(() => {
-    if (!isOpen) return;
-    reset({
-      key: variable?.key ?? initialKey ?? "",
-      value: ""
-    });
-    setIsValueVisible(false);
-  }, [isOpen, variable, initialKey, reset]);
+    if (initialKey) setFocus("value");
+  }, [initialKey, setFocus]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -155,115 +163,133 @@ export const VariableFormDialog = ({
         createNotification({ text: `Variable "${data.key}" created`, type: "success" });
       }
       onOpenChange(false);
-    } catch {
-      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    } catch (error) {
+      // The global request handler toasts every failure. A duplicate key is also shown on the field it concerns.
+      const serverResponse = axios.isAxiosError(error)
+        ? (error.response?.data as TApiErrors | undefined)
+        : undefined;
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        serverResponse.message.endsWith("already exists.")
+      ) {
+        setError("key", { message: serverResponse.message });
+      }
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent
-        // A key that arrives filled in leaves the value as the one thing left to type.
-        onOpenAutoFocus={(event) => {
-          if (!initialKey) return;
-          event.preventDefault();
-          setFocus("value");
-        }}
-        onCloseAutoFocus={onCloseAutoFocus}
-      >
-        <DialogHeader>
-          <DialogTitle>{isUpdate ? "Edit Variable" : "Add Variable"}</DialogTitle>
-          <DialogDescription>
-            Store a value once and use it from any service in any access bundle.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <DialogTitle>{isUpdate ? "Edit Variable" : "Add Variable"}</DialogTitle>
+        <DialogDescription>
+          Store a value once and use it from any service in any access bundle.
+        </DialogDescription>
+      </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Controller
-            control={control}
-            name="key"
-            render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Key</FieldLabel>
-                <FieldContent>
-                  <Input
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <Controller
+          control={control}
+          name="key"
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel>Key</FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  onChange={(event) => field.onChange(normalizeVariableKey(event.target.value))}
+                  placeholder="GITHUB_TOKEN"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="font-mono"
+                  isError={Boolean(fieldState.error)}
+                />
+                <FieldDescription>
+                  {isRenaming && usedByCount > 0 ? (
+                    <>
+                      {usedByCount === 1
+                        ? "The service that uses it keeps working"
+                        : `The ${usedByCount} services that use it keep working`}{" "}
+                      under the new key.
+                    </>
+                  ) : (
+                    <>
+                      Services use it as{" "}
+                      <code className="font-mono">{toVariableReference(key || "KEY")}</code>.
+                    </>
+                  )}
+                </FieldDescription>
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="value"
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel>Value</FieldLabel>
+              <FieldContent>
+                <InputGroup>
+                  <InputGroupInput
                     {...field}
-                    onChange={(event) => field.onChange(normalizeVariableKey(event.target.value))}
-                    placeholder="GITHUB_TOKEN"
+                    type={isValueVisible ? "text" : "password"}
+                    placeholder={
+                      variable ? "Leave blank to keep the current value" : "Enter the value"
+                    }
                     autoComplete="off"
                     spellCheck={false}
-                    className="font-mono"
                     isError={Boolean(fieldState.error)}
                   />
-                  <FieldDescription>
-                    {isRenaming && usedByCount > 0 ? (
-                      <>
-                        {usedByCount === 1
-                          ? "The service that uses it keeps working"
-                          : `The ${usedByCount} services that use it keep working`}{" "}
-                        under the new key.
-                      </>
-                    ) : (
-                      <>
-                        Services use it as{" "}
-                        <code className="font-mono">{toVariableReference(key || "KEY")}</code>.
-                      </>
-                    )}
-                  </FieldDescription>
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="value"
-            render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Value</FieldLabel>
-                <FieldContent>
-                  <InputGroup>
-                    <InputGroupInput
-                      {...field}
-                      type={isValueVisible ? "text" : "password"}
-                      placeholder={
-                        variable ? "Leave blank to keep the current value" : "Enter the value"
-                      }
-                      autoComplete="off"
-                      spellCheck={false}
-                      isError={Boolean(fieldState.error)}
-                    />
-                    <InputGroupAddon align="inline-end">
-                      <InputGroupButton
-                        isDisabled={!field.value}
-                        aria-label={isValueVisible ? "Hide value" : "Show value"}
-                        onClick={() => setIsValueVisible((prev) => !prev)}
-                      >
-                        {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
-                      </InputGroupButton>
-                    </InputGroupAddon>
-                  </InputGroup>
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              </Field>
-            )}
-          />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      isDisabled={!field.value}
+                      aria-label={isValueVisible ? "Hide value" : "Show value"}
+                      onClick={() => setIsValueVisible((prev) => !prev)}
+                    >
+                      {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
+            </Field>
+          )}
+        />
 
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="av"
-              isPending={isSubmitting}
-              isDisabled={isUpdate && !isDirty}
-            >
-              {isUpdate ? "Save" : "Add Variable"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="av"
+            isPending={isSubmitting}
+            isDisabled={isUpdate && !isDirty}
+          >
+            {isUpdate ? "Save" : "Add Variable"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </>
   );
 };
+
+export const VariableFormDialog = ({
+  isOpen,
+  onOpenChange,
+  onCloseAutoFocus,
+  ...formProps
+}: Props) => (
+  <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <DialogContent
+      // The form focuses the value itself when the key arrives filled in.
+      onOpenAutoFocus={(event) => {
+        if (formProps.initialKey) event.preventDefault();
+      }}
+      onCloseAutoFocus={onCloseAutoFocus}
+    >
+      <VariableForm isOpen={isOpen} onOpenChange={onOpenChange} {...formProps} />
+    </DialogContent>
+  </Dialog>
+);

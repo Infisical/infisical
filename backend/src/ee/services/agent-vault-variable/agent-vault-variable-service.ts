@@ -15,14 +15,14 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { AGENT_VAULT_MAX_VARIABLES } from "../agent-vault/agent-vault-variable-fns";
-import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
 import {
+  TAgentVaultServiceUsingVariable,
   TAgentVaultVariable,
-  TAgentVaultVariableDALFactory,
-  TAgentVaultVariableUser
+  TAgentVaultVariableDALFactory
 } from "./agent-vault-variable-dal";
 import {
-  TAgentVaultVariableUsedBy,
+  TAgentVaultVariableScoped,
+  TAgentVaultVariableUsedByService,
   TCreateVariableDTO,
   TListVariablesDTO,
   TUpdateVariableDTO,
@@ -34,6 +34,8 @@ type TAgentVaultVariableServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
+
+const AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT = 20;
 
 export type TAgentVaultVariableServiceFactory = ReturnType<typeof agentVaultVariableServiceFactory>;
 
@@ -47,7 +49,7 @@ export const agentVaultVariableServiceFactory = ({
 
   // Variables are admin only, reads included: a member can use a service without seeing what it is built from, and
   // Edit on access bundles is the action only an admin holds.
-  const assertCanManageVariables = async ({ projectId, ctx }: TAgentVaultProjectScoped) => {
+  const assertCanManageVariables = async ({ projectId, ctx }: TAgentVaultVariableScoped) => {
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
@@ -56,18 +58,18 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   // Values never leave through this projection; only the audited value endpoint returns one.
-  const projectVariable = (variable: TAgentVaultVariable, users: TAgentVaultVariableUser[]) => ({
+  const projectVariable = (variable: TAgentVaultVariable, services: TAgentVaultServiceUsingVariable[]) => ({
     id: variable.id,
     key: variable.key,
-    usedBy: users
-      .filter((user) => user.variableId === variable.id)
+    usedByServices: services
+      .filter((service) => service.variableId === variable.id)
       .map(
-        (user): TAgentVaultVariableUsedBy => ({
-          id: user.serviceId,
-          name: user.serviceName,
-          hostPattern: user.hostPattern,
-          accessBundleId: user.accessBundleId,
-          accessBundleName: user.accessBundleName
+        (service): TAgentVaultVariableUsedByService => ({
+          id: service.serviceId,
+          name: service.serviceName,
+          hostPattern: service.hostPattern,
+          accessBundleId: service.accessBundleId,
+          accessBundleName: service.accessBundleName
         })
       ),
     createdAt: variable.createdAt,
@@ -78,20 +80,28 @@ export const agentVaultVariableServiceFactory = ({
 
   const duplicateKeyMessage = (key: string) => `A variable named '${key}' already exists.`;
 
-  const inUseMessage = (key: string, users: TAgentVaultVariableUser[]) => {
-    const names = users.map((user) => `'${user.serviceName}' (access bundle '${user.accessBundleName}')`).join(", ");
-    return users.length === 1
+  const inUseMessage = (key: string, services: TAgentVaultServiceUsingVariable[]) => {
+    const names = services
+      .map((service) => `'${service.serviceName}' (access bundle '${service.accessBundleName}')`)
+      .join(", ");
+    return services.length === 1
       ? `The variable '${key}' is used by the service ${names}. Remove it from that service before deleting it.`
       : `The variable '${key}' is used by the services ${names}. Remove it from those services before deleting it.`;
   };
 
-  const listVariables = async ({ projectId, ctx, ...query }: TListVariablesDTO) => {
+  const listVariables = async ({ projectId, ctx, limit, ...query }: TListVariablesDTO) => {
     await assertCanManageVariables({ projectId, ctx });
 
-    const { variables, totalCount } = await agentVaultVariableDAL.findForList({ projectId, ...query });
-    const users = await agentVaultVariableDAL.findUsers(variables.map((variable) => variable.id));
+    // A lookup by keys returns every key that exists unless the caller caps it, so a missing entry always means
+    // the key doesn't exist.
+    const { variables, totalCount } = await agentVaultVariableDAL.findForList({
+      projectId,
+      ...query,
+      limit: limit ?? query.keys?.length ?? AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT
+    });
+    const services = await agentVaultVariableDAL.findServicesUsing(variables.map((variable) => variable.id));
 
-    return { variables: variables.map((variable) => projectVariable(variable, users)), totalCount };
+    return { variables: variables.map((variable) => projectVariable(variable, services)), totalCount };
   };
 
   const createVariable = async ({ key, value, ...rest }: TCreateVariableDTO) => {
@@ -158,8 +168,8 @@ export const agentVaultVariableServiceFactory = ({
           { id: current.id, projectId: rest.projectId },
           tx
         );
-        const users = await agentVaultVariableDAL.findUsers([current.id], tx);
-        return { previous: current, updated: updated!, users };
+        const services = await agentVaultVariableDAL.findServicesUsing([current.id], tx);
+        return { previous: current, updated: updated!, services };
       });
 
     let result;
@@ -170,7 +180,7 @@ export const agentVaultVariableServiceFactory = ({
       throw err;
     }
 
-    return { variable: projectVariable(result.updated, result.users), previousKey: result.previous.key };
+    return { variable: projectVariable(result.updated, result.services), previousKey: result.previous.key };
   };
 
   const deleteVariable = async ({ variableId, ...rest }: TVariableByIdDTO) => {
@@ -186,8 +196,8 @@ export const agentVaultVariableServiceFactory = ({
         );
         if (!variable) throw notFound(variableId);
 
-        const users = await agentVaultVariableDAL.findUsers([variable.id], tx);
-        if (users.length) throw new ConflictError({ message: inUseMessage(variable.key, users) });
+        const services = await agentVaultVariableDAL.findServicesUsing([variable.id], tx);
+        if (services.length) throw new ConflictError({ message: inUseMessage(variable.key, services) });
 
         await agentVaultVariableDAL.deleteById(variable.id, tx);
         return variable;

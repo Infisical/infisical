@@ -11,7 +11,7 @@ export type TAgentVaultVariableDALFactory = ReturnType<typeof agentVaultVariable
 // accessBundleId is left over from bundle-scoped variables and no longer read, so it stays off every row.
 export type TAgentVaultVariable = Omit<TAgentVaultVariables, "accessBundleId">;
 
-export type TAgentVaultVariableOrderBy = "key" | "usedBy";
+export type TAgentVaultVariableOrderBy = "key" | "serviceCount";
 
 export type TFindAgentVaultVariablesDTO = {
   projectId: string;
@@ -25,7 +25,7 @@ export type TFindAgentVaultVariablesDTO = {
 
 export type TAgentVaultVariableValueRow = Pick<TAgentVaultVariables, "id" | "encryptedValue">;
 
-export type TAgentVaultVariableUser = {
+export type TAgentVaultServiceUsingVariable = {
   variableId: string;
   serviceId: string;
   serviceName: string;
@@ -41,8 +41,8 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
 
   const columns = VARIABLE_COLUMNS.map((column) => `${TableName.AgentVaultVariable}.${column}`);
 
-  // Reads the primary even without a tx, so a variable created a moment ago is always listed. usedBy counts the
-  // services that use a variable, each once however many of its fields do.
+  // Reads the primary even without a tx, so a variable created a moment ago is always listed. serviceCount counts
+  // the services that use a variable, each once however many of its fields do.
   const findForList = async (
     { projectId, search, keys, orderBy, orderDirection, limit, offset }: TFindAgentVaultVariablesDTO,
     tx?: Knex
@@ -66,7 +66,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
 
       const pageQuery = applyFilters(conn(TableName.AgentVaultVariable)).limit(limit).offset(offset).select(columns);
 
-      if (orderBy === "usedBy") {
+      if (orderBy === "serviceCount") {
         // Counted over this project's variables only; the references table holds every org's.
         const usageCounts = conn(TableName.AgentVaultServiceVariableReference)
           .join(
@@ -168,7 +168,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
   };
 
   // Reads the primary even without a tx, so a service saved a moment ago shows as using its variables.
-  const findUsers = async (variableIds: string[], tx?: Knex): Promise<TAgentVaultVariableUser[]> => {
+  const findServicesUsing = async (variableIds: string[], tx?: Knex): Promise<TAgentVaultServiceUsingVariable[]> => {
     if (!variableIds.length) return [];
     try {
       return (await (tx || db)(TableName.AgentVaultServiceVariableReference)
@@ -194,9 +194,9 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
         .orderBy([
           { column: "accessBundleName", order: "asc" },
           { column: "serviceName", order: "asc" }
-        ])) as TAgentVaultVariableUser[];
+        ])) as TAgentVaultServiceUsingVariable[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find agent vault variable users" });
+      throw new DatabaseError({ error, name: "Find services using agent vault variables" });
     }
   };
 
@@ -234,7 +234,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     findByKeyInProject,
     lockByIdInProject,
     lockForReference,
-    findUsers,
+    findServicesUsing,
     findValuesForResolve
   };
 };

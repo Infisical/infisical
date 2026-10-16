@@ -142,7 +142,7 @@ export type TListAgentVaultVariablesDTO = {
   search?: string;
   /** Exact keys. A key that doesn't exist is left out of the response. */
   keys?: string[];
-  orderBy?: "key" | "usedBy";
+  orderBy?: "key" | "serviceCount";
   orderDirection?: "asc" | "desc";
   limit?: number;
   offset?: number;
@@ -406,7 +406,7 @@ export type TAgentVaultDecryptedSessionLogPage<
   decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };
 
-export type TAgentVaultVariableUsage = {
+export type TAgentVaultVariableUsedByService = {
   id: string;
   name: string;
   hostPattern: string;
@@ -418,7 +418,7 @@ export type TAgentVaultVariable = {
   id: string;
   key: string;
   // Every service that references the variable, across all access bundles.
-  usedBy: TAgentVaultVariableUsage[];
+  usedByServices: TAgentVaultVariableUsedByService[];
   createdAt: string;
   updatedAt: string;
 };

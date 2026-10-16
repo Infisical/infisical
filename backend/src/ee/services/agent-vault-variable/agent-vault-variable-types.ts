@@ -1,15 +1,19 @@
-import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
+import { TGenericPermission } from "@app/lib/types";
+
 import { TFindAgentVaultVariablesDTO } from "./agent-vault-variable-dal";
 
-export type TListVariablesDTO = TAgentVaultProjectScoped & Omit<TFindAgentVaultVariablesDTO, "projectId">;
+export type TAgentVaultVariableScoped = { projectId: string; ctx: TGenericPermission };
 
-export type TCreateVariableDTO = TAgentVaultProjectScoped & { key: string; value: string };
+export type TListVariablesDTO = TAgentVaultVariableScoped &
+  Omit<TFindAgentVaultVariablesDTO, "projectId" | "limit"> & { limit?: number };
 
-export type TUpdateVariableDTO = TAgentVaultProjectScoped & { variableId: string; key?: string; value?: string };
+export type TCreateVariableDTO = TAgentVaultVariableScoped & { key: string; value: string };
 
-export type TVariableByIdDTO = TAgentVaultProjectScoped & { variableId: string };
+export type TUpdateVariableDTO = TAgentVaultVariableScoped & { variableId: string; key?: string; value?: string };
 
-export type TAgentVaultVariableUsedBy = {
+export type TVariableByIdDTO = TAgentVaultVariableScoped & { variableId: string };
+
+export type TAgentVaultVariableUsedByService = {
   id: string;
   name: string;
   hostPattern: string;
