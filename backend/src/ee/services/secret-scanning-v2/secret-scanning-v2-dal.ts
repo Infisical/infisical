@@ -12,7 +12,8 @@ import {
   SecretScanningFindingOrderBy,
   SecretScanningFindingStatus,
   SecretScanningResourceOrderBy,
-  SecretScanningScanStatus
+  SecretScanningScanStatus,
+  SecretScanningScanType
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray, sanitizeSqlLikeString } from "@app/lib/fn";
@@ -544,6 +545,30 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // Reads the primary: a scan committed moments ago may not have reached a replica yet.
+  const findQueuedHistoricalScans = async (createdBefore: Date, limit: number, tx?: Knex) => {
+    try {
+      return await (tx || db)(TableName.SecretScanningScan)
+        .join(
+          TableName.SecretScanningResource,
+          `${TableName.SecretScanningResource}.id`,
+          `${TableName.SecretScanningScan}.resourceId`
+        )
+        .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Queued)
+        .where(`${TableName.SecretScanningScan}.type`, SecretScanningScanType.Historical)
+        .where(`${TableName.SecretScanningScan}.createdAt`, "<", createdBefore)
+        .select(
+          db.ref("id").withSchema(TableName.SecretScanningScan),
+          db.ref("resourceId").withSchema(TableName.SecretScanningScan),
+          db.ref("dataSourceId").withSchema(TableName.SecretScanningResource)
+        )
+        .orderBy(`${TableName.SecretScanningScan}.createdAt`, "asc")
+        .limit(limit);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Queued Historical - Secret Scanning Scan" });
+    }
+  };
+
   const findScansByDataSourceId = async (dataSourceId: string, tx?: Knex) => {
     try {
       const scans = await (tx || db.replicaNode())(TableName.SecretScanningScan)
@@ -736,7 +761,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       ...scanOrm,
       findWithDetailsByDataSourceId: findScansWithDetailsByDataSourceId,
       findByDataSourceId: findScansByDataSourceId,
-      findStuck: findStuckScans
+      findStuck: findStuckScans,
+      findQueuedHistorical: findQueuedHistoricalScans
     },
     findings: {
       ...findingOrm,

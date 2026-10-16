@@ -67,6 +67,8 @@ type TSecretRotationV2QueueServiceFactoryDep = {
 export type TSecretScanningV2QueueServiceFactory = ReturnType<typeof secretScanningV2QueueServiceFactory>;
 
 const STUCK_SCAN_REAP_BATCH_SIZE = 100;
+// Longer than submitting jobs for every scan of one request takes, so a scan still being submitted isn't redelivered.
+const QUEUED_SCAN_REDELIVERY_GRACE = ms("5m");
 const STUCK_SCAN_STATUS_MESSAGE =
   "The scan did not complete and was cancelled. This usually means the resource is too large to scan.";
 
@@ -169,6 +171,21 @@ export const secretScanningV2QueueServiceFactory = ({
     return failedScans.length > 0;
   };
 
+  // Jobs are keyed by scan, and finished jobs are removed, so submitting one that is still waiting or running is a
+  // no-op. That makes redelivering a scan safe: only a lost job is recreated.
+  const enqueueFullScanJob = (scan: { id: string; resourceId: string }, dataSourceId: string) =>
+    queueService.queue(
+      QueueName.SecretScanningV2FullScan,
+      QueueJobs.SecretScanningV2FullScan,
+      { scanId: scan.id, resourceId: scan.resourceId, dataSourceId },
+      {
+        jobId: scan.id,
+        removeOnFail: true,
+        attempts: FULL_SCAN_ATTEMPTS,
+        backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
+      }
+    );
+
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
     {
@@ -259,25 +276,18 @@ export const secretScanningV2QueueServiceFactory = ({
         );
       });
 
-      // Queued after commit: a worker that picks the job up first would not find the scan, and would abort it as
-      // deleted, leaving it queued forever.
+      // Submitted after commit, or a worker could pick a job up before its scan exists and abort it as deleted.
+      // The scans are already saved, so a submission that fails here is left for the stuck-scan reaper to redeliver.
       for (const scan of scans) {
-        // eslint-disable-next-line no-await-in-loop
-        await queueService.queue(
-          QueueName.SecretScanningV2FullScan,
-          QueueJobs.SecretScanningV2FullScan,
-          {
-            scanId: scan.id,
-            resourceId: scan.resourceId,
-            dataSourceId: dataSource.id
-          },
-          {
-            jobId: scan.id,
-            removeOnFail: true,
-            attempts: FULL_SCAN_ATTEMPTS,
-            backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
-          }
-        );
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await enqueueFullScanJob(scan, dataSource.id);
+        } catch (error) {
+          logger.error(
+            error,
+            `secretScanningV2Queue: Failed to submit full scan, leaving it for redelivery [scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${dataSource.id}]`
+          );
+        }
       }
     } catch (error) {
       logger.error(error, `Failed to queue full-scan for data source with ID "${dataSource.id}"`);
@@ -302,7 +312,7 @@ export const secretScanningV2QueueServiceFactory = ({
     const logDetails = `[scanId=${scanId}] [resourceId=${resourceId}] [dataSourceId=${dataSourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
     // Read from the primary: a lagging replica would report a just-queued scan as missing, and a job
-    // that returns here leaves its scan `queued`, which the stuck-scan reaper never picks up.
+    // that returns here leaves its scan `queued` until the reaper redelivers it.
     const primary = secretScanningV2DAL.primaryNode();
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
     const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
@@ -1079,6 +1089,25 @@ export const secretScanningV2QueueServiceFactory = ({
     handler: async () => {
       const { SECRET_SCANNING_STUCK_SCAN_TIMEOUT } = getConfig();
 
+      // A scan saved as queued whose job never reached the queue (Redis rejected it, or the process stopped before
+      // submitting it) would otherwise wait forever, and block new scans of its resource as already in flight.
+      const queuedScans = await secretScanningV2DAL.scans.findQueuedHistorical(
+        new Date(Date.now() - QUEUED_SCAN_REDELIVERY_GRACE),
+        STUCK_SCAN_REAP_BATCH_SIZE
+      );
+
+      for (const scan of queuedScans) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await enqueueFullScanJob(scan, scan.dataSourceId);
+        } catch (error) {
+          logger.error(
+            error,
+            `secretScanningV2Queue: Failed to redeliver queued full scan [scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${scan.dataSourceId}]`
+          );
+        }
+      }
+
       const stuckScans = await secretScanningV2DAL.scans.findStuck(
         new Date(Date.now() - SECRET_SCANNING_STUCK_SCAN_TIMEOUT),
         STUCK_SCAN_REAP_BATCH_SIZE
@@ -1144,17 +1173,7 @@ export const secretScanningV2QueueServiceFactory = ({
         );
       });
 
-      await queueService.queue(
-        QueueName.SecretScanningV2FullScan,
-        QueueJobs.SecretScanningV2FullScan,
-        { scanId: scan.id, resourceId: scan.resourceId, dataSourceId },
-        {
-          jobId: scan.id,
-          removeOnFail: true,
-          attempts: FULL_SCAN_ATTEMPTS,
-          backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
-        }
-      );
+      await enqueueFullScanJob(scan, dataSourceId);
     } catch (error) {
       logger.error(
         error,
