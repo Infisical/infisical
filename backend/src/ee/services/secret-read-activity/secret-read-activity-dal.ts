@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, TableName } from "@app/db/schemas";
@@ -13,7 +14,7 @@ const LOOKUP_CHUNK_SIZE = 10_000;
 const PARTITION_LOCK_TIMEOUT_MS = 10_000;
 // Matches the migration, which creates the first partitions.
 const PARTITION_FILLFACTOR = 90;
-const PARTITION_NAME_PATTERN = new RegExp(`^${TableName.SecretReadActivity}_(\\d{8})_(\\d{8})$`);
+const PARTITION_NAME_PATTERN = new RE2(`^${TableName.SecretReadActivity}_(\\d{8})_(\\d{8})$`);
 
 const formatPartitionDate = (date: Date) => date.toISOString().slice(0, 10).replaceAll("-", "");
 const parsePartitionDate = (value: string) =>
