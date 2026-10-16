@@ -250,9 +250,17 @@ export const AgentVaultVariableValueSchema = z
 
 export const AgentVaultVariableSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   key: z.string().describe(AGENT_VAULT.VARIABLE.key),
-  serviceIds: z.string().uuid().array().describe(AGENT_VAULT.VARIABLE.serviceIds),
+  usedByServices: z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceId),
+      name: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceName),
+      hostPattern: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceHostPattern),
+      accessBundleId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleId),
+      accessBundleName: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleName)
+    })
+    .array()
+    .describe(AGENT_VAULT.VARIABLE.usedByServices),
   createdAt: z.date().describe(AGENT_VAULT.VARIABLE.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.VARIABLE.updatedAt)
 });

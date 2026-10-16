@@ -1,0 +1,41 @@
+---
+title: "Key management"
+sidebarTitle: "Concepts"
+description: "Learn how a key management service keeps keys out of your applications."
+---
+
+## What is a key management service?
+
+A _key management service_ (KMS) stores cryptographic keys in one place and runs operations with them, such as encryption and signing, for the applications that need them. An application tells the KMS which key to use and sends the data to process, and gets back the result. The key itself never reaches the application.
+
+If an application stores its own keys, the keys end up in configuration files, container images, and backups, and anyone who can read one of those copies can use the key. Rotating the key means updating every one of those copies. With a KMS, each key exists in one place, and you control and audit who can use it.
+
+## Keys in Infisical KMS
+
+You [create keys](/documentation/platform/kms/keys) in a KMS project. Each key has a usage, which decides the operations the key supports:
+
+- **Encrypt/Decrypt**: [Encrypt and decrypt data](/documentation/platform/kms/encrypt-decrypt) with an AES key
+- **Sign/Verify**: [Sign data and verify signatures](/documentation/platform/kms/sign-verify) with an asymmetric key pair
+- **Generate/Verify MAC**: [Generate and verify message authentication codes (MACs)](/documentation/platform/kms/mac), which show that data hasn't changed since the MAC was generated
+
+You can't change a key's usage or algorithm after you create the key.
+
+Infisical doesn't store the data you send it. It runs the operation and returns the result.
+
+## Keeping key material inside Infisical
+
+Applications refer to a key by its ID, so they don't need the key material. If a key's key material must never leave Infisical, turn off **Allow Export** when you create the key. No one can export that key, whatever their permissions, and you can't turn export back on later. To learn how to export keys that allow it, see [Export and import keys](/documentation/platform/kms/export-import).
+
+Infisical encrypts every key with a root key. If you self-host Infisical, you can keep the root key in a [hardware security module (HSM)](/self-hosting/guides/hsm-integration).
+
+## Key versions
+
+Each key starts at version 1. When you [rotate a key](/documentation/platform/kms/key-rotation), Infisical creates new key material and increases the version, but the key keeps its ID and name, so your applications don't need to change. Infisical keeps every earlier version, so it can still decrypt data that was encrypted before the rotation.
+
+## Using keys from other tools
+
+Besides the Infisical UI and API, you can use Infisical KMS keys from:
+
+- [KMIP](/documentation/platform/kms/kmip) clients, such as storage arrays and databases that manage their own encryption
+- [Kubernetes](/documentation/platform/kms/kubernetes-encryption), to encrypt Kubernetes secrets at rest
+- [Sigstore Cosign](/documentation/platform/kms/sigstore-cosign), to sign container images

@@ -367,6 +367,7 @@
                       "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/ona",
                       "integrations/secret-syncs/ovh",
+                      "integrations/secret-syncs/portainer",
                       "integrations/secret-syncs/qovery",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
@@ -611,17 +612,31 @@
             "icon": "lock",
             "pages": [
               "documentation/platform/kms/overview",
+              "documentation/platform/kms/concepts",
               {
-                "group": "Infisical KMS",
+                "group": "Key management",
+                "pages": [
+                  "documentation/platform/kms/keys",
+                  "documentation/platform/kms/encrypt-decrypt",
+                  "documentation/platform/kms/sign-verify",
+                  "documentation/platform/kms/mac",
+                  "documentation/platform/kms/key-rotation",
+                  "documentation/platform/kms/export-import"
+                ]
+              },
+              {
+                "group": "KMIP",
+                "pages": [
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/kmip-server",
+                  "documentation/platform/kms/kmip-clients",
+                  "documentation/platform/kms/kmip-dell-poweredge"
+                ]
+              },
+              {
+                "group": "Integrations",
                 "pages": [
                   "documentation/platform/kms/kubernetes-encryption",
-                  {
-                    "group": "KMIP integration",
-                    "pages": [
-                      "documentation/platform/kms/kmip",
-                      "documentation/platform/kms/kmip-dell-poweredge"
-                    ]
-                  },
                   "documentation/platform/kms/sigstore-cosign"
                 ]
               }
@@ -1077,6 +1092,7 @@
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/ovh",
                   "integrations/app-connections/palo-alto-networks",
+                  "integrations/app-connections/portainer",
                   "integrations/app-connections/postgres",
                   "integrations/app-connections/powerdns",
                   "integrations/app-connections/qovery",
@@ -2328,6 +2344,18 @@
                           "api-reference/endpoints/app-connections/palo-alto-networks/create",
                           "api-reference/endpoints/app-connections/palo-alto-networks/update",
                           "api-reference/endpoints/app-connections/palo-alto-networks/delete"
+                        ]
+                      },
+                      {
+                        "group": "Portainer",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/portainer/list",
+                          "api-reference/endpoints/app-connections/portainer/available",
+                          "api-reference/endpoints/app-connections/portainer/get-by-id",
+                          "api-reference/endpoints/app-connections/portainer/get-by-name",
+                          "api-reference/endpoints/app-connections/portainer/create",
+                          "api-reference/endpoints/app-connections/portainer/update",
+                          "api-reference/endpoints/app-connections/portainer/delete"
                         ]
                       },
                       {
@@ -3734,6 +3762,20 @@
                         "group": "OVH",
                         "pages": [
                           "api-reference/endpoints/secret-syncs/ovh/create"
+                        ]
+                      },
+                      {
+                        "group": "Portainer",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/portainer/list",
+                          "api-reference/endpoints/secret-syncs/portainer/get-by-id",
+                          "api-reference/endpoints/secret-syncs/portainer/get-by-name",
+                          "api-reference/endpoints/secret-syncs/portainer/create",
+                          "api-reference/endpoints/secret-syncs/portainer/update",
+                          "api-reference/endpoints/secret-syncs/portainer/delete",
+                          "api-reference/endpoints/secret-syncs/portainer/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/portainer/import-secrets",
+                          "api-reference/endpoints/secret-syncs/portainer/remove-secrets"
                         ]
                       },
                       {
