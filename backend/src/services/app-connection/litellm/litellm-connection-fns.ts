@@ -28,13 +28,18 @@ export const validateLiteLLMConnectionCredentials = async (config: TLiteLLMConne
     });
 
     // The proxy master key is read from LITELLM_MASTER_KEY and has no row in LiteLLM's key table, so
-    // /key/info authenticates it but then 404s. /user/list confirms it is a valid admin key instead.
+    // /key/info authenticates it but then 404s. /user/list confirms it is a valid admin key instead, and
+    // its body shape confirms the 200 came from LiteLLM rather than a wrong host that also 404s /key/info.
     if (status === 404) {
-      await safeRequest.get(`${baseUrl}/user/list`, {
+      const { data } = await safeRequest.get<{ users?: unknown }>(`${baseUrl}/user/list`, {
         headers,
         params: { page_size: 1 },
         validateStatus: (code) => code === 200
       });
+
+      if (!Array.isArray(data?.users)) {
+        throw new Error("Instance did not return a LiteLLM user list");
+      }
     }
   } catch (error: unknown) {
     logger.error(
