@@ -2,6 +2,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TDaytonaConnection } from "@app/services/app-connection/daytona";
+import { CloudflarePagesVariableType } from "@app/services/secret-sync/cloudflare-pages/cloudflare-pages-constants";
+import { CloudflareWorkersVariableType } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-constants";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
@@ -200,8 +202,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
     "groupId",
     "projectId"
   ],
-  [SecretSync.CloudflarePages]: [],
-  [SecretSync.CloudflareWorkers]: [],
+  [SecretSync.CloudflarePages]: ["variableType"],
+  [SecretSync.CloudflareWorkers]: ["variableType"],
   [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
   [SecretSync.Supabase]: ["projectName"],
   [SecretSync.Rundeck]: [],
@@ -280,6 +282,14 @@ const daytonaDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync
   return existingOrgId === newOrgId;
 };
 
+// Syncs of different variable types own different variables, so they can share a destination. Syncs saved
+// before the type could be chosen have none and sync as secrets.
+const cloudflareVariableTypeDuplicateCheck =
+  (defaultVariableType: string): DestinationDuplicateCheckFn =>
+  async ({ existingSync, newSync }) =>
+    (existingSync.destinationConfig.variableType ?? defaultVariableType) ===
+    (newSync.destinationConfig.variableType ?? defaultVariableType);
+
 const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
   const existingConfig = existingSync.destinationConfig;
   const newConfig = newSync.destinationConfig;
@@ -343,8 +353,8 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
 
     return existingTargetEnv === newTargetEnv;
   },
-  [SecretSync.CloudflarePages]: defaultDuplicateCheck,
-  [SecretSync.CloudflareWorkers]: defaultDuplicateCheck,
+  [SecretSync.CloudflarePages]: cloudflareVariableTypeDuplicateCheck(CloudflarePagesVariableType.Secret),
+  [SecretSync.CloudflareWorkers]: cloudflareVariableTypeDuplicateCheck(CloudflareWorkersVariableType.Secret),
   [SecretSync.CloudflareSecretsStore]: defaultDuplicateCheck,
   [SecretSync.Supabase]: defaultDuplicateCheck,
   [SecretSync.Rundeck]: defaultDuplicateCheck,

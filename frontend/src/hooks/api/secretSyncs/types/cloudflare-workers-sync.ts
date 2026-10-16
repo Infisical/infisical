@@ -12,6 +12,7 @@ export type TCloudflareWorkersSync = TRootSecretSync & {
   destination: SecretSync.CloudflareWorkers;
   destinationConfig: {
     scriptId: string;
+    variableType?: CloudflareWorkersVariableType;
   };
   connection: {
     app: AppConnection.Cloudflare;
@@ -20,6 +21,5 @@ export type TCloudflareWorkersSync = TRootSecretSync & {
   };
   syncOptions: RootSyncOptions & {
     syncNonSecretBindings?: boolean;
-    variableType?: CloudflareWorkersVariableType;
   };
 };

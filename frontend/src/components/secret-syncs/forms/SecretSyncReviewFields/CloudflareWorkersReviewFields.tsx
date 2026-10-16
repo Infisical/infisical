@@ -11,7 +11,10 @@ export const CloudflareWorkersSyncOptionsReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.CloudflareWorkers }
   >();
 
-  const [{ syncNonSecretBindings, variableType }] = watch(["syncOptions"]);
+  const [{ syncNonSecretBindings }, variableType] = watch([
+    "syncOptions",
+    "destinationConfig.variableType"
+  ]);
 
   return (
     <>

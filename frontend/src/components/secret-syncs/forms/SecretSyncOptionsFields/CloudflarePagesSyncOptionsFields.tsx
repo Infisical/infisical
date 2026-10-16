@@ -25,7 +25,7 @@ export const CloudflarePagesSyncOptionsFields = () => {
 
   return (
     <Controller
-      name="syncOptions.variableType"
+      name="destinationConfig.variableType"
       control={control}
       defaultValue={CloudflarePagesVariableType.Secret}
       render={({ field: { value, onChange }, fieldState: { error } }) => (

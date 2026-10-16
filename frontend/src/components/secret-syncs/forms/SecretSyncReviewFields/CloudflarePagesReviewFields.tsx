@@ -7,7 +7,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const CloudflarePagesSyncOptionsReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.CloudflarePages }>();
-  const variableType = watch("syncOptions.variableType");
+  const variableType = watch("destinationConfig.variableType");
 
   return (
     <Detail>

@@ -23,18 +23,18 @@ const CloudflareWorkersSyncDestinationConfigSchema = z.object({
       const re2 = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/);
       return re2.test(val);
     }, "Invalid script ID format")
-    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.scriptId)
+    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.scriptId),
+  variableType: z
+    .nativeEnum(CloudflareWorkersVariableType)
+    .optional()
+    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.variableType)
 });
 
 const CloudflareWorkersSyncAdditionalOptionsSchema = z.object({
   syncNonSecretBindings: z
     .boolean()
     .optional()
-    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_WORKERS.syncNonSecretBindings),
-  variableType: z
-    .nativeEnum(CloudflareWorkersVariableType)
-    .optional()
-    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_WORKERS.variableType)
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_WORKERS.syncNonSecretBindings)
 });
 
 const CloudflareWorkersSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };

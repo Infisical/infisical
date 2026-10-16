@@ -18,12 +18,12 @@ vi.mock("@app/lib/config/request", async (importOriginal) => ({
 
 type TBinding = { type: string; name: string; text?: string; json?: unknown };
 
-const syncWith = (syncOptions: Record<string, unknown>) =>
+const syncWith = (variableType?: CloudflareWorkersVariableType) =>
   ({
     destination: "cloudflare-workers",
-    destinationConfig: { scriptId: "my-worker" },
+    destinationConfig: { scriptId: "my-worker", variableType },
     environment: { slug: "prod" },
-    syncOptions: { disableSecretDeletion: false, ...syncOptions },
+    syncOptions: { disableSecretDeletion: false },
     connection: { credentials: { apiToken: "token", accountId: "account-id" } }
   }) as unknown as TCloudflareWorkersSyncWithCredentials;
 
@@ -39,8 +39,8 @@ const stubWorker = (bindings: TBinding[]) =>
       : { data: { result: { bindings } } }
   );
 
-const patchedBindings = async () => {
-  const [, formData] = patch.mock.calls[0] as [string, FormData];
+const patchedBindings = async (call = 0) => {
+  const [, formData] = patch.mock.calls[call] as [string, FormData];
   return (JSON.parse(await (formData.get("settings") as Blob).text()) as { bindings: TBinding[] }).bindings;
 };
 
@@ -58,7 +58,7 @@ describe("CloudflareWorkersSyncFns", () => {
     ]);
 
     await CloudflareWorkersSyncFns.syncSecrets(
-      syncWith({ variableType: CloudflareWorkersVariableType.Text }),
+      syncWith(CloudflareWorkersVariableType.Text),
       payloadOf({ API_KEY: "key", NEW_VAR: "new" })
     );
 
@@ -75,12 +75,49 @@ describe("CloudflareWorkersSyncFns", () => {
   it("rejects values that are not JSON before calling Cloudflare", async () => {
     await expect(
       CloudflareWorkersSyncFns.syncSecrets(
-        syncWith({ variableType: CloudflareWorkersVariableType.Json }),
+        syncWith(CloudflareWorkersVariableType.Json),
         payloadOf({ VALID: '{"a":1}', BROKEN: "not json" })
       )
     ).rejects.toThrow("cannot be synced as Cloudflare Workers JSON variables: BROKEN.");
 
     expect(get).not.toHaveBeenCalled();
+  });
+
+  it("refuses to replace a non-variable binding with the same name", async () => {
+    stubWorker([{ type: "kv_namespace", name: "CACHE" }]);
+
+    await expect(
+      CloudflareWorkersSyncFns.syncSecrets(syncWith(CloudflareWorkersVariableType.Text), payloadOf({ CACHE: "value" }))
+    ).rejects.toThrow("same name as another binding on the Cloudflare Worker, such as a KV namespace or a service: CACHE.");
+
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("converts a same-name text variable into a secret when Secret is chosen", async () => {
+    stubWorker([
+      { type: "plain_text", name: "API_URL", text: "old" },
+      { type: "kv_namespace", name: "CACHE" }
+    ]);
+
+    await CloudflareWorkersSyncFns.syncSecrets(
+      syncWith(CloudflareWorkersVariableType.Secret),
+      payloadOf({ API_URL: "new" })
+    );
+
+    expect(patch).toHaveBeenCalledTimes(2);
+    expect(await patchedBindings(0)).toEqual([{ type: "kv_namespace", name: "CACHE" }]);
+    expect(patch.mock.calls[1][0]).toMatch(/\/secrets-bulk$/);
+    expect(patch.mock.calls[1][1]).toEqual({
+      secrets: { API_URL: { name: "API_URL", text: "new", type: "secret_text" } }
+    });
+  });
+
+  it("keeps skipping same-name text variables for syncs saved without a type", async () => {
+    stubWorker([{ type: "plain_text", name: "API_URL", text: "old" }]);
+
+    await CloudflareWorkersSyncFns.syncSecrets(syncWith(), payloadOf({ API_URL: "new" }));
+
+    expect(patch).not.toHaveBeenCalled();
   });
 
   it("removes only variables of the sync's type", async () => {
@@ -90,7 +127,7 @@ describe("CloudflareWorkersSyncFns", () => {
     ]);
 
     await CloudflareWorkersSyncFns.removeSecrets(
-      syncWith({ variableType: CloudflareWorkersVariableType.Text }),
+      syncWith(CloudflareWorkersVariableType.Text),
       payloadOf({ TEXT_VAR: "a", SECRET_VAR: "b" })
     );
 

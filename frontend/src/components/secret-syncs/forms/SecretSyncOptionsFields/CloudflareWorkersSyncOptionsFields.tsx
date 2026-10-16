@@ -31,12 +31,15 @@ export const CloudflareWorkersSyncOptionsFields = () => {
 
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
   const syncNonSecretBindings = watch("syncOptions.syncNonSecretBindings");
-  const variableType = watch("syncOptions.variableType", CloudflareWorkersVariableType.Secret);
+  const variableType = watch(
+    "destinationConfig.variableType",
+    CloudflareWorkersVariableType.Secret
+  );
 
   return (
     <>
       <Controller
-        name="syncOptions.variableType"
+        name="destinationConfig.variableType"
         control={control}
         defaultValue={CloudflareWorkersVariableType.Secret}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
@@ -80,9 +83,8 @@ export const CloudflareWorkersSyncOptionsFields = () => {
                       Sync plaintext and JSON variables
                     </Label>
                     <FieldDescription>
-                      When enabled, Infisical will also sync plaintext and JSON variable bindings in
-                      addition to secret bindings. Infisical can only update existing plaintext and
-                      JSON bindings on Cloudflare Workers, not create new ones.
+                      Keep existing plaintext and JSON variables as their type and update their
+                      values, instead of converting them to secrets.
                     </FieldDescription>
                   </FieldContent>
                   <Toggle

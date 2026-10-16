@@ -11,7 +11,7 @@ type Props = {
 
 export const CloudflarePagesSyncOptionsSection = ({ secretSync }: Props) => {
   const {
-    syncOptions: { variableType = CloudflarePagesVariableType.Secret }
+    destinationConfig: { variableType = CloudflarePagesVariableType.Secret }
   } = secretSync;
 
   return (

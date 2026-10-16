@@ -11,11 +11,11 @@ import { TCloudflarePagesSyncWithCredentials } from "./cloudflare-pages-types";
 const getProjectEnvironmentSecrets = async (secretSync: TCloudflarePagesSyncWithCredentials) => {
   const {
     destinationConfig,
-    syncOptions: { variableType = CloudflarePagesVariableType.Secret },
     connection: {
       credentials: { apiToken, accountId }
     }
   } = secretSync;
+  const { variableType = CloudflarePagesVariableType.Secret } = destinationConfig;
 
   const secrets = (
     await request.get<{
@@ -52,11 +52,11 @@ export const CloudflarePagesSyncFns = {
     const secretMap = payload.flatten();
     const {
       destinationConfig,
-      syncOptions: { variableType = CloudflarePagesVariableType.Secret },
       connection: {
         credentials: { apiToken, accountId }
       }
     } = secretSync;
+    const { variableType = CloudflarePagesVariableType.Secret } = destinationConfig;
 
     // Create/update secret entries
     let secretEntries: [string, object | null][] = Object.entries(secretMap).map(([key, val]) => [

@@ -15,6 +15,7 @@ import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-type
 
 const CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE = 10215;
 const CLOUDFLARE_SECRET_TYPE = "secret_text";
+const VARIABLE_BINDING_TYPES = new Set<string>(Object.values(CloudflareWorkersVariableType));
 // Cloudflare rejects secrets-bulk requests carrying more than 100 secrets (error code 100160).
 const CLOUDFLARE_BULK_SECRETS_LIMIT = 100;
 
@@ -154,13 +155,13 @@ const $getManagedBindings = (
   secretSync: TCloudflareWorkersSyncWithCredentials,
   { secrets, nonSecretBindings }: TCloudflareBindings
 ) => {
-  const { variableType = CloudflareWorkersVariableType.Secret, syncNonSecretBindings } = secretSync.syncOptions;
+  const { variableType = CloudflareWorkersVariableType.Secret } = secretSync.destinationConfig;
 
   if (variableType !== CloudflareWorkersVariableType.Secret) {
     return nonSecretBindings.filter((binding) => binding.type === variableType);
   }
 
-  return syncNonSecretBindings ? [...secrets, ...nonSecretBindings] : secrets;
+  return secretSync.syncOptions.syncNonSecretBindings ? [...secrets, ...nonSecretBindings] : secrets;
 };
 
 // Text and JSON variables are bindings in the Worker's settings, which take the full binding list. One
@@ -219,8 +220,21 @@ const $syncVariableBindings = async (
       }
     });
 
+    const existingBindings = settingsData.result.bindings ?? [];
+
+    const conflictingKeys = existingBindings
+      .filter((binding) => secretMapKeys.has(binding.name) && !VARIABLE_BINDING_TYPES.has(binding.type))
+      .map((binding) => binding.name);
+
+    if (conflictingKeys.length > 0) {
+      throw new SecretSyncError({
+        message: `The following secrets have the same name as another binding on the Cloudflare Worker, such as a KV namespace or a service: ${conflictingKeys.join(", ")}. Rename the secrets in Infisical, or use a key schema to change their names in Cloudflare.`,
+        shouldRetry: false
+      });
+    }
+
     const bindings = [
-      ...settingsData.result.bindings.filter((binding) => !secretMapKeys.has(binding.name) && !isDeleted(binding)),
+      ...existingBindings.filter((binding) => !secretMapKeys.has(binding.name) && !isDeleted(binding)),
       ...variableBindings
     ];
 
@@ -245,11 +259,10 @@ export const CloudflareWorkersSyncFns = {
       connection: {
         credentials: { apiToken, accountId }
       },
-      destinationConfig: { scriptId },
-      syncOptions: { variableType = CloudflareWorkersVariableType.Secret }
+      destinationConfig: { scriptId, variableType }
     } = secretSync;
 
-    if (variableType !== CloudflareWorkersVariableType.Secret) {
+    if (variableType === CloudflareWorkersVariableType.Text || variableType === CloudflareWorkersVariableType.Json) {
       await $syncVariableBindings(secretSync, secretMap, variableType);
       return;
     }
@@ -263,12 +276,17 @@ export const CloudflareWorkersSyncFns = {
     const existingSecretsMap = Object.fromEntries(existingSecrets.map(({ key, type }) => [key, type]));
     const secretMapKeys = new Set(Object.keys(secretMap));
 
-    // We cannot sync secrets that have the same name as a non-secret
-    // if shouldSyncNonSecretBindings = false. This happens because
-    // Cloudflare will reject the request due to name conflicts. A secret
-    // cannot have the same name as a non-secret variable.
+    // Cloudflare rejects a secret with the same name as a plaintext or JSON variable. A sync with Secret
+    // chosen explicitly removes those variables so it can write the secrets. Syncs saved before the type
+    // could be chosen keep skipping those keys, unless shouldSyncNonSecretBindings updates them in place.
+    const bindingKeysToConvert = new Set(
+      variableType === CloudflareWorkersVariableType.Secret && !shouldSyncNonSecretBindings
+        ? Object.keys(secretMap).filter((key) => nonSecretBindingKeys.has(key))
+        : []
+    );
+
     const syncableEntries = Object.entries(secretMap).filter(
-      ([key]) => shouldSyncNonSecretBindings || !nonSecretBindingKeys.has(key)
+      ([key]) => shouldSyncNonSecretBindings || bindingKeysToConvert.has(key) || !nonSecretBindingKeys.has(key)
     );
 
     const bindingEntries: Array<[string, { value: string }]> = [];
@@ -284,7 +302,7 @@ export const CloudflareWorkersSyncFns = {
     }
 
     try {
-      if (bindingEntries.length > 0) {
+      if (bindingEntries.length > 0 || bindingKeysToConvert.size > 0) {
         const { data: settingsData } = await request.get<{
           result: { bindings: Array<{ type: string; name: string; text?: string; json?: string }> };
         }>(
@@ -301,7 +319,9 @@ export const CloudflareWorkersSyncFns = {
 
         $validateJsonBindings(settingsData.result.bindings, updatedBindingMap);
 
-        const updatedBindings = settingsData.result.bindings.map((binding) => {
+        const keptBindings = settingsData.result.bindings.filter((binding) => !bindingKeysToConvert.has(binding.name));
+
+        const updatedBindings = keptBindings.map((binding) => {
           if (binding.type !== CLOUDFLARE_SECRET_TYPE && updatedBindingMap[binding.name] !== undefined) {
             const newValue = updatedBindingMap[binding.name].value;
             if (binding.type === "json") {

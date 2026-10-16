@@ -16,12 +16,12 @@ vi.mock("@app/lib/config/request", async (importOriginal) => ({
   request: { get, patch }
 }));
 
-const syncWith = (syncOptions: Record<string, unknown>) =>
+const syncWith = (variableType?: CloudflarePagesVariableType) =>
   ({
     destination: "cloudflare-pages",
-    destinationConfig: { projectName: "my-site", environment: "production" },
+    destinationConfig: { projectName: "my-site", environment: "production", variableType },
     environment: { slug: "prod" },
-    syncOptions: { disableSecretDeletion: false, ...syncOptions },
+    syncOptions: { disableSecretDeletion: false },
     connection: { credentials: { apiToken: "token", accountId: "account-id" } }
   }) as unknown as TCloudflarePagesSyncWithCredentials;
 
@@ -52,7 +52,7 @@ describe("CloudflarePagesSyncFns", () => {
     });
 
     await CloudflarePagesSyncFns.syncSecrets(
-      syncWith({ variableType: CloudflarePagesVariableType.Text }),
+      syncWith(CloudflarePagesVariableType.Text),
       payloadOf({ API_URL: "https://api.example.com" })
     );
 

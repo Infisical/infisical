@@ -6,10 +6,7 @@ import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/
 
 export const CloudflareWorkersSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
-    syncNonSecretBindings: z.boolean().optional().default(false),
-    variableType: z
-      .nativeEnum(CloudflareWorkersVariableType)
-      .default(CloudflareWorkersVariableType.Secret)
+    syncNonSecretBindings: z.boolean().optional().default(false)
   })
 ).merge(
   z.object({
@@ -20,7 +17,10 @@ export const CloudflareWorkersSyncDestinationSchema = BaseSecretSyncSchema(
         .trim()
         .min(1, "Script ID is required")
         .max(64)
-        .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "Invalid script ID format")
+        .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "Invalid script ID format"),
+      variableType: z
+        .nativeEnum(CloudflareWorkersVariableType)
+        .default(CloudflareWorkersVariableType.Secret)
     })
   })
 );

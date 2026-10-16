@@ -3292,15 +3292,9 @@ export const SecretSyncs = {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
     },
-    CLOUDFLARE_PAGES: {
-      variableType:
-        "The type of environment variable to sync secrets as: secret_text (default) or plain_text. Infisical only deletes variables of this type."
-    },
     CLOUDFLARE_WORKERS: {
       syncNonSecretBindings:
-        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings. Only applies when variableType is secret_text.",
-      variableType:
-        "The type of variable to sync secrets as: secret_text (default), plain_text or json. With plain_text or json, Infisical replaces any secret or variable of the same name and only deletes variables of that type."
+        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings. Only applies when variableType is secret_text or omitted."
     },
     SPACELIFT: {
       writeOnly:
@@ -3484,10 +3478,14 @@ export const SecretSyncs = {
     },
     CLOUDFLARE_PAGES: {
       projectName: "The name of the Cloudflare Pages project to sync secrets to.",
-      environment: "The environment of the Cloudflare Pages project to sync secrets to."
+      environment: "The environment of the Cloudflare Pages project to sync secrets to.",
+      variableType:
+        "The type of environment variable to sync secrets as: secret_text (default) or plain_text. Infisical only deletes variables of this type."
     },
     CLOUDFLARE_WORKERS: {
-      scriptId: "The ID of the Cloudflare Workers script to sync secrets to."
+      scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
+      variableType:
+        "The type of variable to sync secrets as: secret_text, plain_text or json. Infisical replaces any secret or variable of the same name with this type and only deletes variables of this type. If omitted, secrets are synced as secret_text but keys that already exist as plaintext or JSON variables are skipped."
     },
     CLOUDFLARE_SECRETS_STORE: {
       storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",

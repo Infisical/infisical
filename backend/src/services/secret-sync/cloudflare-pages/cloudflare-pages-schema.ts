@@ -21,22 +21,18 @@ const CloudflarePagesSyncDestinationConfigSchema = z.object({
   environment: z
     .string()
     .min(1, "Environment is required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_PAGES.environment)
-});
-
-const CloudflarePagesSyncAdditionalOptionsSchema = z.object({
+    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_PAGES.environment),
   variableType: z
     .nativeEnum(CloudflarePagesVariableType)
     .optional()
-    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_PAGES.variableType)
+    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_PAGES.variableType)
 });
 
 const CloudflarePagesSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
 export const CloudflarePagesSyncSchema = BaseSecretSyncSchema(
   SecretSync.CloudflarePages,
-  CloudflarePagesSyncOptionsConfig,
-  CloudflarePagesSyncAdditionalOptionsSchema
+  CloudflarePagesSyncOptionsConfig
 )
   .extend({
     destination: z.literal(SecretSync.CloudflarePages),
@@ -46,16 +42,14 @@ export const CloudflarePagesSyncSchema = BaseSecretSyncSchema(
 
 export const CreateCloudflarePagesSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.CloudflarePages,
-  CloudflarePagesSyncOptionsConfig,
-  CloudflarePagesSyncAdditionalOptionsSchema
+  CloudflarePagesSyncOptionsConfig
 ).extend({
   destinationConfig: CloudflarePagesSyncDestinationConfigSchema
 });
 
 export const UpdateCloudflarePagesSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.CloudflarePages,
-  CloudflarePagesSyncOptionsConfig,
-  CloudflarePagesSyncAdditionalOptionsSchema
+  CloudflarePagesSyncOptionsConfig
 ).extend({
   destinationConfig: CloudflarePagesSyncDestinationConfigSchema.optional()
 });
