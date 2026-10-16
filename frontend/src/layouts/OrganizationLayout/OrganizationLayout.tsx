@@ -71,8 +71,9 @@ export const OrganizationLayout = () => {
 
   useEffect(() => {
     const trialIntent = getSignupTrialIntent();
-    if (!trialIntent) return;
+    if (!trialIntent?.orgId) return;
     clearSignupTrialIntent();
+    if (trialIntent.orgId !== billingOrgId) return;
     const search = new URLSearchParams(
       getSignupTrialBillingSearch(
         trialIntent,

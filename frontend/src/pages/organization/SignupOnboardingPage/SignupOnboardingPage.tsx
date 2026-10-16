@@ -12,6 +12,7 @@ import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
 import {
+  bindSignupTrialIntent,
   getSignupTrialIntent,
   getSignupTrialProjectType
 } from "@app/components/auth/signupTrialIntent";
@@ -104,6 +105,7 @@ export const SignupOnboardingPage = () => {
   }, [selectOrganization, navigate]);
 
   const handleOrgNameComplete = (newOrgId: string) => {
+    bindSignupTrialIntent(newOrgId);
     if (callbackPort) {
       handOffToCli(newOrgId);
       return;

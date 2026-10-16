@@ -27,6 +27,7 @@ export type SignupTrialIntent = {
   plan: string;
   cycle: "monthly" | "annual";
   savedAt: number;
+  orgId?: string;
 };
 
 const parseIntent = (value: {
@@ -56,7 +57,11 @@ export const getSignupTrialIntent = (): SignupTrialIntent | null => {
       clearSignupTrialIntent();
       return null;
     }
-    return { ...intent, savedAt: stored.savedAt };
+    return {
+      ...intent,
+      savedAt: stored.savedAt,
+      orgId: typeof stored.orgId === "string" ? stored.orgId : undefined
+    };
   } catch {
     clearSignupTrialIntent();
     return null;
@@ -73,8 +78,22 @@ export const captureSignupTrialIntent = (search: string) => {
   });
   if (!intent) return getSignupTrialIntent();
   const captured = { ...intent, savedAt: Date.now() };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(captured));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(captured));
+  } catch {
+    return null;
+  }
   return captured;
+};
+
+export const bindSignupTrialIntent = (orgId: string) => {
+  const intent = getSignupTrialIntent();
+  if (!intent || intent.orgId) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...intent, orgId }));
+  } catch {
+    clearSignupTrialIntent();
+  }
 };
 
 export const getSignupTrialProjectType = (intent: SignupTrialIntent | null): SignupProductType[] =>

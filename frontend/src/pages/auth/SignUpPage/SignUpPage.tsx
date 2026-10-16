@@ -19,7 +19,9 @@ import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
 import {
+  bindSignupTrialIntent,
   captureSignupTrialIntent,
+  clearSignupTrialIntent,
   getSignupTrialProjectType
 } from "@app/components/auth/signupTrialIntent";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
@@ -126,7 +128,9 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   const handleUserInfoComplete = async (newOrgId?: string) => {
+    if (newOrgId) bindSignupTrialIntent(newOrgId);
     if (isInvite) {
+      clearSignupTrialIntent();
       const userOrgs = await fetchOrganizations();
       const inviteOrgId = userOrgs[0]?.id;
 
