@@ -21,10 +21,6 @@ import {
 
 const VERCEL_MAX_PAGES = 100;
 
-/**
- * Supplies the connection catalog with the Vercel authentication method users
- * can configure before they provide credentials.
- */
 export const getVercelConnectionListItem = () => {
   return {
     name: "Vercel" as const,
@@ -34,11 +30,9 @@ export const getVercelConnectionListItem = () => {
 };
 
 /**
- * Validates credentials against the project API so project-scoped tokens can
- * connect without access to user or team metadata.
- *
- * A successful response with no projects still establishes access to this API.
- * Access to a specific sync destination is evaluated separately.
+ * Use the projects API because project-scoped tokens may not have access to
+ * user or team metadata. An empty project list still validates API access;
+ * access to a specific sync destination is checked separately.
  *
  * @see https://vercel.com/docs/accounts/access-tokens
  */
@@ -84,15 +78,6 @@ interface ApiResponse<T> {
   [key: string]: unknown;
 }
 
-/**
- * Normalizes Vercel list responses and follows their pagination cursors.
- * Wrapped lists use the requested data key or `data`; bare arrays end traversal.
- * The page cap prevents a repeating provider cursor from keeping discovery alive
- * indefinitely.
- *
- * The item limit is checked between requests, so each fetched page is retained
- * in full. The original Axios error is preserved for scope-aware recovery.
- */
 async function fetchAllPages<T>({
   apiUrl,
   apiToken,
@@ -171,12 +156,6 @@ async function fetchAllPages<T>({
   return allItems;
 }
 
-/**
- * Uses a small result window for the searchable destination picker.
- *
- * Omitting the account ID lets Vercel infer the owning team from a scoped token,
- * allowing project discovery when team metadata is inaccessible.
- */
 async function fetchOrgProjects(
   orgId: string | undefined,
   apiToken: string,
@@ -219,14 +198,6 @@ async function fetchProjectEnvironments(
   }
 }
 
-/**
- * Provides branch suggestions through an endpoint absent from Vercel's public
- * OpenAPI schema. Discovery is best effort, with failures yielding an empty list
- * so projects remain selectable.
- *
- * The filter excludes the literal `main` branch; the project's configured
- * production branch is not resolved by this lookup.
- */
 async function fetchPreviewBranches(projectId: string, teamId: string, apiToken: string): Promise<string[]> {
   try {
     const { data } = await request.get<TVercelBranches[]>(
@@ -249,18 +220,9 @@ async function fetchPreviewBranches(projectId: string, teamId: string, apiToken:
 }
 
 /**
- * Identifies discovery failures that permit a scope-aware fallback or omission.
- * A token can access its project while user or team resources remain inaccessible,
- * so HTTP 403 and 404 responses are treated as recoverable scope restrictions.
- *
- * Unwraps Infisical's BadRequestError to inspect the original Axios response.
- * Authentication failures (401), rate limits (429), upstream failures, and network
- * errors remain outside this category so callers can propagate them.
- *
- * This classification guides recovery; credential validity still requires a
- * successful validation request.
- *
- * @see https://vercel.com/docs/accounts/access-tokens
+ * Restricted tokens can access projects while user or team lookups return
+ * 403 or 404. Only these responses allow discovery to fall back or skip an
+ * account; authentication, rate-limit, and network failures must propagate.
  */
 const isVercelScopeError = (error: unknown) => {
   const upstreamError = error instanceof BadRequestError ? error.error : error;
@@ -269,13 +231,6 @@ const isVercelScopeError = (error: unknown) => {
   );
 };
 
-/**
- * Builds account groups for the destination picker, including a personal account
- * when its metadata is accessible.
- *
- * A scope restriction on the personal-account lookup preserves discovered teams.
- * Team-list failures propagate so the caller can attempt project-only discovery.
- */
 export const listTeams = async (appConnection: TVercelConnection): Promise<VercelTeam[]> => {
   const { credentials } = appConnection;
   const { apiToken } = credentials;
@@ -310,11 +265,6 @@ export const listTeams = async (appConnection: TVercelConnection): Promise<Verce
   return teams;
 };
 
-/**
- * Enriches a selectable project with custom environments and branch suggestions
- * in parallel. Each lookup tolerates failure independently, preserving whichever
- * optional metadata can be read.
- */
 const fetchProjectDetails = async (project: VercelApp, teamId: string, apiToken: string): Promise<VercelApp> => {
   const [envs, previewBranches] = await Promise.all([
     fetchProjectEnvironments(project.id, teamId, apiToken),
@@ -324,13 +274,6 @@ const fetchProjectDetails = async (project: VercelApp, teamId: string, apiToken:
   return { name: project.name, id: project.id, envs, previewBranches };
 };
 
-/**
- * Reconstructs destination-picker groups directly from token-accessible projects
- * when user and team metadata cannot be discovered.
- *
- * The project's owning account ID supplies both the group identity and its label.
- * A missing owner is rejected because sync requests need the correct team context.
- */
 const listScopedProjects = async (apiToken: string, projectSearch?: string): Promise<VercelOrgWithApps[]> => {
   const projects = await fetchOrgProjects(undefined, apiToken, projectSearch);
   const orgs = new Map<string, VercelOrgWithApps>();
@@ -358,13 +301,6 @@ const listScopedProjects = async (apiToken: string, projectSearch?: string): Pro
   );
 };
 
-/**
- * Prefers readable account metadata for project groups, falling back to direct
- * project discovery when account discovery is restricted or returns no accounts.
- *
- * Accounts outside the token's scope are skipped. Other project-list failures
- * propagate so authentication and provider problems remain visible to callers.
- */
 export const listProjects = async (
   appConnection: TVercelConnection,
   projectSearch?: string
@@ -413,10 +349,6 @@ export const listProjects = async (
   return orgsWithApps;
 };
 
-/**
- * Provides environment labels keyed by ID for destination configuration.
- * Branch-specific entries are excluded because branches have their own selector.
- */
 export const getProjectEnvironmentVariables = (project: VercelApp): Record<string, string> => {
   const envVars: Record<string, string> = {};
 

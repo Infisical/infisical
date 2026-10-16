@@ -10,24 +10,6 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { TPreSaveTransformDestinationConfigFn } from "../secret-sync-types";
 import { VercelSyncScope } from "./vercel-sync-enums";
 
-/**
- * Checks access to Vercel shared environment variables before saving a Team sync.
- * A project-scoped token may create a connection but not access team resources,
- * so we verify access for Team syncs. Project destinations skip this check.
- *
- * The check runs when creating a Team sync or changing its connection, team, or
- * scope. If the connection, team, and scope are unchanged, the check is skipped
- * so routine edits can still save when Vercel is unavailable.
- *
- * This only confirms read access; the sync worker fetches the variables later.
- * Invalid credentials, inaccessible team resources, and temporary Vercel issues
- * return separate error messages.
- *
- * @returns The submitted configuration unchanged. If no configuration is
- * submitted, returns `undefined` so the saved destination is preserved.
- * @throws {NotFoundError} If the connection is missing or is not Vercel.
- * @throws {BadRequestError} If the team ID is missing or the access check fails.
- */
 export const vercelPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
   { destinationConfig, existingDestinationConfig, connectionId, existingConnectionId },
   { appConnectionDAL, kmsService }
