@@ -13,13 +13,17 @@ export const buildSecretAccessDispatchDetails: TDelegatedApprovalDispatchDetails
     const { permissions, isTemporary, temporaryRange } = getSecretAccessRequestData(request);
     const { envSlug, secretPath, requestedPermissions } = verifyRequestedPermissions({ permissions });
 
+    const rows = requestedPermissions.map(({ subject, actions }) => ({
+      label: `${subject}:`,
+      actions: actions.join(", ")
+    }));
+    const labelWidth = Math.max(...rows.map((row) => row.label.length));
+
     return {
       policyType: ApprovalPolicyType.SecretAccess,
       environment: envSlug,
       secretPath,
-      permissions: requestedPermissions.flatMap(({ subject, actions }) =>
-        actions.map((action) => `${subject}:${action}`)
-      ),
+      permissions: rows.map((row) => `${row.label.padEnd(labelWidth)} ${row.actions}`),
       isTemporary,
       temporaryRange: isTemporary ? temporaryRange : null
     };

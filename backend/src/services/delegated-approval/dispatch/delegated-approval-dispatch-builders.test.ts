@@ -44,7 +44,7 @@ const makeRequest = (requestData: unknown): TApprovalRequests => ({
 });
 
 describe("buildSecretAccessDispatchDetails", () => {
-  test("derives the environment, path and flattened permissions from the stored request", () => {
+  test("derives the environment, path and aligned permissions from the stored request", () => {
     const permissions = packRules([
       makeRule("read", "prod", "/db"),
       makeRule("edit", "prod", "/db"),
@@ -59,7 +59,7 @@ describe("buildSecretAccessDispatchDetails", () => {
       policyType: ApprovalPolicyType.SecretAccess,
       environment: "prod",
       secretPath: "/db",
-      permissions: ["secrets:read", "secrets:edit", "secret-folders:read"],
+      permissions: ["secrets:        read, edit", "secret-folders: read"],
       isTemporary: true,
       temporaryRange: "1h"
     });
