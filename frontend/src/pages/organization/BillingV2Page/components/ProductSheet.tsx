@@ -501,6 +501,7 @@ export const ProductSheet = ({
     const plan = prod?.plans.find((candidate) => candidate.tier === initialTrialTier);
     return selfServe && plan?.selfServe && plan.trialable ? plan.tier : null;
   });
+  const [isInitialTrialConfirm, setIsInitialTrialConfirm] = useState(Boolean(trialConfirmTier));
   // Whether the cancel-trial confirm dialog is open.
   const [showCancelTrial, setShowCancelTrial] = useState(false);
 
@@ -589,6 +590,7 @@ export const ProductSheet = ({
       onEntitlementChanged?.();
       onClose();
     } catch {
+      setIsInitialTrialConfirm(false);
       setTrialConfirmTier(null);
     }
   };
@@ -783,7 +785,7 @@ export const ProductSheet = ({
         open={Boolean(trialConfirmTier)}
         onOpenChange={(open) => {
           if (!open && !startTrial.isPending) {
-            if (trialConfirmTier === initialTrialTier) {
+            if (isInitialTrialConfirm) {
               onClose();
               return;
             }
@@ -810,7 +812,7 @@ export const ProductSheet = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>
-              {trialConfirmTier === initialTrialTier ? "Skip for now" : "Cancel"}
+              {isInitialTrialConfirm ? "Skip for now" : "Cancel"}
             </AlertDialogCancel>
             <AlertDialogAction
               variant="org"

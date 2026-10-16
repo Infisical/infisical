@@ -83,7 +83,7 @@ export const BillingV2Page = () => {
     isError,
     refetch
   } = useGetBillingV2Overview(selectedOrgId);
-  const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
+  const { data: catalog = [], isPending: isCatalogPending } = useGetBillingV2Catalog(selectedOrgId);
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
   const confirmTrialPayment = useConfirmBillingV2TrialPayment();
@@ -111,17 +111,22 @@ export const BillingV2Page = () => {
   );
 
   useEffect(() => {
-    if (
-      flow ||
-      openedUpgradeProduct.current ||
-      !upgradeProduct ||
-      !catalog.some((product) => product.id === upgradeProduct)
-    ) {
+    if (flow || openedUpgradeProduct.current || !upgradeProduct) {
+      return;
+    }
+    const hasProduct = catalog.some((product) => product.id === upgradeProduct);
+    if (upgradePlan) {
+      if (isCatalogPending || (hasProduct && !overview && !isError)) return;
+      if (!hasProduct || isError) {
+        if (upgradeReturnPath) window.location.assign(upgradeReturnPath);
+        return;
+      }
+    } else if (!hasProduct) {
       return;
     }
     openedUpgradeProduct.current = true;
     setFlow({ type: "sheet", prodId: upgradeProduct, trialTier: upgradePlan ?? undefined });
-  }, [catalog, flow, upgradeProduct, upgradePlan]);
+  }, [catalog, flow, upgradeProduct, upgradePlan, isCatalogPending, overview, isError]);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {

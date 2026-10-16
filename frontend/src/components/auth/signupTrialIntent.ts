@@ -25,7 +25,7 @@ type TrialProductKey = keyof typeof TRIAL_PRODUCTS;
 export type SignupTrialIntent = {
   product: TrialProductKey;
   plan: string;
-  cycle: "monthly" | "annual";
+  cycle?: "monthly" | "annual";
   savedAt: number;
   orgId?: string;
 };
@@ -42,7 +42,7 @@ const parseIntent = (value: {
   return {
     product: product as TrialProductKey,
     plan,
-    cycle: cycle === "monthly" ? "monthly" : "annual"
+    cycle: cycle === "monthly" || cycle === "annual" ? cycle : undefined
   };
 };
 
@@ -102,6 +102,6 @@ export const getSignupTrialProjectType = (intent: SignupTrialIntent | null): Sig
 export const getSignupTrialBillingSearch = (intent: SignupTrialIntent, returnPath: string) => ({
   upgradeProduct: TRIAL_PRODUCTS[intent.product].billingProduct,
   upgradePlan: intent.plan,
-  upgradeCycle: intent.cycle,
+  ...(intent.cycle && { upgradeCycle: intent.cycle }),
   upgradeReturnPath: returnPath
 });

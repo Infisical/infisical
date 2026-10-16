@@ -80,6 +80,7 @@ export const SignupOnboardingPage = () => {
         }
 
         const existingOrgId = orgs[0].id;
+        bindSignupTrialIntent(existingOrgId);
         if (callbackPort) {
           handOffToCli(existingOrgId);
           return;
