@@ -442,6 +442,14 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         secretId
       });
 
+      void server.services.secretReadActivity.recordRead({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        projectId: secret.workspace,
+        secretIds: [secret.id],
+        referencesExpanded: false
+      });
+
       return { secret };
     }
   });

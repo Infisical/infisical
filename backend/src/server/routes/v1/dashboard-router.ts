@@ -1920,6 +1920,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         keys
       });
 
+      if (viewSecretValue) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          secretIds: secrets.filter((secret) => !secret.secretValueHidden).map((secret) => secret.id),
+          referencesExpanded: false
+        });
+      }
+
       await server.services.auditLog.createAuditLog({
         projectId,
         ...req.auditLogInfo,
