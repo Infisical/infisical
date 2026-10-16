@@ -7,12 +7,12 @@ When you rotate a key, Infisical creates new key material for it and increases t
 
 - Infisical encrypts new data with the new key material
 - Infisical keeps every earlier version of the key material, and decrypts each ciphertext with the version that encrypted it
-- Infisical doesn't re-encrypt data you encrypted before the rotation (to move that data to the new key material, decrypt the data and encrypt it again)
+- Infisical doesn't re-encrypt data you encrypted before the rotation. To move that data to the new key material, decrypt the data and encrypt it again
 
 You can rotate only Encrypt/Decrypt keys. To replace a Sign/Verify or Generate/Verify MAC key, create a new key and update your applications to use it.
 
 <Warning>
-  Only Infisical has the earlier versions of the key material. If a system holds the key material itself, it gets only the new version after the rotation, and can't decrypt data it encrypted with an earlier version:
+  Only Infisical has the earlier versions of the key material. If a system keeps its own copy of the key material, it gets only the new version after the rotation, and can't decrypt data it encrypted with an earlier version:
 
   - **KMIP clients**: Don't rotate a key that a [KMIP client](/documentation/platform/kms/kmip) uses. Create a new key for the client instead
   - **Exported keys**: An export contains only the current version. If you keep exported key material as a backup, [export the key](/documentation/platform/kms/export-import) again after each rotation, and keep every export

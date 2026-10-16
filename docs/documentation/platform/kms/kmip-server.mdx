@@ -52,16 +52,19 @@ The server's TLS certificate is valid for one year, and the KMIP server renews i
     - **CLI**: Runs the KMIP server in your terminal
   </Step>
   <Step>
-    Add `--listen-address="0.0.0.0:5696"` to the command. Without it, the KMIP server listens only on `localhost:5696`, and clients on other machines can't connect.
+    By default, the KMIP server listens only on `localhost:5696`, so only clients on the same machine can connect. If your clients run on other machines, add `--listen-address` to the command with an address they can reach:
+
+    - **One network interface**: The machine's IP address on the network your clients use, such as `--listen-address="10.0.1.50:5696"`
+    - **Every network interface**: `--listen-address="0.0.0.0:5696"`, which exposes the KMIP server on every network the machine is on
   </Step>
   <Step>
-    Run the command on your machine. For example, a systemd install with **Token Auth** looks like this, with the listen address added:
+    Run the command on your machine. For example, a systemd install with **Token Auth** that listens on one network interface looks like this:
 
     ```bash
     sudo infisical kmip systemd install <server-name> \
       --enroll-method=token \
       --token=<enrollment-token> \
-      --listen-address="0.0.0.0:5696" \
+      --listen-address="10.0.1.50:5696" \
       --domain=https://app.infisical.com
     sudo systemctl start infisical-kmip
     ```

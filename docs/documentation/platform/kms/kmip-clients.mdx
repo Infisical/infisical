@@ -39,7 +39,7 @@ Each KMIP client is registered in one KMS project, and can use only that project
     Pick a **Request Method**:
 
     - **Managed**: Infisical creates the client's private key and certificate. Enter a **Key Algorithm**
-    - **Certificate Signing Request (CSR)**: If the client creates its own private key, as Dell iDRAC does, paste the client's CSR. The CSR's subject must use the **Client ID** as the common name (CN) and the **Project ID** as the organizational unit (OU), as shown under **Certificate Subject Values**
+    - **Certificate Signing Request (CSR)**: If the client creates its own private key, paste the client's CSR. The CSR's subject must use the **Client ID** as the common name (CN) and the **Project ID** as the organizational unit (OU), as shown under **Certificate Subject Values**
   </Step>
   <Step>
     Enter a **TTL** for the certificate, such as `1y`, then select **Generate Certificate** or **Sign Certificate**.
@@ -75,7 +75,8 @@ To check the connection, run a simple operation from the client, such as creatin
 
 <AccordionGroup>
   <Accordion title="The client can't connect to the KMIP server">
-    - Check that the client can reach the KMIP server on port 5696, and that the KMIP server was started with `--listen-address="0.0.0.0:5696"`
+    - Check that the client can reach the KMIP server on the port it’s listening on (5696 by default)
+    - Check that the KMIP server's `--listen-address` is an address the client can reach. If it’s bound to 127.0.0.1, only clients on the same machine can connect. Use the server’s network IP, or 0.0.0.0 to listen on all interfaces.
     - Check that the server address the client uses is one of the hostnames or IP addresses set on the KMIP server
     - Check that the client's certificate hasn't expired
 

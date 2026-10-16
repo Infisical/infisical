@@ -8,7 +8,7 @@ description: "Learn how a key management service keeps keys out of your applicat
 
 A _key management service_ (KMS) stores cryptographic keys in one place and runs operations with them, such as encryption and signing, for the applications that need them. An application tells the KMS which key to use and sends the data to process, and gets back the result. The key itself never reaches the application.
 
-If an application holds its own keys, the keys end up in configuration files, container images, and backups, and anyone who can read one of those copies can use the key. Rotating the key means updating every one of those copies. With a KMS, each key exists in one place, and you control and audit who can use it.
+If an application stores its own keys, the keys end up in configuration files, container images, and backups, and anyone who can read one of those copies can use the key. Rotating the key means updating every one of those copies. With a KMS, each key exists in one place, and you control and audit who can use it.
 
 ## Keys in Infisical KMS
 
