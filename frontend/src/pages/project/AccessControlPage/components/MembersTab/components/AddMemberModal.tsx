@@ -36,6 +36,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { isValidEmail } from "@app/helpers/email";
 import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import {
   useAddUserToWsNonE2EE,
@@ -331,7 +332,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
                       isValidNewOption={(input) =>
                         Boolean(input) &&
-                        z.string().email().safeParse(input).success &&
+                        isValidEmail(input) &&
                         !orgUsers
                           ?.flatMap(({ user }) => {
                             const emails: string[] = [];

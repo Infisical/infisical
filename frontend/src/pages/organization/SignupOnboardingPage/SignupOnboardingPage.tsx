@@ -41,7 +41,7 @@ export const SignupOnboardingPage = () => {
 
   const [section, setSection] = useState<OnboardingSection>(OnboardingSection.Loading);
   const [orgId, setOrgId] = useState("");
-  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
   const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
   const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
