@@ -1,6 +1,5 @@
 import { OrderByDirection } from "../generic/types";
 import { IdentityAuthMethod } from "../identities/enums";
-import { SecretReadStatus } from "../secrets/types";
 
 export type TCalendarRotation = {
   id: string;
@@ -57,8 +56,7 @@ export enum UnusedSecretAccessOrderBy {
   SecretKey = "secretKey",
   Environment = "environment",
   SecretPath = "secretPath",
-  Principal = "principalName",
-  Status = "readStatus"
+  Actor = "actorName"
 }
 
 export type TGetUnusedSecretAccessDTO = {
@@ -73,11 +71,9 @@ export type TUnusedSecretAccess = {
   secretKey: string;
   environment: string;
   secretPath: string;
-  principalType: "user" | "identity";
-  principalId: string;
-  principalName: string;
-  readStatus: SecretReadStatus;
-  lastReadAt: string | null;
+  actorType: "user" | "identity";
+  actorId: string;
+  actorName: string;
 };
 
 export type TGetUnusedSecretAccessResponse = {

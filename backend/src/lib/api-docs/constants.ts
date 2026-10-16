@@ -946,6 +946,26 @@ export const INSIGHTS = {
     totalProjects: "The total number of secret management projects in the organization.",
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
   },
+  GET_UNUSED_SECRET_ACCESS: {
+    projectId: "The ID of the project to list unused secret access for.",
+    offset: "The number of entries to skip before returning results.",
+    limit: "The maximum number of entries to return per page.",
+    orderBy: "The field to sort by. Without it, the secrets with the most unused access come first.",
+    orderDirection: "The direction to sort in.",
+    totalCount: "The total number of entries across all pages.",
+    trackingStartedAt:
+      "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
+    unusedAccessFrom:
+      "When access can first be listed as unused: 30 days after tracking started. Until then the list is empty.",
+    unusedAccess:
+      "One entry for each secret and user or machine identity that can read the secret's value but has not read it, or an import or reference of it, in the last 30 days. Secrets and access newer than 30 days are left out.",
+    secretKey: "The key of the secret.",
+    environment: "The slug of the environment the secret is in.",
+    secretPath: "The path of the folder the secret is in.",
+    actorType: "Whether the entry is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    actorName: "The username of the user, or the name of the machine identity."
+  },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
     date: "The day the accesses happened on, in UTC, as YYYY-MM-DD.",
@@ -1459,7 +1479,14 @@ export const RAW_SECRETS = {
     secretName: "The name of the secret to get read activity for.",
     projectId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the secret is located.",
-    secretPath: "The folder path where the secret is located."
+    secretPath: "The folder path where the secret is located.",
+    trackedSince:
+      "The start of the period reads are reported for: the later of 30 days ago, when read tracking began, and when the secret and its folder were created.",
+    reads:
+      "One entry for each user or machine identity that read the secret, or an import or reference of it, since trackedSince. Only the first read of each day is recorded.",
+    actorType: "Whether the reader is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    lastReadAt: "When the reader last read the secret, as the first read of that day."
   },
   DUPLICATE_SECRET: {
     projectId: "The ID of the project containing the secret.",

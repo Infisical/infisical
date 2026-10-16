@@ -1,4 +1,12 @@
+import { ForbiddenError } from "@casl/ability";
+
+import { ActionProjectType } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { BadRequestError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessVolumeActor, TAccessVolumeDay } from "./insights-types";
@@ -115,4 +123,38 @@ export const resolveUserDisplayNames = async (userDAL: Pick<TUserDALFactory, "fi
   });
 
   return userNameMap;
+};
+
+export const assertInsightsPlanEnabled = async (
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  orgId: string
+) => {
+  const plan = await licenseService.getPlan(orgId);
+  if (!plan.secretAccessInsights) {
+    throw new BadRequestError({
+      message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
+    });
+  }
+};
+
+export const checkInsightsPermission = async (
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  projectId: string,
+  actor: OrgServiceActor
+) => {
+  await assertInsightsPlanEnabled(licenseService, actor.orgId);
+
+  const { permission } = await permissionService.getProjectPermission({
+    actor: actor.type,
+    actorId: actor.id,
+    projectId,
+    actorAuthMethod: actor.authMethod,
+    actorOrgId: actor.orgId,
+    actionProjectType: ActionProjectType.SecretManager
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionInsightsActions.Read, ProjectPermissionSub.Insights);
+
+  return { permission };
 };

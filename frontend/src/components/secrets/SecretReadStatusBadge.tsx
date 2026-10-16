@@ -1,11 +1,9 @@
 import { differenceInCalendarDays } from "date-fns";
 
 import { Badge } from "@app/components/v3";
-import { SecretReadStatus } from "@app/hooks/api/secrets/types";
 
 type Props = {
-  status: SecretReadStatus;
-  lastReadAt?: string | null;
+  lastReadAt?: string;
 };
 
 // Only a reader's first read of the day is recorded, so the time of day would understate later reads.
@@ -16,9 +14,9 @@ const formatReadDay = (lastReadAt: string) => {
   return `${days} days ago`;
 };
 
-export const SecretReadStatusBadge = ({ status, lastReadAt }: Props) => {
-  if (status === SecretReadStatus.Read && lastReadAt) {
+export const SecretReadStatusBadge = ({ lastReadAt }: Props) => {
+  if (lastReadAt) {
     return <span>{formatReadDay(lastReadAt)}</span>;
   }
-  return <Badge variant="danger">No reads</Badge>;
+  return <Badge variant="warning">No Reads</Badge>;
 };

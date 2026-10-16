@@ -70,7 +70,7 @@ export const secretInsightsKeys = {
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
-const UNUSED_SECRET_ACCESS_REFRESH_INTERVAL = 30 * 1000;
+const UNUSED_SECRET_ACCESS_POLL_INTERVAL_MS = 30 * 1000; // 30 seconds
 
 export const useGetCalendarInsights = (
   params: TGetCalendarInsightsDTO,
@@ -147,8 +147,9 @@ export const useGetUnusedSecretAccess = (
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };
     },
-    staleTime: UNUSED_SECRET_ACCESS_REFRESH_INTERVAL,
-    refetchInterval: UNUSED_SECRET_ACCESS_REFRESH_INTERVAL,
+    staleTime: UNUSED_SECRET_ACCESS_POLL_INTERVAL_MS,
+    refetchInterval: UNUSED_SECRET_ACCESS_POLL_INTERVAL_MS,
+    placeholderData: (previousData) => previousData,
     ...options
   });
 };

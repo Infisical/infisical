@@ -373,7 +373,7 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
 
 export const useGetSecretReadActivity = (
   dto: TGetSecretReadActivityDTO,
-  options?: Pick<UseQueryOptions<TSecretReadActivity>, "enabled">
+  options?: { enabled?: boolean }
 ) =>
   useQuery({
     queryKey: secretKeys.getSecretReadActivity(dto),
@@ -391,7 +391,6 @@ export const useGetSecretReadActivity = (
 
       return data.readActivity;
     },
-    ...options,
     enabled: Boolean(dto.secretKey) && (options?.enabled ?? true)
   });
 

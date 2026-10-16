@@ -208,6 +208,7 @@ import { secretChangeGlobalPolicyBridgeServiceFactory } from "@app/ee/services/s
 import { secretChangeGlobalRequestBridgeDALFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-dal";
 import { secretChangeGlobalRequestBridgeServiceFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-service";
 import { secretReadActivityDALFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-dal";
+import { secretReadActivityQueueServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-queue";
 import { secretReadActivityServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-service";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
@@ -718,6 +719,7 @@ export const registerRoutes = async (
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const orgProductStatsDAL = orgProductStatsDALFactory(db);
   const insightsDAL = insightsDALFactory(db);
+  const secretReadActivityDAL = secretReadActivityDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -3482,18 +3484,28 @@ export const registerRoutes = async (
     secretValidationRuleService
   });
 
+  const secretReadActivityQueue = secretReadActivityQueueServiceFactory({
+    secretReadActivityDAL,
+    folderDAL,
+    projectEnvDAL,
+    secretImportDAL,
+    secretV2BridgeDAL,
+    keyStore,
+    cronJob
+  });
+
   const secretReadActivityService = secretReadActivityServiceFactory({
     permissionService,
     licenseService,
-    secretReadActivityDAL: secretReadActivityDALFactory(db),
+    secretReadActivityDAL,
+    secretReadActivityQueue,
     folderDAL,
     projectDAL,
     projectEnvDAL,
     secretImportDAL,
     secretV2BridgeDAL,
     kmsService,
-    keyStore,
-    cronJob
+    keyStore
   });
 
   const insightsService = insightsServiceFactory({
@@ -4566,7 +4578,7 @@ export const registerRoutes = async (
   projectCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
-  secretReadActivityService.init();
+  secretReadActivityQueue.init();
   alertQueue.init();
   eventOutboxQueue.init();
   auditLogStreamOutboxQueue.init();

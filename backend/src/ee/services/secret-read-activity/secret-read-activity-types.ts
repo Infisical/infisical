@@ -6,11 +6,6 @@ import { ActorType } from "@app/services/auth/auth-type";
 // on write and folds away on read.
 export type TSecretLastRead = Omit<TSecretReadActivity, "readMonth">;
 
-export enum SecretReadStatus {
-  Read = "read",
-  NoReads = "no-reads"
-}
-
 // A bulk read that returned whole folders is recorded against them. Anything narrower, and every single read,
 // is recorded against the secrets it returned, as unexpanded when their references were not resolved: those
 // handed over only the secret itself, not the values it references.
@@ -25,7 +20,6 @@ export type TSecretReaderType = ActorType.USER | ActorType.IDENTITY;
 export type TSecretReadResult = {
   actorType: TSecretReaderType;
   actorId: string;
-  status: SecretReadStatus;
   lastReadAt: Date;
 };
 
@@ -102,11 +96,9 @@ export type TUnusedSecretAccess = {
   secretKey: string;
   environment: string;
   secretPath: string;
-  principalType: TSecretReaderType;
-  principalId: string;
-  principalName: string;
-  readStatus: SecretReadStatus;
-  lastReadAt: Date | null;
+  actorType: TSecretReaderType;
+  actorId: string;
+  actorName: string;
 };
 
 // Each value is the row field it sorts by.
@@ -114,8 +106,7 @@ export enum UnusedSecretAccessOrderBy {
   SecretKey = "secretKey",
   Environment = "environment",
   SecretPath = "secretPath",
-  Principal = "principalName",
-  Status = "readStatus"
+  Actor = "actorName"
 }
 
 export type TListUnusedSecretAccessDTO = {

@@ -1081,7 +1081,9 @@ only at some later merge, so read with `FINAL` when an exact count matters.
 `ee/services/secret-read-activity/` answers "who has read this secret" for the per-secret access sheet and
 the Insights Unused Secret Access card. It does not use audit logs: ClickHouse is optional on self-hosted
 and the events cannot say which folders a recursive read returned. Instead it keeps its own table,
-`secret_read_activity`, one row per (object, reader) holding the last read time.
+`secret_read_activity`, one row per (object, reader) holding the last read time. The write path (producer,
+stream drain and both crons) lives in `secret-read-activity-queue.ts`, like `audit-log-queue.ts`; the service
+owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to the queue.
 
 - **Write path.** Read routes call `recordBulkRead` / `recordRead` with `void`, so they never fail or slow a
   read. A bulk read that returned whole folders (no tag or metadata filter, imports and references included)
@@ -1100,14 +1102,16 @@ and the events cannot say which folders a recursive read returned. Instead it ke
   `findLastReads` folds them into the latest. The daily `SecretReadActivityPrune` cron creates the current and
   next three months' partitions and drops a month once all of it is older than the 30-day window, since nothing
   reads before it. Never prune with `DELETE`: at this table's size that is a full scan plus vacuum. Partition DDL
-  takes an exclusive lock on the whole table, so it runs under a short `lock_timeout` and retries next hour.
+  takes an exclusive lock on the whole table, so it runs under a short `lock_timeout` and retries on the next run.
   Partitions use `fillfactor = 90` and `lastReadAt` is in no index, which together keep the upsert a HOT update.
   Rows of deleted objects age out with their month. A move creates new ids, so the window
   starts no earlier than the secret's and its folder's creation (`trackedSince`), nor before the table existed.
 - **Read path.** A read counts when it reaches the secret through its folder, an import of it, a secret
   referencing it, or the source of a replication import (imports and references check the reader's own access
-  to the source, so revoking it would break them). The card computes the whole project once and caches it for
-  5 minutes, grouping principals by identical rules so each rule set is checked once per secret.
+  to the source, so revoking it would break them). The card computes the whole project once and caches it
+  (`UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS`), grouping actors by identical rules so each rule set is checked once
+  per secret. The per-secret endpoint checks the caller's access to the secret before building its reach, which
+  decrypts every secret that could reference it.
 - **The card only judges a full window.** It lists a principal who has not read a secret only once both the
   secret (`trackedSince`) and their access have existed for the whole window, and leaves them out before that;
   there is no separate status for it. Access age is `findAccessChangedAt`: the latest membership creation, role
@@ -1116,7 +1120,6 @@ and the events cannot say which folders a recursive read returned. Instead it ke
   sheet shows the plain fact instead: a read, or "No reads". The card response carries `trackingStartedAt` (the
   later of the migration that created the table and the project's creation) and `unusedAccessFrom` (a window
   after it), so the UI can say tracking is in progress instead of showing an empty list as "no unused access".
-  The dev `tsx watch` sometimes misses edits to this module; restart `infisical-dev-api` when the API looks stale.
 
 ### Audit Log Event Classes and Settings
 

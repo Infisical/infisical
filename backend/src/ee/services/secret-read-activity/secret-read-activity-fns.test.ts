@@ -9,13 +9,7 @@ import {
   getUtcMonthStart,
   indexSecretReads
 } from "./secret-read-activity-fns";
-import {
-  SecretReadObjectType,
-  SecretReadStatus,
-  TReachSecret,
-  TSecretLastRead,
-  TSecretReachGraph
-} from "./secret-read-activity-types";
+import { SecretReadObjectType, TReachSecret, TSecretLastRead, TSecretReachGraph } from "./secret-read-activity-types";
 
 const dbPass: TReachSecret = { id: "db-pass", folderId: "shared", key: "DB_PASS" };
 const dbUrl: TReachSecret = { id: "db-url", folderId: "shared", key: "DB_URL" };
@@ -70,13 +64,11 @@ describe("classifySecretReads", () => {
     classifySecretReads(indexSecretReads(reads), reach, trackedSince).get(`${ActorType.IDENTITY}:identity-1`);
 
   test("counts a read of a folder that imports the secret through a chain", () => {
-    expect(classify([read({ objectId: "edge" })])?.status).toBe(SecretReadStatus.Read);
+    expect(classify([read({ objectId: "edge" })])).toBeDefined();
   });
 
   test("counts a single read of a secret that references it", () => {
-    expect(classify([read({ objectId: connection.id, objectType: SecretReadObjectType.Secret })])?.status).toBe(
-      SecretReadStatus.Read
-    );
+    expect(classify([read({ objectId: connection.id, objectType: SecretReadObjectType.Secret })])).toBeDefined();
   });
 
   test("ignores a single read of an unrelated secret, and a folder read recorded under a secret's id", () => {
@@ -85,9 +77,7 @@ describe("classifySecretReads", () => {
   });
 
   test("counts an unexpanded read only for the secret it returned, not the secrets it references", () => {
-    expect(classify([read({ objectId: dbPass.id, objectType: SecretReadObjectType.SecretUnexpanded })])?.status).toBe(
-      SecretReadStatus.Read
-    );
+    expect(classify([read({ objectId: dbPass.id, objectType: SecretReadObjectType.SecretUnexpanded })])).toBeDefined();
     expect(
       classify([read({ objectId: connection.id, objectType: SecretReadObjectType.SecretUnexpanded })])
     ).toBeUndefined();
@@ -108,7 +98,6 @@ describe("classifySecretReads", () => {
     ).toEqual({
       actorType: ActorType.IDENTITY,
       actorId: "identity-1",
-      status: SecretReadStatus.Read,
       lastReadAt: latestRead
     });
   });

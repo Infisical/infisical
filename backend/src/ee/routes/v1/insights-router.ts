@@ -19,17 +19,15 @@ import {
   OrgSecretsAccessVolumeSchema,
   SecretsProjectsSchema,
   SecretsSummarySchema,
-  StaticSecretsUsageSchema
+  StaticSecretsUsageSchema,
+  UnusedSecretAccessSchema
 } from "@app/ee/services/insights/insights-schemas";
-import {
-  SecretReadStatus,
-  UnusedSecretAccessOrderBy
-} from "@app/ee/services/secret-read-activity/secret-read-activity-types";
+import { UnusedSecretAccessOrderBy } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { INSIGHTS } from "@app/lib/api-docs";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 // Each report type declares exactly which inputs it accepts. The `inputs` schemas are the same consts
 // the generators use, so request validation and generation never drift.
@@ -481,32 +479,19 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         "List the users and machine identities that can read a secret's value but have not read it in the last 30 days",
       security: [{ bearerAuth: [] }],
       params: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().trim().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.projectId)
       }),
       querystring: z.object({
-        offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
-        limit: z.coerce.number().int().min(1).max(100).default(20),
-        orderBy: z.nativeEnum(UnusedSecretAccessOrderBy).optional(),
-        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC)
+        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(20).describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.limit),
+        orderBy: z.nativeEnum(UnusedSecretAccessOrderBy).optional().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.orderBy),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.orderDirection)
       }),
       response: {
-        200: z.object({
-          totalCount: z.number(),
-          trackingStartedAt: z.date(),
-          unusedAccessFrom: z.date(),
-          unusedAccess: z
-            .object({
-              secretKey: z.string(),
-              environment: z.string(),
-              secretPath: z.string(),
-              principalType: z.enum([ActorType.USER, ActorType.IDENTITY]),
-              principalId: z.string(),
-              principalName: z.string(),
-              readStatus: z.nativeEnum(SecretReadStatus),
-              lastReadAt: z.date().nullable()
-            })
-            .array()
-        })
+        200: UnusedSecretAccessSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),

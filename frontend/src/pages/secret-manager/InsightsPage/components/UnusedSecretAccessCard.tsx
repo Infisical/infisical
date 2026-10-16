@@ -1,8 +1,9 @@
+import { useParams } from "@tanstack/react-router";
 import axios from "axios";
 import { format } from "date-fns";
 import { ChevronDownIcon, FolderIcon, HardDriveIcon, KeyIcon, UserIcon } from "lucide-react";
 
-import { SecretReadStatusBadge } from "@app/components/secrets/SecretReadStatusBadge";
+import { GoToSecretButton } from "@app/components/secrets/GoToSecretButton";
 import {
   Badge,
   Card,
@@ -41,6 +42,7 @@ const formatRemainingTtl = (seconds: number) => {
 
 export const UnusedSecretAccessCard = () => {
   const { currentProject, projectId } = useProject();
+  const { orgId } = useParams({ strict: false });
   const { subscription } = useSubscription();
   // An empty orderBy keeps the default ranking: the secrets with the most unused access first.
   const {
@@ -56,7 +58,7 @@ export const UnusedSecretAccessCard = () => {
     setOrderDirection
   } = usePagination<UnusedSecretAccessOrderBy | "">("", { initPerPage: 20 });
 
-  const { data, isLoading, error } = useGetUnusedSecretAccess(
+  const { data, isPending, error } = useGetUnusedSecretAccess(
     { projectId, offset, limit, orderBy: orderBy || undefined, orderDirection },
     { enabled: Boolean(subscription?.secretAccessInsights) }
   );
@@ -67,7 +69,6 @@ export const UnusedSecretAccessCard = () => {
     data?.remainingTtl != null && data.remainingTtl >= 0
       ? formatRemainingTtl(data.remainingTtl)
       : null;
-  const isStillTracking = Boolean(data && new Date(data.unusedAccessFrom) > new Date());
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
 
   const getSortDirection = (column: UnusedSecretAccessOrderBy): TableSortDirection => {
@@ -85,9 +86,136 @@ export const UnusedSecretAccessCard = () => {
     { column: UnusedSecretAccessOrderBy.SecretKey, label: "Secret Key" },
     { column: UnusedSecretAccessOrderBy.Environment, label: "Environment" },
     { column: UnusedSecretAccessOrderBy.SecretPath, label: "Path" },
-    { column: UnusedSecretAccessOrderBy.Principal, label: "Principal" },
-    { column: UnusedSecretAccessOrderBy.Status, label: "Status" }
+    { column: UnusedSecretAccessOrderBy.Actor, label: "Name" }
   ];
+
+  const renderBody = () => {
+    if (isPending) return <Skeleton className="h-[200px] w-full" />;
+
+    if (!data) {
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Could not load unused access</EmptyTitle>
+            <EmptyDescription>
+              {(axios.isAxiosError(error) &&
+                (error.response?.data as { message?: string })?.message) ||
+                "Try again in a moment."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      );
+    }
+
+    if (new Date(data.unusedAccessFrom) > new Date()) {
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Tracking reads</EmptyTitle>
+            <EmptyDescription>
+              Reads have been tracked since {format(new Date(data.trackingStartedAt), "PP")}. Access
+              that goes unread for 30 days shows here from{" "}
+              {format(new Date(data.unusedAccessFrom), "PP")}.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      );
+    }
+
+    if (totalCount === 0) {
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No unused access</EmptyTitle>
+            <EmptyDescription>
+              Access shows here once someone has been able to read a secret for 30 days without
+              reading it.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      );
+    }
+
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {sortableColumns.map(({ column, label }) => (
+                <TableHead
+                  key={column}
+                  sortDirection={getSortDirection(column)}
+                  onSortChange={(direction) => handleSort(column, direction)}
+                >
+                  {label}
+                  <ChevronDownIcon
+                    className={cn(
+                      "transition-transform",
+                      getSortDirection(column) === "descending" && "rotate-180",
+                      getSortDirection(column) === "none" && "opacity-30"
+                    )}
+                  />
+                </TableHead>
+              ))}
+              <TableHead variant="action" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.unusedAccess.map((row) => {
+              const ActorIcon = row.actorType === "user" ? UserIcon : HardDriveIcon;
+              return (
+                <TableRow
+                  key={`${row.environment}-${row.secretPath}-${row.secretKey}-${row.actorType}-${row.actorId}`}
+                  className="group/row"
+                >
+                  <TableCell isTruncatable className="max-w-60">
+                    <div className="flex items-center gap-2">
+                      <KeyIcon className="size-4 shrink-0 text-muted" />
+                      <span className="truncate font-mono">{row.secretKey}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="info" isTruncatable className="max-w-full">
+                      <span>{environmentNames.get(row.environment) ?? row.environment}</span>
+                    </Badge>
+                  </TableCell>
+                  <TableCell isTruncatable className="max-w-48">
+                    <div className="flex items-center gap-2">
+                      <FolderIcon className="size-3.5 shrink-0 text-folder" />
+                      <span className="truncate">{row.secretPath}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell isTruncatable className="max-w-60">
+                    <div className="flex items-center gap-2">
+                      <ActorIcon className="size-4 shrink-0 text-accent" />
+                      <span className="truncate">{row.actorName}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell variant="action">
+                    <GoToSecretButton
+                      orgId={orgId as string}
+                      projectId={projectId}
+                      secretKey={row.secretKey}
+                      secretPath={row.secretPath}
+                      environmentSlug={row.environment}
+                      isProjectMember
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        <Pagination
+          count={totalCount}
+          page={page}
+          perPage={perPage}
+          onChangePage={setPage}
+          onChangePerPage={setPerPage}
+        />
+      </>
+    );
+  };
 
   return (
     <Card>
@@ -101,121 +229,11 @@ export const UnusedSecretAccessCard = () => {
           )}
         </CardTitle>
         <CardDescription>
-          Users and machine identities that can read a secret&apos;s value but have not read it, or
-          an import or reference of it, in the last 30 days
+          Users and machine identities that can read a secret but have not read it in the last 30
+          days
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {isLoading && <Skeleton className="h-[200px] w-full" />}
-        {Boolean(error) && (
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyTitle>Unused access could not be loaded</EmptyTitle>
-              <EmptyDescription>
-                {(axios.isAxiosError(error) &&
-                  (error.response?.data as { message?: string })?.message) ||
-                  "Try again in a moment."}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
-        {data && isStillTracking && (
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyTitle>Tracking reads</EmptyTitle>
-              <EmptyDescription>
-                Reads have been tracked since {format(new Date(data.trackingStartedAt), "PP")}.
-                Access that goes unread for 30 days shows here from{" "}
-                {format(new Date(data.unusedAccessFrom), "PP")}.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
-        {data && !isStillTracking && totalCount === 0 && (
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyTitle>No unused access</EmptyTitle>
-              <EmptyDescription>
-                Access shows here once someone has been able to read a secret for 30 days without
-                reading it.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
-        {data && !isStillTracking && totalCount > 0 && (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {sortableColumns.map(({ column, label }) => (
-                    <TableHead
-                      key={column}
-                      sortDirection={getSortDirection(column)}
-                      onSortChange={(direction) => handleSort(column, direction)}
-                    >
-                      {label}
-                      <ChevronDownIcon
-                        className={cn(
-                          "transition-transform",
-                          getSortDirection(column) === "descending" && "rotate-180",
-                          getSortDirection(column) === "none" && "opacity-30"
-                        )}
-                      />
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.unusedAccess.map((row) => {
-                  const PrincipalIcon = row.principalType === "user" ? UserIcon : HardDriveIcon;
-                  return (
-                    <TableRow
-                      key={`${row.environment}-${row.secretPath}-${row.secretKey}-${row.principalType}-${row.principalId}`}
-                    >
-                      <TableCell isTruncatable className="max-w-60">
-                        <div className="flex items-center gap-2">
-                          <KeyIcon className="size-4 shrink-0 text-muted" />
-                          <span className="truncate font-mono">{row.secretKey}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="info" isTruncatable className="max-w-full">
-                          <span>{environmentNames.get(row.environment) ?? row.environment}</span>
-                        </Badge>
-                      </TableCell>
-                      <TableCell isTruncatable className="max-w-48">
-                        <div className="flex items-center gap-2">
-                          <FolderIcon className="size-3.5 shrink-0 text-folder" />
-                          <span className="truncate">{row.secretPath}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell isTruncatable className="max-w-60">
-                        <div className="flex items-center gap-2">
-                          <PrincipalIcon className="size-4 shrink-0 text-accent" />
-                          <span className="truncate">{row.principalName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <SecretReadStatusBadge
-                          status={row.readStatus}
-                          lastReadAt={row.lastReadAt}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            <Pagination
-              count={totalCount}
-              page={page}
-              perPage={perPage}
-              onChangePage={setPage}
-              onChangePerPage={setPerPage}
-            />
-          </>
-        )}
-      </CardContent>
+      <CardContent>{renderBody()}</CardContent>
     </Card>
   );
 };

@@ -1,8 +1,11 @@
+import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { groupBy, prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { buildFolderIdMap, buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import {
   SecretReadObjectType,
-  SecretReadStatus,
   TReachSecret,
   TSecretLastRead,
   TSecretLocation,
@@ -19,6 +22,46 @@ export const normalizeSecretPath = (secretPath: string) => removeTrailingSlash(p
 
 export const toLocationKey = ({ environment, secretPath }: TSecretLocation) =>
   `${environment}:${normalizeSecretPath(secretPath)}`;
+
+export const SECRET_READ_ACTIVITY_WINDOW_DAYS = 30;
+
+export const getReadActivityWindowStart = () => new Date(Date.now() - SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS);
+
+export const loadProjectFolderTree = async (
+  {
+    folderDAL,
+    projectEnvDAL
+  }: {
+    folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
+    projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
+  },
+  projectId: string
+) => {
+  const [folders, environments] = await Promise.all([
+    folderDAL.findByProjectId(projectId),
+    projectEnvDAL.find({ projectId })
+  ]);
+  const folderById = buildFolderIdMap(folders);
+  const envById = new Map(environments.map((env) => [env.id, env]));
+  const paths = new Map<string, string>();
+  const pathOf = (folderId: string) => {
+    if (!paths.has(folderId)) paths.set(folderId, buildFolderPath(folderById[folderId], folderById));
+    return paths.get(folderId) as string;
+  };
+  const locationOf = (folderId: string) => {
+    const env = folderById[folderId] && envById.get(folderById[folderId].envId);
+    return env ? { environment: env.slug, secretPath: pathOf(folderId) } : undefined;
+  };
+  const folderIdByLocation = new Map(
+    folders.flatMap((folder) => {
+      const location = locationOf(folder.id);
+      return location ? [[toLocationKey(location), folder.id] as const] : [];
+    })
+  );
+  return { folders, folderById, envById, pathOf, locationOf, folderIdByLocation };
+};
+
+export type TProjectFolderTree = Awaited<ReturnType<typeof loadProjectFolderTree>>;
 
 // Imports and references check the reader's own access to the source secret, so a read through either
 // one uses that access and must count.
@@ -73,7 +116,6 @@ export const classifySecretReads = (
         activity.set(key, {
           actorType: read.actorType as TSecretReaderType,
           actorId: read.actorId,
-          status: SecretReadStatus.Read,
           lastReadAt: read.lastReadAt
         });
       }

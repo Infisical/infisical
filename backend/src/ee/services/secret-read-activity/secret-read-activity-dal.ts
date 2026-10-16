@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { AccessScope, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -20,7 +22,7 @@ const parsePartitionDate = (value: string) =>
 export type TSecretReadActivityDALFactory = ReturnType<typeof secretReadActivityDALFactory>;
 
 export const secretReadActivityDALFactory = (db: TDbClient) => {
-  const upsertLastReads = async (rows: TSecretLastRead[]) => {
+  const upsertLastReads = async (rows: TSecretLastRead[], tx?: Knex) => {
     // Postgres refuses an upsert that touches the same row twice in one statement, so keep the latest per key.
     const latestByKey = new Map<string, TSecretLastRead>();
     rows.forEach((row) => {
@@ -32,7 +34,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
     try {
       for (const chunk of chunkArray([...latestByKey.values()], UPSERT_CHUNK_SIZE)) {
         // eslint-disable-next-line no-await-in-loop
-        await db(TableName.SecretReadActivity)
+        await (tx || db)(TableName.SecretReadActivity)
           .insert(chunk.map((row) => ({ ...row, readMonth: getUtcMonthStart(row.lastReadAt) })))
           .onConflict(["objectId", "actorId", "objectType", "readMonth"])
           .merge(["lastReadAt"])
@@ -44,13 +46,12 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
   };
 
   // A reader has one row per month, so the months are folded into the latest read.
-  const findLastReads = async (objectIds: string[], since: Date) => {
+  const findLastReads = async (objectIds: string[], since: Date, tx?: Knex) => {
     try {
       const rows: TSecretLastRead[] = [];
       for (const chunk of chunkArray(objectIds, LOOKUP_CHUNK_SIZE)) {
         // eslint-disable-next-line no-await-in-loop
-        const batch = (await db
-          .replicaNode()(TableName.SecretReadActivity)
+        const batch = (await (tx || db.replicaNode())(TableName.SecretReadActivity)
           .whereIn("objectId", chunk)
           .where("readMonth", ">=", getUtcMonthStart(since))
           .where("lastReadAt", ">=", since)
@@ -122,9 +123,9 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
   };
 
   // Reads are only known from when the table was created, so a window cannot start earlier than that.
-  const findTrackingStartedAt = async () => {
+  const findTrackingStartedAt = async (tx?: Knex) => {
     try {
-      const migration = (await db("infisical_migrations")
+      const migration = (await (tx || db.replicaNode())("infisical_migrations")
         .where("name", "like", "%_secret-read-activity.%")
         .first("migration_time")) as { migration_time: Date } | undefined;
       return migration?.migration_time;
@@ -136,11 +137,10 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
   // The last time each user or identity joined the project or had a role, privilege or folder grant created or
   // changed. Which secrets a change opened up is not recorded, so any of them restarts the window. Membership
   // updatedAt is left out because logins bump it.
-  const findAccessChangedAt = async (projectId: string) => {
+  const findAccessChangedAt = async (projectId: string, tx?: Knex) => {
     try {
       const [roleChanges, privilegeChanges] = await Promise.all([
-        db
-          .replicaNode()(TableName.Membership)
+        (tx || db.replicaNode())(TableName.Membership)
           .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -151,8 +151,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
             db.ref("createdAt").withSchema(TableName.MembershipRole),
             db.ref("updatedAt").withSchema(TableName.MembershipRole)
           ),
-        db
-          .replicaNode()(TableName.AdditionalPrivilege)
+        (tx || db.replicaNode())(TableName.AdditionalPrivilege)
           .where({ projectId })
           .select("actorUserId", "actorIdentityId", "createdAt", "updatedAt")
       ]);

@@ -38,6 +38,7 @@ export type {
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
   TGetUnusedSecretAccessDTO,
+  TGetUnusedSecretAccessResponse,
   TOrgAuthMethodUsage,
   TOrgDuplicatedSecretEntry,
   TOrgDuplicatedSecretGroup,

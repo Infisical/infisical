@@ -91,7 +91,7 @@ import {
 import { useGetAvailableOrgUsers } from "@app/hooks/api/organization/queries";
 import { useCreateProjectUserAdditionalPrivilege } from "@app/hooks/api/projectUserAdditionalPrivilege";
 import { useGetSecretAccessList, useGetSecretReadActivity } from "@app/hooks/api/secrets/queries";
-import { SecretAccessListEntry, SecretReadStatus } from "@app/hooks/api/secrets/types";
+import { SecretAccessListEntry } from "@app/hooks/api/secrets/types";
 import { IdentityProjectAdditionalPrivilegeModifySection } from "@app/pages/project/IdentityDetailsByIDPage/components/IdentityProjectAdditionalPrivilegeSection/IdentityProjectAdditionalPrivilegeModifySection";
 import { MembershipProjectAdditionalPrivilegeModifySection } from "@app/pages/project/MemberDetailsByIDPage/components/MemberProjectAdditionalPrivilegeSection/MembershipProjectAdditionalPrivilegeModifySection";
 
@@ -500,11 +500,9 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     if (isReadActivityLoading) return <Skeleton className="h-4 w-20 rounded" />;
     if (!readActivity) return null;
 
-    const read = lastReads.get(`${row.type}:${row.entry.id}`);
     return (
       <SecretReadStatusBadge
-        status={read?.status ?? SecretReadStatus.NoReads}
-        lastReadAt={read?.lastReadAt}
+        lastReadAt={lastReads.get(`${row.type}:${row.entry.id}`)?.lastReadAt}
       />
     );
   };
@@ -703,6 +701,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               <TableRow>
                 <TableHead>Type</TableHead>
                 <TableHead>Name</TableHead>
+                {canReadInsights && <TableHead className="w-40">Last Read</TableHead>}
                 {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
                   <TableHead key={col.action} className="w-[100px] text-center">
                     {col.label}
@@ -720,6 +719,11 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                   <TableCell>
                     <Skeleton className="h-4 w-24 rounded" />
                   </TableCell>
+                  {canReadInsights && (
+                    <TableCell className="w-40">
+                      <Skeleton className="h-4 w-20 rounded" />
+                    </TableCell>
+                  )}
                   {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
                     <TableCell key={col.action} className="w-[100px] text-center">
                       <Skeleton className="mx-auto h-4 w-4 rounded" />

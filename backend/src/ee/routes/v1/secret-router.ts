@@ -1,7 +1,6 @@
 import z from "zod";
 
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
-import { SecretReadStatus } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { RAW_SECRETS } from "@app/lib/api-docs";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -108,15 +107,17 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           readActivity: z.object({
-            trackedSince: z.date(),
+            trackedSince: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.trackedSince),
             reads: z
               .object({
-                actorType: z.enum([ActorType.USER, ActorType.IDENTITY]),
-                actorId: z.string(),
-                status: z.nativeEnum(SecretReadStatus),
-                lastReadAt: z.date()
+                actorType: z
+                  .enum([ActorType.USER, ActorType.IDENTITY])
+                  .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
+                actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
+                lastReadAt: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.lastReadAt)
               })
               .array()
+              .describe(RAW_SECRETS.GET_READ_ACTIVITY.reads)
           })
         })
       }
