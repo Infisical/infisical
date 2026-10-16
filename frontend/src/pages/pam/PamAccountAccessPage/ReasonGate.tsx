@@ -218,7 +218,11 @@ export const SessionAccessGate = ({ account, children }: Props) => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <TextArea
-            placeholder="Optional, e.g. Running migration for release 2.4"
+            placeholder={
+              policy.requireReason
+                ? "e.g. Running migration for release 2.4"
+                : "Optional, e.g. Running migration for release 2.4"
+            }
             rows={3}
             maxLength={1000}
             value={reason}
