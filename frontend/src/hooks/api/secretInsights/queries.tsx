@@ -70,8 +70,6 @@ export const secretInsightsKeys = {
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
-// The server recomputes unused access once a day, so a fresher fetch would return the same data.
-const UNUSED_SECRET_ACCESS_STALE_TIME = 24 * 60 * 60 * 1000; // 24 hours
 
 export const useGetCalendarInsights = (
   params: TGetCalendarInsightsDTO,
@@ -148,7 +146,11 @@ export const useGetUnusedSecretAccess = (
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };
     },
-    staleTime: UNUSED_SECRET_ACCESS_STALE_TIME,
+    // Fresh until the server's cached copy expires, so the next fetch returns the recomputed list.
+    staleTime: (query) => {
+      const remainingTtl = query.state.data?.remainingTtl ?? -1;
+      return remainingTtl > 0 ? remainingTtl * 1000 : INSIGHTS_STALE_TIME;
+    },
     placeholderData: (previousData) => previousData,
     ...options
   });
