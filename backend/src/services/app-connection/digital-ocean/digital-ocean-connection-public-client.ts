@@ -63,11 +63,19 @@ class DigitalOceanAppPlatformPublicClient {
   async putVariables(connection: TDigitalOceanConnectionConfig, appId: string, ...input: TDigitalOceanVariable[]) {
     const response = await this.getApp(connection, appId);
 
+    // Strip credential-bearing components from the spec before sending the update.
+    // The DO API re-validates ALL components in a PUT /apps/{id} request, not just
+    // the changed fields. When the app has an attached managed database, the GET
+    // response redacts the database password, but the PUT validation requires it —
+    // causing a "password is not accessible" error even though we're only updating
+    // environment variables. Removing `databases` from the spec avoids this (#6210).
+    const { databases: _databases, ...specWithoutDatabases } = response.spec as Record<string, unknown>;
+
     return this.client.put(
       `/apps/${appId}`,
       {
         spec: {
-          ...response.spec,
+          ...specWithoutDatabases,
           envs: input
         }
       },
@@ -87,11 +95,13 @@ class DigitalOceanAppPlatformPublicClient {
     const inputKeys = new Set(input.map((i) => i.key));
     const variables = existing.filter((v) => !inputKeys.has(v.key));
 
+    const { databases: _databases, ...specWithoutDatabases } = response.spec as Record<string, unknown>;
+
     return this.client.put(
       `/apps/${appId}`,
       {
         spec: {
-          ...response.spec,
+          ...specWithoutDatabases,
           envs: variables
         }
       },
