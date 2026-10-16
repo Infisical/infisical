@@ -15,6 +15,7 @@ import {
   FilterableSelect,
   Input,
   SheetFooter,
+  Skeleton,
   Tabs,
   TabsList,
   TabsTrigger
@@ -85,13 +86,16 @@ type Props = {
   onClose: () => void;
 };
 
-export const CreateProjectIdentityForm = ({
+type TAssignableIdentity = { id: string; name: string };
+
+const ProjectIdentityFormContent = ({
   projectId,
   projectType,
   productLabel,
   canGrantPrivileges,
-  onClose
-}: Props) => {
+  onClose,
+  assignableIdentities
+}: Props & { assignableIdentities: TAssignableIdentity[] }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isCertManager = projectType === ProjectType.CertificateManager;
@@ -123,7 +127,10 @@ export const CreateProjectIdentityForm = ({
   const form = useForm<TCreateProjectIdentityForm>({
     resolver: zodResolver(createProjectIdentitySchema),
     defaultValues: {
-      mode: CreateProjectIdentityMode.Create,
+      mode:
+        assignableIdentities.length > 0
+          ? CreateProjectIdentityMode.Assign
+          : CreateProjectIdentityMode.Create,
       name: "",
       role: defaultRole,
       templateIds: []
@@ -138,25 +145,6 @@ export const CreateProjectIdentityForm = ({
   } = form;
 
   const mode = useWatch({ control, name: "mode" });
-
-  const { data: availableData, isPending: isAvailableLoading } = useQuery({
-    ...projectIdentityMembershipQuery.listAvailable({ projectId, projectType }),
-    placeholderData: (prev) => prev,
-    enabled: mode === CreateProjectIdentityMode.Assign
-  });
-  const { data: membershipsData } = useListProjectIdentityMemberships(
-    { projectId, projectType, limit: 1000 },
-    { enabled: mode === CreateProjectIdentityMode.Assign }
-  );
-
-  const assignableIdentities = useMemo(() => {
-    const alreadyMembers = new Set(
-      (membershipsData?.identityMemberships ?? []).map((m) => m.identity.id)
-    );
-    return (availableData ?? [])
-      .filter((i) => !alreadyMembers.has(i.id))
-      .map((i) => ({ id: i.id, name: i.name }));
-  }, [availableData, membershipsData]);
 
   const { mutateAsync: createProjectIdentity } = useCreateProjectIdentity();
   const { mutateAsync: updateMembership } = useUpdateProjectIdentityMembership();
@@ -311,7 +299,7 @@ export const CreateProjectIdentityForm = ({
             />
             <p className="text-sm text-muted">
               {mode === CreateProjectIdentityMode.Assign
-                ? "Reuse an existing machine identity from your organization."
+                ? "Reuse an existing machine identity from your organization. One identity can be added to several projects."
                 : `Create a dedicated machine identity managed at the ${productLabel} level.`}
             </p>
           </div>
@@ -348,7 +336,6 @@ export const CreateProjectIdentityForm = ({
                     <FilterableSelect
                       value={value || null}
                       onChange={(newValue) => onChange(newValue || undefined)}
-                      isLoading={isAvailableLoading}
                       placeholder="Select machine identity..."
                       options={assignableIdentities}
                       getOptionValue={(option) => option.id}
@@ -412,4 +399,35 @@ export const CreateProjectIdentityForm = ({
       </form>
     </FormProvider>
   );
+};
+
+export const CreateProjectIdentityForm = (props: Props) => {
+  const { projectId, projectType } = props;
+
+  const { data: availableData, isPending: isAvailableLoading } = useQuery(
+    projectIdentityMembershipQuery.listAvailable({ projectId, projectType })
+  );
+  const { data: membershipsData, isPending: isMembershipsLoading } =
+    useListProjectIdentityMemberships({ projectId, projectType, limit: 1000 });
+
+  const assignableIdentities = useMemo(() => {
+    const alreadyMembers = new Set(
+      (membershipsData?.identityMemberships ?? []).map((m) => m.identity.id)
+    );
+    return (availableData ?? [])
+      .filter((i) => !alreadyMembers.has(i.id))
+      .map((i) => ({ id: i.id, name: i.name }));
+  }, [availableData, membershipsData]);
+
+  if (isAvailableLoading || isMembershipsLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+    );
+  }
+
+  return <ProjectIdentityFormContent {...props} assignableIdentities={assignableIdentities} />;
 };
