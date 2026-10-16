@@ -497,6 +497,13 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
 
   const renderLastRead = (row: AccessRow) => {
     if (row.type === "group") return null;
+    // A folder read is credited to every secret in the folder, including ones this row can only describe.
+    const canReadValue = [...row.entry.allowedActions, ...(row.inheritedActions ?? [])].some(
+      (action) =>
+        action === ProjectPermissionSecretActions.ReadValue ||
+        action === ProjectPermissionSecretActions.DescribeAndReadValue
+    );
+    if (!canReadValue) return null;
     if (isReadActivityLoading) return <Skeleton className="h-4 w-20 rounded" />;
     if (!readActivity) return null;
 
