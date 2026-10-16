@@ -1,7 +1,30 @@
 export enum AgentVaultCredentialType {
   Bearer = "bearer",
   Basic = "basic",
-  Passthrough = "passthrough"
+  Passthrough = "passthrough",
+  OAuth = "oauth"
+}
+
+export enum AgentVaultOauthStatus {
+  Connected = "connected",
+  NeedsReauthorization = "needs-reauthorization",
+  NeedsAdditionalScopes = "needs-additional-scopes"
+}
+
+export enum AgentVaultOauthAuthorizationStatus {
+  Pending = "pending",
+  Authorized = "authorized",
+  Failed = "failed"
+}
+
+export enum AgentVaultServiceType {
+  Http = "http",
+  Mcp = "mcp"
+}
+
+export enum AgentVaultMcpTransport {
+  StreamableHttp = "streamable-http",
+  Sse = "sse"
 }
 
 export enum AgentVaultMemberType {

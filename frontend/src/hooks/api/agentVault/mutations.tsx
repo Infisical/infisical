@@ -15,6 +15,7 @@ import {
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
+  TAgentVaultOAuthAuthorization,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultService,
@@ -22,7 +23,10 @@ import {
   TAgentVaultVariable,
   TAgentVaultVariableRef,
   TAgentVaultWrittenMember,
+  TCompleteAgentVaultOAuthAuthorizationDTO,
   TCreateAgentVaultAccessBundleDTO,
+  TCreateAgentVaultOAuthAuthorizationDTO,
+  TCreateAgentVaultOAuthAuthorizationResponse,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
@@ -457,5 +461,35 @@ export const useRevealAgentVaultVariableValue = () =>
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/variables/${variableId}/value`
       );
       return data.value;
+    }
+  });
+
+export const useCreateAgentVaultOAuthAuthorization = () =>
+  useMutation({
+    // Discovery and registration failures name the server and what failed, and the Authorize card
+    // shows them in place.
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    mutationFn: async (params: TCreateAgentVaultOAuthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<TCreateAgentVaultOAuthAuthorizationResponse>(
+        "/api/v1/agent-vault/oauth/authorizations",
+        params
+      );
+      return data;
+    }
+  });
+
+export const useCompleteAgentVaultOAuthAuthorization = () =>
+  useMutation({
+    // The callback page shows every outcome itself.
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, "NotFound"] },
+    mutationFn: async ({
+      authorizationId,
+      ...params
+    }: TCompleteAgentVaultOAuthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<{ authorization: TAgentVaultOAuthAuthorization }>(
+        `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}/complete`,
+        params
+      );
+      return data.authorization;
     }
   });

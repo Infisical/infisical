@@ -476,6 +476,7 @@ export enum EventType {
   AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
   AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
   AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE = "agent-vault-service-credential-authorize",
   AGENT_VAULT_VARIABLE_CREATE = "agent-vault-variable-create",
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",

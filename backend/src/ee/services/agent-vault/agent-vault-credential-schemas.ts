@@ -1,11 +1,12 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import type { TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { AgentVaultCredentialType } from "./agent-vault-enums";
 
 // credentialConfig is plaintext jsonb, read on the list page without a decrypt; encryptedCredential is
-// the KMS-sealed secret, NULL exactly when the type is passthrough. The discriminator is a column rather
-// than a field inside the blob, so a new credential type needs no migration.
+// the KMS-sealed secret, NULL exactly when the type is passthrough. The discriminator is a column with a
+// CHECK constraint, so a new credential type needs a migration that widens it.
 
 // The characters RFC 7230 allows. Go's HTTP client refuses to send anything else, so a name saved
 // without this check 502s every request through the service.
@@ -67,7 +68,9 @@ export const AgentVaultCredentialConfigSchema = z.discriminatedUnion("type", [
   AgentVaultPassthroughConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.Passthrough) })
 ]);
 
-export type TAgentVaultCredentialConfig = z.infer<typeof AgentVaultCredentialConfigSchema>;
+// OAuth's config is written whole from a completed authorization and patched by refresh, never parsed from a
+// request, so it has a type rather than a schema.
+export type TAgentVaultCredentialConfig = z.infer<typeof AgentVaultCredentialConfigSchema> | TAgentVaultOauthConfig;
 
 export const AgentVaultSecretSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(AgentVaultCredentialType.Bearer), value: z.string().min(1).max(8192) }),

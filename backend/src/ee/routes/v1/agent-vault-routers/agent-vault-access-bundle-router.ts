@@ -6,13 +6,14 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
-import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultCredentialType, AgentVaultServiceType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -24,19 +25,19 @@ import {
   AgentVaultAllowedMethodsSchema,
   AgentVaultAllowedPathPrefixesSchema,
   AgentVaultCreatedMemberSchema,
-  AgentVaultCredentialInputSchema,
+  AgentVaultCreateServiceBodySchema,
   AgentVaultCredentialUpdateSchema,
-  AgentVaultCustomHeadersInputSchema,
   AgentVaultCustomHeadersUpdateSchema,
   AgentVaultHostPatternSchema,
   agentVaultListQuery,
+  AgentVaultMcpTransportSchema,
   AgentVaultMemberIdsSchema,
   AgentVaultMemberRevokeIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
   AgentVaultProductMemberSchema,
+  AgentVaultServerUrlSchema,
   AgentVaultServiceSchema,
-  AgentVaultSubstitutionsInputSchema,
   AgentVaultSubstitutionsUpdateSchema,
   AgentVaultVariableKeySchema,
   AgentVaultVariableSchema,
@@ -297,15 +298,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
-      body: z.object({
-        name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
-        hostPattern: AgentVaultHostPatternSchema,
-        allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
-        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
-        credential: AgentVaultCredentialInputSchema,
-        customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
-        substitutions: AgentVaultSubstitutionsInputSchema.optional()
-      }),
+      body: AgentVaultCreateServiceBodySchema,
       response: {
         200: z.object({ service: AgentVaultServiceSchema })
       }
@@ -330,12 +323,19 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName,
             serviceId: service.id,
             name: service.name,
+            serviceType: service.type,
+            serverUrl: service.config.serverUrl,
+            transport: service.config.transport,
             hostPattern: service.hostPattern,
             credentialType: service.credential.type,
             headerName:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
             headerPrefix:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerPrefix : undefined,
+            oauthIssuer:
+              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.issuer : undefined,
+            oauthScopes:
+              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
             allowedMethods: service.allowedMethods,
             allowedPathPrefixes: service.allowedPathPrefixes,
             customHeaderNames: service.customHeaders.map((header) => header.name),
@@ -345,11 +345,33 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
+      if (service.credential.type === AgentVaultCredentialType.OAuth) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalAgentVaultProjectId,
+          event: {
+            type: EventType.AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE,
+            metadata: {
+              accessBundleId: req.params.accessBundleId,
+              accessBundleName,
+              serviceId: service.id,
+              name: service.name,
+              serverUrl: service.config.serverUrl,
+              oauthIssuer: service.credential.issuer,
+              oauthScopes: service.credential.grantedScopes,
+              reauthorization: false
+            }
+          }
+        });
+      }
+
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultServiceCreated,
         properties: {
           accessBundleId: req.params.accessBundleId,
           serviceId: service.id,
+          serviceType: service.type,
           credentialType: service.credential.type,
           hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
           allowedMethodCount: service.allowedMethods?.length ?? 0,
@@ -379,8 +401,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }),
       body: z
         .object({
+          // Accepted only so the refusal is a readable 400 rather than a silently dropped field.
+          type: z.nativeEnum(AgentVaultServiceType).optional().describe(openApiHidden()),
           name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
           hostPattern: AgentVaultHostPatternSchema.optional(),
+          serverUrl: AgentVaultServerUrlSchema.optional(),
+          transport: AgentVaultMcpTransportSchema.optional(),
           allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
           allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
           credential: AgentVaultCredentialUpdateSchema.optional(),
@@ -389,7 +415,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         })
         .refine(
           (body) => Object.values(body).some((value) => value !== undefined),
-          "Provide at least one of 'name', 'hostPattern', 'allowedMethods', 'allowedPathPrefixes', 'credential', 'customHeaders' or 'substitutions' to update"
+          "Provide at least one of 'name', 'hostPattern', 'serverUrl', 'transport', 'allowedMethods', 'allowedPathPrefixes', 'credential', 'customHeaders' or 'substitutions' to update"
         ),
       response: {
         200: z.object({ service: AgentVaultServiceSchema })
@@ -404,6 +430,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         serviceId: req.params.serviceId,
         ...req.body
       });
+      const isOauthAuthorized = req.body.credential?.type === AgentVaultCredentialType.OAuth;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -417,7 +444,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName,
             serviceId: service.id,
             name: req.body.name,
-            hostPattern: req.body.hostPattern,
+            serviceType: service.type,
+            serverUrl: req.body.serverUrl,
+            transport: req.body.transport,
+            // Derived from the server URL for an MCP service, so it is reported whenever that changed.
+            hostPattern: req.body.hostPattern ?? (req.body.serverUrl ? service.hostPattern : undefined),
             credentialType: req.body.credential?.type,
             headerName:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
@@ -426,6 +457,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             headerPrefix:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
                 ? req.body.credential.headerPrefix
+                : undefined,
+            oauthIssuer:
+              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
+                ? service.credential.issuer
+                : undefined,
+            oauthScopes:
+              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
+                ? service.credential.grantedScopes
                 : undefined,
             allowedMethods: req.body.allowedMethods,
             allowedPathPrefixes: req.body.allowedPathPrefixes,
@@ -448,11 +487,33 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
+      if (isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalAgentVaultProjectId,
+          event: {
+            type: EventType.AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE,
+            metadata: {
+              accessBundleId: req.params.accessBundleId,
+              accessBundleName,
+              serviceId: service.id,
+              name: service.name,
+              serverUrl: service.config.serverUrl,
+              oauthIssuer: service.credential.issuer,
+              oauthScopes: service.credential.grantedScopes,
+              reauthorization: true
+            }
+          }
+        });
+      }
+
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultServiceUpdated,
         properties: {
           accessBundleId: req.params.accessBundleId,
           serviceId: service.id,
+          serviceType: service.type,
           credentialType: service.credential.type,
           hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
           allowedMethodCount: service.allowedMethods?.length ?? 0,

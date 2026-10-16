@@ -14,6 +14,7 @@ import {
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
+import { ServiceStep } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import {
   Button,
   DropdownMenu,
@@ -56,6 +57,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
+  const [serviceSheetStep, setServiceSheetStep] = useState<ServiceStep | undefined>();
 
   if (isPending) return <PageLoader />;
   if (!accessBundle) {
@@ -133,10 +135,17 @@ export const AgentVaultAccessBundleDetailPage = () => {
           canManage={isAdmin}
           onAdd={() => {
             setServiceToEdit(null);
+            setServiceSheetStep(undefined);
             setIsServiceSheetOpen(true);
           }}
           onEdit={(service) => {
             setServiceToEdit(service);
+            setServiceSheetStep(undefined);
+            setIsServiceSheetOpen(true);
+          }}
+          onReauthorize={(service) => {
+            setServiceToEdit(service);
+            setServiceSheetStep(ServiceStep.Credential);
             setIsServiceSheetOpen(true);
           }}
         />
@@ -157,6 +166,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
         onOpenChange={setIsServiceSheetOpen}
         accessBundleId={accessBundle.id}
         service={serviceToEdit}
+        initialStep={serviceSheetStep}
       />
 
       <AccessBundleFormDialog

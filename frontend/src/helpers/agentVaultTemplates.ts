@@ -1,4 +1,8 @@
-import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMcpTransport,
+  AgentVaultServiceType
+} from "@app/hooks/api/agentVault";
 
 // Copied from the proxied-services catalog rather than imported: that module stays independently
 // deletable, and Agent Vault's grammar rejects the paths several of its entries carry.
@@ -17,7 +21,8 @@ export type AgentVaultTemplateCredential =
   | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough };
 
-export type AgentVaultTemplate = {
+export type AgentVaultHttpTemplate = {
+  serviceType: AgentVaultServiceType.Http;
   key: string;
   name: string;
   image: string;
@@ -28,7 +33,23 @@ export type AgentVaultTemplate = {
   credential: AgentVaultTemplateCredential;
 };
 
-export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
+export type AgentVaultMcpTemplate = {
+  serviceType: AgentVaultServiceType.Mcp;
+  key: string;
+  name: string;
+  image: string;
+  description: string;
+  serverUrl: string;
+  transport: AgentVaultMcpTransport;
+  aliases?: string[];
+  credential:
+    | { type: AgentVaultCredentialType.Bearer; headerName?: string; headerPrefix?: string }
+    | { type: AgentVaultCredentialType.OAuth };
+};
+
+export type AgentVaultTemplate = AgentVaultHttpTemplate | AgentVaultMcpTemplate;
+
+const HTTP_TEMPLATES: Omit<AgentVaultHttpTemplate, "serviceType">[] = [
   {
     key: "openai",
     name: "OpenAI",
@@ -379,6 +400,58 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
   }
 ];
 
+export const AGENT_VAULT_TEMPLATES: AgentVaultHttpTemplate[] = HTTP_TEMPLATES.map((template) => ({
+  ...template,
+  serviceType: AgentVaultServiceType.Http
+}));
+
+export const AGENT_VAULT_MCP_TEMPLATES: AgentVaultMcpTemplate[] = [
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "github-mcp",
+    name: "GitHub MCP",
+    image: "GitHub.png",
+    description: "Repos, issues, and pull requests as MCP tools.",
+    serverUrl: "https://api.githubcopilot.com/mcp/",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["github", "mcp"],
+    credential: { type: AgentVaultCredentialType.Bearer }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "linear-mcp",
+    name: "Linear MCP",
+    image: "Linear.svg",
+    description: "Issues and projects as MCP tools.",
+    serverUrl: "https://mcp.linear.app/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["linear", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "notion-mcp",
+    name: "Notion MCP",
+    image: "Notion.svg",
+    description: "Pages and databases as MCP tools.",
+    serverUrl: "https://mcp.notion.com/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["notion", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
+  },
+  {
+    serviceType: AgentVaultServiceType.Mcp,
+    key: "sentry-mcp",
+    name: "Sentry MCP",
+    image: "Sentry.svg",
+    description: "Issues and errors as MCP tools.",
+    serverUrl: "https://mcp.sentry.dev/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    aliases: ["sentry", "mcp"],
+    credential: { type: AgentVaultCredentialType.OAuth }
+  }
+];
+
 export const POPULAR_AGENT_VAULT_TEMPLATES = [
   "openai",
   "anthropic",
@@ -401,16 +474,46 @@ const hostMatchesTemplateHost = (host: string, templateHost: string) => {
   return !host.slice(0, host.length - suffix.length - 1).includes(".");
 };
 
-export const findTemplateForHostPattern = (hostPattern: string): AgentVaultTemplate | undefined => {
-  const hosts = hostPattern
+const hostOfUrl = (url: string) => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+};
+
+const templateHosts = (template: AgentVaultTemplate) =>
+  template.serviceType === AgentVaultServiceType.Mcp
+    ? [hostOfUrl(template.serverUrl)]
+    : template.hostPattern.split(",").map((entry) => stripPort(entry.trim()));
+
+const hostsOfPattern = (hostPattern: string) =>
+  hostPattern
     .split(",")
     .map((entry) => stripPort(entry.trim()))
     .filter(Boolean);
 
+export const findTemplateForHostPattern = (
+  hostPattern: string
+): AgentVaultHttpTemplate | undefined => {
+  const hosts = hostsOfPattern(hostPattern);
+
   return AGENT_VAULT_TEMPLATES.find((template) =>
-    template.hostPattern
-      .split(",")
-      .map((entry) => stripPort(entry.trim()))
-      .some((templateHost) => hosts.some((host) => hostMatchesTemplateHost(host, templateHost)))
+    templateHosts(template).some((templateHost) =>
+      hosts.some((host) => hostMatchesTemplateHost(host, templateHost))
+    )
+  );
+};
+
+/** For icons: an MCP service's host pattern is derived from its server URL, so the MCP templates match it too. */
+export const findAnyTemplateForHostPattern = (
+  hostPattern: string
+): AgentVaultTemplate | undefined => {
+  const hosts = hostsOfPattern(hostPattern);
+  return (
+    findTemplateForHostPattern(hostPattern) ??
+    AGENT_VAULT_MCP_TEMPLATES.find((template) =>
+      templateHosts(template).some((templateHost) => hosts.includes(templateHost))
+    )
   );
 };

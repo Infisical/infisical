@@ -10,6 +10,7 @@ import {
 import { PgSqlLock } from "@app/keystore/keystore";
 import {
   BadRequestError,
+  ConflictError,
   ForbiddenRequestError,
   InternalServerError,
   NotFoundError,
@@ -23,12 +24,27 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
-import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultOauthStatus,
+  AgentVaultServiceType,
+  AgentVaultTrafficPolicy
+} from "../agent-vault/agent-vault-enums";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultServiceConfig } from "../agent-vault/agent-vault-service-types";
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-access-bundle/agent-vault-variable-dal";
+import {
+  AGENT_VAULT_SERVICE_MOVED_MESSAGE,
+  TAgentVaultOauthServiceFactory
+} from "../agent-vault-oauth/agent-vault-oauth-service";
+import {
+  AGENT_VAULT_OAUTH_HEADER_NAME,
+  AGENT_VAULT_OAUTH_HEADER_PREFIX,
+  TAgentVaultOauthConfig
+} from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
@@ -50,6 +66,7 @@ import {
   THeartbeatDTO,
   TListProxiesDTO,
   TProxyByIdDTO,
+  TRefreshCredentialDTO,
   TResolvedService,
   TResolveSessionDTO,
   TUpdateProxyDTO
@@ -60,6 +77,8 @@ export const AGENT_VAULT_MAX_PROXIES_PER_ORG = 10;
 
 // Health is derived from the last heartbeat and the poll interval, never stored.
 const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
+
+const RESOLVE_REFRESH_BUDGET_MS = 4_000;
 
 type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
@@ -78,6 +97,7 @@ type TAgentVaultProxyServiceFactoryDep = {
     TResourceAuthMethodServiceFactory,
     "initAtCreate" | "mintToken" | "loginWithToken" | "revokeAccess"
   >;
+  agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken">;
 };
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
@@ -95,7 +115,8 @@ export const agentVaultProxyServiceFactory = ({
   permissionService,
   kmsService,
   licenseService,
-  resourceAuthMethodService
+  resourceAuthMethodService,
+  agentVaultOauthService
 }: TAgentVaultProxyServiceFactoryDep) => {
   const isHealthy = (proxy: Pick<TAgentVaultProxies, "heartbeat" | "pollInterval" | "heartbeatTTL">) => {
     if (!proxy.heartbeat) return false;
@@ -337,6 +358,19 @@ export const agentVaultProxyServiceFactory = ({
         value: secret.value
       };
     }
+    // Sent in the bearer shape so a proxy that predates OAuth injects it unchanged; `source` is what tells a
+    // newer one it may ask for a refresh.
+    if (row.credentialType === AgentVaultCredentialType.OAuth) {
+      const oauth = row.credentialConfig as TAgentVaultOauthConfig;
+      return {
+        type: "bearer",
+        headerName: AGENT_VAULT_OAUTH_HEADER_NAME,
+        headerPrefix: AGENT_VAULT_OAUTH_HEADER_PREFIX,
+        value: secret.accessToken,
+        source: "oauth",
+        expiresAt: oauth.expiresAt ?? null
+      };
+    }
     return { type: "basic", username: secret.username ?? "", password: secret.password ?? "" };
   };
 
@@ -354,8 +388,9 @@ export const agentVaultProxyServiceFactory = ({
     accessBundleIdOf: Map<string, string>;
     decryptValue: (encryptedValue: Buffer) => string;
   }): Promise<TResolvedService[]> => {
+    // An OAuth token is issued by the provider, never typed, so it holds no reference to expand.
     const sealedTextsOf = ({ credential, customHeaders, substitutions }: TResolvedService) => [
-      ...(credential.type === AgentVaultCredentialType.Bearer ? [credential.value] : []),
+      ...(credential.type === AgentVaultCredentialType.Bearer && !credential.source ? [credential.value] : []),
       ...(credential.type === AgentVaultCredentialType.Basic ? [credential.username, credential.password] : []),
       ...customHeaders.map((header) => header.value),
       ...substitutions.map((substitution) => substitution.value)
@@ -396,7 +431,7 @@ export const agentVaultProxyServiceFactory = ({
       const expand = (text: string) => expandStoredVariableReferences(text, valueOf);
 
       let { credential } = service;
-      if (credential.type === AgentVaultCredentialType.Bearer) {
+      if (credential.type === AgentVaultCredentialType.Bearer && !credential.source) {
         credential = { ...credential, value: expand(credential.value) };
       }
       // A typed username is trimmed on save, and a username can't start or end with a space (RFC 8265), so one a
@@ -428,8 +463,12 @@ export const agentVaultProxyServiceFactory = ({
     return expanded;
   };
 
-  /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
-  const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
+  // Shared by resolve and credential refresh, so a refresh can never reach a service resolve would not.
+  const $authorizeSession = async ({
+    proxyId,
+    orgId,
+    sessionToken
+  }: Pick<TResolveSessionDTO, "proxyId" | "orgId" | "sessionToken">) => {
     const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
     if (!session) throw new NotFoundError({ message: "Session not found" });
 
@@ -503,11 +542,84 @@ export const agentVaultProxyServiceFactory = ({
           groupIds: liveGroupIds
         });
 
+    return { session, proxy, accessBundleIds };
+  };
+
+  /** Resolve services and decrypt their credentials. The proxy's JWT authorizes; the session token is a selector. */
+  const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
+    const { session, proxy, accessBundleIds } = await $authorizeSession({ proxyId, orgId, sessionToken });
+
     const rows = await agentVaultResolveDAL.findResolvableServices({
       sessionId: session.id,
       projectId: session.projectId,
       accessBundleIds
     });
+
+    // A token that expires before the proxy's next poll is refreshed now, which also keeps proxies that can't
+    // refresh on their own working. The proxy gives up on resolve after 15 seconds, and one refresh can wait on
+    // another's lock and then on a slow provider, so resolve waits for all of them together for a short budget
+    // only. A refresh that fails or is still running sends the stored token; one still running finishes in the
+    // background and stores its result for the next poll.
+    const refreshWithinSeconds = proxy.pollInterval + 60;
+    const refreshedCredentials = new Map<string, TResolvedService["credential"]>();
+    const dueForRefresh = rows.filter((row) => {
+      if (row.credentialType !== AgentVaultCredentialType.OAuth) return false;
+      const oauth = row.credentialConfig as TAgentVaultOauthConfig;
+      return (
+        oauth.status !== AgentVaultOauthStatus.NeedsReauthorization &&
+        Boolean(oauth.expiresAt) &&
+        new Date(oauth.expiresAt!).getTime() <= Date.now() + refreshWithinSeconds * 1000
+      );
+    });
+    if (dueForRefresh.length) {
+      let budgetSpent = false;
+      const pending = new Set(dueForRefresh.map((row) => row.id));
+      const refreshes = dueForRefresh.map((row) =>
+        agentVaultOauthService
+          .refreshServiceToken({
+            serviceId: row.id,
+            projectId: session.projectId,
+            expiresWithinSeconds: refreshWithinSeconds,
+            // The answer pairs this row's host with the credential, so a refreshed one has to be for the same server.
+            destination: {
+              hostPattern: row.hostPattern,
+              serverUrl: (row.config as TAgentVaultServiceConfig | null)?.serverUrl ?? null
+            }
+          })
+          .then(({ credential }) => {
+            if (!budgetSpent) refreshedCredentials.set(row.id, credential);
+          })
+          .catch((error) => {
+            if (error instanceof ConflictError) {
+              logger.info(
+                `agentVaultResolve: service moved during its OAuth refresh, sending the stored token until the next poll [sessionId=${session.id}] [serviceId=${row.id}]`
+              );
+              return;
+            }
+            logger.error(
+              error,
+              `agentVaultResolve: OAuth refresh failed, sending the stored token [sessionId=${session.id}] [serviceId=${row.id}]`
+            );
+          })
+          .finally(() => pending.delete(row.id))
+      );
+
+      let budgetTimer: NodeJS.Timeout | undefined;
+      await Promise.race([
+        Promise.all(refreshes),
+        new Promise<void>((resolve) => {
+          budgetTimer = setTimeout(resolve, RESOLVE_REFRESH_BUDGET_MS);
+        })
+      ]);
+      clearTimeout(budgetTimer);
+      budgetSpent = true;
+
+      if (pending.size) {
+        logger.warn(
+          `agentVaultResolve: OAuth refresh still running, sending the stored token [sessionId=${session.id}] [serviceIds=${[...pending].join(",")}]`
+        );
+      }
+    }
 
     const serviceIds = rows.map((row) => row.id);
     const [customHeaderRows, substitutionRows] = await Promise.all([
@@ -549,10 +661,11 @@ export const agentVaultProxyServiceFactory = ({
       id: row.id,
       name: row.name,
       accessBundleName: row.accessBundleName,
+      type: row.type as AgentVaultServiceType,
       hostPattern: row.hostPattern,
       allowedMethods: row.allowedMethods,
       allowedPathPrefixes: row.allowedPathPrefixes,
-      credential: $decryptCredential(row, decryptor),
+      credential: refreshedCredentials.get(row.id) ?? $decryptCredential(row, decryptor),
       customHeaders: customHeaderRows
         .filter((header) => header.serviceId === row.id)
         .map((header) => ({ name: header.name, prefix: header.prefix, value: $decryptValue(header.encryptedValue) })),
@@ -605,6 +718,47 @@ export const agentVaultProxyServiceFactory = ({
     };
   };
 
+  // After the upstream rejected a token. Never audited, like resolve: it is proxy-driven and per request.
+  const refreshCredential = async ({
+    proxyId,
+    orgId,
+    sessionToken,
+    serviceId,
+    hostPattern,
+    rejectedTokenHash,
+    requiredScopes
+  }: TRefreshCredentialDTO) => {
+    const { session, accessBundleIds } = await $authorizeSession({ proxyId, orgId, sessionToken });
+    const [row] = await agentVaultResolveDAL.findResolvableServices({
+      sessionId: session.id,
+      projectId: session.projectId,
+      accessBundleIds,
+      serviceId
+    });
+    if (!row) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found in this session` });
+    if (row.credentialType !== AgentVaultCredentialType.OAuth) {
+      throw new BadRequestError({
+        message: `The service '${row.name}' doesn't use OAuth, so Infisical can't refresh its credential.`
+      });
+    }
+    // The proxy retries with whatever comes back against the host it cached, so a service that moved since must
+    // not hand it the new server's token. The refresh re-checks against the primary, which this replica read may
+    // trail.
+    if (row.hostPattern !== hostPattern) throw new ConflictError({ message: AGENT_VAULT_SERVICE_MOVED_MESSAGE });
+
+    const result = await agentVaultOauthService.refreshServiceToken({
+      serviceId: row.id,
+      projectId: session.projectId,
+      rejectedTokenHash: rejectedTokenHash.toLowerCase(),
+      requiredScopes,
+      destination: { hostPattern }
+    });
+    logger.info(
+      `agentVaultCredentialRefresh: answered [sessionId=${session.id}] [proxyId=${proxyId}] [serviceId=${row.id}] [status=${result.status}]`
+    );
+    return result;
+  };
+
   return {
     getProxyForAuth,
     listProxies,
@@ -615,6 +769,7 @@ export const agentVaultProxyServiceFactory = ({
     revokeProxyAccess,
     enroll,
     heartbeat,
-    resolveSession
+    resolveSession,
+    refreshCredential
   };
 };

@@ -815,6 +815,7 @@ export enum EventType {
   AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
   AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
   AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE = "agent-vault-service-credential-authorize",
   AGENT_VAULT_VARIABLE_CREATE = "agent-vault-variable-create",
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
@@ -6472,8 +6473,15 @@ interface AgentVaultServiceCreateEvent {
     accessBundleName: string;
     serviceId: string;
     name: string;
+    serviceType: string;
+    // MCP services only.
+    serverUrl?: string;
+    transport?: string;
     hostPattern: string;
     credentialType: string;
+    // OAuth credentials only.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
@@ -6492,8 +6500,15 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleName: string;
     serviceId: string;
     name?: string;
+    // The service's type, which never changes, so present on every update.
+    serviceType: string;
+    serverUrl?: string;
+    transport?: string;
     hostPattern?: string;
     credentialType?: string;
+    // Present when the update connected or reauthorized an OAuth credential.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
@@ -6505,6 +6520,21 @@ interface AgentVaultServiceUpdateEvent {
     credentialReplaced: boolean;
     // Every key the service uses after the update, present when the update wrote a value that can hold one.
     variableKeys?: string[];
+  };
+}
+
+// On connect (create) and reauthorize (update). Refreshes are proxy-driven and not audited, like resolve.
+interface AgentVaultServiceCredentialAuthorizeEvent {
+  type: EventType.AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    serviceId: string;
+    name: string;
+    serverUrl?: string;
+    oauthIssuer: string;
+    oauthScopes: string[];
+    reauthorization: boolean;
   };
 }
 
@@ -8549,6 +8579,7 @@ export type Event =
   | AgentVaultServiceCreateEvent
   | AgentVaultServiceUpdateEvent
   | AgentVaultServiceDeleteEvent
+  | AgentVaultServiceCredentialAuthorizeEvent
   | AgentVaultVariableCreateEvent
   | AgentVaultVariableUpdateEvent
   | AgentVaultVariableDeleteEvent

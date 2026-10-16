@@ -54,7 +54,7 @@ This guide walks you through running the [OpenClaw](https://docs.openclaw.ai/) [
 - An Infisical organization where you're an Agent Vault admin
 - Two machines on the same private network, one for the Agent Vault proxy and one for OpenClaw (physical machines, virtual machines, or containers)
 - [OpenClaw](https://docs.openclaw.ai/start/getting-started) installed on the OpenClaw machine, with the gateway installed as a service (`openclaw onboard --install-daemon`) and a messaging platform set up and working with your real API keys
-- The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/services#substitutions))
+- The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/http-apis#substitutions))
 - [`curl`](https://curl.se/download.html) and [`jq`](https://jqlang.org/download/) installed on the OpenClaw machine
 
 <SeparateMachinesNote />
@@ -107,7 +107,7 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
     On the **Credential** step, paste the real value of the API key.
 
     <Note>
-    [Add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) for each key instead if either of these is true:
+    [Add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) for each key instead if either of these is true:
 
     - The API expects the key outside a header, such as in the URL path. For example, Telegram's bot token goes in the URL of every request: `https://api.telegram.org/bot<token>/getUpdates`
     - The API uses more than one key (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
@@ -388,7 +388,7 @@ To follow the gateway's logs, run `openclaw logs --follow`. To check the gateway
 
     - The session was revoked or has expired (check the **Sessions** page in Infisical, and [replace the session](#revoke-or-replace-the-session) if needed)
     - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host OpenClaw called (add a service that does, or use a pass-through service)
-    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/services#methods-and-paths))
+    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths))
   </Accordion>
 </AccordionGroup>
 

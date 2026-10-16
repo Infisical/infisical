@@ -168,6 +168,11 @@ export const KeyStorePrefixes = {
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
+  AgentVaultOauthAuthorization: (authorizationId: string) =>
+    `agent-vault-oauth-authorization:${authorizationId}` as const,
+  AgentVaultOauthAuthorizationCompleteLock: (authorizationId: string) =>
+    `agent-vault-oauth-authorization:${authorizationId}:complete` as const,
+  AgentVaultOauthRefreshLock: (serviceId: string) => `agent-vault-oauth-refresh-lock:${serviceId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,

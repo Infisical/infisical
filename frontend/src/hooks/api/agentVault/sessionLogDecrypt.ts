@@ -65,7 +65,17 @@ const SessionLogRecordsSchema = z.array(
     status: z.number().int(),
     decision: z.string(),
     service: z.string().nullable(),
-    accessBundle: z.string().nullable()
+    accessBundle: z.string().nullable(),
+    serviceType: z.string().nullish(),
+    // A malformed detail drops only the detail. Failing the parse would hide the whole chunk.
+    mcp: z
+      .object({
+        calls: z.array(z.object({ method: z.string(), tool: z.string().nullish() })),
+        parsed: z.boolean(),
+        truncated: z.boolean().optional()
+      })
+      .optional()
+      .catch(undefined)
   })
 );
 

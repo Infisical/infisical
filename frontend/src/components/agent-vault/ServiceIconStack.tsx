@@ -4,7 +4,7 @@ import { GlobeIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { cn } from "@app/components/v3/utils";
-import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
+import { findAnyTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 type TServiceIcon = {
@@ -22,7 +22,7 @@ const labelOf = (pattern: string) => {
 };
 
 const iconFromHostPattern = (hostPattern: string): TServiceIcon => {
-  const template = findTemplateForHostPattern(hostPattern);
+  const template = findAnyTemplateForHostPattern(hostPattern);
   return { label: template?.name ?? labelOf(hostPattern), image: template?.image };
 };
 
@@ -104,7 +104,7 @@ export const ServiceIconStack = ({
       services
         ? services.map((service) => ({
             label: service.name,
-            image: findTemplateForHostPattern(service.hostPattern)?.image
+            image: findAnyTemplateForHostPattern(service.hostPattern)?.image
           }))
         : iconsFromHostPatterns(hostPatterns),
     [hostPatterns, services]
