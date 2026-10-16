@@ -29,6 +29,7 @@ import {
 import { useProject } from "@app/context";
 import {
   isPaloAltoNetworksPkiSync,
+  PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE,
   PKI_SYNC_MAP,
   PRESERVE_ARN_DESTINATIONS,
   PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS
@@ -378,6 +379,10 @@ export const CreatePkiSyncForm = ({
   const currentKey = FORM_TABS[selectedTabIndex].key;
   const currentName = FORM_TABS[selectedTabIndex].name;
   const currentDetail = STEP_META[currentKey];
+  const rightDescription =
+    currentKey === "certificates" && isPaloAltoNetworksPkiSync(destination)
+      ? `${currentDetail.rightDescription}\n\n${PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE}`
+      : currentDetail.rightDescription;
 
   return (
     <form
@@ -477,7 +482,7 @@ export const CreatePkiSyncForm = ({
                 />
               </div>
               <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-              {currentDetail.rightDescription.split("\n\n").map((paragraph) => (
+              {rightDescription.split("\n\n").map((paragraph) => (
                 <p key={paragraph} className="mt-2 text-sm leading-relaxed text-muted">
                   {paragraph}
                 </p>

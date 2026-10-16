@@ -355,6 +355,10 @@ export type TRundeckConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Rundeck;
 };
 
+export type TPortainerConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Portainer;
+};
+
 export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TriggerDev;
 };
@@ -377,6 +381,10 @@ export type TDaytonaConnectionOption = TAppConnectionOptionBase & {
 
 export type TServiceNowConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.ServiceNow;
+};
+
+export type TS3CompatibleConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.S3Compatible;
 };
 
 export type TAppConnectionOption =
@@ -463,6 +471,7 @@ export type TAppConnectionOption =
   | TConvexConnectionOption
   | TTriggerDevConnectionOption
   | TRundeckConnectionOption
+  | TPortainerConnectionOption
   | THasuraCloudConnectionOption
   | TQoveryConnectionOption
   | TLiteLLMConnectionOption
@@ -470,7 +479,8 @@ export type TAppConnectionOption =
   | TNutanixPrismCentralConnectionOption
   | TSpaceliftConnectionOption
   | TDaytonaConnectionOption
-  | TServiceNowConnectionOption;
+  | TServiceNowConnectionOption
+  | TS3CompatibleConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -556,6 +566,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.Rundeck]: TRundeckConnectionOption;
+  [AppConnection.Portainer]: TPortainerConnectionOption;
   [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
   [AppConnection.Qovery]: TQoveryConnectionOption;
   [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
@@ -564,4 +575,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
   [AppConnection.Daytona]: TDaytonaConnectionOption;
   [AppConnection.ServiceNow]: TServiceNowConnectionOption;
+  [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
 };

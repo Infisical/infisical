@@ -78,6 +78,7 @@ export enum AppConnection {
   Convex = "convex",
   TriggerDev = "trigger-dev",
   Rundeck = "rundeck",
+  Portainer = "portainer",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
@@ -89,5 +90,6 @@ export enum AppConnection {
   Stripe = "stripe",
   Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",
-  ServiceNow = "servicenow"
+  ServiceNow = "servicenow",
+  S3Compatible = "s3-compatible"
 }

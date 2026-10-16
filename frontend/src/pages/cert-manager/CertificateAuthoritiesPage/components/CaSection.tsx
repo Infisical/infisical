@@ -95,7 +95,11 @@ export const CaSection = () => {
   const caPendingDelete = caPendingDeleteData as TInternalCertificateAuthority | undefined;
   const pendingDeleteHsmKeyLabel =
     caPendingDelete?.configuration?.keySource === CertKeySource.Hsm
-      ? caPendingDelete?.configuration?.hsmKeyLabel
+      ? caPendingDelete?.configuration?.externalKeyId
+      : undefined;
+  const pendingDeleteAwsKmsKeyArn =
+    caPendingDelete?.configuration?.keySource === CertKeySource.AwsKms
+      ? caPendingDelete?.configuration?.externalKeyId
       : undefined;
 
   const onRemoveCaSubmit = async (id: string) => {
@@ -164,6 +168,10 @@ export const CaSection = () => {
         description={`This action will delete other CAs and certificates below it in your CA hierarchy.${
           pendingDeleteHsmKeyLabel
             ? ` This CA's key on the HSM (label: ${pendingDeleteHsmKeyLabel}) is not removed automatically and will remain as an orphaned key.`
+            : ""
+        }${
+          pendingDeleteAwsKmsKeyArn
+            ? ` Deleting this CA also schedules its signing key (${pendingDeleteAwsKmsKeyArn}) for deletion in AWS KMS. You can cancel that deletion in AWS KMS within 30 days.`
             : ""
         }`}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}

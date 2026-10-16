@@ -15,6 +15,7 @@ import {
   CaStatus,
   InternalCaType
 } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   validateAltNamesField,
   validateCaDateField
@@ -281,7 +282,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const ca = await server.services.internalCertificateAuthority.deleteCaById({
+      const { ca, keyDetails } = await server.services.internalCertificateAuthority.deleteCaById({
         caId: req.params.caId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -297,7 +298,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           metadata: {
             name: ca.name,
             caId: ca.id,
-            dn: ca.dn
+            dn: ca.dn,
+            ...getCaKeySourceAuditMetadata(keyDetails)
           }
         }
       });

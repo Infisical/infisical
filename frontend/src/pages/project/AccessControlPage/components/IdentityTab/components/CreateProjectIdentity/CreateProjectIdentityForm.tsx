@@ -396,7 +396,10 @@ export const CreateProjectIdentityForm = ({
             </Field>
           )}
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
+          <Button type="button" variant="outline" onClick={onClose} isDisabled={isSubmitting}>
+            Cancel
+          </Button>
           <Button
             type="submit"
             variant={SUBMIT_VARIANT_BY_PRODUCT[projectType] ?? "project"}
@@ -404,9 +407,6 @@ export const CreateProjectIdentityForm = ({
             isDisabled={isSubmitting}
           >
             {mode === CreateProjectIdentityMode.Assign ? "Add" : "Create"}
-          </Button>
-          <Button type="button" variant="outline" onClick={onClose} isDisabled={isSubmitting}>
-            Cancel
           </Button>
         </SheetFooter>
       </form>

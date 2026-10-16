@@ -384,6 +384,12 @@ import {
   TValidatePaloAltoNetworksConnectionCredentialsSchema
 } from "./palo-alto-networks";
 import {
+  TPortainerConnection,
+  TPortainerConnectionConfig,
+  TPortainerConnectionInput,
+  TValidatePortainerConnectionCredentialsSchema
+} from "./portainer";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -424,6 +430,12 @@ import {
   TRundeckConnectionInput,
   TValidateRundeckConnectionCredentialsSchema
 } from "./rundeck";
+import {
+  TS3CompatibleConnection,
+  TS3CompatibleConnectionConfig,
+  TS3CompatibleConnectionInput,
+  TValidateS3CompatibleConnectionCredentialsSchema
+} from "./s3-compatible";
 import {
   TSalesforceConnection,
   TSalesforceConnectionConfig,
@@ -621,6 +633,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TF5BigIpConnection
   | TConvexConnection
   | TRundeckConnection
+  | TPortainerConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
@@ -633,6 +646,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TKeeperConnection
   | THpeIloConnection
   | TServiceNowConnection
+  | TS3CompatibleConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -723,6 +737,7 @@ export type TAppConnectionInput = { id: string } & (
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
   | TRundeckConnectionInput
+  | TPortainerConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
   | TLiteLLMConnectionInput
@@ -735,6 +750,7 @@ export type TAppConnectionInput = { id: string } & (
   | TKeeperConnectionInput
   | THpeIloConnectionInput
   | TServiceNowConnectionInput
+  | TS3CompatibleConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -859,6 +875,7 @@ export type TAppConnectionConfig =
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
   | TRundeckConnectionConfig
+  | TPortainerConnectionConfig
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
@@ -870,7 +887,8 @@ export type TAppConnectionConfig =
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
   | THpeIloConnectionConfig
-  | TServiceNowConnectionConfig;
+  | TServiceNowConnectionConfig
+  | TS3CompatibleConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -952,6 +970,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
   | TValidateRundeckConnectionCredentialsSchema
+  | TValidatePortainerConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema
@@ -963,7 +982,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema
-  | TValidateServiceNowConnectionCredentialsSchema;
+  | TValidateServiceNowConnectionCredentialsSchema
+  | TValidateS3CompatibleConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
