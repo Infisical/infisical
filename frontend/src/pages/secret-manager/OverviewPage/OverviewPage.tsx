@@ -3525,7 +3525,7 @@ const OverviewPageContent = () => {
             <FolderBreadcrumb secretPath={secretPath} />
             {canManageCurrentFolderAccess && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="xs"
                 className="mr-1.5 shrink-0"
                 onClick={handleCurrentFolderAccessOpen}
