@@ -218,7 +218,10 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               onBlur={() => commit(draft)}
-              className={COMBOBOX_CHIPS_INPUT_CLASS}
+              className={cn(
+                COMBOBOX_CHIPS_INPUT_CLASS,
+                tags.length > 0 && !draft && "min-w-0 focus:min-w-24"
+              )}
               {...inputProps}
             />
           </div>
