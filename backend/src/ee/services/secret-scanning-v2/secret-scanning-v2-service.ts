@@ -581,7 +581,10 @@ export const secretScanningV2ServiceFactory = ({
       }
     }
 
-    return updatedDataSource;
+    return {
+      dataSource: updatedDataSource,
+      isDiscoveryNewlyEnabled: !dataSource.isDiscoveryEnabled && Boolean(updatedDataSource.isDiscoveryEnabled)
+    };
   };
 
   const $deleteSecretScanningDataSource = async (

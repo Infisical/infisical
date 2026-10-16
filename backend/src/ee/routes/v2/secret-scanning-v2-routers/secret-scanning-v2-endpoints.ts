@@ -1,3 +1,4 @@
+import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -61,6 +62,41 @@ export const registerSecretScanningEndpoints = <
 }) => {
   const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
   const sourceTypeId = sourceType.replace(/\s+/g, "");
+
+  // Discovery only picks up resources that push after it is turned on, so it starts from everything already
+  // accessible. Best effort: the data source is saved either way, and the rest can be added from its resources tab.
+  const addAllAccessibleResources = async (
+    req: Pick<FastifyRequest, "auditLogInfo" | "permission">,
+    dataSource: Pick<TSecretScanningDataSource, "id" | "projectId">
+  ) => {
+    try {
+      const { resources, dataSourceName } = await server.services.secretScanningV2.addAllSecretScanningResources(
+        { type, dataSourceId: dataSource.id },
+        req.permission
+      );
+
+      if (!resources.length) return;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: dataSource.projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_RESOURCE_ADD,
+          metadata: {
+            type,
+            dataSourceId: dataSource.id,
+            dataSourceName,
+            resources: resources.map((resource) => ({ resourceId: resource.id, resourceName: resource.name }))
+          }
+        }
+      });
+    } catch (error) {
+      logger.error(
+        error,
+        `secretScanningV2: Failed to add accessible resources after enabling discovery [dataSourceId=${dataSource.id}] [projectId=${dataSource.projectId}]`
+      );
+    }
+  };
 
   server.route({
     method: "GET",
@@ -262,37 +298,7 @@ export const registerSecretScanningEndpoints = <
         })
         .catch(() => {});
 
-      // Discovery only picks up resources that push after setup, so start from everything already accessible.
-      // Best effort: the data source exists either way, and the rest can be added from its resources tab.
-      if (dataSource.isDiscoveryEnabled) {
-        try {
-          const { resources, dataSourceName } = await server.services.secretScanningV2.addAllSecretScanningResources(
-            { type, dataSourceId: dataSource.id },
-            req.permission
-          );
-
-          if (resources.length) {
-            await server.services.auditLog.createAuditLog({
-              ...req.auditLogInfo,
-              projectId: dataSource.projectId,
-              event: {
-                type: EventType.SECRET_SCANNING_RESOURCE_ADD,
-                metadata: {
-                  type,
-                  dataSourceId: dataSource.id,
-                  dataSourceName,
-                  resources: resources.map((resource) => ({ resourceId: resource.id, resourceName: resource.name }))
-                }
-              }
-            });
-          }
-        } catch (error) {
-          logger.error(
-            error,
-            `secretScanningV2: Failed to add resources to new data source [dataSourceId=${dataSource.id}] [projectId=${dataSource.projectId}]`
-          );
-        }
-      }
+      if (dataSource.isDiscoveryEnabled) await addAllAccessibleResources(req, dataSource);
 
       return { dataSource };
     }
@@ -321,10 +327,12 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
-      const dataSource = (await server.services.secretScanningV2.updateSecretScanningDataSource(
-        { ...req.body, dataSourceId, type },
-        req.permission
-      )) as T;
+      const { dataSource: updatedDataSource, isDiscoveryNewlyEnabled } =
+        await server.services.secretScanningV2.updateSecretScanningDataSource(
+          { ...req.body, dataSourceId, type },
+          req.permission
+        );
+      const dataSource = updatedDataSource as T;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -338,6 +346,8 @@ export const registerSecretScanningEndpoints = <
           }
         }
       });
+
+      if (isDiscoveryNewlyEnabled) await addAllAccessibleResources(req, dataSource);
 
       return { dataSource };
     }

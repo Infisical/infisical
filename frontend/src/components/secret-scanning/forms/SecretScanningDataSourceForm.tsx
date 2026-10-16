@@ -95,7 +95,7 @@ const CONNECTION_STEP_INFO: Record<SecretScanningDataSource, string> = {
 
 const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
-  const { pluralNoun, verb } = RESOURCE_DESCRIPTION_HELPER[type];
+  const { singularNoun, pluralNoun, verb } = RESOURCE_DESCRIPTION_HELPER[type];
 
   return [
     {
@@ -121,7 +121,7 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
       description: "Scan behavior",
       title: "Configure Scanning",
       subtitle: "Decide when this data source gets scanned.",
-      info: `Historical scan checks existing history once ${pluralNoun} are enabled. Scan New Commits keeps watching each ${verb}. Discovery automatically enables newly added ${pluralNoun}.`,
+      info: `Historical scan checks existing history once ${pluralNoun} are enabled. Scan New Commits keeps watching each ${verb}. Discovery adds every ${singularNoun} the connection can access, including ones created later.`,
       fields: [
         "isHistoricalScanEnabled",
         "isScanNewCommitsEnabled",

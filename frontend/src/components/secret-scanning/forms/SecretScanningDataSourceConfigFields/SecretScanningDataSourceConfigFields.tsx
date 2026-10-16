@@ -91,7 +91,7 @@ export const SecretScanningDataSourceScanFields = () => {
   const config = useWatch({ control, name: "config" });
 
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
-  const { pluralNoun, pluralTitle } = RESOURCE_DESCRIPTION_HELPER[type];
+  const { singularNoun, pluralNoun, pluralTitle } = RESOURCE_DESCRIPTION_HELPER[type];
   const supportsDiscovery = doesDataSourceSupportDiscovery({ type, config });
 
   return (
@@ -112,7 +112,7 @@ export const SecretScanningDataSourceScanFields = () => {
         isDisabled={!supportsDiscovery}
         description={
           supportsDiscovery
-            ? `Automatically enable scanning for new ${pluralNoun} added to ${platform}.`
+            ? `Add every ${singularNoun} the connection can access to this data source, and any created in ${platform} later.`
             : "Select a group in the previous step to enable this. GitLab only reports new projects through group webhooks."
         }
       />
