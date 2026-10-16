@@ -28,7 +28,6 @@ import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/a
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
-import { TAgentVaultVariableDALFactory } from "../agent-vault-access-bundle/agent-vault-variable-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
@@ -38,6 +37,7 @@ import {
   TSessionLogLicenseService
 } from "../agent-vault-session-log/agent-vault-session-log-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { parseRootCaCertificate } from "./agent-vault-ca-fns";
@@ -345,13 +345,13 @@ export const agentVaultProxyServiceFactory = ({
   // dropping the service instead would also drop its method and path restrictions.
   const $expandVariableReferences = async ({
     sessionId,
+    projectId,
     services,
-    accessBundleIdOf,
     decryptValue
   }: {
     sessionId: string;
+    projectId: string;
     services: TResolvedService[];
-    accessBundleIdOf: Map<string, string>;
     decryptValue: (encryptedValue: Buffer) => string;
   }): Promise<TResolvedService[]> => {
     const sealedTextsOf = ({ credential, customHeaders, substitutions }: TResolvedService) => [
@@ -367,12 +367,10 @@ export const agentVaultProxyServiceFactory = ({
     if (!variableIds.length) return services;
 
     const variables = new Map(
-      (
-        await agentVaultVariableDAL.findValuesForResolve({
-          variableIds,
-          accessBundleIds: [...new Set(accessBundleIdOf.values())]
-        })
-      ).map((variable) => [variable.id, variable])
+      (await agentVaultVariableDAL.findValuesForResolve({ variableIds, projectId })).map((variable) => [
+        variable.id,
+        variable
+      ])
     );
 
     const opened = new Map<string, string>();
@@ -380,9 +378,9 @@ export const agentVaultProxyServiceFactory = ({
 
     const expanded = services.map((service) => {
       const valueOf = (variableId: string) => {
+        // The lookup is scoped to the session's project, so a stored id never reaches another org's variable.
         const variable = variables.get(variableId);
-        // A stored id only ever names a variable of the service's own bundle.
-        if (!variable || variable.accessBundleId !== accessBundleIdOf.get(service.id)) {
+        if (!variable) {
           unresolvedServiceIds.add(service.id);
           return undefined;
         }
@@ -567,8 +565,8 @@ export const agentVaultProxyServiceFactory = ({
 
     const services = await $expandVariableReferences({
       sessionId: session.id,
+      projectId: session.projectId,
       services: decryptedServices,
-      accessBundleIdOf: new Map(rows.map((row) => [row.id, row.accessBundleId])),
       decryptValue: $decryptValue
     });
 

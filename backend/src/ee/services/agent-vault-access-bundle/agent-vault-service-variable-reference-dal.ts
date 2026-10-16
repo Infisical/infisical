@@ -35,22 +35,5 @@ export const agentVaultServiceVariableReferenceDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary even without a tx, so a service saved a moment ago shows as using its variables.
-  const findByVariableIds = async (
-    variableIds: string[],
-    tx?: Knex
-  ): Promise<TAgentVaultServiceVariableReferences[]> => {
-    if (!variableIds.length) return [];
-    try {
-      return (await (tx || db)(TableName.AgentVaultServiceVariableReference)
-        .whereIn("variableId", variableIds)
-        .select(
-          selectAllTableCols(TableName.AgentVaultServiceVariableReference)
-        )) as TAgentVaultServiceVariableReferences[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find agent vault variable references by variable" });
-    }
-  };
-
-  return { ...orm, findByServiceIds, findByVariableIds };
+  return { ...orm, findByServiceIds };
 };
