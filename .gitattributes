@@ -1,0 +1,9 @@
+# Shell scripts are executed inside Linux containers. Git for Windows checks out with
+# core.autocrlf=true by default, which rewrites them to CRLF, and the trailing \r becomes
+# part of the shebang — the kernel then looks for an interpreter named "sh\r" and the
+# container exits with a misleading "no such file or directory". Pin them to LF on every
+# platform so a Windows clone produces a working image.
+*.sh text eol=lf
+
+# Same reason: husky hooks are run by sh.
+.husky/* text eol=lf
