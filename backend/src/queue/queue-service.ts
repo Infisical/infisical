@@ -878,8 +878,8 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
 
     const worker = new Worker(name, jobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
-      ...fipsSettings,
       ...queueSettings,
+      ...fipsSettings,
       // Enable BullMQ's built-in per-minute completion/failure tracking in Redis. Survives pod restarts
       // (OTel cumulative counters reset), useful as a fallback when Prometheus retention is short.
       metrics: { maxDataPoints: MetricsTime.ONE_WEEK * 2 },
