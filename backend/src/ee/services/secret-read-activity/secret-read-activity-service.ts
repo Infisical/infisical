@@ -21,6 +21,7 @@ import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { buildFolderIdMap, buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
@@ -70,6 +71,7 @@ type TSecretReadActivityServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretReadActivityDAL: TSecretReadActivityDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByIds">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findSecretReferencesByProjectId">;
@@ -96,6 +98,7 @@ export const secretReadActivityServiceFactory = ({
   licenseService,
   secretReadActivityDAL,
   folderDAL,
+  projectDAL,
   projectEnvDAL,
   secretImportDAL,
   secretV2BridgeDAL,
@@ -659,7 +662,16 @@ export const secretReadActivityServiceFactory = ({
         reviveDates(parsed, "lastReadAt");
       }
     });
-    const remainingTTL = await getCacheTtl(keyStore, cacheKey);
+    const [remainingTTL, instanceTrackingStartedAt, project] = await Promise.all([
+      getCacheTtl(keyStore, cacheKey),
+      $getTrackingStartedAt(),
+      projectDAL.findById(projectId)
+    ]);
+    // Reads are known from the later of when tracking began and when the project was created, and nothing can be
+    // called unused until a whole window has passed since then.
+    const projectTrackingStartedAt = new Date(
+      Math.max(instanceTrackingStartedAt?.getTime() ?? 0, project?.createdAt.getTime() ?? 0)
+    );
 
     // Unsorted, the list keeps its ranking. The sort is stable, so ties keep it too.
     const sorted = orderBy
@@ -672,6 +684,8 @@ export const secretReadActivityServiceFactory = ({
     return {
       unusedAccess: sorted.slice(offset, offset + limit),
       totalCount: sorted.length,
+      trackingStartedAt: projectTrackingStartedAt,
+      unusedAccessFrom: new Date(projectTrackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS),
       remainingTTL
     };
   };

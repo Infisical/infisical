@@ -3487,6 +3487,7 @@ export const registerRoutes = async (
     licenseService,
     secretReadActivityDAL: secretReadActivityDALFactory(db),
     folderDAL,
+    projectDAL,
     projectEnvDAL,
     secretImportDAL,
     secretV2BridgeDAL,

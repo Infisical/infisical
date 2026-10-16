@@ -1,4 +1,5 @@
 import axios from "axios";
+import { format } from "date-fns";
 import { ChevronDownIcon, FolderIcon, HardDriveIcon, KeyIcon, UserIcon } from "lucide-react";
 
 import { SecretReadStatusBadge } from "@app/components/secrets/SecretReadStatusBadge";
@@ -66,6 +67,7 @@ export const UnusedSecretAccessCard = () => {
     data?.remainingTtl != null && data.remainingTtl >= 0
       ? formatRemainingTtl(data.remainingTtl)
       : null;
+  const isStillTracking = Boolean(data && new Date(data.unusedAccessFrom) > new Date());
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
 
   const getSortDirection = (column: UnusedSecretAccessOrderBy): TableSortDirection => {
@@ -117,7 +119,19 @@ export const UnusedSecretAccessCard = () => {
             </EmptyHeader>
           </Empty>
         )}
-        {data && totalCount === 0 && (
+        {data && isStillTracking && (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Tracking reads</EmptyTitle>
+              <EmptyDescription>
+                Reads have been tracked since {format(new Date(data.trackingStartedAt), "PP")}.
+                Access that goes unread for 30 days shows here from{" "}
+                {format(new Date(data.unusedAccessFrom), "PP")}.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+        {data && !isStillTracking && totalCount === 0 && (
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>No unused access</EmptyTitle>
@@ -128,7 +142,7 @@ export const UnusedSecretAccessCard = () => {
             </EmptyHeader>
           </Empty>
         )}
-        {data && totalCount > 0 && (
+        {data && !isStillTracking && totalCount > 0 && (
           <>
             <Table>
               <TableHeader>

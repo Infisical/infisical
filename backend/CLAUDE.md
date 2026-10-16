@@ -1113,7 +1113,10 @@ and the events cannot say which folders a recursive read returned. Instead it ke
   there is no separate status for it. Access age is `findAccessChangedAt`: the latest membership creation, role
   or privilege (folder grants included) creation or edit. Which secrets a change opened up is not recorded, so
   any change restarts the window, and a custom role's rules being edited is not seen at all. The per-secret
-  sheet shows the plain fact instead: a read, or "No reads".
+  sheet shows the plain fact instead: a read, or "No reads". The card response carries `trackingStartedAt` (the
+  later of the migration that created the table and the project's creation) and `unusedAccessFrom` (a window
+  after it), so the UI can say tracking is in progress instead of showing an empty list as "no unused access".
+  The dev `tsx watch` sometimes misses edits to this module; restart `infisical-dev-api` when the API looks stale.
 
 ### Audit Log Event Classes and Settings
 
