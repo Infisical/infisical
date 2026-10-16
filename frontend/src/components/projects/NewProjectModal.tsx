@@ -188,12 +188,12 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <Field>
-              <FieldLabel htmlFor="new-project-name">
-                Project Name
+              <div className="flex items-center gap-2">
+                <FieldLabel htmlFor="new-project-name">Project Name</FieldLabel>
                 {selectedProjectType === ProjectType.SecretManager && (
                   <DocumentationLinkBadge href="https://infisical.com/docs/documentation/guides/organization-structure" />
                 )}
-              </FieldLabel>
+              </div>
               <Input
                 id="new-project-name"
                 {...field}
