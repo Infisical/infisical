@@ -70,6 +70,7 @@ export const secretInsightsKeys = {
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+const UNUSED_SECRET_ACCESS_REFRESH_INTERVAL = 30 * 1000;
 
 export const useGetCalendarInsights = (
   params: TGetCalendarInsightsDTO,
@@ -146,7 +147,8 @@ export const useGetUnusedSecretAccess = (
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };
     },
-    staleTime: INSIGHTS_STALE_TIME,
+    staleTime: UNUSED_SECRET_ACCESS_REFRESH_INTERVAL,
+    refetchInterval: UNUSED_SECRET_ACCESS_REFRESH_INTERVAL,
     ...options
   });
 };

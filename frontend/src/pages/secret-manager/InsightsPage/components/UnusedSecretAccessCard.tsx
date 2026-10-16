@@ -30,6 +30,15 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UnusedSecretAccessOrderBy, useGetUnusedSecretAccess } from "@app/hooks/api/secretInsights";
 
+const formatRemainingTtl = (seconds: number) => {
+  if (seconds < 60) {
+    const remainingSeconds = Math.max(1, seconds);
+    return `${remainingSeconds} ${remainingSeconds === 1 ? "second" : "seconds"}`;
+  }
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+};
+
 export const UnusedSecretAccessCard = () => {
   const { currentProject, projectId } = useProject();
   const { subscription } = useSubscription();
@@ -54,9 +63,9 @@ export const UnusedSecretAccessCard = () => {
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset, setPage });
 
-  const remainingMinutes =
+  const updatesIn =
     data?.remainingTtl != null && data.remainingTtl >= 0
-      ? Math.max(1, Math.ceil(data.remainingTtl / 60))
+      ? formatRemainingTtl(data.remainingTtl)
       : null;
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
 
@@ -85,9 +94,9 @@ export const UnusedSecretAccessCard = () => {
       <CardHeader>
         <CardTitle>
           Unused Secret Access
-          {remainingMinutes != null && (
+          {updatesIn && (
             <Badge variant="neutral" className="ml-2 font-normal">
-              Updates in {remainingMinutes} {remainingMinutes === 1 ? "minute" : "minutes"}
+              Updates in {updatesIn}
             </Badge>
           )}
         </CardTitle>
@@ -177,6 +186,7 @@ export const UnusedSecretAccessCard = () => {
                         <SecretReadStatusBadge
                           status={row.readStatus}
                           lastReadAt={row.lastReadAt}
+                          trackedSince={row.trackedSince}
                         />
                       </TableCell>
                       <TableCell>{format(new Date(row.trackedSince), "PP")}</TableCell>

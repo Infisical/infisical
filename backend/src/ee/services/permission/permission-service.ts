@@ -941,7 +941,43 @@ export const permissionServiceFactory = ({
     });
   };
 
+  // The project-wide permission listings leave folder grants out, so they are loaded once for the whole project
+  // and applied per actor, the way getProjectPermission applies them.
+  const $findProjectFolderScopedPrivileges = async (projectId: string) => {
+    const grants = (await additionalPrivilegeDAL.find({ projectId, $notNull: ["folderId"] })).filter(isActiveRole);
+    const privilegesByActorId = new Map<string, TProjectFolderScopedPrivilege[]>();
+    if (!grants.length) return privilegesByActorId;
+
+    const folders = await secretFolderDAL.findSecretPathByFolderIds(
+      projectId,
+      grants.map((grant) => grant.folderId as string)
+    );
+    grants.forEach((grant, index) => {
+      const folder = folders[index];
+      const actorId = grant.actorUserId ?? grant.actorIdentityId;
+      if (!folder || !grant.role || !actorId) return;
+      privilegesByActorId.set(actorId, [
+        ...(privilegesByActorId.get(actorId) ?? []),
+        {
+          id: grant.id,
+          folderId: grant.folderId as string,
+          role: grant.role,
+          environmentSlug: folder.environmentSlug,
+          secretPath: folder.path
+        }
+      ]);
+    });
+    return privilegesByActorId;
+  };
+
   const getProjectPermissions: TPermissionServiceFactory["getProjectPermissions"] = async (projectId, orgId) => {
+    const folderScopedPrivilegesByActorId = await $findProjectFolderScopedPrivileges(projectId);
+    // Admins are not narrowed by folder grants, as in getProjectPermission.
+    const folderScopedPrivilegesOf = (actorId: string, roles: { role: string }[] = []) =>
+      roles.some(({ role }) => role === ProjectMembershipRole.Admin)
+        ? undefined
+        : folderScopedPrivilegesByActorId.get(actorId);
+
     // fetch user permissions
     const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId, orgId);
     const userPermissions = rawUserProjectPermissions.map((userProjectPermission) => {
@@ -953,7 +989,11 @@ export const permissionServiceFactory = ({
           permissions
         })) || [];
 
-      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const rules = buildProjectPermissionRules(
+        rolePermissions.concat(additionalPrivileges),
+        undefined,
+        folderScopedPrivilegesOf(userProjectPermission.userId, userProjectPermission.roles)
+      );
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           userProjectPermission.metadata,
@@ -992,7 +1032,11 @@ export const permissionServiceFactory = ({
           permissions
         })) || [];
 
-      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const rules = buildProjectPermissionRules(
+        rolePermissions.concat(additionalPrivileges),
+        undefined,
+        folderScopedPrivilegesOf(identityProjectPermission.identityId, identityProjectPermission.roles)
+      );
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           identityProjectPermission.metadata,

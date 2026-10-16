@@ -1,10 +1,21 @@
 import { describe, expect, test } from "vitest";
 
-import { TSecretReadActivity } from "@app/db/schemas";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { classifySecretReads, computeSecretReach, indexSecretReads } from "./secret-read-activity-fns";
-import { SecretReadObjectType, SecretReadStatus, TReachSecret, TSecretReachGraph } from "./secret-read-activity-types";
+import {
+  classifySecretReads,
+  computeSecretReach,
+  getUnreadStatus,
+  getUtcMonthStart,
+  indexSecretReads
+} from "./secret-read-activity-fns";
+import {
+  SecretReadObjectType,
+  SecretReadStatus,
+  TReachSecret,
+  TSecretLastRead,
+  TSecretReachGraph
+} from "./secret-read-activity-types";
 
 const dbPass: TReachSecret = { id: "db-pass", folderId: "shared", key: "DB_PASS" };
 const dbUrl: TReachSecret = { id: "db-url", folderId: "shared", key: "DB_URL" };
@@ -18,7 +29,7 @@ const graph: TSecretReachGraph = {
   getImporterFolderIds: (folderId) => ({ nested: ["consumer"], consumer: ["edge"] })[folderId] ?? []
 };
 
-const read = (overrides: Partial<TSecretReadActivity>): TSecretReadActivity => ({
+const read = (overrides: Partial<TSecretLastRead>): TSecretLastRead => ({
   objectId: "shared",
   objectType: SecretReadObjectType.Folder,
   actorId: "identity-1",
@@ -28,6 +39,18 @@ const read = (overrides: Partial<TSecretReadActivity>): TSecretReadActivity => (
 });
 
 const trackedSince = new Date("2026-10-01T00:00:00.000Z");
+
+describe("getUtcMonthStart", () => {
+  test("uses the UTC month, not the local one", () => {
+    expect(getUtcMonthStart(new Date("2026-10-31T23:59:59.999Z"))).toEqual(new Date("2026-10-01T00:00:00.000Z"));
+    expect(getUtcMonthStart(new Date("2026-11-01T00:00:00.000Z"))).toEqual(new Date("2026-11-01T00:00:00.000Z"));
+  });
+
+  test("rolls over into the next and previous year", () => {
+    expect(getUtcMonthStart(new Date("2026-12-15T00:00:00.000Z"), 1)).toEqual(new Date("2027-01-01T00:00:00.000Z"));
+    expect(getUtcMonthStart(new Date("2026-01-15T00:00:00.000Z"), -1)).toEqual(new Date("2025-12-01T00:00:00.000Z"));
+  });
+});
 
 describe("computeSecretReach", () => {
   const reach = computeSecretReach(dbPass, graph);
@@ -43,7 +66,7 @@ describe("computeSecretReach", () => {
 
 describe("classifySecretReads", () => {
   const reach = computeSecretReach(dbPass, graph);
-  const classify = (reads: TSecretReadActivity[]) =>
+  const classify = (reads: TSecretLastRead[]) =>
     classifySecretReads(indexSecretReads(reads), reach, trackedSince).get(`${ActorType.IDENTITY}:identity-1`);
 
   test("counts a read of a folder that imports the secret through a chain", () => {
@@ -87,6 +110,30 @@ describe("classifySecretReads", () => {
       actorId: "identity-1",
       status: SecretReadStatus.Read,
       lastReadAt: latestRead
+    });
+  });
+});
+
+describe("getUnreadStatus", () => {
+  const windowStart = new Date("2026-09-15T00:00:00.000Z");
+
+  test("flags no reads once the secret and the access have both existed for the whole window", () => {
+    expect(getUnreadStatus(windowStart, new Date("2026-08-01T00:00:00.000Z"), windowStart)).toEqual({
+      trackedSince: windowStart,
+      readStatus: SecretReadStatus.NoReads
+    });
+  });
+
+  test("keeps tracking a secret newer than the window", () => {
+    const createdAt = new Date("2026-10-01T00:00:00.000Z");
+    expect(getUnreadStatus(createdAt, undefined, windowStart).readStatus).toBe(SecretReadStatus.Tracking);
+  });
+
+  test("keeps tracking, from the change, a reader whose access changed inside the window", () => {
+    const accessChangedAt = new Date("2026-10-10T00:00:00.000Z");
+    expect(getUnreadStatus(windowStart, accessChangedAt, windowStart)).toEqual({
+      trackedSince: accessChangedAt,
+      readStatus: SecretReadStatus.Tracking
     });
   });
 });

@@ -1,9 +1,17 @@
+import { TSecretReadActivity } from "@app/db/schemas";
 import { OrderByDirection } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 
+// A reader's last read of an object. The table also keys it by month (its partition key), which the DAL adds
+// on write and folds away on read.
+export type TSecretLastRead = Omit<TSecretReadActivity, "readMonth">;
+
+// Tracking: not read yet, but the secret or the reader's access to it is newer than the window, so it is too
+// early to call the access unused.
 export enum SecretReadStatus {
   Read = "read",
-  NoReads = "no-reads"
+  NoReads = "no-reads",
+  Tracking = "tracking"
 }
 
 // A bulk read that returned whole folders is recorded against them. Anything narrower, and every single read,
@@ -89,7 +97,7 @@ export type TGetSecretReadActivityDTO = {
 // Without a secret, the whole project is in scope.
 export type TReadActivityScope = {
   projectId: string;
-  windowDays: number;
+  windowStart: Date;
   secret?: Omit<TGetSecretReadActivityDTO, "projectId">;
 };
 

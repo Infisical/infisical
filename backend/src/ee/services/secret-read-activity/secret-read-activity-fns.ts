@@ -1,16 +1,19 @@
-import { TSecretReadActivity } from "@app/db/schemas";
 import { groupBy, prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 
 import {
   SecretReadObjectType,
   SecretReadStatus,
   TReachSecret,
+  TSecretLastRead,
   TSecretLocation,
   TSecretReach,
   TSecretReachGraph,
   TSecretReaderType,
   TSecretReadResult
 } from "./secret-read-activity-types";
+
+export const getUtcMonthStart = (date: Date, monthOffset = 0) =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + monthOffset, 1));
 
 export const normalizeSecretPath = (secretPath: string) => removeTrailingSlash(prefixWithSlash(secretPath));
 
@@ -47,7 +50,17 @@ export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGrap
   return { secretId: secret.id, secretIds, folderIds };
 };
 
-export const indexSecretReads = (reads: TSecretReadActivity[]) => groupBy(reads, (read) => read.objectId);
+export const indexSecretReads = (reads: TSecretLastRead[]) => groupBy(reads, (read) => read.objectId);
+
+// An unread secret only counts as unused once both it and the reader's current access have existed for the
+// whole window.
+export const getUnreadStatus = (trackedSince: Date, accessChangedAt: Date | undefined, windowStart: Date) => {
+  const judgedSince = accessChangedAt && accessChangedAt > trackedSince ? accessChangedAt : trackedSince;
+  return {
+    trackedSince: judgedSince,
+    readStatus: judgedSince > windowStart ? SecretReadStatus.Tracking : SecretReadStatus.NoReads
+  };
+};
 
 // Reads before trackedSince are ignored: the secret or its folder did not exist yet.
 export const classifySecretReads = (

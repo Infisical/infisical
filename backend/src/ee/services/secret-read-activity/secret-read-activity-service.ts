@@ -1,4 +1,4 @@
-import { SecretType, TableName, TSecretReadActivityInsert } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { reviveDates } from "@app/ee/services/insights/insights-fns";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
@@ -9,7 +9,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -33,6 +33,8 @@ import { TSecretReadActivityDALFactory } from "./secret-read-activity-dal";
 import {
   classifySecretReads,
   computeSecretReach,
+  getUnreadStatus,
+  getUtcMonthStart,
   indexSecretReads,
   normalizeSecretPath,
   toLocationKey
@@ -45,6 +47,7 @@ import {
   TReadActivityScope,
   TRecordBulkSecretReadDTO,
   TRecordSecretReadDTO,
+  TSecretLastRead,
   TSecretReachGraph,
   TSecretReaderType,
   TSecretReadStreamEntry,
@@ -52,13 +55,15 @@ import {
 } from "./secret-read-activity-types";
 
 const SECRET_READ_ACTIVITY_WINDOW_DAYS = 30;
-const SECRET_READ_RETENTION_DAYS = 90;
+// Matches the migration, which creates the first partitions.
+const SECRET_READ_PARTITION_MONTHS_AHEAD = 3;
 const SECRET_READ_GATE_TTL_SECONDS = 25 * 60 * 60;
 const SECRET_READ_STREAM_MAX_LENGTH = 100_000;
 const SECRET_READ_FLUSH_BATCH_SIZE = 1000;
 const SECRET_READ_FLUSH_MAX_ENTRIES = 50_000;
 const SECRET_READ_CONSUMER_LOCK_TTL_MS = 60_000;
 const SECRET_READ_STREAM_ENTRY_MAX_SECRETS = 1000;
+const UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS = 30;
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
@@ -298,7 +303,7 @@ export const secretReadActivityServiceFactory = ({
       return subtrees.get(folderId) as string[];
     };
 
-    const rows: TSecretReadActivityInsert[] = [];
+    const rows: TSecretLastRead[] = [];
     const toRow = (read: TSecretReadStreamEntry, objectType: SecretReadObjectType, objectId: string) => ({
       objectId,
       objectType,
@@ -361,7 +366,7 @@ export const secretReadActivityServiceFactory = ({
       }
     });
 
-    const rows: TSecretReadActivityInsert[] = [];
+    const rows: TSecretLastRead[] = [];
     for (const [projectId, projectReads] of Object.entries(groupBy(reads, (read) => read.projectId))) {
       // eslint-disable-next-line no-await-in-loop
       rows.push(...(await $resolveProjectReads(projectId, projectReads)));
@@ -391,6 +396,8 @@ export const secretReadActivityServiceFactory = ({
     }
   };
 
+  const $getWindowStart = () => new Date(Date.now() - SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS);
+
   const init = () => {
     const appCfg = getConfig();
     cronJob.register({
@@ -400,22 +407,28 @@ export const secretReadActivityServiceFactory = ({
       enabled: !appCfg.isSecondaryInstance,
       handler: $consumeReadStream
     });
+    // Hourly although a month's partition is needed once, so that an instance back from a long outage gets
+    // partitions for its reads within the hour.
     cronJob.register({
       name: CronJobName.SecretReadActivityPrune,
-      pattern: "15 1 * * *",
-      runHashTtlS: 3 * 24 * 60 * 60,
+      pattern: "15 * * * *",
+      runHashTtlS: 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
-        const deleted = await secretReadActivityDAL.pruneOlderThan(
-          new Date(Date.now() - SECRET_READ_RETENTION_DAYS * DAY_IN_MS)
+        const created = await secretReadActivityDAL.createMonthlyPartitions(
+          getUtcMonthStart(new Date()),
+          SECRET_READ_PARTITION_MONTHS_AHEAD + 1
         );
-        logger.info(`cron[${CronJobName.SecretReadActivityPrune}]: pruned ${deleted} rows`);
+        // Nothing reads before the window, so a month is dropped once all of it has left the window.
+        const dropped = await secretReadActivityDAL.dropPartitionsEndingBefore($getWindowStart());
+        logger.info(
+          `cron[${CronJobName.SecretReadActivityPrune}]: Maintained partitions [created=${created}] [dropped=${dropped}]`
+        );
       }
     });
   };
 
-  const $getReadActivity = async ({ projectId, windowDays, secret: requestedSecret }: TReadActivityScope) => {
-    const windowStart = new Date(Date.now() - windowDays * DAY_IN_MS);
+  const $getReadActivity = async ({ projectId, windowStart, secret: requestedSecret }: TReadActivityScope) => {
     const tree = await $loadProjectTree(projectId);
     const { folders, folderById, locationOf, pathOf } = tree;
 
@@ -547,11 +560,11 @@ export const secretReadActivityServiceFactory = ({
   ) => {
     const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
 
-    const [activity] = await $getReadActivity({
-      projectId,
-      windowDays: SECRET_READ_ACTIVITY_WINDOW_DAYS,
-      secret: { environment, secretPath, secretName }
-    });
+    const windowStart = $getWindowStart();
+    const [[activity], accessChangedAtByActorId] = await Promise.all([
+      $getReadActivity({ projectId, windowStart, secret: { environment, secretPath, secretName } }),
+      secretReadActivityDAL.findAccessChangedAt(projectId)
+    ]);
     if (!activity) {
       throw new NotFoundError({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
@@ -564,13 +577,23 @@ export const secretReadActivityServiceFactory = ({
       secretTags: activity.secret.tags?.map((tag) => tag.slug)
     });
 
-    return { trackedSince: activity.trackedSince, reads: [...activity.reads.values()] };
+    return {
+      trackedSince: activity.trackedSince,
+      windowStart,
+      reads: [...activity.reads.values()],
+      accessChanges: [...accessChangedAtByActorId].map(([actorId, accessChangedAt]) => ({ actorId, accessChangedAt }))
+    };
   };
 
-  // Everyone who can read a secret's value but has not read it, ranked by the secrets with the most of them.
+  // Everyone who can read a secret's value but has not read it, ranked by the secrets with the most of them. Those
+  // whose secret or access is newer than the window come last, marked as still being tracked.
   const $computeUnusedSecretAccess = async (projectId: string, orgId: string) => {
-    const activities = await $getReadActivity({ projectId, windowDays: SECRET_READ_ACTIVITY_WINDOW_DAYS });
-    const { userPermissions, identityPermissions } = await permissionService.getProjectPermissions(projectId, orgId);
+    const windowStart = $getWindowStart();
+    const [activities, { userPermissions, identityPermissions }, accessChangedAtByActorId] = await Promise.all([
+      $getReadActivity({ projectId, windowStart }),
+      permissionService.getProjectPermissions(projectId, orgId),
+      secretReadActivityDAL.findAccessChangedAt(projectId)
+    ]);
     // Principals with identical rules always get the same answer, so each distinct rule set is checked once.
     const principalGroups = Object.values(
       groupBy(
@@ -610,14 +633,19 @@ export const secretReadActivityServiceFactory = ({
               principalType: principal.actorType,
               principalId: principal.id,
               principalName: principal.name,
-              readStatus: SecretReadStatus.NoReads,
               lastReadAt: null,
-              trackedSince
+              ...getUnreadStatus(trackedSince, accessChangedAtByActorId.get(principal.id), windowStart)
             };
           })
       );
     }
-    return rowsBySecret.sort((a, b) => b.length - a.length).flat();
+    const countNoReads = (rows: TUnusedSecretAccess[]) =>
+      rows.filter((row) => row.readStatus === SecretReadStatus.NoReads).length;
+    const ranked = rowsBySecret.sort((a, b) => countNoReads(b) - countNoReads(a)).flat();
+    return [
+      ...ranked.filter((row) => row.readStatus === SecretReadStatus.NoReads),
+      ...ranked.filter((row) => row.readStatus === SecretReadStatus.Tracking)
+    ];
   };
 
   // The whole project is computed once and cached, so paging through it is cheap.
@@ -631,7 +659,7 @@ export const secretReadActivityServiceFactory = ({
     const unusedAccess = await withCache({
       keyStore,
       key: cacheKey,
-      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      ttlSeconds: UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS,
       fetcher: () => $computeUnusedSecretAccess(projectId, actor.orgId),
       reviver: (parsed) => {
         reviveDates(parsed, "lastReadAt", "trackedSince");

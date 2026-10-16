@@ -12,7 +12,8 @@ export const SecretReadActivitySchema = z.object({
   objectType: z.string(),
   actorId: z.string().uuid(),
   actorType: z.string(),
-  lastReadAt: z.date()
+  lastReadAt: z.date(),
+  readMonth: z.date()
 });
 
 export type TSecretReadActivity = z.infer<typeof SecretReadActivitySchema>;

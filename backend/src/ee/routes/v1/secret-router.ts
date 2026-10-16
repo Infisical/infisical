@@ -109,12 +109,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           readActivity: z.object({
             trackedSince: z.date(),
+            windowStart: z.date(),
             reads: z
               .object({
                 actorType: z.enum([ActorType.USER, ActorType.IDENTITY]),
                 actorId: z.string(),
                 status: z.nativeEnum(SecretReadStatus),
                 lastReadAt: z.date()
+              })
+              .array(),
+            accessChanges: z
+              .object({
+                actorId: z.string(),
+                accessChangedAt: z.date()
               })
               .array()
           })
