@@ -206,7 +206,7 @@ const CapabilityUpgradeDialog = ({
         <>
           <Separator />
           <section aria-label="Alternative option" className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">{alternative.title}</h3>
+            <h3 className="text-sm">{alternative.title}</h3>
             <p className="text-sm text-muted">{alternative.description}</p>
             <Button
               variant="outline"
