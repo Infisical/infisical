@@ -353,7 +353,7 @@ export const SecretScanningFindingsTable = ({
         <CardHeader>
           <CardTitle>
             Findings
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/usage#findings" />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/findings" />
           </CardTitle>
           <CardDescription>{description}</CardDescription>
           <div className="flex flex-wrap items-center gap-2">
