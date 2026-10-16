@@ -99,9 +99,6 @@ const buildSampleData = () => {
   return { staticSecretUsage, accessVolume };
 };
 
-// React 18 does not type the inert attribute yet.
-const INERT_PROPS: { inert?: "" } = { inert: "" };
-
 type Props = {
   onUpgrade: () => void;
 };
@@ -126,7 +123,7 @@ export const InsightsUpgradePreview = ({ onUpgrade }: Props) => {
     <div className="grid w-full pb-8">
       <div
         aria-hidden
-        {...INERT_PROPS}
+        inert
         className="pointer-events-none col-start-1 row-start-1 flex flex-col gap-4 [mask-image:linear-gradient(to_bottom,black_55%,transparent_100%)] blur-[3px] select-none"
       >
         <SummaryCard summary={SAMPLE_SUMMARY} />
