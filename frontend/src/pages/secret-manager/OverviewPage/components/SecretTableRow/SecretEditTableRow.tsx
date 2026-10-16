@@ -1105,9 +1105,6 @@ export const SecretEditTableRow = ({
   const shouldStayExpanded =
     isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
 
-  const [isHoveringActionZone, setIsHoveringActionZone] = useState(false);
-  const showMenuWhileFocused = isHoveringActionZone || shouldStayExpanded;
-
   const getTooltipContentForSecretSharing = () => {
     if (!currentProject.secretSharing) {
       return "Secret Sharing Disabled";
@@ -1378,24 +1375,6 @@ export const SecretEditTableRow = ({
           )}
         </ProjectPermissionCan>
       )}
-      {isFieldActive &&
-        !(
-          isDirty &&
-          (dirtyFields.key || dirtyFields.value) &&
-          !isImportedSecret &&
-          !isBatchMode
-        ) && (
-          <div
-            className={twMerge(
-              "absolute top-0 bottom-0 z-10 flex w-8 cursor-pointer items-start justify-center",
-              isSingleEnvView ? "right-0 pt-[11px] pr-[6px]" : "-right-3 pt-[8px] pr-[12px]"
-            )}
-            onMouseEnter={() => setIsHoveringActionZone(true)}
-            onMouseLeave={() => setIsHoveringActionZone(false)}
-          >
-            <EllipsisIcon className="animate-fade-in text-muted-foreground/40 size-4" />
-          </div>
-        )}
       {!(
         isDirty &&
         (dirtyFields.key || dirtyFields.value) &&
@@ -1404,17 +1383,11 @@ export const SecretEditTableRow = ({
       ) && (
         <div
           data-table-row-filter-positioner
-          onMouseEnter={() => setIsHoveringActionZone(true)}
-          onMouseLeave={() => setIsHoveringActionZone(false)}
           className={twMerge(
             "absolute z-20",
             "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
             TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
             shouldStayExpanded && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
-            isFieldActive &&
-              !showMenuWhileFocused &&
-              "[@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0",
-            isFieldActive && showMenuWhileFocused && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
