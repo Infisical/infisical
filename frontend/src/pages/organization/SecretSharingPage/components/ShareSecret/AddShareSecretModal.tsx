@@ -27,17 +27,15 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
             Create an encrypted link with controls for access, expiration, and delivery.
           </SheetDescription>
         </SheetHeader>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-          <ShareSecretForm
-            isPublic={false}
-            value={(popUp.createSharedSecret.data as { value?: string })?.value}
-            allowSecretSharingOutsideOrganization={
-              currentOrg?.allowSecretSharingOutsideOrganization ?? true
-            }
-            maxSharedSecretLifetime={currentOrg?.maxSharedSecretLifetime}
-            maxSharedSecretViewLimit={currentOrg?.maxSharedSecretViewLimit}
-          />
-        </div>
+        <ShareSecretForm
+          isPublic={false}
+          value={(popUp.createSharedSecret.data as { value?: string })?.value}
+          allowSecretSharingOutsideOrganization={
+            currentOrg?.allowSecretSharingOutsideOrganization ?? true
+          }
+          maxSharedSecretLifetime={currentOrg?.maxSharedSecretLifetime}
+          maxSharedSecretViewLimit={currentOrg?.maxSharedSecretViewLimit}
+        />
       </SheetContent>
     </Sheet>
   );
