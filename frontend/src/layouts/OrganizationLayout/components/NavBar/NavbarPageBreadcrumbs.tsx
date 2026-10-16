@@ -32,7 +32,7 @@ export const NavbarPageBreadcrumbs = () => {
 
   return (
     <Breadcrumb className="hidden h-full min-w-0 items-center border-l border-border-soft pr-2 pl-4 md:flex">
-      <BreadcrumbList className="flex-nowrap text-muted">
+      <BreadcrumbList className="min-w-0 flex-nowrap">
         {breadcrumbs.map((crumb, index) => {
           const isCurrentPage = index === breadcrumbs.length - 1;
           return (
