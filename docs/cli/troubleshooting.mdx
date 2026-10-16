@@ -18,36 +18,43 @@ When a command fails, the CLI prints the error to stderr as plain text and exits
 
 ## Save the error
 
-To keep the error, redirect stderr to a file with `2>`. For example, this command logs in with [Universal Auth](/documentation/platform/identities/universal-auth), and if the login fails, the error is saved to `infisical-login.err`:
+To keep the error, redirect stderr to a file with `2>`. For example, this command lists the folders at the root of a project's `prod` environment, and if it fails, the error is saved to `infisical.err`:
 
 ```bash
-export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
-export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+export INFISICAL_TOKEN=<access-token>
 
-infisical login --method=universal-auth --silent 2>infisical-login.err
+infisical sm secrets folders get --projectId=<project-id> --env=prod --path=/ --silent 2>infisical.err
 ```
 
-- The CLI reads the Client ID and Client Secret from the environment variables, so the Client Secret doesn't appear in the command
-- `2>` saves only stderr, so anything the command prints to stdout, such as the access token after a successful login, stays out of the file
+- The CLI reads the machine identity's access token from `INFISICAL_TOKEN`, so the token doesn't appear in the command
+- `2>` saves only stderr, so the folder list the command prints to stdout stays out of the file
 - `--silent` keeps update notices out of the file
 
-In a CI pipeline, use your pipeline's secret store to set the two environment variables, and keep `infisical-login.err` as a build artifact.
+In a CI pipeline, use your pipeline's secret store to set `INFISICAL_TOKEN`, and keep `infisical.err` as a build artifact.
 
 ## What the saved error contains
 
-If the login in the [example](#save-the-error) fails, it writes a file like this one:
+If the machine identity in the [example](#save-the-error) isn't a member of the project, the command writes a file like this one:
 
 ```text
-error: unable to authenticate with universal auth [err=APIError: CallUniversalAuthLogin unsuccessful response [POST https://app.infisical.com/api/v1/auth/universal-auth/login] [status-code=401] [reqId=req-GtrYueO5e3VWDG] [message="Invalid credentials"]].
+Request: GET https://app.infisical.com/api/v1/folders?directory=%2F&environment=prod&workspaceId=626884b6-d49f-425b-8e63-391a339ec94f
+Instance: https://app.infisical.com
+Request ID: req-7PQupHqgWGjWDC
+Response Code: 403 Forbidden
+Message: You are not a member of this project with ID 626884b6-d49f-425b-8e63-391a339ec94f. Please assign this identity to the project with the appropriate permissions, then try again.
+Context:
+  Check your credentials or verify you're using the correct domain. Current domain: https://app.infisical.com
 
-Check your credentials or verify you're using the correct domain. Current domain: https://app.infisical.com
+  • Unable to get folders
+
+If this issue continues, get support at https://infisical.com/slack
 ```
 
-The error shows the request ID in `reqId`, the HTTP status code in `status-code`, and the message from the server in `message`. It doesn't contain the Client Secret or an access token, so you can store it and share it.
+The error shows the request ID in `Request ID`, the HTTP status code in `Response Code`, and the message from the server in `Message`. It doesn't contain the access token, so you can store it and share it.
 
 ## Look up the request ID
 
 Where you look up the request ID depends on where Infisical runs:
 
-- If you self-host Infisical, search your Infisical server's logs for the request ID (every line the server logs for that request includes it, along with the route, the response status, and the error)
+- If you self-host Infisical, search your Infisical server's logs for the request ID (every line the server logs for that request includes it, and together those lines show the route, the response status, and the error)
 - If you use Infisical Cloud, share the request ID in the [Infisical community](https://community.infisical.com/)
