@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useId, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -31,15 +31,20 @@ type Props = {
 export const ConfirmationAlertDialog = ({
   isOpen,
   onOpenChange,
-  title,
-  description,
-  confirmKey,
-  confirmLabel = "Delete",
-  confirmVariant = "danger",
   isPending,
   onConfirm,
-  children
+  ...contentProps
 }: Props) => {
+  const lastOpenContent = useRef(contentProps);
+  if (isOpen) lastOpenContent.current = contentProps;
+  const {
+    title,
+    description,
+    confirmKey,
+    confirmLabel = "Delete",
+    confirmVariant = "danger",
+    children
+  } = isOpen ? contentProps : lastOpenContent.current;
   const [typedValue, setTypedValue] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
   const confirmationInputId = useId();
