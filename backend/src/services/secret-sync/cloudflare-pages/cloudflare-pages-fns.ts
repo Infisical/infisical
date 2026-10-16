@@ -5,11 +5,13 @@ import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payloa
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { CloudflarePagesVariableType } from "./cloudflare-pages-constants";
 import { TCloudflarePagesSyncWithCredentials } from "./cloudflare-pages-types";
 
 const getProjectEnvironmentSecrets = async (secretSync: TCloudflarePagesSyncWithCredentials) => {
   const {
     destinationConfig,
+    syncOptions: { variableType = CloudflarePagesVariableType.Secret },
     connection: {
       credentials: { apiToken, accountId }
     }
@@ -21,7 +23,7 @@ const getProjectEnvironmentSecrets = async (secretSync: TCloudflarePagesSyncWith
         deployment_configs: Record<
           string,
           {
-            env_vars: Record<string, { type: "plain_text" | "secret_text"; value: string }>;
+            env_vars: Record<string, { type: CloudflarePagesVariableType; value: string }>;
           }
         >;
       };
@@ -36,10 +38,13 @@ const getProjectEnvironmentSecrets = async (secretSync: TCloudflarePagesSyncWith
     )
   ).data.result.deployment_configs[destinationConfig.environment].env_vars;
 
-  return Object.entries(secrets ?? {}).map(([key, envVar]) => ({
-    key,
-    value: envVar.value
-  }));
+  // A sync only owns variables of the type it writes, so syncs of different types can share an environment.
+  return Object.entries(secrets ?? {})
+    .filter(([, envVar]) => envVar.type === variableType)
+    .map(([key, envVar]) => ({
+      key,
+      value: envVar.value
+    }));
 };
 
 export const CloudflarePagesSyncFns = {
@@ -47,6 +52,7 @@ export const CloudflarePagesSyncFns = {
     const secretMap = payload.flatten();
     const {
       destinationConfig,
+      syncOptions: { variableType = CloudflarePagesVariableType.Secret },
       connection: {
         credentials: { apiToken, accountId }
       }
@@ -55,7 +61,7 @@ export const CloudflarePagesSyncFns = {
     // Create/update secret entries
     let secretEntries: [string, object | null][] = Object.entries(secretMap).map(([key, val]) => [
       key,
-      { type: "secret_text", value: val.value }
+      { type: variableType, value: val.value }
     ]);
 
     // Handle deletions if not disabled

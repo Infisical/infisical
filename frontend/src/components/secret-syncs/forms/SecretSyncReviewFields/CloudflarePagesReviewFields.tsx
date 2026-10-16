@@ -2,7 +2,20 @@ import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import { CLOUDFLARE_PAGES_VARIABLE_TYPE_LABELS } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
+
+export const CloudflarePagesSyncOptionsReviewFields = () => {
+  const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.CloudflarePages }>();
+  const variableType = watch("syncOptions.variableType");
+
+  return (
+    <Detail>
+      <DetailLabel>Variable Type</DetailLabel>
+      <DetailValue>{CLOUDFLARE_PAGES_VARIABLE_TYPE_LABELS[variableType]}</DetailValue>
+    </Detail>
+  );
+};
 
 export const CloudflarePagesSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.CloudflarePages }>();

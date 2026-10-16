@@ -2,10 +2,14 @@ import { z } from "zod";
 
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
+import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
 
 export const CloudflareWorkersSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
-    syncNonSecretBindings: z.boolean().optional().default(false)
+    syncNonSecretBindings: z.boolean().optional().default(false),
+    variableType: z
+      .nativeEnum(CloudflareWorkersVariableType)
+      .default(CloudflareWorkersVariableType.Secret)
   })
 ).merge(
   z.object({

@@ -12,6 +12,7 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { CloudflareWorkersVariableType } from "./cloudflare-workers-constants";
 
 const CloudflareWorkersSyncDestinationConfigSchema = z.object({
   scriptId: z
@@ -29,7 +30,11 @@ const CloudflareWorkersSyncAdditionalOptionsSchema = z.object({
   syncNonSecretBindings: z
     .boolean()
     .optional()
-    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_WORKERS.syncNonSecretBindings)
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_WORKERS.syncNonSecretBindings),
+  variableType: z
+    .nativeEnum(CloudflareWorkersVariableType)
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_WORKERS.variableType)
 });
 
 const CloudflareWorkersSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };

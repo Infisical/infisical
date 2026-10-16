@@ -3292,9 +3292,15 @@ export const SecretSyncs = {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
     },
+    CLOUDFLARE_PAGES: {
+      variableType:
+        "The type of environment variable to sync secrets as: secret_text (default) or plain_text. Infisical only deletes variables of this type."
+    },
     CLOUDFLARE_WORKERS: {
       syncNonSecretBindings:
-        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
+        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings. Only applies when variableType is secret_text.",
+      variableType:
+        "The type of variable to sync secrets as: secret_text (default), plain_text or json. With plain_text or json, Infisical replaces any secret or variable of the same name and only deletes variables of that type."
     },
     SPACELIFT: {
       writeOnly:

@@ -1,6 +1,11 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
-import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
+import { RootSyncOptions, TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
+
+export enum CloudflarePagesVariableType {
+  Secret = "secret_text",
+  Text = "plain_text"
+}
 
 export type TCloudflarePagesSync = TRootSecretSync & {
   destination: SecretSync.CloudflarePages;
@@ -12,5 +17,8 @@ export type TCloudflarePagesSync = TRootSecretSync & {
     app: AppConnection.Cloudflare;
     name: string;
     id: string;
+  };
+  syncOptions: RootSyncOptions & {
+    variableType?: CloudflarePagesVariableType;
   };
 };
