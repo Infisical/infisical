@@ -299,7 +299,7 @@ const ProjectIdentityFormContent = ({
             />
             <p className="text-sm text-muted">
               {mode === CreateProjectIdentityMode.Assign
-                ? "Reuse an existing machine identity from your organization. One identity can be added to several projects."
+                ? "Reuse an organization machine identity, which can be added to several projects."
                 : `Create a dedicated machine identity managed at the ${productLabel} level.`}
             </p>
           </div>
