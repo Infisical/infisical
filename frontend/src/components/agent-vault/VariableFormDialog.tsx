@@ -42,6 +42,10 @@ import {
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
+// zod reports a refine as "custom", and the taken-key check is the key's only one, so this tells a taken key apart
+// from the key's other errors. The API's duplicate is flagged with it too.
+const TAKEN_KEY_ERROR_TYPE = "custom";
+
 // eslint-disable-next-line no-control-regex
 const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
 
@@ -106,6 +110,7 @@ const VariableForm = ({
     control,
     handleSubmit,
     setError,
+    clearErrors,
     setFocus,
     trigger,
     getFieldState,
@@ -133,11 +138,27 @@ const VariableForm = ({
   });
   takenKeysRef.current = existing;
   // Re-checked when the answer flags the key, and when a key that was flagged is changed, so the message comes
-  // and goes with the lookup rather than waiting for a submit.
+  // and goes with the lookup rather than waiting for a submit. A key that is never looked up (empty, malformed, or
+  // the variable's own) can't be taken, so a taken-key message goes once it settles there. Its other errors stay
+  // until the form validates again.
+  const isKeySettled = debouncedKey === key;
   useEffect(() => {
-    if (!lookupKey) return;
-    if (existing.has(lookupKey) || getFieldState("key").error) trigger("key");
-  }, [lookupKey, existing, trigger, getFieldState]);
+    if (!isOpen || isSubmitting || !isKeySettled) return;
+    if (lookupKey) {
+      if (existing.has(lookupKey) || getFieldState("key").error) trigger("key");
+      return;
+    }
+    if (getFieldState("key").error?.type === TAKEN_KEY_ERROR_TYPE) clearErrors("key");
+  }, [
+    isOpen,
+    isSubmitting,
+    isKeySettled,
+    lookupKey,
+    existing,
+    trigger,
+    getFieldState,
+    clearErrors
+  ]);
   const isRenaming = Boolean(variable) && Boolean(key) && key !== variable?.key;
 
   // A key that arrives filled in leaves the value as the one thing left to type.
@@ -172,7 +193,7 @@ const VariableForm = ({
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.endsWith("already exists.")
       ) {
-        setError("key", { message: serverResponse.message });
+        setError("key", { type: TAKEN_KEY_ERROR_TYPE, message: serverResponse.message });
       }
     }
   };
