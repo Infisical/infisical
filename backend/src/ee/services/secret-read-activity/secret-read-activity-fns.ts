@@ -53,14 +53,9 @@ export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGrap
 export const indexSecretReads = (reads: TSecretLastRead[]) => groupBy(reads, (read) => read.objectId);
 
 // An unread secret only counts as unused once both it and the reader's current access have existed for the
-// whole window.
-export const getUnreadStatus = (trackedSince: Date, accessChangedAt: Date | undefined, windowStart: Date) => {
-  const judgedSince = accessChangedAt && accessChangedAt > trackedSince ? accessChangedAt : trackedSince;
-  return {
-    trackedSince: judgedSince,
-    readStatus: judgedSince > windowStart ? SecretReadStatus.Tracking : SecretReadStatus.NoReads
-  };
-};
+// whole window. Before that, the reader has not had the whole window to read it.
+export const coversWholeWindow = (trackedSince: Date, accessChangedAt: Date | undefined, windowStart: Date) =>
+  trackedSince <= windowStart && (!accessChangedAt || accessChangedAt <= windowStart);
 
 // Reads before trackedSince are ignored: the secret or its folder did not exist yet.
 export const classifySecretReads = (

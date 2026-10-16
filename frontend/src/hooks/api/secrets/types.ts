@@ -164,22 +164,16 @@ export type TGetSecretReadActivityDTO = Omit<TGetSecretAccessListDTO, "includeAl
 
 export enum SecretReadStatus {
   Read = "read",
-  NoReads = "no-reads",
-  Tracking = "tracking"
+  NoReads = "no-reads"
 }
 
 export type TSecretReadActivity = {
   trackedSince: string;
-  windowStart: string;
   reads: {
     actorType: "user" | "identity";
     actorId: string;
     status: SecretReadStatus;
     lastReadAt: string;
-  }[];
-  accessChanges: {
-    actorId: string;
-    accessChangedAt: string;
   }[];
 };
 

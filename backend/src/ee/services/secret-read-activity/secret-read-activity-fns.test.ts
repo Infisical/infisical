@@ -5,7 +5,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import {
   classifySecretReads,
   computeSecretReach,
-  getUnreadStatus,
+  coversWholeWindow,
   getUtcMonthStart,
   indexSecretReads
 } from "./secret-read-activity-fns";
@@ -114,26 +114,19 @@ describe("classifySecretReads", () => {
   });
 });
 
-describe("getUnreadStatus", () => {
+describe("coversWholeWindow", () => {
   const windowStart = new Date("2026-09-15T00:00:00.000Z");
 
-  test("flags no reads once the secret and the access have both existed for the whole window", () => {
-    expect(getUnreadStatus(windowStart, new Date("2026-08-01T00:00:00.000Z"), windowStart)).toEqual({
-      trackedSince: windowStart,
-      readStatus: SecretReadStatus.NoReads
-    });
+  test("is true once the secret and the access have both existed for the whole window", () => {
+    expect(coversWholeWindow(windowStart, new Date("2026-08-01T00:00:00.000Z"), windowStart)).toBe(true);
+    expect(coversWholeWindow(windowStart, undefined, windowStart)).toBe(true);
   });
 
-  test("keeps tracking a secret newer than the window", () => {
-    const createdAt = new Date("2026-10-01T00:00:00.000Z");
-    expect(getUnreadStatus(createdAt, undefined, windowStart).readStatus).toBe(SecretReadStatus.Tracking);
+  test("is false for a secret newer than the window", () => {
+    expect(coversWholeWindow(new Date("2026-10-01T00:00:00.000Z"), undefined, windowStart)).toBe(false);
   });
 
-  test("keeps tracking, from the change, a reader whose access changed inside the window", () => {
-    const accessChangedAt = new Date("2026-10-10T00:00:00.000Z");
-    expect(getUnreadStatus(windowStart, accessChangedAt, windowStart)).toEqual({
-      trackedSince: accessChangedAt,
-      readStatus: SecretReadStatus.Tracking
-    });
+  test("is false for a reader whose access changed inside the window", () => {
+    expect(coversWholeWindow(windowStart, new Date("2026-10-10T00:00:00.000Z"), windowStart)).toBe(false);
   });
 });

@@ -33,7 +33,7 @@ import { TSecretReadActivityDALFactory } from "./secret-read-activity-dal";
 import {
   classifySecretReads,
   computeSecretReach,
-  getUnreadStatus,
+  coversWholeWindow,
   getUtcMonthStart,
   indexSecretReads,
   normalizeSecretPath,
@@ -560,11 +560,11 @@ export const secretReadActivityServiceFactory = ({
   ) => {
     const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
 
-    const windowStart = $getWindowStart();
-    const [[activity], accessChangedAtByActorId] = await Promise.all([
-      $getReadActivity({ projectId, windowStart, secret: { environment, secretPath, secretName } }),
-      secretReadActivityDAL.findAccessChangedAt(projectId)
-    ]);
+    const [activity] = await $getReadActivity({
+      projectId,
+      windowStart: $getWindowStart(),
+      secret: { environment, secretPath, secretName }
+    });
     if (!activity) {
       throw new NotFoundError({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
@@ -577,16 +577,11 @@ export const secretReadActivityServiceFactory = ({
       secretTags: activity.secret.tags?.map((tag) => tag.slug)
     });
 
-    return {
-      trackedSince: activity.trackedSince,
-      windowStart,
-      reads: [...activity.reads.values()],
-      accessChanges: [...accessChangedAtByActorId].map(([actorId, accessChangedAt]) => ({ actorId, accessChangedAt }))
-    };
+    return { trackedSince: activity.trackedSince, reads: [...activity.reads.values()] };
   };
 
-  // Everyone who can read a secret's value but has not read it, ranked by the secrets with the most of them. Those
-  // whose secret or access is newer than the window come last, marked as still being tracked.
+  // Everyone who can read a secret's value but has not read it in the whole window, ranked by the secrets with the
+  // most of them.
   const $computeUnusedSecretAccess = async (projectId: string, orgId: string) => {
     const windowStart = $getWindowStart();
     const [activities, { userPermissions, identityPermissions }, accessChangedAtByActorId] = await Promise.all([
@@ -625,7 +620,12 @@ export const secretReadActivityServiceFactory = ({
           )
           .flat()
           .flatMap((principal) => {
-            if (reads.has(`${principal.actorType}:${principal.id}`)) return [];
+            if (
+              reads.has(`${principal.actorType}:${principal.id}`) ||
+              !coversWholeWindow(trackedSince, accessChangedAtByActorId.get(principal.id), windowStart)
+            ) {
+              return [];
+            }
             return {
               secretKey: secret.key,
               environment,
@@ -633,19 +633,13 @@ export const secretReadActivityServiceFactory = ({
               principalType: principal.actorType,
               principalId: principal.id,
               principalName: principal.name,
-              lastReadAt: null,
-              ...getUnreadStatus(trackedSince, accessChangedAtByActorId.get(principal.id), windowStart)
+              readStatus: SecretReadStatus.NoReads,
+              lastReadAt: null
             };
           })
       );
     }
-    const countNoReads = (rows: TUnusedSecretAccess[]) =>
-      rows.filter((row) => row.readStatus === SecretReadStatus.NoReads).length;
-    const ranked = rowsBySecret.sort((a, b) => countNoReads(b) - countNoReads(a)).flat();
-    return [
-      ...ranked.filter((row) => row.readStatus === SecretReadStatus.NoReads),
-      ...ranked.filter((row) => row.readStatus === SecretReadStatus.Tracking)
-    ];
+    return rowsBySecret.sort((a, b) => b.length - a.length).flat();
   };
 
   // The whole project is computed once and cached, so paging through it is cheap.
@@ -662,7 +656,7 @@ export const secretReadActivityServiceFactory = ({
       ttlSeconds: UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS,
       fetcher: () => $computeUnusedSecretAccess(projectId, actor.orgId),
       reviver: (parsed) => {
-        reviveDates(parsed, "lastReadAt", "trackedSince");
+        reviveDates(parsed, "lastReadAt");
       }
     });
     const remainingTTL = await getCacheTtl(keyStore, cacheKey);
@@ -671,11 +665,7 @@ export const secretReadActivityServiceFactory = ({
     const sorted = orderBy
       ? [...unusedAccess].sort((a, b) => {
           const [first, second] = orderDirection === OrderByDirection.DESC ? [b, a] : [a, b];
-          const firstValue = first[orderBy];
-          const secondValue = second[orderBy];
-          return firstValue instanceof Date && secondValue instanceof Date
-            ? firstValue.getTime() - secondValue.getTime()
-            : String(firstValue).localeCompare(String(secondValue));
+          return first[orderBy].localeCompare(second[orderBy]);
         })
       : unusedAccess;
 

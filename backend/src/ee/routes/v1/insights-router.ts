@@ -501,8 +501,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
               principalId: z.string(),
               principalName: z.string(),
               readStatus: z.nativeEnum(SecretReadStatus),
-              lastReadAt: z.date().nullable(),
-              trackedSince: z.date()
+              lastReadAt: z.date().nullable()
             })
             .array()
         })

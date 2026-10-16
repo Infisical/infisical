@@ -1108,11 +1108,12 @@ and the events cannot say which folders a recursive read returned. Instead it ke
   referencing it, or the source of a replication import (imports and references check the reader's own access
   to the source, so revoking it would break them). The card computes the whole project once and caches it for
   5 minutes, grouping principals by identical rules so each rule set is checked once per secret.
-- **Unread is only "No reads" after a full window.** A principal who has not read a secret is `tracking`, not
-  `no-reads`, until both the secret (`trackedSince`) and their access have existed for the whole window. Access
-  age is `findAccessChangedAt`: the latest membership creation, role or privilege (folder grants included)
-  creation or edit. Which secrets a change opened up is not recorded, so any change restarts the window, and a
-  custom role's rules being edited is not seen at all.
+- **The card only judges a full window.** It lists a principal who has not read a secret only once both the
+  secret (`trackedSince`) and their access have existed for the whole window, and leaves them out before that;
+  there is no separate status for it. Access age is `findAccessChangedAt`: the latest membership creation, role
+  or privilege (folder grants included) creation or edit. Which secrets a change opened up is not recorded, so
+  any change restarts the window, and a custom role's rules being edited is not seen at all. The per-secret
+  sheet shows the plain fact instead: a read, or "No reads".
 
 ### Audit Log Event Classes and Settings
 

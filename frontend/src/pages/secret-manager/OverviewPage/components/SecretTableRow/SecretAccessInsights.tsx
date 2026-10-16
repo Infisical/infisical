@@ -484,13 +484,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     () => new Map(readActivity?.reads.map((read) => [`${read.actorType}:${read.actorId}`, read])),
     [readActivity]
   );
-  const accessChangedAt = useMemo(
-    () =>
-      new Map(
-        readActivity?.accessChanges.map((change) => [change.actorId, change.accessChangedAt])
-      ),
-    [readActivity]
-  );
 
   let readActivityDescription = "Loading read activity...";
   if (readActivityError) {
@@ -508,23 +501,10 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     if (!readActivity) return null;
 
     const read = lastReads.get(`${row.type}:${row.entry.id}`);
-    if (read) return <SecretReadStatusBadge status={read.status} lastReadAt={read.lastReadAt} />;
-
-    // Mirrors the Insights card: unread access is only called unused once both the secret and the access
-    // have existed for the whole window.
-    const changedAt = accessChangedAt.get(row.entry.id);
-    const trackedSince =
-      changedAt && new Date(changedAt) > new Date(readActivity.trackedSince)
-        ? changedAt
-        : readActivity.trackedSince;
     return (
       <SecretReadStatusBadge
-        status={
-          new Date(trackedSince) > new Date(readActivity.windowStart)
-            ? SecretReadStatus.Tracking
-            : SecretReadStatus.NoReads
-        }
-        trackedSince={trackedSince}
+        status={read?.status ?? SecretReadStatus.NoReads}
+        lastReadAt={read?.lastReadAt}
       />
     );
   };

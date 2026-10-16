@@ -58,8 +58,7 @@ export enum UnusedSecretAccessOrderBy {
   Environment = "environment",
   SecretPath = "secretPath",
   Principal = "principalName",
-  Status = "readStatus",
-  TrackedSince = "trackedSince"
+  Status = "readStatus"
 }
 
 export type TGetUnusedSecretAccessDTO = {
@@ -79,7 +78,6 @@ export type TUnusedSecretAccess = {
   principalName: string;
   readStatus: SecretReadStatus;
   lastReadAt: string | null;
-  trackedSince: string;
 };
 
 export type TGetUnusedSecretAccessResponse = {

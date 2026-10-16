@@ -1,5 +1,4 @@
 import axios from "axios";
-import { format } from "date-fns";
 import { ChevronDownIcon, FolderIcon, HardDriveIcon, KeyIcon, UserIcon } from "lucide-react";
 
 import { SecretReadStatusBadge } from "@app/components/secrets/SecretReadStatusBadge";
@@ -85,8 +84,7 @@ export const UnusedSecretAccessCard = () => {
     { column: UnusedSecretAccessOrderBy.Environment, label: "Environment" },
     { column: UnusedSecretAccessOrderBy.SecretPath, label: "Path" },
     { column: UnusedSecretAccessOrderBy.Principal, label: "Principal" },
-    { column: UnusedSecretAccessOrderBy.Status, label: "Status" },
-    { column: UnusedSecretAccessOrderBy.TrackedSince, label: "Tracked Since" }
+    { column: UnusedSecretAccessOrderBy.Status, label: "Status" }
   ];
 
   return (
@@ -124,7 +122,8 @@ export const UnusedSecretAccessCard = () => {
             <EmptyHeader>
               <EmptyTitle>No unused access</EmptyTitle>
               <EmptyDescription>
-                Everyone who can read this project&apos;s secrets has read them in the last 30 days.
+                Access shows here once someone has been able to read a secret for 30 days without
+                reading it.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -186,10 +185,8 @@ export const UnusedSecretAccessCard = () => {
                         <SecretReadStatusBadge
                           status={row.readStatus}
                           lastReadAt={row.lastReadAt}
-                          trackedSince={row.trackedSince}
                         />
                       </TableCell>
-                      <TableCell>{format(new Date(row.trackedSince), "PP")}</TableCell>
                     </TableRow>
                   );
                 })}

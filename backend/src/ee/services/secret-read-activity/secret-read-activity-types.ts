@@ -6,12 +6,9 @@ import { ActorType } from "@app/services/auth/auth-type";
 // on write and folds away on read.
 export type TSecretLastRead = Omit<TSecretReadActivity, "readMonth">;
 
-// Tracking: not read yet, but the secret or the reader's access to it is newer than the window, so it is too
-// early to call the access unused.
 export enum SecretReadStatus {
   Read = "read",
-  NoReads = "no-reads",
-  Tracking = "tracking"
+  NoReads = "no-reads"
 }
 
 // A bulk read that returned whole folders is recorded against them. Anything narrower, and every single read,
@@ -110,7 +107,6 @@ export type TUnusedSecretAccess = {
   principalName: string;
   readStatus: SecretReadStatus;
   lastReadAt: Date | null;
-  trackedSince: Date;
 };
 
 // Each value is the row field it sorts by.
@@ -119,8 +115,7 @@ export enum UnusedSecretAccessOrderBy {
   Environment = "environment",
   SecretPath = "secretPath",
   Principal = "principalName",
-  Status = "readStatus",
-  TrackedSince = "trackedSince"
+  Status = "readStatus"
 }
 
 export type TListUnusedSecretAccessDTO = {
