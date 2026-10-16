@@ -13,6 +13,7 @@ import {
   EmptyTitle
 } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import {
   GeneralPermissionPolicies,
@@ -43,6 +44,7 @@ type Props = {
 };
 
 export const RolePermissionsSection = ({ roleId }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg, isRootOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -126,7 +128,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   Discard
                 </Button>
               )}
-              <Button variant="org" type="submit" disabled={isSubmitting || !isDirty}>
+              <Button variant={scopeVariant} type="submit" disabled={isSubmitting || !isDirty}>
                 <SaveIcon className="size-4" />
                 Save
               </Button>
