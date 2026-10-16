@@ -33,18 +33,12 @@ To list the signing algorithms for a key, call [the signing algorithms endpoint]
     <Steps>
       <Step>
         In your KMS project, go to **Overview**, select the options menu on the key's row, then select **Sign Data**.
-
-        ![kms key options](/images/platform/kms/infisical-kms/signing/sign-options.png)
       </Step>
       <Step>
         Enter your data in **Data to Sign**, and pick a **Signing Algorithm**. If your data is already Base64 encoded, turn on **Data is Base64 encoded**.
-
-        ![kms sign data](/images/platform/kms/infisical-kms/signing/sign-data-modal.png)
       </Step>
       <Step>
         Select **Sign**, then copy the signature from **Data Signature**.
-
-        ![kms signed data](/images/platform/kms/infisical-kms/signing/copy-signature.png)
       </Step>
     </Steps>
   </Tab>
@@ -88,13 +82,9 @@ To list the signing algorithms for a key, call [the signing algorithms endpoint]
       </Step>
       <Step>
         Enter the data in **Data to Verify** and the signature in **Signature of Data**, then pick the **Signing Algorithm** that the data was signed with. If your data is already Base64 encoded, turn on **Data is Base64 encoded**.
-
-        ![kms verify data](/images/platform/kms/infisical-kms/signing/verify-data-modal.png)
       </Step>
       <Step>
         Select **Verify**. **Signature Status** shows **Valid** if the signature matches the data, and **Invalid** if it doesn't.
-
-        ![kms verified data](/images/platform/kms/infisical-kms/signing/signature-verified.png)
       </Step>
     </Steps>
   </Tab>
