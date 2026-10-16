@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
+import {
+  getSelfHostedLicenseState,
+  SELF_HOSTED_LICENSE_COPY
+} from "@app/components/license/self-hosted-license";
 import { getSafeUpgradeReturnPath } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -10,7 +14,8 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission
+  useOrgPermission,
+  useSubscription
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useDebounce } from "@app/hooks";
@@ -48,6 +53,7 @@ export const BillingV2Page = () => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
+  const { subscription } = useSubscription();
   const orgId = currentOrg?.id ?? "";
   const hasManageBillingPermission = permission.can(
     OrgPermissionBillingActions.ManageBilling,
@@ -275,10 +281,10 @@ export const BillingV2Page = () => {
     refetch();
   };
 
-  // A managed (self-hosted licensed) org can't self-serve through Stripe; its plan is set by the license.
+  // A managed (self-hosted) org can't self-serve through Stripe; its plan is set by its license state.
   const isManaged = overview ? overview.mode === "managed" : !isInfisicalCloud();
   const pageDescription = isManaged
-    ? "View your subscription, products, and usage. Your plan is managed through your license."
+    ? SELF_HOSTED_LICENSE_COPY[getSelfHostedLicenseState(subscription)].pageDescription
     : "Manage your subscription, products, and payment. Payment is handled securely through Stripe.";
 
   return (
