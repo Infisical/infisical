@@ -201,9 +201,14 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
                 isError={Boolean(error)}
                 autoComplete="off"
                 name="new-project-name"
+                aria-describedby={
+                  selectedProjectType === ProjectType.SecretManager
+                    ? "new-project-name-description"
+                    : undefined
+                }
               />
               {selectedProjectType === ProjectType.SecretManager && (
-                <FieldDescription>
+                <FieldDescription id="new-project-name-description">
                   Use one project per application or service, with environments for deployment
                   stages and folders for its components.
                 </FieldDescription>
