@@ -1,4 +1,4 @@
-import { Fragment, ReactNode } from "react";
+import { Fragment, ReactNode, useCallback } from "react";
 import { Helmet } from "react-helmet";
 import {
   FingerprintIcon,
@@ -46,6 +46,13 @@ export const InsightsPage = withProjectPermission(
     const hasInsightsPlan = Boolean(subscription?.secretAccessInsights);
 
     const { data: counts } = useGetInsightsCounts({ projectId }, { enabled: hasInsightsPlan });
+
+    const handleUpgrade = useCallback(() => {
+      openUpgradeGate({
+        intent: SecretAccessInsightsUpgradeIntent,
+        paywallKey: "secret-manager.insights"
+      });
+    }, [openUpgradeGate]);
 
     const canReadHoneyTokens = permission.can(
       ProjectPermissionHoneyTokenActions.Read,
@@ -140,14 +147,7 @@ export const InsightsPage = withProjectPermission(
             </div>
           </>
         ) : (
-          <InsightsUpgradePreview
-            onUpgrade={() =>
-              openUpgradeGate({
-                intent: SecretAccessInsightsUpgradeIntent,
-                paywallKey: "secret-manager.insights"
-              })
-            }
-          />
+          <InsightsUpgradePreview onUpgrade={handleUpgrade} />
         )}
         {upgradeGate}
       </>

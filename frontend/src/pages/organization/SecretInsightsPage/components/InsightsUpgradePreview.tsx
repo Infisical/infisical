@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { LockIcon } from "lucide-react";
 
 import {
@@ -113,6 +113,15 @@ export const InsightsUpgradePreview = ({ onUpgrade }: Props) => {
   const titleId = useId();
   const { staticSecretUsage, accessVolume } = buildSampleData();
 
+  // The upgrade gate refreshes the cached subscription when it mounts on a billing return, so open
+  // it automatically then; otherwise the page would keep showing this preview after an upgrade.
+  useEffect(() => {
+    const search = new URLSearchParams(window.location.search);
+    if (search.get("checkout") === "success" || search.get("card") === "setup_success") {
+      onUpgrade();
+    }
+  }, [onUpgrade]);
+
   return (
     <div className="grid w-full pb-8">
       <div
@@ -136,9 +145,9 @@ export const InsightsUpgradePreview = ({ onUpgrade }: Props) => {
       <div className="relative col-start-1 row-start-1 flex items-start justify-center p-4 pt-40">
         <section
           aria-labelledby={titleId}
-          className="w-full max-w-lg animate-in rounded-lg border border-border bg-popover shadow-lg duration-200 fade-in-0 zoom-in-95"
+          className="w-full max-w-lg animate-in rounded-lg border border-border bg-popover p-8 shadow-lg duration-200 fade-in-0 zoom-in-95"
         >
-          <Empty variant="unstyled" className="p-8">
+          <Empty variant="unstyled">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <LockIcon />
