@@ -2,6 +2,7 @@ export * from "./AccessRestricted";
 export * from "./ConfirmationAlertDialog";
 export * from "./DateRangeFilter";
 export * from "./DocumentationLinkBadge";
+export * from "./EmailInput";
 export * from "./GatewayPicker";
 export * from "./IdentityRoleBadges";
 export * from "./LookingForOrgPageLink";

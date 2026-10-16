@@ -101,7 +101,7 @@ export const KmipServerTab = withPermission(
         <CardHeader>
           <CardTitle>
             KMIP Servers
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip" />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip-server" />
           </CardTitle>
           <CardDescription>
             Create and configure KMIP servers that proxy KMIP requests to Infisical KMS

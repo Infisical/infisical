@@ -61,7 +61,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     isInvite ? SignupSection.UserInfo : SignupSection.Email
   );
   const [orgId, setOrgId] = useState("");
-  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
   const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
   const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);

@@ -1221,6 +1221,9 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                     <Input
                       {...field}
                       placeholder="e.g. tls-server"
+                      suggestedValue={
+                        !isEdit && watchedPreset !== POLICY_PRESET_IDS.CUSTOM ? watchedPreset : ""
+                      }
                       isError={Boolean(error)}
                       autoComplete="off"
                       name="policy-name"
