@@ -3,15 +3,8 @@ name: Release Infisical NKP Helm chart
 on: [workflow_dispatch]
 
 jobs:
-  freeze-check:
-    name: Release freeze check
-    uses: ./.github/workflows/release-freeze-check.yml
-    with:
-      freeze: ${{ vars.DEPLOY_FREEZE }}
-
   test-helm:
     name: Lint Helm Chart
-    needs: [freeze-check]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,8 +23,15 @@ jobs:
       - name: Run helm template
         run: helm template infisical helm-charts/infisical-nkp --set config.siteUrl=https://infisical.example.com > /dev/null
 
+  freeze-check:
+    name: Release freeze check
+    needs: [test-helm]
+    uses: ./.github/workflows/release-freeze-check.yml
+    with:
+      freeze: ${{ vars.DEPLOY_FREEZE }}
+
   release:
-    needs: test-helm
+    needs: [freeze-check]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
