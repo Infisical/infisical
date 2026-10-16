@@ -1,6 +1,6 @@
 import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
 
-<AgentVaultBranch serviceNot="anthropic,cloudflare,cohere,datadog,deepseek,discord,fireworks,gemini,github,github-npm,gitlab,google-workspace,groq,jira,linear,mistral,notion,npm,openai,openrouter,pagerduty,perplexity,postmark,resend,sendgrid,sentry,shopify,slack,stripe,supabase,together,twilio,vercel,xai">
+<AgentVaultBranch serviceNot="anthropic,cloudflare,cohere,datadog,deepseek,discord,fireworks,gemini,github,github-npm,gitlab,google-workspace,groq,jira,linear,mistral,notion,npm,openai,openrouter,pagerduty,perplexity,postmark,resend,sendgrid,sentry,shipmail,shopify,slack,stripe,supabase,together,twilio,vercel,xai">
   ```bash
   infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS <endpoint-url>
   ```
@@ -147,6 +147,12 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 <AgentVaultBranch service="resend">
   ```bash
   infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.resend.com/api-keys
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch service="shipmail">
+  ```bash
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://shipmail.to/api/v1/capabilities
   ```
 </AgentVaultBranch>
 
