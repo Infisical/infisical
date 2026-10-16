@@ -36,7 +36,8 @@ import {
   InfoIcon,
   LayersIcon,
   LockIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from "lucide-react";
 import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
@@ -3524,11 +3525,12 @@ const OverviewPageContent = () => {
             <FolderBreadcrumb secretPath={secretPath} />
             {canManageCurrentFolderAccess && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="xs"
                 className="mr-1.5 shrink-0"
                 onClick={handleCurrentFolderAccessOpen}
               >
+                <UsersIcon />
                 Manage Access
               </Button>
             )}
