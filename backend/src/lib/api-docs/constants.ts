@@ -3960,7 +3960,10 @@ export const SecretScanningDataSources = {
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
-      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
+      isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created, and for ${autoScanDescription.noun} added to its configuration later. Defaults to true.`,
+      isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
+      isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Defaults to true, except for GitLab project scope, which does not support it.`,
       config: `The configuration parameters to use for this Data Source.`
     };
   },
@@ -3972,7 +3975,10 @@ export const SecretScanningDataSources = {
       dataSourceId: `The ID of the ${typeName} Data Source to be updated.`,
       name: `The updated name of the ${typeName} Data Source. Must be slug-friendly.`,
       description: `The updated description of the ${typeName} Data Source.`,
-      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
+      isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} added to this Data Source's configuration.`,
+      isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Not supported for GitLab project scope.`,
       config: `The updated configuration parameters to use for this Data Source.`
     };
   },
@@ -3984,33 +3990,50 @@ export const SecretScanningDataSources = {
     resourceId: `The ID of the individual Data Source resource to trigger a scan for.`
   }),
   LIST_RESOURCES: (type: SecretScanningDataSource) => ({
-    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`,
+    search: "Only return resources whose name contains this text, ignoring case.",
+    orderBy:
+      "The field to order resources by: name, status, or lastScanned. Status orders by what needs attention first in ascending order: failed scans, unresolved findings (most first), running scans, queued scans, never scanned, then clean.",
+    orderDirection: "The direction to order resources in. Either 'asc' or 'desc'.",
+    offset: "The number of resources to skip.",
+    limit: "The number of resources to return."
   }),
   LIST_SCANS: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list scans for.`
   }),
+  ADD_RESOURCE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to add resources to.`,
+    resourceName: `The full name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} resource to scan, as the App Connection lists it. A resource already added is ignored.`
+  }),
+  REMOVE_RESOURCE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to remove the resource from.`,
+    resourceId: "The ID of the resource to remove. Its scans and findings are deleted with it."
+  }),
   CONFIG: {
-    GITHUB: {
-      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
-    },
     GITLAB: {
-      includeProjects: 'The projects to include when scanning. Defaults to all projects (["*"]).',
-      scope: "The GitLab scope scanning should occur at (project or group level).",
+      scope:
+        "Where projects are added from: account (projects the connection can read, added one at a time), group, or project (deprecated, kept for existing Data Sources).",
       projectId: "The ID of the project to scan.",
       projectName: "The name of the project to scan.",
       groupId: "The ID of the group to scan projects from.",
       groupName: "The name of the group to scan projects from."
     },
     BITBUCKET: {
-      workspaceSlug: "The workspace to scan.",
-      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+      workspaceSlug: "The workspace to scan."
     }
   }
 };
 
 export const SecretScanningFindings = {
   LIST: {
-    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`
+    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`,
+    status: "Only return findings with this status.",
+    dataSourceId: "Only return findings detected in this Data Source.",
+    resourceId: "Only return findings detected in this resource, such as a repository or project.",
+    orderBy: "The field to sort findings by.",
+    orderDirection: "The direction to sort findings in.",
+    offset: "The number of findings to skip, for pagination.",
+    limit: "The maximum number of findings to return, from 1 to 100."
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",

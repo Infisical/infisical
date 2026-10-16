@@ -12,12 +12,10 @@ export const GitLabDataSourceSchema = z
       z.object({
         scope: z.literal(GitLabDataSourceScope.Group),
         groupId: z.number(),
-        groupName: z.string(),
-        includeProjects: z
-          .array(z.string().min(1).max(256))
-          .min(1, "One or more projects required")
-          .max(100, "Cannot configure more than 100 projects")
-          .default(["*"])
+        groupName: z.string()
+      }),
+      z.object({
+        scope: z.literal(GitLabDataSourceScope.Account)
       }),
       z.object({
         scope: z.literal(GitLabDataSourceScope.Project),

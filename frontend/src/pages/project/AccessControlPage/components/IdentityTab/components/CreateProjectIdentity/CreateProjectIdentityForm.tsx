@@ -50,9 +50,10 @@ import {
   TCreateProjectIdentityForm
 } from "./schema";
 
-const SUBMIT_VARIANT_BY_PRODUCT: Partial<Record<ProjectType, "pam" | "av">> = {
+const SUBMIT_VARIANT_BY_PRODUCT: Partial<Record<ProjectType, "pam" | "av" | "ss">> = {
   [ProjectType.PAM]: "pam",
-  [ProjectType.AgentVault]: "av"
+  [ProjectType.AgentVault]: "av",
+  [ProjectType.SecretScanning]: "ss"
 };
 
 const buildTemplatePermissions = (

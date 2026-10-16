@@ -62,11 +62,11 @@ Used to signal the scope a surface, badge, or action belongs to.
 | Project          | `--color-project` |
 | Admin            | `--color-admin`   |
 
-PAM and Agent Vault are product identities rather than additional levels in
-the org/project hierarchy. Use `--color-product-pam` and `--color-product-av`
-when the current product calls for them; `PageHeader` maps the PAM and Agent
-Vault project types to these accents, while `Button` exposes `pam` and `av`
-variants. Check each component's supported variants instead of treating all
+PAM, Agent Vault and Secret Scanning are product identities rather than
+additional levels in the org/project hierarchy. Use `--color-product-pam`,
+`--color-product-av` and `--color-product-ss` when the current product calls
+for them; `PageHeader` and the org sidebar map those project types to these
+accents, while `Button` exposes `pam`, `av` and `ss` variants. Check each component's supported variants instead of treating all
 scope and product variants as interchangeable.
 
 ### Semantic colors
