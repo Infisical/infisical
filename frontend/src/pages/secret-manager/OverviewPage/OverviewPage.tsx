@@ -2849,14 +2849,15 @@ const OverviewPageContent = () => {
 
   const selectableRows = useMemo(
     () => [
+      ...quickAddedSecKeys.map((key) => ({ type: EntryType.SECRET, key })),
       ...mergedFolderNamesAndDescriptions.map(({ name: key }) => ({
         type: EntryType.FOLDER,
         key
       })),
       ...secretRotationNames.map((key) => ({ type: EntryType.SECRET_ROTATION, key })),
-      ...mergedSecKeys.map((key) => ({ type: EntryType.SECRET, key }))
+      ...sortedSecKeys.map((key) => ({ type: EntryType.SECRET, key }))
     ],
-    [mergedFolderNamesAndDescriptions, secretRotationNames, mergedSecKeys]
+    [quickAddedSecKeys, mergedFolderNamesAndDescriptions, secretRotationNames, sortedSecKeys]
   );
 
   const toggleSelectedEntry = useCallback(
