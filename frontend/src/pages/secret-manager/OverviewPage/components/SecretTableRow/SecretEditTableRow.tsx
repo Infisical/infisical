@@ -790,6 +790,10 @@ export const SecretEditTableRow = ({
 
   const handleToggleMultilineEncoding = async () => {
     if (isBatchMode) {
+      if (batchAutoApplyTimer.current) {
+        clearTimeout(batchAutoApplyTimer.current);
+        applyBatchEditsRef.current?.();
+      }
       const pendingChangeId = findPendingChangeId() ?? secretId;
       await onSecretUpdate({
         env: environment,
