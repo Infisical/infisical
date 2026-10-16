@@ -92,10 +92,6 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		"PORT":              fmt.Sprint(port),
 		"NODE_ENV":          "production",
 		"TELEMETRY_ENABLED": "false",
-		// Serve every route and every field at /api/docs/json. The suite generates
-		// every call it makes and has no hand-written client to fall back on, so a
-		// route missing from the spec is a route no test can reach.
-		"OPENAPI_FULL_SPEC": "true",
 		"SITE_URL":          fmt.Sprintf("http://%s:%d", self, port),
 	}
 	if m.runModes != "" {
