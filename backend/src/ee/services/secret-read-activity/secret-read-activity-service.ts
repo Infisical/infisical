@@ -59,11 +59,14 @@ const SECRET_READ_ACTIVITY_WINDOW_DAYS = 30;
 // Matches the migration, which creates the first partitions.
 const SECRET_READ_PARTITION_MONTHS_AHEAD = 3;
 const SECRET_READ_GATE_TTL_SECONDS = 25 * 60 * 60;
-const SECRET_READ_STREAM_MAX_LENGTH = 100_000;
+// The stream normally holds about a minute of first-of-the-day reads. The cap is headroom for a stalled flush:
+// Redis drops the oldest unflushed reads only after this many have piled up.
+const SECRET_READ_STREAM_MAX_LENGTH = 300_000;
 const SECRET_READ_FLUSH_BATCH_SIZE = 1000;
 const SECRET_READ_FLUSH_MAX_ENTRIES = 50_000;
 const SECRET_READ_CONSUMER_LOCK_TTL_MS = 60_000;
-const SECRET_READ_STREAM_ENTRY_MAX_SECRETS = 1000;
+// The cap counts entries, not bytes, so this bounds an entry at about 3.7 KB and a full stream at about 1.1 GB.
+const SECRET_READ_STREAM_ENTRY_MAX_SECRETS = 100;
 const UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS = 30;
 
 type TSecretReadActivityServiceFactoryDep = {
