@@ -1587,30 +1587,6 @@ const OverviewPageContent = () => {
       source: "form" as const
     };
     const attempt = overviewTelemetry.startFlow(flow);
-    if (isSingleEnvView && singleVisibleEnv) {
-      if (isFolderPresentInEnv(folderName, singleVisibleEnv.slug)) {
-        createNotification({ type: "info", text: "Folder already exists" });
-        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
-        handlePopUpClose("addFolder");
-        return;
-      }
-      addPendingChange(
-        {
-          id: crypto.randomUUID(),
-          resourceType: "folder",
-          type: PendingAction.Create,
-          folderName,
-          description: description ?? undefined,
-          parentPath: secretPath,
-          timestamp: Date.now()
-        },
-        { projectId, environment: singleVisibleEnv.slug, secretPath }
-      );
-      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
-      handlePopUpClose("addFolder");
-      return;
-    }
-
     const promises = visibleEnvs
       .map((env) => {
         const environment = env.slug;
@@ -1727,21 +1703,23 @@ const OverviewPageContent = () => {
         return;
       }
 
-      addPendingChange(
-        {
-          id: folder.id,
-          resourceType: "folder",
-          type: PendingAction.Update,
-          originalFolderName: oldFolderName,
-          folderName: newFolderName,
-          originalDescription: folder.description,
-          description: description ?? "",
-          timestamp: Date.now()
-        },
-        { projectId, environment: singleVisibleEnv.slug, secretPath }
-      );
-      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
-      handlePopUpClose("updateFolder");
+      try {
+        await updateFolder({
+          projectId,
+          environment: singleVisibleEnv.slug,
+          path: secretPath,
+          folderId: folder.id,
+          name: newFolderName,
+          description
+        });
+        attempt.flow({ ...flow, phase: "response-received", countBucket: "1" });
+        createNotification({ type: "success", text: `Folder "${newFolderName}" updated` });
+      } catch {
+        attempt.flow({ ...flow, phase: "failed", countBucket: "1" });
+        createNotification({ type: "error", text: "Failed to update folder" });
+      } finally {
+        handlePopUpClose("updateFolder");
+      }
       return;
     }
 
@@ -1843,19 +1821,28 @@ const OverviewPageContent = () => {
         return;
       }
 
-      addPendingChange(
-        {
-          id: folder.id,
-          resourceType: "folder",
-          type: PendingAction.Delete,
-          folderName,
-          folderPath: secretPath,
-          timestamp: Date.now()
-        },
-        { projectId, environment: singleVisibleEnv.slug, secretPath }
-      );
-      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
-      handlePopUpClose("deleteFolder");
+      try {
+        await deleteFolder({
+          projectId,
+          environment: singleVisibleEnv.slug,
+          path: secretPath,
+          folderId: folder.id
+        });
+        const pendingFolderChange = pendingChanges.folders.find((c) => c.id === folder.id);
+        if (pendingFolderChange)
+          removePendingChange(pendingFolderChange.id, "folder", {
+            projectId,
+            environment: singleVisibleEnv.slug,
+            secretPath
+          });
+        attempt.flow({ ...flow, phase: "response-received", countBucket: "1" });
+        createNotification({ type: "success", text: `Folder "${folderName}" deleted` });
+      } catch {
+        attempt.flow({ ...flow, phase: "failed", countBucket: "1" });
+        createNotification({ type: "error", text: "Failed to delete folder" });
+      } finally {
+        handlePopUpClose("deleteFolder");
+      }
       return;
     }
 
@@ -2263,30 +2250,13 @@ const OverviewPageContent = () => {
         return;
       }
 
-      addPendingChange(
-        {
-          id: existingSecret.id,
-          resourceType: "secret",
-          type: PendingAction.Delete,
-          secretKey: key,
-          secretValue: existingSecret.value ?? "",
-          secretValueHidden: !existingSecret.value,
-          tags: existingSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) ?? [],
-          secretMetadata: existingSecret.secretMetadata ?? [],
-          skipMultilineEncoding: existingSecret.skipMultilineEncoding ?? false,
-          comment: existingSecret.comment ?? "",
-          timestamp: Date.now()
-        },
-        { projectId, environment: env, secretPath }
-      );
-      overviewTelemetry.flow({
-        action: "delete",
-        resourceType: "secret",
-        source: "row",
-        phase: "staged",
-        countBucket: "1"
-      });
-      return;
+      const pendingSecretChange = pendingChanges.secrets.find((c) => c.id === existingSecret.id);
+      if (pendingSecretChange)
+        removePendingChange(pendingSecretChange.id, "secret", {
+          projectId,
+          environment: env,
+          secretPath
+        });
     }
 
     const result = await observeOverviewRequest(

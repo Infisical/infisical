@@ -706,6 +706,24 @@ export const SecretEditTableRow = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, watchedValue, watchedKey, watchedComment, watchedTags, serializedMetadata]);
 
+  const findPendingChangeId = () =>
+    batchStore.getState().pendingChanges.secrets.find((c) => c.secretKey === secretName)?.id;
+
+  const savePendingRow = async (knownPendingChangeId?: string) => {
+    if (!onPendingSave) return;
+    const pendingChangeId = knownPendingChangeId ?? findPendingChangeId();
+    if (batchAutoApplyTimer.current) {
+      clearTimeout(batchAutoApplyTimer.current);
+      if (!knownPendingChangeId) applyBatchEditsRef.current?.();
+    }
+    setIsSavingPendingChange.on();
+    try {
+      await onPendingSave(environment, secretName, pendingChangeId);
+    } finally {
+      setIsSavingPendingChange.off();
+    }
+  };
+
   // Reset form when a pending change is externally discarded or saved (e.g. CommitForm discard
   // button or this row's inline save).
   const prevHasPendingRef = useRef(hasPendingChange);
@@ -772,7 +790,8 @@ export const SecretEditTableRow = ({
 
   const handleToggleMultilineEncoding = async () => {
     if (isBatchMode) {
-      onSecretUpdate({
+      const pendingChangeId = findPendingChangeId() ?? secretId;
+      await onSecretUpdate({
         env: environment,
         key: secretName,
         value: undefined,
@@ -781,6 +800,7 @@ export const SecretEditTableRow = ({
         secretId,
         skipMultilineEncoding: !skipMultilineEncoding
       });
+      await savePendingRow(pendingChangeId);
       return;
     }
 
@@ -943,6 +963,7 @@ export const SecretEditTableRow = ({
     const confirmation = editConfirmation.current;
     setIsEditing.on();
     try {
+      const pendingChangeId = findPendingChangeId() ?? secretId;
       await onSecretUpdate({
         env: environment,
         key: secretName,
@@ -953,6 +974,7 @@ export const SecretEditTableRow = ({
         newSecretName: newKey,
         ...sheetChanges
       });
+      if (isBatchMode) await savePendingRow(pendingChangeId);
       if (invocation !== valueSheetFlow.current || confirmation !== editConfirmation.current)
         return;
       if (!secretValueHidden) {
@@ -1010,22 +1032,6 @@ export const SecretEditTableRow = ({
       secretTags: ["*"]
     })
   );
-  const savePendingRow = async () => {
-    if (!onPendingSave) return;
-    const pendingChangeId = batchStore
-      .getState()
-      .pendingChanges.secrets.find((c) => c.secretKey === secretName)?.id;
-    if (batchAutoApplyTimer.current) {
-      clearTimeout(batchAutoApplyTimer.current);
-      applyBatchEditsRef.current?.();
-    }
-    setIsSavingPendingChange.on();
-    try {
-      await onPendingSave(environment, secretName, pendingChangeId);
-    } finally {
-      setIsSavingPendingChange.off();
-    }
-  };
   const handleEditShortcut = useSecretInputActionShortcuts({
     isActive: isBatchMode ? isPendingBatchChange || isDirty : isDirtyState,
     isDisabled: isSubmitting || isSavingPendingChange,
@@ -1103,6 +1109,7 @@ export const SecretEditTableRow = ({
     const invocation = valueSheetFlow.current;
     if (isValueSheetReadOnly || valueEditDraft?.scope !== valueEditScope) return;
     if (isBatchMode) {
+      const pendingChangeId = findPendingChangeId() ?? secretId;
       await onSecretUpdate({
         env: environment,
         key: secretName,
@@ -1115,6 +1122,7 @@ export const SecretEditTableRow = ({
       });
       if (invocation !== valueSheetFlow.current) return;
       resetSheetFields(changes);
+      await savePendingRow(pendingChangeId);
     } else {
       const completed = await handleFormSubmit({ value: changes.value, sheetChanges: changes });
       if (!completed) return;
@@ -1541,7 +1549,7 @@ export const SecretEditTableRow = ({
                       className="size-7 border-0 hover:text-success"
                       size="xs"
                       isDisabled={!isAllowed || isSavingPendingChange}
-                      onClick={savePendingRow}
+                      onClick={() => savePendingRow()}
                     >
                       <SaveIcon />
                     </IconButton>

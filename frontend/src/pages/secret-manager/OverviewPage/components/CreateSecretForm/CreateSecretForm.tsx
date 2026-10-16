@@ -160,7 +160,6 @@ export const CreateSecretForm = ({
   secretPath = "/",
   defaultSelectedEnvs,
   onClose,
-  isBatchMode,
   editSecret,
   onSecretCreated,
   onUploadSecrets
@@ -592,7 +591,7 @@ export const CreateSecretForm = ({
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
-  const editSubmitLabel = isBatchMode ? "Stage Changes" : "Save Changes";
+  const editSubmitLabel = "Save Changes";
 
   const handleFormKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
     // Allow Cmd+Enter (macOS) / Ctrl+Enter (other OSes) to submit the form.
