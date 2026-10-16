@@ -1,3 +1,4 @@
+.PHONY: build push up-dev up-dev-ldap up-dev-metrics up-prod down reviewable-ui reviewable-api reviewable up-dev-sso go-generate validate-upgrade-impact generate-upgrade-impact generate-upgrade-impact-dry-run
 # Canonical versions pinned across multiple Dockerfiles. The Dockerfiles carry
 # matching ARG defaults so external builders work unaided; this exports the value
 # so compose overrides them from one place. Export only this, not every variable.
