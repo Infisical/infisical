@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -112,22 +111,12 @@ func (s *Server) buildCORSConfig() *middlewares.CORSConfig {
 		AllowCredentials: true,
 	}
 
-	// Parse comma-separated allowed headers
-	if s.config.CORSAllowedHeaders != "" {
-		for h := range strings.SplitSeq(s.config.CORSAllowedHeaders, ",") {
-			if h = strings.TrimSpace(h); h != "" {
-				cfg.AllowedHeaders = append(cfg.AllowedHeaders, h)
-			}
-		}
+	if len(s.config.ParsedCORSAllowedHeaders) > 0 {
+		cfg.AllowedHeaders = append(cfg.AllowedHeaders, s.config.ParsedCORSAllowedHeaders...)
 	}
 
-	// Parse comma-separated allowed origins
-	if s.config.CORSAllowedOrigins != "" {
-		for o := range strings.SplitSeq(s.config.CORSAllowedOrigins, ",") {
-			if o = strings.TrimSpace(o); o != "" {
-				cfg.AllowedOrigins = append(cfg.AllowedOrigins, o)
-			}
-		}
+	if len(s.config.ParsedCORSAllowedOrigins) > 0 {
+		cfg.AllowedOrigins = append(cfg.AllowedOrigins, s.config.ParsedCORSAllowedOrigins...)
 	}
 
 	// Add site URL to allowed origins
