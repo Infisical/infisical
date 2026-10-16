@@ -3,9 +3,9 @@
 # the toolchain's own.
 GOFMT := $(shell go env GOROOT)/bin/gofmt
 
-# Where `generate-client` reads the spec from. The instance must have
-# OPENAPI_FULL_SPEC set, which docker-compose.dev.yml does; without it half the routes
-# are missing and no test can reach them.
+# Where `generate-client` reads the spec from. It must be a server running from source
+# (`make up-dev` from the repo root), which serves the full spec. A built image serves
+# only the public spec, where half the routes are missing and no test can reach them.
 INFISICAL_OPENAPI_URL ?= http://localhost:8080
 
 .PHONY: fmt lint test test-unit test-docker test-suites test-harness test-all up down status generate-client
