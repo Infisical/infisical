@@ -1053,8 +1053,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Data Source "${dataSource.name}" is disconnected from ${sourceName}, so its resources can't be listed. Delete it and connect ${sourceName} again.`
       });
 
+    // Lists everything the connection can read, not just this data source's resources, so it needs the same
+    // connection access as adding them.
     let connection: TAppConnection | null = null;
-    if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+    if (dataSource.connectionId) {
+      connection = await appConnectionService.validateAppConnectionUsageById(
+        SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
+        { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
+        actor
+      );
+    }
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
       appConnectionDAL,
