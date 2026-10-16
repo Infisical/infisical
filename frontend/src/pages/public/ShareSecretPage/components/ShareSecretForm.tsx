@@ -491,15 +491,7 @@ export const ShareSecretForm = ({
                 </span>
               </AccordionTrigger>
               <AccordionContent className="flex flex-col gap-6">
-                <FieldSet className="gap-4" aria-labelledby="share-secret-access-heading">
-                  <FieldLabel
-                    id="share-secret-access-heading"
-                    className="w-full gap-3 text-sm font-medium text-foreground"
-                  >
-                    Access
-                    <span className="h-px flex-1 bg-border" aria-hidden="true" />
-                  </FieldLabel>
-
+                <FieldSet className="gap-4">
                   {!isViewLimitEnforced && (
                     <Controller
                       control={control}
