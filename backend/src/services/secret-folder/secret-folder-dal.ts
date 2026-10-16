@@ -291,6 +291,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .select(
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -319,6 +320,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .where({ projectId })
         .select(
