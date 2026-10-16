@@ -91,3 +91,9 @@ export const extractPrincipalArn = (arn: string, formatAsIamRole: boolean = fals
 
   return `arn:${entity.Partition}:${formatAsIamRole ? "iam" : entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
 };
+
+/**
+ * Whether the ARN is an AWS account root principal (e.g. arn:aws:iam::123456789012:root), which has no
+ * type/name resource part and so cannot be parsed by extractPrincipalArnEntity.
+ */
+export const isAwsRootPrincipalArn = (arn: string) => /^arn:[^:]+:iam::\d{12}:root$/.test(arn);
