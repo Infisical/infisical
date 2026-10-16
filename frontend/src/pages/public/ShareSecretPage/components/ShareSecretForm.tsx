@@ -24,6 +24,7 @@ import {
   Badge,
   Button,
   CopyButton,
+  EmailInput,
   Field,
   FieldDescription,
   FieldError,
@@ -47,6 +48,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { emailListSchema } from "@app/helpers/email";
 import { useToggle } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing";
@@ -65,14 +67,6 @@ const expiresInOptions = [
 const MAX_RECIPIENTS = 100;
 const ABSOLUTE_VIEW_CEILING = 1000;
 
-const parseRecipients = (emails?: string) =>
-  emails
-    ? emails
-        .split(",")
-        .map((email) => email.trim())
-        .filter(Boolean)
-    : [];
-
 const baseSchema = z.object({
   name: z.string().max(50, "Name must be 50 characters or fewer.").optional(),
   password: z.string().optional(),
@@ -81,19 +75,7 @@ const baseSchema = z.object({
   viewLimit: z.string(),
   shouldLimitView: z.boolean(),
   accessType: z.nativeEnum(SecretSharingAccessType).optional(),
-  emails: z
-    .string()
-    .optional()
-    .refine(
-      (val) => {
-        const recipients = parseRecipients(val);
-        if (recipients.length > MAX_RECIPIENTS) return false;
-        return recipients.every((email) => z.string().email().safeParse(email).success);
-      },
-      {
-        message: `Enter up to ${MAX_RECIPIENTS} valid emails, separated by commas.`
-      }
-    ),
+  emails: emailListSchema({ max: MAX_RECIPIENTS }).optional(),
   allowExternalEmails: z.boolean().optional()
 });
 
@@ -120,7 +102,7 @@ const buildSchema = (maxSharedSecretViewLimit?: number | null) =>
       }
     }
 
-    if (data.allowExternalEmails && parseRecipients(data.emails).length > 0 && !data.password) {
+    if (data.allowExternalEmails && data.emails?.length && !data.password) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["password"],
@@ -225,7 +207,7 @@ export const ShareSecretForm = ({
     isLimitingView,
     Boolean(watch("password")),
     !isPublic && isOrgAccess,
-    !isPublic && !isAllowingExternalEmails && parseRecipients(watch("emails")).length > 0
+    !isPublic && !isAllowingExternalEmails && Boolean(watch("emails")?.length)
   ].filter(Boolean).length;
 
   const onFormSubmit = async ({
@@ -239,7 +221,7 @@ export const ShareSecretForm = ({
     shouldLimitView,
     allowExternalEmails
   }: FormData) => {
-    const recipients = parseRecipients(emails);
+    const recipients = emails ?? [];
 
     const { id } = await createSharedSecret.mutateAsync({
       name,
@@ -664,11 +646,12 @@ export const ShareSecretForm = ({
                             </TooltipContent>
                           </Tooltip>
                         </FieldLabel>
-                        <Input
-                          {...field}
+                        <EmailInput
+                          ref={field.ref}
                           id="share-secret-emails"
+                          value={field.value}
+                          onValueChange={field.onChange}
                           placeholder="user1@example.com, user2@example.com"
-                          autoComplete="off"
                           isError={Boolean(error)}
                         />
                         <FieldDescription>
