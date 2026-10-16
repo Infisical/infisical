@@ -2211,9 +2211,14 @@ export const SecretEditTableRow = ({
         <TableCell
           isTruncatable
           className={twMerge(
-            "border-r",
+            "cursor-text border-r",
             isOverride && "border-l border-b-border/50 border-l-override"
           )}
+          onClick={(event) => {
+            const target = event.target as HTMLElement;
+            if (!event.currentTarget.contains(target) || target.closest("input, button")) return;
+            event.currentTarget.querySelector("input")?.focus();
+          }}
         >
           <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
             <div className="flex items-center gap-1.5">
