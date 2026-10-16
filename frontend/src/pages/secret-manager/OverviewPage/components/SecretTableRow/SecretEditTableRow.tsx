@@ -1105,6 +1105,20 @@ export const SecretEditTableRow = ({
   const shouldStayExpanded =
     isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
 
+  const [actionBarWidth, setActionBarWidth] = useState(0);
+  const actionBarResizeObserverRef = useRef<ResizeObserver | null>(null);
+  const actionBarRef = useCallback((node: HTMLDivElement | null) => {
+    actionBarResizeObserverRef.current?.disconnect();
+    actionBarResizeObserverRef.current = null;
+    if (!node) {
+      setActionBarWidth(0);
+      return;
+    }
+    const observer = new ResizeObserver(() => setActionBarWidth(node.offsetWidth));
+    observer.observe(node);
+    actionBarResizeObserverRef.current = observer;
+  }, []);
+
   const getTooltipContentForSecretSharing = () => {
     if (!currentProject.secretSharing) {
       return "Secret Sharing Disabled";
@@ -1231,6 +1245,7 @@ export const SecretEditTableRow = ({
             isFieldActive && !isBatchMode && "pr-16",
             isFieldActive && isBatchMode && "pr-6"
           )}
+          style={isFieldActive && actionBarWidth ? { paddingRight: actionBarWidth } : undefined}
         >
           {isFieldActive && !secretValueHidden && !isCreatable && secretHasReference && (
             <ResolvedSecretValuePopover
@@ -1382,6 +1397,7 @@ export const SecretEditTableRow = ({
         !isBatchMode
       ) && (
         <div
+          ref={actionBarRef}
           data-table-row-filter-positioner
           className={twMerge(
             "absolute z-20",
