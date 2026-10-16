@@ -1,6 +1,7 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Field, FieldDescription, FieldError, FieldLabel, Input } from "@app/components/v3";
+import { INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS } from "@app/helpers/pkiSyncs";
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
@@ -15,6 +16,7 @@ import { KempLoadMasterSyncOptions } from "./KempLoadMasterSyncOptions";
 import { LinuxServerSyncOptions } from "./LinuxServerSyncOptions";
 import { NameSchemaHoverCard } from "./NameSchemaHoverCard";
 import { NetScalerSyncOptions } from "./NetScalerSyncOptions";
+import { PaloAltoNetworksSyncOptions } from "./PaloAltoNetworksSyncOptions";
 import { SyncSwitchField } from "./SyncSwitchField";
 import { WindowsServerSyncOptions } from "./WindowsServerSyncOptions";
 
@@ -39,6 +41,9 @@ const renderDestinationOptions = (currentDestination: PkiSync, isUpdate?: boolea
       return <GcpCertificateManagerSyncOptions />;
     case PkiSync.NetScaler:
       return <NetScalerSyncOptions />;
+    case PkiSync.PaloAltoNetworks:
+    case PkiSync.PaloAltoNetworksSslTlsProfile:
+      return <PaloAltoNetworksSyncOptions />;
     case PkiSync.F5BigIp:
       return <F5BigIpSyncOptions />;
     case PkiSync.KempLoadMaster:
@@ -63,12 +68,13 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
         <SyncSwitchField
           name="syncOptions.canRemoveCertificates"
           id="can-remove-certificates"
-          label="Enable removal of expired/revoked certificates"
+          label="Remove certificates from destination"
           description={
             <>
-              When enabled, Infisical removes certificates from the destination during a sync once
-              they are no longer active in Infisical. Disable this if you manage some certificates
-              manually outside of Infisical.
+              When enabled, Infisical deletes a certificate from the destination once this sync
+              stops holding it, whether it stopped being active, was deleted, was removed from the
+              sync, or stopped matching the sync&apos;s filters. Disable this if you manage some
+              certificates manually outside of Infisical.
               {currentDestination === PkiSync.AwsElasticLoadBalancer &&
                 " For AWS Elastic Load Balancer, this removes the certificate from both the load balancer listeners and AWS Certificate Manager, affecting only certificates managed by this sync."}
             </>
@@ -76,15 +82,14 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
         />
       )}
 
-      {currentDestination !== PkiSync.CloudflareCustomCertificate &&
-        currentDestination !== PkiSync.NutanixPrismCentral && (
-          <SyncSwitchField
-            name="syncOptions.includeRootCa"
-            id="include-root-ca"
-            label="Include root CA in certificate chain"
-            description="When enabled, the full certificate chain including the root CA is synced. When disabled, the root CA is excluded to reduce the chain size; most applications validate correctly with intermediate certificates only."
-          />
-        )}
+      {!INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS.includes(currentDestination) && (
+        <SyncSwitchField
+          name="syncOptions.includeRootCa"
+          id="include-root-ca"
+          label="Include root CA in certificate chain"
+          description="When enabled, the full certificate chain including the root CA is synced. When disabled, the root CA is excluded to reduce the chain size; most applications validate correctly with intermediate certificates only."
+        />
+      )}
 
       {renderDestinationOptions(currentDestination, isUpdate)}
 

@@ -1,11 +1,13 @@
 import { TSecretApprovalRequests } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { OrderByDirection } from "@app/lib/types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
+import { SecretApprovalRequestOrderBy } from "./secret-approval-request-types";
 
 type TSendApprovalEmails = {
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
@@ -86,3 +88,73 @@ export const hasSecretUpdateCommitConflict = (
   const reviewedKey = commit.secretVersion?.key ?? commit.secret.key;
   return commit.key === reviewedKey;
 };
+
+export type TSecretApprovalRequestSortable = {
+  id: string;
+  createdAt: Date;
+  environment: string;
+  environmentName?: string | null;
+  policy: { secretPath?: string | null };
+  committerUser?: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
+  committerIdentity?: { name?: string | null } | null;
+};
+
+const lowerSortKey = (value?: string | null) => (value ?? "").toLowerCase();
+
+const sortKeyOf = (request: TSecretApprovalRequestSortable, orderBy: SecretApprovalRequestOrderBy) => {
+  switch (orderBy) {
+    case SecretApprovalRequestOrderBy.Environment:
+      return lowerSortKey(request.environmentName ?? request.environment);
+    case SecretApprovalRequestOrderBy.SecretPath:
+      return lowerSortKey(request.policy.secretPath);
+    case SecretApprovalRequestOrderBy.Author:
+      return lowerSortKey(
+        `${request.committerUser?.firstName ?? ""} ${request.committerUser?.lastName ?? ""}`.trim() ||
+          request.committerUser?.email ||
+          request.committerIdentity?.name
+      );
+    case SecretApprovalRequestOrderBy.CreatedAt:
+    default:
+      return request.createdAt.getTime();
+  }
+};
+
+// Mirrors the ordering the list queries apply in SQL so pages read from the legacy and the global approval
+// system can be merged in memory. String keys compare by code point, which can differ from the database
+// collation for non-ASCII names.
+export const compareSecretApprovalRequests =
+  (
+    orderBy: SecretApprovalRequestOrderBy = SecretApprovalRequestOrderBy.CreatedAt,
+    orderDirection: OrderByDirection = OrderByDirection.DESC
+  ) =>
+  (a: TSecretApprovalRequestSortable, b: TSecretApprovalRequestSortable) => {
+    const direction = orderDirection === OrderByDirection.ASC ? 1 : -1;
+    const keyA = sortKeyOf(a, orderBy);
+    const keyB = sortKeyOf(b, orderBy);
+    if (keyA < keyB) return -direction;
+    if (keyA > keyB) return direction;
+    if (a.id === b.id) return 0;
+    return a.id < b.id ? -1 : 1;
+  };
+
+// Each source is asked for the first offset + limit rows in the requested order, so the slice taken here is
+// exactly what one query over both systems would return. Deep pages cost offset + limit rows per source.
+export const mergeSecretApprovalRequestPages = <T extends TSecretApprovalRequestSortable>({
+  pages,
+  offset,
+  limit,
+  orderBy,
+  orderDirection
+}: {
+  pages: { approvals: T[]; totalCount: number }[];
+  offset: number;
+  limit: number;
+  orderBy?: SecretApprovalRequestOrderBy;
+  orderDirection?: OrderByDirection;
+}) => ({
+  approvals: pages
+    .flatMap((page) => page.approvals)
+    .sort(compareSecretApprovalRequests(orderBy, orderDirection))
+    .slice(offset, offset + limit),
+  totalCount: pages.reduce((total, page) => total + page.totalCount, 0)
+});

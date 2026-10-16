@@ -36,7 +36,7 @@ export const GroupMembershipIdentityRow = ({
   return (
     <TableRow key={`group-identity-${id}`}>
       <TableCell>
-        <HardDriveIcon size={14} className="text-mineshaft-400" />
+        <HardDriveIcon size={14} className="text-muted" />
       </TableCell>
       <TableCell isTruncatable>{name}</TableCell>
       <TableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</TableCell>

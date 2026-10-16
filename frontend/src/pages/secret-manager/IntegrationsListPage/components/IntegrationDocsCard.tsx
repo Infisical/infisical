@@ -1,6 +1,8 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
+
 type Props = {
   name: string;
   category: string;
@@ -20,8 +22,8 @@ export const IntegrationDocsCard = ({ name, category, description, href, image, 
     <div className="flex items-start justify-between gap-2">
       <div className="flex h-9 w-9 items-center justify-center rounded-md bg-foreground/5 shadow-inner">
         {image ? (
-          <img
-            src={`/images/integrations/${image}.png`}
+          <ProviderIcon
+            icon={`${image}.png`}
             alt={`${name} logo`}
             className="h-6 w-6 object-contain"
           />

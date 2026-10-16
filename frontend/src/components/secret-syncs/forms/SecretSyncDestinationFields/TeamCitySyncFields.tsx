@@ -76,7 +76,7 @@ export const TeamCitySyncFields = () => {
                 isDisabled={!connectionId}
                 value={projects?.find((proj) => proj.id === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.id ?? null);
+                  onChange(option?.id ?? null);
                   setValue("destinationConfig.buildConfig", "");
                 }}
                 options={projects}

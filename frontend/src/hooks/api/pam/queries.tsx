@@ -14,6 +14,7 @@ import {
   PamAccessStatus,
   PamAccessType,
   PamAccountType,
+  PamAccountWarning,
   PamApproverType,
   PamHeartbeatStatus,
   PamResourcePermissionActions,
@@ -72,15 +73,15 @@ export const pamKeys = {
   ) => [...pamKeys.session(), "list", projectId, params] as const,
   folderPermissions: (folderId: string) =>
     [...pamKeys.all, "folder-permissions", folderId] as const,
+  allAccountPermissions: () => [...pamKeys.all, "account-permissions"] as const,
   accountPermissions: (accountId: string) =>
-    [...pamKeys.all, "account-permissions", accountId] as const,
+    [...pamKeys.allAccountPermissions(), accountId] as const,
   template: () => [...pamKeys.all, "template"] as const,
   listTemplates: (params?: TListPamAccountTemplatesDTO) =>
     [...pamKeys.template(), "list", params] as const,
   getTemplate: (templateId: string) => [...pamKeys.template(), "get", templateId] as const,
   folder: () => [...pamKeys.all, "folder"] as const,
-  listFolders: (params?: { search?: string; filterByAction?: string }) =>
-    [...pamKeys.folder(), "list", params] as const,
+  listFolders: (params?: TListPamFoldersParams) => [...pamKeys.folder(), "list", params] as const,
   listAccounts: (params?: { folderId?: string; templateId?: string; search?: string }) =>
     [...pamKeys.account(), "list", params] as const,
   accountMembers: (accountId: string) => [...pamKeys.all, "account-members", accountId] as const,
@@ -213,6 +214,7 @@ export type TPamAccountListItem = {
   accessibilityIssues: PamAccountAccessibilityIssue[];
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
+  warnings: PamAccountWarning[];
   heartbeatStatus?: PamHeartbeatStatus | null;
   heartbeatEnabled?: boolean;
   requiresApproval: boolean;
@@ -258,8 +260,15 @@ export const useListPamAccounts = (
   });
 };
 
+type TListPamFoldersParams = {
+  search?: string;
+  filterByAction?: string;
+  // Org admins only: also return folders they hold no membership on, so they can join one as admin.
+  includeNonMemberFolders?: boolean;
+};
+
 export const useListPamFolders = (
-  params?: { search?: string; filterByAction?: string },
+  params?: TListPamFoldersParams,
   options?: { enabled?: boolean }
 ) => {
   return useQuery({

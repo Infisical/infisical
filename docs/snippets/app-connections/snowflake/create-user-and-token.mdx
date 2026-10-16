@@ -1,0 +1,102 @@
+<Steps>
+    <Step>
+        In [Snowsight](https://app.snowflake.com/), open the sidebar and select **Users & roles** under **Governance & Security**.
+
+        ![Users and roles](/images/app-connections/snowflake/step-1.png)
+    </Step>
+    <Step>
+        Select **Create user**, then enter a **Username** for the user Infisical will authenticate as.
+
+        ![Create user](/images/app-connections/snowflake/step-2.png)
+        ![Configure user](/images/app-connections/snowflake/step-3.png)
+    </Step>
+    <Step>
+        If a user authenticates with a programmatic access token, Snowflake requires the user to have a network policy. Attach one to the user:
+
+        To run SQL in Snowflake, select **Projects**, then **Workspaces**, to open the query editor.
+
+        ![Workspaces](/images/app-connections/snowflake/step-4-workspace.png)
+
+        The following statements create a network policy and attach it to a user named `INFISICAL`. Replace `INFISICAL` with the username you entered.
+
+        ```SQL
+        CREATE NETWORK POLICY INFISICAL_SYNC_POLICY
+            ALLOWED_IP_LIST = ('0.0.0.0/0')
+            COMMENT = 'Allow access from any IP';
+
+        ALTER USER INFISICAL SET NETWORK_POLICY = 'INFISICAL_SYNC_POLICY';
+        ```
+
+        <Warning>
+            `0.0.0.0/0` lets the user authenticate from any IP address. In production, replace it with the IP addresses Infisical connects from.
+        </Warning>
+    </Step>
+    <Step>
+        Create a role for the user, grant the role the privileges for the integration you'll set up, and make it the user's default role, using the same query editor.
+        
+        <Note>
+        Infisical doesn't choose a role when it signs in, so Snowflake runs every Infisical operation under the user's default role. If you skip the `ALTER USER` statement, the default role stays `PUBLIC`, and syncs and rotations fail even though the grants exist.
+        </Note>
+
+        A connection signs in with one role. If you want one connection for both a [sync](/integrations/secret-syncs/snowflake) and a [rotation](/documentation/platform/secret-rotation/snowflake-user-key-pair), grant both sets of privileges to the same role and make that role the user's default.
+
+        <Tabs>
+            <Tab title="Secret syncs">
+                The role needs access to the database and schema the sync writes to, and ownership of every secret in that schema that the sync manages. The following statements grant those privileges on the `PUBLIC` schema of a database named `SECRET_SYNC_TEST`:
+
+                ```SQL
+                CREATE ROLE IF NOT EXISTS INFISICAL_ROLE;
+                GRANT ROLE INFISICAL_ROLE TO USER INFISICAL;
+
+                GRANT ALL PRIVILEGES ON DATABASE SECRET_SYNC_TEST TO ROLE INFISICAL_ROLE;
+                GRANT ALL PRIVILEGES ON SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
+                GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS;
+                GRANT OWNERSHIP ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS;
+
+                ALTER USER INFISICAL SET DEFAULT_ROLE = INFISICAL_ROLE;
+                ```
+
+                <Note>
+                    Snowflake only lets the role that owns a secret replace or drop it. If a secret already exists in the schema, it stays owned by the role that created it, so the sync fails on that secret until you transfer ownership with the `GRANT OWNERSHIP ON ALL SECRETS` statement. The `GRANT OWNERSHIP ON FUTURE SECRETS` statement covers secrets created later.
+                </Note>
+            </Tab>
+            <Tab title="Secret rotations">
+                For [Snowflake user key pair rotation](/documentation/platform/secret-rotation/snowflake-user-key-pair), the role needs to be able to change the key pair of the user you're rotating. The following statements grant that to a role, assign the role to the `INFISICAL` user, and make it the user's default role:
+
+                ```SQL
+                CREATE ROLE IF NOT EXISTS INFISICAL_ROTATION_ROLE;
+
+                GRANT OWNERSHIP ON USER MY_TARGET_USER TO ROLE INFISICAL_ROTATION_ROLE;
+
+                -- Only needed if Infisical should create the target user
+                GRANT CREATE USER ON ACCOUNT TO ROLE INFISICAL_ROTATION_ROLE;
+
+                GRANT ROLE INFISICAL_ROTATION_ROLE TO USER INFISICAL;
+                ALTER USER INFISICAL SET DEFAULT_ROLE = INFISICAL_ROTATION_ROLE;
+                ```
+
+                If the target user already exists, `OWNERSHIP` on that user is enough. If you want Infisical to create the target user, the role also needs `CREATE USER` on the account. For more about roles and privileges, see Snowflake's [access control documentation](https://docs.snowflake.com/en/user-guide/security-access-control-overview).
+            </Tab>
+        </Tabs>
+    </Step>
+    <Step>
+        Go back to **Governance & Security** > **Users & roles** and select the user. Open the **Programmatic access tokens** tab and select **Generate new token**. Give the token a name, such as `infisical`, restrict it to the role you made the user's default, and set its expiration to match your security policy.
+
+        ![Programmatic access tokens tab](/images/app-connections/snowflake/step-5.png)
+        ![Generate new token](/images/app-connections/snowflake/step-6.png)
+    </Step>
+    <Step>
+        Copy the token. Snowflake shows the token only once, so save it for the Infisical form.
+
+        ![Copy the token](/images/app-connections/snowflake/step-7.png)
+    </Step>
+    <Step>
+        Copy your account identifier, which has the form `orgName-accountName`. You can read both parts from your Snowsight URL: `https://app.snowflake.com/orgName/accountName/`.
+
+        You can also select your username in the bottom-left corner, open **Account details**, and copy the **Account** value from the **Config File** tab.
+
+        ![Account details menu](/images/app-connections/snowflake/account-info-left-corner.png)
+        ![Account details](/images/app-connections/snowflake/account-details.png)
+        ![Account identifier](/images/app-connections/snowflake/account-info.png)
+    </Step>
+</Steps>

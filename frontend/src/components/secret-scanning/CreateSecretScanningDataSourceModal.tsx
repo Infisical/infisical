@@ -11,6 +11,10 @@ import {
 
 import { SecretScanningDataSourceForm } from "./forms";
 import { SecretScanningDataSourceModalHeader } from "./SecretScanningDataSourceModalHeader";
+import {
+  SecretScanningDataSourcePopupContext,
+  useSecretScanningDataSourcePopupRegistry
+} from "./SecretScanningDataSourcePopupContext";
 import { SecretScanningDataSourceSelect } from "./SecretScanningDataSourceSelect";
 
 type Props = {
@@ -42,6 +46,7 @@ const Content = ({
 };
 
 export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...props }: Props) => {
+  const popupRegistry = useSecretScanningDataSourcePopupRegistry();
   const [selectedDataSource, setSelectedDataSource] = useState<SecretScanningDataSource | null>(
     null
   );
@@ -106,12 +111,13 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
           menus (all z-50, portaled later) stack above this modal instead of being buried behind it,
           while the backdrop still covers page chrome up to z-50 by portal order. */}
       <ModalContent
+        onEscapeKeyDown={popupRegistry.onEscapeKeyDown}
         overlayClassName="z-50"
         title={
           selectedDataSource ? (
             <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
           ) : (
-            <div className="flex items-center gap-x-2 text-mineshaft-300">
+            <div className="flex items-center gap-x-2 text-label">
               Add Data Source
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
             </div>
@@ -123,17 +129,19 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
         }
         bodyClassName="overflow-visible"
       >
-        <Content
-          onComplete={() => {
-            resetModal();
-            onOpenChange(false);
-          }}
-          onCancel={resetModal}
-          selectedDataSource={selectedDataSource}
-          setSelectedDataSource={setSelectedDataSource}
-          initialFormData={initialFormData}
-          {...props}
-        />
+        <SecretScanningDataSourcePopupContext.Provider value={popupRegistry.onPopupOpenChange}>
+          <Content
+            onComplete={() => {
+              resetModal();
+              onOpenChange(false);
+            }}
+            onCancel={resetModal}
+            selectedDataSource={selectedDataSource}
+            setSelectedDataSource={setSelectedDataSource}
+            initialFormData={initialFormData}
+            {...props}
+          />
+        </SecretScanningDataSourcePopupContext.Provider>
       </ModalContent>
     </Modal>
   );

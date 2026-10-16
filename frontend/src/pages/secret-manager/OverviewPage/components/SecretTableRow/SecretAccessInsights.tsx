@@ -716,7 +716,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                         <TooltipTrigger asChild>
                           <span className="inline-flex items-center gap-1">
                             {col.label}
-                            <TriangleAlertIcon className="size-3.5 text-yellow-500" />
+                            <TriangleAlertIcon className="size-3.5 text-warning" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>

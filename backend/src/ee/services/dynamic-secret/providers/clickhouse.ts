@@ -4,14 +4,14 @@ import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -99,13 +99,11 @@ const generatePassword = (requirements?: PasswordRequirements) => {
 };
 
 type TClickhouseProviderDTO = {
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const ClickhouseProvider = ({
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService
 }: TClickhouseProviderDTO): TDynamicProviderFns => {
@@ -181,28 +179,19 @@ export const ClickhouseProvider = ({
       targetPort: providerInputs.port
     });
 
-    if (gatewayV2ConnectionDetails) {
-      return withGatewayV2Proxy(
-        async (port) => {
-          await gatewayCallback("localhost", port);
-        },
-        {
-          ...gatewayV2ConnectionDetails,
-          protocol: GatewayProxyProtocol.Tcp
-        }
-      );
+    // Falling through here would silently bypass the gateway this dynamic secret is pinned to
+    // and dial the target host from the platform instead.
+    if (!gatewayV2ConnectionDetails) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(effectiveGatewayId as string) });
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(effectiveGatewayId as string);
-    await withGatewayProxy(
+    return withGatewayV2Proxy(
       async (port) => {
         await gatewayCallback("localhost", port);
       },
       {
-        relayDetails,
-        protocol: GatewayProxyProtocol.Tcp,
-        targetHost: providerInputs.host,
-        targetPort: providerInputs.port
+        ...gatewayV2ConnectionDetails,
+        protocol: GatewayProxyProtocol.Tcp
       }
     );
   };

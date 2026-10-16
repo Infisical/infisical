@@ -144,7 +144,8 @@ export const IdentityRoleDetailsSection = ({
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
   // Products where the underlying project is an internal detail the user never sees
-  const isStandaloneProduct = isCertManager || isPam;
+  const isSecretScanning = currentProject?.type === ProjectType.SecretScanning;
+  const isStandaloneProduct = isCertManager || isPam || isSecretScanning;
   // PAM has a single built-in product role edited from its own Access Control page; the generic
   // multi-role editor (custom roles, temporary access) doesn't apply, so the card is read-only here.
   const isRoleEditable = !isPam;

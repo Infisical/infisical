@@ -46,7 +46,7 @@ export async function cloneRepo(
 
   await execFileBounded("git", [...getGitThreadLimitArgs(), "clone", cloneUrl, repoPath, "--bare"], {
     phase: SecretScanningExecPhase.Clone,
-    timeoutMs: getConfig().SECRET_SCANNING_CLONE_TIMEOUT_MS,
+    timeoutMs: getConfig().SECRET_SCANNING_CLONE_TIMEOUT,
     env: GIT_PROCESS_ENV
   });
 }
@@ -55,7 +55,7 @@ export async function runInfisicalScanOnRepo(repoPath: string, outputPath: strin
   await execFileBounded("infisical", ["scan", "--exit-code=77", "-r", outputPath], {
     phase: SecretScanningExecPhase.Scan,
     cwd: repoPath,
-    timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT_MS,
+    timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT,
     env: getScannerProcessEnv(),
     successExitCodes: [0, SCAN_FINDINGS_EXIT_CODE]
   });
@@ -69,7 +69,7 @@ export async function runInfisicalScan(inputPath: string, outputPath: string, co
 
   await execFileBounded("infisical", args, {
     phase: SecretScanningExecPhase.Scan,
-    timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT_MS,
+    timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT,
     env: getScannerProcessEnv(),
     successExitCodes: [0, SCAN_FINDINGS_EXIT_CODE]
   });

@@ -1,0 +1,40 @@
+version: v0.165.16
+releasedAt: 2026-09-23T09:59:43-05:00
+sourceTag: v0.165.16
+previousTag: v0.165.15
+impactLevel: low
+summary: Adds two startup-run database migrations, including a new gateway GCP
+  auth table and additive secret scanning progress columns.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Gateway GCP auth table
+    description: Infisical adds a new table for gateway GCP enrollment auth methods.
+      The migration is additive and guarded by a table existence check.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260915135021_resource-gcp-auth.ts
+        path: backend/src/db/migrations/20260915135021_resource-gcp-auth.ts
+  - title: Secret scanning progress columns
+    description: Infisical adds nullable progress-tracking columns to secret
+      scanning scans. The migration only adds missing columns and preserves
+      existing rows.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260916120000_add-last-scanned-commit-to-secret-scanning-scans.ts
+        path: backend/src/db/migrations/20260916120000_add-last-scanned-commit-to-secret-scanning-scans.ts
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-09-23T16:22:51.328Z
+  sourceRange:
+    from: v0.165.15
+    to: v0.165.16

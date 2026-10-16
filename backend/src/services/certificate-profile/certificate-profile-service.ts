@@ -21,18 +21,33 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertStatus } from "../certificate/certificate-types";
+import type { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
-import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { CaCapability, CaType } from "../certificate-authority/certificate-authority-enums";
+import {
+  caSupportsCapability,
+  CERTIFICATE_AUTHORITIES_TYPE_MAP
+} from "../certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
 import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
+import {
+  MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE,
+  MAX_CUSTOM_EXTENSIONS_PER_PROFILE
+} from "../certificate-common/certificate-constants";
+import {
+  describeReservedExtensionOid,
+  isReservedExtensionOid,
+  resolveCustomExtensions,
+  TCustomExtensionRule
+} from "../certificate-common/certificate-extension-fns";
 import { isSignatureAlgorithmCompatibleWithCaKey } from "../certificate-common/certificate-issuance-utils";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
@@ -47,7 +62,6 @@ import {
 } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
-import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -323,7 +337,7 @@ type TCertificateProfileServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
-  hsmConnectorService: THsmConnectorServiceFactory;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
@@ -387,7 +401,7 @@ export const certificateProfileServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCertDAL,
-  hsmConnectorService,
+  caKeySourceService,
   externalCertificateAuthorityDAL,
   permissionService,
   kmsService,
@@ -395,6 +409,65 @@ export const certificateProfileServiceFactory = ({
   resourceMetadataDAL,
   pkiApplicationProfileDAL
 }: TCertificateProfileServiceFactoryDep) => {
+  const validateProfileCustomExtensions = async ({
+    certificatePolicyId,
+    caId,
+    defaults
+  }: {
+    certificatePolicyId?: string | null;
+    caId?: string | null;
+    defaults?: TCertificateProfileDefaults | null;
+  }) => {
+    const declarations = defaults?.customExtensions;
+    if (!declarations?.length) return;
+
+    if (declarations.length > MAX_CUSTOM_EXTENSIONS_PER_PROFILE) {
+      throw new BadRequestError({
+        message: `A profile cannot declare more than ${MAX_CUSTOM_EXTENSIONS_PER_PROFILE} custom extensions`
+      });
+    }
+
+    const seenOids = new Set<string>();
+    for (const declaration of declarations) {
+      if (seenOids.has(declaration.oid)) {
+        throw new BadRequestError({
+          message: `Duplicate custom extension for OID '${declaration.oid}'. Each OID must appear only once.`
+        });
+      }
+      seenOids.add(declaration.oid);
+
+      if (isReservedExtensionOid(declaration.oid)) {
+        throw new BadRequestError({ message: describeReservedExtensionOid(declaration.oid) });
+      }
+    }
+
+    const policy = certificatePolicyId ? await certificatePolicyDAL.findById(certificatePolicyId) : null;
+    const { errors } = resolveCustomExtensions({
+      declarations,
+      rules: policy?.customExtensions as TCustomExtensionRule[] | null | undefined,
+      skipRequired: true
+    });
+    if (errors.length) {
+      throw new BadRequestError({ message: errors.join(" ") });
+    }
+
+    if (caId) {
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+      const caType = (ca?.externalCa?.type ?? CaType.INTERNAL) as CaType;
+      if (!caSupportsCapability(caType, CaCapability.CUSTOM_EXTENSIONS)) {
+        throw new BadRequestError({
+          message: `${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType] ?? caType} certificate authorities cannot carry custom extensions, so this profile cannot declare any. Use an internal certificate authority, ${CERTIFICATE_AUTHORITIES_TYPE_MAP[CaType.ADCS]}, or ${CERTIFICATE_AUTHORITIES_TYPE_MAP[CaType.AWS_PCA]} instead.`
+        });
+      }
+
+      if (caType === CaType.AWS_PCA && declarations.length > MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE) {
+        throw new BadRequestError({
+          message: `AWS Private CA accepts at most ${MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE} custom extensions on a certificate, so this profile cannot declare ${declarations.length}.`
+        });
+      }
+    }
+  };
+
   const createProfile = async ({
     actor,
     actorId,
@@ -454,8 +527,8 @@ export const certificateProfileServiceFactory = ({
     // Check for slug uniqueness within project
     const existingSlugProfile = await certificateProfileDAL.findBySlugAndProjectId(data.slug, projectId);
     if (existingSlugProfile) {
-      throw new ForbiddenRequestError({
-        message: "Certificate profile with this name already exists in project"
+      throw new ConflictError({
+        message: `A certificate profile named '${data.slug}' already exists. Choose a different name.`
       });
     }
 
@@ -488,6 +561,12 @@ export const certificateProfileServiceFactory = ({
         }
       }
     }
+
+    await validateProfileCustomExtensions({
+      certificatePolicyId: data.certificatePolicyId,
+      caId: data.caId,
+      defaults: data.defaults
+    });
 
     await validateDefaultSignatureAlgorithmAgainstCa(
       data.defaults?.signatureAlgorithm,
@@ -552,7 +631,7 @@ export const certificateProfileServiceFactory = ({
           certificateAuthorityCertDAL,
           projectDAL,
           kmsService,
-          hsmConnectorService
+          caKeySourceService
         }
       });
 
@@ -737,8 +816,8 @@ export const certificateProfileServiceFactory = ({
         existingProfile.projectId
       );
       if (conflictingProfile && conflictingProfile.id !== profileId) {
-        throw new ForbiddenRequestError({
-          message: "Certificate profile with this name already exists in project"
+        throw new ConflictError({
+          message: `A certificate profile named '${data.slug}' already exists. Choose a different name.`
         });
       }
     }
@@ -805,6 +884,14 @@ export const certificateProfileServiceFactory = ({
         }
       }
     }
+
+    await validateProfileCustomExtensions({
+      certificatePolicyId:
+        data.certificatePolicyId !== undefined ? data.certificatePolicyId : existingProfile.certificatePolicyId,
+      caId: data.caId !== undefined ? data.caId : existingProfile.caId,
+      defaults:
+        data.defaults !== undefined ? data.defaults : (existingProfile.defaults as TCertificateProfileDefaults | null)
+    });
 
     await validateDefaultSignatureAlgorithmAgainstCa(
       data.defaults?.signatureAlgorithm,

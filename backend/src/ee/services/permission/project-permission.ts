@@ -271,7 +271,8 @@ export enum ProjectPermissionSecretEventActions {
 }
 
 export enum ProjectPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 export enum ProjectPermissionInsightsActions {
@@ -417,7 +418,8 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
       "assignableAction"
     ],
     [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
-    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"],
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"]
   },
   [ProjectPermissionSub.Identity]: {
     [ProjectPermissionIdentityActions.Read]: ["identityId"],
@@ -1906,6 +1908,12 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     conditions: CertificatePolicyConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Application).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApplicationActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.CertificateAuthorities).describe("The entity this permission pertains to."),

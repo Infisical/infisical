@@ -103,7 +103,6 @@ export const NetworkHealthBanner = () => {
   const unreachableGatewayCount = useMemo(
     () =>
       gateways?.filter((g) => {
-        if (g.isV1) return false;
         return !isGatewayHealthy(g);
       }).length ?? 0,
     [gateways]

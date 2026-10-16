@@ -26,6 +26,7 @@ import {
 import {
   PermissionConditionOperators,
   ProjectPermissionAppConnectionActions,
+  ProjectPermissionApplicationActions,
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
@@ -58,6 +59,7 @@ import {
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
 
@@ -69,7 +71,8 @@ const GeneralPolicyActionSchema = z.object({
 });
 
 const AuditLogsPolicyActionSchema = z.object({
-  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional()
+  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAuditLogsActions.Edit]: z.boolean().optional()
 });
 
 const InsightsPolicyActionSchema = z.object({
@@ -487,7 +490,7 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.Create]: [],
     [ProjectPermissionMemberActions.Edit]: [],
     [ProjectPermissionMemberActions.Delete]: [],
-    [ProjectPermissionMemberActions.AssumePrivileges]: [],
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"],
     [ProjectPermissionMemberActions.GrantPrivileges]: [
       "userEmail",
       "assignableRole",
@@ -765,6 +768,14 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.CertificateInventoryViews]: GeneralPolicyActionSchema.array().default(
         []
       ),
+      [ProjectPermissionSub.Application]: z
+        .object({
+          read: z.boolean().optional(),
+          list: z.boolean().optional(),
+          create: z.boolean().optional()
+        })
+        .array()
+        .default([]),
       [ProjectPermissionSub.PkiDiscovery]: z
         .object({
           read: z.boolean().optional(),
@@ -1580,6 +1591,19 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Delete] = true;
       if (canTest) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Test] = true;
       if (canAttach) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Attach] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Application) {
+      const canRead = action.includes(ProjectPermissionApplicationActions.Read);
+      const canList = action.includes(ProjectPermissionApplicationActions.List);
+      const canCreate = action.includes(ProjectPermissionApplicationActions.Create);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionApplicationActions.Read] = true;
+      if (canList) formVal[subject]![0][ProjectPermissionApplicationActions.List] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionApplicationActions.Create] = true;
       return;
     }
 
@@ -2656,12 +2680,19 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AuditLogs]: {
     title: "Audit Logs",
-    description: "View project activity and audit trail",
+    description: "View project activity and audit trail, and choose which events are recorded",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionAuditLogsActions.Read,
         description: "View audit logs and security events"
+      },
+      {
+        label: "Edit",
+        value: ProjectPermissionAuditLogsActions.Edit,
+        description: isInfisicalCloud()
+          ? "Choose which audit log event classes the project records"
+          : "Choose which audit log event classes the project records and how long it keeps its audit logs"
       }
     ]
   },
@@ -2849,6 +2880,28 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove",
         value: ProjectPermissionCertificatePolicyActions.Delete,
         description: "Delete certificate policies"
+      }
+    ]
+  },
+  [ProjectPermissionSub.Application]: {
+    title: "Applications",
+    description: "Manage services and workloads that issue their own certificates",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionApplicationActions.Read,
+        description:
+          "See all applications in Certificate Manager. An application's details stay hidden unless you are a member of it"
+      },
+      {
+        label: "List",
+        value: ProjectPermissionApplicationActions.List,
+        description: "List the applications in Certificate Manager"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionApplicationActions.Create,
+        description: "Create new applications"
       }
     ]
   },
@@ -3442,6 +3495,7 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.CertificateTemplates]: false, // Hidden from UI, accessible via API only
   [ProjectPermissionSub.CertificateProfiles]: enabled,
   [ProjectPermissionSub.CertificatePolicies]: enabled,
+  [ProjectPermissionSub.Application]: enabled,
   [ProjectPermissionSub.Certificates]: enabled,
   [ProjectPermissionSub.PkiDiscovery]: enabled,
   [ProjectPermissionSub.PkiCertificateInstallations]: enabled,
@@ -3543,7 +3597,7 @@ const projectManagerTemplate = (
   permissions: [
     {
       subject: ProjectPermissionSub.AuditLogs,
-      actions: Object.values(ProjectPermissionAuditLogsActions)
+      actions: [ProjectPermissionAuditLogsActions.Read]
     },
     {
       subject: ProjectPermissionSub.Groups,

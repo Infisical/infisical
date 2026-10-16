@@ -51,7 +51,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getProjectDisplayName,
+  pinProjectForNavigation
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -64,6 +68,7 @@ import {
   useCountOrgIdentityMemberships,
   useSearchOrgIdentityMemberships
 } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
@@ -136,11 +141,15 @@ const ManagedByCell = ({
   isSubOrganization,
   isSubOrgIdentity
 }: ManagedByCellProps) => {
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+
   if (scope === SearchIdentitiesScope.ProjectScope) {
     return (
       <Badge variant="project">
         <ProjectIcon />
-        {project?.name ?? "Project"}
+        {project
+          ? getProjectDisplayName(project, Boolean(certManagerInstance?.isMultiInstance))
+          : "Project"}
       </Badge>
     );
   }
@@ -180,7 +189,7 @@ const LastUsedCell = ({ lastLoginAuthMethod, lastLoginTime }: LastUsedCellProps)
   const label = formatLastUsed(lastLoginTime);
 
   if (!lastLoginAuthMethod || !lastLoginTime) {
-    return <span className="text-sm text-mineshaft-400">{label}</span>;
+    return <span className="text-sm text-muted">{label}</span>;
   }
 
   return (
@@ -389,6 +398,7 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
 
   const navigateToIdentity = () => {
     if (isProjectScoped && project) {
+      pinProjectForNavigation(currentOrg.id, project);
       navigate({
         to: `${getProjectBaseURL(project.type)}/identities/$identityId` as const,
         params: {

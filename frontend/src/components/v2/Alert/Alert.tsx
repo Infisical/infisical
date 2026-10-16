@@ -9,13 +9,13 @@ import { cva, type VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
 const alertVariants = cva(
-  "w-full bg-mineshaft-800 rounded-lg border border-bunker-400 px-4 py-3 text-sm flex items-center gap-x-3",
+  "w-full bg-surface-raised rounded-lg border border-border-secondary-strong px-4 py-3 text-sm flex items-center gap-x-3",
   {
     variants: {
       variant: {
         default: "",
-        danger: "text-red border-red",
-        warning: "text-yellow border-yellow"
+        danger: "text-danger border-danger",
+        warning: "text-warning border-warning"
       }
     },
     defaultVariants: {
@@ -64,14 +64,14 @@ const Alert = forwardRef<
             <>{icon} </>
           ) : (
             <FontAwesomeIcon
-              className={twMerge("text-lg text-primary", iconClassName)}
+              className={twMerge("text-lg text-project", iconClassName)}
               icon={variantIconMap[variant ?? "default"]}
             />
           )}
         </div>
         <div className="flex flex-col gap-y-1">
           {hideTitle ? null : (
-            <h5 className="leading-6 font-medium tracking-tight" {...props}>
+            <h5 className="leading-6 font-normal tracking-tight" {...props}>
               {defaultTitle}
             </h5>
           )}

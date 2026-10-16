@@ -6,6 +6,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { MfaMethod } from "../auth/auth-type";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserServiceFactory } from "../user/user-service";
 import { TTotpConfigDALFactory } from "./totp-config-dal";
 import {
   TDeleteUserTotpConfigDTO,
@@ -20,13 +21,20 @@ type TTotpServiceFactoryDep = {
   totpConfigDAL: TTotpConfigDALFactory;
   kmsService: TKmsServiceFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+  userService: Pick<TUserServiceFactory, "resolveMfaMethodAfterRemoval">;
 };
 
 authenticator.options = { window: 1 };
 
 export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 
-export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStore }: TTotpServiceFactoryDep) => {
+export const totpServiceFactory = ({
+  totpConfigDAL,
+  kmsService,
+  userDAL,
+  keyStore,
+  userService
+}: TTotpServiceFactoryDep) => {
   const getUserTotpConfig = async ({ userId }: TGetUserTotpConfigDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
       userId
@@ -178,29 +186,20 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
   };
 
   const deleteUserTotpConfig = async ({ userId }: TDeleteUserTotpConfigDTO) => {
+    const totpConfig = await totpConfigDAL.findOne({ userId });
+
+    if (!totpConfig) {
+      throw new NotFoundError({
+        message: "TOTP configuration not found"
+      });
+    }
+
+    const replacementMfaMethod = await userService.resolveMfaMethodAfterRemoval(userId, MfaMethod.TOTP);
+
     await totpConfigDAL.transaction(async (tx) => {
-      const totpConfig = await totpConfigDAL.findOne(
-        {
-          userId
-        },
-        tx
-      );
-
-      if (!totpConfig) {
-        throw new NotFoundError({
-          message: "TOTP configuration not found"
-        });
-      }
-
       await totpConfigDAL.deleteById(totpConfig.id, tx);
-
-      // If the user's preferred method is the TOTP config we just removed, reset it
-      // so getRequiredMfaMethod doesn't keep challenging for a method that no longer
-      // has a verified config, which would force the user back into enrollment. Fall
-      // back to email, which is always available.
-      const user = await userDAL.findById(userId, tx);
-      if (user?.selectedMfaMethod === MfaMethod.TOTP) {
-        await userDAL.updateById(userId, { selectedMfaMethod: MfaMethod.EMAIL }, tx);
+      if (replacementMfaMethod) {
+        await userDAL.updateById(userId, { selectedMfaMethod: replacementMfaMethod }, tx);
       }
     });
   };

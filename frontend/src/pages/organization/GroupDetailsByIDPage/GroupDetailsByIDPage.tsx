@@ -5,14 +5,16 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader, Spinner } from "@app/components/v2";
 import {
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Spinner
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteGroup } from "@app/hooks/api";
@@ -81,7 +83,7 @@ const Page = () => {
   const isLinkedGroup = data && currentOrg ? data.group.orgId !== currentOrg.id : false;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {data && (
         <>
           <Link
@@ -90,7 +92,7 @@ const Page = () => {
             search={{
               selectedTab: TabSections.Groups
             }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon size={16} />
             {isSubOrganization ? "Sub-" : ""}Organization Groups
@@ -164,13 +166,13 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <GroupDetailsSection
               groupId={groupId}
               handlePopUpOpen={handlePopUpOpen}
               canEditGroup={canEditGroup}
             />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               <GroupMembersSection
                 groupId={groupId}
                 groupSlug={data.group.slug}
@@ -190,7 +192,7 @@ const Page = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
         title={
           (popUp?.deleteGroup?.data as { isLinkedGroup?: boolean })?.isLinkedGroup
@@ -201,9 +203,10 @@ const Page = () => {
                 (popUp?.deleteGroup?.data as { name: string })?.name || ""
               }?`
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; id: string })
         }
       />

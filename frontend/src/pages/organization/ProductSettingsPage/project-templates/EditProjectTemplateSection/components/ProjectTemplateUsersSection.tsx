@@ -249,7 +249,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                           name={`users.${pos}.username`}
                           render={({ field }) => (
                             <p className="truncate">
-                              <span className="text-sm font-medium text-mineshaft-100">
+                              <span className="text-sm font-medium text-foreground">
                                 {field.value}
                               </span>
                             </p>

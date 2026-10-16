@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
-import { PageLoader } from "@app/components/v3";
+import { PageHeader, PageLoader } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -44,10 +43,9 @@ export const DashboardPage = () => {
   const navigateToInventory = useCallback(
     (filters: Record<string, string | undefined>) => {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
+        to: "/organizations/$orgId/cert-manager/inventory",
         params: {
-          orgId: currentProject?.orgId || "",
-          projectId: currentProject?.id || ""
+          orgId: currentProject?.orgId || ""
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         search: filters as any
@@ -59,14 +57,13 @@ export const DashboardPage = () => {
     return <PageLoader />;
   }
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="h-full bg-page">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Dashboard" })}</title>
       </Helmet>
-      <div className="mx-auto flex flex-col text-white">
-        <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto flex flex-col text-foreground-inverse">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
-            className="mb-6 md:mb-10"
             scope={ProjectType.CertificateManager}
             title="Certificate Dashboard"
             description="See the overall state of your certificates at a glance."
@@ -98,7 +95,7 @@ export const DashboardPage = () => {
                   <ValidityReadinessSection stats={stats} />
                   {stats.totals.total > 0 && (
                     <div className="flex flex-col gap-4">
-                      <h2 className="text-lg font-semibold text-foreground">
+                      <h2 className="text-lg font-normal text-foreground">
                         Post-Quantum Readiness
                       </h2>
                       <div className="flex flex-wrap gap-4">

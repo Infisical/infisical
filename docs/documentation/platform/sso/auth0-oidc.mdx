@@ -32,6 +32,10 @@ description: "Learn how to configure Auth0 OIDC for Infisical SSO."
       1.3. Proceed to the Connections Tab and enable desired connections.
       ![OIDC auth0 application connections](../../../images/sso/auth0-oidc/application-connections.png)
 
+      <Note>
+         Infisical takes a user's first name from the `given_name` claim and their last name from `family_name`. Configure `family_name` only if Infisical should store a separate last name. If `given_name` is missing, Infisical falls back to the `name` claim. See [General OIDC](/documentation/platform/sso/general-oidc/overview) for the exact fallback rules.
+      </Note>
+
    </Step>
    <Step title="Retrieve Identity Provider (IdP) Information from Auth0">
       2.1. From the application settings page, retrieve the **Client ID** and **Client Secret**

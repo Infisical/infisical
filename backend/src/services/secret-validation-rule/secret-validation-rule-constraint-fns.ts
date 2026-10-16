@@ -10,13 +10,23 @@ export const CONSTRAINT_LABELS: Record<ConstraintKind, string> = {
   [ConstraintKind.RegexPattern]: "Regex pattern",
   [ConstraintKind.RequiredPrefix]: "Required prefix",
   [ConstraintKind.RequiredSuffix]: "Required suffix",
-  [ConstraintKind.ReusePreviousVersions]: "Prevent reuse of previous secret values"
+  [ConstraintKind.ReusePreviousVersions]: "Prevent reuse of previous secret values",
+  [ConstraintKind.ReuseOtherSecretsInScope]: "Prevent reuse of a value another secret in scope already holds"
+};
+
+// Where a value that another secret already holds was found, once the service has looked it up.
+export type TDuplicateSecret = {
+  key: string;
+  environment: string;
+  secretPath: string;
 };
 
 export type TConstraintViolation = {
   kind: ConstraintKind;
   label: string;
   message: string;
+  // Carried instead of written into the message, which never names a location. See secret-validation-rule-errors.
+  duplicateOf?: TDuplicateSecret;
 };
 
 const violation = (kind: ConstraintKind, message: string): TConstraintViolation => ({

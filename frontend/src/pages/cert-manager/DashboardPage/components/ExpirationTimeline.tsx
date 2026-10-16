@@ -65,7 +65,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
   return (
     <Card className="flex h-auto min-w-0 flex-col">
       <CardHeader className="pb-0">
-        <CardTitle className="text-base font-semibold">Expiration Timeline</CardTitle>
+        <CardTitle className="text-base font-normal">Expiration Timeline</CardTitle>
         <CardDescription className="text-xs">Certificates by time to expiry</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 items-center pt-2">

@@ -1,8 +1,13 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
 import { Controller, useFormContext } from "react-hook-form";
 import { InfoIcon, TrashIcon } from "lucide-react";
 
 import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldTitle,
   IconButton,
   Input,
   Select,
@@ -10,11 +15,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 
+import { BlindIndexAlert } from "./BlindIndexAlert";
 import {
   CONSTRAINT_OPTIONS,
   CONSTRAINT_TYPE_LABELS,
@@ -53,9 +60,13 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
   const placeholder = constraintOption?.placeholder;
   const isPreventValueReuse = constraintType === ConstraintType.PreventValueReuse;
   const isNumericInput =
-    constraintType === ConstraintType.MinLength ||
-    constraintType === ConstraintType.MaxLength ||
-    constraintType === ConstraintType.PreventValueReuse;
+    constraintType === ConstraintType.MinLength || constraintType === ConstraintType.MaxLength;
+  const checkOtherSecretsInScope = watch(
+    `enforcement.constraints.${index}.checkOtherSecretsInScope`
+  );
+
+  const appliesToId = `constraint-${index}-applies-to`;
+  const valueId = `constraint-${index}-value`;
 
   return (
     <div className="rounded-md border border-border bg-card p-4">
@@ -75,33 +86,117 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
         <p className="mt-1.5 text-xs text-muted">{constraintOption.cardDescription}</p>
       )}
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        {(() => {
-          if (isGeneratedCredentialRule) {
-            return (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-muted">Applies to</label>
-                <Input value="Generated Password" readOnly className="cursor-default opacity-60" />
+      {isPreventValueReuse ? (
+        <div className="mt-3 flex flex-col">
+          <Controller
+            control={control}
+            name={`enforcement.constraints.${index}.checkOtherSecretsInScope`}
+            render={({ field: { value, onChange } }) => (
+              <div className="border-t border-border pt-3">
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Other secrets in scope</FieldTitle>
+                    <FieldDescription>
+                      Reject values currently used by other secrets in this rule&apos;s scope
+                    </FieldDescription>
+                  </FieldContent>
+                  <Toggle
+                    aria-label="Check the new value against other secrets in this rule's scope"
+                    checked={Boolean(value)}
+                    onCheckedChange={onChange}
+                    variant="project"
+                  />
+                </Field>
               </div>
-            );
-          }
-          if (isPreventValueReuse) {
-            return (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-muted">Applies to</label>
-                <Input value="Secret Value" readOnly className="cursor-default opacity-60" />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name={`enforcement.constraints.${index}.checkPreviousVersions`}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
+                <Field orientation="horizontal" data-invalid={Boolean(error)}>
+                  <FieldContent>
+                    <FieldTitle>This secret&apos;s previous versions</FieldTitle>
+                    <FieldDescription>Reject values this secret held before</FieldDescription>
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                  <Toggle
+                    aria-label="Check the new value against this secret's previous versions"
+                    checked={Boolean(value)}
+                    onCheckedChange={onChange}
+                    variant="project"
+                  />
+                </Field>
+                {value && (
+                  <Controller
+                    control={control}
+                    name={`enforcement.constraints.${index}.value`}
+                    render={({ field, fieldState: { error: valueError } }) => (
+                      <Field orientation="horizontal" data-invalid={Boolean(valueError)}>
+                        <FieldLabel htmlFor={valueId}>
+                          {CONSTRAINT_VALUE_LABELS[constraintType]}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <InfoIcon className="text-muted" />
+                            </TooltipTrigger>
+                            <TooltipContent side="left" align="start" className="max-w-xs">
+                              <p className="text-sm">
+                                How many of the secret&apos;s own previous versions the new value
+                                must differ from.
+                              </p>
+                              <p className="mt-2 text-xs text-muted">
+                                Maximum: {MAX_PREVENT_VALUE_REUSE_VERSIONS} versions
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </FieldLabel>
+                        <div className="w-24">
+                          <FieldContent>
+                            <Input
+                              {...field}
+                              id={valueId}
+                              type="number"
+                              min={1}
+                              max={MAX_PREVENT_VALUE_REUSE_VERSIONS}
+                              placeholder={placeholder?.toString() || undefined}
+                              isError={Boolean(valueError)}
+                            />
+                            <FieldError errors={[valueError]} />
+                          </FieldContent>
+                        </div>
+                      </Field>
+                    )}
+                  />
+                )}
               </div>
-            );
-          }
-          return (
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted">Applies to</label>
-              <Controller
-                control={control}
-                name={`enforcement.constraints.${index}.appliesTo`}
-                render={({ field: { value, onChange } }) => (
+            )}
+          />
+
+          {checkOtherSecretsInScope && <BlindIndexAlert />}
+        </div>
+      ) : (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {isGeneratedCredentialRule ? (
+            <Field>
+              <FieldLabel htmlFor={appliesToId}>Applies to</FieldLabel>
+              <Input
+                id={appliesToId}
+                value="Generated Password"
+                readOnly
+                className="cursor-default opacity-60"
+              />
+            </Field>
+          ) : (
+            <Controller
+              control={control}
+              name={`enforcement.constraints.${index}.appliesTo`}
+              render={({ field: { value, onChange } }) => (
+                <Field>
+                  <FieldLabel htmlFor={appliesToId}>Applies to</FieldLabel>
                   <Select value={value} onValueChange={onChange}>
-                    <SelectTrigger>
+                    <SelectTrigger id={appliesToId}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent position="popper">
@@ -119,50 +214,29 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                )}
-              />
-            </div>
-          );
-        })()}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-muted">
-            <div className="flex items-center gap-1">
-              {CONSTRAINT_VALUE_LABELS[constraintType]}
-              {constraintType === ConstraintType.PreventValueReuse && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <InfoIcon className="ml-1 size-3.5 text-muted" />
-                  </TooltipTrigger>
-                  <TooltipContent side="left" align="start" className="max-w-xs">
-                    <p className="text-sm">
-                      When a secret is updated, its new value is validated against the specified
-                      number of prior versions.
-                    </p>
-                    <p className="mt-2 text-xs text-muted">Maximum: 25 versions</p>
-                  </TooltipContent>
-                </Tooltip>
+                </Field>
               )}
-            </div>
-          </label>
+            />
+          )}
           <Controller
             control={control}
             name={`enforcement.constraints.${index}.value`}
             render={({ field, fieldState: { error } }) => (
-              <div>
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor={valueId}>{CONSTRAINT_VALUE_LABELS[constraintType]}</FieldLabel>
                 <Input
                   {...field}
+                  id={valueId}
                   type={isNumericInput ? "number" : "text"}
-                  min={isPreventValueReuse ? 1 : undefined}
-                  max={isPreventValueReuse ? MAX_PREVENT_VALUE_REUSE_VERSIONS : undefined}
                   placeholder={placeholder?.toString() || undefined}
                   isError={Boolean(error)}
                 />
-                {error?.message && <p className="mt-1 text-xs text-danger">{error.message}</p>}
-              </div>
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
         </div>
-      </div>
+      )}
     </div>
   );
 };

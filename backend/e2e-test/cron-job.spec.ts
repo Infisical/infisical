@@ -23,6 +23,10 @@ const KEY_PREFIX = "{cron-e2e}";
 const SLOT_KEYS = `${KEY_PREFIX}:slot:*`;
 const RUN_KEYS = (name: string) => `${KEY_PREFIX}:run:${name}:*`;
 const PENDING_ZSET = `${KEY_PREFIX}:pending`;
+const LAST_KEY = (name: string) => `${KEY_PREFIX}:last:${name}`;
+
+// waitForFreshMinute keeps every test clear of a boundary, so this is FAST_PATTERN's latest fire.
+const currentFireMs = () => Math.floor(Date.now() / 60_000) * 60_000;
 
 const clearNamespace = async () => {
   const keys = await testRedis.keys(`${KEY_PREFIX}:*`);
@@ -74,6 +78,13 @@ const makeFactory = (overrides?: Partial<Parameters<typeof cronJobFactory>[0]>) 
     retryBackoffMaxMs: 500,
     handlerTimeoutMs: 5_000,
     minProcessAgeMs: 0,
+    // Off by default so pickup timing is deterministic. Every test here registers against
+    // FAST_PATTERN, whose derived window is 15s, while `waitForFreshMinute` leaves the suite
+    // starting at an arbitrary point after a minute boundary. A job would therefore be held
+    // back by anything from 0 to its full offset depending on when the test happened to run,
+    // which makes every "handler was called by Xms" assertion a coin flip. The jitter
+    // describe below opts back in.
+    maxJitterMs: 0,
     // Keep test cleanup snappy. Production default is 25s to fit Kubernetes'
     // grace period; in tests we'd rather not stall afterEach if a handler
     // happens to be in flight at shutdown.
@@ -85,11 +96,28 @@ const makeFactory = (overrides?: Partial<Parameters<typeof cronJobFactory>[0]>) 
 const FAST_PATTERN = "* * * * *"; // fires every minute
 const allFactories: ReturnType<typeof makeFactory>[] = [];
 
-const factory = (overrides?: Partial<Parameters<typeof cronJobFactory>[0]>) => {
+// The manager skips the latest fire of a job that has never fired, so by default every job a
+// test registers is marked as having fired in the previous minute, which lets it run in the
+// current one. NX keeps a value an earlier factory in the same test already wrote. The first
+// enqueue tick runs enqueueIntervalMs after start(), long after this write lands.
+const factory = (
+  overrides?: Partial<Parameters<typeof cronJobFactory>[0]>,
+  { existingJobs = true }: { existingJobs?: boolean } = {}
+) => {
   const f = makeFactory(overrides);
   allFactories.push(f);
-  return f;
+  return {
+    ...f,
+    register: (entry: Parameters<typeof f.register>[0]) => {
+      f.register(entry);
+      if (existingJobs) void testRedis.set(LAST_KEY(entry.name), String(currentFireMs() - 60_000), "NX");
+    }
+  };
 };
+
+// For tests about a job's very first registration.
+const newJobFactory = (overrides?: Partial<Parameters<typeof cronJobFactory>[0]>) =>
+  factory(overrides, { existingJobs: false });
 
 // A handler that never settles on its own, simulating a wedged network call.
 // The resolver is parked so afterEach can release it: an abandoned handler
@@ -431,6 +459,146 @@ describe("min-age gate", () => {
     });
 
     expect(handler).toHaveBeenCalled();
+  }, 10_000);
+});
+
+// ── jitter ─────────────────────────────────────────────────────────────────────
+
+describe("jitter", () => {
+  // Asserted on the zset score rather than on wall-clock pickup: the score is written once at
+  // enqueue and is what actually holds a run back, so this pins the behaviour against real
+  // Redis without depending on where in the minute the test happens to start.
+  const readEnqueued = async (name: string) => {
+    const keys = await testRedis.keys(RUN_KEYS(name));
+    expect(keys.length).toBe(1);
+    const id = keys[0].replace(`${KEY_PREFIX}:run:`, "");
+    const [score, scheduledAt] = await Promise.all([
+      testRedis.zscore(PENDING_ZSET, id),
+      testRedis.hget(`${KEY_PREFIX}:run:${id}`, "scheduled_at")
+    ]);
+    expect(score).not.toBeNull();
+    expect(scheduledAt).not.toBeNull();
+    return { eligibleAt: Number(score), scheduledAt: Number(scheduledAt), id };
+  };
+
+  // processIntervalMs is parked past the test so nothing claims the run and clears the zset
+  // entry out from under the assertion.
+  const enqueueOnly = { processIntervalMs: 60_000 };
+
+  test("a jittered run is scored past its scheduled fire, and the id still keys on the fire", async () => {
+    const f = factory({ ...enqueueOnly, maxJitterMs: 5 * 60_000 });
+    f.register({ name: "jitter-job", pattern: FAST_PATTERN, handler: vi.fn(), runHashTtlS: 3600 });
+    f.start();
+    await new Promise((r) => {
+      setTimeout(r, 900);
+    });
+
+    const { eligibleAt, scheduledAt, id } = await readEnqueued("jitter-job");
+    expect(eligibleAt).toBeGreaterThan(scheduledAt);
+    // FAST_PATTERN's window is a quarter of its 60s interval.
+    expect(eligibleAt - scheduledAt).toBeLessThan(15_000);
+    // Run identity stays on the unjittered fire, which is what the dedup and lease keys use.
+    expect(id).toBe(`jitter-job:${scheduledAt}`);
+  }, 10_000);
+
+  test("maxJitterMs: 0 scores the run at its exact scheduled fire", async () => {
+    const f = factory({ ...enqueueOnly, maxJitterMs: 0 });
+    f.register({ name: "no-jitter-job", pattern: FAST_PATTERN, handler: vi.fn(), runHashTtlS: 3600 });
+    f.start();
+    await new Promise((r) => {
+      setTimeout(r, 900);
+    });
+
+    const { eligibleAt, scheduledAt } = await readEnqueued("no-jitter-job");
+    expect(eligibleAt).toBe(scheduledAt);
+  }, 10_000);
+});
+
+// ── dedup across restarts ──────────────────────────────────────────────────────
+
+describe("dedup across restarts", () => {
+  const sleep = (ms: number) =>
+    new Promise((r) => {
+      setTimeout(r, ms);
+    });
+  // Only Date is faked, so the manager's timers keep running in real time while every enqueue
+  // tick sees the same distance from the fire. afterEach restores the real clock.
+  const freezeClockAfterFire = (ms: number) => {
+    const fire = currentFireMs();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(fire + ms);
+    return fire;
+  };
+
+  test("a restart after the run hash expires does not run the same fire again", async () => {
+    const first = vi.fn().mockResolvedValue(undefined);
+    const f1 = factory();
+    f1.register({ name: "restart-job", pattern: FAST_PATTERN, handler: first, runHashTtlS: 3600 });
+    f1.start();
+    await sleep(2000);
+    expect(first).toHaveBeenCalledTimes(1);
+    await f1.stop();
+
+    const runKeys = await testRedis.keys(RUN_KEYS("restart-job"));
+    await testRedis.del(...runKeys);
+
+    const second = vi.fn().mockResolvedValue(undefined);
+    const f2 = factory();
+    f2.register({ name: "restart-job", pattern: FAST_PATTERN, handler: second, runHashTtlS: 3600 });
+    f2.start();
+    await sleep(1500);
+
+    expect(second).not.toHaveBeenCalled();
+    expect(await testRedis.keys(RUN_KEYS("restart-job"))).toEqual([]);
+  }, 10_000);
+
+  // Migration, part 1 of 2 (see ENQUEUE_RUN_LUA): remove with that branch.
+  test("a run hash written without a last value is recorded instead of enqueued again", async () => {
+    const scheduledAt = currentFireMs();
+    await testRedis.hset(
+      `${KEY_PREFIX}:run:backfill-job:${scheduledAt}`,
+      "name",
+      "backfill-job",
+      "status",
+      "completed"
+    );
+
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const f = newJobFactory();
+    f.register({ name: "backfill-job", pattern: FAST_PATTERN, handler, runHashTtlS: 3600 });
+    f.start();
+    await sleep(1500);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(await testRedis.get(LAST_KEY("backfill-job"))).toBe(String(scheduledAt));
+  }, 10_000);
+
+  test("a job that has never fired skips the fire due before it and waits for the next one", async () => {
+    const fire = freezeClockAfterFire(30_000);
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const f = newJobFactory();
+    f.register({ name: "new-job", pattern: FAST_PATTERN, handler, runHashTtlS: 3600 });
+    f.start();
+    await sleep(1500);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(await testRedis.keys(RUN_KEYS("new-job"))).toEqual([]);
+    expect(await testRedis.get(LAST_KEY("new-job"))).toBe(String(fire));
+  }, 10_000);
+
+  // Migration, part 2 of 2 (see ENQUEUE_RUN_LUA): remove with that branch. Jobs that ran before
+  // the last key existed have no last value either. When the first deploy that writes it lands
+  // just after a boundary, no pod may have enqueued that fire yet, and treating the job as new
+  // would silently drop it.
+  test("a job with no last value still runs a fire that only just became due", async () => {
+    freezeClockAfterFire(100);
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const f = newJobFactory();
+    f.register({ name: "boundary-job", pattern: FAST_PATTERN, handler, runHashTtlS: 3600 });
+    f.start();
+    await sleep(2000);
+
+    expect(handler).toHaveBeenCalledTimes(1);
   }, 10_000);
 });
 

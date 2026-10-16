@@ -7,9 +7,10 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
@@ -24,7 +25,6 @@ import { CreateProfileModal } from "../PoliciesPage/components/CertificateProfil
 import { ProfileDefaultsSection, ProfileOverviewSection } from "./components";
 
 const Page = () => {
-  const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const params = useParams({
@@ -41,17 +41,14 @@ const Page = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const projectId = currentProject?.id || "";
-
   const cameFromApplication = search.from === "application" && Boolean(search.applicationName);
 
   const navigateBack = () => {
     if (cameFromApplication && search.applicationName) {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        to: "/organizations/$orgId/cert-manager/applications/$applicationName",
         params: {
           orgId: currentOrg.id,
-          projectId,
           applicationName: search.applicationName
         }
       });
@@ -59,10 +56,9 @@ const Page = () => {
     }
 
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles",
+      to: "/organizations/$orgId/cert-manager/certificate-profiles",
       params: {
-        orgId: currentOrg.id,
-        projectId
+        orgId: currentOrg.id
       }
     });
   };
@@ -89,7 +85,7 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {profile && (
         <ProjectPermissionCan
           renderGuardBanner
@@ -98,34 +94,32 @@ const Page = () => {
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 w-full max-w-8xl">
-                {cameFromApplication && search.applicationName ? (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId,
-                      applicationName: search.applicationName
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    {search.applicationName}
-                  </Link>
-                ) : (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    Certificate Profiles
-                  </Link>
-                )}
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
                 <PageHeader
+                  backLink={
+                    cameFromApplication && search.applicationName ? (
+                      <Link
+                        to="/organizations/$orgId/cert-manager/applications/$applicationName"
+                        params={{
+                          orgId: currentOrg.id,
+                          applicationName: search.applicationName
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        {search.applicationName}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/organizations/$orgId/cert-manager/certificate-profiles"
+                        params={{
+                          orgId: currentOrg.id
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        Certificate Profiles
+                      </Link>
+                    )
+                  }
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate profile"
                   title={profile.slug}
@@ -142,7 +136,7 @@ const Page = () => {
                       }}
                     />
                   </div>
-                  <div className="flex flex-1 flex-col gap-y-5">
+                  <div className="flex min-w-0 flex-1 flex-col gap-y-5">
                     <ProfileDefaultsSection profile={profile} />
                   </div>
                 </div>
@@ -154,12 +148,13 @@ const Page = () => {
                   mode="edit"
                 />
 
-                <DeleteActionModal
+                <DeleteConfirmDialog
                   isOpen={isDeleteModalOpen}
                   title={`Delete Certificate Profile ${profile.slug}?`}
-                  onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
-                  deleteKey={profile.slug}
-                  onDeleteApproved={handleDeleteConfirm}
+                  description="This action is irreversible."
+                  onOpenChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
+                  confirmKey={profile.slug}
+                  onConfirm={handleDeleteConfirm}
                 />
               </div>
             ) : null

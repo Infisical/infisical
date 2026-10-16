@@ -159,7 +159,7 @@ export const UpdateAwsSecretsManagerSyncSchema = GenericUpdateSecretSyncFieldsSc
   .superRefine((sync, ctx) => {
     if (
       sync.destinationConfig?.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.ManyToOne &&
-      sync.syncOptions.syncSecretMetadataAsTags
+      sync.syncOptions?.syncSecretMetadataAsTags
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

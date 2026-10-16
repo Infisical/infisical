@@ -4,6 +4,7 @@ import { KmipServersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
+import { resourceAuthMethodAuditMetadata } from "@app/ee/services/resource-auth-method/resource-auth-method-audit-fns";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
@@ -58,7 +59,6 @@ const KmipServerWithAuthMethodSchema = SanitizedKmipServerSchema.extend({
 
 const AwsAuthMethodInputSchema = z.object({
   method: z.literal(ResourceAuthMethodType.Aws),
-  stsEndpoint: z.string().trim().min(1).max(255).default("https://sts.amazonaws.com/"),
   allowedPrincipalArns: validatePrincipalArns,
   allowedAccountIds: validateAccountIds.refine(
     (val) => val.length <= 2048,
@@ -119,7 +119,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
           ? {
               method: "aws" as const,
               config: {
-                stsEndpoint: authMethodInput.stsEndpoint,
                 allowedPrincipalArns: authMethodInput.allowedPrincipalArns,
                 allowedAccountIds: authMethodInput.allowedAccountIds
               }
@@ -149,6 +148,20 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.KMIP_SERVER_CREATE,
           metadata: { kmipServerId: kmipServer.id, name: kmipServer.name }
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_CREATE,
+          metadata: resourceAuthMethodAuditMetadata({
+            resourceType: "kmip",
+            resourceId: kmipServer.id,
+            resourceName: kmipServer.name,
+            view
+          })
         }
       });
 
@@ -265,7 +278,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
           authMethodInput.method === ResourceAuthMethodType.Aws
             ? {
                 method: "aws" as const,
-                stsEndpoint: authMethodInput.stsEndpoint,
                 allowedPrincipalArns: authMethodInput.allowedPrincipalArns,
                 allowedAccountIds: authMethodInput.allowedAccountIds
               }
@@ -282,12 +294,12 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-            metadata: {
+            metadata: resourceAuthMethodAuditMetadata({
               resourceType: "kmip",
               resourceId: req.params.kmipServerId,
-              method: view.method as "aws" | "token",
-              methodConfigId: "config" in view && "id" in view.config ? view.config.id : req.params.kmipServerId
-            }
+              resourceName: kmipServer.name,
+              view
+            })
           }
         });
 

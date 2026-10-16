@@ -69,6 +69,9 @@ services:
       AUTH_SECRET: something-random
       ENCRYPTION_KEY: p5e5k2j3+HIErjm02dzSrlhXc1xhdgoWvC6pox410rE=
       NODE_ENV: test
+      # Defaults to info. Overridable so a run being debugged can see the queue lifecycle lines
+      # without editing this file.
+      PINO_LOG_LEVEL: ${PINO_LOG_LEVEL:-info}
       # The heap is set explicitly because Node derives its default from available memory, so
       # without this the suite's budget depends on the host: a 16GB CI runner gets about 4GB
       # and boots fine, while an 8GB Docker Desktop VM gets ~2GB and dies during environment

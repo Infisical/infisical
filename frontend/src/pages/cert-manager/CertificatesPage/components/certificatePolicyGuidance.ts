@@ -6,7 +6,8 @@ import {
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
-  formatSANType
+  formatSANType,
+  validateCustomExtensionValue
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { SUBJECT_ATTRIBUTE_LABELS, SubjectAltName, SubjectAttribute } from "./certificateUtils";
@@ -645,6 +646,97 @@ export type PolicySectionGuidance = {
 export type SubjectPolicyGuidance = {
   subject: PolicySectionGuidance;
   sans: PolicySectionGuidance;
+};
+
+export type TCustomExtensionPolicyRule = {
+  oid: string;
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
+};
+
+export type TCustomExtensionDeclaration = {
+  oid: string;
+  label?: string | null;
+  value?: string | null;
+};
+
+export type CustomExtensionsGuidance = {
+  errorsByOid: Record<string, string>;
+  isBlocking: boolean;
+};
+
+export const evaluateCustomExtensions = ({
+  declarations,
+  rows,
+  rules
+}: {
+  declarations: TCustomExtensionDeclaration[];
+  rows: { oid: string; value: string }[];
+  rules?: TCustomExtensionPolicyRule[] | null;
+}): CustomExtensionsGuidance => {
+  const errorsByOid: Record<string, string> = {};
+  const declarationByOid = new Map(
+    declarations.map((declaration) => [declaration.oid, declaration])
+  );
+  const valueByOid = new Map(
+    rows.filter((row) => row.oid.trim()).map((row) => [row.oid, row.value])
+  );
+  const isUnrestricted = rules === undefined || rules === null;
+
+  const requiredOids = (rules ?? [])
+    .filter((rule) => rule.required?.length)
+    .map((rule) => rule.oid);
+
+  const oids = [...new Set([...declarationByOid.keys(), ...valueByOid.keys(), ...requiredOids])];
+
+  oids.forEach((oid) => {
+    const declaration = declarationByOid.get(oid);
+    const rule = rules?.find((entry) => entry.oid === oid);
+    const value = (valueByOid.get(oid) ?? declaration?.value ?? "").trim();
+
+    if (!isUnrestricted && !rule) {
+      errorsByOid[oid] = "This extension is not allowed by this policy";
+      return;
+    }
+
+    if (!value) {
+      if (rule?.required?.length) {
+        errorsByOid[oid] = "A value is required by this policy";
+      }
+      return;
+    }
+
+    const malformed = validateCustomExtensionValue(oid, value);
+    if (malformed) {
+      errorsByOid[oid] = malformed;
+      return;
+    }
+
+    if (!rule) return;
+
+    const matchesAnyExtensionPattern = (patterns: string[]) =>
+      patterns.some((pattern) => matchesNormalizedPattern(value, pattern));
+
+    if (matchesAnyExtensionPattern(rule.denied ?? [])) {
+      errorsByOid[oid] = "This value is denied by this policy";
+      return;
+    }
+
+    const required = rule.required ?? [];
+    const satisfiesRequired = required.length > 0 && matchesAnyExtensionPattern(required);
+    if (required.length > 0 && !satisfiesRequired) {
+      errorsByOid[oid] = `Value must match one of: ${required.join(", ")}`;
+      return;
+    }
+
+    const allowed = rule.allowed ?? [];
+    if (!satisfiesRequired && allowed.length > 0 && !matchesAnyExtensionPattern(allowed)) {
+      errorsByOid[oid] = `Value must match one of: ${allowed.join(", ")}`;
+    }
+  });
+
+  return { errorsByOid, isBlocking: Object.keys(errorsByOid).length > 0 };
 };
 
 export const evaluateSubjectStep = ({

@@ -37,7 +37,7 @@ export const ShareSecretTab = () => {
   const deleteSecretShare = useDeleteSharedSecret();
 
   const onDeleteApproved = async () => {
-    deleteSecretShare.mutateAsync({
+    await deleteSecretShare.mutateAsync({
       sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id
     });
     createNotification({
@@ -55,7 +55,7 @@ export const ShareSecretTab = () => {
           Shared Secrets
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-sharing" />
         </CardTitle>
-        <CardDescription>Manage and view your shared secrets</CardDescription>
+        <CardDescription>Manage active links, access limits, and expiration.</CardDescription>
         <CardAction>
           <Button
             variant="project"
@@ -83,12 +83,18 @@ export const ShareSecretTab = () => {
             </AlertDialogMedia>
             <AlertDialogTitle>Delete shared secret?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The shared secret link will no longer be accessible.
+              This action cannot be undone. The link for
+              {` ${(popUp.deleteSharedSecretConfirmation.data as DeleteModalData)?.name || "this secret"} `}
+              will no longer be accessible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={onDeleteApproved}>
+            <AlertDialogAction
+              variant="danger"
+              onClick={onDeleteApproved}
+              isPending={deleteSecretShare.isPending}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

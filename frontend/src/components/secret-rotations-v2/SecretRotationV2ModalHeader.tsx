@@ -1,4 +1,5 @@
 import { DocumentationLinkBadge } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
@@ -12,9 +13,9 @@ export const SecretRotationV2ModalHeader = ({ type, isConfigured }: Props) => {
 
   return (
     <div className="flex w-full items-start gap-3 pr-8">
-      <img
+      <ProviderIcon
         alt={`${destinationDetails.name} logo`}
-        src={`/images/integrations/${destinationDetails.image}`}
+        icon={destinationDetails.image}
         className="size-10 rounded-md border border-border bg-card object-contain p-2"
       />
       <div className="min-w-0">

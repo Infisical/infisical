@@ -1,24 +1,16 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
 import { LookingForOrgPageLink } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
-
-const tabs = [
-  {
-    name: "General",
-    key: "tab-project-general",
-    Component: ProjectGeneralTab
-  }
-];
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+    <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
@@ -30,13 +22,9 @@ export const SettingsPage = () => {
         >
           <LookingForOrgPageLink page="settings" />
         </PageHeader>
-        <Tabs orientation="vertical" defaultValue={tabs[0].key}>
-          {tabs.map(({ key, Component }) => (
-            <TabPanel value={key} key={key}>
-              <Component />
-            </TabPanel>
-          ))}
-        </Tabs>
+        <div className="grow rounded-br-md rounded-bl-md pb-5 outline-hidden xl:overflow-x-hidden xl:pb-0">
+          <ProjectGeneralTab />
+        </div>
       </div>
     </div>
   );

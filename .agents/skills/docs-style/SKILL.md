@@ -1,88 +1,100 @@
 ---
 name: docs-style
-description: Write, edit, and review Infisical documentation to the house style guide. Use whenever creating or changing any file under docs/ (.mdx pages, snippets, docs.json navigation), when asked to document a feature, write or update a guide, or review a docs diff or pull request. Covers the deterministic Vale lint plus the sentence-level review pass Vale cannot check.
+description: Write, edit, and review Infisical documentation to the house style guide. Use whenever creating or changing any file under docs/ (.mdx pages, snippets, docs.json navigation), when asked to document a feature, write or update a guide, or review a docs diff or pull request. Covers running the Vale linter and the sentence-level review that Vale can't do.
 ---
 
 # Infisical docs style
 
-`docs/STYLE_GUIDE.md` is the source of truth. Read it before writing. This skill is the
-procedure for applying it, not a second copy of the rules.
+`docs/STYLE_GUIDE.md` holds every rule for Infisical documentation. This skill doesn't repeat
+the rules. This skill describes how to apply them.
 
-Two things to know up front:
+**Before you write or review anything, read all of `docs/STYLE_GUIDE.md` with the Read tool.**
+Don't work from a summary, a diff, or your memory of the guide. Each rule in the guide comes
+with an "Instead of" and "Write" example, and the examples show what the rule means better
+than any summary can.
 
-- `make lint-docs-branch` checks maybe a third of the guide. Everything in section 5 and
-  section 11 is a judgment call, and those are the rules AI drafts break by default.
-- Vale cannot see prose indented four or more spaces inside a Mintlify component, which is
-  roughly half of this repo. A clean run says nothing about a nested page.
+## Templates
+
+To check if the page you're documenting has a template to follow, start from the matching file in
+[templates/](templates/README.md). The README says which template fits and how the snippets
+shared between integration pages work.
 
 ## Before you write
 
-Ask the engineer for the facts before drafting. The product knowledge is the part only they
-have, and a draft written without it reads plausible and says nothing.
+Find the facts yourself, in the code and the running product, before you draft anything. Don't
+ask a question that the code can answer. Ask only about what the code can't tell you, such as
+why a feature exists or who it's for.
 
-Then use the model where it earns its place. Structure, grouping, ordering, and spotting the
-section that is missing are worth delegating. Sentences are not. A page whose outline came
-from a model and whose prose came from the engineer beats a fully generated draft every time,
-so offer that split rather than assuming a full draft is wanted.
+Check every fact against the product, not against other docs pages, because other docs pages
+are often out of date:
 
-## Writing
-
-Follow `docs/STYLE_GUIDE.md` sections 1 to 4 and 10 for what belongs on the page: context
-before mechanics, prerequisites in a `## Prerequisites` heading rather than a callout, the
-right component for the shape of the content, and the page structure for its type.
-
-Then run the review pass below over your own draft before handing it over. Every rule in it
-applies to a first draft, including yours.
+- **UI steps:** Take button, tab, and field names and the order of screens from the running
+  product, or from the frontend source if you can't reach the running product
+- **Behavior claims:** Read the code path before you describe what the product does; if
+  another docs page seems to contradict the code, find out why before you edit either page
 
 ## Reviewing
 
-Work in this order. Structure first, because a rewritten sentence in the wrong section is
-wasted work.
+Review your own drafts the same way you review anyone else's. Work in the following order:
+cut first, then check the structure, then check the sentences, then review the edited page
+again. Rewriting a sentence is wasted work if the sentence shouldn't be on the page, or if it's
+in the wrong section.
 
-**1. Run the linter.** `make lint-docs-branch` from the repository root. It exits non-zero
-only on errors, so read the printed warnings and suggestions too. `Infisical.UIActions` and
-`Infisical.Contractions` never affect the exit code yet, and they are the two rules most
-likely to have something to say.
+**1. Run the linter.** Run `make lint-docs-branch` from the repository root. Every rule except
+`Infisical.EmDashes` reports at error level, so any other finding fails the command, including
+`Infisical.UIActions` and `Infisical.Contractions`, the two rules most likely to report problems.
+`Infisical.EmDashes` reports at warning level and doesn't change the exit code, so also read the
+warnings the command prints.
 
-**2. Check the structure, then leave it alone.** Headings, ordering, and section breaks are
-usually sound, in a human draft and a model draft alike. Confirm the page reads top to bottom,
-that a reader landing cold is oriented in the first few sentences, and that nothing was
-inserted without connecting it to what surrounds it. If the outline holds, accept it and move
-on.
+Vale doesn't check text indented four or more spaces inside a Mintlify component, and about
+half of the text in this repository is indented that way. If Vale reports no problems on a
+page with nested components, the nested text still needs the checks in steps 2, 4, and 5.
 
-**3. Rewrite the sentences.** This is where the work is. Take `docs/STYLE_GUIDE.md` section 5
-and check every sentence against it. In practice these five catch the most:
+**2. Cut what the reader won't act on.** Read the page one paragraph at a time. For each fact,
+ask what the reader would do differently after reading it, as "Leave out what the reader won't
+act on" in section 2 of the guide describes. If the answer is nothing, the fact is a finding,
+even if it's true and you checked it in the code.
 
-- A concept given a human verb. Nothing says, knows, understands, or wants anything.
-- Two sentences making the same point in different words. Keep the one with new information.
-- A definition that needs a second clause to explain its first.
-- A transitive verb with no object, as in "the agent requests". Read the second half of every
-  long sentence on its own; a verb left with nothing to act on is usually a sentence that lost
-  its tail in an edit, and it hides a detail nobody settled.
-- An abstract construction standing in for a mechanism the writer may not have known.
+None of the other steps catches this. A sentence that shouldn't be on the page can still pass
+every rule in section 5, and if you restructure it instead of cutting it, the page gets more
+headings and lists without getting any shorter.
 
-Then read every sentence out loud. If you would not say it to a colleague standing next to
-you, rewrite it. That single test catches most of the rest.
+Apply this step to everything on the page: content that was already there, content someone else
+wrote, and your own draft. Treat each cut like any other finding.
 
-**4. Check the formatting Vale cannot see.** Section 11, none of it machine-checked:
+**3. Check the structure against sections 1, 4, 6, 7, 8, and 10 of the guide.** Check every
+section of the page against each of those sections of the guide, including the page sections
+that look fine at first glance.
 
-- Bold on a word that is not on screen. `**Note**:`, `**important**`, or a whole bolded
-  sentence is emphasis, and the prose should carry it instead. A `**Label:**` opening a list
-  item is a label, and fine.
-- A button or field name in quotes or a code span rather than bold: `Click 'Submit'`,
-  `` Select `SQL Database` ``. Code spans are for code, paths, keystrokes, and literal values.
-- A button or field name with no markup at all, which is the case no pattern can find.
+**4. Check every sentence against sections 3 and 5 of the guide.** Go through the sections one
+`###` heading at a time. Each heading names one rule, so for each heading, read every sentence
+on the page and check whether the sentence breaks that rule. Then read every sentence out loud,
+as section 5 describes.
 
-**5. Report, then offer to apply.** One finding per line as `path/to/file.mdx:12`, the sentence
-as written, and the rewrite. Group them by file. Then ask once before editing, for the whole
-set.
+**5. Check the formatting against section 11 of the guide.** No automated check covers any
+rule in section 11, so check each rule by reading the page.
 
-Do not silently rewrite an engineer's prose. Their phrasing usually reads more like a person
-talking than a replacement would, and the question worth putting to them is whether they would
-have written the sentence themselves.
+Before you hand a draft back, check the draft for every mistake you've already been corrected
+on, including corrections earlier in the same conversation.
+
+**6. Apply the findings.** Edit the page to fix every finding. Don't commit anything.
+
+If the person you're working with wrote or edited the prose themselves in this conversation,
+don't change their sentences yet. Report those findings in the format in step 8, and ask once
+whether to apply them.
+
+**7. Review the edited page.** Run steps 1 to 5 again on the whole edited page, from the top.
+Your own edits create new problems. For example, turning part of a paragraph into a list can
+leave several short paragraphs in a row, and moving content can put a section out of order.
+Fix what you find before you hand the page back.
+
+**8. Report what you changed.** Write one change per line: the location as
+`path/to/file.mdx:12`, the rule the change fixes, the text before the change, and the text
+after it, or "cut" for a finding from step 2. Group the changes by file, and include the fixes
+from step 7.
 
 ## When Vale is wrong
 
-`docs/CONTRIBUTING.MD` covers adding a word to the vocabulary, enforcing a spelling, and
-suppressing a rule in place with `{/* vale Infisical.RuleName = NO */}`. Suppress a rule only
-where it is genuinely wrong about a specific line, never to quiet a page.
+`docs/CONTRIBUTING.MD` describes how to add a word to the vocabulary, enforce a spelling, and
+turn off a rule for one line with `{/* vale Infisical.RuleName = NO */}`. Turn off a rule only
+on a specific line where Vale is actually wrong, never to hide problems across a whole page.

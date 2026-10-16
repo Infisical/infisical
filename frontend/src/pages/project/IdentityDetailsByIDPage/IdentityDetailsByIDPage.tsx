@@ -54,17 +54,23 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects,
+  supportsAssumePrivileges
+} from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectIdentityMembership,
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
-import { useRemoveAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import { useRevokeAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { AdditionalPrivilegesRemovedSection } from "@app/pages/project/components/AdditionalPrivilegesRemovedSection";
 import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
@@ -83,36 +89,43 @@ const Page = () => {
     select: (el) => el.identityId as string
   });
   const { currentProject, projectId } = useProject();
-  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { subscription } = useSubscription();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
   const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
-  const { mutateAsync: removeAgentVaultIdentityMutateAsync } = useRemoveAgentVaultProductMember();
+  const { mutateAsync: revokeAgentVaultMembers } = useRevokeAgentVaultMembers();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
   // Products where the underlying project is an internal detail the user never sees
+  const isSecretManager = currentProject?.type === ProjectType.SecretManager;
+  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
   const isStandaloneProduct = isCertManager || isPam || isAgentVault;
   const canAssumePrivileges = supportsAssumePrivileges(currentProject.type);
 
   let removeMenuItemLabel = "Remove From Project";
   if (isProjectIdentity) {
     removeMenuItemLabel = "Delete Machine Identity";
+  } else if (isCertManager) {
+    removeMenuItemLabel = "Remove From Certificate Manager";
   } else if (isPam) {
     removeMenuItemLabel = "Remove From PAM";
   } else if (isAgentVault) {
     removeMenuItemLabel = "Remove From Agent Vault";
   }
 
+  const projectsHidden = hidesProjects(currentProject?.type);
+  const namesProduct = isStandaloneProduct || projectsHidden;
+
   let accessControlLabel = "project";
-  if (isCertManager) {
-    accessControlLabel = "certificate manager";
+  if (projectsHidden) {
+    accessControlLabel = getProjectLabel(currentProject?.type).toLowerCase();
   } else if (isPam) {
     accessControlLabel = "PAM";
   } else if (isAgentVault) {
@@ -154,7 +167,7 @@ const Page = () => {
     } else if (isAgentVault) {
       // Same reason as PAM: the product route keeps the last-admin guard, emits the Agent Vault event
       // and reaps the identity's bundle grants, none of which the generic route does.
-      await removeAgentVaultIdentityMutateAsync({ identityId });
+      await revokeAgentVaultMembers({ machineIdentityIds: [identityId] });
     } else {
       await removeIdentityMutateAsync({
         identityId,
@@ -162,7 +175,7 @@ const Page = () => {
       });
     }
     createNotification({
-      text: `Successfully removed machine identity from ${isStandaloneProduct ? accessControlLabel : "project"}`,
+      text: `Successfully removed machine identity from ${namesProduct ? accessControlLabel : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeIdentity");
@@ -196,7 +209,9 @@ const Page = () => {
     } catch {
       createNotification({
         type: "error",
-        text: "Failed to delete project machine identity"
+        text: isCertManager
+          ? "Failed to delete Certificate Manager machine identity"
+          : "Failed to delete project machine identity"
       });
     }
   };
@@ -212,40 +227,38 @@ const Page = () => {
     currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {identityMembershipDetails ? (
         <>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId,
-              orgId: currentOrg.id
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Identities
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-foreground"
-          >
-            <ChevronLeftIcon size={16} />
-            {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
-          </Link>
           <PageHeader
             scope={currentProject.type}
             description={pageDescription}
             title={identityMembershipDetails.identity.name}
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId,
+                  orgId: currentOrg.id
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Identities
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {namesProduct ? "Machine Identities" : "Project Machine Identities"}
+              </Link>
+            }
           >
             <div className="flex items-center gap-2">
               {isProjectIdentity ? (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   projectId={currentProject.id}
-                  projectName={currentProject.name}
                 />
               ) : (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   readOnly
                 />
               )}
@@ -329,7 +342,7 @@ const Page = () => {
               </DropdownMenu>
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
               isOrgIdentity={isOrgIdentity}
@@ -337,7 +350,7 @@ const Page = () => {
               membership={identityMembershipDetails!}
             />
 
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               {identity ? (
                 <ProjectIdentityAuthenticationSection
                   identity={identity}
@@ -402,25 +415,29 @@ const Page = () => {
                   identityMembershipDetails={identityMembershipDetails}
                 />
               )}
-              {currentProject.type === ProjectType.SecretManager &&
-                subscription?.secretsFolderRbac && (
-                  <FolderAccessSection
-                    actor={{
-                      type: "identity",
-                      id: identityMembershipDetails.identity.id,
-                      name: identityMembershipDetails.identity.name
-                    }}
-                  />
+              {isSecretManager &&
+                !hasFolderRbacPlan &&
+                !currentProject.isLegacyAdditionalPrivilegesEnabled && (
+                  <AdditionalPrivilegesRemovedSection />
                 )}
+              {isSecretManager && hasFolderRbacPlan && (
+                <FolderAccessSection
+                  actor={{
+                    type: "identity",
+                    id: identityMembershipDetails.identity.id,
+                    name: identityMembershipDetails.identity.name
+                  }}
+                />
+              )}
             </div>
           </div>
           <IdentityActionConfirmationDialog
             open={popUp.removeIdentity.isOpen}
             title={`Remove ${identityMembershipDetails.identity.name} from ${
-              isStandaloneProduct ? accessControlLabel : "the project"
+              namesProduct ? accessControlLabel : "the project"
             }?`}
             description={`The machine identity will lose access to ${
-              isStandaloneProduct ? accessControlLabel : "this project"
+              namesProduct ? accessControlLabel : "this project"
             } but remain available in its organization.`}
             descriptionAsAlert
             confirmationText="remove"
@@ -437,7 +454,9 @@ const Page = () => {
           <IdentityActionConfirmationDialog
             open={popUp.deleteIdentity.isOpen}
             title={`Delete ${identity?.name || "machine identity"}?`}
-            description="This permanently deletes the project machine identity and revokes its access. This cannot be undone."
+            description={`This permanently deletes the ${
+              isCertManager ? "Certificate Manager" : "project"
+            } machine identity and revokes its access. This cannot be undone.`}
             descriptionAsAlert
             descriptionAlertVariant="danger"
             confirmationText="confirm"

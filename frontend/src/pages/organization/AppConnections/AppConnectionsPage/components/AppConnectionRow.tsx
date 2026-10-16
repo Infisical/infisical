@@ -32,6 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { OrgPermissionSubjects, ProjectPermissionSub, useOrganization } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
@@ -40,11 +41,17 @@ import {
   buildGitHubAppUrl,
   getAppConnectionMethodDetails
 } from "@app/helpers/appConnections";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getProjectDisplayName,
+  pinProjectForNavigation
+} from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useListGitHubApps } from "@app/hooks/api/gitHubApps";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CredentialRotationStatusBadge } from "./AppConnectionForm/shared/CredentialRotationBadge";
 
@@ -68,6 +75,7 @@ export const AppConnectionRow = ({
   isProjectView
 }: Props) => {
   const { currentOrg } = useOrganization();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
   const {
     id,
     name,
@@ -134,13 +142,13 @@ export const AppConnectionRow = ({
       <TableCell>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <img
+            <ProviderIcon
               alt={`${connectionDetails.name} integration`}
-              src={`/images/integrations/${connectionDetails.image}`}
+              icon={connectionDetails.image}
               className="mr-0.5 w-5"
             />
             {ConnectionIcon && (
-              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-primary-700" />
+              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-project" />
             )}
           </div>
           <span className="hidden lg:inline">{connectionDetails.name}</span>
@@ -152,7 +160,7 @@ export const AppConnectionRow = ({
           {description && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <InfoIcon className="ml-1 size-3.5 text-mineshaft-400" />
+                <InfoIcon className="ml-1 size-3.5 text-muted" />
               </TooltipTrigger>
               <TooltipContent>{description}</TooltipContent>
             </Tooltip>
@@ -168,24 +176,24 @@ export const AppConnectionRow = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 text-mineshaft-100 underline-offset-2 hover:text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-foreground underline-offset-2 hover:text-project hover:underline"
               >
-                <MethodIcon className="size-3.5 text-mineshaft-300/75" />
+                <MethodIcon className="size-3.5 text-label/75" />
                 <span className="truncate underline">{methodDetails.name}</span>
               </a>
             </TooltipTrigger>
             <TooltipContent>
               <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] tracking-wider text-mineshaft-400 uppercase">
+                <span className="text-[10px] tracking-wider text-muted uppercase">
                   {methodDetails.name}
                 </span>
-                <span className="font-mono text-sm text-mineshaft-100">{linkedGitHubApp.slug}</span>
+                <span className="font-mono text-sm text-foreground">{linkedGitHubApp.slug}</span>
               </div>
             </TooltipContent>
           </Tooltip>
         ) : (
           <p className="truncate">
-            <MethodIcon className="mr-1.5 inline size-3.5 text-mineshaft-300/75" />
+            <MethodIcon className="mr-1.5 inline size-3.5 text-label/75" />
             {methodDetails.name}
           </p>
         )}
@@ -195,21 +203,28 @@ export const AppConnectionRow = ({
           {project ? (
             <Link
               // @ts-expect-error app-connections aren't in kms/ssh
-              to={`${getProjectBaseURL(project.type)}/app-connections`}
+              to={
+                project.type === ProjectType.AgentVault
+                  ? "/organizations/$orgId/agent-vault/settings"
+                  : `${getProjectBaseURL(project.type)}/app-connections`
+              }
               params={{
                 orgId: currentOrg?.id || "",
                 projectId: project.id
               }}
+              onClick={() => {
+                if (currentOrg?.id) pinProjectForNavigation(currentOrg.id, project);
+              }}
               className="underline"
             >
               <p className="flex items-center gap-1.5 truncate">
-                <ProjectIcon className="size-3.5 text-mineshaft-300/75" />
-                {project.name}
+                <ProjectIcon className="size-3.5 text-label/75" />
+                {getProjectDisplayName(project, Boolean(certManagerInstance?.isMultiInstance))}
               </p>
             </Link>
           ) : (
             <p className="flex items-center gap-1.5 truncate">
-              <OrgIcon className="size-3.5 text-mineshaft-300/75" />
+              <OrgIcon className="size-3.5 text-label/75" />
               Organization
             </p>
           )}

@@ -4,12 +4,19 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -21,7 +28,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const SupabaseConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const integrationAuthId = useSearch({
@@ -40,8 +47,6 @@ export const SupabaseConfigurePage = () => {
   const [secretPath, setSecretPath] = useState("/");
   const [targetApp, setTargetApp] = useState("");
 
-  const [isLoading, setIsLoading] = useState(false);
-
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
@@ -56,8 +61,6 @@ export const SupabaseConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -68,8 +71,6 @@ export const SupabaseConfigurePage = () => {
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
@@ -88,63 +89,89 @@ export const SupabaseConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Supabase Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Supabase Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="SupabaseConfigurePage-field-1">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
+            >
+              <SelectTrigger
+                id="SupabaseConfigurePage-field-1"
+                aria-describedby="SupabaseConfigurePage-field-1-feedback"
+                className="w-full"
               >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="Supabase Project" className="mt-4">
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
+                  <SelectItem
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
+                  >
+                    {sourceEnvironment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="SupabaseConfigurePage-field-2">Secrets Path</FieldLabel>
+            <Input
+              id="SupabaseConfigurePage-field-2"
+              aria-describedby="SupabaseConfigurePage-field-2-feedback"
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="SupabaseConfigurePage-field-3">Supabase Project</FieldLabel>
+            <Select
+              value={targetApp}
+              onValueChange={(val) => setTargetApp(val)}
+              disabled={integrationAuthApps.length === 0}
+            >
+              <SelectTrigger
+                id="SupabaseConfigurePage-field-3"
+                aria-describedby="SupabaseConfigurePage-field-3-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.name}
+                      key={`target-environment-${integrationAuthApp.name}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No projects found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
             isDisabled={integrationAuthApps.length === 0}
+            variant="project"
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-environment-${integrationAuthApp.name}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-        >
-          Create Integration
-        </Button>
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (

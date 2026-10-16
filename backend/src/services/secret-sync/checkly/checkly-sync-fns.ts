@@ -7,7 +7,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
-import { TSecretMap } from "../secret-sync-types";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TChecklySyncWithCredentials } from "./checkly-sync-types";
 
 export const ChecklySyncFns = {
@@ -15,7 +15,8 @@ export const ChecklySyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  async syncSecrets(secretSync: TChecklySyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TChecklySyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
@@ -141,7 +142,8 @@ export const ChecklySyncFns = {
     }
   },
 
-  async removeSecrets(secretSync: TChecklySyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TChecklySyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const config = secretSync.destinationConfig;
 
     if (config.groupId) {

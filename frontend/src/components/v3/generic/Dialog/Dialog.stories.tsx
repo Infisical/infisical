@@ -1,9 +1,23 @@
+import { useId, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { EllipsisIcon } from "lucide-react";
 
 import { Button } from "../Button";
+import { Combobox } from "../Combobox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "../Dropdown";
+import { Field, FieldLabel } from "../Field";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../HoverCard";
+import { IconButton } from "../IconButton";
 import { Input } from "../Input";
 import { Label } from "../Label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Select";
 import { Separator } from "../Separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 import {
   Dialog,
   DialogBody,
@@ -266,4 +280,124 @@ export const AlternativeScroll: Story = {
       </DialogContent>
     </Dialog>
   )
+};
+
+const ROLES = [
+  { slug: "admin", name: "Admin" },
+  { slug: "member", name: "Member" },
+  { slug: "no-access", name: "No Access" }
+];
+
+const NestedPopupsAndPendingCloseRender = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [role, setRole] = useState<(typeof ROLES)[number] | null>(ROLES[1]);
+  const [environment, setEnvironment] = useState("production");
+  const roleId = useId();
+  const environmentId = useId();
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <IconButton aria-label="Member options" variant="outline">
+            <EllipsisIcon />
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setIsOpen(true)}>Edit Member</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent isPending={isPending}>
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+            <DialogDescription>
+              Escape and outside clicks close the innermost popup first.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="flex flex-col gap-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setIsPending(true);
+              setTimeout(() => {
+                setIsPending(false);
+                setIsOpen(false);
+              }, 1500);
+            }}
+          >
+            <Field>
+              <FieldLabel htmlFor={roleId}>Role</FieldLabel>
+              <Combobox
+                id={roleId}
+                options={ROLES}
+                value={role}
+                isClearable={false}
+                onValueChange={setRole}
+                getOptionValue={(option) => option.slug}
+                getOptionLabel={(option) => option.name}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor={environmentId}>Environment</FieldLabel>
+              <Select value={environment} onValueChange={setEnvironment}>
+                <SelectTrigger id={environmentId}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  <SelectItem value="development">Development</SelectItem>
+                  <SelectItem value="staging">Staging</SelectItem>
+                  <SelectItem value="production">Production</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="flex items-center gap-4 text-sm">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="link">Tooltip</Button>
+                </TooltipTrigger>
+                <TooltipContent>Informational tooltip</TooltipContent>
+              </Tooltip>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Button variant="link">Hover card</Button>
+                </HoverCardTrigger>
+                <HoverCardContent>Supplementary details for this member.</HoverCardContent>
+              </HoverCard>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="link">Menu</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem>Copy Member ID</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" variant="org" isPending={isPending}>
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+export const NestedPopupsAndPendingClose: Story = {
+  name: "Example: Nested Popups and Pending Close",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Combobox, Select, Tooltip, HoverCard, and DropdownMenu popups inside a Dialog each own the first Escape or outside click; the next one reaches the Dialog. While `isPending` is true, Escape, outside clicks, the close button, and `DialogClose` cannot dismiss the Dialog. Closing returns focus to the control that opened it, including the trigger of a menu whose item opened it."
+      }
+    }
+  },
+  render: () => <NestedPopupsAndPendingCloseRender />
 };

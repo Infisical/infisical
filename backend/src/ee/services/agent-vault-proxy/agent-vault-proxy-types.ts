@@ -1,7 +1,8 @@
-import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
+import { TGenericPermission } from "@app/lib/types";
+
 import { AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 
-export type TAgentVaultProxyScoped = { projectId: string; ctx: TAgentVaultActorContext };
+export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultProxyConfig = {
   trafficPolicy: AgentVaultTrafficPolicy;
@@ -9,7 +10,13 @@ export type TAgentVaultProxyConfig = {
   pollInterval: number;
 };
 
-export type TListProxiesDTO = TAgentVaultProxyScoped;
+export type TListProxiesDTO = TAgentVaultProxyScoped & {
+  search?: string;
+  orderBy: "name" | "createdAt";
+  orderDirection: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
@@ -41,6 +48,7 @@ export type TResolveSessionDTO = {
   proxyId: string;
   orgId: string;
   sessionToken: string;
+  hasSessionLogKey: boolean;
 };
 
 export type TResolvedService = {
@@ -48,8 +56,12 @@ export type TResolvedService = {
   name: string;
   accessBundleName: string;
   hostPattern: string;
+  allowedMethods: string[] | null;
+  allowedPathPrefixes: string[] | null;
   credential:
     | { type: "bearer"; headerName: string; headerPrefix: string; value: string }
     | { type: "basic"; username: string; password: string }
     | { type: "passthrough" };
+  customHeaders: { name: string; prefix: string; value: string }[];
+  substitutions: { placeholder: string; surfaces: string[]; value: string }[];
 };

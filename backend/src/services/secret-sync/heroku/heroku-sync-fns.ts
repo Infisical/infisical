@@ -12,6 +12,7 @@ import {
 } from "@app/services/secret-sync/heroku/heroku-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 type THerokuSyncFactoryDeps = {
@@ -69,9 +70,10 @@ const updateHerokuConfigVars = async ({ authToken, app, configVars }: THerokuUpd
 export const HerokuSyncFns = {
   syncSecrets: async (
     secretSync: THerokuSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     { appConnectionDAL, kmsService }: THerokuSyncFactoryDeps
   ) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -112,9 +114,10 @@ export const HerokuSyncFns = {
 
   removeSecrets: async (
     secretSync: THerokuSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     { appConnectionDAL, kmsService }: THerokuSyncFactoryDeps
   ) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { app }

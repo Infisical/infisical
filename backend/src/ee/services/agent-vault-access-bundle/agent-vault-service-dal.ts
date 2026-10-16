@@ -20,5 +20,17 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByAccessBundleId };
+  // Reads the primary even without a tx, so the row is never older than the last committed save.
+  const findByIdInAccessBundle = async (
+    { id, accessBundleId }: { id: string; accessBundleId: string },
+    tx?: Knex
+  ): Promise<TAgentVaultServices | undefined> => {
+    try {
+      return await (tx || db)(TableName.AgentVaultService).where({ id, accessBundleId }).first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault service" });
+    }
+  };
+
+  return { ...orm, findByAccessBundleId, findByIdInAccessBundle };
 };

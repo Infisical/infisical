@@ -1,5 +1,5 @@
 import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
-import { PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import { PKI_SYNC_EXPORT_FORMAT_LABELS, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 import { TWindowsServerPkiSync } from "@app/hooks/api/pkiSyncs/types/windows-server-sync";
 
 type Props = {
@@ -32,9 +32,7 @@ export const WindowsServerPkiSyncDestinationSection = ({ pkiSync }: Props) => {
       </Detail>
       <Detail>
         <DetailLabel>Export Format</DetailLabel>
-        <DetailValue>
-          {exportFormat === PkiSyncExportFormat.Pkcs12 ? "PKCS#12 (.pfx)" : "PEM"}
-        </DetailValue>
+        <DetailValue>{PKI_SYNC_EXPORT_FORMAT_LABELS[exportFormat] ?? exportFormat}</DetailValue>
       </Detail>
     </>
   );

@@ -94,7 +94,7 @@ export const LoginLdapPage = () => {
               >
                 <ChevronLeft />
               </IconButton>
-              <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+              <CardTitle className="ml-0.5 bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
                 LDAP Login
               </CardTitle>
             </div>
@@ -116,6 +116,7 @@ export const LoginLdapPage = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               type="text"
+              autoComplete="username"
               placeholder="Enter your LDAP username..."
               required
               disabled={passedUsername !== undefined}

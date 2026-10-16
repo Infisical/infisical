@@ -1,7 +1,8 @@
 import { isMap, isNode, isScalar, isSeq, parseDocument } from "yaml";
 
+// Unquoted values end at a "#" preceded by whitespace, so "a#b" keeps its hash.
 const LINE =
-  /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
+  /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|\S(?:\S|\s+(?=[^\s#]))*)?\s*(?:#.*)?(?:$|$)/gm;
 
 const decodeSource = (src: ArrayBuffer | string) =>
   typeof src === "string" ? src : new TextDecoder("utf-8").decode(src);
@@ -70,6 +71,10 @@ export function parseDotEnv(src: ArrayBuffer | string) {
 
   return object;
 }
+
+// PEM padding can resemble KEY=VALUE lines, but the entire block is one secret value.
+export const parsePastedEnv = (content: string) =>
+  content.includes("-----BEGIN") ? {} : parseDotEnv(content);
 
 export const parseJson = (src: ArrayBuffer | string) => {
   const file = src.toString();

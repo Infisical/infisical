@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
 import {
   AccessRestrictedDialog,
   Button,
@@ -22,6 +21,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PageHeader,
   PageLoader,
   ResourceIcon,
   Tabs,
@@ -32,6 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   PkiApplicationResourceActions,
@@ -82,10 +83,11 @@ const PermissionedTab = ({ value, label, isBlocked, blockedReason }: Permissione
 export const ApplicationDetailsByIDPage = () => {
   const params = useParams({ strict: false }) as {
     applicationName?: string;
-    projectId?: string;
     orgId?: string;
   };
-  const { applicationName, projectId, orgId } = params;
+  const { applicationName, orgId } = params;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const search = useSearch({ strict: false }) as { selectedTab?: string; search?: string };
   const navigate = useNavigate();
 
@@ -152,8 +154,8 @@ export const ApplicationDetailsByIDPage = () => {
       createNotification({ type: "success", text: `Deleted ${application.name}` });
       setIsDeleteOpen(false);
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications",
-        params: { orgId: orgId ?? "", projectId: projectId ?? "" }
+        to: "/organizations/$orgId/cert-manager/applications",
+        params: { orgId: orgId ?? "" }
       });
     } catch (err) {
       const detail = err instanceof Error ? err.message : "Failed to delete application.";
@@ -190,20 +192,19 @@ export const ApplicationDetailsByIDPage = () => {
       <Helmet>
         <title>{application.name}</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
-            <div className="mb-4">
-              <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/applications"
-                params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                className="flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-              >
-                <ChevronLeftIcon size={16} />
-                Back to Applications
-              </Link>
-            </div>
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
             <PageHeader
+              backLink={
+                <Link
+                  to="/organizations/$orgId/cert-manager/applications"
+                  params={{ orgId: orgId ?? "" }}
+                >
+                  <ChevronLeftIcon size={16} />
+                  Back to Applications
+                </Link>
+              }
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}
               title={
@@ -217,7 +218,6 @@ export const ApplicationDetailsByIDPage = () => {
                   <span className="break-all">{application.description}</span>
                 ) : undefined
               }
-              className="mb-4"
             >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -254,10 +254,9 @@ export const ApplicationDetailsByIDPage = () => {
               value={selectedTab}
               onValueChange={(v) =>
                 navigate({
-                  to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+                  to: "/organizations/$orgId/cert-manager/applications/$applicationName",
                   params: {
                     orgId: orgId ?? "",
-                    projectId: projectId ?? "",
                     applicationName: application.name
                   },
                   search: {
@@ -316,7 +315,7 @@ export const ApplicationDetailsByIDPage = () => {
                   <ApplicationSyncsTab
                     applicationId={application.id}
                     applicationName={application.name}
-                    projectId={projectId ?? ""}
+                    projectId={projectId}
                   />
                 </TabsContent>
               )}

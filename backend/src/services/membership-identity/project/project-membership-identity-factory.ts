@@ -59,6 +59,27 @@ export const newProjectMembershipIdentityFactory = ({
 
   const isCustomRole: TMembershipIdentityScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
+  const assertDirectOrgMembership = async (identityId: string, orgId: string) => {
+    const directOrgMembership = await membershipIdentityDAL.findOne({
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      actorIdentityId: identityId
+    });
+    if (directOrgMembership) return;
+
+    const groupOrgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: identityId,
+      orgId
+    });
+    if (groupOrgMembership)
+      throw new BadRequestError({
+        message: `Machine identity '${identityId}' belongs to this organization only through a group, so it can't be assigned to the project individually. Assign the group to the project instead.`
+      });
+
+    throw new BadRequestError({ message: `Identity ${identityId} is missing organization membership` });
+  };
+
   const onCreateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onCreateMembershipIdentityGuard"] = async (
     dto
   ) => {
@@ -97,14 +118,7 @@ export const newProjectMembershipIdentityFactory = ({
       }
     }
 
-    const orgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.IDENTITY,
-      actorId: dto.data.identityId,
-      orgId: dto.permission.orgId
-    });
-
-    if (!orgMembership)
-      throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
+    await assertDirectOrgMembership(dto.data.identityId, dto.permission.orgId);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
       identityDAL.findById(dto.data.identityId)
@@ -190,6 +204,9 @@ export const newProjectMembershipIdentityFactory = ({
     );
     if (identityDetails.projectId && identityDetails.projectId !== scope.value) {
       throw new BadRequestError({ message: "Failed to update project membership for a project scoped identity" });
+    }
+    if (!identityDetails.projectId) {
+      await assertDirectOrgMembership(dto.selector.identityId, dto.permission.orgId);
     }
 
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(

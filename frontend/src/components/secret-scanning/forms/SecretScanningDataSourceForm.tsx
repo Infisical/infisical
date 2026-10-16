@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
@@ -128,7 +128,7 @@ export const SecretScanningDataSourceForm = ({
     <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
       <FormProvider {...formMethods}>
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-          <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+          <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-border-control">
             {FORM_TABS.map((tab, index) => (
               <Tab
                 onClick={async (e) => {
@@ -139,8 +139,8 @@ export const SecretScanningDataSourceForm = ({
                 className={({ selected }) =>
                   `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                     selected
-                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                      : "text-bunker-300"
+                      ? "border-b-2 border-border-bright text-foreground-secondary"
+                      : "text-label-secondary"
                   }`
                 }
                 key={tab.key}
@@ -165,13 +165,14 @@ export const SecretScanningDataSourceForm = ({
       <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
         <Button
           onClick={handleNext}
-          isLoading={isSubmitting}
+          type="button"
+          isPending={isSubmitting}
           isDisabled={isSubmitting}
-          colorSchema="secondary"
+          variant="project"
         >
           {isFinalStep ? `${dataSource ? "Update" : "Create"} Data Source` : "Next"}
         </Button>
-        <Button onClick={handlePrev} colorSchema="secondary">
+        <Button type="button" onClick={handlePrev} variant="ghost">
           Back
         </Button>
       </div>

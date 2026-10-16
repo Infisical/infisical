@@ -19,7 +19,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
   SecretScanningScanStatus,
@@ -43,7 +43,6 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
     type
   } = scan;
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const totalFindings = resolvedFindings + unresolvedFindings;
   const navigate = useNavigate();
 
@@ -67,15 +66,15 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
   return (
     <Tr
       className={twMerge(
-        "group h-10 transition-colors duration-100 hover:bg-mineshaft-700",
-        status === SecretScanningScanStatus.Failed && "bg-red/5 hover:bg-red/10"
+        "group h-10 transition-colors duration-100 hover:bg-surface-hover",
+        status === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`scan-${id}`}
     >
       <Td>
         <p>
           {format(createdAt, "MMM dd yyyy")}{" "}
-          <span className="text-mineshaft-300">{format(createdAt, "h:mm aa")}</span>
+          <span className="text-label">{format(createdAt, "h:mm aa")}</span>
         </p>
       </Td>
       <Td className="max-w-0 min-w-32!">
@@ -84,7 +83,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
         </div>
       </Td>
       <Td className="whitespace-nowrap">
-        {type === SecretScanningScanType.FullScan ? "Full Scan" : "Diff Scan"}
+        {type === SecretScanningScanType.Historical ? "Historical Scan" : "Realtime Scan"}
       </Td>
       <Td>
         {
@@ -99,10 +98,9 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
                   type="button"
                   onClick={() =>
                     navigate({
-                      to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
+                      to: "/organizations/$orgId/secret-scanning/findings",
                       params: {
-                        orgId: currentOrg.id,
-                        projectId: currentProject.id
+                        orgId: currentOrg.id
                       },
                       search: {
                         search: `scanId:${id}`
@@ -119,7 +117,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
               </Badge>
             </div>
           ) : status === SecretScanningScanStatus.Failed ? (
-            <span className="text-mineshaft-400">No findings</span>
+            <span className="text-muted">No findings</span>
           ) : (
             <Badge variant="success">
               <FontAwesomeIcon icon={faCheck} />

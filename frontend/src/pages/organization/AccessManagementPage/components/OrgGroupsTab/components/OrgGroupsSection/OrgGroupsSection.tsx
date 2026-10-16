@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { GroupsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -13,6 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -45,10 +45,7 @@ export const OrgGroupsSection = () => {
 
   const handleAddGroupModal = () => {
     if (!subscription?.groups) {
-      handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not allow adding groups. To unlock this feature, please upgrade to Infisical Enterprise plan.",
-        isEnterpriseFeature: true
-      });
+      handlePopUpOpen("upgradePlan");
     } else {
       if (!isSubOrganization) {
         setWizardStep(GroupWizardSteps.CreateGroup);
@@ -118,7 +115,7 @@ export const OrgGroupsSection = () => {
         setWizardStep={setWizardStep}
         isSubOrganization={isSubOrganization}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
         title={
           (popUp?.deleteGroup?.data as { name: string; isLinkedGroup?: boolean })?.isLinkedGroup
@@ -129,19 +126,20 @@ export const OrgGroupsSection = () => {
                 (popUp?.deleteGroup?.data as { name: string })?.name || ""
               }?`
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeleteGroupSubmit(
             popUp?.deleteGroup?.data as { name: string; groupId: string; isLinkedGroup?: boolean }
           )
         }
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        intent={GroupsUpgradeIntent}
+        paywallKey="organization.org-groups"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text={popUp.upgradePlan?.data?.text}
       />
     </>
   );

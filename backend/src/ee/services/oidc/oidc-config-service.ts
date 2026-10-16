@@ -62,6 +62,7 @@ import {
   adoptProvisionedShadowUser,
   ensureSsoAccountVerified,
   isStaleSsoAlias,
+  resolveAssertedProfileName,
   syncSsoUserProfile
 } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -897,8 +898,12 @@ export const oidcConfigServiceFactory = ({
           });
         }
 
-        const name = claims?.given_name || claims?.name;
-        if (!name) {
+        const assertedName = resolveAssertedProfileName({
+          givenName: claims?.given_name,
+          familyName: claims?.family_name,
+          displayName: claims?.name
+        });
+        if (!assertedName) {
           throw new BadRequestError({
             message: "Invalid request. Missing name claim."
           });
@@ -909,8 +914,8 @@ export const oidcConfigServiceFactory = ({
         oidcLogin({
           email: claims.email.toLowerCase(),
           externalId: claims.sub,
-          firstName: name,
-          lastName: claims.family_name ?? "",
+          firstName: assertedName.firstName,
+          lastName: assertedName.lastName,
           orgId: org.id,
           ip: requestContext.get("ip") || "",
           userAgent: requestContext.get("userAgent") || "",

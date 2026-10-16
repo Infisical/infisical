@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, FolderOpen, FolderPlus, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
 import {
   Button,
   ButtonGroup,
@@ -39,6 +38,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization } from "@app/context";
 import {
   PamAccessType,
@@ -49,6 +49,7 @@ import {
   useDeletePamAccount,
   useDeletePamFolder,
   useGetPamAccessCapabilities,
+  useGrantPamFolderAdminAccess,
   useListPamAccounts,
   useListPamFolders
 } from "@app/hooks/api/pam";
@@ -56,6 +57,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
 import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
 import { RequestAccessSheet } from "../components/RequestAccessSheet";
@@ -68,6 +70,7 @@ import { DeleteAccountModal } from "./components/DeleteAccountModal";
 import { DeleteFolderModal } from "./components/DeleteFolderModal";
 import { FolderAccountRows } from "./components/FolderAccountRows";
 import { FolderDetailSheet } from "./components/FolderDetailSheet";
+import { JoinFolderAsAdminModal } from "./components/JoinFolderAsAdminModal";
 import { ViewCredentialsModal } from "./components/ViewCredentialsModal";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -77,13 +80,18 @@ export const PamAccountsPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   // Every role sees the same folder/account structure; permissions only disable actions on a row,
   // never hide it. Capabilities just drive the create affordances and the empty-state copy.
   const { data: capabilities } = useGetPamAccessCapabilities();
 
-  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403).
-  const { data: folders = [], isLoading: isLoadingFolders } = useListPamFolders();
+  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403). Org admins
+  // also get the folders they aren't a member of, marked so they can join one as admin.
+  const { data: folders = [], isLoading: isLoadingFolders } = useListPamFolders({
+    includeNonMemberFolders: true
+  });
 
   // Folders where the user can create accounts — gates the "Add Account" affordance.
   const { data: creatableFolders = [] } = useListPamFolders({
@@ -94,6 +102,7 @@ export const PamAccountsPage = () => {
 
   const deleteAccount = useDeletePamAccount();
   const deleteFolder = useDeletePamFolder();
+  const grantFolderAdminAccess = useGrantPamFolderAdminAccess();
 
   // For regular users - request access flow
   const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
@@ -114,7 +123,8 @@ export const PamAccountsPage = () => {
     "createAccount",
     "deleteAccount",
     "createFolder",
-    "deleteFolder"
+    "deleteFolder",
+    "joinFolderAsAdmin"
   ] as const);
 
   const accountSheet = usePamSheetState("accountId");
@@ -186,6 +196,23 @@ export const PamAccountsPage = () => {
     );
   };
 
+  const handleJoinFolderAsAdmin = () => {
+    const { folderId, folderName } = popUp.joinFolderAsAdmin.data as {
+      folderId: string;
+      folderName: string;
+    };
+
+    grantFolderAdminAccess.mutate(
+      { folderId },
+      {
+        onSuccess: () => {
+          createNotification({ text: `You're now an admin of ${folderName}`, type: "success" });
+          handlePopUpClose("joinFolderAsAdmin");
+        }
+      }
+    );
+  };
+
   const handleDeleteFolder = () => {
     const { folderId } = popUp.deleteFolder.data as { folderId: string };
 
@@ -229,6 +256,7 @@ export const PamAccountsPage = () => {
                   <Search />
                 </InputGroupAddon>
                 <InputGroupInput
+                  ref={searchInputRef}
                   placeholder="Search accounts..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
@@ -365,6 +393,12 @@ export const PamAccountsPage = () => {
                       accountCount: folder.accountCount
                     })
                   }
+                  onFolderJoinAsAdmin={() =>
+                    handlePopUpOpen("joinFolderAsAdmin", {
+                      folderId: folder.id,
+                      folderName: folder.name
+                    })
+                  }
                 />
               ))}
             </TableBody>
@@ -435,6 +469,18 @@ export const PamAccountsPage = () => {
         onConfirm={handleDeleteFolder}
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("deleteFolder");
+        }}
+      />
+
+      <JoinFolderAsAdminModal
+        isOpen={popUp.joinFolderAsAdmin.isOpen}
+        folderName={
+          (popUp.joinFolderAsAdmin.data as { folderName: string } | undefined)?.folderName ?? ""
+        }
+        isLoading={grantFolderAdminAccess.isPending}
+        onConfirm={handleJoinFolderAsAdmin}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("joinFolderAsAdmin");
         }}
       />
 

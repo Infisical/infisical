@@ -1,5 +1,6 @@
-// eslint-disable-next-line
-import "ts-node/register";
+import "@app/lib/config/disable-sdk-platform-detection";
+// knex loads the .ts migrations and seeds with require(), which bypasses vitest's transformer.
+import "tsx/cjs";
 
 import dotenv from "dotenv";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -25,6 +26,7 @@ import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
+process.env.ALLOW_INTERNAL_IP_CONNECTIONS = "true";
 export default {
   name: "knex-env",
   transformMode: "ssr",

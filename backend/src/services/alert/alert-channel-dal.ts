@@ -14,11 +14,11 @@ export const alertChannelDALFactory = (db: TDbClient) => {
 
   const findByAlertId = async (
     alertId: string,
-    filter: { enabled?: boolean } = {},
+    filter: { enabled?: boolean; readFromPrimary?: boolean } = {},
     tx?: Knex
   ): Promise<TAlertChannels[]> => {
     try {
-      const query = (tx || db.replicaNode())(TableName.AlertChannel)
+      const query = (tx || (filter.readFromPrimary ? db : db.replicaNode()))(TableName.AlertChannel)
         .join(
           TableName.AlertChannelMembership,
           `${TableName.AlertChannel}.id`,

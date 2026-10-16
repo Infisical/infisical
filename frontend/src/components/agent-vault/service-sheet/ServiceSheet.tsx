@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
@@ -18,39 +19,86 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
-import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
+import { hostError } from "@app/helpers/agentVaultHostPattern";
+import { AgentVaultTemplate, findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
+import { findVariableReferences, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
+import { useDebounce, useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
+  AgentVaultVariableReferenceField,
+  useAgentVaultVariableKeyStatus,
   useCreateAgentVaultService,
   useUpdateAgentVaultService
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultService,
+  TAgentVaultVariable,
+  TAgentVaultVariableReference
+} from "@app/hooks/api/agentVault/types";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
+import { VariableFormDialog } from "../VariableFormDialog";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { ReviewFields } from "./ReviewFields";
 import {
   buildServiceSchema,
   displayHostPattern,
+  HTTP_METHODS,
+  isAllMethods,
   SERVICE_STEP_FIELDS,
   ServiceStep,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
+import {
+  NO_MISSING_KEYS,
+  NO_STORED_KEYS,
+  ServiceVariablesContext
+} from "./ServiceVariablesContext";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
+import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
   name: "",
-  hostPattern: "",
-  credentialType: AgentVaultCredentialType.Bearer,
+  hosts: [],
+  hostDraft: "",
+  pathDraft: "",
+  credentialType: AgentVaultCredentialType.Passthrough,
   headerName: "Authorization",
   headerPrefix: "Bearer",
   username: "",
-  secret: ""
+  secret: "",
+  methods: [...HTTP_METHODS],
+  pathPrefixes: [],
+  customHeaders: [],
+  substitutions: []
+};
+
+// A template placeholder like <your-tenant>.atlassian.net is not a host, so it goes into the draft.
+const formFromTemplate = (picked: AgentVaultTemplate | null, hosts: string[]): TServiceForm => {
+  const hostFields = {
+    hosts: hosts.filter((host) => !hostError(host, [])),
+    hostDraft: hosts.find((host) => Boolean(hostError(host, []))) ?? ""
+  };
+  if (!picked) {
+    return { ...BLANK_SERVICE_FORM, ...hostFields };
+  }
+
+  const cred = picked.credential;
+  return {
+    ...BLANK_SERVICE_FORM,
+    name: picked.key,
+    ...hostFields,
+    credentialType: cred.type,
+    ...(cred.type === AgentVaultCredentialType.Bearer && {
+      headerName: cred.headerName ?? "Authorization",
+      headerPrefix: cred.headerPrefix ?? "Bearer"
+    })
+  };
 };
 
 type Props = {
@@ -58,42 +106,186 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   accessBundleId: string;
   service?: TAgentVaultService | null;
+  prefillHost?: string;
+  onSaved?: () => void;
 };
 
-export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: Props) => {
+const storedVariableKeys = (service?: TAgentVaultService | null) => {
+  const references = service?.variableReferences;
+  if (!service || !references?.length) return NO_STORED_KEYS;
+
+  const keysWhere = (match: (reference: TAgentVaultVariableReference) => boolean) =>
+    references.filter(match).map((reference) => reference.key);
+  const byRow = (
+    rows: { id: string }[],
+    idOf: (r: TAgentVaultVariableReference) => string | null
+  ) =>
+    Object.fromEntries(
+      rows.map((row) => [row.id, keysWhere((reference) => idOf(reference) === row.id)])
+    );
+
+  return {
+    secret: keysWhere(
+      (reference) => reference.field === AgentVaultVariableReferenceField.CredentialValue
+    ),
+    username: keysWhere(
+      (reference) => reference.field === AgentVaultVariableReferenceField.CredentialUsername
+    ),
+    customHeaders: byRow(service.customHeaders, (reference) =>
+      reference.field === AgentVaultVariableReferenceField.CustomHeader
+        ? reference.customHeaderId
+        : null
+    ),
+    substitutions: byRow(service.substitutions, (reference) =>
+      reference.field === AgentVaultVariableReferenceField.Substitution
+        ? reference.substitutionId
+        : null
+    )
+  };
+};
+
+// Long enough for the advanced section to open and settle. There is no event to wait on: the section
+// is a Radix accordion, whose content is unmounted while closed, so the control cannot be measured
+// until after it mounts and takes its height.
+const SECTION_OPEN_MS = 250;
+
+export const ServiceSheet = ({
+  isOpen,
+  onOpenChange,
+  accessBundleId,
+  service,
+  prefillHost,
+  onSaved
+}: Props) => {
   const isUpdate = Boolean(service);
   const createService = useCreateAgentVaultService();
   const updateService = useUpdateAgentVaultService();
 
+  const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
+  // One dialog for every field. The request settles once the dialog has closed, not when the variable is
+  // saved: until then the dialog's focus trap would pull focus back from the field that asked.
+  const [newVariableKey, setNewVariableKey] = useState<string | null>(null);
+  const newVariableRequest = useRef<{
+    resolve: (variable: TAgentVaultVariable | null) => void;
+    created: TAgentVaultVariable | null;
+  } | null>(null);
+  const requestVariable = useCallback(
+    (key: string) =>
+      new Promise<TAgentVaultVariable | null>((resolve) => {
+        newVariableRequest.current?.resolve(null);
+        newVariableRequest.current = { resolve, created: null };
+        setNewVariableKey(key);
+      }),
+    []
+  );
+
   const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
 
-  const schema = useMemo(() => buildServiceSchema(service), [service]);
+  // Read when the form validates, so the schema isn't rebuilt each time a lookup answers.
+  const missingKeysRef = useRef<ReadonlySet<string>>(NO_MISSING_KEYS);
+  const schema = useMemo(
+    () => buildServiceSchema(service, () => missingKeysRef.current),
+    [service]
+  );
 
-  const formMethods = useForm<TServiceForm>({ resolver: zodResolver(schema) });
+  const formMethods = useForm<TServiceForm>({
+    defaultValues: BLANK_SERVICE_FORM,
+    resolver: zodResolver(schema)
+  });
   const {
+    control,
     handleSubmit,
     reset,
     setError,
     trigger,
-    formState: { isDirty, isSubmitting }
+    formState: { errors, isDirty, isSubmitting }
   } = formMethods;
 
-  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
-    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
+  // Only the keys the form references are looked up, never the whole list.
+  const [secret, username, customHeaders, substitutions] = useWatch({
+    control,
+    name: ["secret", "username", "customHeaders", "substitutions"]
+  });
+  const referencedKeys = useMemo(() => {
+    const texts = [
+      secret,
+      username,
+      ...(customHeaders ?? []).map((header) => header.value),
+      ...(substitutions ?? []).map((substitution) => substitution.value)
+    ];
+    const keys = texts.flatMap((text) =>
+      text && text !== UNCHANGED_SECRET ? findVariableReferences(text) : []
+    );
+    return [...new Set(keys.filter((key) => VARIABLE_KEY_RE.test(key)))].sort().join(",");
+  }, [secret, username, customHeaders, substitutions]);
+  const [debouncedReferencedKeys] = useDebounce(referencedKeys, 300);
+  const { missing: missingKeys } = useAgentVaultVariableKeyStatus(
+    debouncedReferencedKeys ? debouncedReferencedKeys.split(",") : [],
+    { enabled: isOpen }
+  );
+  missingKeysRef.current = missingKeys;
 
+  const serviceVariables = useMemo(
+    () => ({ missingKeys, storedKeys, requestVariable }),
+    [missingKeys, storedKeys, requestVariable]
+  );
+
+  const discardActionRef = useRef<VoidFunction>(() => onOpenChange(false));
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => discardActionRef.current() });
+
+  const requestDiscardAction = (action: VoidFunction) => {
+    discardActionRef.current = action;
+    requestDiscard();
+  };
+
+  // A prefilled host has already been matched against the templates, and anything picked on the
+  // template step would replace that host.
+  const hasTemplateStep = !isUpdate && !prefillHost;
   const steps = useMemo(
     () =>
-      isUpdate ? SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template) : SERVICE_STEPS,
-    [isUpdate]
+      hasTemplateStep
+        ? SERVICE_STEPS
+        : SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template),
+    [hasTemplateStep]
   );
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
+  // The stand-in for formState.submitCount, which only counts handleSubmit and so never moves for a
+  // wizard that gates its steps with trigger. Without it a second Continue reveals nothing, because
+  // the errors it finds are the ones already there.
+  const [blockedAttempt, setBlockedAttempt] = useState(0);
 
   const { step, isLastStep, goBack, goNext, onFormInvalid, setStep } = useWizardSteps<ServiceStep>({
     stepKeys,
     stepFields: SERVICE_STEP_FIELDS,
     invalidMessage: "Fix the errors before saving.",
-    validateStep: (fields) => trigger(fields as (keyof TServiceForm)[])
+    validateStep: async (fields) => {
+      const isValid = await trigger(fields as (keyof TServiceForm)[]);
+      if (!isValid) setBlockedAttempt((count) => count + 1);
+      return isValid;
+    }
   });
+
+  const hasAdvancedError = Boolean(errors.customHeaders || errors.substitutions);
+
+  useEffect(() => {
+    if (hasAdvancedError) setOpenItem(ADVANCED_ITEM);
+  }, [hasAdvancedError, blockedAttempt]);
+
+  useEffect(() => {
+    if (!blockedAttempt) return undefined;
+    // Once the accordion has finished opening: a control inside it is neither mounted nor at its final
+    // offset before then, so anything sooner scrolls to the wrong place or to nothing. The control
+    // rather than its message, which arrives a render later and keeps its text once the error clears.
+    const id = window.setTimeout(() => {
+      const invalid = panelRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      (invalid?.closest('[data-slot="field"]') ?? invalid)?.scrollIntoView({ block: "nearest" });
+    }, SECTION_OPEN_MS);
+    return () => window.clearTimeout(id);
+  }, [blockedAttempt]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -104,8 +296,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     if (service) {
       const { credential } = service;
       reset({
+        ...BLANK_SERVICE_FORM,
         name: service.name,
-        hostPattern: displayHostPattern(service.hostPattern),
+        hosts: displayHostPattern(service.hostPattern).split(", "),
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
         // the same defaults a new service gets. Left undefined, the submit would send an empty
@@ -117,33 +310,61 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
         username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
-        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
+        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
+        methods: service.allowedMethods ?? [...HTTP_METHODS],
+        pathPrefixes: service.allowedPathPrefixes ?? [],
+        // The stored values never come back, so each row carries the sentinel until it is retyped.
+        customHeaders: service.customHeaders.map((header) => ({
+          id: header.id,
+          name: header.name,
+          prefix: header.prefix,
+          value: UNCHANGED_SECRET
+        })),
+        substitutions: service.substitutions.map((substitution) => ({
+          id: substitution.id,
+          placeholder: substitution.placeholder,
+          surfaces: substitution.surfaces,
+          value: UNCHANGED_SECRET
+        }))
       });
+    } else if (prefillHost) {
+      const picked = findTemplateForHostPattern(prefillHost) ?? null;
+      const form = formFromTemplate(picked, [prefillHost]);
+      setTemplate(picked);
+      reset(
+        picked
+          ? form
+          : {
+              ...form,
+              name: slugify(prefillHost.replace(/:\d+$/, ""), { lowercase: true })
+                .slice(0, 64)
+                .replace(/-+$/, "")
+            }
+      );
     } else {
       reset(BLANK_SERVICE_FORM);
     }
-  }, [isOpen, service, isUpdate, reset, setStep]);
+  }, [isOpen, service, isUpdate, prefillHost, reset, setStep]);
 
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
     setTemplate(picked);
-
-    if (picked) {
-      const cred = picked.credential;
-      reset({
-        ...BLANK_SERVICE_FORM,
-        name: picked.key,
-        hostPattern: picked.hostPattern,
-        credentialType: cred.type,
-        ...(cred.type === AgentVaultCredentialType.Bearer && {
-          headerName: cred.headerName ?? "Authorization",
-          headerPrefix: cred.headerPrefix ?? "Bearer"
-        })
-      });
-    } else {
-      reset(BLANK_SERVICE_FORM);
-    }
+    reset(
+      picked
+        ? formFromTemplate(
+            picked,
+            picked.hostPattern.split(",").map((host) => host.trim())
+          )
+        : BLANK_SERVICE_FORM
+    );
     setStep(1);
   };
+
+  const returnToTemplates = () =>
+    requestDiscardAction(() => {
+      setTemplate(null);
+      reset(BLANK_SERVICE_FORM);
+      setStep(0);
+    });
 
   const buildCredential = (data: TServiceForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
@@ -185,6 +406,26 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     };
   };
 
+  const buildPolicy = (data: TServiceForm) => ({
+    allowedMethods: isAllMethods(data.methods) ? null : data.methods,
+    allowedPathPrefixes: data.pathPrefixes.length ? data.pathPrefixes : null
+  });
+
+  const buildTransformations = (data: TServiceForm) => ({
+    customHeaders: data.customHeaders.map((header) => ({
+      ...(header.id ? { id: header.id } : {}),
+      name: header.name,
+      prefix: header.prefix,
+      ...(header.value === UNCHANGED_SECRET ? {} : { value: header.value })
+    })),
+    substitutions: data.substitutions.map((substitution) => ({
+      ...(substitution.id ? { id: substitution.id } : {}),
+      placeholder: substitution.placeholder,
+      surfaces: substitution.surfaces,
+      ...(substitution.value === UNCHANGED_SECRET ? {} : { value: substitution.value })
+    }))
+  });
+
   const onSubmit = async (data: TServiceForm) => {
     try {
       if (service) {
@@ -192,15 +433,19 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           accessBundleId,
           serviceId: service.id,
           name: data.name,
-          hostPattern: data.hostPattern,
-          credential: buildCredentialPatch(data)
+          hostPattern: data.hosts.join(","),
+          ...buildPolicy(data),
+          credential: buildCredentialPatch(data),
+          ...buildTransformations(data)
         });
       } else {
         await createService.mutateAsync({
           accessBundleId,
           name: data.name,
-          hostPattern: data.hostPattern,
-          credential: buildCredential(data)
+          hostPattern: data.hosts.join(","),
+          ...buildPolicy(data),
+          credential: buildCredential(data),
+          ...buildTransformations(data)
         });
       }
 
@@ -209,6 +454,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         type: "success"
       });
 
+      onSaved?.();
       onOpenChange(false);
     } catch (error) {
       const serverResponse = axios.isAxiosError(error)
@@ -219,23 +465,63 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.includes("already covers")
       ) {
-        setError("hostPattern", { type: "server", message: serverResponse.message });
+        setError("hosts", { type: "server", message: serverResponse.message });
         setStep(stepKeys.indexOf(ServiceStep.Details));
         return;
       }
 
+      // Thrown after the stored halves are merged in, so the form cannot have known: it is told which
+      // halves exist only as "unchanged", never whether one of them is empty.
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        serverResponse.message.includes("needs a username")
+      ) {
+        setError("username", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Credential));
+        return;
+      }
+
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-        const hostIssues = serverResponse.message.filter(
-          (issue) => issue.path[0] === "hostPattern"
-        );
-        if (hostIssues.length > 0) {
-          setError("hostPattern", {
-            type: "server",
-            message: hostIssues.map((issue) => issue.message).join(" ")
-          });
-          setStep(stepKeys.indexOf(ServiceStep.Details));
-        }
-        if (hostIssues.length < serverResponse.message.length) onRequestError(error);
+        const STEP_OF_FIELD: Record<string, ServiceStep> = {
+          name: ServiceStep.Details,
+          hostPattern: ServiceStep.Details,
+          allowedMethods: ServiceStep.Details,
+          allowedPathPrefixes: ServiceStep.Details,
+          credential: ServiceStep.Credential,
+          customHeaders: ServiceStep.Credential,
+          substitutions: ServiceStep.Credential
+        };
+
+        const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
+          hostPattern: "hosts",
+          allowedMethods: "methods",
+          allowedPathPrefixes: "pathPrefixes",
+          credential: "secret"
+        };
+
+        let earliestStep: number | null = null;
+        let unmapped = false;
+
+        serverResponse.message.forEach((issue) => {
+          const root = String(issue.path[0]);
+          const issueStep = STEP_OF_FIELD[root];
+          if (!issueStep) {
+            unmapped = true;
+            return;
+          }
+
+          const target =
+            issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
+              ? (issue.path.join(".") as keyof TServiceForm)
+              : (FORM_FIELD_OF[root] ?? (root as keyof TServiceForm));
+
+          setError(target, { type: "server", message: issue.message });
+          const index = stepKeys.indexOf(issueStep);
+          if (index !== -1 && (earliestStep === null || index < earliestStep)) earliestStep = index;
+        });
+
+        if (earliestStep !== null) setStep(earliestStep);
+        if (unmapped) onRequestError(error);
         return;
       }
 
@@ -248,7 +534,8 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
   const handleStepChange = async (target: number) => {
     if (target === step) return;
     if (target < step) {
-      setStep(target);
+      if (stepKeys[target] === ServiceStep.Template) returnToTemplates();
+      else setStep(target);
       return;
     }
     for (let i = step; i < target; i += 1) {
@@ -286,10 +573,10 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           onOpenChange(true);
           return;
         }
-        requestDiscard();
+        requestDiscardAction(() => onOpenChange(false));
       }}
     >
-      <SheetContent className="sm:max-w-6xl">
+      <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw] xl:max-w-7xl">
         <SheetHeader>
           {isTemplateStep ? (
             <>
@@ -302,11 +589,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
             <>
               <SheetTitle className="flex items-center gap-2.5">
                 {template && (
-                  <img
-                    src={`/images/integrations/${template.image}`}
-                    alt=""
-                    className="size-6 object-contain"
-                  />
+                  <ProviderIcon icon={template.image} alt="" className="size-6 object-contain" />
                 )}
                 {template?.name ?? (isUpdate ? service?.name : "Custom")}
                 <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
@@ -330,7 +613,12 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
                     Setup steps
                   </p>
-                  <Stepper activeStep={step} orientation="vertical" onStepChange={handleStepChange}>
+                  <Stepper
+                    activeStep={step}
+                    orientation="vertical"
+                    nonLinear={isUpdate}
+                    onStepChange={handleStepChange}
+                  >
                     <StepperList>
                       {steps.map((meta, index) => (
                         <StepperStep
@@ -344,15 +632,23 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   </Stepper>
                 </aside>
 
-                <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
+                <div
+                  ref={panelRef}
+                  className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6"
+                >
                   <div className="mb-6">
-                    <h2 className="text-lg font-semibold text-foreground">{current.title}</h2>
+                    <h2 className="text-lg font-normal text-foreground">{current.title}</h2>
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
                   </div>
 
                   {current.step === ServiceStep.Details && <DetailsFields />}
                   {current.step === ServiceStep.Credential && (
-                    <CredentialFields storedType={service?.credential.type} />
+                    <ServiceVariablesContext.Provider value={serviceVariables}>
+                      <div className="flex flex-col gap-5">
+                        <CredentialFields storedType={service?.credential.type} />
+                        <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
+                      </div>
+                    </ServiceVariablesContext.Provider>
                   )}
                   {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
@@ -366,6 +662,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   </div>
                   <p className="text-sm font-semibold text-foreground">What this step does</p>
                   <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
+                  {current.rightTip && (
+                    <p className="text-sm leading-relaxed text-muted">{current.rightTip}</p>
+                  )}
                 </aside>
               </div>
 
@@ -376,7 +675,13 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                     Step {step + 1} of {steps.length}
                   </span>
                   {step > 0 && (
-                    <Button type="button" variant="outline" onClick={goBack}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={
+                        stepKeys[step - 1] === ServiceStep.Template ? returnToTemplates : goBack
+                      }
+                    >
                       Back
                     </Button>
                   )}
@@ -393,6 +698,25 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
             </form>
           )}
         </FormProvider>
+
+        <VariableFormDialog
+          isOpen={newVariableKey !== null}
+          onOpenChange={(open) => {
+            if (!open) setNewVariableKey(null);
+          }}
+          initialKey={newVariableKey ?? undefined}
+          onCreated={(variable) => {
+            if (newVariableRequest.current) newVariableRequest.current.created = variable;
+          }}
+          // The dialog opens from no trigger, so its default would drop focus on the body.
+          onCloseAutoFocus={(event) => {
+            const request = newVariableRequest.current;
+            if (!request) return;
+            event.preventDefault();
+            newVariableRequest.current = null;
+            request.resolve(request.created);
+          }}
+        />
 
         <DiscardChangesAlertDialog
           open={isDiscardDialogOpen}

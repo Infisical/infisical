@@ -26,6 +26,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedLdapConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
 import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { resolveAssertedProfileName } from "@app/services/user-alias/user-alias-fns";
 
 export const registerLdapRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -82,12 +83,18 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
               ? (fastifyReq.body as { callbackPort?: number })?.callbackPort
               : undefined;
 
+          const assertedName = resolveAssertedProfileName({
+            givenName: user.givenName,
+            familyName: user.sn,
+            displayName: user.cn
+          });
+
           const loginResult = await server.services.ldap.ldapLogin({
             externalId,
             username,
             ldapConfigId: ldapConfig.id,
-            firstName: user.givenName ?? user.cn ?? "",
-            lastName: user.sn ?? "",
+            firstName: assertedName?.firstName ?? "",
+            lastName: assertedName?.lastName ?? "",
             email: user.mail,
             groups,
             ip: requestContext.get("ip") || "",

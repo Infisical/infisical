@@ -1,4 +1,4 @@
-import { ClipboardCheckIcon, Copy, Eye, EyeOff, ForwardIcon } from "lucide-react";
+import { Check, Copy, Eye, EyeOff } from "lucide-react";
 
 import { Button, IconButton } from "@app/components/v3";
 import { useTimedReset, useToggle } from "@app/hooks";
@@ -12,13 +12,15 @@ type Props = {
   brandingTheme?: BrandingTheme;
 };
 
+// Fixed length so the mask never discloses how long the value is.
+const HIDDEN_SECRET = "••••••••••••••••";
+
 export const SecretContainer = ({ secret, brandingTheme }: Props) => {
   const [isVisible, setIsVisible] = useToggle(false);
+  const [hasCopyFailed, setHasCopyFailed] = useToggle(false);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
-
-  const hiddenSecret = "*".repeat(secret.secretValue.length);
 
   const panelStyle = brandingTheme
     ? {
@@ -35,64 +37,65 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
       }
     : undefined;
 
-  const iconButtonStyle = brandingTheme
+  const primaryButtonStyle = brandingTheme
     ? {
-        backgroundColor: brandingTheme.buttonBg,
+        backgroundColor: brandingTheme.inputBg,
+        borderColor: brandingTheme.panelBorder,
         color: brandingTheme.textColor
       }
     : undefined;
 
+  const iconButtonStyle = brandingTheme ? { color: brandingTheme.textMutedColor } : undefined;
+
   return (
     <div style={panelStyle}>
       <div
-        className={`flex items-start justify-between rounded-md border p-2 pl-3 text-base ${
+        className={`relative rounded-md border p-3 ${
           brandingTheme ? "" : "border-border bg-container text-label"
         }`}
         style={secretDisplayStyle}
       >
-        <p className="min-w-0 break-all whitespace-pre-wrap">
-          {isVisible ? secret.secretValue : hiddenSecret}
-        </p>
-        <div className="ml-1 flex shrink-0 items-start gap-2 self-start">
-          <IconButton
-            aria-label="copy icon"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(secret.secretValue);
-              setCopyTextSecret("Copied");
-            }}
-            style={iconButtonStyle}
-          >
-            {isCopyingSecret ? (
-              <ClipboardCheckIcon className="size-4" />
-            ) : (
-              <Copy className="size-4" />
-            )}
-          </IconButton>
-          <IconButton
-            aria-label="toggle visibility"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsVisible.toggle()}
-            style={iconButtonStyle}
-          >
-            {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          </IconButton>
-        </div>
-      </div>
-      <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
-      {!brandingTheme && (
-        <Button
-          className="mt-4 w-full"
-          variant="project"
-          size="lg"
-          onClick={() => window.open("/share-secret", "_blank", "noopener")}
+        <pre className="max-h-80 min-h-20 thin-scrollbar overflow-x-auto overflow-y-auto pr-9 font-mono text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
+          {isVisible ? secret.secretValue : HIDDEN_SECRET}
+        </pre>
+        <IconButton
+          variant="ghost"
+          size="sm"
+          className="absolute top-1.5 right-1.5"
+          aria-label={isVisible ? "Hide value" : "Reveal value"}
+          onClick={() => setIsVisible.toggle()}
+          style={iconButtonStyle}
         >
-          Share Your Own Secret
-          <ForwardIcon />
-        </Button>
+          {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </IconButton>
+      </div>
+
+      <Button
+        className="mt-3"
+        variant={brandingTheme ? "outline" : "project"}
+        size="lg"
+        isFullWidth
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(secret.secretValue);
+            setCopyTextSecret("Copied");
+          } catch {
+            setHasCopyFailed.on();
+          }
+        }}
+        style={primaryButtonStyle}
+      >
+        {isCopyingSecret ? <Check /> : <Copy />}
+        {isCopyingSecret ? "Copied" : "Copy Value"}
+      </Button>
+
+      {hasCopyFailed && (
+        <p className="mt-2 text-2xs text-danger">
+          Your browser blocked clipboard access. Reveal the value and copy it manually.
+        </p>
       )}
+
+      <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
     </div>
   );
 };

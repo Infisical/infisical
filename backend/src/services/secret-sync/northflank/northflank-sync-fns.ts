@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -121,7 +122,8 @@ const updateNorthflankSecrets = async (
 };
 
 export const NorthflankSyncFns = {
-  syncSecrets: async (secretSync: TNorthflankSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  syncSecrets: async (secretSync: TNorthflankSyncWithCredentials, payload: TSecretSyncPayload): Promise<void> => {
+    const secretMap = payload.flatten();
     const northflankSecrets = await getNorthflankSecrets(secretSync);
 
     const updatedVariables: Record<string, string> = {};
@@ -149,7 +151,8 @@ export const NorthflankSyncFns = {
     return Object.fromEntries(Object.entries(northflankSecrets).map(([key, value]) => [key, { value }]));
   },
 
-  removeSecrets: async (secretSync: TNorthflankSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  removeSecrets: async (secretSync: TNorthflankSyncWithCredentials, payload: TSecretSyncPayload): Promise<void> => {
+    const secretMap = payload.flatten();
     const northflankSecrets = await getNorthflankSecrets(secretSync);
 
     const updatedVariables: Record<string, string> = {};

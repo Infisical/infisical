@@ -5,13 +5,15 @@ import {
   SecretScanningResourcesSchema,
   SecretScanningScansSchema,
   TableName,
-  TSecretScanningDataSources
+  TSecretScanningDataSources,
+  TSecretScanningFindings
 } from "@app/db/schemas";
 import {
   SecretScanningFindingStatus,
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { DatabaseError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -127,6 +129,26 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const scanOrm = ormify(db, TableName.SecretScanningScan);
   const findingOrm = ormify(db, TableName.SecretScanningFinding);
   const configOrm = ormify(db, TableName.SecretScanningConfig);
+
+  // Postgres has a hard limit of how many itens can be upserted, so to prevent
+  // issues in very large repositories with lots of findings, we should batch
+  // the inserts to prevent the worker from exiting and failing the scan.
+  const FINDINGS_UPSERT_CHUNK_SIZE = 1000;
+
+  const upsertFindings: typeof findingOrm.upsert = async (data, onConflictField, tx, mergeColumns) => {
+    const upsertInChunks = async (trx: Knex) => {
+      const upserted: TSecretScanningFindings[] = [];
+      for (const chunk of chunkArray(data, FINDINGS_UPSERT_CHUNK_SIZE)) {
+        // eslint-disable-next-line no-await-in-loop
+        upserted.push(...(await findingOrm.upsert(chunk, onConflictField, trx, mergeColumns)));
+      }
+      return upserted;
+    };
+
+    if (data.length <= FINDINGS_UPSERT_CHUNK_SIZE) return findingOrm.upsert(data, onConflictField, tx, mergeColumns);
+
+    return tx ? upsertInChunks(tx) : db.transaction(upsertInChunks);
+  };
 
   const findDataSource = async (filter: Parameters<(typeof dataSourceOrm)["find"]>[0], tx?: Knex) => {
     try {
@@ -437,17 +459,17 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     try {
       const scans = await (tx || db)(TableName.SecretScanningScan)
         .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Scanning)
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretScanningScan}.scanningStartedAt`, "<", startedBefore)
-            // Rows written before `scanningStartedAt` existed, or by a pod still running an older
-            // image mid-deploy, fall back to their creation time so they're reaped too.
-            .orWhere((nullStartedAt) => {
-              void nullStartedAt
-                .whereNull(`${TableName.SecretScanningScan}.scanningStartedAt`)
-                .andWhere(`${TableName.SecretScanningScan}.createdAt`, "<", startedBefore);
-            });
-        })
+        // A batched full scan outlives any single scan timeout, so what is being measured is time
+        // since the scan last made progress, not time since it started. `progressUpdatedAt` is
+        // stamped as each commit batch is persisted; rows written before it existed, or by a pod
+        // still running an older image mid-deploy, fall back to the start and then the creation
+        // time so they're reaped too.
+        .whereRaw(`COALESCE(??, ??, ??) < ?`, [
+          `${TableName.SecretScanningScan}.progressUpdatedAt`,
+          `${TableName.SecretScanningScan}.startedAt`,
+          `${TableName.SecretScanningScan}.createdAt`,
+          startedBefore
+        ])
         .join(
           TableName.SecretScanningResource,
           `${TableName.SecretScanningResource}.id`,
@@ -456,7 +478,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.SecretScanningScan))
         .select(
           db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName"),
-          db.ref("type").withSchema(TableName.SecretScanningResource).as("resourceType"),
           db.ref("dataSourceId").withSchema(TableName.SecretScanningResource)
         )
         .orderBy(`${TableName.SecretScanningScan}.createdAt`, "asc")
@@ -477,7 +498,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningScan}.resourceId`
         )
         .where(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceId)
-
         .select(selectAllTableCols(TableName.SecretScanningScan));
 
       return scans;
@@ -486,7 +506,97 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  const baseFindingQuery = (tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.SecretScanningFinding)
+      .join(
+        TableName.SecretScanningResource,
+        `${TableName.SecretScanningResource}.id`,
+        `${TableName.SecretScanningFinding}.resourceId`
+      )
+      .join(
+        TableName.SecretScanningDataSource,
+        `${TableName.SecretScanningDataSource}.id`,
+        `${TableName.SecretScanningResource}.dataSourceId`
+      );
+
+  const findingWithDetailsQuery = (tx?: Knex) =>
+    baseFindingQuery(tx)
+      .select(selectAllTableCols(TableName.SecretScanningFinding))
+      .select(
+        db.ref("projectId").withSchema(TableName.SecretScanningDataSource),
+        db.ref("id").withSchema(TableName.SecretScanningDataSource).as("dataSourceId"),
+        db.ref("name").withSchema(TableName.SecretScanningDataSource).as("dataSourceName"),
+        db.ref("type").withSchema(TableName.SecretScanningDataSource).as("dataSourceType"),
+        db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName")
+      );
+
+  const findFindingsByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const findings = await findingWithDetailsQuery(tx).where(
+        `${TableName.SecretScanningDataSource}.projectId`,
+        projectId
+      );
+
+      return findings;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By Project ID - Secret Scanning Finding" });
+    }
+  };
+
+  const findFindingByIdWithDetails = async (findingId: string, tx?: Knex) => {
+    try {
+      const finding = await findingWithDetailsQuery(tx)
+        .where(`${TableName.SecretScanningFinding}.id`, findingId)
+        .first();
+
+      return finding;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By ID - Secret Scanning Finding" });
+    }
+  };
+
+  const countFindingsByProjectId = async (
+    projectId: string,
+    filter: { status?: SecretScanningFindingStatus } = {},
+    tx?: Knex
+  ) => {
+    try {
+      const query = baseFindingQuery(tx).where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
+
+      if (filter.status) void query.where(`${TableName.SecretScanningFinding}.status`, filter.status);
+
+      const result = await query.count({ count: `${TableName.SecretScanningFinding}.id` }).first();
+
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count By Project ID - Secret Scanning Finding" });
+    }
+  };
+
+  /**
+   * Counts the findings this scan was the first to discover, which is the number the scan's own
+   * detail view shows. It is read back from the database rather than accumulated in the handler
+   * because a full scan persists its findings batch by batch and can be retried or resumed by
+   * another worker: whatever an in-memory counter holds covers only the batches that one attempt
+   * happened to run.
+   *
+   * Read from the primary, not a replica: the caller counts immediately after writing the last
+   * batch, so replication lag would report a total short of what it just stored.
+   */
+  const countFindingsByScanId = async (scanId: string, tx?: Knex) => {
+    try {
+      const [result] = await (tx || db)(TableName.SecretScanningFinding).where({ scanId }).count({ count: "*" });
+
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count By Scan ID - Secret Scanning Finding" });
+    }
+  };
+
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     dataSources: {
       ...dataSourceOrm,
       find: findDataSource,
@@ -507,7 +617,14 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findByDataSourceId: findScansByDataSourceId,
       findStuck: findStuckScans
     },
-    findings: findingOrm,
+    findings: {
+      ...findingOrm,
+      upsert: upsertFindings,
+      countByScanId: countFindingsByScanId,
+      findByProjectId: findFindingsByProjectId,
+      findByIdWithDetails: findFindingByIdWithDetails,
+      countByProjectId: countFindingsByProjectId
+    },
     configs: configOrm
   };
 };

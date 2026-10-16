@@ -132,6 +132,10 @@ export enum EventType {
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
   DELETE_PKI_ALERT = "delete-pki-alert",
+  CREATE_ALERT = "create-alert",
+  UPDATE_ALERT = "update-alert",
+  DELETE_ALERT = "delete-alert",
+  TEST_ALERT_CHANNEL = "test-alert-channel",
   CREATE_PKI_COLLECTION = "create-pki-collection",
   GET_PKI_COLLECTION = "get-pki-collection",
   UPDATE_PKI_COLLECTION = "update-pki-collection",
@@ -199,6 +203,9 @@ export enum EventType {
   CREATE_PKI_SYNC = "create-pki-sync",
   UPDATE_PKI_SYNC = "update-pki-sync",
   DELETE_PKI_SYNC = "delete-pki-sync",
+  PKI_SYNC_LINK_CERTIFICATES = "pki-sync-link-certificates",
+  PKI_SYNC_UNLINK_CERTIFICATES = "pki-sync-unlink-certificates",
+  PKI_SYNC_SKIP_CERTIFICATE = "pki-sync-skip-certificate",
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
@@ -270,6 +277,7 @@ export enum EventType {
   AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   UPDATE_ORG = "update-org",
+  ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
@@ -281,6 +289,7 @@ export enum EventType {
 
   DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  SEARCH_SECRETS_BY_VALUE = "search-secrets-by-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
 
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
@@ -290,6 +299,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION = "view-insights-org-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
@@ -331,6 +341,7 @@ export enum EventType {
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
+  ORG_ADMIN_ACCESS_PAM_FOLDER = "org-admin-accessed-pam-folder",
   PAM_PRODUCT_MEMBER_ADD = "pam-product-member-add",
   PAM_PRODUCT_MEMBER_UPDATE = "pam-product-member-update",
   PAM_PRODUCT_MEMBER_REMOVE = "pam-product-member-remove",
@@ -368,6 +379,7 @@ export enum EventType {
   ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
+  CERTIFICATE_ISSUANCE_FAILED = "certificate-issuance-failed",
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
 
   CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
@@ -430,11 +442,14 @@ export enum EventType {
 
   // Gateway
   GATEWAY_CREATE = "gateway-create",
+  GATEWAY_UPDATE = "gateway-update",
+  GATEWAY_DELETE = "gateway-delete",
   GATEWAY_ENROLL = "gateway-enroll",
   GATEWAY_CONNECT = "gateway-connect",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_CREATE = "resource-auth-method-create",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
   RELAY_CREATE = "relay-create",
@@ -461,6 +476,10 @@ export enum EventType {
   AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
   AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
   AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_VARIABLE_CREATE = "agent-vault-variable-create",
+  AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
+  AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
+  AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -473,5 +492,8 @@ export enum EventType {
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
-  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete"
+  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update",
+  PERMISSION_DENIED = "permission-denied",
+  UPDATE_AUDIT_LOG_SETTINGS = "update-audit-log-settings"
 }

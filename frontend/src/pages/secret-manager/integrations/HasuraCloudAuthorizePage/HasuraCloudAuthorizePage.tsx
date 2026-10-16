@@ -1,13 +1,24 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -62,63 +73,54 @@ export const HasuraCloudAuthorizePage = () => {
       <Helmet>
         <title>Authorize {APP_NAME} Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After adding your access token, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
+      <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>
               <img
                 src="/images/integrations/Hasura.svg"
                 height={30}
                 width={30}
                 alt={`${APP_NAME} logo`}
               />
-            </div>
-            <span className="ml-2.5">{APP_NAME} Integration </span>
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://infisical.com/docs/integrations/cloud/hasura-cloud"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
-          <Controller
-            control={control}
-            name="accessToken"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label={`${APP_NAME} Access Token`}
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Input {...field} placeholder="" />
-              </FormControl>
-            )}
-          />
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            className="mt-2 w-min"
-            size="sm"
-            type="submit"
-            isLoading={isLoading}
-          >
-            Connect to {APP_NAME}
-          </Button>
-        </form>
-      </Card>
+              {APP_NAME} Integration
+              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/hasura-cloud" />
+            </CardTitle>
+            <CardDescription>
+              After adding your access token, you will be prompted to set up an integration for a
+              particular Infisical project and environment.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Controller
+              control={control}
+              name="accessToken"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HasuraCloudAuthorizePage-field-1">{`${APP_NAME} Access Token`}</FieldLabel>
+                  <Input
+                    id="HasuraCloudAuthorizePage-field-1"
+                    aria-describedby="HasuraCloudAuthorizePage-field-1-feedback"
+                    isError={Boolean(error)}
+                    {...field}
+                    placeholder=""
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="HasuraCloudAuthorizePage-field-1-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+          </CardContent>
+          <CardFooter className="justify-end border-t pt-4">
+            <Button size="sm" type="submit" isPending={isLoading} variant="project">
+              Connect to {APP_NAME}
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
     </div>
   );
 };

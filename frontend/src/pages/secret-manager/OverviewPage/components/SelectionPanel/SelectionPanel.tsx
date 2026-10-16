@@ -1,10 +1,21 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ClipboardIcon,
+  CopyPlus,
+  FolderInputIcon,
+  TagsIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   SelectedActionBar,
   Tooltip,
   TooltipContent,
@@ -20,6 +31,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
+import { fetchDashboardProjectSecretsByKeys } from "@app/hooks/api/dashboard/queries";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -31,12 +43,23 @@ import {
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
-import { DuplicateSecretModal } from "@app/pages/secret-manager/OverviewPage/components/SecretTableRow/DuplicateSecretModal";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import type {
+  CopySecretsFolder,
+  CopySecretsInvocation,
+  CopySecretsSource
+} from "@app/pages/secret-manager/OverviewPage/components/CopySecretsSheet";
 import {
   BulkDeleteDialog,
   BulkTagDialog,
   MoveSecretsModal
 } from "@app/pages/secret-manager/OverviewPage/components/SelectionPanel/components";
+
+import {
+  overviewCountBucket,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -56,6 +79,8 @@ type Props = {
   usedBySecretSyncs?: UsedBySecretSyncs[];
   secretsToDeleteKeys: string[];
   visibleEnvs: ProjectEnv[];
+  isImportedSecretPresentInEnv: (environmentSlug: string, secretKey: string) => boolean;
+  onCopySecrets: (invocation: CopySecretsInvocation) => void;
 };
 
 export const SelectionPanel = ({
@@ -65,16 +90,19 @@ export const SelectionPanel = ({
   importedBy,
   secretsToDeleteKeys,
   usedBySecretSyncs = [],
-  visibleEnvs
+  visibleEnvs,
+  isImportedSecretPresentInEnv,
+  onCopySecrets
 }: Props) => {
+  const telemetry = useOverviewTelemetry();
   const { permission } = useProjectPermission();
+  const [isCopying, setIsCopying] = useState(false);
   const { subscription } = useSubscription();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries",
     "bulkMoveSecrets",
-    "bulkTagSecrets",
-    "bulkDuplicateSecrets"
+    "bulkTagSecrets"
   ] as const);
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
@@ -129,12 +157,22 @@ export const SelectionPanel = ({
 
   const getDeleteModalTitle = () => {
     if (selectedFolderCount > 0 && selectedKeysCount > 0) {
-      return "Do you want to delete the selected secrets and folders across the following environments?";
+      return "Bulk Delete Secrets and Folders";
     }
     if (selectedKeysCount > 0) {
-      return "Do you want to delete the selected secrets across the following environments?";
+      return "Bulk Delete Secrets";
     }
-    return "Do you want to delete the selected folders across the following environments?";
+    return "Bulk Delete Folders";
+  };
+
+  const getDeleteModalDescription = () => {
+    if (selectedFolderCount > 0 && selectedKeysCount > 0) {
+      return `Delete ${selectedKeysCount} selected secret${selectedKeysCount === 1 ? "" : "s"} and ${selectedFolderCount} selected folder${selectedFolderCount === 1 ? "" : "s"} across all environments.`;
+    }
+    if (selectedKeysCount > 0) {
+      return `Delete ${selectedKeysCount} selected secret${selectedKeysCount === 1 ? "" : "s"} across all environments.`;
+    }
+    return `Delete ${selectedFolderCount} selected folder${selectedFolderCount === 1 ? "" : "s"} across all environments.`;
   };
 
   const getDeleteModalSubTitle = () => {
@@ -148,6 +186,17 @@ export const SelectionPanel = ({
   };
 
   const handleBulkDelete = async () => {
+    const flow = {
+      action: "delete" as const,
+      resourceType: "mixed" as const,
+      source: "bulk" as const
+    };
+    const attempt = telemetry.startFlow({
+      ...flow,
+      countBucket: overviewCountBucket(selectedFolderCount + selectedKeysCount)
+    });
+    let responseCount = 0;
+    let approvalCount = 0;
     let processedEntries = 0;
     let hasApprovalRequest = false;
     let hasDirectDelete = false;
@@ -188,6 +237,7 @@ export const SelectionPanel = ({
             },
             message: `Deleted ${folderDeletes.length} folder${folderDeletes.length === 1 ? "" : "s"}`
           });
+          responseCount += folderDeletes.length;
         }
       }
 
@@ -229,8 +279,10 @@ export const SelectionPanel = ({
         });
 
         if (result && "approval" in result) {
+          approvalCount += secretsToDelete.length;
           hasApprovalRequest = true;
         } else {
+          responseCount += secretsToDelete.length;
           hasDirectDelete = true;
         }
       }
@@ -243,6 +295,14 @@ export const SelectionPanel = ({
     const results = await Promise.allSettled(promises);
     const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");
     const areSomeEntriesDeleted = results.some((result) => result.status === "fulfilled");
+    const failureCount = results.filter((result) => result.status === "rejected").length;
+    attempt.flow({
+      ...flow,
+      phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
+      responseCountBucket: overviewCountBucket(responseCount),
+      approvalCountBucket: overviewCountBucket(approvalCount),
+      failureCountBucket: overviewCountBucket(failureCount)
+    });
 
     let resourceLabel = "secrets";
     if (hasFolders && hasSecrets) {
@@ -300,17 +360,25 @@ export const SelectionPanel = ({
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
   const areRotationsSelected = selectedRotationCount > 0;
 
-  // folders are moved one at a time from the inline row action, so bulk move only handles
-  // secrets and rotations
-  const hasMovableSelection = selectedKeysCount > 0 || selectedRotationCount > 0;
-  const shouldShowMove = shouldShowDelete && hasMovableSelection;
+  const canMoveSelectedFolders = Object.values(selectedEntries[EntryType.FOLDER]).some(
+    (folderRecord) =>
+      Object.keys(folderRecord).some(
+        (environment) =>
+          (visibleEnvs.length !== 1 || visibleEnvs[0].slug === environment) &&
+          permission.can(
+            ProjectPermissionActions.Delete,
+            subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+          )
+      )
+  );
+  const shouldShowMove =
+    (shouldShowDelete && (selectedKeysCount > 0 || selectedRotationCount > 0)) ||
+    canMoveSelectedFolders;
 
-  const isMoveDisabled = isHoneyTokenSelected || areFoldersSelected;
+  const isMoveDisabled = isHoneyTokenSelected;
   let moveDisabledReason = "";
   if (isHoneyTokenSelected) {
     moveDisabledReason = "Moving honey tokens is not supported";
-  } else if (areFoldersSelected) {
-    moveDisabledReason = "Folders cannot be moved via multi-select";
   }
 
   const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;
@@ -323,54 +391,176 @@ export const SelectionPanel = ({
   const selectedSecretEntries = Object.values(selectedEntries[EntryType.SECRET]).flatMap((perEnv) =>
     Object.entries(perEnv)
   );
-  const duplicateSourceEnvSlugs = new Set(selectedSecretEntries.map(([envSlug]) => envSlug));
-
-  const isDuplicateDisabled =
-    areFoldersSelected ||
+  const hasImportedSecretSelection = Object.entries(selectedEntries[EntryType.SECRET]).some(
+    ([secretKey, perEnv]) =>
+      Object.keys(perEnv).some((environmentSlug) =>
+        isImportedSecretPresentInEnv(environmentSlug, secretKey)
+      )
+  );
+  const hasUnmaterializedSecretSelection = Object.values(selectedEntries[EntryType.SECRET]).some(
+    (perEnv) => Object.keys(perEnv).length === 0
+  );
+  const isCopyDisabled =
+    hasImportedSecretSelection ||
+    hasUnmaterializedSecretSelection ||
     isHoneyTokenSelected ||
     areRotationsSelected ||
-    isManagedSecretSelected ||
-    duplicateSourceEnvSlugs.size > 1;
+    isManagedSecretSelected;
 
-  let duplicateDisabledReason = "Folders cannot be duplicated";
-  if (isHoneyTokenSelected) {
-    duplicateDisabledReason = "Honey token secrets cannot be duplicated";
+  let copyDisabledReason = "";
+  if (hasImportedSecretSelection) {
+    copyDisabledReason =
+      "Imported secrets must be materialized as shared secrets before they can be copied";
+  } else if (hasUnmaterializedSecretSelection) {
+    copyDisabledReason = "Unavailable secrets cannot be copied. Select materialized secrets only";
+  } else if (isHoneyTokenSelected) {
+    copyDisabledReason = "Honey token secrets cannot be copied";
   } else if (areRotationsSelected || isManagedSecretSelected) {
-    duplicateDisabledReason = "Rotated secrets cannot be duplicated";
-  } else if (duplicateSourceEnvSlugs.size > 1) {
-    duplicateDisabledReason = "Selected secrets must all be from the same source environment";
+    copyDisabledReason = "Rotated secrets cannot be copied";
   }
 
-  const duplicateSourceEnv =
-    duplicateSourceEnvSlugs.size === 1
-      ? userAvailableEnvs.find((env) => env.slug === selectedSecretEntries[0][0])
-      : undefined;
-  const duplicateSecrets = selectedSecretEntries.map(([, secret]) => ({
-    id: secret.id,
-    name: secret.key
-  }));
-  const canCopySecretValues = selectedSecretEntries.every(
-    ([, secret]) => !secret.secretValueHidden
-  );
+  const copySecretsByEnvironment = selectedSecretEntries.reduce<
+    Record<string, CopySecretsSource[]>
+  >((secretsByEnvironment, [environmentSlug, secret]) => {
+    return {
+      ...secretsByEnvironment,
+      [environmentSlug]: [
+        ...(secretsByEnvironment[environmentSlug] ?? []),
+        {
+          id: secret.id,
+          name: secret.key,
+          path: secret.path ?? secretPath,
+          isValueHidden: secret.secretValueHidden,
+          isRotated: secret.isRotatedSecret,
+          isHoneyToken: secret.isHoneyTokenSecret
+        }
+      ]
+    };
+  }, {});
+  const copyFoldersByEnvironment = Object.values(selectedEntries[EntryType.FOLDER])
+    .flatMap(Object.entries)
+    .reduce<Record<string, CopySecretsFolder[]>>((byEnvironment, [environment, folder]) => {
+      const path = `${secretPath === "/" ? "" : secretPath}/${folder.name}`;
+      return { ...byEnvironment, [environment]: [...(byEnvironment[environment] ?? []), { path }] };
+    }, {});
+  const shouldShowBulkCopy = selectedKeysCount > 0 || selectedFolderCount > 0;
+  const isClipboardDisabled =
+    selectedSecretEntries.length === 0 ||
+    hasUnmaterializedSecretSelection ||
+    areFoldersSelected ||
+    areRotationsSelected ||
+    selectedSecretEntries.some(
+      ([environment, secret]) =>
+        !secret.idOverride &&
+        (secret.secretValueHidden ||
+          !hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment,
+              secretPath: secret.path ?? secretPath,
+              secretName: secret.key,
+              secretTags: (secret.tags ?? []).map((tag) => tag.slug)
+            }
+          ))
+    );
 
-  const duplicateSourceEnvSlugForPermission =
-    selectedKeysCount > 0 && duplicateSourceEnvSlugs.size === 1
-      ? selectedSecretEntries[0]?.[0]
-      : undefined;
-  const canCreateInDuplicateSourceEnv = Boolean(duplicateSourceEnvSlugForPermission);
-  const shouldShowBulkDuplicate =
-    selectedKeysCount > 0 && (duplicateSourceEnvSlugs.size !== 1 || canCreateInDuplicateSourceEnv);
+  const handleCopyToClipboard = async () => {
+    if (isClipboardDisabled || isCopying) return;
+    if (
+      selectedSecretEntries.some(
+        ([, secret]) => !/^[A-Za-z_]/.test(secret.key) || /[^A-Za-z0-9_]/.test(secret.key)
+      )
+    ) {
+      createNotification({
+        type: "error",
+        title: "Cannot copy secrets as .env",
+        text: "Some selected secret names aren’t compatible with .env format. Names must contain only letters, numbers, and underscores, and cannot start with a number. Nothing was copied."
+      });
+      return;
+    }
+    setIsCopying(true);
+    const flow = {
+      action: "copy" as const,
+      resourceType: "secret" as const,
+      source: "bulk" as const,
+      destination: "clipboard" as const,
+      countBucket: overviewCountBucket(selectedSecretEntries.length)
+    };
+    const attempt = telemetry.startFlow(flow);
+    try {
+      const groups = selectedSecretEntries.reduce<
+        Record<string, { environment: string; path: string; secrets: SecretV3RawSanitized[] }>
+      >((acc, [environment, secret]) => {
+        const path = secret.path ?? secretPath;
+        const groupKey = JSON.stringify([environment, path]);
+        acc[groupKey] ??= { environment, path, secrets: [] };
+        acc[groupKey].secrets.push(secret);
+        return acc;
+      }, {});
+      const lines = await Promise.all(
+        Object.values(groups).map(async ({ environment, path, secrets }) => {
+          const { secrets: fetchedSecrets } = await fetchDashboardProjectSecretsByKeys({
+            projectId,
+            environment,
+            secretPath: path,
+            keys: secrets.map((secret) => secret.key),
+            viewSecretValue: true
+          });
+          const valuesById = new Map(fetchedSecrets.map((secret) => [secret.id, secret]));
+          const copiedLines = secrets.map((secret) => {
+            const fetchedSecret = valuesById.get(secret.idOverride ?? secret.id);
+            if (
+              !fetchedSecret ||
+              fetchedSecret.secretValueHidden ||
+              fetchedSecret.secretValue === undefined
+            ) {
+              throw new Error("Secret value unavailable");
+            }
+            const escapedValue = fetchedSecret.secretValue
+              .replace(/\\/g, "\\\\")
+              .replace(/"/g, '\\"')
+              .replace(/\r/g, "\\r")
+              .replace(/\n/g, "\\n");
+            return `${secret.key}="${escapedValue}"`;
+          });
+          if (visibleEnvs.length > 1) copiedLines.unshift(`# ${environment}`);
+          return copiedLines.join("\n");
+        })
+      );
+      await navigator.clipboard.writeText(lines.join("\n"));
+      attempt.flow({ ...flow, phase: "clipboard-written", provenance: "committed" });
+      createNotification({ type: "success", text: "Selected secrets copied to clipboard" });
+    } catch {
+      attempt.flow({ ...flow, phase: "failed" });
+      createNotification({ type: "error", text: "Failed to copy selected secrets to clipboard" });
+    } finally {
+      setIsCopying(false);
+    }
+  };
 
   return (
     <>
-      <SelectedActionBar selectedCount={selectedCount} onClearSelection={resetSelectedEntries}>
+      <SelectedActionBar
+        selectedCount={selectedCount}
+        onClearSelection={resetSelectedEntries}
+        iconOnlyClear
+      >
         {selectedKeysCount > 0 && (
           <Tooltip open={isTagActionDisabled ? undefined : false}>
             <TooltipTrigger>
               <Button
                 isDisabled={isTagActionDisabled}
                 variant="project"
-                onClick={() => handlePopUpOpen("bulkTagSecrets")}
+                onClick={() => {
+                  telemetry.interaction({
+                    action: "bulk-tags",
+                    source: "bulk",
+                    resourceType: "secret",
+                    countBucket: overviewCountBucket(selectedKeysCount)
+                  });
+                  handlePopUpOpen("bulkTagSecrets");
+                }}
                 size="xs"
               >
                 <TagsIcon />
@@ -386,7 +576,15 @@ export const SelectionPanel = ({
               <Button
                 isDisabled={isMoveDisabled}
                 variant="project"
-                onClick={() => handlePopUpOpen("bulkMoveSecrets")}
+                onClick={() => {
+                  telemetry.interaction({
+                    action: "bulk-move",
+                    source: "bulk",
+                    resourceType: "mixed",
+                    countBucket: overviewCountBucket(selectedFolderCount + selectedKeysCount)
+                  });
+                  handlePopUpOpen("bulkMoveSecrets");
+                }}
                 size="xs"
               >
                 <FolderInputIcon />
@@ -396,21 +594,48 @@ export const SelectionPanel = ({
             <TooltipContent>{moveDisabledReason}</TooltipContent>
           </Tooltip>
         )}
-        {shouldShowBulkDuplicate && (
-          <Tooltip open={isDuplicateDisabled ? undefined : false}>
-            <TooltipTrigger>
-              <Button
-                isDisabled={isDuplicateDisabled}
-                variant="project"
-                onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
-                size="xs"
-              >
+        {shouldShowBulkCopy && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="project" size="xs" isPending={isCopying} isDisabled={isCopying}>
                 <CopyPlus />
-                Duplicate
+                Copy
+                <ChevronDownIcon />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>{duplicateDisabledReason}</TooltipContent>
-          </Tooltip>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top">
+              <Tooltip open={isCopyDisabled ? undefined : false}>
+                <TooltipTrigger asChild>
+                  <span>
+                    <DropdownMenuItem
+                      isDisabled={isCopyDisabled}
+                      onSelect={() => {
+                        if (isCopyDisabled) return;
+                        onCopySecrets({
+                          origin: "bulk",
+                          sourcePath: secretPath,
+                          selectedSecretCount: selectedKeysCount,
+                          secretsByEnvironment: copySecretsByEnvironment,
+                          sourceEnvironmentSlug:
+                            visibleEnvs.length === 1 ? visibleEnvs[0].slug : undefined,
+                          folderNames: Object.keys(selectedEntries[EntryType.FOLDER]),
+                          foldersByEnvironment: copyFoldersByEnvironment
+                        });
+                      }}
+                    >
+                      <CopyPlus />
+                      Copy to New Source
+                    </DropdownMenuItem>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{copyDisabledReason}</TooltipContent>
+              </Tooltip>
+              <DropdownMenuItem isDisabled={isClipboardDisabled} onSelect={handleCopyToClipboard}>
+                <ClipboardIcon />
+                Copy to Clipboard
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {shouldShowDelete && (
           <Tooltip open={isDeleteDisabled ? undefined : false}>
@@ -418,7 +643,15 @@ export const SelectionPanel = ({
               <Button
                 isDisabled={isDeleteDisabled}
                 variant="danger"
-                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                onClick={() => {
+                  telemetry.flow({
+                    action: "delete",
+                    resourceType: "mixed",
+                    source: "bulk",
+                    phase: "opened"
+                  });
+                  handlePopUpOpen("bulkDeleteEntries");
+                }}
                 size="xs"
               >
                 <TrashIcon />
@@ -435,11 +668,12 @@ export const SelectionPanel = ({
         environments={userAvailableEnvs}
         visibleEnvs={visibleEnvs}
         projectId={projectId}
+        projectName={currentProject.name}
         projectSlug={currentProject.slug}
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
         rotations={selectedEntries[EntryType.SECRET_ROTATION]}
-        folders={{}}
+        folders={selectedEntries[EntryType.FOLDER]}
         onComplete={resetSelectedEntries}
       />
       <BulkTagDialog
@@ -454,8 +688,18 @@ export const SelectionPanel = ({
       />
       <BulkDeleteDialog
         isOpen={popUp.bulkDeleteEntries.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen)
+            telemetry.flow({
+              action: "delete",
+              resourceType: "mixed",
+              source: "bulk",
+              phase: "canceled"
+            });
+          handlePopUpToggle("bulkDeleteEntries", isOpen);
+        }}
         title={getDeleteModalTitle()}
+        description={getDeleteModalDescription()}
         subTitle={getDeleteModalSubTitle()}
         onDeleteApproved={handleBulkDelete}
         selectedEntries={selectedEntries}
@@ -464,21 +708,6 @@ export const SelectionPanel = ({
         secretsToDeleteKeys={secretsToDeleteKeys}
         usedBySecretSyncsFiltered={usedBySecretSyncsFiltered}
       />
-      {duplicateSourceEnv && (
-        <DuplicateSecretModal
-          isOpen={popUp.bulkDuplicateSecrets.isOpen}
-          onOpenChange={(isOpen) => {
-            handlePopUpToggle("bulkDuplicateSecrets", isOpen);
-            if (!isOpen) {
-              resetSelectedEntries();
-            }
-          }}
-          secrets={duplicateSecrets}
-          secretPath={secretPath}
-          sourceEnvironment={{ slug: duplicateSourceEnv.slug, name: duplicateSourceEnv.name }}
-          canCopySecretValue={canCopySecretValues}
-        />
-      )}
     </>
   );
 };

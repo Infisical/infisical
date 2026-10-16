@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultSessionsSchema = z.object({
@@ -18,7 +20,9 @@ export const AgentVaultSessionsSchema = z.object({
   expiresAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  encryptedSessionLogKey: zodBuffer.nullable().optional(),
+  actorType: z.string().nullable().optional()
 });
 
 export type TAgentVaultSessions = z.infer<typeof AgentVaultSessionsSchema>;

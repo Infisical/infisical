@@ -1,10 +1,7 @@
 # Build stage
-ARG INFISICAL_CLI_VERSION=0.43.129
+ARG INFISICAL_CLI_VERSION=0.43.136
 
-FROM node:22.23.2-trixie-slim AS build
-
-# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
-RUN npm install -g npm@10.9.9
+FROM node:26.10.0-trixie-slim AS build
 
 WORKDIR /app
 
@@ -49,10 +46,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm "$ORACLE_ZIP"
 
 # Production dependencies (runs in parallel with build)
-FROM node:22.23.2-trixie-slim AS prod-deps
-
-# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
-RUN npm install -g npm@10.9.9
+FROM node:26.10.0-trixie-slim AS prod-deps
 
 WORKDIR /app
 
@@ -72,10 +66,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 # Production stage
-FROM node:22.23.2-trixie-slim
-
-# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
-RUN npm install -g npm@10.9.9
+FROM node:26.10.0-trixie-slim
 
 WORKDIR /app
 

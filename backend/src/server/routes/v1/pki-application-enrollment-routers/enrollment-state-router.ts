@@ -90,6 +90,7 @@ export const registerPkiApplicationEnrollmentStateRouter = async (server: Fastif
           type: EventType.GET_PKI_APPLICATION_ENROLLMENT,
           metadata: {
             applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
             profileId: req.params.profileId
           }
         }

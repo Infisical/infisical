@@ -1,7 +1,8 @@
-import { ComponentPropsWithoutRef, forwardRef, ReactNode, useMemo, useState } from "react";
+import { ComponentPropsWithoutRef, forwardRef, useMemo, useState } from "react";
 import { GlobeIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { cn } from "@app/components/v3/utils";
 import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 
@@ -52,8 +53,8 @@ const ServiceChip = forwardRef<HTMLDivElement, TServiceChipProps>(
     return (
       <div ref={ref} className={cn(chipClassName, className)} {...props}>
         {icon.image && !hasImageError ? (
-          <img
-            src={`/images/integrations/${icon.image}`}
+          <ProviderIcon
+            icon={icon.image}
             alt=""
             className="size-full object-contain p-1"
             onError={() => setHasImageError(true)}
@@ -79,22 +80,17 @@ export const ServiceIcon = ({
   return <ServiceChip icon={icon} className={className} />;
 };
 
+// Host patterns collapse to one chip per provider.
 type Props = {
   hostPatterns: string[];
   maxVisible?: number;
-  emptyPlaceholder?: ReactNode;
   className?: string;
 };
 
-export const ServiceIconStack = ({
-  hostPatterns,
-  maxVisible = 4,
-  emptyPlaceholder = <span className="text-muted">&mdash;</span>,
-  className
-}: Props) => {
+export const ServiceIconStack = ({ hostPatterns, maxVisible = 4, className }: Props) => {
   const icons = useMemo(() => iconsFromHostPatterns(hostPatterns), [hostPatterns]);
 
-  if (icons.length === 0) return emptyPlaceholder;
+  if (icons.length === 0) return <span className="text-muted">&mdash;</span>;
 
   const visible = icons.slice(0, maxVisible);
   const hidden = icons.slice(maxVisible);
@@ -104,11 +100,15 @@ export const ServiceIconStack = ({
     // direction moves a chip visually and its paint order follows, so the right edge wins either
     // way. `isolate` confines these depths to the stack.
     <div className={cn("isolate flex items-center -space-x-1.5", className)}>
+      {/* A screen reader never opens the hover tooltips, so it reads the names here. First, since the
+          spacing puts a negative margin on every child but the last, and the last has to stay a chip. */}
+      <span className="sr-only">{icons.map((icon) => icon.label).join(", ")}</span>
       {visible.map((icon, index) => (
         <Tooltip key={icon.label}>
           <TooltipTrigger asChild>
             <ServiceChip
               icon={icon}
+              aria-hidden
               className={cn(stackedChipClassName, "relative")}
               style={{ zIndex: visible.length - index }}
             />
@@ -119,7 +119,10 @@ export const ServiceIconStack = ({
       {hidden.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className={cn(chipClassName, stackedChipClassName, "text-[10px] font-medium")}>
+            <div
+              aria-hidden
+              className={cn(chipClassName, stackedChipClassName, "text-[10px] font-medium")}
+            >
               +{hidden.length}
             </div>
           </TooltipTrigger>

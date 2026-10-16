@@ -13,34 +13,45 @@ import {
   FieldContent,
   FieldLabel
 } from "@app/components/v3";
-import { useUpdateAgentVaultProductMemberRole } from "@app/hooks/api/agentVault";
-import { TAgentVaultProductMemberActor } from "@app/hooks/api/agentVault/types";
+import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
+import { useUpdateAgentVaultMemberRoles } from "@app/hooks/api/agentVault";
+import { TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleField } from "./ProductRoleField";
 
 type Props = {
-  isOpen: boolean;
+  member: Pick<TAgentVaultProductMember, "type" | "id" | "role"> | null;
   onOpenChange: (isOpen: boolean) => void;
   subject: string;
-  currentRole: string;
-  actor: TAgentVaultProductMemberActor;
 };
 
-export const ProductRoleDialog = ({ isOpen, onOpenChange, subject, currentRole, actor }: Props) => {
-  const updateRole = useUpdateAgentVaultProductMemberRole();
+export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
+  const updateRole = useUpdateAgentVaultMemberRoles();
+  const currentRole = member?.role ?? ProjectMembershipRole.Member;
   const [role, setRole] = useState(currentRole);
 
   useEffect(() => {
-    if (isOpen) setRole(currentRole);
-  }, [isOpen, currentRole]);
+    if (member) setRole(member.role);
+  }, [member]);
 
   const handleSave = async () => {
     try {
-      await updateRole.mutateAsync({ ...actor, role });
-      createNotification({
-        text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
-        type: "success"
-      });
+      // Guarded here, not by returning null, so the exit animation still runs.
+      if (!member) return;
+      const { members } = await updateRole.mutateAsync({ ...actorIdsPayload([member]), role });
+      // Save is disabled for the current role, so a skip means the member changed under the dialog.
+      createNotification(
+        members.length
+          ? {
+              text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
+              type: "success"
+            }
+          : {
+              text: `Role not changed. ${subject} may have been removed from Agent Vault or already has that role.`,
+              type: "info"
+            }
+      );
       onOpenChange(false);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
@@ -48,11 +59,11 @@ export const ProductRoleDialog = ({ isOpen, onOpenChange, subject, currentRole, 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={Boolean(member)} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Change Role</DialogTitle>
-          <DialogDescription>What {subject} can do here.</DialogDescription>
+          <DialogDescription>Choose what {subject} can do in Agent Vault.</DialogDescription>
         </DialogHeader>
         <Field>
           <FieldLabel>Product Role</FieldLabel>

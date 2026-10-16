@@ -1,3 +1,4 @@
+import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faCopy, faInfoCircle, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,14 +8,23 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Switch,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { TCmek, useCmekEncrypt } from "@app/hooks/api/cmeks";
 
@@ -31,10 +41,15 @@ type Props = {
   cmek: TCmek;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, "cmek"> & {
+  cmekEncrypt: ReturnType<typeof useCmekEncrypt>;
+};
 
-const EncryptForm = ({ cmek }: FormProps) => {
-  const cmekEncrypt = useCmekEncrypt();
+const EncryptForm = ({ cmek, cmekEncrypt }: FormProps) => {
+  const fieldId = useId();
+  const { reset: resetEncryptResult } = cmekEncrypt;
+
+  useEffect(() => resetEncryptResult, [resetEncryptResult]);
 
   const {
     handleSubmit,
@@ -71,49 +86,69 @@ const EncryptForm = ({ cmek }: FormProps) => {
   return (
     <form onSubmit={handleSubmit(handleEncryptData)}>
       {ciphertext ? (
-        <FormControl label="Encrypted Data (Ciphertext)">
+        <Field className="mb-4">
+          <FieldLabel htmlFor={`${fieldId}-ciphertext`}>Encrypted Data (Ciphertext)</FieldLabel>
           <TextArea
-            className="max-h-80 min-h-40 max-w-full min-w-full"
-            isDisabled
+            id={`${fieldId}-ciphertext`}
+            rows={4}
+            readOnly
             value={cmekEncrypt.data?.ciphertext}
           />
-        </FormControl>
+        </Field>
       ) : (
         <>
-          <FormControl
-            label="Data (Plaintext)"
-            errorText={errors.plaintext?.message}
-            isError={Boolean(errors.plaintext)}
-          >
+          <Field className="mb-4" data-invalid={Boolean(errors.plaintext)}>
+            <FieldLabel htmlFor={`${fieldId}-plaintext`}>Data (Plaintext)</FieldLabel>
             <TextArea
               {...register("plaintext")}
-              className="max-h-80 min-h-40 max-w-full min-w-full"
+              id={`${fieldId}-plaintext`}
+              isError={Boolean(errors.plaintext)}
+              aria-describedby={errors.plaintext ? `${fieldId}-plaintext-error` : undefined}
             />
-          </FormControl>
+            <FieldError id={`${fieldId}-plaintext-error`} errors={[errors.plaintext]} />
+          </Field>
           <Controller
             control={control}
             name="isBase64Encoded"
             render={({ field: { onChange, value } }) => (
-              <Switch
-                id="encode-base-64"
-                isChecked={value}
-                onCheckedChange={onChange}
-                containerClassName="mb-6 ml-0.5 -mt-2.5"
-              >
-                Data is Base64 encoded{" "}
-                <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                  <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+              <Field orientation="horizontal" className="mb-6">
+                <Toggle
+                  id={`${fieldId}-encode-base-64`}
+                  checked={value}
+                  onCheckedChange={onChange}
+                />
+                <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
+                  Data is Base64 encoded
+                </FieldLabel>
+                <Tooltip hoverable selectable={false} delayDuration={50}>
+                  <TooltipTrigger asChild>
+                    <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
+                      <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs" sideOffset={5}>
+                    Toggle this switch on if your data is already Base64 encoded to avoid redundant
+                    encoding.
+                  </TooltipContent>
                 </Tooltip>
-              </Switch>
+              </Field>
             )}
           />
         </>
       )}
-      <div className="flex items-center">
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost">{ciphertext ? "Close" : "Cancel"}</Button>
+        </DialogClose>
         <Button
-          className={`mr-4 ${ciphertext ? "w-44" : ""}`}
-          size="sm"
-          leftIcon={
+          className={ciphertext ? "w-44" : undefined}
+          variant="project"
+          onClick={ciphertext ? handleCopyToClipboard : undefined}
+          type={ciphertext ? "button" : "submit"}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          {
             // eslint-disable-next-line no-nested-ternary
             ciphertext ? (
               isCopyingCiphertext ? (
@@ -125,37 +160,28 @@ const EncryptForm = ({ cmek }: FormProps) => {
               <FontAwesomeIcon icon={faLock} />
             )
           }
-          onClick={ciphertext ? handleCopyToClipboard : undefined}
-          type={ciphertext ? "button" : "submit"}
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
           {ciphertext ? copyCiphertext : "Encrypt"}
         </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            {ciphertext ? "Close" : "Cancel"}
-          </Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
 
 export const CmekEncryptModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+  const cmekEncrypt = useCmekEncrypt();
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Encrypt Data"
-        subTitle={
-          <>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent isPending={cmekEncrypt.isPending}>
+        <DialogHeader>
+          <DialogTitle>Encrypt Data</DialogTitle>
+          <DialogDescription>
             Encrypt data using <span className="font-bold">{cmek?.name}</span>. Returns Base64
             encoded ciphertext.
-          </>
-        }
-      >
-        <EncryptForm cmek={cmek} />
-      </ModalContent>
-    </Modal>
+          </DialogDescription>
+        </DialogHeader>
+        <EncryptForm cmek={cmek} cmekEncrypt={cmekEncrypt} />
+      </DialogContent>
+    </Dialog>
   );
 };

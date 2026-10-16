@@ -1,0 +1,56 @@
+---
+title: "{The concept's name, as it appears in the product}"
+description: "{One sentence stating what the concept is, identical to the description on the concept's card on the section's landing page}"
+---
+
+{/*
+NOTE: Template for a page about one concept in a product and the tasks that involve the
+concept. Read templates/README.md first for what each kind of markup means.
+Example pages: documentation/platform/agent-vault/services.mdx, sessions.mdx, access-bundles.mdx.
+
+NOTE: The page states what the concept is, shows the concept, covers the tasks readers do with
+the concept, then describes behavior readers need to know about. Keep the task sections next
+to each other, before the behavior sections.
+*/}
+
+{One clause stating what the concept is, then one sentence stating how the concept relates to the other concepts in the product, with each concept linked}
+
+{/* IF: a screenshot shows the concept more clearly than words */}
+{One sentence describing a realistic use of the concept that the screenshot shows}
+
+<Frame>
+  <img src="/images/{image-path}.png" alt="{What the screenshot shows}" />
+</Frame>
+{/* END IF */}
+
+## {The first task, as an imperative}
+
+To {the task}:
+
+<Steps>
+  <Step>
+    {The first action, starting with the verb}
+  </Step>
+  <Step>
+    {The next action, starting with the verb}
+  </Step>
+</Steps>
+
+{/* NOTE: Repeat the heading and steps for each other task readers do with the concept. */}
+
+{/* IF: the concept has behavior readers need to know that the tasks don't show */}
+## {The behavior, named in words a newcomer recognizes}
+
+{Which system does what, and when}
+{/* END IF */}
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="{The linked page's sidebar label}" icon="{Lucide icon name}" href="{Path of the linked page}">
+    {What the reader can do on the linked page}
+  </Card>
+  <Card title="{The linked page's sidebar label}" icon="{Lucide icon name}" href="{Path of the linked page}">
+    {What the reader can do on the linked page}
+  </Card>
+</CardGroup>

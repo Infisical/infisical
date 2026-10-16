@@ -1,4 +1,9 @@
-import { CONSTRAINT_LABELS, evaluateConstraints, TConstraintViolation } from "../secret-validation-rule-constraint-fns";
+import {
+  CONSTRAINT_LABELS,
+  evaluateConstraints,
+  TConstraintViolation,
+  TDuplicateSecret
+} from "../secret-validation-rule-constraint-fns";
 import { ConstraintKind, ConstraintTarget } from "../secret-validation-rule-enums";
 import { TStaticSecretsRuleConfig } from "./static-secrets-rule-types";
 
@@ -6,6 +11,7 @@ export type TSecretToValidate = {
   key: string;
   value?: string;
   previousValues?: string[];
+  duplicateOf?: TDuplicateSecret;
 };
 
 export const evaluateStaticSecretConstraints = (
@@ -31,12 +37,22 @@ export const evaluateStaticSecretConstraints = (
     })
   );
 
-  const versionCount = config.valueConstraints.reusePrevention?.previousVersions;
+  const versionCount = config.valueConstraints.uniqueAcrossLastVersions;
   if (versionCount !== undefined && secret.previousValues?.slice(0, versionCount).includes(secret.value)) {
     violations.push({
       kind: ConstraintKind.ReusePreviousVersions,
       label: CONSTRAINT_LABELS[ConstraintKind.ReusePreviousVersions],
       message: `value cannot reuse any of the last ${versionCount} values`
+    });
+  }
+
+  const { duplicateOf } = secret;
+  if (config.valueConstraints.uniqueWithinScope && duplicateOf) {
+    violations.push({
+      kind: ConstraintKind.ReuseOtherSecretsInScope,
+      label: CONSTRAINT_LABELS[ConstraintKind.ReuseOtherSecretsInScope],
+      message: "value is already used by another secret in this project",
+      duplicateOf
     });
   }
 

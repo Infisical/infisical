@@ -1,6 +1,7 @@
 export { CreatePkiSyncModal } from "./CreatePkiSyncModal";
 export { DeletePkiSyncModal } from "./DeletePkiSyncModal";
 export { EditPkiSyncModal } from "./EditPkiSyncModal";
+export type { TPkiSyncEditStepKey } from "./forms";
 export { PkiSyncImportCertificatesModal } from "./PkiSyncImportCertificatesModal";
 export { PkiSyncImportStatusBadge } from "./PkiSyncImportStatusBadge";
 export { PkiSyncRemoveCertificatesModal } from "./PkiSyncRemoveCertificatesModal";

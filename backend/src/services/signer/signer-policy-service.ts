@@ -11,24 +11,27 @@ import {
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
+import { dispatchApprovalNotification } from "../approval-policy/approval-notification-fns";
 import {
   TApprovalPolicyDALFactory,
   TApprovalPolicyStepApproversDALFactory,
   TApprovalPolicyStepsDALFactory
 } from "../approval-policy/approval-policy-dal";
 import {
+  ApprovalNotificationEvent,
   ApprovalPolicyScope,
   ApprovalPolicyType,
   ApprovalRequestGrantStatus,
   ApprovalRequestStatus
 } from "../approval-policy/approval-policy-enums";
+import { TApprovalResourceRegistry } from "../approval-policy/approval-policy-types";
 import {
   TApprovalRequestDALFactory,
   TApprovalRequestGrantsDALFactory,
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "../approval-policy/approval-request-dal";
-import { createApprovalRequestWithSteps, notifyStepApprovers } from "../approval-policy/approval-request-fns";
+import { createApprovalRequestWithSteps } from "../approval-policy/approval-request-fns";
 import { CodeSigningScopeField } from "../approval-policy/code-signing/code-signing-policy-enums";
 import { normalizeCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-fns";
 import {
@@ -38,9 +41,11 @@ import {
 } from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
+import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSignerDALFactory } from "./signer-dal";
@@ -71,6 +76,9 @@ type TSignerPolicyServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  approvalResources: TApprovalResourceRegistry;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -139,6 +147,9 @@ export const signerPolicyServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   userGroupMembershipDAL,
+  slackIntegrationDAL,
+  kmsService,
+  approvalResources,
   identityGroupMembershipDAL,
   userDAL,
   identityDAL,
@@ -668,14 +679,15 @@ export const signerPolicyServiceFactory = ({
       }
     );
 
-    if (requestWithSteps.steps.length > 0) {
-      await notifyStepApprovers(requestWithSteps.steps[0], requestWithSteps, {
-        userGroupMembershipDAL,
-        notificationService,
-        userDAL,
-        smtpService
-      });
-    }
+    await dispatchApprovalNotification(
+      {
+        event: ApprovalNotificationEvent.Requested,
+        request: requestWithSteps,
+        resource: approvalResources[ApprovalPolicyType.CertCodeSigning]!,
+        approvers: requestWithSteps.steps[0]?.approvers ?? []
+      },
+      { userGroupMembershipDAL, userDAL, notificationService, smtpService, slackIntegrationDAL, kmsService }
+    );
 
     return requestWithSteps;
   };

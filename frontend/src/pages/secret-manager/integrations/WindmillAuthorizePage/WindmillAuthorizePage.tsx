@@ -1,21 +1,35 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { CircleHelpIcon } from "lucide-react";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const WindmillAuthorizePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [apiUrl, setApiUrl] = useState<string | null>(null);
   const [apiUrlErrorText, setApiUrlErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const isLocalOrPrivateIpAddress = (url: string): boolean => {
     try {
@@ -66,16 +80,12 @@ export const WindmillAuthorizePage = () => {
         }
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "windmill",
         accessToken: apiKey,
         url: apiUrl ?? undefined
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/create",
@@ -94,35 +104,59 @@ export const WindmillAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Windmill Integration</CardTitle>
-        <FormControl
-          label="Windmill Access Token"
-          errorText={apiKeyErrorText}
-          isError={apiKeyErrorText !== ""}
-        >
-          <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-        </FormControl>
-        <FormControl
-          label="Windmill Instance URL"
-          errorText={apiUrlErrorText}
-          isError={apiUrlErrorText !== ""}
-          tooltipText="If you are using a custom domain, enter it here. Otherwise, leave it blank."
-        >
-          <Input
-            value={apiUrl ?? ""}
-            onChange={(e) => setApiUrl(e.target.value.trim() === "" ? null : e.target.value.trim())}
-            placeholder="https://xxxx.windmill.dev"
-          />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-        >
-          Connect to Windmill
-        </Button>
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Windmill Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="WindmillAuthorizePage-field-1">Windmill Access Token</FieldLabel>
+            <Input
+              id="WindmillAuthorizePage-field-1"
+              aria-describedby="WindmillAuthorizePage-field-1-feedback"
+              isError={apiKeyErrorText !== ""}
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="WindmillAuthorizePage-field-1-feedback">{apiKeyErrorText}</FieldError>
+            )}
+          </Field>
+          <Field data-invalid={apiUrlErrorText !== ""}>
+            <FieldLabel htmlFor="WindmillAuthorizePage-field-2">
+              Windmill Instance URL
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" aria-label="Windmill Instance URL">
+                    <CircleHelpIcon className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  If you are using a custom domain, enter it here. Otherwise, leave it blank.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <Input
+              id="WindmillAuthorizePage-field-2"
+              aria-describedby="WindmillAuthorizePage-field-2-feedback"
+              isError={apiUrlErrorText !== ""}
+              value={apiUrl ?? ""}
+              onChange={(e) =>
+                setApiUrl(e.target.value.trim() === "" ? null : e.target.value.trim())
+              }
+              placeholder="https://xxxx.windmill.dev"
+            />
+            {apiUrlErrorText !== "" && (
+              <FieldError id="WindmillAuthorizePage-field-2-feedback">{apiUrlErrorText}</FieldError>
+            )}
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
+            Connect to Windmill
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

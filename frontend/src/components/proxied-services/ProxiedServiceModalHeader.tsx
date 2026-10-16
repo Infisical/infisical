@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GlobeIcon } from "lucide-react";
 
 import { DocumentationLinkBadge, SheetDescription, SheetTitle } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 
 import { PROXIED_SERVICE_QUICKSTART_URL } from "./forms/stepMeta";
 
@@ -18,12 +19,12 @@ export const ProxiedServiceModalHeader = ({ title, subtitle, image }: Props) => 
     <>
       <div className="flex items-center gap-x-3">
         {image && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-mineshaft-700">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-hover">
             {imgError ? (
-              <GlobeIcon className="h-4 w-4 text-bunker-300" />
+              <GlobeIcon className="h-4 w-4 text-label-secondary" />
             ) : (
-              <img
-                src={`/images/integrations/${image}`}
+              <ProviderIcon
+                icon={image}
                 alt=""
                 className="h-5 w-5 object-contain"
                 onError={() => setImgError(true)}

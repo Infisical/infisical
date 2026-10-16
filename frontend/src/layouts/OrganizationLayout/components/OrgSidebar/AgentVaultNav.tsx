@@ -1,7 +1,21 @@
-import { FileText, IdCard, Package, Route, Shield } from "lucide-react";
+import { Braces, FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
 
-import { SidebarCollapsibleGroup } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
+import {
+  SidebarCollapsibleGroup,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem
+} from "@app/components/v3";
+import { useProjectPermission, useSubscription } from "@app/context";
+import {
+  areAgentVaultSessionLogsOn,
+  isAgentVaultSessionLogPlanLapsed
+} from "@app/helpers/agentVaultSessionLogs";
+import {
+  useGetAgentVaultSessionLogHealth,
+  useGetAgentVaultSessionLogSettings
+} from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProjectNavList } from "./ProjectNavLink";
@@ -9,38 +23,69 @@ import type { NavItem, Submenu } from "./types";
 
 export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
   const { hasProjectRole } = useProjectPermission();
+  const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
+  const { subscription } = useSubscription();
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
-    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" }
+    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
+    { label: "Variables", icon: Braces, pathSuffix: "variables", hidden: !isAdmin }
   ];
 
-  const governanceItems: NavItem[] = isAdmin
+  const infrastructureItems: NavItem[] = [
+    { label: "Proxies", icon: Server, pathSuffix: "proxies" }
+  ];
+
+  let settingsAlert: NavItem["alertVariant"];
+  if (sessionLogHealth?.connectionError) settingsAlert = "danger";
+  else if (
+    sessionLogSettings?.bucket &&
+    (!areAgentVaultSessionLogsOn(sessionLogSettings) ||
+      isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription))
+  )
+    settingsAlert = "warning";
+
+  const administrationItems: NavItem[] = isAdmin
     ? [
-        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
         {
           label: "Access Control",
           icon: Shield,
           pathSuffix: "access-management",
           activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
-        }
+        },
+        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
+        { label: "Settings", icon: Settings, pathSuffix: "settings", alertVariant: settingsAlert }
       ]
     : [];
-
-  const infrastructureItems: NavItem[] = [{ label: "Proxies", icon: Route, pathSuffix: "proxies" }];
 
   return (
     <>
       <ProjectNavList items={accessItems} onSubmenuOpen={onSubmenuOpen} />
-      {governanceItems.length > 0 && (
-        <SidebarCollapsibleGroup label="Governance">
-          <ProjectNavList items={governanceItems} onSubmenuOpen={onSubmenuOpen} />
-        </SidebarCollapsibleGroup>
-      )}
       <SidebarCollapsibleGroup label="Infrastructure">
         <ProjectNavList items={infrastructureItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
+      {administrationItems.length > 0 && (
+        <SidebarCollapsibleGroup label="Administration">
+          <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      )}
+      <SidebarMenu className="mt-auto">
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            size="lg"
+            closeOnMobile
+            tooltip="About Agent Vault"
+            className="text-xs text-muted [&_svg]:size-3.5"
+            onClick={() => setIsIntroOpen(true)}
+          >
+            <Info className="mb-px" />
+            <span>About Agent Vault</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
     </>
   );
 };

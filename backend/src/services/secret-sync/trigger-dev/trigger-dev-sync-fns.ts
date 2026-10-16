@@ -1,7 +1,8 @@
-import { request } from "@app/lib/config/request";
+import { safeRequest } from "@app/lib/validator";
 import { getTriggerDevInstanceUrl } from "@app/services/app-connection/trigger-dev";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -35,7 +36,7 @@ const listTriggerDevEnvVars = async (
   const { apiKey } = secretSync.connection.credentials;
 
   try {
-    const { data } = await request.get<TTriggerDevEnvVar[]>(baseUrl, {
+    const { data } = await safeRequest.get<TTriggerDevEnvVar[]>(baseUrl, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         Accept: "application/json"
@@ -63,7 +64,7 @@ const importTriggerDevEnvVars = async (
   const isSecret = secretSync.syncOptions.markAsSecret ?? true;
 
   try {
-    await request.post(
+    await safeRequest.post(
       `${baseUrl}/import`,
       { variables, override: true, isSecret },
       {
@@ -92,7 +93,7 @@ const deleteTriggerDevEnvVar = async (
   const { apiKey } = secretSync.connection.credentials;
 
   try {
-    await request.delete(`${baseUrl}/${encodeURIComponent(key)}`, {
+    await safeRequest.delete(`${baseUrl}/${encodeURIComponent(key)}`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         Accept: "application/json"
@@ -109,7 +110,8 @@ const deleteTriggerDevEnvVar = async (
 };
 
 export const TriggerDevSyncFns = {
-  syncSecrets: async (secretSync: TTriggerDevSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TTriggerDevSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { environment, syncOptions } = secretSync;
 
     const variables: Record<string, string> = Object.fromEntries(
@@ -149,7 +151,8 @@ export const TriggerDevSyncFns = {
     }
   },
 
-  removeSecrets: async (secretSync: TTriggerDevSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TTriggerDevSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const existing = await listTriggerDevEnvVars(secretSync);
 
     const keysToDelete = existing.map((envVar) => envVar.name).filter((key) => key in secretMap);

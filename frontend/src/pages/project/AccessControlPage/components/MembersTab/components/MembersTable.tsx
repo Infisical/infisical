@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
@@ -57,7 +58,7 @@ import {
   useProject,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -98,7 +99,8 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
   const userId = user?.id || "";
   const projectId = currentProject?.id || "";
   const {
@@ -217,7 +219,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isCertManager ? "Search users..." : "Search project users..."}
+            placeholder={projectsHidden ? "Search users..." : "Search project users..."}
           />
         </InputGroup>
         <DropdownMenu>
@@ -232,7 +234,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>
-              {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
+              {projectsHidden ? "Filter by Role" : `Filter by ${productLabel} Role`}
             </DropdownMenuLabel>
             {projectRoles?.map(({ id, slug, name }) => (
               <DropdownMenuCheckboxItem
@@ -291,10 +293,10 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               <EmptyTitle>
                 {/* eslint-disable-next-line no-nested-ternary */}
                 {search || isTableFiltered
-                  ? isCertManager
+                  ? projectsHidden
                     ? "No users match search"
                     : "No project users match search"
-                  : isCertManager
+                  : projectsHidden
                     ? "No users found"
                     : "No project users found"}
               </EmptyTitle>
@@ -342,7 +344,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                       )}
                     />
                   </TableHead>
-                  <TableHead>{isCertManager ? "Role" : `${productLabel} Role`}</TableHead>
+                  <TableHead>{projectsHidden ? "Role" : `${productLabel} Role`}</TableHead>
                   <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
@@ -525,7 +527,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                               {!isCertManager && (
                                 <ProjectPermissionCan
                                   I={ProjectPermissionMemberActions.AssumePrivileges}
-                                  a={ProjectPermissionSub.Member}
+                                  a={subject(ProjectPermissionSub.Member, { userEmail: u?.email })}
                                 >
                                   {(isAllowed) => (
                                     <Tooltip>

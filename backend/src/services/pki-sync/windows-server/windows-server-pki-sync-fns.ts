@@ -12,11 +12,20 @@ import {
   resolveLdapBackedHostCredentials
 } from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { executeWinRMGatewayOperation, TWinRMConnection, TWinRMCredentials } from "@app/services/app-connection/winrm";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { PkiSyncError } from "../pki-sync-errors";
-import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import {
+  buildFileCollisionMessage,
+  exportCertificateForSync,
+  isExportFormatBlockedByFips,
+  isKeystoreExportFormat,
+  JKS_FIPS_UNSUPPORTED_MESSAGE,
+  PemCertificateExtension,
+  PkiSyncExportFormat
+} from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
   buildHealthCheckCommandPlan,
@@ -43,6 +52,7 @@ type TWindowsServerPkiSyncFactoryDeps = {
     TCertificateSyncDALFactory,
     "findByPkiSyncId" | "findByPkiSyncAndCertificate" | "updateById" | "addCertificates" | "removeCertificates"
   >;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -53,6 +63,8 @@ type TWindowsServerSyncOptions = {
   exportFormat?: PkiSyncExportFormat;
   pemCertificateExtension?: PemCertificateExtension;
   combineCertificateChain?: boolean;
+  keystoreAlias?: string;
+  includeTruststore?: boolean;
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
   fileAccessRules?: Array<{ identity: string; access: string }>;
@@ -64,7 +76,8 @@ const resolveWindowsExportOptions = (options: TWindowsServerSyncOptions) => ({
   format: options.exportFormat ?? PkiSyncExportFormat.Pkcs12,
   includePrivateKey: options.includePrivateKey ?? true,
   pemCertificateExtension: options.pemCertificateExtension,
-  combineCertificateChain: options.combineCertificateChain
+  combineCertificateChain: options.combineCertificateChain,
+  includeTruststore: options.includeTruststore
 });
 
 const TRAILING_BACKSLASH = new RE2("\\\\+$");
@@ -159,9 +172,10 @@ const reconcileWindowsServerRemovals = async (args: {
   deliveredPaths: Set<string>;
   target: TWinRMSyncTarget;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "removeCertificates">;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
   gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
 }): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
-  const { pkiSync, certificateMap, deliveredPaths, target, certificateSyncDAL, gatewayDeps } = args;
+  const { pkiSync, certificateMap, deliveredPaths, target, certificateSyncDAL, certificateDAL, gatewayDeps } = args;
   const failedRemovals: Array<{ name: string; error: string }> = [];
   let removed = 0;
 
@@ -171,8 +185,19 @@ const reconcileWindowsServerRemovals = async (args: {
       .filter((id): id is string => typeof id === "string")
   );
   const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+
+  const untrackCandidateIds = existingSyncRecords
+    .map((record) => record.certificateId)
+    .filter((id): id is string => Boolean(id) && !activeCertificateIds.has(id));
+  const stillActiveIds = new Set(
+    (await certificateDAL.findActiveCertificatesByIds(untrackCandidateIds)).map((cert) => cert.id)
+  );
+
   const orphans = existingSyncRecords.filter(
-    (record) => record.certificateId && !activeCertificateIds.has(record.certificateId)
+    (record) =>
+      record.certificateId &&
+      !activeCertificateIds.has(record.certificateId) &&
+      !stillActiveIds.has(record.certificateId)
   );
   if (orphans.length === 0) return { removed, failedRemovals };
 
@@ -246,8 +271,7 @@ const runWindowsServerHealthCheckCommand = async ({
     certificateMap,
     exportOptions,
     joinPath: joinWindowsPath,
-    pkcs12Password:
-      exportOptions.format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+    pkcs12Password: isKeystoreExportFormat(exportOptions.format) ? pkiSync.syncCredentials?.exportPassword : undefined
   });
   if (!plan) return undefined;
 
@@ -282,6 +306,7 @@ const runWindowsServerPostSyncCommand = ({
 
 export const windowsServerPkiSyncFactory = ({
   certificateSyncDAL,
+  certificateDAL,
   gatewayV2Service,
   gatewayPoolService,
   keyStore
@@ -298,6 +323,10 @@ export const windowsServerPkiSyncFactory = ({
     const { format, includePrivateKey } = exportOptions;
     const canRemoveCertificates = options.canRemoveCertificates ?? false;
     const exportPassword = pkiSync.syncCredentials?.exportPassword;
+
+    if (isExportFormatBlockedByFips(format)) {
+      throw new PkiSyncError({ shouldRetry: false, message: JKS_FIPS_UNSUPPORTED_MESSAGE });
+    }
 
     const failedUploads: Array<{ name: string; error: string }> = [];
     const failedRemovals: Array<{ name: string; error: string }> = [];
@@ -329,7 +358,7 @@ export const windowsServerPkiSyncFactory = ({
     // Deliver each certificate over its own gateway operation so one certificate's failure is
     // recorded against that certificate only, rather than failing the whole batch.
     for (const [baseName, certData] of Object.entries(certificateMap)) {
-      const { cert, privateKey, certificateChain, certificateId } = certData;
+      const { cert, privateKey, certificateChain, fullCertificateChain, caCertificate, certificateId } = certData;
 
       if (!cert) {
         skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
@@ -337,7 +366,7 @@ export const windowsServerPkiSyncFactory = ({
         continue;
       }
 
-      const keyRequired = format === PkiSyncExportFormat.Pkcs12 || includePrivateKey;
+      const keyRequired = isKeystoreExportFormat(format) || includePrivateKey;
       if (keyRequired && !privateKey) {
         failedUploads.push({
           name: baseName,
@@ -353,9 +382,11 @@ export const windowsServerPkiSyncFactory = ({
           ...exportOptions,
           certificate: cert,
           certificateChain,
+          fullCertificateChain,
+          caCertificate,
           privateKey,
           password: exportPassword,
-          alias: baseName
+          alias: options.keystoreAlias || baseName
         });
 
         const paths: string[] = [];
@@ -364,6 +395,13 @@ export const windowsServerPkiSyncFactory = ({
           const fullPath = joinWindowsPath(config.destinationPath, `${baseName}${file.suffix}`);
           files.push({ path: fullPath, contentBase64: file.content.toString("base64") });
           paths.push(fullPath);
+        }
+
+        // Windows paths are case-insensitive, so compare them folded.
+        const deliveredLower = new Set([...deliveredPaths].map((deliveredPath) => deliveredPath.toLowerCase()));
+        const collidingPath = paths.find((deliveredPath) => deliveredLower.has(deliveredPath.toLowerCase()));
+        if (collidingPath) {
+          throw new PkiSyncError({ message: buildFileCollisionMessage(collidingPath) });
         }
 
         await executeWinRMGatewayOperation(
@@ -405,6 +443,7 @@ export const windowsServerPkiSyncFactory = ({
         deliveredPaths,
         target,
         certificateSyncDAL,
+        certificateDAL,
         gatewayDeps
       });
       removed += reconciliation.removed;
@@ -420,7 +459,7 @@ export const windowsServerPkiSyncFactory = ({
       destinationDirectory: config.destinationPath,
       deliveredPaths,
       deliveredCertificates,
-      pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
+      pkcs12Password: isKeystoreExportFormat(format) ? exportPassword : undefined
     });
     const postSyncCommand = postSyncCommandPlan
       ? await runWindowsServerPostSyncCommand({

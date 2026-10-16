@@ -1,6 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { GroupsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -20,9 +20,9 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupModal } from "./GroupModal";
 import { GroupTable } from "./GroupsTable";
@@ -30,8 +30,8 @@ import { GroupTable } from "./GroupsTable";
 export const GroupsSection = () => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const { mutateAsync: deleteMutateAsync, isPending: isRemovingGroup } =
     useDeleteGroupFromWorkspace();
@@ -79,7 +79,7 @@ export const GroupsSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager ? "Groups" : `${productLabel} Groups`}
+            {projectsHidden ? "Groups" : `${productLabel} Groups`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups#user-groups" />
           </CardTitle>
           <CardDescription>{`Add and manage ${productLabel.toLowerCase()} groups`}</CardDescription>
@@ -95,7 +95,7 @@ export const GroupsSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  {isCertManager ? "Add Group" : `Add Group to ${productLabel}`}
+                  {projectsHidden ? "Add Group" : `Add Group to ${productLabel}`}
                 </Button>
               )}
             </ProjectPermissionCan>
@@ -120,11 +120,14 @@ export const GroupsSection = () => {
           if (groupToRemove?.id) await onRemoveGroupSubmit(groupToRemove.id);
         }}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="project.groups"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan?.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+        intent={{
+          ...GroupsUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

@@ -70,7 +70,7 @@ export const HCVaultSyncFields = () => {
                 isLoading={isMountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={value ? { label: value, value } : null}
-                onValueChange={(option) => onChange(option.value)}
+                onValueChange={(option) => onChange(option?.value ?? "")}
                 options={mounts?.map((mount) => ({ label: mount, value: mount })) ?? []}
                 placeholder="Select a Secrets Engine Mount..."
                 getOptionLabel={(option) => option.label}

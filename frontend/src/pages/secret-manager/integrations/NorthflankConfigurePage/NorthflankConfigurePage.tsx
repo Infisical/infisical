@@ -4,12 +4,19 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -22,7 +29,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const NorthflankConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState(
@@ -31,8 +38,6 @@ export const NorthflankConfigurePage = () => {
   const [secretPath, setSecretPath] = useState("/");
   const [targetAppId, setTargetAppId] = useState("");
   const [targetSecretGroupId, setTargetSecretGroupId] = useState<string>("");
-
-  const [isLoading, setIsLoading] = useState(false);
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.NorthflankConfigurePage.id,
@@ -76,8 +81,6 @@ export const NorthflankConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -89,8 +92,6 @@ export const NorthflankConfigurePage = () => {
         targetServiceId: targetSecretGroupId,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
@@ -109,88 +110,125 @@ export const NorthflankConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Northflank Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="Northflank Project" className="mt-4">
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-mineshaft-500"
-            isDisabled={integrationAuthApps.length === 0}
-          >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`target-environment-${integrationAuthApp.name}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        {targetSecretGroupId !== "" && integrationAuthSecretGroups && (
-          <FormControl label="Secret Group" className="mt-4">
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Northflank Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="NorthflankConfigurePage-field-1">Project Environment</FieldLabel>
             <Select
-              value={targetSecretGroupId}
-              onValueChange={(val) => setTargetSecretGroupId(val)}
-              className="w-full border border-mineshaft-500"
-              isDisabled={integrationAuthSecretGroups.length === 0}
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
             >
-              {integrationAuthSecretGroups.length > 0 ? (
-                integrationAuthSecretGroups.map((secretGroup: any) => (
+              <SelectTrigger
+                id="NorthflankConfigurePage-field-1"
+                aria-describedby="NorthflankConfigurePage-field-1-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
                   <SelectItem
-                    value={secretGroup.groupId}
-                    key={`target-secret-group-${secretGroup.groupId}`}
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
                   >
-                    {secretGroup.name}
+                    {sourceEnvironment.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-secret-group-none">
-                  No secret groups found
-                </SelectItem>
-              )}
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
-        )}
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0 || integrationAuthSecretGroups?.length === 0}
-        >
-          Create Integration
-        </Button>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="NorthflankConfigurePage-field-2">Secrets Path</FieldLabel>
+            <Input
+              id="NorthflankConfigurePage-field-2"
+              aria-describedby="NorthflankConfigurePage-field-2-feedback"
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="NorthflankConfigurePage-field-3">Northflank Project</FieldLabel>
+            <Select
+              value={targetAppId}
+              onValueChange={(val) => setTargetAppId(val)}
+              disabled={integrationAuthApps.length === 0}
+            >
+              <SelectTrigger
+                id="NorthflankConfigurePage-field-3"
+                aria-describedby="NorthflankConfigurePage-field-3-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.appId as string}
+                      key={`target-environment-${integrationAuthApp.name}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No projects found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          {targetSecretGroupId !== "" && integrationAuthSecretGroups && (
+            <Field>
+              <FieldLabel htmlFor="NorthflankConfigurePage-field-4">Secret Group</FieldLabel>
+              <Select
+                value={targetSecretGroupId}
+                onValueChange={(val) => setTargetSecretGroupId(val)}
+                disabled={integrationAuthSecretGroups.length === 0}
+              >
+                <SelectTrigger
+                  id="NorthflankConfigurePage-field-4"
+                  aria-describedby="NorthflankConfigurePage-field-4-feedback"
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {integrationAuthSecretGroups.length > 0 ? (
+                    integrationAuthSecretGroups.map((secretGroup: any) => (
+                      <SelectItem
+                        value={secretGroup.groupId}
+                        key={`target-secret-group-${secretGroup.groupId}`}
+                      >
+                        {secretGroup.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-secret-group-none">
+                      No secret groups found
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
+            isDisabled={
+              integrationAuthApps.length === 0 || integrationAuthSecretGroups?.length === 0
+            }
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (

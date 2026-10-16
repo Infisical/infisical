@@ -21,6 +21,7 @@ export enum HostCommandVariable {
   CertificateDirectory = "certificateDirectory",
   CertificateFiles = "certificateFiles",
   CommonName = "commonName",
+  ExportPassword = "exportPassword",
   Pkcs12Password = "pkcs12Password"
 }
 
@@ -138,7 +139,7 @@ export const buildHostCommandContext = (args: {
         singleCertificateVariables
       )}. A variable that names one certificate cannot be resolved for a run that ${delivered} ${
         certificates.length
-      } certificates. Unlink all but one certificate, or use {{certificateFiles}} instead.`,
+      } certificates. Narrow this sync's filters to one certificate, or use {{certificateFiles}} instead.`,
       shouldRetry: false
     });
   }
@@ -175,6 +176,7 @@ export const renderHostCommandContext = (
       [HostCommandVariable.CertificateDirectory, context.certificateDirectory],
       [HostCommandVariable.CertificateFiles, context.certificateFiles.join("\n")],
       [HostCommandVariable.CommonName, context.commonName],
+      [HostCommandVariable.ExportPassword, context.pkcs12Password],
       [HostCommandVariable.Pkcs12Password, context.pkcs12Password]
     ]),
     toShellLiteral

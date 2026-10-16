@@ -1,7 +1,6 @@
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon, TrashIcon } from "lucide-react";
 
-import { IconButton, Input } from "@app/components/v2";
+import { IconButton, Input } from "@app/components/v3";
 
 export type MetadataFilterEntry = {
   id: string;
@@ -32,12 +31,12 @@ export const MetadataFilterSection = ({ entries, onChange }: Props) => {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-bunker-300 uppercase">Metadata</span>
+        <span className="text-xs font-medium text-label-secondary uppercase">Metadata</span>
         {entries.length > 0 && (
           <button
             type="button"
             onClick={() => onChange([])}
-            className="cursor-pointer text-xs text-primary hover:text-primary-600"
+            className="cursor-pointer text-xs text-project hover:text-project"
           >
             Clear
           </button>
@@ -58,23 +57,17 @@ export const MetadataFilterSection = ({ entries, onChange }: Props) => {
             className="flex-1"
           />
           <IconButton
-            ariaLabel="Remove metadata filter"
-            variant="plain"
+            aria-label="Remove metadata filter"
+            variant="ghost"
             size="xs"
             onClick={() => removeEntry(idx)}
           >
-            <FontAwesomeIcon icon={faTrash} size="xs" />
+            <TrashIcon />
           </IconButton>
         </div>
       ))}
-      <IconButton
-        ariaLabel="Add metadata filter"
-        variant="outline_bg"
-        size="xs"
-        className="rounded-md"
-        onClick={addEntry}
-      >
-        <FontAwesomeIcon icon={faPlus} />
+      <IconButton aria-label="Add metadata filter" variant="outline" size="xs" onClick={addEntry}>
+        <PlusIcon />
       </IconButton>
     </div>
   );

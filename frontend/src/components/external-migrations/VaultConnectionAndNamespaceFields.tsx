@@ -20,9 +20,9 @@ import { useGetVaultNamespaces } from "@app/hooks/api/migration/queries";
 type Props = {
   appConnections: TAvailableAppConnection[];
   connectionId: string | null;
-  onConnectionIdChange: (connectionId: string) => void;
+  onConnectionIdChange: (connectionId: string | null) => void;
   namespace: string | null;
-  onNamespaceChange: (namespace: string) => void;
+  onNamespaceChange: (namespace: string | null) => void;
   namespaceTooltip: string;
   namespaceHelpText: string;
   idPrefix?: string;
@@ -94,7 +94,7 @@ export const VaultConnectionAndNamespaceFields = ({
           <Combobox
             id={connectionInputId}
             value={appConnections.find((connection) => connection.id === connectionId) ?? null}
-            onValueChange={(connection) => onConnectionIdChange(connection.id)}
+            onValueChange={(connection) => onConnectionIdChange(connection?.id ?? null)}
             options={appConnections}
             getOptionValue={(option) => option.id}
             getOptionLabel={(option) => option.name}
@@ -132,7 +132,7 @@ export const VaultConnectionAndNamespaceFields = ({
         <Combobox
           id={namespaceInputId}
           value={namespaces?.find((option) => option.name === namespace) ?? null}
-          onValueChange={(option) => onNamespaceChange(option.name)}
+          onValueChange={(option) => onNamespaceChange(option?.name ?? null)}
           options={namespaces ?? []}
           getOptionValue={(option) => option.name}
           getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}

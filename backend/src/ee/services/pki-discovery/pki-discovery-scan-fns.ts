@@ -6,8 +6,8 @@ import { TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";

@@ -1,12 +1,8 @@
 import { z } from "zod";
 
-export const formatOidcAudiences = (data: string) => {
-  if (data === "") return "";
-  return data
-    .split(",")
-    .map((id) => id.trim())
-    .join(", ");
-};
+import { formatCommaSeparatedPolicyValues } from "@app/services/identity/identity-auth-policy-values";
+
+export const formatOidcAudiences = formatCommaSeparatedPolicyValues;
 
 export const validateOidcAuthAudiencesField = z.string().trim().default("").transform(formatOidcAudiences);
 
@@ -17,10 +13,7 @@ export const validateOidcAuthAudiencesFieldOptional = z.string().trim().transfor
 export const validateOidcBoundClaimsField = z.record(z.string()).transform((data) => {
   const formattedClaims: Record<string, string> = {};
   Object.keys(data).forEach((key) => {
-    formattedClaims[key] = data[key]
-      .split(",")
-      .map((id) => id.trim())
-      .join(", ");
+    formattedClaims[key] = formatCommaSeparatedPolicyValues(data[key]);
   });
 
   return formattedClaims;

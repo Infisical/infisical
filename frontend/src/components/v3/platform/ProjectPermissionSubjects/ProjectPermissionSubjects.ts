@@ -138,8 +138,8 @@ export const PERMISSION_SUBJECT_SECRET_COLOR = {
 
 export const PERMISSION_SUBJECT_HONEY_TOKEN_COLOR = {
   token: null,
-  textClassName: "text-yellow-700",
-  tileClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700"
+  textClassName: "text-warning",
+  tileClassName: "border-warning/10 bg-warning/15 text-warning"
 } as const satisfies PermissionSubjectColor;
 
 const present = (
@@ -211,6 +211,7 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.Certificates]: pki(FileKeyIcon),
   [ProjectPermissionSub.CertificateAuthorities]: pki(FileKeyIcon),
   [ProjectPermissionSub.CertificateTemplates]: pki(FileStackIcon),
+  [ProjectPermissionSub.Application]: pki(ServerIcon),
   [ProjectPermissionSub.CertificateProfiles]: pki(FileStackIcon),
   [ProjectPermissionSub.CertificatePolicies]: pki(ScaleIcon),
   [ProjectPermissionSub.CertificateInventoryViews]: pki(TableIcon),

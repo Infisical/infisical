@@ -91,7 +91,7 @@ export const OCIVaultSyncFields = () => {
                 isDisabled={!connectionId}
                 value={compartments?.find((c) => c.id === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.id ?? null);
+                  onChange(option?.id ?? null);
                   setValue("destinationConfig.vaultOcid", "");
                   setValue("destinationConfig.keyOcid", "");
                 }}
@@ -138,7 +138,7 @@ export const OCIVaultSyncFields = () => {
                 isDisabled={!connectionId || !selectedCompartment}
                 value={vaults?.find((v) => v.id === value) || null}
                 onValueChange={(option) => {
-                  onChange(option.id ?? null);
+                  onChange(option?.id ?? null);
                   setValue("destinationConfig.keyOcid", "");
                 }}
                 options={vaults}
@@ -184,7 +184,7 @@ export const OCIVaultSyncFields = () => {
                 isDisabled={!connectionId || !selectedCompartment || !selectedVault}
                 value={keys?.find((v) => v.id === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.id ?? null);
+                  onChange(option?.id ?? null);
                 }}
                 options={keys}
                 placeholder="Select a key..."

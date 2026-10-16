@@ -22,7 +22,7 @@ There are two product roles:
 | **Product Admin** | Create and manage templates, folders, and product-level settings |
 | **Product Member** | Access PAM — needs folder/account memberships to connect |
 
-Product Admins set up the governance layer — they don't automatically get access to connect to accounts. To connect, you need a membership on a folder or account.
+Product Admins set up the governance layer — they don't automatically get access to connect to accounts. To connect, you need a membership on a folder or account. If you have the organization Admin role, you can also [join any folder as its Admin](/documentation/platform/pam/folders/overview#managing-access).
 
 <Note>
 Organization Admins can enter PAM as a Product Admin without being explicitly added — they just need to opt in.
@@ -82,7 +82,7 @@ The picker only offers members of PAM, so a machine identity has to be added on 
 
 Two things stay with users and groups:
 
-- **Web Access.** Connecting in the browser is for users. Machine identities connect through the [CLI](/cli/commands/pam-agentic).
+- **Web Access.** Connecting in the browser is for users. Machine identities connect through the [CLI](/cli/reference#pam-agentic-access).
 - **Approving [access requests](/documentation/platform/pam/access-requests/overview).** A machine identity can file a request, but only users and groups can approve one.
 
 An account whose [template](/documentation/platform/pam/templates/overview) requires MFA also stays with people: a machine identity can never complete the challenge, and [agent runs](/documentation/platform/pam/ai-agents/overview) don't support it yet.
@@ -109,7 +109,7 @@ The Product Admin sets up the governance structure. The Folder Admin manages day
   <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
     Add accounts and manage account memberships.
   </Card>
-  <Card title="AI Agents" icon="robot" href="/documentation/platform/pam/ai-agents/overview">
+  <Card title="AI Agents" icon="bot" href="/documentation/platform/pam/ai-agents/overview">
     Grant the same access to an AI agent.
   </Card>
 </CardGroup>

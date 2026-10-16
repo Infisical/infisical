@@ -45,7 +45,7 @@
 (?i)scan
 (?i)flags
 (?i)sub commands
-(?i)infisical (?:agent|agent-proxy|agent-vault|av|bootstrap|dynamic-secrets|export|gateway|init|kmip|login|pam|relay|reset|run|scan|secrets|service-token|token|user|vault)
+(?i)infisical (?:agent|agent-proxy|agent-vault|av|bootstrap|dynamic-secrets|export|gateway|init|kmip|login|logout|org|pam|profile|relay|reset|run|scan|secrets|service-token|token|user|vault)
 
 # Acronyms that collide with ordinary English words, shell commands, or
 # Kubernetes units.
@@ -86,6 +86,7 @@ I
 (?i)async
 (?i)auditability
 (?i)auditable
+(?i)authorizer
 (?i)autoscale
 (?i)autoscaled
 (?i)autoscaler
@@ -148,6 +149,7 @@ I
 (?i)keypairs
 (?i)keystore
 (?i)kubeconfig
+(?i)launchd
 (?i)liveness
 (?i)lookups
 (?i)loopback
@@ -219,6 +221,7 @@ I
 (?i)toolchain
 (?i)toolset
 (?i)tolerations
+(?i)truststore
 (?i)uncontained
 (?i)unconfigured
 (?i)uncredentialed
@@ -285,7 +288,9 @@ I
 (?i)Realtime
 (?i)Secrets Management
 (?i)Certificate Management
+(?i)Key Management
 (?i)Privileged Access Management
+(?i)Privileged Access Manager
 (?i)Honey Token
 (?i)Honey Tokens
 (?i)Product Admin
@@ -348,9 +353,15 @@ I
 (?i)GCP Secret Manager
 (?i)Google Secret Manager
 (?i)Go SDK
+# Keeper and Commander are product names that are also ordinary nouns.
+(?i)Keeper
+(?i)Commander
 
 # PAM is both the product and a lowercase CLI subcommand.
 (?i)PAM
+# The CLI's Secrets Management command, which also appears on its own in anchors
+# such as `sm-run`. Lowercase only, so a stray "SM" in prose is still reported.
+sm
 # Case-insensitive because a canonical entry makes the converter capitalize the
 # verb "go" and rewrite the `git-changes` subcommand.
 (?i)Git\b
@@ -397,3 +408,4 @@ I
 (?i)prefilled
 (?i)unscoped
 (?i)rsync
+(?i)zsh

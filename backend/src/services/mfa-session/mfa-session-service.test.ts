@@ -94,6 +94,20 @@ describe("mfaSessionService.isMfaSessionActive binding guard", () => {
     const service = makeService(makeKeyStore(activeSession({ initiatingTokenVersionId: undefined })));
     await expect(service.isMfaSessionActive(activeArgs)).resolves.toBe(true);
   });
+
+  test("rejects replay of a proof against an action that would not challenge that factor", async () => {
+    const service = makeService(makeKeyStore(activeSession({ mfaMethod: MfaMethod.EMAIL })));
+    await expect(service.isMfaSessionActive({ ...activeArgs, acceptedMfaMethods: [MfaMethod.TOTP] })).resolves.toBe(
+      false
+    );
+  });
+
+  test("accepts a proof of a factor the action would challenge", async () => {
+    const service = makeService(makeKeyStore(activeSession({ mfaMethod: MfaMethod.EMAIL })));
+    await expect(
+      service.isMfaSessionActive({ ...activeArgs, acceptedMfaMethods: [MfaMethod.TOTP, MfaMethod.EMAIL] })
+    ).resolves.toBe(true);
+  });
 });
 
 describe("mfaSessionService.verifyMfaSession", () => {
@@ -111,7 +125,7 @@ describe("mfaSessionService.verifyMfaSession", () => {
     ).rejects.toBeInstanceOf(ForbiddenRequestError);
   });
 
-  test("flips a pending session to active and records recent auth for MFA management", async () => {
+  test("flips a pending session to active and records the proven factor for MFA management", async () => {
     const keyStore = makeKeyStore(activeSession({ status: MfaSessionStatus.PENDING }));
     const recordRecentMfaAuth = vi.fn().mockResolvedValue(undefined);
     const service = makeService(keyStore, { recordRecentMfaAuth });
@@ -126,6 +140,6 @@ describe("mfaSessionService.verifyMfaSession", () => {
 
     const persisted = JSON.parse(keyStore.setItemWithExpiry.mock.calls.at(-1)![2] as string) as TMfaSession;
     expect(persisted.status).toBe(MfaSessionStatus.ACTIVE);
-    expect(recordRecentMfaAuth).toHaveBeenCalledWith(USER_ID, TOKEN_VERSION);
+    expect(recordRecentMfaAuth).toHaveBeenCalledWith(USER_ID, TOKEN_VERSION, MfaMethod.EMAIL);
   });
 });

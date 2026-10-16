@@ -1,7 +1,18 @@
 // Client-side SQL generation for the Data Explorer.
 // All identifiers are properly quoted to prevent SQL injection.
 
-export type SqlDialect = "postgres" | "mysql";
+export type SqlDialect = "postgres" | "mysql" | "snowflake" | "clickhouse";
+
+export function supportsRowEditing(dialect: SqlDialect): boolean {
+  return dialect !== "clickhouse";
+}
+
+function assertRowEditingSupported(dialect: SqlDialect): void {
+  if (supportsRowEditing(dialect)) return;
+  throw new Error(
+    "ClickHouse rows can't be edited from the grid. Use the SQL editor with ALTER TABLE ... UPDATE or DELETE FROM."
+  );
+}
 
 function quoteIdent(name: string, dialect: SqlDialect = "postgres"): string {
   if (dialect === "mysql") return `\`${name.replace(/`/g, "``")}\``;
@@ -20,7 +31,9 @@ function quoteLiteral(value: unknown, dialect: SqlDialect = "postgres"): string 
     return `$$${str}$$`;
   }
   const escaped =
-    dialect === "mysql" ? str.replace(/\\/g, "\\\\").replace(/'/g, "''") : str.replace(/'/g, "''");
+    dialect === "postgres"
+      ? str.replace(/'/g, "''")
+      : str.replace(/\\/g, "\\\\").replace(/'/g, "''");
   return `'${escaped}'`;
 }
 
@@ -129,7 +142,7 @@ export function buildCountQuery(params: {
   const { schema, table, filters, dialect = "postgres" } = params;
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const where = buildWhereClause(filters, dialect);
-  return `SELECT COUNT(*) AS count FROM ${tableName}${where}`;
+  return `SELECT COUNT(*) AS ${quoteIdent("count", dialect)} FROM ${tableName}${where}`;
 }
 
 export function buildInsertQuery(params: {
@@ -139,15 +152,19 @@ export function buildInsertQuery(params: {
   dialect?: SqlDialect;
 }): string {
   const { schema, table, row, dialect = "postgres" } = params;
+  assertRowEditingSupported(dialect);
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const entries = Object.entries(row).filter(([, v]) => v !== undefined && v !== "");
   if (entries.length === 0) {
     if (dialect === "mysql") return `INSERT INTO ${tableName} () VALUES ()`;
+    if (dialect === "snowflake") {
+      throw new Error("Snowflake cannot insert a row with no values. Fill in at least one column.");
+    }
     return `INSERT INTO ${tableName} DEFAULT VALUES RETURNING *`;
   }
   const columns = entries.map(([k]) => quoteIdent(k, dialect)).join(", ");
   const values = entries.map(([, v]) => quoteLiteral(v, dialect)).join(", ");
-  if (dialect === "mysql") return `INSERT INTO ${tableName} (${columns}) VALUES (${values})`;
+  if (dialect !== "postgres") return `INSERT INTO ${tableName} (${columns}) VALUES (${values})`;
   return `INSERT INTO ${tableName} (${columns}) VALUES (${values}) RETURNING *`;
 }
 
@@ -159,6 +176,7 @@ export function buildUpdateQuery(params: {
   dialect?: SqlDialect;
 }): string {
   const { schema, table, changes, primaryKeyMatch, dialect = "postgres" } = params;
+  assertRowEditingSupported(dialect);
   if (Object.keys(primaryKeyMatch).length === 0) {
     throw new Error("UPDATE requires at least one primary key condition");
   }
@@ -169,7 +187,7 @@ export function buildUpdateQuery(params: {
   const whereClauses = Object.entries(primaryKeyMatch)
     .map(([col, val]) => `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect)}`)
     .join(" AND ");
-  if (dialect === "mysql") return `UPDATE ${tableName} SET ${setClauses} WHERE ${whereClauses}`;
+  if (dialect !== "postgres") return `UPDATE ${tableName} SET ${setClauses} WHERE ${whereClauses}`;
   return `UPDATE ${tableName} SET ${setClauses} WHERE ${whereClauses} RETURNING *`;
 }
 
@@ -180,6 +198,7 @@ export function buildDeleteQuery(params: {
   dialect?: SqlDialect;
 }): string {
   const { schema, table, primaryKeyMatch, dialect = "postgres" } = params;
+  assertRowEditingSupported(dialect);
   if (Object.keys(primaryKeyMatch).length === 0) {
     throw new Error("DELETE requires at least one primary key condition");
   }

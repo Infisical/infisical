@@ -102,7 +102,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
           </EmptyHeader>
         </Empty>
       ) : (
-        <Table className="min-w-[52rem]">
+        <Table className="w-full min-w-[52rem]">
           <TableHeader>
             <TableRow>
               <TableHead>

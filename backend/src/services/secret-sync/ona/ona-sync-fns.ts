@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { ONA_PAGE_SIZE } from "./ona-sync-enums";
@@ -115,7 +116,8 @@ const deleteSecret = async (secretSync: TOnaSyncWithCredentials, secretId: strin
 };
 
 export const OnaSyncFns = {
-  syncSecrets: async (secretSync: TOnaSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TOnaSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const existingSecrets = await listEnvVarSecrets(secretSync);
     const existingByName = new Map(existingSecrets.map((s) => [s.name, s]));
 
@@ -163,7 +165,8 @@ export const OnaSyncFns = {
     throw new Error("Ona does not support importing secrets.");
   },
 
-  removeSecrets: async (secretSync: TOnaSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TOnaSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const existingSecrets = await listEnvVarSecrets(secretSync);
 
     for (const existing of existingSecrets) {

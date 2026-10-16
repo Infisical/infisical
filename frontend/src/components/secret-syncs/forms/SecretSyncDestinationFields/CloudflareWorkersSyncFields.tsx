@@ -56,7 +56,7 @@ export const CloudflareWorkersSyncFields = () => {
                 isDisabled={!connectionId}
                 value={scripts?.find((script) => script.id === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.id ?? null);
+                  onChange(option?.id ?? null);
                 }}
                 options={scripts}
                 placeholder="Select a worker script..."

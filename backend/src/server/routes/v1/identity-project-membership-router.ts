@@ -15,8 +15,10 @@ import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedFolderAccessIdentitySchema, SanitizedFolderAccessSchema } from "../sanitizedSchema/folder-access";
 import { booleanSchema } from "../sanitizedSchemas";
@@ -667,6 +669,18 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.FolderAccessGrantCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          actorType: ActorType.IDENTITY,
+          permission: folderAccess.permission,
+          isTemporary: folderAccess.isTemporary
+        }
+      });
+
       return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
     }
   });
@@ -726,6 +740,18 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         }
       });
 
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.FolderAccessGrantUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          actorType: ActorType.IDENTITY,
+          permission: folderAccess.permission,
+          isTemporary: folderAccess.isTemporary
+        }
+      });
+
       return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
     }
   });
@@ -773,6 +799,18 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         event: {
           type: EventType.DELETE_SECRET_FOLDER_ACCESS,
           metadata: toSecretFolderAccessAuditMetadata(folderAccess, { identityId: req.params.identityId })
+        }
+      });
+
+      void server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.FolderAccessGrantDeleted,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.params.projectId,
+          actorType: ActorType.IDENTITY,
+          permission: folderAccess.permission,
+          isTemporary: folderAccess.isTemporary
         }
       });
 

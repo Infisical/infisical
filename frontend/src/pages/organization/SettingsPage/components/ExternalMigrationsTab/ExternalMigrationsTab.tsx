@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { Button, DocumentationLinkBadge } from "@app/components/v3";
 import { useOrgPermission } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 
 import { SelectImportFromPlatformModal } from "./components/SelectImportFromPlatformModal";
 
@@ -11,6 +11,7 @@ const EXTERNAL_MIGRATIONS_DOCS_HREF =
   "https://infisical.com/docs/documentation/platform/external-migrations/overview";
 
 export const ExternalMigrationsTab = () => {
+  const scopeVariant = useScopeVariant();
   const { hasOrgRole } = useOrgPermission();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["selectImportPlatform"] as const);
@@ -19,7 +20,7 @@ export const ExternalMigrationsTab = () => {
     <div className="flex flex-col gap-6">
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-4">
-          <h2 className="text-xl font-medium text-foreground">Bulk Data Import</h2>
+          <h2 className="text-xl font-normal text-foreground">Bulk Data Import</h2>
           <p className="mt-1 mb-6 text-sm text-muted">
             Perform one-time bulk imports of data from external platforms.
           </p>
@@ -37,7 +38,7 @@ export const ExternalMigrationsTab = () => {
           </div>
 
           <Button
-            variant="org"
+            variant={scopeVariant}
             type="button"
             className="gap-1.5"
             onClick={() => {

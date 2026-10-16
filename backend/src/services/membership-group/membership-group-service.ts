@@ -20,11 +20,14 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -50,6 +53,8 @@ type TMembershipGroupServiceFactoryDep = {
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
@@ -76,6 +81,8 @@ export const membershipGroupServiceFactory = ({
   accessApprovalPolicyApproverDAL,
   secretApprovalPolicyDAL,
   secretApprovalPolicyApproverDAL,
+  approvalPolicyDAL,
+  approvalRequestDAL,
   membershipRoleDAL,
   orgDAL,
   permissionService,
@@ -302,9 +309,9 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
-      const newRolesHavePermanentAdmin = data.roles.some(
-        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
-      );
+      const newIsActive = data.isActive ?? existingMembership.isActive;
+      const newRolesHavePermanentAdmin =
+        newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(scopeData.projectId, tx),
@@ -411,6 +418,20 @@ export const membershipGroupServiceFactory = ({
       }
     }
 
+    const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      ...(existingMembership.scopeProjectId
+        ? { projectId: existingMembership.scopeProjectId }
+        : { organizationId: existingMembership.scopeOrgId }),
+      type: ApprovalPolicyType.SecretAccess,
+      groupId: dto.selector.groupId
+    });
+    if (secretAccessPolicies.length > 0) {
+      const policyNames = secretAccessPolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `Cannot remove group from ${existingMembership.scopeProjectId ? "project" : "organization"}: group is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+      });
+    }
+
     // check if group is assigned to any secret approval policy
     const secretApprovalPolicyApprovers = await secretApprovalPolicyApproverDAL.find({
       approverGroupId: dto.selector.groupId
@@ -428,6 +449,31 @@ export const membershipGroupServiceFactory = ({
         const policyNames = secretApprovalPolicies.map((p) => p.name).join(", ");
         throw new BadRequestError({
           message: `Cannot remove group from project: group is an approver in secret approval ${secretApprovalPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+        });
+      }
+    }
+
+    if (existingMembership.scopeProjectId) {
+      const secretChangePolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+        projectId: existingMembership.scopeProjectId,
+        type: ApprovalPolicyType.SecretChange,
+        groupId: dto.selector.groupId
+      });
+      if (secretChangePolicies.length > 0) {
+        const policyNames = secretChangePolicies.map((p) => p.name).join(", ");
+        throw new BadRequestError({
+          message: `Cannot remove group from project: group is an approver in secret approval ${secretChangePolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+        });
+      }
+
+      const openSecretChangeRequests = await approvalRequestDAL.findOpenSecretChangeRequestsWhereSubjectIsApprover({
+        projectId: existingMembership.scopeProjectId,
+        groupId: dto.selector.groupId
+      });
+      if (openSecretChangeRequests.length > 0) {
+        const requestSlugs = openSecretChangeRequests.map((request) => request.slug).join(", ");
+        throw new BadRequestError({
+          message: `Cannot remove group from project: group is an approver on open secret approval ${openSecretChangeRequests.length > 1 ? "requests" : "request"}: ${requestSlugs}`
         });
       }
     }

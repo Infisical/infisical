@@ -53,7 +53,7 @@ export const SortPopover = ({
           <ArrowUpDownIcon className="size-3" />
           Sort
           {activeSort && (
-            <span className="rounded-full bg-primary/20 px-1.5 text-[10px] font-medium text-primary">
+            <span className="rounded-full bg-project/20 px-1.5 text-[10px] font-medium text-project">
               {activeSort.column}
             </span>
           )}

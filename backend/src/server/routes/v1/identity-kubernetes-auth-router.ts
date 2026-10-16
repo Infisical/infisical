@@ -34,7 +34,6 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   allowedNamespaces: true,
   allowedNames: true,
   allowedAudience: true,
-  gatewayId: true,
   gatewayPoolId: true,
   verifyTlsCertificate: true,
   templateId: true,
@@ -44,7 +43,10 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   isTokenReviewerJwtTemplateSourced: true
 }).extend({
   caCert: z.string(),
-  tokenReviewerJwt: z.string().optional().nullable()
+  tokenReviewerJwt: z.string().optional().nullable(),
+  // declared rather than picked: the row's own gatewayId is the retired v1 column, and the
+  // service fills this field from gatewayV2Id so the API name stays unchanged
+  gatewayId: z.string().uuid().optional().nullable()
 });
 
 export const registerIdentityKubernetesRouter = async (server: FastifyZodProvider) => {

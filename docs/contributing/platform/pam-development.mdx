@@ -76,7 +76,7 @@ go run main.go gateway start \
 
 Verify registration at **Organization Settings** > **Networking** > **Gateways**.
 
-For all available flags, see the [Gateway CLI Reference](/cli/commands/gateway).
+For all available flags, see the [Gateway CLI Reference](/cli/reference#gateway-start).
 
 <Accordion title="Using a relay instead">
 Direct listen needs nothing else running, so prefer it unless you're testing relay behaviour itself. For that, start a relay first and point the gateway at it with `--target-relay-name` instead of `--listen-address`:
@@ -98,7 +98,7 @@ go run main.go gateway start \
   --pam-session-recording-path=$(pwd)/session
 ```
 
-Verify the relay at **Organization Settings** > **Networking** > **Relays**. See the [Relay CLI Reference](/cli/commands/relay) for all flags.
+Verify the relay at **Organization Settings** > **Networking** > **Relays**. See the [Relay CLI Reference](/cli/reference#relay-start) for all flags.
 </Accordion>
 
 ## Quick reference

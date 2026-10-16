@@ -2,23 +2,27 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
+  OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
+import { sanitizeUrlForLog } from "@app/lib/logger";
 import { TOrgPermission } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
+import { assertIdentityAuthAccessAllowed } from "@app/services/identity/identity-auth-permission-fns";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { withKubernetesHostScheme } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-fns";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
@@ -27,6 +31,7 @@ import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/id
 import { TIdentityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TIdentityAuthTemplateDALFactory } from "./identity-auth-template-dal";
 import { IdentityAuthTemplateMethod, TEMPLATE_SECRET_FIELDS_BY_METHOD } from "./identity-auth-template-enums";
@@ -49,10 +54,13 @@ type TIdentityAuthTemplateServiceFactoryDep = {
   identityLdapAuthDAL: Pick<TIdentityLdapAuthDALFactory, "updateByTemplateId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "updateByTemplateId">;
   identityOidcAuthDAL: Pick<TIdentityOidcAuthDALFactory, "updateByTemplateId">;
-  gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
+  >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -67,9 +75,9 @@ export const identityAuthTemplateServiceFactory = ({
   identityLdapAuthDAL,
   identityKubernetesAuthDAL,
   identityOidcAuthDAL,
-  gatewayDAL,
   gatewayV2DAL,
   gatewayPoolDAL,
+  orgDAL,
   permissionService,
   kmsService,
   licenseService,
@@ -106,21 +114,19 @@ export const identityAuthTemplateServiceFactory = ({
     return { ...template, templateFields: redacted } as TSanitizedIdentityAuthTemplate;
   };
 
-  // blockLocalAndPrivateIpAddresses lets a DNS failure escape as-is, so a typo'd or
-  // not-yet-published discovery host would 500 instead of telling the author what to fix
-  const $validateOidcDiscoveryHost = async (oidcDiscoveryUrl: string) => {
+  // a DNS failure or bad URL would otherwise escape as a 500, turn it into a 400 the author can fix
+  const $validateTemplateHost = async (url: string, fieldLabel: string) => {
     try {
-      await blockLocalAndPrivateIpAddresses(oidcDiscoveryUrl);
+      await blockLocalAndPrivateIpAddresses(url);
     } catch (error) {
       if (error instanceof BadRequestError) throw error;
       throw new BadRequestError({
-        message: `Could not resolve the host of the OIDC discovery URL '${oidcDiscoveryUrl}'. Check the URL and that the host resolves from Infisical.`
+        message: `Could not resolve the host of the ${fieldLabel} '${sanitizeUrlForLog(url)}'. Check the URL and that the host resolves from Infisical.`
       });
     }
   };
 
-  // audit the platform-driven rewrite of linked identities; runs after the propagation
-  // transaction commits so the tx never waits on Redis, chunked to bound concurrency
+  // runs after the propagation tx commits so it never waits on Redis, chunked to bound concurrency
   const $templatePropagationEvent = (
     authMethod: string,
     metadata: { identityId: string; identityName?: string; templateId: string; templateName: string }
@@ -140,23 +146,22 @@ export const identityAuthTemplateServiceFactory = ({
     authMethod,
     templateId,
     templateName,
-    orgId
+    orgId,
+    auditLogInfo
   }: {
     identities: { identityId: string; identityName?: string }[];
     authMethod: string;
     templateId: string;
     templateName: string;
     orgId: string;
+    auditLogInfo?: AuditLogInfo;
   }) => {
     for (const batch of chunkArray(identities, AUDIT_FANOUT_CHUNK_SIZE)) {
       // eslint-disable-next-line no-await-in-loop
       await Promise.all(
         batch.map(({ identityId, identityName }) =>
           auditLogService.createAuditLog({
-            actor: {
-              type: ActorType.PLATFORM,
-              metadata: {}
-            },
+            ...(auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } }),
             orgId,
             event: $templatePropagationEvent(authMethod, { identityId, identityName, templateId, templateName })
           })
@@ -222,22 +227,15 @@ export const identityAuthTemplateServiceFactory = ({
     gatewayPoolId?: string | null;
     orgId: string;
   }) => {
-    let resolvedGatewayId: string | null = null;
     let resolvedGatewayV2Id: string | null = null;
     if (gatewayId && !gatewayPoolId) {
-      const [[gateway], [gatewayV2]] = await Promise.all([
-        gatewayDAL.find({ id: gatewayId, orgId }),
-        gatewayV2DAL.find({ id: gatewayId, orgId })
-      ]);
-      if (gateway) {
-        resolvedGatewayId = gatewayId;
-      } else if (gatewayV2) {
-        resolvedGatewayV2Id = gatewayId;
-      } else {
+      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId });
+      if (!gatewayV2) {
         throw new BadRequestError({
-          message: `Gateway with ID '${gatewayId}' was not found in this organization. Select an existing gateway for the template.`
+          message: getMissingGatewayMessage(gatewayId)
         });
       }
+      resolvedGatewayV2Id = gatewayId;
     }
     if (gatewayPoolId) {
       const pool = await gatewayPoolDAL.findById(gatewayPoolId);
@@ -247,7 +245,7 @@ export const identityAuthTemplateServiceFactory = ({
         });
       }
     }
-    return { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId: gatewayPoolId ?? null };
+    return { resolvedGatewayV2Id, resolvedGatewayPoolId: gatewayPoolId ?? null };
   };
 
   // the gateway reference lives in columns rather than the encrypted blob so it can carry a
@@ -267,16 +265,16 @@ export const identityAuthTemplateServiceFactory = ({
   const $methodHasGatewayFields = (authMethod: string) =>
     (templateFieldPatchKeysByMethod[authMethod as IdentityAuthTemplateMethod] ?? []).includes("gatewayId");
 
-  // the API keeps one logical gatewayId covering both gateway generations, so the v1/v2
-  // column split stays an implementation detail
+  // the API exposes the gateway as a plain gatewayId, so the gatewayV2Id column name stays an
+  // implementation detail
   const $withGatewayFields = (
-    template: Pick<TIdentityAuthTemplates, "authMethod" | "gatewayId" | "gatewayV2Id" | "gatewayPoolId">,
+    template: Pick<TIdentityAuthTemplates, "authMethod" | "gatewayV2Id" | "gatewayPoolId">,
     fields: Record<string, unknown>
   ) => {
     if (!$methodHasGatewayFields(template.authMethod)) return fields;
     return {
       ...fields,
-      gatewayId: template.gatewayV2Id ?? template.gatewayId ?? null,
+      gatewayId: template.gatewayV2Id ?? null,
       gatewayPoolId: template.gatewayPoolId ?? null
     };
   };
@@ -341,14 +339,14 @@ export const identityAuthTemplateServiceFactory = ({
           plan,
           permission
         });
-        const { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId } =
-          await $resolveKubernetesTemplateGateway({
-            gatewayId: normalizedFields.gatewayId,
-            gatewayPoolId: normalizedFields.gatewayPoolId,
-            orgId: actorOrgId
-          });
+        await assertIndividualGatewayAllowed({ orgDAL, orgId: actorOrgId, gatewayId: normalizedFields.gatewayId });
+        const { resolvedGatewayV2Id, resolvedGatewayPoolId } = await $resolveKubernetesTemplateGateway({
+          gatewayId: normalizedFields.gatewayId,
+          gatewayPoolId: normalizedFields.gatewayPoolId,
+          orgId: actorOrgId
+        });
         gatewayColumns = {
-          gatewayId: resolvedGatewayId,
+          gatewayId: null,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: resolvedGatewayPoolId
         };
@@ -359,7 +357,12 @@ export const identityAuthTemplateServiceFactory = ({
     if (authMethod === IdentityAuthTemplateMethod.OIDC) {
       // parity with the identity attach flow: a template-authored discovery URL must not
       // let the backend dial local or private addresses
-      await $validateOidcDiscoveryHost((templateFields as TOidcTemplateFields).oidcDiscoveryUrl);
+      await $validateTemplateHost((templateFields as TOidcTemplateFields).oidcDiscoveryUrl, "OIDC discovery URL");
+    }
+
+    if (authMethod === IdentityAuthTemplateMethod.LDAP) {
+      // attach blocks private LDAP URLs but trusts a template's, so vet it here
+      await $validateTemplateHost((templateFields as TLdapTemplateFields).url, "LDAP URL");
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -385,11 +388,13 @@ export const identityAuthTemplateServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    auditLogInfo
   }: {
     templateId: string;
     name?: string;
     templateFields?: Record<string, unknown>;
+    auditLogInfo?: AuditLogInfo;
   } & Omit<TOrgPermission, "orgId">) => {
     const plan = await $checkPlan(actorOrgId);
     const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
@@ -429,13 +434,41 @@ export const identityAuthTemplateServiceFactory = ({
     }
 
     // captured before the propagation writes so the audit entries can carry readable
-    // identity names alongside the ids
+    // identity names alongside the ids. read from the primary so a link that just committed
+    // is in the checked set rather than tripping the conflict check inside the transaction
     const linkedIdentities = fieldPatch
-      ? ((await identityAuthTemplateDAL.findTemplateUsages(templateId, template.authMethod)) as {
+      ? ((await identityAuthTemplateDAL.findTemplateUsages(
+          templateId,
+          template.authMethod,
+          identityAuthTemplateDAL.primaryNode()
+        )) as {
           identityId: string;
           identityName: string;
+          identityProjectId: string | null;
         }[])
       : [];
+    const checkedIdentityIds = linkedIdentities.map(({ identityId }) => identityId);
+
+    // a field patch rewrites every linked identity's auth, so the editor needs edit-auth on each.
+    // otherwise EditTemplates alone lets you point them at an LDAP server or OIDC issuer you control
+    // and log in as them
+    for (const { identityId, identityProjectId } of linkedIdentities) {
+      // eslint-disable-next-line no-await-in-loop
+      await assertIdentityAuthAccessAllowed(
+        { permissionService, orgDAL },
+        {
+          identityId,
+          orgId: template.orgId,
+          projectId: identityProjectId,
+          action: OrgPermissionIdentityActions.EditAuth,
+          baseMessage: "Failed to update auth template linked to identity with more privileged role",
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        }
+      );
+    }
 
     const currentTemplateFields = $withGatewayFields(
       template,
@@ -467,14 +500,23 @@ export const identityAuthTemplateServiceFactory = ({
           plan,
           permission
         });
-        const { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId } =
-          await $resolveKubernetesTemplateGateway({
-            gatewayId: merged.gatewayId,
-            gatewayPoolId: merged.gatewayPoolId,
-            orgId: template.orgId
-          });
+        await assertIndividualGatewayAllowed({
+          orgDAL,
+          orgId: template.orgId,
+          gatewayId: merged.gatewayId,
+          previousGatewayId: template.gatewayV2Id
+        });
+        const { resolvedGatewayV2Id, resolvedGatewayPoolId } = await $resolveKubernetesTemplateGateway({
+          gatewayId: merged.gatewayId,
+          gatewayPoolId: merged.gatewayPoolId,
+          orgId: template.orgId
+        });
         gatewayColumnUpdate = {
-          gatewayId: resolvedGatewayId,
+          // a deliberate gateway edit clears the retired v1 pin as well, otherwise the template
+          // stays permanently unusable: identities cannot attach to a v1-pinned template and
+          // patching gatewayId to null would only clear gatewayV2Id. Templates nobody edits keep
+          // their v1 value, so the retirement stays revertible.
+          gatewayId: null,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: resolvedGatewayPoolId
         };
@@ -518,6 +560,23 @@ export const identityAuthTemplateServiceFactory = ({
       kubernetesPropagationData.gatewayPoolId = effectiveGatewayColumns.gatewayPoolId;
     }
 
+    if (fieldPatch && template.authMethod === IdentityAuthTemplateMethod.LDAP) {
+      const merged = mergedTemplateFields as TLdapTemplateFields;
+      const current = currentTemplateFields as TLdapTemplateFields;
+
+      if (merged.url?.trim() !== current.url?.trim() && !("bindPass" in fieldPatch)) {
+        throw new BadRequestError({
+          message:
+            "Changing an LDAP auth template's URL requires supplying bindPass. The stored bind password cannot be read back, and the new URL is applied to every identity linked to this template."
+        });
+      }
+
+      // LDAP only propagates patched keys, so an untouched URL never reaches the identities
+      if ("url" in fieldPatch) {
+        await $validateTemplateHost(merged.url, "LDAP URL");
+      }
+    }
+
     let oidcPropagationData: TIdentityOidcAuthsUpdate | undefined;
     if (fieldPatch && template.authMethod === IdentityAuthTemplateMethod.OIDC) {
       const merged = mergedTemplateFields as TOidcTemplateFields;
@@ -525,7 +584,7 @@ export const identityAuthTemplateServiceFactory = ({
       // every propagation rather than only when the patch touches it (login re-validates
       // before dialing, but the template must never store a URL its author could not
       // have set directly)
-      await $validateOidcDiscoveryHost(merged.oidcDiscoveryUrl);
+      await $validateTemplateHost(merged.oidcDiscoveryUrl, "OIDC discovery URL");
       oidcPropagationData = {
         oidcDiscoveryUrl: merged.oidcDiscoveryUrl,
         boundIssuer: merged.boundIssuer,
@@ -537,6 +596,28 @@ export const identityAuthTemplateServiceFactory = ({
     }
 
     const { updatedTemplate, propagatedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
+      if (fieldPatch) {
+        const lockedTemplate = await identityAuthTemplateDAL.findByIdForUpdate(templateId, tx);
+        if (!lockedTemplate) {
+          throw new NotFoundError({ message: "Template not found" });
+        }
+        const currentUsages = (await identityAuthTemplateDAL.findTemplateUsages(
+          templateId,
+          template.authMethod,
+          tx
+        )) as {
+          identityId: string;
+        }[];
+        const uncheckedCount = currentUsages.filter(
+          ({ identityId }) => !checkedIdentityIds.includes(identityId)
+        ).length;
+        if (uncheckedCount > 0) {
+          throw new ConflictError({
+            message: `${uncheckedCount} ${uncheckedCount === 1 ? "identity was" : "identities were"} linked to auth template '${template.name}' while it was being edited. Retry the update.`
+          });
+        }
+      }
+
       const authTemplate = await identityAuthTemplateDAL.updateById(
         templateId,
         {
@@ -587,14 +668,18 @@ export const identityAuthTemplateServiceFactory = ({
         }
 
         if (Object.keys(ldapUpdateData).length > 0) {
-          const updatedRows = await identityLdapAuthDAL.updateByTemplateId({ templateId }, ldapUpdateData, tx);
+          const updatedRows = await identityLdapAuthDAL.updateByTemplateId(
+            { templateId, identityIds: checkedIdentityIds },
+            ldapUpdateData,
+            tx
+          );
           identityIds = updatedRows.map((row) => row.identityId);
         }
       }
 
       if (kubernetesPropagationData) {
         const updatedRows = await identityKubernetesAuthDAL.updateByTemplateId(
-          { templateId },
+          { templateId, identityIds: checkedIdentityIds },
           kubernetesPropagationData,
           tx
         );
@@ -602,7 +687,11 @@ export const identityAuthTemplateServiceFactory = ({
       }
 
       if (oidcPropagationData) {
-        const updatedRows = await identityOidcAuthDAL.updateByTemplateId({ templateId }, oidcPropagationData, tx);
+        const updatedRows = await identityOidcAuthDAL.updateByTemplateId(
+          { templateId, identityIds: checkedIdentityIds },
+          oidcPropagationData,
+          tx
+        );
         identityIds = updatedRows.map((row) => row.identityId);
       }
 
@@ -618,7 +707,8 @@ export const identityAuthTemplateServiceFactory = ({
       authMethod: template.authMethod,
       templateId: template.id,
       templateName: template.name,
-      orgId: template.orgId
+      orgId: template.orgId,
+      auditLogInfo
     });
 
     return $sanitizeTemplate(updatedTemplate, mergedTemplateFields);
@@ -629,7 +719,8 @@ export const identityAuthTemplateServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    auditLogInfo
   }: TDeleteIdentityAuthTemplateDTO) => {
     await $checkPlan(actorOrgId);
     const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
@@ -656,6 +747,10 @@ export const identityAuthTemplateServiceFactory = ({
     }[];
 
     const { deletedTemplate, unlinkedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
+      const lockedTemplate = await identityAuthTemplateDAL.findByIdForUpdate(templateId, tx);
+      if (!lockedTemplate) {
+        throw new NotFoundError({ message: "Template not found" });
+      }
       // Unlink identity auth records; the copied config values are kept so linked
       // identities keep authenticating
       let identityIds: string[] = [];
@@ -692,7 +787,8 @@ export const identityAuthTemplateServiceFactory = ({
       authMethod: template.authMethod,
       templateId: template.id,
       templateName: template.name,
-      orgId: template.orgId
+      orgId: template.orgId,
+      auditLogInfo
     });
 
     return { ...deletedTemplate, templateFields: {} };
@@ -847,7 +943,8 @@ export const identityAuthTemplateServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    auditLogInfo
   }: TUnlinkTemplateUsageDTO) => {
     await $checkPlan(actorOrgId);
     const { permission } = await permissionService.getOrgPermission({
@@ -907,7 +1004,8 @@ export const identityAuthTemplateServiceFactory = ({
       authMethod: template.authMethod,
       templateId: template.id,
       templateName: template.name,
-      orgId: template.orgId
+      orgId: template.orgId,
+      auditLogInfo
     });
   };
 

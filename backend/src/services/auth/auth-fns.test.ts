@@ -1,6 +1,11 @@
 import { LoginMethod } from "../super-admin/super-admin-types";
-import { assertOAuthLoginMethodEnabled, isOAuthLoginMethodDisabled } from "./auth-fns";
-import { AuthMethod } from "./auth-type";
+import {
+  assertOAuthLoginMethodEnabled,
+  isMfaProofAccepted,
+  isOAuthLoginMethodDisabled,
+  RECOVERY_CODE_MFA_ASSURANCE
+} from "./auth-fns";
+import { AuthMethod, MfaMethod } from "./auth-type";
 
 describe("OAuth login method policy", () => {
   test.each([
@@ -36,5 +41,24 @@ describe("OAuth login method policy", () => {
     expect(() =>
       assertOAuthLoginMethodEnabled({ authMethod: AuthMethod.GOOGLE, enabledLoginMethods: null })
     ).not.toThrow();
+  });
+});
+
+describe("isMfaProofAccepted", () => {
+  test("accepts only a factor the action would itself challenge", () => {
+    expect(isMfaProofAccepted(MfaMethod.TOTP, [MfaMethod.TOTP])).toBe(true);
+    expect(isMfaProofAccepted(MfaMethod.EMAIL, [MfaMethod.TOTP, MfaMethod.EMAIL])).toBe(true);
+    expect(isMfaProofAccepted(MfaMethod.EMAIL, [MfaMethod.TOTP])).toBe(false);
+    expect(isMfaProofAccepted(MfaMethod.WEBAUTHN, [MfaMethod.TOTP])).toBe(false);
+  });
+
+  test("a recovery-code login is accepted everywhere", () => {
+    expect(isMfaProofAccepted(RECOVERY_CODE_MFA_ASSURANCE, [MfaMethod.WEBAUTHN])).toBe(true);
+  });
+
+  test("a missing or unknown marker is never accepted", () => {
+    expect(isMfaProofAccepted(null, [MfaMethod.EMAIL])).toBe(false);
+    expect(isMfaProofAccepted(undefined, [MfaMethod.EMAIL])).toBe(false);
+    expect(isMfaProofAccepted("1", [MfaMethod.EMAIL])).toBe(false);
   });
 });

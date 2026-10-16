@@ -68,9 +68,9 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   secretRotation,
   _appConnectionDAL,
   _kmsService,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
+  _keyStore,
   passwordValidationContext
 ) => {
   const {
@@ -125,7 +125,6 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         ...conn,
         credentials: finalCredentials
       },
-      gatewayService,
       gatewayV2Service,
       (client) => operation(client)
     );

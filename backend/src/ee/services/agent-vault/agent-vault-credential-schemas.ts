@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { AgentVaultCredentialType } from "./agent-vault-enums";
@@ -8,7 +9,7 @@ import { AgentVaultCredentialType } from "./agent-vault-enums";
 
 // The characters RFC 7230 allows. Go's HTTP client refuses to send anything else, so a name saved
 // without this check 502s every request through the service.
-export const AGENT_VAULT_HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
+export const AGENT_VAULT_HEADER_NAME_RE = new RE2(/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/);
 
 export const AGENT_VAULT_HEADER_NAME_MESSAGE =
   "A header name can't contain spaces or colons. Use letters, digits and dashes, as in X-API-Key.";
@@ -16,7 +17,7 @@ export const AGENT_VAULT_HEADER_NAME_MESSAGE =
 // A NUL is rejected by the jsonb write and 500s; a CR or LF saves fine and then makes Go refuse to send
 // the header, so the credential silently never goes out. Both usually arrive by pasting.
 // eslint-disable-next-line no-control-regex
-export const AGENT_VAULT_NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
+export const AGENT_VAULT_NO_CONTROL_CHARS_RE = new RE2(/^[^\x00-\x1f\x7f]*$/);
 
 export const AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE =
   "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";

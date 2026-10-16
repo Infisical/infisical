@@ -8,24 +8,21 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import eslintPluginPrettier from "eslint-plugin-prettier/recommended";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
-import { FlatCompat } from "@eslint/eslintrc";
 import stylisticPlugin from "@stylistic/eslint-plugin";
 import importPlugin from "eslint-plugin-import";
 import pluginRouter from "@tanstack/eslint-plugin-router";
-
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname
-});
+import { configs as airbnb } from "eslint-config-airbnb-extended/legacy";
 
 export default tseslint.config(
   { ignores: ["dist"] },
+  { linterOptions: { reportUnusedDisableDirectives: "off" } },
   {
     extends: [
       ...pluginRouter.configs["flat/recommended"],
       js.configs.recommended,
       tseslint.configs.recommended,
-      ...compat.extends("airbnb"),
-      ...compat.extends("@kesills/airbnb-typescript"),
+      ...airbnb.react.recommended,
+      ...airbnb.react.typescript,
       eslintPluginPrettier
     ],
     files: ["**/*.{ts,tsx}"],
@@ -33,6 +30,7 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
+        ecmaVersion: 2020,
         projectService: true,
         tsconfigRootDir: import.meta.dirname
       }
@@ -41,17 +39,25 @@ export default tseslint.config(
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
       "simple-import-sort": simpleImportSort,
+      "@stylistic": stylisticPlugin,
       import: importPlugin
     },
     settings: {
       "import/resolver": {
+        node: {
+          extensions: [".mjs", ".js", ".jsx", ".json", ".ts", ".tsx", ".d.ts"]
+        },
         typescript: {
           project: ["./tsconfig.json"]
         }
+      },
+      "import/extensions": [".js", ".mjs", ".jsx", ".ts", ".tsx", ".d.ts"],
+      "import/parsers": {
+        "@typescript-eslint/parser": [".ts", ".tsx", ".d.ts"]
       }
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      "react-hooks/rules-of-hooks": "error",
       "react-refresh/only-export-components": "off",
       "@typescript-eslint/only-throw-error": "off",
       "@typescript-eslint/no-empty-function": "off",
@@ -104,6 +110,25 @@ export default tseslint.config(
         }
       ],
       "@typescript-eslint/no-non-null-assertion": "off",
+      "jsx-a11y/no-noninteractive-tabindex": ["error", { tags: [], roles: ["tabpanel"] }],
+      "@typescript-eslint/class-methods-use-this": [
+        "error",
+        { exceptMethods: [], enforceForClassFields: true }
+      ],
+      "@typescript-eslint/no-dupe-class-members": "off",
+      "@typescript-eslint/no-loss-of-precision": "off",
+      "@typescript-eslint/no-redeclare": "off",
+      "@stylistic/func-call-spacing": ["error", "never"],
+      "class-methods-use-this": "off",
+      "lines-between-class-members": "off",
+      "no-throw-literal": "off",
+      "no-constant-binary-expression": "error",
+      "no-empty-static-block": "error",
+      "no-loss-of-precision": "error",
+      "no-unreachable": "error",
+      "no-constant-condition": ["warn", { checkLoops: "all" }],
+      "no-inner-declarations": ["error", "functions", { blockScopedFunctions: "disallow" }],
+      "no-useless-computed-key": ["error", { enforceForClassMembers: false }],
       "simple-import-sort/exports": "warn",
       "simple-import-sort/imports": [
         "warn",
@@ -130,7 +155,18 @@ export default tseslint.config(
       ],
       "import/first": "error",
       "import/newline-after-import": "error",
-      "import/no-duplicates": "error"
+      "import/no-duplicates": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/UpgradePlanModal", "**/UpgradePlanModal/*"],
+              message: "Use the shared UpgradeGate with a product or capability intent."
+            }
+          ]
+        }
+      ]
     }
   },
   {

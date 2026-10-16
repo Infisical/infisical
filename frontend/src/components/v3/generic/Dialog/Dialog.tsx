@@ -3,6 +3,11 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import {
+  OverlayLayerContext,
+  useOverlayIsPending,
+  useOverlayLayer
+} from "../../utils/overlay-layer";
 
 const DIALOG_CONTENT_WIDTH_CLASSNAME = "w-[calc(100%-2rem)] max-w-lg";
 
@@ -26,7 +31,15 @@ function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.
 }
 
 function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
+  const isPending = useOverlayIsPending();
+
+  return (
+    <DialogPrimitive.Close
+      data-slot="dialog-close"
+      {...props}
+      {...(isPending && { disabled: true })}
+    />
+  );
 }
 
 function DialogOverlay({
@@ -37,7 +50,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-[var(--z-index-backdrop)] bg-black/50 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-in data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -50,6 +63,10 @@ function DialogContent({
   children,
   showCloseButton = true,
   height = "auto",
+  isPending = false,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
   onPointerDownOutside,
   onInteractOutside,
   overlayClassName,
@@ -57,39 +74,47 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
   height?: "auto" | "fixed";
+  isPending?: boolean;
   overlayClassName?: string;
 }) {
+  const { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn } =
+    useOverlayLayer(isPending);
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 flex max-h-[calc(100dvh-2rem)] thin-scrollbar translate-x-[-50%] translate-y-[-50%] flex-col gap-6 overflow-y-auto overscroll-none rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg outline-none has-data-[slot=dialog-footer]:pb-0 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "fixed top-[50%] left-[50%] z-[var(--z-index-modal)] flex max-h-[calc(100dvh-2rem)] thin-scrollbar translate-x-[-50%] translate-y-[-50%] flex-col gap-6 overflow-y-auto overscroll-none rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg outline-none has-data-[slot=dialog-footer]:pb-0 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           DIALOG_CONTENT_WIDTH_CLASSNAME,
           height === "fixed" && "h-[40rem] overflow-hidden",
           className
         )}
+        onOpenAutoFocus={(e) => captureFocusReturn(e, onOpenAutoFocus)}
+        onCloseAutoFocus={(e) => restoreFocusReturn(e, onCloseAutoFocus)}
+        onEscapeKeyDown={(e) => guardDismiss(e, onEscapeKeyDown)}
         onPointerDownOutside={(e) => {
           if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
-          onPointerDownOutside?.(e);
+          guardDismiss(e, onPointerDownOutside);
         }}
         onInteractOutside={(e) => {
           if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
-          onInteractOutside?.(e);
+          guardDismiss(e, onInteractOutside);
         }}
         {...props}
       >
-        {children}
+        <OverlayLayerContext.Provider value={contextValue}>{children}</OverlayLayerContext.Provider>
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
+            disabled={isPending}
             className="data-[state=open]:text-muted-foreground absolute top-4 right-4 cursor-pointer rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
@@ -126,7 +151,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="dialog-footer"
       className={cn(
-        "sticky bottom-0 z-10 -mx-6 flex shrink-0 flex-row flex-wrap justify-end gap-2 rounded-b-lg border-t border-border bg-container p-4",
+        "sticky bottom-0 z-[var(--z-index-sticky)] -mx-6 flex shrink-0 flex-row flex-wrap justify-end gap-2 rounded-b-lg border-t border-border bg-container p-4",
         className
       )}
       {...props}
@@ -138,7 +163,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-none font-semibold", className)}
+      className={cn("font-alliance text-lg leading-none font-normal", className)}
       {...props}
     />
   );

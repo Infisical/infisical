@@ -12,14 +12,15 @@ import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { setupGatewayProxy, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -38,8 +39,10 @@ import {
   extractGatewayTarget,
   getAccountAccessibilityIssues,
   PamAccountAccessibilityIssue,
-  resolveSelectedHost
+  resolveSelectedHost,
+  webAccessUnavailableReason
 } from "../pam-account/pam-account-schemas";
+import { assertUserStillActiveInOrg } from "../pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { reportPamSessionEnded } from "../pam-session/pam-session-fns";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
@@ -66,8 +69,16 @@ type TPamWebAccessServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "create" | "endSessionById" | "activateSession" | "countActiveWebSessions" | "endExpiredWebSessions" | "updateById"
+    | "create"
+    | "endSessionById"
+    | "activateSession"
+    | "countActiveWebSessions"
+    | "endExpiredWebSessions"
+    | "isSessionTerminated"
+    | "updateById"
+    | "transaction"
   >;
+  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "runWithPoolFailover">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -76,7 +87,7 @@ type TPamWebAccessServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -114,6 +125,7 @@ export const pamWebAccessServiceFactory = ({
   userDAL,
   mfaSessionService,
   orgDAL,
+  membershipDAL,
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
@@ -223,6 +235,12 @@ export const pamWebAccessServiceFactory = ({
     enforceRecordingConfig(account);
 
     const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+
+    const webAccessBlocked = webAccessUnavailableReason(account.accountType as PamAccountType, connectionDetails);
+    if (webAccessBlocked) {
+      throw new BadRequestError({ message: webAccessBlocked });
+    }
+
     const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
 
     const trimmedReason = reason?.trim() || null;
@@ -494,6 +512,11 @@ export const pamWebAccessServiceFactory = ({
       }
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+      // Re-checked here: the account can lose its HTTP port between ticket issue and connect.
+      const webAccessBlocked = webAccessUnavailableReason(account.accountType as PamAccountType, rawConnectionDetails);
+      if (webAccessBlocked) {
+        throw new BadRequestError({ message: webAccessBlocked });
+      }
       const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
       const targetHost = selectedHost || gatewayTarget.host;
       const credentials = await decrypt(projectId, account.encryptedCredentials);
@@ -502,23 +525,30 @@ export const pamWebAccessServiceFactory = ({
       const sessionDurationMs = sessionDurationCapMs;
       const expiresAt = new Date(Date.now() + sessionDurationMs);
 
-      session = await pamSessionDAL.create({
-        status: PamSessionStatus.Starting,
-        accessMethod: PamAccessMethod.Web,
-        expiresAt,
-        accountName,
-        accountType: account.accountType,
-        actorEmail,
-        actorIp,
-        actorName,
-        actorUserAgent,
-        projectId,
-        accountId: account.id,
-        userId,
-        gatewayId: effectiveGatewayId,
-        reason: accessReason?.trim() || null,
-        folderName: account.folderName,
-        selectedHost: targetHost
+      session = await pamSessionDAL.transaction(async (tx) => {
+        await assertUserStillActiveInOrg({ orgId, userId, membershipDAL, orgDAL, tx });
+
+        return pamSessionDAL.create(
+          {
+            status: PamSessionStatus.Starting,
+            accessMethod: PamAccessMethod.Web,
+            expiresAt,
+            accountName,
+            accountType: account.accountType,
+            actorEmail,
+            actorIp,
+            actorName,
+            actorUserAgent,
+            projectId,
+            accountId: account.id,
+            userId,
+            gatewayId: effectiveGatewayId,
+            reason: accessReason?.trim() || null,
+            folderName: account.folderName,
+            selectedHost: targetHost
+          },
+          tx
+        );
       });
 
       const createdSession = session;
@@ -665,6 +695,18 @@ export const pamWebAccessServiceFactory = ({
         if (socket.readyState === socket.OPEN) {
           socket.ping();
         }
+
+        void (async () => {
+          const sessionId = session?.id;
+          if (!sessionId || cleanedUp) return;
+          try {
+            if (!(await pamSessionDAL.isSessionTerminated(sessionId)) || cleanedUp) return;
+            await cleanup();
+            sendSessionEndAndClose(socket, SessionEndReason.Terminated);
+          } catch (err) {
+            logger.error(err, `Failed to check session termination [sessionId=${sessionId}]`);
+          }
+        })();
       }, WS_PING_INTERVAL_MS);
 
       socket.on("message", () => {

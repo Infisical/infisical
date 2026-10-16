@@ -10,7 +10,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button, Card, CardTitle, FormControl, TextArea } from "@app/components/v2";
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  TextArea
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations, useSaveIntegrationAccessToken } from "@app/hooks/api";
@@ -90,80 +104,79 @@ export const GcpSecretManagerAuthorizePage = () => {
       <Helmet>
         <title>Authorize GCP Secret Manager Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Connect Infisical to GCP Secret Manager to sync secrets."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Google Cloud Platform.png"
-                height={30}
-                width={30}
-                alt="GCP logo"
-              />
-            </div>
-            <span className="ml-1.5">GCP Secret Manager Integration </span>
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <div className="px-6">
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            onClick={handleIntegrateWithOAuth}
-            leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
-            className="mx-0 mt-4 h-11 w-full"
-          >
-            Continue with OAuth
-          </Button>
-          <div className="my-4 flex w-full flex-row items-center py-2">
-            <div className="w-full border-t border-mineshaft-400/40" />
-            <span className="mx-2 text-xs text-mineshaft-400">or</span>
-            <div className="w-full border-t border-mineshaft-400/40" />
-          </div>
-        </div>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
-          <Controller
-            control={control}
-            name="accessToken"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="GCP Service Account JSON"
-                errorText={error?.message}
-                isError={Boolean(error)}
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img
+              src="/images/integrations/Google Cloud Platform.png"
+              height={30}
+              width={30}
+              alt="GCP logo"
+            />
+            <span>GCP Secret Manager Integration</span>
+          </CardTitle>
+          <CardDescription>
+            Connect Infisical to GCP Secret Manager to sync secrets.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager"
               >
-                <TextArea
-                  {...field}
-                  className="h-48 border border-mineshaft-600 bg-bunker-900/80"
-                />
-              </FormControl>
-            )}
-          />
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            className="mt-2 w-min"
-            size="sm"
-            type="submit"
-            isLoading={isLoading}
-          >
-            Connect to GCP Secret Manager
-          </Button>
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-5">
+          <CardContent className="flex flex-col gap-5">
+            <div>
+              <Button
+                onClick={handleIntegrateWithOAuth}
+                className="mx-0 mt-4 w-full"
+                variant="project"
+              >
+                <FontAwesomeIcon icon={faGoogle} className="mr-2" />
+                Continue with OAuth
+              </Button>
+              <div className="my-4 flex w-full flex-row items-center py-2">
+                <div className="w-full border-t border-border-emphasis/40" />
+                <span className="mx-2 text-xs text-muted">or</span>
+                <div className="w-full border-t border-border-emphasis/40" />
+              </div>
+            </div>
+            <Controller
+              control={control}
+              name="accessToken"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="gcpsecretmanager-accesstoken">
+                    GCP Service Account JSON
+                  </FieldLabel>
+                  <TextArea
+                    {...field}
+                    id="gcpsecretmanager-accesstoken"
+                    isError={Boolean(error)}
+                    aria-describedby={error ? "gcpsecretmanager-accesstoken-error" : undefined}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="gcpsecretmanager-accesstoken-error">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button size="sm" type="submit" isPending={isLoading} variant="project">
+              Connect to GCP Secret Manager
+            </Button>
+          </CardFooter>
         </form>
       </Card>
     </div>

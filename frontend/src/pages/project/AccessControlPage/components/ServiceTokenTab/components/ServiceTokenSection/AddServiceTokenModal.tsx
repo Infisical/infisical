@@ -159,7 +159,7 @@ const ServiceTokenForm = () => {
         onSubmit={handleSubmit(onFormSubmit)}
         className="flex flex-1 flex-col overflow-hidden"
       >
-        <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="relative flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
           {hasServiceToken ? (
             <>
               <Field>
@@ -405,7 +405,7 @@ const ServiceTokenForm = () => {
           )}
         </div>
       </form>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
         {hasServiceToken ? (
           <SheetClose asChild>
             <Button type="button" variant="project">
@@ -414,6 +414,11 @@ const ServiceTokenForm = () => {
           </SheetClose>
         ) : (
           <>
+            <SheetClose asChild>
+              <Button type="button" variant="outline" isDisabled={isSubmitting}>
+                Cancel
+              </Button>
+            </SheetClose>
             <Button
               type="submit"
               form="add-service-token-form"
@@ -423,11 +428,6 @@ const ServiceTokenForm = () => {
             >
               Create
             </Button>
-            <SheetClose asChild>
-              <Button type="button" variant="outline" isDisabled={isSubmitting}>
-                Cancel
-              </Button>
-            </SheetClose>
           </>
         )}
       </SheetFooter>

@@ -1,10 +1,14 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { TriangleAlert } from "lucide-react";
+import { ExternalLink, TriangleAlert } from "lucide-react";
 
+import {
+  SELF_HOSTED_CONTACT_SALES_URL,
+  SELF_HOSTED_LICENSE_COPY
+} from "@app/components/license/self-hosted-license";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle, Button } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "@app/context";
 
 // Standalone billing page for offline (air-gapped) licenses. It makes no API calls — the license
@@ -14,18 +18,18 @@ export const OfflineBillingPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="h-full bg-page">
       <Helmet>
         <title>{t("common.head-title", { title: t("billing.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+      <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope="org"
             title={t("billing.title")}
-            description="Your plan is provisioned through an offline license."
+            description={SELF_HOSTED_LICENSE_COPY.offline.pageDescription}
           />
           <OrgPermissionCan
             passThrough={false}
@@ -34,11 +38,21 @@ export const OfflineBillingPage = () => {
           >
             <Alert variant="info">
               <TriangleAlert />
-              <AlertTitle>Offline license</AlertTitle>
+              <AlertTitle>{SELF_HOSTED_LICENSE_COPY.offline.title}</AlertTitle>
               <AlertDescription>
-                This instance runs on an offline license, so subscription and billing management
-                isn&apos;t available here. Contact your Infisical account manager to make changes to
-                your plan.
+                {SELF_HOSTED_LICENSE_COPY.offline.detail}
+                <div className="mt-3">
+                  <Button variant="outline" size="sm" asChild>
+                    <a
+                      href={SELF_HOSTED_CONTACT_SALES_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Contact Sales
+                      <ExternalLink />
+                    </a>
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           </OrgPermissionCan>

@@ -1,17 +1,26 @@
-import { useMemo } from "react";
-import { faBell } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { Bell, BellIcon } from "lucide-react";
 
 import {
-  ContentLoader,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuTrigger
-} from "@app/components/v2";
-import { IconButton } from "@app/components/v3";
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Loader
+} from "@app/components/v3";
 import {
+  useDeleteAllNotifications,
   useDeleteNotification,
   useMarkAllNotificationsAsRead,
   useUpdateNotification
@@ -21,13 +30,19 @@ import { isCriticalNotification, TUserNotification } from "@app/hooks/api/notifi
 
 import { Notification } from "./Notification";
 
+const NOTIFICATIONS_PER_PAGE = 20;
+
 export const NotificationDropdown = () => {
   const router = useRouter();
+  const [visibleNotificationCount, setVisibleNotificationCount] = useState(NOTIFICATIONS_PER_PAGE);
+  const [isClearAllOpen, setIsClearAllOpen] = useState(false);
+  const clearAllButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: notifications, isLoading } = useGetMyNotifications();
   const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
   const { mutate: updateNotification } = useUpdateNotification();
   const { mutate: deleteNotification } = useDeleteNotification();
+  const { mutate: deleteAllNotifications, isPending: isClearingAll } = useDeleteAllNotifications();
 
   // Links are stored server-side and may be site-relative or absolute, and may carry a query string. Passing them
   // straight to `to` would resolve them against the current path and swallow the search params, so normalize to a
@@ -57,83 +72,144 @@ export const NotificationDropdown = () => {
   );
 
   const hasCritical = criticalCount > 0;
+  const visibleNotifications = notifications?.slice(0, visibleNotificationCount);
+  const hasMoreNotifications = notifications && visibleNotificationCount < notifications.length;
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <IconButton variant="outline" size="sm" aria-label="Notifications" className="relative">
-          {unreadCount > 0 ? <BellIcon className="text-warning" /> : <Bell />}
-          {unreadCount > 0 && (
-            <span
-              aria-hidden="true"
-              className="absolute -top-0.5 -right-0.5 z-10 size-2 rounded-full bg-warning ring-2 ring-background"
-            />
-          )}
-        </IconButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        side="bottom"
-        className="z-999 mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
+    <>
+      <DropdownMenu
+        modal={false}
+        onOpenChange={(isOpen) => {
+          if (isOpen) setVisibleNotificationCount(NOTIFICATIONS_PER_PAGE);
+        }}
       >
-        <div className="flex w-full flex-col">
-          <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-white">Notifications</span>
-              {hasCritical && (
-                <span className="rounded-full bg-red-700 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                  {criticalCount > 99 ? "99+" : criticalCount} critical
-                </span>
+        <DropdownMenuTrigger asChild>
+          <IconButton variant="outline" size="sm" aria-label="Notifications" className="relative">
+            {unreadCount > 0 ? <BellIcon className="text-warning" /> : <Bell />}
+            {unreadCount > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute -top-0.5 -right-0.5 z-10 size-2 rounded-full bg-warning ring-2 ring-background"
+              />
+            )}
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          side="bottom"
+          className="flex h-[550px] w-[400px] overflow-hidden p-0"
+          onInteractOutside={(e) => {
+            if (isClearAllOpen) e.preventDefault();
+          }}
+        >
+          <div className="flex w-full flex-col">
+            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground">Notifications</span>
+                {hasCritical && (
+                  <Badge variant="danger">
+                    {criticalCount > 99 ? "99+" : criticalCount} Critical
+                  </Badge>
+                )}
+              </div>
+              <button
+                ref={clearAllButtonRef}
+                type="button"
+                className="text-xs font-medium text-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (unreadCount > 0) markAllAsRead();
+                  else setIsClearAllOpen(true);
+                }}
+                disabled={!notifications?.length || isClearingAll}
+              >
+                {unreadCount > 0 ? "Mark all as read" : "Clear All"}
+              </button>
+            </div>
+            <div className="flex h-full w-full overflow-auto">
+              {isLoading && (
+                <div className="flex h-full w-full items-center justify-center">
+                  <Loader className="pointer-events-none" size="sm" />
+                </div>
+              )}
+              {!isLoading && notifications?.length === 0 && (
+                <div className="flex h-full w-full flex-col items-center justify-center">
+                  <Bell className="size-10 text-muted" />
+                  <span className="mt-4 text-sm text-accent">No new notifications</span>
+                  <span className="text-xs text-muted">
+                    We&apos;ll let you know when something important happens.
+                  </span>
+                </div>
+              )}
+              {!isLoading && notifications && notifications.length > 0 && (
+                <div className="flex w-full flex-col">
+                  {visibleNotifications?.map((notification) => (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      key={notification.id}
+                      onClick={() => handleNotificationOpen(notification)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        handleNotificationOpen(notification);
+                      }}
+                    >
+                      <Notification notification={notification} onDelete={deleteNotification} />
+                    </div>
+                  ))}
+                  {hasMoreNotifications && (
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setVisibleNotificationCount((count) => count + NOTIFICATIONS_PER_PAGE);
+                      }}
+                    >
+                      Show More
+                    </DropdownMenuItem>
+                  )}
+                </div>
               )}
             </div>
-            <button
-              type="button"
-              className="text-xs font-medium text-mineshaft-300 hover:text-primary-400 disabled:pointer-events-none disabled:opacity-50"
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog open={isClearAllOpen} onOpenChange={setIsClearAllOpen}>
+        <AlertDialogContent
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            if (clearAllButtonRef.current && !clearAllButtonRef.current.disabled) {
+              clearAllButtonRef.current.focus();
+            } else {
+              clearAllButtonRef.current?.closest<HTMLElement>("[role='menu']")?.focus();
+            }
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All Notifications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all your read notifications for this organization, including account
+              notifications. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel variant="outline" disabled={isClearingAll}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isClearingAll}
               onClick={(e) => {
                 e.preventDefault();
-                markAllAsRead();
+                deleteAllNotifications(undefined, {
+                  onSuccess: () => setIsClearAllOpen(false)
+                });
               }}
-              disabled={unreadCount === 0}
             >
-              Mark all as read
-            </button>
-          </div>
-          <div className="flex h-full w-full overflow-auto">
-            {isLoading && (
-              <div className="flex h-full w-full items-center justify-center">
-                <ContentLoader className="pointer-events-none" lottieClassName="size-10" />
-              </div>
-            )}
-            {!isLoading && notifications?.length === 0 && (
-              <div className="flex h-full w-full flex-col items-center justify-center">
-                <FontAwesomeIcon icon={faBell} size="3x" className="text-mineshaft-400" />
-                <span className="mt-4 text-sm text-mineshaft-300">No new notifications</span>
-                <span className="text-xs text-mineshaft-400">
-                  We&apos;ll let you know when something important happens.
-                </span>
-              </div>
-            )}
-            {!isLoading && notifications && notifications.length > 0 && (
-              <div className="flex w-full flex-col">
-                {notifications.map((notification) => (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    key={notification.id}
-                    onClick={() => handleNotificationOpen(notification)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter") return;
-                      handleNotificationOpen(notification);
-                    }}
-                  >
-                    <Notification notification={notification} onDelete={deleteNotification} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+              Clear All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

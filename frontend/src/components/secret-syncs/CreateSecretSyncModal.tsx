@@ -21,6 +21,9 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   selectSync?: SecretSync | null;
   initialFormData?: Partial<TSecretSyncForm>;
+  initialFormDataIsDirty?: boolean;
+  startOnDestination?: boolean;
+  onEnterpriseUpgrade?: (onGranted: () => void) => void;
 };
 
 type ContentProps = {
@@ -28,7 +31,10 @@ type ContentProps = {
   selectedSync: SecretSync | null;
   setSelectedSync: (selectedSync: SecretSync | null) => void;
   initialFormData?: Partial<TSecretSyncForm>;
+  initialFormDataIsDirty?: boolean;
+  startOnDestination?: boolean;
   onDirtyChange: (isDirty: boolean) => void;
+  onEnterpriseUpgrade?: (onGranted: () => void) => void;
 };
 
 const Content = ({
@@ -36,12 +42,17 @@ const Content = ({
   setSelectedSync,
   selectedSync,
   initialFormData,
-  onDirtyChange
+  initialFormDataIsDirty,
+  startOnDestination,
+  onDirtyChange,
+  onEnterpriseUpgrade
 }: ContentProps) => {
   if (selectedSync) {
     return (
       <CreateSecretSyncForm
         initialFormData={initialFormData}
+        initialFormDataIsDirty={initialFormDataIsDirty}
+        startOnDestination={startOnDestination}
         onComplete={onComplete}
         onCancel={() => setSelectedSync(null)}
         onDirtyChange={onDirtyChange}
@@ -50,14 +61,17 @@ const Content = ({
     );
   }
 
-  return <SecretSyncSelect onSelect={setSelectedSync} />;
+  return <SecretSyncSelect onSelect={setSelectedSync} onEnterpriseUpgrade={onEnterpriseUpgrade} />;
 };
 
 export const CreateSecretSyncModal = ({
   isOpen,
   onOpenChange,
   selectSync = null,
-  initialFormData
+  initialFormData,
+  initialFormDataIsDirty,
+  startOnDestination,
+  onEnterpriseUpgrade
 }: Props) => {
   const [selectedSync, setSelectedSync] = useState<SecretSync | null>(selectSync);
   const [isDirty, setIsDirty] = useState(false);
@@ -86,7 +100,7 @@ export const CreateSecretSyncModal = ({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+        <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
           <SheetHeader className="border-b">
             {selectedSync ? (
               <>
@@ -114,7 +128,10 @@ export const CreateSecretSyncModal = ({
                 selectedSync={selectedSync}
                 setSelectedSync={setSelectedSync}
                 initialFormData={initialFormData}
+                initialFormDataIsDirty={initialFormDataIsDirty}
+                startOnDestination={startOnDestination}
                 onDirtyChange={setIsDirty}
+                onEnterpriseUpgrade={onEnterpriseUpgrade}
               />
             </div>
           ) : (
@@ -124,7 +141,10 @@ export const CreateSecretSyncModal = ({
                 selectedSync={selectedSync}
                 setSelectedSync={setSelectedSync}
                 initialFormData={initialFormData}
+                initialFormDataIsDirty={initialFormDataIsDirty}
+                startOnDestination={startOnDestination}
                 onDirtyChange={setIsDirty}
+                onEnterpriseUpgrade={onEnterpriseUpgrade}
               />
             </div>
           )}

@@ -10,6 +10,10 @@ import {
 } from "./components";
 import { getSelectClassNames, selectClassNames, selectStyles } from "./styles";
 
+/**
+ * @deprecated Use `Combobox` with its `creation` config. Keep this compatibility
+ * path for consumers that still depend on react-select-specific component overrides.
+ */
 export const CreatableSelect = <T,>({
   isMulti,
   closeMenuOnSelect,

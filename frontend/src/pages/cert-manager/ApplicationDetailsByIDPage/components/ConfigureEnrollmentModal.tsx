@@ -13,8 +13,11 @@ import {
 } from "lucide-react";
 
 import { AppConnectionOption } from "@app/components/app-connections";
+import {
+  CertificateEnrollmentUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +60,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
   Toggle,
   Tooltip,
@@ -124,7 +132,7 @@ const SectionCard = ({
     className={`rounded-md border border-border bg-foreground/[0.02] ${className ?? ""}`.trim()}
   >
     <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="text-sm font-normal text-foreground">{title}</h3>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </header>
     <div className="space-y-4 px-4 py-4">{children}</div>
@@ -307,7 +315,7 @@ const ApiPanel = ({
                 href="https://infisical.com/docs/api-reference/endpoints/certificates/create-certificate"
                 target="_blank"
                 rel="noreferrer"
-                className="font-medium text-primary-400"
+                className="font-medium text-project"
               >
                 View API reference
               </a>
@@ -1124,7 +1132,7 @@ const ScepPanel = ({
                       href={PkiDocsUrls.appConnections.microsoftIntune}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary-500 hover:text-primary-400"
+                      className="text-project hover:text-project"
                     >
                       setup guide
                     </a>{" "}
@@ -1399,6 +1407,7 @@ export const ConfigureEnrollmentModal = ({
   const [dirtyMethods, setDirtyMethods] = useState<Partial<Record<EnrollmentMethod, boolean>>>({});
 
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
   const visibleMethods = ALL_ORDER.filter(
@@ -1441,6 +1450,18 @@ export const ConfigureEnrollmentModal = ({
   const handleAdd = (method: EnrollmentMethod) => {
     setPendingMethods((prev) => (prev.includes(method) ? prev : [...prev, method]));
     setActiveTab(method);
+  };
+
+  const handleAddMethod = (method: EnrollmentMethod) => {
+    if (!lockedMethods[method]) {
+      handleAdd(method);
+      return;
+    }
+
+    openUpgradeGate({
+      intent: CertificateEnrollmentUpgradeIntent,
+      paywallKey: `cert-manager.application-enrollment.${method}`
+    });
   };
 
   const handleCancelPending = (method: EnrollmentMethod) =>
@@ -1501,16 +1522,16 @@ export const ConfigureEnrollmentModal = ({
             <div className="flex items-center justify-between gap-2 border-b border-border">
               {visibleMethods.length > 0 ? (
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
-                  <TabList className="border-b-0">
+                  <TabsList variant="project" className="border-b-0">
                     {visibleMethods.map((m) => (
-                      <Tab key={m} value={m}>
+                      <TabsTrigger key={m} value={m}>
                         {METHOD_LABELS[m]}
                         {isUnsaved(m) && (
                           <span className="ml-1.5 text-xs text-muted">(unsaved)</span>
                         )}
-                      </Tab>
+                      </TabsTrigger>
                     ))}
-                  </TabList>
+                  </TabsList>
                 </Tabs>
               ) : (
                 <div />
@@ -1527,11 +1548,7 @@ export const ConfigureEnrollmentModal = ({
                     {addableMethods.map((m) => {
                       const isLocked = lockedMethods[m] ?? false;
                       return (
-                        <DropdownMenuItem
-                          key={m}
-                          isDisabled={isLocked}
-                          onClick={() => handleAdd(m)}
-                        >
+                        <DropdownMenuItem key={m} onClick={() => handleAddMethod(m)}>
                           <div className="flex flex-col">
                             <span className="flex items-center gap-2 font-medium">
                               {METHOD_LABELS[m]}
@@ -1568,7 +1585,7 @@ export const ConfigureEnrollmentModal = ({
                 )}
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
                   {visibleMethods.includes("api") ? (
-                    <TabPanel value="api" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="api" className="data-[state=inactive]:hidden" forceMount>
                       <ApiPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1577,10 +1594,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("api")}
                         onDirtyChange={(d) => handleDirtyChange("api", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("est") ? (
-                    <TabPanel value="est" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="est" className="data-[state=inactive]:hidden" forceMount>
                       <EstPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1589,10 +1606,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("est")}
                         onDirtyChange={(d) => handleDirtyChange("est", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("acme") ? (
-                    <TabPanel value="acme" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="acme" className="data-[state=inactive]:hidden" forceMount>
                       <AcmePanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1601,10 +1618,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("acme")}
                         onDirtyChange={(d) => handleDirtyChange("acme", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("scep") ? (
-                    <TabPanel value="scep" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="scep" className="data-[state=inactive]:hidden" forceMount>
                       <ScepPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1615,7 +1632,7 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("scep")}
                         onDirtyChange={(d) => handleDirtyChange("scep", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                 </Tabs>
               </>
@@ -1643,6 +1660,7 @@ export const ConfigureEnrollmentModal = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {upgradeGate}
     </Dialog>
   );
 };

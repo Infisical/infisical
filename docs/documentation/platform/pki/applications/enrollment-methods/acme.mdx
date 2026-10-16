@@ -20,14 +20,40 @@ Use the ACME enrollment method to request and renew certificates automatically u
   <Card title="Web Servers" icon="server">
     NGINX, Apache, Tomcat, and other web servers with Certbot.
   </Card>
-  <Card title="Kubernetes" icon="dharmachakra">
+  <Card title="Kubernetes" icon="settings">
     Use cert-manager to issue certificates for workloads.
   </Card>
-  <Card title="Load Balancers" icon="scale-balanced">
+  <Card title="Load Balancers" icon="scale">
     Automate certificate provisioning for HAProxy, Traefik, and others.
   </Card>
-  <Card title="Automated Renewal" icon="arrows-spin">
+  <Card title="Automated Renewal" icon="rotate-cw">
     Let ACME clients handle renewal automatically before expiration.
+  </Card>
+</CardGroup>
+
+## Guides
+
+<CardGroup cols={2}>
+  <Card title="Kubernetes (cert-manager)" icon="settings" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-acme">
+    Provision TLS certificates in Kubernetes with cert-manager's ACME issuer.
+  </Card>
+  <Card title="NGINX" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Issue TLS certificates for NGINX with Certbot.
+  </Card>
+  <Card title="Apache" icon="server" href="/documentation/platform/pki/guides/applications/apache-certbot">
+    Issue TLS certificates for Apache HTTP Server with Certbot.
+  </Card>
+  <Card title="Tomcat" icon="server" href="/documentation/platform/pki/guides/applications/tomcat-certbot">
+    Issue TLS certificates for Apache Tomcat with Certbot.
+  </Card>
+  <Card title="JBoss/WildFly" icon="server" href="/documentation/platform/pki/guides/applications/jboss-certbot">
+    Issue TLS certificates for JBoss or WildFly with Certbot.
+  </Card>
+  <Card title="Windows Server" icon="windows" iconType="brands" href="/documentation/platform/pki/guides/applications/windows-server-acme">
+    Issue TLS certificates for Windows Server with win-acme.
+  </Card>
+  <Card title="Gloo Mesh" icon="workflow" href="/documentation/platform/pki/guides/applications/gloo-mesh">
+    Provision Istio intermediate CA certificates for Gloo Mesh.
   </Card>
 </CardGroup>
 
@@ -176,13 +202,13 @@ For Kubernetes, cert-manager monitors Certificate resources and renews them auto
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="NGINX Guide" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+  <Card title="NGINX Guide" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
     Set up HTTPS on NGINX with Certbot.
   </Card>
-  <Card title="Kubernetes Guide" icon="dharmachakra" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-acme">
+  <Card title="Kubernetes Guide" icon="settings" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-acme">
     Issue certificates for Kubernetes workloads.
   </Card>
-  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Certificate Syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to cloud destinations.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">

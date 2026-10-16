@@ -28,7 +28,16 @@ export type TCertificateFingerprints = {
 
 export type TCertificateSource = CertSource | null;
 
+export type TCertificateCustomExtension = {
+  oid: string;
+  critical: boolean;
+  value: string;
+  displayValue?: string;
+  issuerAdded?: boolean;
+};
+
 export type TCertificate = {
+  customExtensions?: TCertificateCustomExtension[] | null;
   id: string;
   caId: string;
   certificateTemplateId?: string;
@@ -39,6 +48,7 @@ export type TCertificate = {
   subjectAltNames: string;
   altNames?: string;
   serialNumber: string;
+  orderId?: string;
   notBefore: string;
   notAfter: string;
   keyUsages: CertKeyUsage[];
@@ -144,6 +154,11 @@ export type TRenewCertificateAttributes = {
     isCA: boolean;
     pathLength?: number;
   };
+  customExtensions?: Array<{
+    oid: string;
+    value?: string;
+    critical?: boolean;
+  }>;
 };
 
 export type TRenewCertificateDTO = {
@@ -249,6 +264,7 @@ export type TCertificateRequestDetails = {
     isCA: boolean;
     pathLength?: number;
   } | null;
+  customExtensions?: TCertificateCustomExtension[] | null;
   createdAt: string;
   updatedAt: string;
   metadata?: Array<{ key: string; value: string }>;
@@ -362,4 +378,30 @@ export type TPqcTrendResponse = {
 export type TTriggerCertificateRequestValidationResponse = {
   status: CertificateRequestStatus;
   orderStatus?: string;
+};
+
+export type TIssuerModifiedField = {
+  field: string;
+  requested: string;
+  issued: string;
+};
+
+export type TCertificateRenewalPreview = {
+  hasOriginatingRequest: boolean;
+  request: {
+    commonName?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
+    domainComponents?: string[];
+    altNames: { type: string; value: string }[];
+    keyUsages: string[];
+    extendedKeyUsages: string[];
+    keyAlgorithm?: string;
+    signatureAlgorithm?: string;
+    customExtensions: { oid: string; value?: string; critical?: boolean }[];
+  };
+  issuerModifiedFields: TIssuerModifiedField[];
 };

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 import { z } from "zod";
 
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -352,21 +352,6 @@ describe("shared dynamic-secret scalar behavior", () => {
     );
     assert.equal(parseDynamicSecretProviderNumberInput(""), undefined);
     assert.equal(parseDynamicSecretProviderNumberInput("not-a-number"), undefined);
-  });
-
-  it("keeps scalar and custom-renderer paths explicit", () => {
-    const fields = fixtureDefinition.fields ?? [];
-    const flatTypes = fields.flatMap((item) => ("kind" in item ? [] : [item.type]));
-
-    assert.deepEqual(flatTypes, ["text", "number", "secret", "select", "switch"]);
-    const groupedTypes = fields.flatMap((item) =>
-      "kind" in item ? item.fields.map((field) => field.type) : []
-    );
-    assert.deepEqual(groupedTypes, ["textarea", "textarea"]);
-    assert.deepEqual(fixtureDefinition.customRenderer?.reasons, [
-      "remote-options",
-      "non-scalar-value"
-    ]);
   });
 });
 

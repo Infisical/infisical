@@ -3,6 +3,7 @@ export {
   useCanUseProjectAppConnectionImport
 } from "./useCanUseAppConnectionImport";
 export { useDebounce } from "./useDebounce";
+export { useDelayedLoading } from "./useDelayedLoading";
 export { useDiscardChangesGuard } from "./useDiscardChangesGuard";
 export * from "./useGetProjectTypeFromRoute";
 export { useImplicitProduct } from "./useImplicitProduct";
@@ -14,9 +15,12 @@ export { usePagination } from "./usePagination";
 export { usePersistentState } from "./usePersistentState";
 export { usePopUp } from "./usePopUp";
 export { useResetPageHelper } from "./useResetPageHelper";
+export { useResetPageOnSearch } from "./useResetPageOnSearch";
 export * from "./useResizableHeaderHeight";
+export { useRouteProjectId } from "./useRouteProjectId";
 export { useScopeVariant } from "./useScopeVariant";
 export { useSecretsActivationNudge } from "./useSecretsActivationNudge";
+export { useSlashFocusSearch } from "./useSlashFocusSearch";
 export { useSyntaxHighlight } from "./useSyntaxHighlight";
 export { useTimedReset } from "./useTimedReset";
 export { useTimeRemaining } from "./useTimeRemaining";

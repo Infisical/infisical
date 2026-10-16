@@ -627,8 +627,8 @@ export const RequestAccessForm = ({
                     currentProject?.environments?.find(({ slug }) => slug === field.value) ?? null
                   }
                   onValueChange={(environmentOption) => {
-                    if (environmentOption.slug === field.value) return;
-                    field.onChange(environmentOption.slug);
+                    if (environmentOption?.slug === field.value) return;
+                    field.onChange(environmentOption?.slug ?? "");
                     // clear alongside the env change so both land in one render
                     form.setValue("secretPath", "", {
                       shouldValidate: form.formState.isSubmitted
@@ -799,16 +799,16 @@ export const RequestAccessForm = ({
           )}
         />
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           type="submit"
           variant="project"
           isPending={form.formState.isSubmitting || requestAccess.isPending}
         >
           Request Access
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
         </Button>
       </SheetFooter>
     </form>

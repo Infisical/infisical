@@ -22,9 +22,7 @@ export type TMeteredFeature = {
   resolveReportOrgId?: (orgId: string) => Promise<string>;
 };
 
-// Static list of every metered dimension key (no DAL needed). For callers that only need the keys, not
-// the count fns — e.g. background reconciliation emitting one event per dimension for an org.
-export const METERED_DIMENSION_KEYS: string[] = [
+const METERED_FEATURES = [
   IdentitiesMeter,
   InternalCas,
   ActiveCerts,
@@ -33,11 +31,23 @@ export const METERED_DIMENSION_KEYS: string[] = [
   PamIdentities,
   AgentVaultIdentities,
   UserIdentities
-].map((feature) => feature.key);
+] as const;
+
+export type TMeteredDimensionKey = (typeof METERED_FEATURES)[number]["key"];
+
+export const METERED_DIMENSION_KEYS: TMeteredDimensionKey[] = METERED_FEATURES.map((feature) => feature.key);
 
 type TBuildMeteredFeaturesDep = {
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities" | "countOfOrgMembers">;
-  usageCounterDAL: TUsageCounterDALFactory;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    | "countInternalCas"
+    | "resolveRootOrgId"
+    | "countActiveCertificateQuotaKeysByOrg"
+    | "countSecretManagementIdentities"
+    | "countPamIdentities"
+    | "countAgentVaultIdentities"
+  >;
   // Cloud meters per org; self-hosted meters the whole instance (a single license covers the DB).
   isCloud: boolean;
 };

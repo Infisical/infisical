@@ -1,32 +1,66 @@
 import { useEffect, useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangleIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Button,
   DocumentationLinkBadge,
   Field,
   FieldContent,
   FieldDescription,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
   Toggle
 } from "@app/components/v3";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import {
+  getCertificateDisplayName,
+  isPaloAltoNetworksPkiSync,
+  PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE,
+  PKI_SYNC_MAP
+} from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { usePaloAltoNetworksConnectionListTemplates } from "@app/hooks/api/appConnections/palo-alto-networks";
 import {
   PkiSync,
   TPkiSync,
+  TPkiSyncRemovalOptions,
   useCanSetHealthCheckCommand,
   useCanSetPostSyncCommand,
   usePkiSyncOption,
+  usePreviewPkiSyncFilters,
   useUpdatePkiSync
 } from "@app/hooks/api/pkiSyncs";
+import { TPkiSyncFilterPreview } from "@app/hooks/api/pkiSyncs/types";
 
-import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-schema";
+import {
+  arePkiSyncRemovalOptionsComplete,
+  hasPkiSyncRemovalOptions,
+  PkiSyncRemovalOptionsFields
+} from "../PkiSyncRemovalOptionsFields";
+import {
+  isPaloAltoNetworksTemplateMissing,
+  PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
+} from "./schemas/palo-alto-networks-pki-sync-destination-schema";
+import {
+  removeUnusedKeystoreOptions,
+  TUpdatePkiSyncForm,
+  UpdatePkiSyncFormSchema
+} from "./schemas/pki-sync-schema";
+import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
@@ -40,10 +74,20 @@ type Props = {
   pkiSync: TPkiSync;
   onDirtyChange?: (isDirty: boolean) => void;
   onCancel?: () => void;
+  initialStepKey?: TPkiSyncEditStepKey;
 };
 
+export type TPkiSyncEditStepKey =
+  | "destination"
+  | "targetHost"
+  | "options"
+  | "mappings"
+  | "hostCommands"
+  | "certificates"
+  | "details";
+
 type FormStep = {
-  key: string;
+  key: TPkiSyncEditStepKey;
   name: string;
   description: string;
   title: string;
@@ -69,7 +113,7 @@ const getFormSteps = (
         "Choose the connection and the destination where certificates will be pushed. The available fields depend on the selected service."
     },
     ...(needsTargetHost
-      ? [
+      ? ([
           {
             key: "targetHost",
             name: "Target Host",
@@ -80,7 +124,7 @@ const getFormSteps = (
             rightDescription:
               "An LDAP Connection supplies the credential for a whole domain rather than one machine, so each sync names its own host.\n\nMachines found in the directory are offered as suggestions, and you can enter one that is not listed."
           }
-        ]
+        ] as FormStep[])
       : []),
     {
       key: "options",
@@ -121,6 +165,18 @@ const getFormSteps = (
   }
 
   steps.push({
+    key: "certificates",
+    name: "Certificates",
+    description: "Filters and certificates",
+    title: "Certificates",
+    subtitle: "Describe the certificates this sync holds.",
+    rightLabel: "CERTIFICATES",
+    rightDescription: `Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save.${
+      isPaloAltoNetworksPkiSync(destination) ? `\n\n${PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE}` : ""
+    }`
+  });
+
+  steps.push({
     key: "details",
     name: "Details",
     description: "Name and description",
@@ -142,13 +198,27 @@ const LDAP_TARGET_DEFAULTS = {
   sslCertificate: undefined
 };
 
-export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }: Props) => {
+export const EditPkiSyncForm = ({
+  pkiSync,
+  onComplete,
+  onDirtyChange,
+  onCancel,
+  initialStepKey
+}: Props) => {
   const updatePkiSync = useUpdatePkiSync();
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
   const { syncOption } = usePkiSyncOption(pkiSync.destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
   const canSetHealthCheckCommand = useCanSetHealthCheckCommand(pkiSync.applicationId);
-  const [selectedStepIndex, setSelectedStepIndex] = useState(0);
+  const [selectedStepIndex, setSelectedStepIndex] = useState(() => {
+    const initialSteps = getFormSteps(
+      pkiSync.destination,
+      Boolean(syncOption?.canRunHealthCheckCommand || syncOption?.canRunPostSyncCommand),
+      pkiSync.connection.app === AppConnection.LDAP
+    );
+    const initialIndex = initialSteps.findIndex((step) => step.key === initialStepKey);
+    return initialIndex === -1 ? 0 : initialIndex;
+  });
 
   const formMethods = useForm<TUpdatePkiSyncForm>({
     resolver: zodResolver(UpdatePkiSyncFormSchema),
@@ -163,7 +233,8 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
       },
       syncOptions: pkiSync.syncOptions,
       destinationConfig: { ...LDAP_TARGET_DEFAULTS, ...pkiSync.destinationConfig },
-      isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
+      isAutoSyncEnabled: pkiSync.isAutoSyncEnabled,
+      filters: pkiSync.filters ?? null
     } as Partial<TUpdatePkiSyncForm>,
     reValidateMode: "onChange"
   });
@@ -180,21 +251,41 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
   const {
     handleSubmit,
     control,
+    setError,
     formState: { isSubmitting, isDirty }
   } = formMethods;
+  const { data: paloAltoNetworksDevice, isLoading: isDetectingPaloAltoNetworksDevice } =
+    usePaloAltoNetworksConnectionListTemplates(formMethods.watch("connection.id"), {
+      enabled: isPaloAltoNetworksPkiSync(pkiSync.destination)
+    });
+
+  const previewFilters = usePreviewPkiSyncFilters();
+  const [unlinkRemovalOptions, setUnlinkRemovalOptions] = useState<TPkiSyncRemovalOptions>({});
+  const [pendingUnlink, setPendingUnlink] = useState<{
+    preview: TPkiSyncFilterPreview;
+    formData: TUpdatePkiSyncForm;
+  } | null>(null);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  const onSubmit = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
+  const applyUpdate = async (
+    { connection, ...formData }: TUpdatePkiSyncForm,
+    removalOptions?: TPkiSyncRemovalOptions
+  ) => {
+    const hasNewExportPassword = Boolean(
+      (formData as { credentials?: { exportPassword?: string } }).credentials?.exportPassword
+    );
     try {
       const updatedPkiSync = await updatePkiSync.mutateAsync({
         syncId: pkiSync.id,
-        ...formData,
+        ...removeUnusedKeystoreOptions(formData),
+        ...(hasNewExportPassword ? {} : { credentials: undefined }),
         connectionId: connection.id,
         projectId: pkiSync.projectId,
-        destination: pkiSync.destination
+        destination: pkiSync.destination,
+        ...(removalOptions ? { removalOptions } : {})
       });
 
       createNotification({
@@ -206,6 +297,62 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
       /* empty */
     }
   };
+
+  const onSubmit = async (formData: TUpdatePkiSyncForm) => {
+    if (
+      isPaloAltoNetworksPkiSync(pkiSync.destination) &&
+      isPaloAltoNetworksTemplateMissing(
+        paloAltoNetworksDevice?.isPanorama,
+        formData.destinationConfig
+      )
+    ) {
+      setError("destinationConfig.template" as FieldPath<TUpdatePkiSyncForm>, {
+        type: "manual",
+        message: PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
+      });
+      setSelectedStepIndex(steps.findIndex((step) => step.key === "destination"));
+      return;
+    }
+
+    const haveFiltersChanged =
+      JSON.stringify(formData.filters ?? null) !== JSON.stringify(pkiSync.filters ?? null);
+
+    if (haveFiltersChanged) {
+      try {
+        const preview = await previewFilters.mutateAsync({
+          pkiSyncId: pkiSync.id,
+          filters: formData.filters
+        });
+
+        if (preview.toUnlink.length > 0) {
+          setUnlinkRemovalOptions({});
+          setPendingUnlink({ preview, formData });
+          return;
+        }
+      } catch {
+        return;
+      }
+    }
+
+    await applyUpdate(formData);
+  };
+
+  const needsUnlinkRemovalOptions = Boolean(
+    pendingUnlink &&
+      hasPkiSyncRemovalOptions(pkiSync.destination) &&
+      (pendingUnlink.formData.syncOptions as { canRemoveCertificates?: boolean } | undefined)
+        ?.canRemoveCertificates &&
+      pendingUnlink.preview.toUnlinkAtDestinationCount > 0
+  );
+
+  const areUnlinkRemovalOptionsComplete =
+    !pendingUnlink ||
+    !needsUnlinkRemovalOptions ||
+    arePkiSyncRemovalOptionsComplete(
+      pkiSync.destination,
+      { remainingCertificateCount: pendingUnlink.preview.matchedCount },
+      unlinkRemovalOptions
+    );
 
   const currentStep = steps[selectedStepIndex];
 
@@ -261,6 +408,13 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
             />
           </div>
         );
+      case "certificates":
+        return (
+          <PkiSyncCertificatesFields
+            applicationId={pkiSync.applicationId ?? undefined}
+            pkiSyncId={pkiSync.id}
+          />
+        );
       case "details":
         return <PkiSyncDetailsFields />;
       default:
@@ -297,7 +451,7 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
 
           <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+              <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
               <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
             </div>
             {renderStep()}
@@ -323,16 +477,8 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <div className="flex items-center gap-3">
-            <Button
-              variant="project"
-              type="submit"
-              isPending={isSubmitting}
-              isDisabled={!isDirty || isSubmitting}
-            >
-              Save
-            </Button>
             <Button
               variant="outline"
               type="button"
@@ -362,9 +508,87 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
             >
               Next
             </Button>
+            <Button
+              variant="project"
+              type="submit"
+              isPending={isSubmitting}
+              isDisabled={!isDirty || isSubmitting || isDetectingPaloAltoNetworksDevice}
+            >
+              Save
+            </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
+
+      <AlertDialog
+        open={Boolean(pendingUnlink)}
+        onOpenChange={(open) => {
+          if (!open && !isSubmitting) setPendingUnlink(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader className="sm:grid-rows-[auto]!">
+            <AlertDialogMedia className="mb-0 sm:row-span-1!">
+              <AlertTriangleIcon className="text-warning" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {pendingUnlink?.preview.toUnlink.length} certificate
+              {pendingUnlink?.preview.toUnlink.length === 1 ? "" : "s"} will no longer be synced
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild className="sm:col-span-2">
+              <div className="flex flex-col gap-2">
+                <p>
+                  These certificates no longer match the filters, so this sync will stop holding
+                  them:
+                </p>
+                <ul className="max-h-40 overflow-y-auto font-mono text-xs">
+                  {pendingUnlink?.preview.toUnlink.map((certificate) => (
+                    <li key={certificate.id}>
+                      {getCertificateDisplayName(certificate).originalDisplayName}
+                    </li>
+                  ))}
+                </ul>
+                {pendingUnlink?.preview.willRemoveFromDestination && (
+                  <p>
+                    Removal is enabled on this sync, so they will also be deleted from{" "}
+                    {destinationName}.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+            {needsUnlinkRemovalOptions && (
+              <div className="mt-2 w-full text-wrap sm:col-span-2">
+                <PkiSyncRemovalOptionsFields
+                  pkiSync={pkiSync}
+                  value={unlinkRemovalOptions}
+                  onChange={setUnlinkRemovalOptions}
+                />
+              </div>
+            )}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isSubmitting}
+              isDisabled={!areUnlinkRemovalOptionsComplete}
+              onClick={(event) => {
+                event.preventDefault();
+                const pending = pendingUnlink;
+                setPendingUnlink(null);
+                if (pending) {
+                  applyUpdate(
+                    pending.formData,
+                    needsUnlinkRemovalOptions ? unlinkRemovalOptions : undefined
+                  ).catch(() => {});
+                }
+              }}
+            >
+              Save changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </FormProvider>
   );
 };

@@ -8,6 +8,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TGitLabSyncWithCredentials, TGitLabVariable } from "@app/services/secret-sync/gitlab/gitlab-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -289,9 +290,10 @@ const deleteGitLabVariable = async ({
 export const GitLabSyncFns = {
   syncSecrets: async (
     secretSync: TGitLabSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     { appConnectionDAL, kmsService }: TGitLabSyncFactoryDeps
   ): Promise<void> => {
+    const secretMap = payload.flatten();
     const { connection, environment, destinationConfig } = secretSync;
     const { scope, targetEnvironment } = destinationConfig;
 
@@ -405,9 +407,10 @@ export const GitLabSyncFns = {
 
   removeSecrets: async (
     secretSync: TGitLabSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     { appConnectionDAL, kmsService }: TGitLabSyncFactoryDeps
   ): Promise<void> => {
+    const secretMap = payload.flatten();
     const { connection, destinationConfig } = secretSync;
     const { scope, targetEnvironment } = destinationConfig;
 

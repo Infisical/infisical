@@ -121,8 +121,8 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   return (
     <Tr
       className={twMerge(
-        "group h-10 transition-colors duration-100 hover:bg-mineshaft-700",
-        lastScanStatus === SecretScanningScanStatus.Failed && "bg-red/5 hover:bg-red/10"
+        "group h-10 transition-colors duration-100 hover:bg-surface-hover",
+        lastScanStatus === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`resource-${id}`}
     >
@@ -147,10 +147,9 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
                 type="button"
                 onClick={() =>
                   navigate({
-                    to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
+                    to: "/organizations/$orgId/secret-scanning/findings",
                     params: {
-                      orgId: currentOrg.id,
-                      projectId: dataSource.projectId
+                      orgId: currentOrg.id
                     },
                     search: {
                       search: name,
@@ -164,7 +163,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
               </button>
             </Badge>
           ) : lastScanStatus === SecretScanningScanStatus.Failed ? (
-            <span className="text-mineshaft-400">No findings</span>
+            <span className="text-muted">No findings</span>
           ) : (
             <Badge variant="success">
               <FontAwesomeIcon icon={faCheck} />
@@ -172,7 +171,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
             </Badge>
           )
         ) : (
-          <span className="text-mineshaft-400">No findings</span>
+          <span className="text-muted">No findings</span>
         )}
       </Td>
       <Td className="whitespace-nowrap">
@@ -186,7 +185,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
         ) : lastScannedAt ? (
           formatDistance(new Date(lastScannedAt), new Date(), { addSuffix: true })
         ) : (
-          <span className="text-mineshaft-400">No scans</span>
+          <span className="text-muted">No scans</span>
         )}
       </Td>
       <Td>
@@ -245,7 +244,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
                         <div className="flex h-full w-full items-center justify-between gap-1">
                           <span>Trigger Scan</span>
                           <FontAwesomeIcon
-                            className="text-bunker-300"
+                            className="text-label-secondary"
                             size="sm"
                             icon={faInfoCircle}
                           />

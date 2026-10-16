@@ -40,6 +40,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
@@ -153,8 +154,8 @@ const HoneyTokenDetailsContent = ({
         <div className="flex items-start pr-8">
           <div className="flex items-center gap-3">
             {tokenInfo && (
-              <img
-                src={`/images/integrations/${tokenInfo.image}`}
+              <ProviderIcon
+                icon={tokenInfo.image}
                 className="h-10 w-10 shrink-0"
                 alt={`${tokenInfo.name} logo`}
               />

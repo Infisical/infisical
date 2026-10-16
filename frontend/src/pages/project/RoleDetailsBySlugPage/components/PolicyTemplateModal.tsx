@@ -342,9 +342,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                 <div className="flex flex-col gap-8">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 flex-col gap-1.5">
-                      <h3 className="text-lg leading-none font-semibold">
-                        {selectedTemplate.name}
-                      </h3>
+                      <h3 className="text-lg leading-none font-normal">{selectedTemplate.name}</h3>
                       <p className="text-sm text-accent">{selectedTemplate.description}</p>
                       <Badge variant="neutral">
                         {selectedPolicyCount} {selectedPolicyCount === 1 ? "Policy" : "Policies"}

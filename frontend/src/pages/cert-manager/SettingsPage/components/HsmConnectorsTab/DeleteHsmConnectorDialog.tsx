@@ -51,9 +51,9 @@ export const DeleteHsmConnectorDialog = ({ connector, onClose, onDeleted }: Prop
             {connector ? (
               <>
                 Are you sure you want to delete{" "}
-                <span className="font-mono text-mineshaft-100">{connector.name}</span>? Any
-                certificate that references this connector will block the deletion, and the HSM key
-                on your HSM is not touched.
+                <span className="font-mono text-foreground">{connector.name}</span>? Any certificate
+                that references this connector will block the deletion, and the HSM key on your HSM
+                is not touched.
               </>
             ) : null}
           </AlertDialogDescription>

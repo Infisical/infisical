@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -21,6 +20,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -162,7 +162,7 @@ export const OrgCertManagerTab = () => {
                     href="https://infisical.com/docs/documentation/platform/pki/migration"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline hover:text-mineshaft-200"
+                    className="underline hover:text-foreground-secondary"
                   >
                     Learn more →
                   </a>
@@ -266,16 +266,16 @@ export const OrgCertManagerTab = () => {
         </DialogContent>
       </Dialog>
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={Boolean(pendingDelete)}
-        onChange={(open) => {
+        onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
         }}
         title={`Delete ${pendingDelete?.name ?? "this project"}?`}
-        subTitle="This permanently deletes the Certificate Manager project, including its certificates, profiles, applications, and approval policies. This cannot be undone."
-        deleteKey={pendingDelete?.slug ?? "delete"}
-        onDeleteApproved={handleConfirmDelete}
-        buttonText="Delete project"
+        description="This permanently deletes the Certificate Manager project, including its certificates, profiles, applications, and approval policies. This cannot be undone."
+        confirmKey={pendingDelete?.slug ?? "delete"}
+        onConfirm={handleConfirmDelete}
+        confirmLabel="Delete project"
       />
 
       <CertManagerExportProjectModal

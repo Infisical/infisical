@@ -1,5 +1,5 @@
 import { PamAccountType } from "../pam/pam-enums";
-import { TPamTemplateSettings } from "./pam-account-template-schemas";
+import { TPamTemplateSettingsInput } from "./pam-account-template-schemas";
 
 export type TCreatePamAccountTemplateDTO = {
   projectId: string;
@@ -7,7 +7,7 @@ export type TCreatePamAccountTemplateDTO = {
   description?: string;
   type: PamAccountType;
   policies?: Record<string, unknown>;
-  settings?: TPamTemplateSettings;
+  settings?: TPamTemplateSettingsInput;
   gatewayId?: string;
   gatewayPoolId?: string;
   recordingConnectionId?: string;
@@ -19,7 +19,7 @@ export type TUpdatePamAccountTemplateDTO = {
   name?: string;
   description?: string | null;
   policies?: Record<string, unknown>;
-  settings?: TPamTemplateSettings;
+  settings?: TPamTemplateSettingsInput;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   recordingConnectionId?: string | null;

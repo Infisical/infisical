@@ -7,6 +7,7 @@ import { getCircleCIApiUrl } from "@app/services/app-connection/circleci";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import {
@@ -129,7 +130,8 @@ const deleteEnvVar = async (projectId: string, apiToken: string, name: string, a
 };
 
 export const CircleCISyncFns = {
-  syncSecrets: async (secretSync: TCircleCISyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  syncSecrets: async (secretSync: TCircleCISyncWithCredentials, payload: TSecretSyncPayload): Promise<void> => {
+    const secretMap = payload.flatten();
     const { destinationConfig, connection } = secretSync;
     const { projectId, projectName, orgName } = destinationConfig;
     const { apiToken } = connection.credentials;
@@ -189,7 +191,8 @@ export const CircleCISyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  removeSecrets: async (secretSync: TCircleCISyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  removeSecrets: async (secretSync: TCircleCISyncWithCredentials, payload: TSecretSyncPayload): Promise<void> => {
+    const secretMap = payload.flatten();
     const { destinationConfig, connection } = secretSync;
     const { projectId, projectName, orgName } = destinationConfig;
     const { apiToken } = connection.credentials;

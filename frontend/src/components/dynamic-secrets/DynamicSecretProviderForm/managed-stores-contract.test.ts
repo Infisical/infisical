@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { AwsMemoryDbAuthType, DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import {
   awsElastiCacheCreateFormSchema,
-  awsElastiCacheEditFormSchema,
   awsMemoryDbCreateFormSchema,
-  awsMemoryDbEditFormSchema,
   getAwsElastiCacheCreateDefaultValues,
   getAwsElastiCacheCreatePayload,
   getAwsElastiCacheEditDefaultValues,
@@ -25,38 +23,32 @@ import {
   getCouchbaseEditDefaultValues,
   getCouchbaseEditPayload
 } from "./providerDefinitions/couchbaseContract";
-import { MANAGED_STORE_DYNAMIC_SECRET_PROVIDERS } from "./providerDefinitions/managedStoresContract";
 import {
   getMongoAtlasCreateDefaultValues,
   getMongoAtlasCreatePayload,
   getMongoAtlasEditDefaultValues,
   getMongoAtlasEditPayload,
-  mongoAtlasCreateFormSchema,
-  mongoAtlasEditFormSchema
+  mongoAtlasCreateFormSchema
 } from "./providerDefinitions/mongoAtlasContract";
 import {
   getMongoDbCreateDefaultValues,
   getMongoDbCreatePayload,
   getMongoDbEditDefaultValues,
   getMongoDbEditPayload,
-  mongoDbCreateFormSchema,
-  mongoDbEditFormSchema
+  mongoDbCreateFormSchema
 } from "./providerDefinitions/mongoDbContract";
 import {
   getRedisCreateDefaultValues,
   getRedisCreatePayload,
   getRedisEditDefaultValues,
   getRedisEditPayload,
-  redisCreateFormSchema,
-  redisEditFormSchema
+  redisCreateFormSchema
 } from "./providerDefinitions/redisContract";
-import { createDynamicSecretProviderRegistry, defineDynamicSecretProviderModule } from "./registry";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "./schemas";
 import type {
   TCreateDynamicSecretProviderFormContext,
   TEditDynamicSecretProviderFormContext
 } from "./types";
-import { defineDynamicSecretProvider } from "./types";
 
 const environment = { id: "env-id", name: "Development", slug: "dev", position: 1 };
 
@@ -182,143 +174,7 @@ const getValidCouchbaseCreateValues = () => {
   return values;
 };
 
-const awsElastiCacheContractDefinition = defineDynamicSecretProvider({
-  provider: DynamicSecretProviders.AwsElastiCache,
-  label: "AWS ElastiCache",
-  create: {
-    schema: awsElastiCacheCreateFormSchema,
-    getDefaultValues: getAwsElastiCacheCreateDefaultValues,
-    toPayload: getAwsElastiCacheCreatePayload,
-    submitLabel: "Submit"
-  },
-  edit: {
-    schema: awsElastiCacheEditFormSchema,
-    getDefaultValues: getAwsElastiCacheEditDefaultValues,
-    toPayload: getAwsElastiCacheEditPayload,
-    submitLabel: "Save",
-    successMessage: "Successfully updated dynamic secret"
-  }
-});
-
-const awsMemoryDbContractDefinition = defineDynamicSecretProvider({
-  provider: DynamicSecretProviders.AwsMemoryDb,
-  label: "AWS MemoryDB",
-  create: {
-    schema: awsMemoryDbCreateFormSchema,
-    getDefaultValues: getAwsMemoryDbCreateDefaultValues,
-    toPayload: getAwsMemoryDbCreatePayload,
-    submitLabel: "Submit"
-  },
-  edit: {
-    schema: awsMemoryDbEditFormSchema,
-    getDefaultValues: getAwsMemoryDbEditDefaultValues,
-    toPayload: getAwsMemoryDbEditPayload,
-    submitLabel: "Save",
-    successMessage: "Successfully updated dynamic secret"
-  }
-});
-
-const redisContractDefinition = defineDynamicSecretProvider({
-  provider: DynamicSecretProviders.Redis,
-  label: "Redis",
-  create: {
-    schema: redisCreateFormSchema,
-    getDefaultValues: getRedisCreateDefaultValues,
-    toPayload: getRedisCreatePayload,
-    submitLabel: "Submit"
-  },
-  edit: {
-    schema: redisEditFormSchema,
-    getDefaultValues: getRedisEditDefaultValues,
-    toPayload: getRedisEditPayload,
-    submitLabel: "Save",
-    successMessage: "Successfully updated dynamic secret"
-  }
-});
-
-const mongoAtlasContractDefinition = defineDynamicSecretProvider({
-  provider: DynamicSecretProviders.MongoAtlas,
-  label: "MongoDB Atlas",
-  create: {
-    schema: mongoAtlasCreateFormSchema,
-    getDefaultValues: getMongoAtlasCreateDefaultValues,
-    toPayload: getMongoAtlasCreatePayload,
-    submitLabel: "Submit"
-  },
-  edit: {
-    schema: mongoAtlasEditFormSchema,
-    getDefaultValues: getMongoAtlasEditDefaultValues,
-    toPayload: getMongoAtlasEditPayload,
-    submitLabel: "Save",
-    successMessage: "Successfully updated dynamic secret"
-  }
-});
-
-const mongoDbContractDefinition = defineDynamicSecretProvider({
-  provider: DynamicSecretProviders.MongoDB,
-  label: "MongoDB",
-  create: {
-    schema: mongoDbCreateFormSchema,
-    getDefaultValues: getMongoDbCreateDefaultValues,
-    toPayload: getMongoDbCreatePayload,
-    submitLabel: "Submit"
-  },
-  edit: {
-    schema: mongoDbEditFormSchema,
-    getDefaultValues: getMongoDbEditDefaultValues,
-    toPayload: getMongoDbEditPayload,
-    submitLabel: "Save",
-    successMessage: "Successfully updated dynamic secret"
-  }
-});
-
-const couchbaseContractDefinition = defineDynamicSecretProvider({
-  provider: DynamicSecretProviders.Couchbase,
-  label: "Couchbase",
-  create: {
-    schema: couchbaseCreateFormSchema,
-    getDefaultValues: getCouchbaseCreateDefaultValues,
-    toPayload: getCouchbaseCreatePayload,
-    submitLabel: "Submit"
-  },
-  edit: {
-    schema: couchbaseEditFormSchema,
-    getDefaultValues: getCouchbaseEditDefaultValues,
-    toPayload: getCouchbaseEditPayload,
-    submitLabel: "Save",
-    successMessage: "Successfully updated dynamic secret"
-  }
-});
-
-const managedStoreContractModule = defineDynamicSecretProviderModule({
-  id: "managed-stores-contract",
-  definitions: [
-    redisContractDefinition,
-    awsElastiCacheContractDefinition,
-    awsMemoryDbContractDefinition,
-    mongoAtlasContractDefinition,
-    mongoDbContractDefinition,
-    couchbaseContractDefinition
-  ]
-});
-
-describe("managed-store provider registration", () => {
-  it("registers all six providers with create and edit parity in picker order", () => {
-    const registry = createDynamicSecretProviderRegistry(managedStoreContractModule);
-
-    assert.deepEqual(registry.providers, MANAGED_STORE_DYNAMIC_SECRET_PROVIDERS);
-    assert.equal(registry.definitions.length, 6);
-    registry.definitions.forEach((definition) => {
-      assert.ok(definition.create.schema);
-      assert.ok(definition.edit.schema);
-      assert.equal(typeof definition.create.getDefaultValues, "function");
-      assert.equal(typeof definition.create.toPayload, "function");
-      assert.equal(typeof definition.edit.getDefaultValues, "function");
-      assert.equal(typeof definition.edit.toPayload, "function");
-    });
-    assert.equal(registry.getDocsSlug(DynamicSecretProviders.MongoAtlas), "mongo-atlas");
-  });
-
+describe("managed-store provider defaults", () => {
   it("keeps environment selection visible for multi-environment create", () => {
     const defaultFactories = [
       getAwsElastiCacheCreateDefaultValues,

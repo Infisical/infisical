@@ -512,15 +512,14 @@ export const projectDALFactory = (db: TDbClient) => {
         };
       }
 
-      const rows = await (tx || db.replicaNode())(TableName.Membership)
+      const conn = tx || db.replicaNode();
+      const rows = await conn(TableName.Membership)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .leftJoin(TableName.UserGroupMembership, function joinUserGroupMembership() {
-          this.on(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`).andOn(
-            `${TableName.UserGroupMembership}.isPending`,
-            "=",
-            (tx || db).raw("?", [false])
-          );
-        })
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.Membership}.actorGroupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -780,10 +779,10 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectWithOrg = async (projectId: string) => {
+  const findProjectWithOrg = async (projectId: string, tx?: Knex) => {
     // we just need the project, and we need to include a new .organization field that includes the org from the orgId reference
 
-    const project = await db(TableName.Project)
+    const project = await (tx || db)(TableName.Project)
       .where({ [`${TableName.Project}.id` as "id"]: projectId })
       .whereNull(`${TableName.Project}.deleteAfter`)
       .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
@@ -893,9 +892,17 @@ export const projectDALFactory = (db: TDbClient) => {
       )
       .limit(limit)
       .offset(offset);
-    if (sortBy === SearchProjectSortBy.NAME) {
-      void query.orderBy([{ column: `${TableName.Project}.name`, order: sortDir }]);
+    const sortColumn = {
+      [SearchProjectSortBy.NAME]: `${TableName.Project}.name`,
+      [SearchProjectSortBy.DESCRIPTION]: `${TableName.Project}.description`,
+      [SearchProjectSortBy.CREATED_AT]: `${TableName.Project}.createdAt`
+    }[sortBy];
+
+    void query.orderBy(sortColumn, sortDir, "last");
+    if (sortBy !== SearchProjectSortBy.NAME) {
+      void query.orderBy(`${TableName.Project}.name`, SortDirection.ASC);
     }
+    void query.orderBy(`${TableName.Project}.id`, SortDirection.ASC);
 
     if (dto.type) {
       void query.where(`${TableName.Project}.type`, dto.type);
@@ -1018,7 +1025,12 @@ export const projectDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.Project)
         .whereNotIn("type", [ProjectType.CertificateManager])
         .whereNull("deleteAfter")
-        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])
+        .whereNotIn("type", [
+          ProjectType.CertificateManager,
+          ProjectType.SecretScanning,
+          ProjectType.PAM,
+          ProjectType.AgentVault
+        ])
         // Project rows of the removed SSH / Agent Sentinel products are left in
         // place (see migration 20260729150000) but must not consume workspace quota.
         .whereNotIn("type", ["ssh", "ai"])

@@ -5,6 +5,10 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { getDigiCertApiBaseUrl } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -17,6 +21,8 @@ import {
   TAttachCertificateToRequestDTO,
   TUpdateCertificateRequestStatusDTO
 } from "../../certificate-request/certificate-request-types";
+import { TPkiAlertV2QueueServiceFactory } from "../../pki-alert-v2/pki-alert-v2-queue";
+import { PkiAlertEventType } from "../../pki-alert-v2/pki-alert-v2-types";
 import { TResourceMetadataDALFactory } from "../../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../../resource-metadata/resource-metadata-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
@@ -63,6 +69,8 @@ export type TProcessDigiCertRequestDeps = {
   digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TProcessDigiCertRequestResult =
@@ -134,6 +142,8 @@ export const processDigiCertPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.digicert.originalCertificateId,
       errorMessage: "Validation timed out after 24h"
     });
     logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
@@ -198,6 +208,27 @@ export const processDigiCertPendingValidationRequest = async (
       operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
     });
 
+    try {
+      await deps.pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId,
+        projectId: request.projectId,
+        eventType: parsed.digicert.isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+        applicationId: request.applicationId
+      });
+    } catch (error) {
+      logger.warn(
+        error,
+        `Failed to queue PKI alert event [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
+      );
+    }
+
+    await deps.certificateAlertEventEmitter.notify({
+      certificateId,
+      projectId: request.projectId,
+      eventType: getIssuanceAlertEvent(parsed.digicert.isRenewal),
+      applicationId: request.applicationId
+    });
+
     return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
   }
 
@@ -210,6 +241,8 @@ export const processDigiCertPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.digicert.originalCertificateId,
       errorMessage: `DigiCert order ${orderStatus}`
     });
     logger.info(`DigiCert order terminal state [certificateRequestId=${request.id}] [status=${orderStatus}]`);

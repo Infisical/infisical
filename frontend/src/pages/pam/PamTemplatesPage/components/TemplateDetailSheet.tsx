@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -10,6 +10,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -20,6 +21,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   GatewayPicker,
   Input,
   Select,
@@ -32,17 +34,25 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
-import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { APP_CONNECTION_MAP, getAppConnectionProviderName } from "@app/helpers/appConnections";
+import {
+  AppConnection,
+  useListAppConnections,
+  useListAvailableAppConnectionsForApps
+} from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
   isRotatablePamAccountType,
+  maxGeneratedPasswordLength,
   PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
+  pamAccountTypeSupportsSessionLogMasking,
   PamPolicyType,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
   useUpdatePamAccountTemplate
 } from "@app/hooks/api/pam";
+import { PAM_RECORDING_CONNECTION_APPS } from "@app/hooks/api/pam/constants";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
@@ -59,89 +69,91 @@ const configSchema = z.object({
 
 type ConfigForm = z.infer<typeof configSchema>;
 
-const settingsSchema = z
-  .object({
-    gatewayId: z.string().nullable(),
-    gatewayPoolId: z.string().nullable(),
-    recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
-    recordingConnectionId: z.string().nullable(),
-    s3Bucket: z.string().optional(),
-    s3Region: z.string().optional(),
-    s3KeyPrefix: z.string().optional(),
-    policies: z.record(z.unknown()),
-    settings: z.object({
-      sessionLogMaskingPatterns: z.string().optional(),
-      rotationEnabled: z.boolean().optional(),
-      heartbeatEnabled: z.boolean().optional(),
-      heartbeatIntervalSeconds: z.number().optional(),
-      rotationIntervalSeconds: z.number().nullable().optional(),
-      pwLength: z.coerce.number().optional(),
-      pwUppercase: z.coerce.number().optional(),
-      pwLowercase: z.coerce.number().optional(),
-      pwDigits: z.coerce.number().optional(),
-      pwSymbols: z.coerce.number().optional(),
-      pwAllowedSymbols: z.string().optional()
+const buildSettingsSchema = (maxPwLength: number) =>
+  z
+    .object({
+      gatewayId: z.string().nullable(),
+      gatewayPoolId: z.string().nullable(),
+      recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
+      recordingConnectionId: z.string().nullable(),
+      s3Bucket: z.string().optional(),
+      s3Region: z.string().optional(),
+      s3KeyPrefix: z.string().optional(),
+      policies: z.record(z.unknown()),
+      settings: z.object({
+        sessionLogMaskingPatterns: z.string().optional(),
+        sessionLogMaskingBuiltInDetection: z.boolean().optional(),
+        rotationEnabled: z.boolean().optional(),
+        heartbeatEnabled: z.boolean().optional(),
+        heartbeatIntervalSeconds: z.number().optional(),
+        rotationIntervalSeconds: z.number().nullable().optional(),
+        pwLength: z.coerce.number().optional(),
+        pwUppercase: z.coerce.number().optional(),
+        pwLowercase: z.coerce.number().optional(),
+        pwDigits: z.coerce.number().optional(),
+        pwSymbols: z.coerce.number().optional(),
+        pwAllowedSymbols: z.string().optional()
+      })
     })
-  })
-  .superRefine((data, ctx) => {
-    if (data.recordingStorageBackend === "aws-s3") {
-      if (!data.recordingConnectionId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["recordingConnectionId"],
-          message: "Select an AWS connection"
-        });
+    .superRefine((data, ctx) => {
+      if (data.recordingStorageBackend === "aws-s3") {
+        if (!data.recordingConnectionId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["recordingConnectionId"],
+            message: "Select a connection"
+          });
+        }
+        if (!data.s3Bucket?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["s3Bucket"],
+            message: "Bucket is required"
+          });
+        }
       }
-      if (!data.s3Bucket?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["s3Bucket"],
-          message: "Bucket is required"
-        });
-      }
-    }
 
-    const length = data.settings.pwLength ?? 32;
-    const mins = {
-      uppercase: data.settings.pwUppercase ?? 0,
-      lowercase: data.settings.pwLowercase ?? 0,
-      digits: data.settings.pwDigits ?? 0,
-      symbols: data.settings.pwSymbols ?? 0
-    };
-    if (length < 1 || length > 250) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Length must be between 1 and 250"
-      });
-    }
-    (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
-      const value = data.settings[key];
-      if (value !== undefined && value < 0) {
+      const length = data.settings.pwLength ?? Math.min(32, maxPwLength);
+      const mins = {
+        uppercase: data.settings.pwUppercase ?? 0,
+        lowercase: data.settings.pwLowercase ?? 0,
+        digits: data.settings.pwDigits ?? 0,
+        symbols: data.settings.pwSymbols ?? 0
+      };
+      if (length < 1 || length > maxPwLength) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["settings", key],
-          message: "Cannot be negative"
+          path: ["settings", "pwLength"],
+          message: `Length must be between 1 and ${maxPwLength}`
+        });
+      }
+      (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
+        const value = data.settings[key];
+        if (value !== undefined && value < 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["settings", key],
+            message: "Cannot be negative"
+          });
+        }
+      });
+      const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
+      if (totalRequired === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Require at least one character type"
+        });
+      } else if (totalRequired > length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Length must be at least the sum of the minimums"
         });
       }
     });
-    const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
-    if (totalRequired === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Require at least one character type"
-      });
-    } else if (totalRequired > length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Length must be at least the sum of the minimums"
-      });
-    }
-  });
 
-type SettingsForm = z.infer<typeof settingsSchema>;
+type SettingsForm = z.infer<ReturnType<typeof buildSettingsSchema>>;
 
 type Props = {
   isOpen: boolean;
@@ -269,11 +281,16 @@ const SettingsTab = ({
   const { data: template, isLoading } = useGetPamAccountTemplate(templateId);
   const updateTemplate = useUpdatePamAccountTemplate({ skipValidationToast: true });
   const { currentProject } = useProject();
-  const { data: awsConnections = [] } = useListAvailableAppConnections(
-    AppConnection.AWS,
+  const { connections: recordingConnections } = useListAvailableAppConnectionsForApps(
+    PAM_RECORDING_CONNECTION_APPS,
     currentProject.id
   );
+  const { data: appConnections = [] } = useListAppConnections();
   const { map: accountTypeMap } = usePamAccountTypeMap();
+
+  const maxPwLength = maxGeneratedPasswordLength(template?.type);
+  const defaultPwLength = Math.min(32, maxPwLength);
+  const settingsSchema = useMemo(() => buildSettingsSchema(maxPwLength), [maxPwLength]);
 
   const {
     control,
@@ -296,11 +313,12 @@ const SettingsTab = ({
       policies: {},
       settings: {
         sessionLogMaskingPatterns: "",
+        sessionLogMaskingBuiltInDetection: false,
         rotationEnabled: false,
         heartbeatEnabled: false,
         heartbeatIntervalSeconds: 86400,
         rotationIntervalSeconds: 86400,
-        pwLength: 32,
+        pwLength: defaultPwLength,
         pwUppercase: 1,
         pwLowercase: 1,
         pwDigits: 1,
@@ -331,6 +349,8 @@ const SettingsTab = ({
         policies: (template.policies as Record<string, unknown>) ?? {},
         settings: {
           sessionLogMaskingPatterns: (settings.sessionLogMaskingPatterns as string) ?? "",
+          sessionLogMaskingBuiltInDetection:
+            (settings.sessionLogMaskingBuiltInDetection as boolean) ?? false,
           ...(() => {
             const rotation = (settings.rotation ?? {}) as {
               enabled?: boolean;
@@ -356,7 +376,7 @@ const SettingsTab = ({
               heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:
                 rotation.intervalSeconds !== undefined ? rotation.intervalSeconds : 86400,
-              pwLength: pw.length ?? 32,
+              pwLength: pw.length ?? defaultPwLength,
               pwUppercase: pw.required?.uppercase ?? 1,
               pwLowercase: pw.required?.lowercase ?? 1,
               pwDigits: pw.required?.digits ?? 1,
@@ -385,10 +405,15 @@ const SettingsTab = ({
   const gatewayPoolId = watch("gatewayPoolId");
   const policies = watch("policies");
   const storageBackend = watch("recordingStorageBackend");
+  const recordingConnectionApp = recordingConnections.find(
+    (conn) => conn.id === watch("recordingConnectionId")
+  )?.app;
   const rotationEnabled = watch("settings.rotationEnabled");
   const heartbeatEnabled = watch("settings.heartbeatEnabled");
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
+  const supportsSessionLogMasking = pamAccountTypeSupportsSessionLogMasking(template.type);
+
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const isRotatableTemplateType = isRotatablePamAccountType(template.type);
   const requiresApproval = policies[PamPolicyType.RequiresApproval] === true;
@@ -405,7 +430,9 @@ const SettingsTab = ({
     if (data.recordingStorageBackend === "aws-s3" && data.s3Bucket) {
       settings.recordingS3Config = {
         bucket: data.s3Bucket,
-        region: data.s3Region || "us-east-1",
+        ...(recordingConnectionApp === AppConnection.S3Compatible
+          ? {}
+          : { region: data.s3Region || "us-east-1" }),
         ...(data.s3KeyPrefix ? { keyPrefix: data.s3KeyPrefix } : {})
       };
     } else {
@@ -418,6 +445,11 @@ const SettingsTab = ({
     } else {
       delete settings.sessionLogMaskingPatterns;
     }
+
+    // Never deleted when false: an absent key means "never configured", which is a different thing.
+    settings.sessionLogMaskingBuiltInDetection = Boolean(
+      data.settings.sessionLogMaskingBuiltInDetection
+    );
 
     const isHeartbeatOn = Boolean(data.settings.heartbeatEnabled);
     settings.heartbeat = {
@@ -432,7 +464,7 @@ const SettingsTab = ({
         intervalSeconds: isRotationOn ? (data.settings.rotationIntervalSeconds ?? 86400) : null
       };
       settings.passwordRequirements = {
-        length: data.settings.pwLength ?? 32,
+        length: data.settings.pwLength ?? defaultPwLength,
         required: {
           uppercase: data.settings.pwUppercase ?? 0,
           lowercase: data.settings.pwLowercase ?? 0,
@@ -536,6 +568,7 @@ const SettingsTab = ({
             return (
               <Editor
                 key={p.key}
+                accountType={template.type as PamAccountType}
                 label={p.label}
                 description={p.description}
                 value={policies[p.key]}
@@ -592,10 +625,14 @@ const SettingsTab = ({
                       <FieldLabel>{label}</FieldLabel>
                       <Input
                         type="number"
+                        max={name === "settings.pwLength" ? maxPwLength : undefined}
                         value={field.value ?? 0}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                         onWheel={(e) => e.currentTarget.blur()}
                       />
+                      {name === "settings.pwLength" && !fieldState.error && (
+                        <FieldDescription>1 to {maxPwLength} characters</FieldDescription>
+                      )}
                       {fieldState.error && <FieldError>{fieldState.error.message}</FieldError>}
                     </Field>
                   )}
@@ -823,7 +860,7 @@ const SettingsTab = ({
                       </SelectTrigger>
                       <SelectContent position="popper">
                         <SelectItem value="postgres">Internal Database</SelectItem>
-                        <SelectItem value="aws-s3">AWS S3</SelectItem>
+                        <SelectItem value="aws-s3">S3 Bucket</SelectItem>
                       </SelectContent>
                     </Select>
                   </FieldContent>
@@ -860,28 +897,40 @@ const SettingsTab = ({
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field>
-                      <FieldLabel>AWS Connection</FieldLabel>
+                      <FieldLabel>Connection</FieldLabel>
                       <FieldContent>
                         <Select
                           value={field.value ?? ""}
                           onValueChange={(v) => field.onChange(v || null)}
                         >
                           <SelectTrigger className="w-full" isError={!!fieldState.error}>
-                            <SelectValue placeholder="Select an AWS connection" />
+                            <SelectValue placeholder="Select a connection" />
                           </SelectTrigger>
                           <SelectContent position="popper">
-                            {awsConnections.map((conn) => (
-                              <SelectItem key={conn.id} value={conn.id}>
-                                {conn.name}
-                              </SelectItem>
-                            ))}
+                            {recordingConnections.length === 0 && (
+                              <div className="px-2 py-3 text-center text-xs text-muted">
+                                No AWS or S3-Compatible Storage connections found. Create one from
+                                the App Connections page.
+                              </div>
+                            )}
+                            {recordingConnections.map((conn) => {
+                              const connection = appConnections.find(({ id }) => id === conn.id);
+                              const providerName = connection
+                                ? getAppConnectionProviderName(connection)
+                                : APP_CONNECTION_MAP[conn.app].name;
+                              return (
+                                <SelectItem key={conn.id} value={conn.id}>
+                                  {conn.name} <span className="text-muted">({providerName})</span>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         {fieldState.error ? (
                           <FieldError>{fieldState.error.message}</FieldError>
                         ) : (
                           <FieldDescription>
-                            The AWS connection used to authenticate with S3.
+                            The AWS or S3-Compatible Storage connection used to access the bucket.
                           </FieldDescription>
                         )}
                       </FieldContent>
@@ -907,18 +956,20 @@ const SettingsTab = ({
                   )}
                 />
 
-                <Controller
-                  name="s3Region"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Region</FieldLabel>
-                      <FieldContent>
-                        <Input {...field} placeholder="us-east-1" />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
+                {recordingConnectionApp !== AppConnection.S3Compatible && (
+                  <Controller
+                    name="s3Region"
+                    control={control}
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel>Region</FieldLabel>
+                        <FieldContent>
+                          <Input {...field} placeholder="us-east-1" />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                )}
 
                 <Controller
                   name="s3KeyPrefix"
@@ -936,31 +987,64 @@ const SettingsTab = ({
               </>
             )}
 
-            <Controller
-              control={control}
-              name="settings.sessionLogMaskingPatterns"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>Session Log Masking</FieldLabel>
-                  <FieldContent>
-                    <TextArea
-                      rows={5}
-                      placeholder={"rm\\s+-rf.*\npassword\\s*=\\s*\\S+\n\\b\\d{3}-\\d{2}-\\d{4}\\b"}
-                      value={field.value ?? ""}
-                      isError={!!fieldState.error}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val.trim() ? val : "");
-                      }}
-                    />
-                    <FieldDescription>
-                      Matching content in session recordings will be masked (one regex per line).
-                    </FieldDescription>
-                    <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
-            />
+            {supportsSessionLogMasking && (
+              <div className="flex flex-col gap-4 border-t border-border pt-6">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Session Log Masking</p>
+                  <p className="text-xs text-muted">
+                    What gets masked in recordings for accounts using this template.
+                  </p>
+                </div>
+
+                <Controller
+                  control={control}
+                  name="settings.sessionLogMaskingBuiltInDetection"
+                  render={({ field }) => (
+                    <Field orientation="horizontal">
+                      <FieldContent>
+                        <FieldTitle>
+                          Built-in Detection
+                          <Badge variant="success">Recommended</Badge>
+                        </FieldTitle>
+                        <FieldDescription>
+                          API keys and tokens from known providers, and the account&apos;s own
+                          credentials, are masked automatically.
+                        </FieldDescription>
+                      </FieldContent>
+                      <Toggle
+                        variant="pam"
+                        checked={field.value ?? false}
+                        onCheckedChange={field.onChange}
+                      />
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="settings.sessionLogMaskingPatterns"
+                  render={({ field, fieldState }) => (
+                    <Field>
+                      <FieldLabel>Custom patterns</FieldLabel>
+                      <FieldContent>
+                        <TextArea
+                          rows={5}
+                          placeholder={"acme_[a-z0-9]{24}\ninternal-vault://\\S+"}
+                          value={field.value ?? ""}
+                          isError={!!fieldState.error}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val.trim() ? val : "");
+                          }}
+                        />
+                        <FieldDescription>One regex per line.</FieldDescription>
+                        <FieldError>{fieldState.error?.message}</FieldError>
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

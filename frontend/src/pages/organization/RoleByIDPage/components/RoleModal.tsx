@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -21,6 +21,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateOrgRole, useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -41,6 +42,7 @@ type Props = {
 };
 
 export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -210,7 +212,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
               </DialogClose>
               <Button
                 type="submit"
-                variant="org"
+                variant={scopeVariant}
                 isPending={isSubmitting}
                 isDisabled={isSubmitting}
               >
@@ -220,11 +222,14 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
           </form>
         </DialogContent>
       </Dialog>
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );

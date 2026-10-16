@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
 import {
@@ -27,6 +27,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateOrgIdentity, useGetOrgRoles } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -51,6 +52,7 @@ type Props = {
 };
 
 const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -172,19 +174,27 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
           )}
         />
       </div>
-      <SheetFooter className="border-t">
-        <Button type="submit" variant="org" isPending={isSubmitting} isDisabled={isSubmitting}>
-          Create
-        </Button>
+      <SheetFooter className="justify-end border-t">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
+        <Button
+          type="submit"
+          variant={scopeVariant}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          Create
+        </Button>
       </SheetFooter>
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.create-org-identity-sheet"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: true
+        }}
       />
     </form>
   );

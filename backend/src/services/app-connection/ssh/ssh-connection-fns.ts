@@ -1,12 +1,11 @@
 import { Client, ConnectConfig } from "ssh2";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callSshExec, SshExecAuthMethod, SshExecCredentials, SshExecResult } from "@app/lib/gateway-v2/ssh-rpc";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -416,7 +415,6 @@ export const executeSshCommand = async (
 
 export const validateSshConnectionCredentials = async (
   config: TSshConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials } = config;

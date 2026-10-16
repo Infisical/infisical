@@ -5,6 +5,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -12,10 +13,6 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -24,7 +21,6 @@ import {
   BadRequestError,
   ForbiddenRequestError,
   NotFoundError,
-  PermissionBoundaryError,
   RateLimitError,
   UnauthorizedError
 } from "@app/lib/errors";
@@ -40,8 +36,14 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import {
   clearIdentityLockoutsForAuthMethod,
@@ -78,7 +80,10 @@ type TIdentityLdapAuthServiceFactoryDep = {
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
+  >;
   kmsService: TKmsServiceFactory;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "findOne">;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
@@ -96,6 +101,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -111,7 +117,8 @@ export const identityLdapAuthServiceFactory = ({
   identityAuthTemplateDAL,
   keyStore,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityLdapAuthServiceFactoryDep) => {
   const getLdapConfig = async (identityId: string) => {
     const identity = await identityDAL.findOne({ id: identityId });
@@ -372,26 +379,20 @@ export const identityLdapAuthServiceFactory = ({
       actorOrgId
     });
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to add LDAP auth to identity with more privileged role",
         actor,
         actorId,
-        projectId: identityMembershipOrg.identity.projectId,
         actorAuthMethod,
         actorOrgId
-      });
-
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
+      }
+    );
 
     if (templateId) {
       ForbiddenError.from(orgPermission).throwUnlessCan(
@@ -436,68 +437,76 @@ export const identityLdapAuthServiceFactory = ({
 
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
-    const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
-      const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: identityMembershipOrg.scopeOrgId
-      });
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
 
-      const template = templateId
-        ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
-        : undefined;
-      if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
-        throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
-      }
+    const template = templateId
+      ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
+      : undefined;
+    if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
+      throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
+    }
 
-      let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
-      if (template) {
-        ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
-      } else {
-        if (!bindDN || !bindPass || !searchBase || !url) {
-          throw new BadRequestError({
-            message: "Invalid request. Missing bind DN, bind pass, search base, or URL."
-          });
-        }
-        ldapConfig = {
-          bindDN,
-          bindPass,
-          searchBase,
-          url,
-          ldapCaCertificate
-        };
-      }
-
-      const { cipherTextBlob: encryptedBindPass } = encryptor({
-        plainText: Buffer.from(ldapConfig.bindPass)
-      });
-
-      const { cipherTextBlob: encryptedBindDN } = encryptor({
-        plainText: Buffer.from(ldapConfig.bindDN)
-      });
-
-      let encryptedLdapCaCertificate: Buffer | undefined;
-      if (ldapConfig.ldapCaCertificate) {
-        const { cipherTextBlob: encryptedCertificate } = encryptor({
-          plainText: Buffer.from(ldapConfig.ldapCaCertificate)
-        });
-
-        encryptedLdapCaCertificate = encryptedCertificate;
-      }
-
-      const isConnected = await testLDAPConfig({
-        bindDN: ldapConfig.bindDN,
-        bindPass: ldapConfig.bindPass,
-        caCert: ldapConfig.ldapCaCertificate || "",
-        url: ldapConfig.url
-      });
-
-      if (!isConnected) {
+    let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
+    if (template) {
+      ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
+      if (!ldapConfig.bindDN || !ldapConfig.bindPass || !ldapConfig.searchBase || !ldapConfig.url) {
         throw new BadRequestError({
-          message:
-            "Failed to connect to LDAP server. Please ensure that the LDAP server is running and your credentials are correct."
+          message: `LDAP auth template '${template.name}' is missing a bind DN, bind password, search base, or URL. Update the template before attaching it to an identity.`
         });
       }
+    } else {
+      if (!bindDN || !bindPass || !searchBase || !url) {
+        throw new BadRequestError({
+          message: "Invalid request. Missing bind DN, bind pass, search base, or URL."
+        });
+      }
+      ldapConfig = {
+        bindDN,
+        bindPass,
+        searchBase,
+        url,
+        ldapCaCertificate
+      };
+    }
 
+    const { cipherTextBlob: encryptedBindPass } = encryptor({
+      plainText: Buffer.from(ldapConfig.bindPass)
+    });
+
+    const { cipherTextBlob: encryptedBindDN } = encryptor({
+      plainText: Buffer.from(ldapConfig.bindDN)
+    });
+
+    let encryptedLdapCaCertificate: Buffer | undefined;
+    if (ldapConfig.ldapCaCertificate) {
+      const { cipherTextBlob: encryptedCertificate } = encryptor({
+        plainText: Buffer.from(ldapConfig.ldapCaCertificate)
+      });
+
+      encryptedLdapCaCertificate = encryptedCertificate;
+    }
+
+    const isConnected = await testLDAPConfig({
+      bindDN: ldapConfig.bindDN,
+      bindPass: ldapConfig.bindPass,
+      caCert: ldapConfig.ldapCaCertificate || "",
+      url: ldapConfig.url
+    });
+
+    if (!isConnected) {
+      throw new BadRequestError({
+        message:
+          "Failed to connect to LDAP server. Please ensure that the LDAP server is running and your credentials are correct."
+      });
+    }
+
+    const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityLdapAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
@@ -517,6 +526,17 @@ export const identityLdapAuthServiceFactory = ({
           lockoutThreshold,
           lockoutDurationSeconds,
           lockoutCounterResetSeconds
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
         },
         tx
       );
@@ -590,26 +610,20 @@ export const identityLdapAuthServiceFactory = ({
       actorOrgId
     });
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to update LDAP auth of identity with more privileged role",
         actor,
         actorId,
-        projectId: identityMembershipOrg.identity.projectId,
         actorAuthMethod,
         actorOrgId
-      });
-
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
+      }
+    );
 
     if (templateId) {
       ForbiddenError.from(orgPermission).throwUnlessCan(
@@ -687,6 +701,15 @@ export const identityLdapAuthServiceFactory = ({
       };
     }
 
+    const nextUrl = config.url?.trim();
+    if (nextUrl && nextUrl !== identityLdapAuth.url.trim() && !config.bindPass) {
+      throw new BadRequestError({
+        message: template
+          ? `LDAP auth template '${template.name}' has no bind password stored, so it cannot move this identity to a different LDAP URL. Add a bind password to the template first.`
+          : "Changing the LDAP URL requires supplying bindPass, because the stored bind password cannot be read back. Send the bind password for the new server with this change."
+      });
+    }
+
     let encryptedBindPass: Buffer | undefined;
     if (config.bindPass) {
       const { cipherTextBlob: bindPassCiphertext } = encryptor({
@@ -730,25 +753,46 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const updatedLdapAuth = await identityLdapAuthDAL.updateById(identityLdapAuth.id, {
-      url: config.url,
-      searchBase: config.searchBase,
-      searchFilter,
-      encryptedBindDN,
-      encryptedBindPass,
-      encryptedLdapCaCertificate,
-      allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
-      accessTokenMaxTTL,
-      templateId: template?.id || null,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined,
-      lockoutEnabled,
-      lockoutThreshold,
-      lockoutDurationSeconds,
-      lockoutCounterResetSeconds
+    const updatedLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
+      const doc = await identityLdapAuthDAL.updateById(
+        identityLdapAuth.id,
+        {
+          url: config.url,
+          searchBase: config.searchBase,
+          searchFilter,
+          encryptedBindDN,
+          encryptedBindPass,
+          encryptedLdapCaCertificate,
+          allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
+          accessTokenMaxTTL,
+          templateId: template?.id || null,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.LDAP_AUTH);
@@ -841,63 +885,20 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
         projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
+        action: OrgPermissionIdentityActions.RevokeAuth,
+        baseMessage: "Failed to revoke LDAP auth of identity with more privileged role",
         actor,
         actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
         actorAuthMethod,
         actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to revoke LDAP auth of identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.RevokeAuth,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
-    }
+      }
+    );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -905,6 +906,17 @@ export const identityLdapAuthServiceFactory = ({
       const [deletedLdapAuth] = await identityLdapAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.LDAP_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
     });
 

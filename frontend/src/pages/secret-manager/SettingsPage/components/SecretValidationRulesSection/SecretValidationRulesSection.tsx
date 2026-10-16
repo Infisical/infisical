@@ -86,6 +86,7 @@ import {
   CONSTRAINT_OPTIONS,
   ConstraintTarget,
   ConstraintType,
+  DEFAULT_PREVENT_VALUE_REUSE_VERSIONS,
   DYNAMIC_SECRET_PROVIDER_OPTIONS,
   DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS,
   DynamicSecretRuleProvider,
@@ -347,7 +348,7 @@ const RuleFormContent = ({
 
           {/* Scope */}
           <div>
-            <h4 className="mb-3 text-sm font-medium text-foreground">Scope</h4>
+            <h4 className="mb-3 text-sm font-normal text-foreground">Scope</h4>
             <div className="space-y-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted">Environment</label>
@@ -414,7 +415,7 @@ const RuleFormContent = ({
                   pattern and the min/max length constraints are ignored. Define the length
                   requirement inside the regex pattern itself
                   <br /> (e.g.{" "}
-                  <code className="rounded-md bg-mineshaft-700 px-1 py-0.5">{"[A-Z]{12,20}"}</code>
+                  <code className="rounded-md bg-surface-hover px-1 py-0.5">{"[A-Z]{12,20}"}</code>
                   ).
                 </p>
               </AlertDescription>
@@ -436,7 +437,7 @@ const RuleFormContent = ({
           {/* Constraints */}
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-sm font-medium text-foreground">Validation Constraints</h4>
+              <h4 className="text-sm font-normal text-foreground">Validation Constraints</h4>
               {availableConstraintOptions.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -464,10 +465,13 @@ const RuleFormContent = ({
                             append({
                               type: opt.type,
                               appliesTo: defaultTarget,
-                              value:
-                                opt.type === ConstraintType.PreventValueReuse
-                                  ? String(opt.placeholder || 10)
-                                  : ""
+                              ...(opt.type === ConstraintType.PreventValueReuse
+                                ? {
+                                    value: String(DEFAULT_PREVENT_VALUE_REUSE_VERSIONS),
+                                    checkPreviousVersions: true,
+                                    checkOtherSecretsInScope: false
+                                  }
+                                : { value: "" })
                             })
                           }
                         >
@@ -515,12 +519,12 @@ const RuleFormContent = ({
         </div>
 
         {/* Footer */}
-        <SheetFooter className="border-t">
-          <Button variant="project" type="submit">
-            {isEditing ? "Save Changes" : "Create Rule"}
-          </Button>
+        <SheetFooter className="justify-end border-t">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
+          </Button>
+          <Button variant="project" type="submit">
+            {isEditing ? "Save Changes" : "Create Rule"}
           </Button>
         </SheetFooter>
       </form>

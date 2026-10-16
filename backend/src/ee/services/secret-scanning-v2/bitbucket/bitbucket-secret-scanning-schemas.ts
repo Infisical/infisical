@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-import {
-  SecretScanningDataSource,
-  SecretScanningResource
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   BaseCreateSecretScanningDataSourceSchema,
   BaseSecretScanningDataSourceSchema,
@@ -86,7 +83,6 @@ export const BitbucketDataSourceListItemSchema = z
   );
 
 export const BitbucketFindingSchema = BaseSecretScanningFindingSchema.extend({
-  resourceType: z.literal(SecretScanningResource.Repository),
   dataSourceType: z.literal(SecretScanningDataSource.Bitbucket),
   details: GitRepositoryScanFindingDetailsSchema
 });

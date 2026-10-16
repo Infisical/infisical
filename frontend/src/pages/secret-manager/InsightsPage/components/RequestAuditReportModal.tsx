@@ -114,7 +114,7 @@ export const RequestAuditReportModal = ({ isOpen, onOpenChange, projectId }: Pro
                     <FieldLabel>Reports</FieldLabel>
                     <button
                       type="button"
-                      className="cursor-pointer text-xs font-medium text-muted transition-colors hover:text-mineshaft-300"
+                      className="cursor-pointer text-xs font-medium text-muted transition-colors hover:text-label"
                       onClick={() =>
                         field.onChange(allSelected ? [] : [...AUDIT_REPORT_TYPES_ORDERED])
                       }

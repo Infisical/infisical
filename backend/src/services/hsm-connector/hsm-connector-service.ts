@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -15,6 +16,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 import type { THsmConnectorDALFactory } from "./hsm-connector-dal";
@@ -45,6 +47,7 @@ export type THsmConnectorServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways" | "selectGatewayFromPool">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -58,6 +61,7 @@ export const hsmConnectorServiceFactory = ({
   gatewayPoolService,
   gatewayV2DAL,
   gatewayPoolDAL,
+  orgDAL,
   licenseService
 }: THsmConnectorServiceFactoryDep) => {
   const routing = hsmConnectorRoutingFactory({ gatewayV2Service, gatewayPoolService });
@@ -65,13 +69,15 @@ export const hsmConnectorServiceFactory = ({
   const assertGatewayBelongsToOrg = async (
     actorOrgId: string,
     gatewayId: string | null | undefined,
-    gatewayPoolId: string | null | undefined
+    gatewayPoolId: string | null | undefined,
+    previousGatewayId?: string | null
   ) => {
     if (gatewayId) {
       const gw = await gatewayV2DAL.findById(gatewayId);
       if (!gw || gw.orgId !== actorOrgId) {
         throw new NotFoundError({ message: `Gateway ${gatewayId} not found.` });
       }
+      await assertIndividualGatewayAllowed({ orgDAL, orgId: actorOrgId, gatewayId, previousGatewayId });
     }
     if (gatewayPoolId) {
       const pool = await gatewayPoolDAL.findById(gatewayPoolId);
@@ -246,7 +252,7 @@ export const hsmConnectorServiceFactory = ({
     }
 
     if (routingChanged) {
-      await assertGatewayBelongsToOrg(actor.orgId, nextGatewayId, nextGatewayPoolId);
+      await assertGatewayBelongsToOrg(actor.orgId, nextGatewayId, nextGatewayPoolId, row.gatewayId);
     }
 
     const effectiveRoutingChanged =

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Link } from "@tanstack/react-router";
+import { Link as RouterLink } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
   BoxesIcon as SubOrgIcon,
@@ -34,6 +34,8 @@ const meta = {
       options: [
         "outline",
         "ghost",
+        "link",
+        "text",
         "neutral",
         "success",
         "info",
@@ -84,6 +86,22 @@ export const Outline: Story = {
     docs: {
       description: {
         story: "Use this variant for general page actions."
+      }
+    }
+  }
+};
+
+export const Text: Story = {
+  name: "Variant: Text",
+  args: {
+    variant: "text",
+    children: "Copy value"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use for compact text actions without padding or an underline. Hover and pressed colors indicate interaction; keyboard focus remains visible."
       }
     }
   }
@@ -149,6 +167,22 @@ export const Ghost: Story = {
     docs: {
       description: {
         story: "Use this variant for optional / non-primary actions."
+      }
+    }
+  }
+};
+
+export const Link: Story = {
+  name: "Variant: Link",
+  args: {
+    variant: "link",
+    children: <>Link</>
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use this zero-padding text variant for compact secondary actions embedded in labels or prose."
       }
     }
   }
@@ -320,10 +354,10 @@ export const AsRouterLink: Story = {
     variant: "project",
     asChild: true,
     children: (
-      <Link to=".">
+      <RouterLink to=".">
         <ProjectIcon />
         View Project
-      </Link>
+      </RouterLink>
     )
   },
   parameters: {

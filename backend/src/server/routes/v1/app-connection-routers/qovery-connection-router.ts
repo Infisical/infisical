@@ -81,7 +81,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
       operationId: "listQoveryEnvironments",
       params: z.object({
         connectionId: z.string().uuid(),
-        projectId: z.string().uuid()
+        projectId: z.string()
       }),
       response: {
         200: qoveryResourceListSchema

@@ -83,6 +83,14 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
+  const isSessionTerminated = async (sessionId: string, tx?: Knex) => {
+    const session = await (tx || db.replicaNode())(TableName.PamSession)
+      .where("id", sessionId)
+      .select("status")
+      .first();
+    return session?.status === PamSessionStatus.Terminated;
+  };
+
   const terminateSessionById = async (sessionId: string, tx?: Knex) => {
     const [updated] = await (tx || db)(TableName.PamSession)
       .where("id", sessionId)
@@ -192,13 +200,26 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return { sessions, totalCount: Number(countResult?.count ?? 0) };
   };
 
+  const findLiveByOrgAndUserIds = async (orgIds: string[], userIds: string[], tx?: Knex) => {
+    if (!orgIds.length || !userIds.length) return [];
+
+    return (tx || db)(TableName.PamSession)
+      .join(TableName.Project, `${TableName.Project}.id`, `${TableName.PamSession}.projectId`)
+      .select(selectAllTableCols(TableName.PamSession))
+      .whereIn(`${TableName.Project}.orgId`, orgIds)
+      .whereIn(`${TableName.PamSession}.userId`, userIds)
+      .whereIn(`${TableName.PamSession}.status`, [PamSessionStatus.Active, PamSessionStatus.Starting]);
+  };
+
   return {
     ...orm,
     findById,
+    findLiveByOrgAndUserIds,
     claimRecordingSecrets,
     countActiveWebSessions,
     endExpiredWebSessions,
     endSessionById,
+    isSessionTerminated,
     terminateSessionById,
     activateSession,
     findByProjectId,

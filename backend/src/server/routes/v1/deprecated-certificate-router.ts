@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -56,7 +57,9 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber: cert.serialNumber
+            serialNumber: cert.serialNumber,
+            applicationId: cert.applicationId,
+            applicationName: cert.applicationName
           }
         }
       });
@@ -87,7 +90,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req, reply) => {
-      const { cert, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
+      const { cert, applicationName, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -103,7 +106,9 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber: cert.serialNumber
+            serialNumber: cert.serialNumber,
+            applicationId: cert.applicationId,
+            applicationName
           }
         }
       });
@@ -139,7 +144,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req, reply) => {
-      const { certificate, certificateChain, serialNumber, cert, privateKey } =
+      const { certificate, certificateChain, serialNumber, cert, privateKey, applicationName } =
         await server.services.certificate.getCertBundle({
           serialNumber: req.params.serialNumber,
           actor: req.permission.type,
@@ -156,7 +161,9 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber: cert.serialNumber
+            serialNumber: cert.serialNumber,
+            applicationId: cert.applicationId,
+            applicationName
           }
         }
       });
@@ -317,7 +324,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, privateKey, serialNumber, cert } =
+      const { certificate, certificateChain, privateKey, serialNumber, cert, applicationName } =
         await server.services.certificate.importCert({
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -334,7 +341,9 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber
+            serialNumber,
+            applicationId: cert.applicationId,
+            applicationName
           }
         }
       });
@@ -488,7 +497,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { revokedAt, cert, ca } = await server.services.certificate.revokeCert({
+      const { revokedAt, cert, applicationName, ca } = await server.services.certificate.revokeCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -505,7 +514,10 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber: cert.serialNumber
+            serialNumber: cert.serialNumber,
+            applicationId: cert.applicationId,
+            applicationName,
+            revocationReason: req.body.revocationReason
           }
         }
       });
@@ -528,7 +540,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Delete certificate",
+      description: "Delete certificate. Only expired, discovered, or imported certificates can be deleted.",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
@@ -539,12 +551,13 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { deletedCert } = await server.services.certificate.deleteCert({
+      const { deletedCert, applicationName, deletionEligibility } = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo
       });
 
       await server.services.auditLog.createAuditLog({
@@ -555,7 +568,13 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: deletedCert.id,
             cn: deletedCert.commonName,
-            serialNumber: deletedCert.serialNumber
+            friendlyName: deletedCert.friendlyName,
+            serialNumber: deletedCert.serialNumber,
+            notAfter: deletedCert.notAfter.toISOString(),
+            source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
+            deletionAllowedReason: deletionEligibility,
+            applicationId: deletedCert.applicationId,
+            applicationName
           }
         }
       });
@@ -589,13 +608,14 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber, cert } = await server.services.certificate.getCertBody({
-        serialNumber: req.params.serialNumber,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
+      const { certificate, certificateChain, serialNumber, cert, applicationName } =
+        await server.services.certificate.getCertBody({
+          serialNumber: req.params.serialNumber,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -605,7 +625,9 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber: cert.serialNumber
+            serialNumber: cert.serialNumber,
+            applicationId: cert.applicationId,
+            applicationName
           }
         }
       });
@@ -644,7 +666,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req, reply) => {
-      const { pkcs12Data, cert } = await server.services.certificate.getCertPkcs12({
+      const { pkcs12Data, cert, applicationName } = await server.services.certificate.getCertPkcs12({
         serialNumber: req.params.serialNumber,
         password: req.body.password,
         alias: req.body.alias,
@@ -662,7 +684,9 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber: cert.serialNumber
+            serialNumber: cert.serialNumber,
+            applicationId: cert.applicationId,
+            applicationName
           }
         }
       });

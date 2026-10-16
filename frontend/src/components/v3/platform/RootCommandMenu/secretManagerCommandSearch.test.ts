@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import type { TDashboardProjectSecretsQuickSearch } from "@app/hooks/api/dashboard/types";
 import type { ProjectEnv } from "@app/hooks/api/projects/types";

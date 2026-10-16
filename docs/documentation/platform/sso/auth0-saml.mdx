@@ -69,7 +69,7 @@ description: "Learn how to configure Auth0 SAML for Infisical SSO."
         Click **Save**.
 
     <Warning>
-        Make sure the `firstName` claim is mapped to a valid field of your Auth0 users. If your users don't have a `"given_name"` field available, you can replace it with `"name"` or another field that exists in your user profile on the left side of the mapping.
+        Make sure the `firstName` claim is mapped to a valid field of your Auth0 users. If your users don't have a `"given_name"` field available, you can replace it with `"name"` or another field that exists in your user profile on the left side of the mapping. Because `"name"` holds a user's full name, remove the `family_name` mapping when you do, otherwise the surname shows up twice in Infisical.
     </Warning>
     </Step>
     <Step title="Enable SAML SSO in Infisical">

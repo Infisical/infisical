@@ -2,7 +2,6 @@ import { SetStateAction, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -37,9 +36,15 @@ type Props = {
   selectedEnvs: ProjectEnv[];
   setSelectedEnvs: (value: SetStateAction<ProjectEnv[]>) => void;
   isDisabled?: boolean;
+  onUpgradePlan: () => void;
 };
 
-export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }: Props) {
+export function EnvironmentSelect({
+  selectedEnvs,
+  setSelectedEnvs,
+  isDisabled,
+  onUpgradePlan
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
 
@@ -47,10 +52,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
     currentProject: { environments: projectEnvs, id: projectId }
   } = useProject();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "createEnvironment",
-    "upgradePlan"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["createEnvironment"] as const);
   const queryClient = useQueryClient();
 
   const isMoreEnvironmentsAllowed =
@@ -63,7 +65,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
     if (isMoreEnvironmentsAllowed) {
       handlePopUpOpen("createEnvironment");
     } else {
-      handlePopUpOpen("upgradePlan");
+      onUpgradePlan();
     }
   };
 
@@ -114,11 +116,6 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
           setSelectedEnvs([newEnv]);
         }}
       />
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
-      />
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <Tooltip open={isDisabled ? undefined : false}>
           <TooltipTrigger>
@@ -128,7 +125,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                 role="combobox"
                 aria-expanded={isOpen}
                 disabled={isDisabled}
-                className="w-[180px] justify-between"
+                className="w-full max-w-[180px] min-w-28 justify-between"
               >
                 <span className="truncate">{label}</span>
                 <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -137,8 +134,11 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
           </TooltipTrigger>
           <TooltipContent>Save or discard pending changes to switch environments</TooltipContent>
         </Tooltip>
-        <PopoverContent align="start" className="p-0">
-          <Command>
+        <PopoverContent
+          align="start"
+          className="w-80 max-w-[var(--radix-popover-content-available-width)] overflow-hidden p-0"
+        >
+          <Command className="min-w-0">
             <CommandInput
               aria-label="Filter environments"
               value={inputValue}
@@ -166,27 +166,34 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
               <CommandGroup>
                 {projectEnvs.map((env) => (
                   <CommandItem
+                    className="min-w-0"
                     key={env.id}
                     value={env.id}
                     onSelect={handleSwitchEnv}
                     keywords={[env.name, env.slug]}
                   >
-                    <Tooltip delayDuration={500} disableHoverableContent>
+                    <Tooltip delayDuration={500}>
                       <TooltipTrigger asChild>
-                        <span className="truncate">{env.name}</span>
+                        <span className="min-w-0 flex-1 truncate">{env.name}</span>
                       </TooltipTrigger>
                       <TooltipContent side="right" className="max-w-2xl break-all">
                         {env.name}
                       </TooltipContent>
                     </Tooltip>
-                    <Checkbox
-                      className="ml-auto"
-                      variant="project"
-                      aria-label={`Select ${env.name}`}
-                      isChecked={selectedEnvs.some((e) => e.id === env.id)}
-                      onCheckedChange={() => handleToggleEnv(env.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="ml-auto inline-flex shrink-0">
+                          <Checkbox
+                            variant="project"
+                            aria-label={`Select ${env.name}`}
+                            isChecked={selectedEnvs.some((e) => e.id === env.id)}
+                            onCheckedChange={() => handleToggleEnv(env.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Add/remove from view</TooltipContent>
+                    </Tooltip>
                   </CommandItem>
                 ))}
               </CommandGroup>

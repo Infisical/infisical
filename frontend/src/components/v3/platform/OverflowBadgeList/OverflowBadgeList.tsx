@@ -156,7 +156,13 @@ export const OverflowBadgeList = <T,>({
             }}
           >
             {linkProps ? (
-              <Link {...linkProps}>
+              <Link
+                {...linkProps}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  linkProps.onClick?.(event);
+                }}
+              >
                 {icon}
                 <span>{label}</span>
               </Link>

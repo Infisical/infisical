@@ -4,8 +4,31 @@ export enum AgentVaultCredentialType {
   Passthrough = "passthrough"
 }
 
+export enum AgentVaultMemberType {
+  User = "user",
+  MachineIdentity = "machineIdentity",
+  Group = "group"
+}
+
 export enum AgentVaultResourceRole {
   Consumer = "consumer"
+}
+
+export enum AgentVaultHttpMethod {
+  Get = "GET",
+  Head = "HEAD",
+  Post = "POST",
+  Put = "PUT",
+  Patch = "PATCH",
+  Delete = "DELETE",
+  Options = "OPTIONS"
+}
+
+export enum AgentVaultSubstitutionSurface {
+  Path = "path",
+  Query = "query",
+  Header = "header",
+  Body = "body"
 }
 
 export enum AgentVaultTrafficPolicy {
@@ -22,4 +45,12 @@ export enum AgentVaultSessionStatus {
 export enum AgentVaultSessionScope {
   Mine = "mine",
   All = "all"
+}
+
+/** Which part of a service a variable reference sits in. A basic credential's password is its value. */
+export enum AgentVaultVariableReferenceField {
+  CredentialValue = "credential-value",
+  CredentialUsername = "credential-username",
+  CustomHeader = "custom-header",
+  Substitution = "substitution"
 }

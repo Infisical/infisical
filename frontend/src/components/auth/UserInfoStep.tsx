@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 import { z } from "zod";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
@@ -150,6 +151,7 @@ export default function UserInfoStep({
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ event: "signup_completed" });
     }
+    if (!isInvite) captureSignupCompleted("email");
 
     const userOrgs = await fetchOrganizations();
     const orgId = userOrgs[0]?.id;
@@ -162,7 +164,11 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="mx-auto flex w-full flex-col items-center justify-center">
+    <form
+      className="mx-auto flex w-full flex-col items-center justify-center"
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+    >
       <AuthPagePanel>
         <CardHeader className={isInvite ? "mb-6 gap-2" : "mb-4 gap-2"}>
           <CardTitle
@@ -172,37 +178,29 @@ export default function UserInfoStep({
           >
             {isInvite ? (
               <>
-                <span className="shrink-0 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
+                <span className="shrink-0 bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-transparent opacity-70">
                   Join
                 </span>
                 <span
-                  className="min-w-0 truncate bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent"
+                  className="min-w-0 truncate bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-transparent"
                   title={inviteOrganizationLabel}
                 >
                   {inviteOrganizationLabel}
                 </span>
               </>
             ) : (
-              <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+              <span className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-transparent">
                 {stepTitle}
               </span>
             )}
           </CardTitle>
           {isInvite ? (
-            <CardDescription className="ml-0.5 font-alliance text-base break-words text-accent">
+            <CardDescription className="ml-0.5 font-sans text-base break-words text-accent">
               Set up your Infisical account
             </CardDescription>
           ) : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <input
-            className="hidden"
-            type="text"
-            name="username"
-            autoComplete="username"
-            value={email}
-            readOnly
-          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
               <FieldLabel className="sr-only" htmlFor="signup-first-name">
@@ -237,14 +235,6 @@ export default function UserInfoStep({
               ) : null}
             </Field>
           </div>
-          {isInvite && (
-            <Field>
-              <FieldLabel className="sr-only" htmlFor="signup-email">
-                Email
-              </FieldLabel>
-              <Input variant="outlined" id="signup-email" type="email" value={email} disabled />
-            </Field>
-          )}
           {!isInvite && (
             <Field data-invalid={showOrganizationNameError}>
               <FieldLabel className="sr-only" htmlFor="signup-organization-name">
@@ -280,6 +270,20 @@ export default function UserInfoStep({
               />
             </Field>
           )}
+          <Field className={isInvite ? undefined : "hidden"}>
+            <FieldLabel className="sr-only" htmlFor="signup-email">
+              Email
+            </FieldLabel>
+            <Input
+              variant="outlined"
+              id="signup-email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              readOnly
+            />
+          </Field>
           <PasswordField
             variant="outlined"
             id="new-password"
@@ -338,7 +342,6 @@ export default function UserInfoStep({
           </AnimatedCollapse>
           <Button
             type="submit"
-            onClick={handleSubmit(onSubmit)}
             variant="project"
             size="lg"
             isFullWidth
@@ -349,6 +352,6 @@ export default function UserInfoStep({
           </Button>
         </CardContent>
       </AuthPagePanel>
-    </div>
+    </form>
   );
 }

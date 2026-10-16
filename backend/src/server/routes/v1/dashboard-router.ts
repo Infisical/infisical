@@ -12,6 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -21,7 +22,6 @@ import {
   SanitizedHoneyTokenSchema,
   SanitizedProxiedServiceSchema,
   SanitizedTagSchema,
-  SanitizedUserSchema,
   secretRawSchema
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -33,11 +33,13 @@ import {
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
-  SecretsOrderBy
+  SecretsOrderBy,
+  SecretSortField
 } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { isSecretPathMatch, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
+import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
+import { isInSecretSearchScope, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
 const DEEP_SEARCH_DEFAULT_PAGE_LIMIT = 25;
@@ -61,6 +63,28 @@ const SecretMetadataSearchQuerySchema = z.object({
 export const registerDashboardRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/accessible-secrets/metadata",
+    config: { rateLimit: secretsLimit },
+    schema: {
+      operationId: "getAccessibleSecretMetadata",
+      description: "List shared secret metadata recursively without reading secret values.",
+      security: [{ bearerAuth: [] }],
+      querystring: SecretMetadataQuerySchema,
+      response: { 200: SecretMetadataResponseSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.secret.getSecretMetadata({
+        ...req.query,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
+
+  server.route({
+    method: "GET",
     url: "/secrets-by-metadata",
     config: {
       rateLimit: readLimit
@@ -78,6 +102,15 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         .object({
           projectId: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.projectId),
           operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).optional(),
+          environments: z
+            .string()
+            .trim()
+            .max(65535)
+            .transform((value) => value.split(","))
+            .pipe(slugSchema({ field: "Environment slug" }).array().min(1).max(1000))
+            .optional()
+            .describe(DASHBOARD.SECRET_OVERVIEW_LIST.environments),
+          secretPath: SecretMetadataQuerySchema.shape.secretPath,
           tags: z.string().trim().transform(decodeURIComponent).optional()
         })
         .describe(
@@ -85,12 +118,18 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         ),
       response: {
         200: z.object({
+          searchLimit: z.number().describe(DASHBOARD.SECRET_METADATA_SEARCH.searchLimit),
           secrets: z
             .object({
               secretId: z.string(),
               secretKey: z.string(),
               environment: z.string(),
               secretPath: z.string(),
+              tags: z
+                .object({ id: z.string(), slug: z.string() })
+                .array()
+                .describe(DASHBOARD.SECRET_METADATA_SEARCH.tags),
+              secretValueHidden: z.boolean().describe(DASHBOARD.SECRET_METADATA_LIST.secretValueHidden),
               metadata: z
                 .object({
                   key: z.string(),
@@ -109,13 +148,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const { projectId } = req.query;
       const tagSlugs = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
 
-      const { secrets } = await server.services.resourceMetadata.searchSecretMetadata({
+      const result = await server.services.resourceMetadata.searchSecretMetadata({
         filters,
         operator,
         tagSlugs,
+        environments: req.query.environments,
+        secretPath: req.query.secretPath,
         actor: req.permission,
         projectId
       });
+      const { secrets } = result;
 
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -137,7 +179,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { secrets };
+      return result;
     }
   });
 
@@ -171,15 +213,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         offset: z.coerce.number().min(0).optional().default(0).describe(DASHBOARD.SECRET_OVERVIEW_LIST.offset),
         limit: z.coerce.number().min(1).max(100).optional().default(100).describe(DASHBOARD.SECRET_OVERVIEW_LIST.limit),
         orderBy: z
-          .nativeEnum(SecretsOrderBy)
-          .default(SecretsOrderBy.Name)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderBy)
-          .optional(),
+          .nativeEnum(SecretSortField)
+          .default(SecretSortField.Name)
+          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderBy),
         orderDirection: z
           .nativeEnum(OrderByDirection)
           .default(OrderByDirection.ASC)
-          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection)
-          .optional(),
+          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection),
+        sortEnvironment: slugSchema().describe(DASHBOARD.SECRET_OVERVIEW_LIST.sortEnvironment).optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
         tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_OVERVIEW_LIST.tags).optional(),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
@@ -312,6 +353,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         search,
         orderBy,
         orderDirection,
+        sortEnvironment,
         includeFolders,
         includeSecrets,
         includeImports,
@@ -326,6 +368,23 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || environments.length === 0)
         throw new BadRequestError({ message: "Missing project id or environment(s)" });
+
+      if (sortEnvironment && !environments.includes(sortEnvironment)) {
+        throw new BadRequestError({
+          message: `Sort environment '${sortEnvironment}' must be included in the requested environments`
+        });
+      }
+
+      const isTimestampSort = orderBy === SecretSortField.CreatedAt || orderBy === SecretSortField.UpdatedAt;
+
+      if (isTimestampSort && environments.length > 1 && !sortEnvironment) {
+        throw new BadRequestError({
+          message:
+            "The 'sortEnvironment' query parameter is required for recency sorting when multiple environments are requested"
+        });
+      }
+
+      const resourceOrderDirection = orderBy === SecretSortField.Name ? orderDirection : OrderByDirection.ASC;
 
       const { shouldUseSecretV2Bridge } = await server.services.projectBot.getBotKey(projectId);
 
@@ -435,8 +494,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             projectId,
             environments,
             path: secretPath,
-            orderBy,
-            orderDirection,
+            orderBy: SecretsOrderBy.Name,
+            orderDirection: resourceOrderDirection,
             search,
             limit: remainingLimit,
             offset: adjustedOffset
@@ -489,8 +548,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             actorOrgId: req.permission.orgId,
             projectId,
             search,
-            orderBy,
-            orderDirection,
+            orderBy: SecretsOrderBy.Name,
+            orderDirection: resourceOrderDirection,
             environmentSlugs: environments,
             path: secretPath,
             limit: remainingLimit,
@@ -539,8 +598,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             {
               projectId,
               search,
-              orderBy,
-              orderDirection,
+              orderBy: SecretsOrderBy.Name,
+              orderDirection: resourceOrderDirection,
               environments,
               secretPath,
               limit: remainingLimit,
@@ -589,8 +648,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             {
               projectId,
               search,
-              orderBy,
-              orderDirection,
+              orderBy: SecretsOrderBy.Name,
+              orderDirection: resourceOrderDirection,
               environments,
               secretPath,
               limit: remainingLimit,
@@ -624,8 +683,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             {
               projectId,
               search,
-              orderBy,
-              orderDirection,
+              orderBy: SecretsOrderBy.Name,
+              orderDirection: resourceOrderDirection,
               environments,
               secretPath,
               limit: remainingLimit,
@@ -673,6 +732,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             path: secretPath,
             orderBy,
             orderDirection,
+            sortEnvironment,
             search,
             tagSlugs,
             limit: remainingLimit,
@@ -911,12 +971,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .extend({
               isHoneyTokenSecret: z.boolean().optional(),
               isEmpty: z.boolean(),
-              secretReminderRecipients: z
-                .object({
-                  user: SanitizedUserSchema.pick({ id: true, email: true, username: true }),
-                  id: z.string()
-                })
-                .array(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
@@ -1671,7 +1725,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       const matchedSecrets = searchPath
-        ? secrets.filter((secret) => isSecretPathMatch(secret.secretPath, searchPath))
+        ? secrets.filter((secret) => isInSecretSearchScope(secret.secretPath, searchPath, secretPath))
         : secrets;
 
       // page secrets by rendered entry (env + path + key): a shared secret and its personal override
@@ -1690,11 +1744,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const secretUnits = [...secretUnitsByEntry.values()];
 
       const matchedDynamicSecrets = searchPath
-        ? dynamicSecrets.filter((dynamicSecret) => isSecretPathMatch(dynamicSecret.path, searchPath))
+        ? dynamicSecrets.filter((dynamicSecret) => isInSecretSearchScope(dynamicSecret.path, searchPath, secretPath))
         : dynamicSecrets;
 
       const matchedSecretRotations = searchPath
-        ? secretRotations.filter((rotation) => isSecretPathMatch(rotation.folder.path, searchPath))
+        ? secretRotations.filter((rotation) => isInSecretSearchScope(rotation.folder.path, searchPath, secretPath))
         : secretRotations;
 
       const matchedFolders = allFolders.filter((folder) => {
@@ -1704,7 +1758,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         if (searchPath) {
           if (searchPath === "/") {
             // only show root folders if no folder name search
-            if (!searchName) return folderPath === searchPath;
+            if (!searchName) return isInSecretSearchScope(folderPath, searchPath, secretPath);
 
             // start partial match on root folders
             return folderName.toLowerCase().startsWith(searchName.toLowerCase());
@@ -1712,7 +1766,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
           // support ending partial path match
           return (
-            isSecretPathMatch(folderPath, searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase())
+            isInSecretSearchScope(folderPath, searchPath, secretPath) &&
+            folderName.toLowerCase().startsWith(searchName.toLowerCase())
           );
         }
 

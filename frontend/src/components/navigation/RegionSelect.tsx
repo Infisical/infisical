@@ -126,7 +126,7 @@ export const RegionSelect = ({ compact }: RegionSelectProps) => {
                   <div className="h-4 w-5 shrink-0">{flag}</div>
                   <span className="font-medium">{label}</span>
                 </div>
-                <ul className="ml-4 flex list-disc flex-col gap-1 text-sm text-mineshaft-300">
+                <ul className="ml-4 flex list-disc flex-col gap-1 text-sm text-label">
                   {bullets.map((bullet) => (
                     <li key={bullet}>{bullet}</li>
                   ))}

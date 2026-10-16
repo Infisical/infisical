@@ -21,11 +21,20 @@ import {
   withSshConnection
 } from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { PkiSyncError } from "../pki-sync-errors";
-import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import {
+  buildFileCollisionMessage,
+  exportCertificateForSync,
+  isExportFormatBlockedByFips,
+  isKeystoreExportFormat,
+  JKS_FIPS_UNSUPPORTED_MESSAGE,
+  PemCertificateExtension,
+  PkiSyncExportFormat
+} from "../pki-sync-export-fns";
 import {
   buildHealthCheckCommandFailureMessage,
   buildHealthCheckCommandPlan,
@@ -51,6 +60,7 @@ type TLinuxServerPkiSyncFactoryDeps = {
     TCertificateSyncDALFactory,
     "findByPkiSyncId" | "findByPkiSyncAndCertificate" | "updateById" | "addCertificates" | "removeCertificates"
   >;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -61,6 +71,8 @@ type TLinuxServerSyncOptions = {
   exportFormat?: PkiSyncExportFormat;
   pemCertificateExtension?: PemCertificateExtension;
   combineCertificateChain?: boolean;
+  keystoreAlias?: string;
+  includeTruststore?: boolean;
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
   fileMode?: string;
@@ -262,8 +274,9 @@ const reconcileLinuxServerRemovals = async (args: {
   certificateMap: TCertificateMap;
   deliveredPaths: Set<string>;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "removeCertificates">;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
 }): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
-  const { sftp, pkiSync, certificateMap, deliveredPaths, certificateSyncDAL } = args;
+  const { sftp, pkiSync, certificateMap, deliveredPaths, certificateSyncDAL, certificateDAL } = args;
   const failedRemovals: Array<{ name: string; error: string }> = [];
   let removed = 0;
 
@@ -274,8 +287,19 @@ const reconcileLinuxServerRemovals = async (args: {
   );
   const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
 
+  const untrackCandidateIds = existingSyncRecords
+    .map((record) => record.certificateId)
+    .filter((id): id is string => Boolean(id) && !activeCertificateIds.has(id));
+  const stillActiveIds = new Set(
+    (await certificateDAL.findActiveCertificatesByIds(untrackCandidateIds)).map((cert) => cert.id)
+  );
+
   for (const record of existingSyncRecords) {
-    if (!record.certificateId || activeCertificateIds.has(record.certificateId)) {
+    if (
+      !record.certificateId ||
+      activeCertificateIds.has(record.certificateId) ||
+      stillActiveIds.has(record.certificateId)
+    ) {
       // eslint-disable-next-line no-continue
       continue;
     }
@@ -308,7 +332,8 @@ const resolveLinuxExportOptions = (options: TLinuxServerSyncOptions) => ({
   format: options.exportFormat ?? PkiSyncExportFormat.Pem,
   includePrivateKey: options.includePrivateKey ?? true,
   pemCertificateExtension: options.pemCertificateExtension,
-  combineCertificateChain: options.combineCertificateChain
+  combineCertificateChain: options.combineCertificateChain,
+  includeTruststore: options.includeTruststore
 });
 
 const executeLinuxServerHostCommand = (
@@ -349,8 +374,7 @@ const runLinuxServerHealthCheckCommand = async ({
     certificateMap,
     exportOptions,
     joinPath: (directory, fileName) => path.posix.join(directory, fileName),
-    pkcs12Password:
-      exportOptions.format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+    pkcs12Password: isKeystoreExportFormat(exportOptions.format) ? pkiSync.syncCredentials?.exportPassword : undefined
   });
   if (!plan) return undefined;
 
@@ -393,6 +417,7 @@ const runLinuxServerPostSyncCommand = ({
 
 export const linuxServerPkiSyncFactory = ({
   certificateSyncDAL,
+  certificateDAL,
   gatewayV2Service,
   gatewayPoolService,
   keyStore
@@ -409,6 +434,10 @@ export const linuxServerPkiSyncFactory = ({
     const privateKeyMode = parseFileMode(options.privateKeyFileMode, PRIVATE_KEY_FILE_MODE);
     const certificateMode = parseFileMode(options.fileMode, CERTIFICATE_FILE_MODE);
     const exportPassword = pkiSync.syncCredentials?.exportPassword;
+
+    if (isExportFormatBlockedByFips(format)) {
+      throw new PkiSyncError({ shouldRetry: false, message: JKS_FIPS_UNSUPPORTED_MESSAGE });
+    }
 
     const failedUploads: Array<{ name: string; error: string }> = [];
     const failedRemovals: Array<{ name: string; error: string }> = [];
@@ -451,7 +480,7 @@ export const linuxServerPkiSyncFactory = ({
         await removeStaleTempFiles(sftp, config.destinationPath);
 
         for (const [baseName, certData] of Object.entries(certificateMap)) {
-          const { cert, privateKey, certificateChain, certificateId } = certData;
+          const { cert, privateKey, certificateChain, fullCertificateChain, caCertificate, certificateId } = certData;
 
           if (!cert) {
             skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
@@ -459,9 +488,9 @@ export const linuxServerPkiSyncFactory = ({
             continue;
           }
 
-          // Private key is required for PKCS#12, and for PEM when the operator asked to include it.
+          // Private key is required for PKCS#12 and JKS, and for PEM when the operator asked to include it.
           // If the key is not available (external CSR or HSM key), fail rather than deliver a keyless file.
-          const keyRequired = format === PkiSyncExportFormat.Pkcs12 || includePrivateKey;
+          const keyRequired = isKeystoreExportFormat(format) || includePrivateKey;
           if (keyRequired && !privateKey) {
             failedUploads.push({
               name: baseName,
@@ -477,10 +506,19 @@ export const linuxServerPkiSyncFactory = ({
               ...exportOptions,
               certificate: cert,
               certificateChain,
+              fullCertificateChain,
+              caCertificate,
               privateKey,
               password: exportPassword,
-              alias: baseName
+              alias: options.keystoreAlias || baseName
             });
+
+            const collidingPath = files
+              .map((file) => path.posix.join(config.destinationPath, `${baseName}${file.suffix}`))
+              .find((filePath) => deliveredPaths.has(filePath));
+            if (collidingPath) {
+              throw new PkiSyncError({ message: buildFileCollisionMessage(collidingPath) });
+            }
 
             const writtenPaths: string[] = [];
             for (const file of files) {
@@ -539,7 +577,8 @@ export const linuxServerPkiSyncFactory = ({
             pkiSync,
             certificateMap,
             deliveredPaths,
-            certificateSyncDAL
+            certificateSyncDAL,
+            certificateDAL
           });
           removed += reconciliation.removed;
           failedRemovals.push(...reconciliation.failedRemovals);
@@ -557,7 +596,7 @@ export const linuxServerPkiSyncFactory = ({
       destinationDirectory: config.destinationPath,
       deliveredPaths,
       deliveredCertificates,
-      pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
+      pkcs12Password: isKeystoreExportFormat(format) ? exportPassword : undefined
     });
     const postSyncCommand = postSyncCommandPlan
       ? await runLinuxServerPostSyncCommand({

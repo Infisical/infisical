@@ -2,8 +2,10 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAdditionalPrivileges } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
+import { ApprovalRequestGrantStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 
 export type TAdditionalPrivilegeDALFactory = ReturnType<typeof additionalPrivilegeDALFactory>;
@@ -114,8 +116,46 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
     }
   };
 
+  const $revokeGrantsOfDeletedPrivileges = async (privileges: TAdditionalPrivileges[], tx: Knex) => {
+    const grantIds = privileges.map(({ grantId }) => grantId).filter((grantId): grantId is string => Boolean(grantId));
+    if (!grantIds.length) return;
+
+    try {
+      for (const chunk of chunkArray(grantIds, 500)) {
+        // eslint-disable-next-line no-await-in-loop
+        await tx(TableName.ApprovalRequestGrants)
+          .whereIn("id", chunk)
+          .where("status", ApprovalRequestGrantStatus.Active)
+          .update({ status: ApprovalRequestGrantStatus.Revoked, revokedAt: new Date() });
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Revoke grants of deleted additional privileges" });
+    }
+  };
+
+  // The grantId FK only nulls itself on delete, so the grant would otherwise stay active with no privilege behind it.
+  const deleteById: typeof orm.deleteById = async (id, tx) => {
+    const run = async (trx: Knex) => {
+      const doc = await orm.deleteById(id, trx);
+      if (doc) await $revokeGrantsOfDeletedPrivileges([doc], trx);
+      return doc;
+    };
+    return tx ? run(tx) : orm.transaction(run);
+  };
+
+  const deleteFn: typeof orm.delete = async (filter, tx) => {
+    const run = async (trx: Knex) => {
+      const docs = await orm.delete(filter, trx);
+      await $revokeGrantsOfDeletedPrivileges(docs, trx);
+      return docs;
+    };
+    return tx ? run(tx) : orm.transaction(run);
+  };
+
   return {
     ...orm,
+    deleteById,
+    delete: deleteFn,
     findWithAccessApprovalStatus,
     isLinkedToAccessApproval,
     findFolderScopedPrivileges,

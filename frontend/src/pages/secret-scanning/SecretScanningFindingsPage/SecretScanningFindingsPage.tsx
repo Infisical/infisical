@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -21,13 +21,13 @@ export const SecretScanningFindingsPage = () => {
         I={ProjectPermissionSecretScanningFindingActions.Read}
         a={ProjectPermissionSub.SecretScanningFindings}
       >
-        <div className="h-full bg-bunker-800">
-          <div className="mx-auto flex flex-col justify-between text-white">
+        <div className="h-full bg-page">
+          <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
             <div className="mx-auto mb-6 w-full max-w-8xl">
               <PageHeader
                 scope={ProjectType.SecretScanning}
                 title="Findings"
-                description="View Secret Leaks across your project."
+                description="View secret leaks across your data sources."
               />
               <SecretScanningFindingsSection />
             </div>

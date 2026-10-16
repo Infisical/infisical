@@ -1,12 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import axios from "axios";
+import { z } from "zod";
 
 import { SessionStorageKeys } from "@app/const";
 
 import { CliRedirectPage } from "./CliRedirectPage";
 
+const CliRedirectPageQueryParamsSchema = z.object({
+  org_id: z.string().optional().catch(undefined)
+});
+
 export const Route = createFileRoute("/cli-redirect")({
   component: CliRedirectPage,
+  validateSearch: zodValidator(CliRedirectPageQueryParamsSchema),
   beforeLoad: async () => {
     const cliTerminalTokenInfo = sessionStorage.getItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
     if (!cliTerminalTokenInfo) return;

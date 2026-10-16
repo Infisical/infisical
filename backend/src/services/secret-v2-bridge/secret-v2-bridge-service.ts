@@ -23,15 +23,14 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -55,7 +54,6 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -63,6 +61,7 @@ import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
+  SecretSortField,
   TGetASecretByIdDTO,
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
@@ -70,7 +69,14 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import {
+  describeSecretValidationFailures,
+  SecretValidationError
+} from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
+import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { createSecretBlindIndexer } from "./secret-blind-index-fns";
+import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
   MAX_SECRET_CACHE_BYTES,
@@ -82,6 +88,7 @@ import {
   buildHierarchy,
   createFetchFolderSecretsWithImports,
   createRelativeImportExpander,
+  expandSecretReferencesGroupedByPath,
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
@@ -104,6 +111,7 @@ import {
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
+  TGetSecretsMultiEnvDTO,
   TGetSecretsRawByFolderMappingsDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
@@ -159,14 +167,14 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    "insertV2Bridge" | "insertApprovalSecretV2Tags"
+  secretApprovalRequestCreationFns: Pick<
+    TSecretApprovalRequestCreationFnsFactory,
+    "createSecretApprovalRequestV2Bridge"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
+    | "getItemPrimary"
     | "getItem"
     | "getItemBuffer"
     | "setExpiry"
@@ -176,8 +184,10 @@ type TSecretV2BridgeServiceFactoryDep = {
     | "hashGet"
     | "hashSet"
   >;
-  reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
-  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
+  reminderService: Pick<
+    TReminderServiceFactory,
+    "prepareReminder" | "applyReminder" | "createReminder" | "getReminder" | "moveReminders" | "copyReminders"
+  >;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -201,17 +211,46 @@ export const secretV2BridgeServiceFactory = ({
   secretImportDAL,
   secretVersionTagDAL,
   secretApprovalPolicyService,
-  secretApprovalRequestDAL,
-  secretApprovalRequestSecretDAL,
+  secretApprovalRequestCreationFns,
   kmsService,
   resourceMetadataDAL,
   keyStore,
   reminderService,
-  reminderDAL,
   secretValidationRuleService,
   projectFolderGrantDAL,
   orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
+  // Which secret already holds a duplicated value is only named to a writer who may read there, so the
+  // message is resolved against their permission rather than formatted inside validation.
+  const $validateSecrets = async (
+    dto: TValidateSecretsDTO,
+    permission: MongoAbility<ProjectPermissionSet>,
+    tx?: Knex
+  ) => {
+    try {
+      await secretValidationRuleService.validateSecrets(dto, tx);
+    } catch (error) {
+      if (!(error instanceof SecretValidationError)) throw error;
+
+      throw new BadRequestError({
+        message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
+          permission.can(
+            ProjectPermissionSecretActions.DescribeSecret,
+            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+          )
+        )
+      });
+    }
+  };
+
+  const { getSecretMetadata } = secretMetadataServiceFactory({
+    permissionService,
+    folderDAL,
+    projectEnvDAL,
+    projectDAL,
+    secretDAL,
+    keyStore
+  });
   const $validateSecretReferences = async (
     projectId: string,
     permission: MongoAbility<ProjectPermissionSet>,
@@ -413,13 +452,16 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    await secretValidationRuleService.validateSecrets({
-      projectId,
-      environment,
-      envId: folder.envId,
-      secretPath,
-      secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
-    });
+    await $validateSecrets(
+      {
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
+      },
+      permission
+    );
 
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
     const allSecretReferences = nestedReferences.concat(
@@ -428,14 +470,14 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
-    const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-    const secretValueBlindIndex = inputSecretData.secretValue
-      ? await generateSecretBlindIndex(Buffer.from(inputSecretData.secretValue))
-      : undefined;
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+    const blindIndexes = await (inputSecretData.secretValue
+      ? blindIndexer.generateBlindIndexes(Buffer.from(inputSecretData.secretValue))
+      : null);
     const secret = await secretDAL.transaction(async (tx) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
@@ -451,7 +493,7 @@ export const secretV2BridgeServiceFactory = ({
             encryptedValue: inputSecretData.secretValue
               ? secretManagerEncryptor({ plainText: Buffer.from(inputSecretData.secretValue) }).cipherTextBlob
               : undefined,
-            secretValueBlindIndex,
+            blindIndexes,
             skipMultilineEncoding: inputSecretData.skipMultilineEncoding,
             key: secretName,
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
@@ -702,13 +744,16 @@ export const secretV2BridgeServiceFactory = ({
     // Validate against secret validation rules (key rename and/or value change)
     const finalKey = inputSecret.newSecretName || secretName;
     if (secretValue || inputSecret.newSecretName) {
-      await secretValidationRuleService.validateSecrets({
-        projectId,
-        environment,
-        envId: folder.envId,
-        secretPath,
-        secrets: [{ key: finalKey, value: secretValue, secretId }]
-      });
+      await $validateSecrets(
+        {
+          projectId,
+          environment,
+          envId: folder.envId,
+          secretPath,
+          secrets: [{ key: finalKey, value: secretValue, secretId }]
+        },
+        permission
+      );
     }
 
     if (secretValue) {
@@ -719,20 +764,18 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
     const encryptedValue =
       typeof secretValue === "string"
         ? {
             encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
             references: getAllSecretReferences(secretValue).nestedReferences,
-            secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(secretValue))
+            blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(secretValue))
           }
         : {};
 
@@ -743,6 +786,23 @@ export const secretV2BridgeServiceFactory = ({
       );
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
+
+    // The secret and its reminder are one change: the reminder is checked before anything is written, then
+    // written in the secret's transaction, so either both land or neither does.
+    const preparedReminder = inputSecret.secretReminderRepeatDays
+      ? await reminderService.prepareReminder({
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          reminder: {
+            secretId,
+            message: inputSecret.secretReminderNote,
+            repeatDays: inputSecret.secretReminderRepeatDays,
+            recipients: inputSecret.secretReminderRecipients
+          }
+        })
+      : undefined;
 
     const updatedSecret = await secretDAL.transaction(async (tx) => {
       const modifiedSecretsInDB = await fnSecretBulkUpdate({
@@ -800,28 +860,16 @@ export const secretV2BridgeServiceFactory = ({
           secretQueueService,
           encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
           decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-          generateSecretBlindIndex,
+          blindIndexer,
           tx
         });
       }
 
+      if (preparedReminder) await reminderService.applyReminder(preparedReminder, tx);
+
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return modifiedSecretsInDB;
     });
-    if (inputSecret.secretReminderRepeatDays) {
-      await reminderService.createReminder({
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
-        reminder: {
-          secretId: secret.id,
-          message: inputSecret.secretReminderNote,
-          repeatDays: inputSecret.secretReminderRepeatDays,
-          recipients: inputSecret.secretReminderRecipients
-        }
-      });
-    }
 
     if (inputSecret.type === SecretType.Shared) {
       await secretQueueService.syncSecrets({
@@ -867,7 +915,8 @@ export const secretV2BridgeServiceFactory = ({
         comment: inputSecret.secretComment || "",
         secretMetadata: undefined
       },
-      secretValueHidden
+      secretValueHidden,
+      actorId
     );
   };
 
@@ -1002,20 +1051,26 @@ export const secretV2BridgeServiceFactory = ({
         }
       );
 
+      // deleting a shared secret cascades to every user's personal override, so the row to return must be
+      // picked by id instead of trusting the order the delete happened to return rows in
+      const deletedSecretRow = deletedSecret.find((el) => el.id === secretToDelete.id);
+      if (!deletedSecretRow) throw new NotFoundError({ message: "Secret not found" });
+
       return reshapeBridgeSecret(
         projectId,
         environment,
         secretPath,
         {
-          ...deletedSecret[0],
-          value: deletedSecret[0].encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedValue }).toString()
+          ...deletedSecretRow,
+          value: deletedSecretRow.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: deletedSecretRow.encryptedValue }).toString()
             : "",
-          comment: deletedSecret[0].encryptedComment
-            ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedComment }).toString()
+          comment: deletedSecretRow.encryptedComment
+            ? secretManagerDecryptor({ cipherTextBlob: deletedSecretRow.encryptedComment }).toString()
             : ""
         },
-        secretValueHidden
+        secretValueHidden,
+        actorId
       );
     } catch (err) {
       // deferred errors aren't return as DatabaseError
@@ -1195,7 +1250,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden,
+          userId
         );
       });
 
@@ -1216,13 +1272,7 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     isInternal,
     ...params
-  }: Pick<
-    TGetSecretsDTO,
-    "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "search" | "tagSlugs"
-  > & {
-    environments: string[];
-    isInternal?: boolean;
-  }) => {
+  }: TGetSecretsMultiEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1252,11 +1302,24 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
+    const isTimestampSort =
+      params.orderBy === SecretSortField.CreatedAt || params.orderBy === SecretSortField.UpdatedAt;
+    const sortEnvironment = params.sortEnvironment ?? (environments.length === 1 ? environments[0] : undefined);
+    if (isTimestampSort && !sortEnvironment) {
+      throw new BadRequestError({
+        message: "A sort environment is required for timestamp sorting when multiple environments are requested"
+      });
+    }
+
+    const sortFolderIds = isTimestampSort
+      ? folders.filter((folder) => folder.environment.slug === sortEnvironment).map((folder) => folder.id)
+      : undefined;
+
     const { secrets } = await getSecretsByFolderMappings(
       {
         projectId,
         folderMappings,
-        filters: params,
+        filters: { ...params, sortFolderIds },
         userId: actorId,
         filterByAction: ProjectPermissionSecretActions.DescribeSecret
       },
@@ -1284,6 +1347,7 @@ export const secretV2BridgeServiceFactory = ({
       personalOverridesBehavior,
       throwOnMissingReadValuePermission = true,
       ifNoneMatch,
+      abortSignal,
       ...params
     } = dto;
 
@@ -1442,6 +1506,8 @@ export const secretV2BridgeServiceFactory = ({
       filters: params
     });
 
+    throwIfClientDisconnected(abortSignal);
+
     let secrets: typeof unfilteredSecrets = [];
 
     if (personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) {
@@ -1535,7 +1601,6 @@ export const secretV2BridgeServiceFactory = ({
           });
 
         const isValueMasked = secretValueHidden && !isPersonalSecret;
-        const isValueDiscarded = isValueMasked && secret.type !== SecretType.Personal;
 
         return reshapeBridgeSecret(
           projectId,
@@ -1550,10 +1615,8 @@ export const secretV2BridgeServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
                 : el.value || ""
             })),
-            // reshapeBridgeSecret still surfaces the real plaintext for Personal secrets even when
-            // masking, so the decrypt is only skippable when the value is certain to be discarded.
             value:
-              !isValueDiscarded && secret.encryptedValue
+              !isValueMasked && secret.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
                 : "",
             comment: secret.encryptedComment
@@ -1596,50 +1659,16 @@ export const secretV2BridgeServiceFactory = ({
       kmsService,
       // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
       // reads on the raw DAL so source imports are not resolved through this target project.
-      crossProjectSecretDAL: secretDAL
+      crossProjectSecretDAL: secretDAL,
+      abortSignal
     });
 
     if (shouldExpandSecretReferences) {
-      const secretsGroupByPath = groupBy(decryptedSecrets, (i) => i.secretPath);
-      const settledPromises = await Promise.allSettled(
-        Object.keys(secretsGroupByPath).map((groupedPath) =>
-          Promise.allSettled(
-            secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
-              const expandedSecretValue = await expandSecretReferences({
-                value: decryptedSecret.secretValue,
-                secretPath: groupedPath,
-                environment,
-                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding,
-                secretKey: decryptedSecret.secretKey
-              });
-              // eslint-disable-next-line no-param-reassign
-              secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
-            })
-          )
-        )
-      );
-      const errors: { path: string; error: string }[] = [];
-
-      settledPromises.forEach((outerResult: PromiseSettledResult<PromiseSettledResult<void>[]>, outerIndex) => {
-        const groupedPath = Object.keys(secretsGroupByPath)[outerIndex];
-
-        if (outerResult.status === "rejected") {
-          errors.push({
-            path: groupedPath,
-            error: `Failed to process secret group: ${outerResult.reason}`
-          });
-        } else {
-          // Check inner promise results
-          outerResult.value.forEach((innerResult: PromiseSettledResult<void>) => {
-            if (innerResult.status === "rejected") {
-              const reason = innerResult.reason as ForbiddenRequestError;
-              errors.push({
-                path: groupedPath,
-                error: reason.message
-              });
-            }
-          });
-        }
+      throwIfClientDisconnected(abortSignal);
+      const errors = await expandSecretReferencesGroupedByPath({
+        secrets: decryptedSecrets,
+        environment,
+        expandSecretReferences
       });
       if (errors.length > 0) {
         throw new ForbiddenRequestError({
@@ -1666,6 +1695,8 @@ export const secretV2BridgeServiceFactory = ({
       return { ...payload, etag: computedEtag };
     }
 
+    throwIfClientDisconnected(abortSignal);
+
     const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
     const allowedImports = secretImports.filter(({ isReplication }) => !isReplication);
 
@@ -1684,7 +1715,8 @@ export const secretV2BridgeServiceFactory = ({
           secretName: expandSecretKey,
           secretTags: expandSecretTags
         }),
-      userId: expandPersonalOverrides ? actorId : undefined
+      userId: expandPersonalOverrides ? actorId : undefined,
+      abortSignal
     });
 
     const importedSecrets = await fnSecretsV2FromImports({
@@ -1738,7 +1770,8 @@ export const secretV2BridgeServiceFactory = ({
       projectFolderGrantDAL,
       actorOrgId,
       orgDAL,
-      kmsService
+      kmsService,
+      abortSignal
     });
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
@@ -1888,7 +1921,7 @@ export const secretV2BridgeServiceFactory = ({
           [`${TableName.SecretV2}.userId` as "userId"]: secretType === SecretType.Personal ? actorId : null
         })
       : secretVersionDAL
-          .findOne({
+          .findOneWithTags({
             folderId,
             version,
             type: secretType,
@@ -1897,16 +1930,24 @@ export const secretV2BridgeServiceFactory = ({
           })
           .then((el) =>
             el
-              ? SecretsV2Schema.extend({
-                  tags: z
-                    .object({ slug: z.string(), name: z.string(), id: z.string(), color: z.string() })
-                    .array()
-                    .default([])
-                    .optional()
-                }).parse({
-                  ...el,
-                  id: el.secretId
-                })
+              ? {
+                  ...SecretsV2Schema.extend({
+                    tags: z
+                      .object({
+                        slug: z.string(),
+                        name: z.string(),
+                        id: z.string(),
+                        color: z.string().nullable().optional()
+                      })
+                      .array()
+                      .default([])
+                      .optional()
+                  }).parse({
+                    ...el,
+                    id: el.secretId
+                  }),
+                  secretMetadata: undefined
+                }
               : undefined
           ));
 
@@ -2070,16 +2111,13 @@ export const secretV2BridgeServiceFactory = ({
       path,
       {
         ...secret,
-        secretMetadata:
-          "secretMetadata" in secret
-            ? secret.secretMetadata?.map((el) => ({
-                isEncrypted: Boolean(el.encryptedValue),
-                key: el.key,
-                value: el.encryptedValue
-                  ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-                  : el.value || ""
-              }))
-            : undefined,
+        secretMetadata: secret.secretMetadata?.map((el) => ({
+          isEncrypted: Boolean(el.encryptedValue),
+          key: el.key,
+          value: el.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+            : el.value || ""
+        })),
         value: secretValue,
         comment: secret.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
@@ -2201,14 +2239,15 @@ export const secretV2BridgeServiceFactory = ({
       );
     }
 
-    await secretValidationRuleService.validateSecrets(
+    await $validateSecrets(
       {
         projectId,
         environment,
         envId: folder.envId,
         secretPath,
-        secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+        secrets: deduplicatedSecrets.map((el) => ({ key: el.secretKey, value: el.secretValue }))
       },
+      permission,
       providedTx
     );
 
@@ -2248,19 +2287,22 @@ export const secretV2BridgeServiceFactory = ({
     });
     await $validateSecretReferences(projectId, permission, secretReferences, providedTx);
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
+    const blindIndexer = await createSecretBlindIndexer({
+      projectId,
+      orgId: actorOrgId,
+      kmsService,
+      tx: providedTx
+    });
 
     const executeBulkInsert = async (tx: Knex) => {
       const inputSecretsWithBlindIndex = await Promise.all(
         deduplicatedSecrets.map(async (el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-          const secretValueBlindIndex = el.secretValue
-            ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
-            : null;
+          const blindIndexes = await (el.secretValue
+            ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+            : null);
 
           return {
             version: 1,
@@ -2282,7 +2324,7 @@ export const secretV2BridgeServiceFactory = ({
                 : meta.value
             })),
             type: SecretType.Shared,
-            secretValueBlindIndex
+            blindIndexes
           };
         })
       );
@@ -2347,7 +2389,8 @@ export const secretV2BridgeServiceFactory = ({
           value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
           comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
         },
-        secretValueHidden
+        secretValueHidden,
+        actorId
       );
     });
   };
@@ -2411,11 +2454,14 @@ export const secretV2BridgeServiceFactory = ({
     );
     const secretPaths = Object.keys(secretsToUpdateGroupByPath);
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const blindIndexer = await createSecretBlindIndexer({
+      projectId,
+      orgId: actorOrgId,
+      kmsService,
+      tx: providedTx
+    });
 
     // Function to execute the bulk update operation
     const executeBulkUpdate = async (tx: Knex) => {
@@ -2618,13 +2664,17 @@ export const secretV2BridgeServiceFactory = ({
         ];
         if (secretsToValidate.length) {
           // eslint-disable-next-line no-await-in-loop
-          await secretValidationRuleService.validateSecrets({
-            projectId,
-            environment,
-            envId: folder.envId,
-            secretPath,
-            secrets: secretsToValidate
-          });
+          await $validateSecrets(
+            {
+              projectId,
+              environment,
+              envId: folder.envId,
+              secretPath,
+              secrets: secretsToValidate
+            },
+            permission,
+            tx
+          );
         }
 
         const secretKeyUpdates: {
@@ -2652,7 +2702,7 @@ export const secretV2BridgeServiceFactory = ({
                 ? {
                     encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
                     references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences,
-                    secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(el.secretValue))
+                    blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
                   }
                 : {};
 
@@ -2714,7 +2764,7 @@ export const secretV2BridgeServiceFactory = ({
               secretQueueService,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-              generateSecretBlindIndex,
+              blindIndexer,
               tx
             });
           }
@@ -2732,9 +2782,9 @@ export const secretV2BridgeServiceFactory = ({
           const inputSecretsForCreate = await Promise.all(
             secretsToCreate.map(async (el) => {
               const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-              const secretValueBlindIndex = el.secretValue
-                ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
-                : null;
+              const blindIndexes = await (el.secretValue
+                ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+                : null);
 
               return {
                 version: 1,
@@ -2756,7 +2806,7 @@ export const secretV2BridgeServiceFactory = ({
                     : meta.value
                 })),
                 type: SecretType.Shared,
-                secretValueBlindIndex
+                blindIndexes
               };
             })
           );
@@ -2847,7 +2897,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden,
+          actorId
         )
       };
     });
@@ -2890,10 +2941,18 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
     const secretsToDeleteSet = new Set(secretsToDelete.map((el) => el.key));
-    if (secretsToDeleteSet.size !== inputSecrets.length)
+    const requestedKeys = inputSecrets.map((el) => el.secretKey);
+    const missingKeys = [...new Set(requestedKeys.filter((key) => !secretsToDeleteSet.has(key)))];
+    if (missingKeys.length)
       throw new NotFoundError({
-        message: `One or more secrets does not exist: ${secretsToDelete.map((el) => el.key).join(", ")}`
+        message: `One or more secrets does not exist: ${missingKeys.join(", ")}`
       });
+    if (secretsToDeleteSet.size !== requestedKeys.length) {
+      const repeatedKeys = [...new Set(requestedKeys.filter((key, index) => requestedKeys.indexOf(key) !== index))];
+      throw new BadRequestError({
+        message: `Each secret can only be deleted once per request: ${repeatedKeys.join(", ")}`
+      });
+    }
     secretsToDelete.forEach((el) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Delete,
@@ -2986,7 +3045,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden,
+          actorId
         );
       });
     } catch (err) {
@@ -3045,6 +3105,10 @@ export const secretV2BridgeServiceFactory = ({
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 
+    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+      throw new ForbiddenRequestError({ message: "You are not allowed to access this secret" });
+    }
+
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
@@ -3085,7 +3149,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden,
+          actorId
         ),
         redactedByActor: el.isRedacted
           ? {
@@ -3212,11 +3277,10 @@ export const secretV2BridgeServiceFactory = ({
         resourceMetadataDAL,
         folderCommitService,
         secretApprovalPolicyService,
-        secretApprovalRequestDAL,
-        secretApprovalRequestSecretDAL,
+        secretApprovalRequestCreationFns,
         secretQueueService,
-        reminderDAL,
-        reminderService
+        reminderService,
+        secretValidationRuleService
       })
     );
 
@@ -3869,6 +3933,10 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
+    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+      throw new ForbiddenRequestError({ message: "You are not allowed to access this secret" });
+    }
+
     if (secretVersion.isRedacted) {
       throw new BadRequestError({ message: `Secret version with ID '${versionId}' is already redacted` });
     }
@@ -3898,6 +3966,7 @@ export const secretV2BridgeServiceFactory = ({
     const updatedSecretVersion = await secretVersionDAL.updateById(versionId, {
       encryptedValue,
       secretValueBlindIndex: null,
+      secretValueOrgBlindIndex: null,
       isRedacted: true,
       redactedAt: new Date(),
       redactedByUserId: actorId
@@ -3983,6 +4052,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsByFolderMappings,
     getSecretById,
     getAccessibleSecrets,
+    getSecretMetadata,
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,
     $validateSecretReferences,

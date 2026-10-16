@@ -26,7 +26,8 @@ export const useCreatePkiSubscriber = () => {
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({
-          subscriberName: name
+          subscriberName: name,
+          projectId
         })
       });
     }
@@ -49,7 +50,8 @@ export const useUpdatePkiSubscriber = () => {
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({
-          subscriberName: name
+          subscriberName: name,
+          projectId
         })
       });
     }
@@ -59,9 +61,10 @@ export const useUpdatePkiSubscriber = () => {
 export const useDeletePkiSubscriber = () => {
   const queryClient = useQueryClient();
   return useMutation<TPkiSubscriber, object, TDeletePkiSubscriberDTO>({
-    mutationFn: async ({ subscriberName }) => {
+    mutationFn: async ({ subscriberName, projectId }) => {
       const { data: subscriber } = await apiRequest.delete(
-        `/api/v1/pki/subscribers/${subscriberName}`
+        `/api/v1/pki/subscribers/${subscriberName}`,
+        { data: { projectId } }
       );
       return subscriber;
     },
@@ -71,7 +74,8 @@ export const useDeletePkiSubscriber = () => {
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({
-          subscriberName: name
+          subscriberName: name,
+          projectId
         })
       });
     }
@@ -88,11 +92,9 @@ export const useIssuePkiSubscriberCert = () => {
       );
       return data;
     },
-    onSuccess: (_, { subscriberName }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: pkiSubscriberKeys.forPkiSubscriberCertificates({
-          subscriberName
-        })
+        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
       });
     }
   });

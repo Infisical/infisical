@@ -39,7 +39,7 @@ type DataExplorerToolbarProps = {
   onOffsetChange: (offset: number) => void;
   onPageSizeChange: (size: number) => void;
   executionTimeMs: number | null;
-  hasPrimaryKey: boolean;
+  canEditRows: boolean;
   isDataLoading?: boolean;
   onRefresh: () => void;
   isRefreshing?: boolean;
@@ -68,7 +68,7 @@ export const DataExplorerToolbar = ({
   onOffsetChange,
   onPageSizeChange,
   executionTimeMs,
-  hasPrimaryKey,
+  canEditRows,
   isDataLoading = false,
   onRefresh,
   isRefreshing = false,
@@ -101,7 +101,7 @@ export const DataExplorerToolbar = ({
           disabled={isDataLoading}
         />
 
-        {hasPrimaryKey && (
+        {canEditRows && (
           <>
             <div className="h-4 w-px bg-border" />
             <Button variant="outline" size="xs" onClick={onAddRecord} className="gap-1">
@@ -111,7 +111,7 @@ export const DataExplorerToolbar = ({
           </>
         )}
 
-        {selectedRowCount > 0 && hasPrimaryKey && (
+        {selectedRowCount > 0 && canEditRows && (
           <Button variant="danger" size="xs" onClick={onDeleteSelected} className="gap-1">
             <Trash2Icon className="size-3" />
             Delete {selectedRowCount} record{selectedRowCount !== 1 ? "s" : ""}

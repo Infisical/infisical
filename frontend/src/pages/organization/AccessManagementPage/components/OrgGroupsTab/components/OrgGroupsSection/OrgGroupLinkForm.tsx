@@ -15,6 +15,7 @@ import {
   FilterableSelect
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useGetOrgRoles } from "@app/hooks/api";
 import { useCreateOrgGroupMembership } from "@app/hooks/api/orgGroupMembership";
 import { orgGroupMembershipQuery } from "@app/hooks/api/orgGroupMembership/queries";
@@ -33,6 +34,7 @@ type Props = {
 };
 
 export const OrgGroupLinkForm = ({ onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -124,7 +126,12 @@ export const OrgGroupLinkForm = ({ onClose }: Props) => {
         <Button variant="ghost" type="button" onClick={() => onClose()}>
           Cancel
         </Button>
-        <Button variant="org" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          variant={scopeVariant}
+          type="submit"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Link
         </Button>
       </DialogFooter>

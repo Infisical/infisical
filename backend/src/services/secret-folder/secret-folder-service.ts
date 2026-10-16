@@ -12,8 +12,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
+import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -32,6 +32,7 @@ import {
   checkFolderMovePolicyBlock,
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
+import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
 
 import {
   ChangeType,
@@ -41,7 +42,6 @@ import {
 } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
@@ -52,6 +52,7 @@ import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bri
 import { TFnSecretMoveResult } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   TCreateFolderDTO,
@@ -103,19 +104,20 @@ type TSecretFolderServiceFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create">;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    "insertV2Bridge" | "insertApprovalSecretV2Tags"
+  secretApprovalRequestCreationFns: Pick<
+    TSecretApprovalRequestCreationFnsFactory,
+    "createSecretApprovalRequestV2Bridge"
   >;
+  secretApprovalRequestService: Pick<TSecretApprovalRequestServiceFactory, "findFolderIdsWithOpenRequests">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
-  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
-  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
+  reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -136,15 +138,16 @@ export const secretFolderServiceFactory = ({
   secretTagDAL,
   secretVersionTagDAL,
   resourceMetadataDAL,
-  secretApprovalRequestDAL,
-  secretApprovalRequestSecretDAL,
+  secretApprovalRequestCreationFns,
+  secretApprovalRequestService,
   secretQueueService,
+  secretSyncQueue,
   dynamicSecretDAL,
   secretRotationV2DAL,
   honeyTokenDAL,
   secretImportDAL,
   secretV2BridgeService,
-  reminderDAL,
+  secretValidationRuleService,
   reminderService,
   keyStore
 }: TSecretFolderServiceFactoryDep) => {
@@ -613,31 +616,39 @@ export const secretFolderServiceFactory = ({
     env,
     parentId,
     idOrName,
-    actor
+    actor,
+    tx
   }: {
     projectId: string;
     env: TProjectEnvironments;
     parentId: string;
     idOrName: string;
     actor: ActorType;
+    tx?: Knex;
   }) => {
     let targetFolder = await folderDAL
-      .findOne({
-        envId: env.id,
-        name: idOrName,
-        parentId,
-        isReserved: false
-      })
+      .findOne(
+        {
+          envId: env.id,
+          name: idOrName,
+          parentId,
+          isReserved: false
+        },
+        tx
+      )
       .catch(() => null);
 
     if (!targetFolder && uuidValidate(idOrName)) {
       targetFolder = await folderDAL
-        .findOne({
-          envId: env.id,
-          id: idOrName,
-          parentId,
-          isReserved: false
-        })
+        .findOne(
+          {
+            envId: env.id,
+            id: idOrName,
+            parentId,
+            isReserved: false
+          },
+          tx
+        )
         .catch(() => null);
     }
 
@@ -646,10 +657,10 @@ export const secretFolderServiceFactory = ({
     }
 
     // get environment root folder (as it's needed to get all folders under it)
-    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/");
+    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/", tx);
     if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
     // get all folders under environment root folder
-    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] });
+    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] }, tx);
 
     // create a map of folders by parent id
     const normalizeKey = (key: string | null | undefined): string => key ?? "root";
@@ -685,9 +696,25 @@ export const secretFolderServiceFactory = ({
       id: folder.id
     }));
 
+    const folderIdsWithOpenRequests = await secretApprovalRequestService.findFolderIdsWithOpenRequests(
+      folderPolicyPaths.map((p) => p.id),
+      tx
+    );
+    if (folderIdsWithOpenRequests.length > 0) {
+      const blockedPaths = folderPolicyPaths
+        .filter((p) => folderIdsWithOpenRequests.includes(p.id))
+        .map((p) => `"${p.path}"`)
+        .join(", ");
+      throw new BadRequestError({
+        message: `You cannot delete the selected folder because it has open change requests at folder path ${blockedPaths}. Merge or close the change requests and try again.`,
+        name: "DeleteFolderHasOpenChangeRequests"
+      });
+    }
+
     // get secrets under the given folders
     const secrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds: folderPolicyPaths.map((p) => p.id)
+      folderIds: folderPolicyPaths.map((p) => p.id),
+      tx
     });
 
     for await (const folderPolicyPath of folderPolicyPaths) {
@@ -697,7 +724,8 @@ export const secretFolderServiceFactory = ({
       const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         projectId,
         env.slug,
-        folderPolicyPath.path
+        folderPolicyPath.path,
+        tx
       );
 
       // if there is an enforced policy and there are secrets under the given folder, throw error
@@ -745,25 +773,31 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
+      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
 
       let folderToDelete = await folderDAL
-        .findOne({
-          envId: env.id,
-          name: idOrName,
-          parentId: parentFolder.id,
-          isReserved: false
-        })
+        .findOne(
+          {
+            envId: env.id,
+            name: idOrName,
+            parentId: parentFolder.id,
+            isReserved: false
+          },
+          tx
+        )
         .catch(() => null);
 
       if (!folderToDelete && uuidValidate(idOrName)) {
         folderToDelete = await folderDAL
-          .findOne({
-            envId: env.id,
-            id: idOrName,
-            parentId: parentFolder.id,
-            isReserved: false
-          })
+          .findOne(
+            {
+              envId: env.id,
+              id: idOrName,
+              parentId: parentFolder.id,
+              isReserved: false
+            },
+            tx
+          )
           .catch(() => null);
       }
 
@@ -777,13 +811,13 @@ export const secretFolderServiceFactory = ({
           message: `Cannot delete folder "${folderToDelete.name}" because it contains resources. Use forceDelete=true to delete it forcefully.`,
           name: "deleteFolder"
         });
-        const secretV2 = await secretV2BridgeDAL.findOne({ folderId: folderToDelete.id }).catch(() => null);
+        const secretV2 = await secretV2BridgeDAL.findOne({ folderId: folderToDelete.id }, tx).catch(() => null);
         if (secretV2) throw error;
 
-        const dynamicSecret = await dynamicSecretDAL.findOne({ folderId: folderToDelete.id }).catch(() => null);
+        const dynamicSecret = await dynamicSecretDAL.findOne({ folderId: folderToDelete.id }, tx).catch(() => null);
         if (dynamicSecret) throw error;
 
-        const subfolder = await folderDAL.findOne({ parentId: folderToDelete.id }).catch(() => null);
+        const subfolder = await folderDAL.findOne({ parentId: folderToDelete.id }, tx).catch(() => null);
         if (subfolder) throw error;
       }
 
@@ -824,6 +858,15 @@ export const secretFolderServiceFactory = ({
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await permissionService.invalidateProjectFolderPermissionCache(projectId);
+
+    // A recursive sync rooted above this folder just lost every secret it held, and no secret-level
+    // write carries that. Queued after the commit so a worker cannot read the folder back.
+    await secretSyncQueue.queueSecretSyncsSyncSecretsByPath({
+      projectId,
+      environmentSlug: environment,
+      secretPath: path.join(secretPath, folder.name)
+    });
+
     return folder;
   };
 
@@ -1043,10 +1086,21 @@ export const secretFolderServiceFactory = ({
 
     const folders = await folderDAL.findByEnvsDeep({ parentIds: parentFolders.map((parent) => parent.id) });
 
-    return folders;
+    // findByEnvsDeep paths are relative to the walk root, which is the resolved secretPath
+    const rootPath = parentFolders[0].path;
+    const resolvePathFromWalkRoot = (relativePath: string) => {
+      if (relativePath === "/") return rootPath;
+      if (rootPath === "/") return relativePath;
+      return `${rootPath}${relativePath}`;
+    };
+
+    return folders.map((folder) => ({
+      ...folder,
+      path: resolvePathFromWalkRoot(folder.path)
+    }));
   };
 
-  const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor) => {
+  const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor, environment?: string) => {
     // folder list is allowed to be read by anyone
     // permission is to check if user has access
     await permissionService.getProjectPermission({
@@ -1058,7 +1112,7 @@ export const secretFolderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const environments = await projectEnvDAL.find({ projectId });
+    const environments = await projectEnvDAL.find({ projectId, ...(environment && { slug: environment }) });
 
     const folders = await folderDAL.find({
       $in: {
@@ -1393,7 +1447,7 @@ export const secretFolderServiceFactory = ({
       const deletedFolders = [];
 
       for (const [environment, envFolders] of Object.entries(foldersByEnv)) {
-        const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+        const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
         if (!env) {
           throw new NotFoundError({
             message: `Environment with slug '${environment}' not found`
@@ -1410,25 +1464,31 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
+          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
 
           let folderToDelete = await folderDAL
-            .findOne({
-              envId: env.id,
-              name: idOrName,
-              parentId: parentFolder.id,
-              isReserved: false
-            })
+            .findOne(
+              {
+                envId: env.id,
+                name: idOrName,
+                parentId: parentFolder.id,
+                isReserved: false
+              },
+              tx
+            )
             .catch(() => null);
 
           if (!folderToDelete && uuidValidate(idOrName)) {
             folderToDelete = await folderDAL
-              .findOne({
-                envId: env.id,
-                id: idOrName,
-                parentId: parentFolder.id,
-                isReserved: false
-              })
+              .findOne(
+                {
+                  envId: env.id,
+                  id: idOrName,
+                  parentId: parentFolder.id,
+                  isReserved: false
+                },
+                tx
+              )
               .catch(() => null);
           }
 
@@ -1976,11 +2036,10 @@ export const secretFolderServiceFactory = ({
             resourceMetadataDAL,
             folderCommitService,
             secretApprovalPolicyService,
-            secretApprovalRequestDAL,
-            secretApprovalRequestSecretDAL,
+            secretApprovalRequestCreationFns,
             secretQueueService,
-            reminderDAL,
-            reminderService
+            reminderService,
+            secretValidationRuleService
           })
         );
       }

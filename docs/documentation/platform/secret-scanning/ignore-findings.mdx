@@ -1,0 +1,49 @@
+---
+title: "Ignore findings in local scans"
+sidebarTitle: "Ignore findings"
+description: "Stop infisical scan from reporting secrets you've decided are safe to commit."
+---
+
+import IgnoreOneLine from "/snippets/documentation/platform/secret-scanning/ignore-one-line.mdx";
+
+If a scan reports a value you've decided is safe to commit, such as a test credential, you can stop the scan from reporting it.
+
+## Configuration file
+
+In your configuration file, you can add allowlists that skip secrets by file path, commit, regular expression, or word. You can also turn off built-in rules that report values you don't consider secrets.
+
+<Card title="Configuration" icon="settings" href="/documentation/platform/secret-scanning/local-configuration">
+  Add allowlists and turn off built-in rules in `.infisical-scan.toml`.
+</Card>
+
+<IgnoreOneLine />
+
+## Ignore specific findings
+
+Each finding has a fingerprint, which is in the `Fingerprint` field of a JSON report. To ignore findings, list their fingerprints in a `.infisicalignore` file, one per line. Put the file in the directory you scan, which is the `--source` directory or, by default, the current directory:
+
+```text .infisicalignore
+bea0ff6e05a4de73a5db625d4ae181a015b50855:frontend/components/utilities/attemptLogin.js:stripe-access-token:147
+backend/src/json/integrations.json:generic-api-key:5
+```
+
+A fingerprint takes one of two forms:
+
+- `<commit>:<file>:<rule>:<line>`: Ignores the finding in that commit only (what a scan of Git history reports)
+- `<file>:<rule>:<line>`: Ignores the finding in every commit (what a scan with `--no-git` reports)
+
+## Ignore existing findings
+
+If you start scanning a repository that already has a long history, you can record every current finding in a baseline and have later scans report only new ones. First, write a JSON report of the current findings:
+
+```bash
+infisical scan --report-path baseline.json
+```
+
+Then pass that report to later scans with `--baseline-path`:
+
+```bash
+infisical scan --baseline-path baseline.json --report-path findings.json
+```
+
+`findings.json` then contains only the findings that aren't in `baseline.json`. If you scan uncommitted changes with `infisical scan git-changes`, the scan doesn't use a baseline.

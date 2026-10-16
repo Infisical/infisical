@@ -2,7 +2,7 @@ import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls
 
 import { ServiceStep } from "./serviceSchema";
 
-export const SERVICE_DOCS_URL = AgentVaultDocsUrls.accessBundles;
+export const SERVICE_DOCS_URL = AgentVaultDocsUrls.services;
 
 type StepMeta = {
   step: ServiceStep;
@@ -12,6 +12,7 @@ type StepMeta = {
   subtitle?: string;
   rightLabel?: string;
   rightDescription?: string;
+  rightTip?: string;
 };
 
 export const SERVICE_STEPS: StepMeta[] = [
@@ -22,20 +23,24 @@ export const SERVICE_STEPS: StepMeta[] = [
   {
     step: ServiceStep.Details,
     name: "Details",
-    shortDescription: "Name and hosts",
+    shortDescription: "Name, hosts and rules",
     title: "Details",
-    subtitle: "What this service is called, and the hosts it covers.",
+    subtitle: "What this service is called, the hosts it covers, and the requests it allows.",
     rightLabel: "DETAILS",
-    rightDescription: "The credentials are only used for the hosts you list here."
+    rightDescription:
+      "The proxy only attaches the credential to requests that reach the hosts you list here. Every path is allowed unless you name the ones you want."
   },
   {
     step: ServiceStep.Credential,
     name: "Credential",
     shortDescription: "How to authenticate",
     title: "Credential",
-    subtitle: "How requests to this service are authenticated.",
+    subtitle: "How requests to this service are authenticated, and anything else to add to them.",
     rightLabel: "CREDENTIAL",
-    rightDescription: "Agents reach this service without ever holding the credentials themselves."
+    rightDescription:
+      "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value.",
+    rightTip:
+      "To use a variable, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place."
   },
   {
     step: ServiceStep.Review,

@@ -73,6 +73,8 @@ import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/f
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
+import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
@@ -86,17 +88,23 @@ import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-con
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
+import { PaloAltoNetworksConnectionMethod } from "@app/hooks/api/appConnections/types/palo-alto-networks-connection";
+import { PortainerConnectionMethod } from "@app/hooks/api/appConnections/types/portainer-connection";
+import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
+import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SpaceliftConnectionMethod } from "@app/hooks/api/appConnections/types/spacelift-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
+import { StripeConnectionMethod } from "@app/hooks/api/appConnections/types/stripe-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
+import { UltraDNSConnectionMethod } from "@app/hooks/api/appConnections/types/ultradns-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
 import { WinRMConnectionMethod } from "@app/hooks/api/appConnections/types/winrm-connection";
@@ -283,11 +291,23 @@ export const APP_CONNECTION_MAP: Record<
     category: "PASSWORD MANAGER",
     description: "Read and manage items in 1Password vaults."
   },
+  [AppConnection.Keeper]: {
+    name: "Keeper",
+    image: "Keeper.png",
+    category: "PASSWORD MANAGER",
+    description: "Connect to Keeper Commander Service Mode."
+  },
   [AppConnection.Heroku]: {
     name: "Heroku",
     image: "Heroku.png",
     category: "HOSTING",
     description: "App and config var access for Heroku."
+  },
+  [AppConnection.Stripe]: {
+    name: "Stripe",
+    image: "Stripe.svg",
+    category: "PLATFORM",
+    description: "API key management for Stripe."
   },
   [AppConnection.Render]: {
     name: "Render",
@@ -319,6 +339,18 @@ export const APP_CONNECTION_MAP: Record<
     size: 120,
     category: "DNS",
     description: "Manage DNS records on DNS Made Easy."
+  },
+  [AppConnection.PowerDns]: {
+    name: "PowerDNS",
+    image: "PowerDNS.png",
+    category: "DNS",
+    description: "Manage DNS records on a self-hosted PowerDNS server."
+  },
+  [AppConnection.UltraDNS]: {
+    name: "UltraDNS",
+    image: "UltraDNS.png",
+    category: "DNS",
+    description: "Manage DNS records on UltraDNS."
   },
   [AppConnection.Zabbix]: {
     name: "Zabbix",
@@ -498,6 +530,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage a Citrix NetScaler appliance."
   },
+  [AppConnection.PaloAltoNetworks]: {
+    name: "Palo Alto Networks",
+    image: "Palo Alto Networks.png",
+    category: "NETWORKING",
+    description: "Connect to a Palo Alto Networks firewall or Panorama."
+  },
   [AppConnection.KempLoadMaster]: {
     name: "Kemp LoadMaster",
     image: "Kemp LoadMaster.png",
@@ -590,6 +628,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage an F5 BIG-IP appliance."
   },
+  [AppConnection.HpeIloRedFish]: {
+    name: "HPE iLO",
+    image: "HPE iLO.png",
+    category: "INFRASTRUCTURE",
+    description: "Manage an HPE iLO server through the Redfish API."
+  },
   [AppConnection.Convex]: {
     name: "Convex",
     image: "Convex.png",
@@ -614,6 +658,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "INFRASTRUCTURE",
     description: "Job and project access for Rundeck."
   },
+  [AppConnection.Portainer]: {
+    name: "Portainer",
+    image: "Portainer.png",
+    category: "INFRASTRUCTURE",
+    description: "Stack and environment access for Portainer."
+  },
   [AppConnection.NutanixPrismCentral]: {
     name: "Nutanix Prism Central",
     image: "Nutanix.png",
@@ -631,8 +681,67 @@ export const APP_CONNECTION_MAP: Record<
     image: "Daytona.png",
     category: "PLATFORM",
     description: "Organization secret access for Daytona sandboxes."
+  },
+  [AppConnection.S3Compatible]: {
+    name: "S3-Compatible Storage",
+    image: "S3 Compatible.svg",
+    aliases: ["aws s3", "cloudflare r2", "google cloud storage", "gcs", "oracle", "oci"],
+    category: "STORAGE",
+    description: "Connect to AWS S3, Cloudflare R2, Google Cloud Storage or OCI Object Storage."
   }
 };
+
+const S3_COMPATIBLE_PROVIDERS = [
+  { name: "AWS S3", hostname: /^s3\.[a-z0-9-]+\.amazonaws\.com$/ },
+  { name: "Cloudflare R2", hostname: /^[a-f0-9]{32}(\.[a-z]+)?\.r2\.cloudflarestorage\.com$/ },
+  { name: "Google Cloud Storage", hostname: /^storage\.googleapis\.com$/ },
+  {
+    name: "OCI Object Storage",
+    hostname:
+      /^[a-z0-9-]+\.compat\.objectstorage\.[a-z0-9-]+\.(oraclecloud\.com|oci\.customer-oci\.com)$/
+  }
+];
+
+const STORAGE_HOSTNAME_REGEX = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?$/;
+
+export const isStorageHostname = (hostname: string) => {
+  if (!STORAGE_HOSTNAME_REGEX.test(hostname)) return false;
+  try {
+    return new URL(`https://${hostname}`).host === hostname;
+  } catch {
+    return false;
+  }
+};
+
+export const getS3CompatibleProviderName = (
+  endpoint: string,
+  allowedStorageHostnames: string[] = []
+) => {
+  try {
+    const url = new URL(endpoint);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    const providerName = url.port
+      ? undefined
+      : S3_COMPATIBLE_PROVIDERS.find(({ hostname }) => hostname.test(url.hostname))?.name;
+    if (providerName) return providerName;
+    return allowedStorageHostnames.includes(url.host) ? url.host : null;
+  } catch {
+    return null;
+  }
+};
+
+export const getAppConnectionProviderName = (connection: TAppConnection) =>
+  (connection.app === AppConnection.S3Compatible &&
+    getS3CompatibleProviderName(connection.credentials.endpoint)) ||
+  APP_CONNECTION_MAP[connection.app].name;
 
 export const POPULAR_APP_CONNECTIONS: AppConnection[] = [
   AppConnection.AWS,
@@ -659,9 +768,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
     case VenafiTppConnectionMethod.OAuth:
+    case StripeConnectionMethod.OAuth:
       return { name: "OAuth", icon: IdCardIcon };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
+    case S3CompatibleConnectionMethod.AccessKey:
       return { name: "Access Key", icon: KeyRoundIcon };
     case AwsConnectionMethod.AssumeRole:
       return { name: "Assume Role", icon: UserIcon };
@@ -687,6 +798,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
+    case PortainerConnectionMethod.ApiToken:
       return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
@@ -698,6 +810,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case UltraDNSConnectionMethod.UsernamePassword:
       return { name: "Username & Password", icon: LockIcon };
     case SnowflakeConnectionMethod.UsernameAndToken:
       return { name: "Username & Token", icon: KeyRoundIcon };
@@ -741,6 +854,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case DaytonaConnectionMethod.ApiKey:
+    case PowerDnsConnectionMethod.ApiKey:
+    case KeeperConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: KeyRoundIcon };
@@ -774,9 +889,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: KeyRoundIcon };
     case NetScalerConnectionMethod.BasicAuth:
+    case PaloAltoNetworksConnectionMethod.BasicAuth:
     case KempLoadMasterConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
+    case HpeIloConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: LockIcon };
     case NutanixPrismCentralConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };

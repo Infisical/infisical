@@ -8,7 +8,9 @@ import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import {
   BasePkiSyncOptionsSchema,
   buildDestinationCertificateNameSchema,
-  PkiSyncSchema
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
 } from "@app/services/pki-sync/pki-sync-schemas";
 
 import {
@@ -182,12 +184,18 @@ export const CreateGcpCertificateManagerPkiSyncSchema = z
     connectionId: z.string().uuid(),
     projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
     applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional()
+    certificateIds: z.array(z.string().uuid()).optional(),
+    filters: PkiSyncFiltersField
   })
   .superRefine((value, ctx) => {
+    const requestedCertificateCount = Math.max(
+      value.certificateIds?.length ?? 0,
+      value.filters?.certificateOrderIds?.length ?? 0
+    );
+
     if (
       value.destinationConfig.certificateMapBinding &&
-      (value.certificateIds?.length ?? 0) > GCP_MAX_CERTIFICATES_PER_MAP_ENTRY
+      requestedCertificateCount > GCP_MAX_CERTIFICATES_PER_MAP_ENTRY
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -204,7 +212,8 @@ export const UpdateGcpCertificateManagerPkiSyncSchema = z.object({
   destinationConfig: GcpCertificateManagerPkiSyncConfigUpdateSchema.optional(),
   syncOptions: GcpCertificateManagerPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().uuid().optional()
+  connectionId: z.string().uuid().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const GcpCertificateManagerPkiSyncListItemSchema = z.object({

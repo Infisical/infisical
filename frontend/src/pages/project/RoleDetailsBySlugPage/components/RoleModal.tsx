@@ -4,7 +4,7 @@ import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -187,7 +187,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                 />
               </FieldGroup>
             </div>
-            <SheetFooter className="border-t">
+            <SheetFooter className="justify-end border-t">
               <SheetClose asChild>
                 <Button variant="ghost" isDisabled={isSubmitting}>
                   Cancel
@@ -200,11 +200,14 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
           </form>
         </SheetContent>
       </Sheet>
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="project.role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );

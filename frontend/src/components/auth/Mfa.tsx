@@ -2,15 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
+import { CircleXIcon } from "lucide-react";
 
-import Error from "@app/components/basic/Error";
 import { MfaEnrollment } from "@app/components/mfa/MfaEnrollment";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Tooltip } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
   Button,
   CardContent,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   useClientResendDelay,
   VerificationCodeForm,
   VerificationCodeHeader,
@@ -298,10 +302,14 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               onAcknowledgedChange: setHasSavedRecoveryCodes,
               confirmLabel: "Continue",
               isConfirmPending: isLoading,
-              labelClassName: "text-bunker-200",
+              labelClassName: "text-foreground-soft",
               onConfirm: async () => {
                 setIsLoading(true);
-                await completeLogin();
+                try {
+                  await completeLogin();
+                } finally {
+                  setIsLoading(false);
+                }
               }
             }}
           />
@@ -344,14 +352,18 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   const recoveryActions = (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       {showRecoveryCodeInput ? (
-        <Tooltip
-          position="bottom"
-          content={
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help text-label transition-colors duration-200 hover:text-foreground">
+              Lost your recovery codes?
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
             <div className="max-w-xs text-center text-xs">
               {isInfisicalCloud() ? (
                 <>
                   <div className="mb-2">Account Recovery Required</div>
-                  <div className="mb-2 text-gray-300">
+                  <div className="mb-2 text-accent">
                     Contact support with valid proof of account ownership to initiate recovery
                   </div>
                   <div className="mt-1">support@infisical.com</div>
@@ -359,18 +371,14 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               ) : (
                 <>
                   <div className="mb-2">Account Recovery Required</div>
-                  <div className="text-gray-300">
+                  <div className="text-accent">
                     Contact your instance administrator with valid proof of account ownership to
                     initiate recovery
                   </div>
                 </>
               )}
             </div>
-          }
-        >
-          <span className="cursor-help text-label transition-colors duration-200 hover:text-foreground">
-            Lost your recovery codes?
-          </span>
+          </TooltipContent>
         </Tooltip>
       ) : (
         method === MfaMethod.EMAIL && (
@@ -418,9 +426,12 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
           {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
             <div className="flex flex-col gap-5">
               {typeof triesLeft === "number" && (
-                <Error
-                  text={`Failed authentication. You have ${triesLeft} attempt(s) remaining.`}
-                />
+                <Alert variant="danger">
+                  <CircleXIcon />
+                  <AlertDescription>
+                    {`Failed authentication. You have ${triesLeft} attempt(s) remaining.`}
+                  </AlertDescription>
+                </Alert>
               )}
               <Button
                 size="lg"

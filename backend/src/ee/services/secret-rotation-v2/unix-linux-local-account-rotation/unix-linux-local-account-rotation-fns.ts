@@ -366,9 +366,9 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   secretRotation,
   appConnectionDAL,
   kmsService,
-  _gatewayService,
   gatewayV2Service,
   gatewayPoolService,
+  _keyStore,
   passwordValidationContext
 ) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;

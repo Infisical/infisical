@@ -186,4 +186,68 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
       return certificateMaps;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloud-dns-projects`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listGcpCloudDnsProjects",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({ id: z.string(), name: z.string() }).array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const projects = await server.services.appConnection.gcp.listCloudDnsProjects(connectionId, req.permission);
+
+      return projects;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloud-dns-zones`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listGcpCloudDnsZones",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        gcpProjectId: z
+          .string()
+          .trim()
+          .min(6)
+          .max(30)
+          .refine((value) => GCP_PROJECT_ID_PATTERN.test(value), { message: "Invalid GCP project ID" })
+      }),
+      response: {
+        200: z.object({ id: z.string(), name: z.string(), dnsName: z.string() }).array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const {
+        params: { connectionId },
+        query: { gcpProjectId }
+      } = req;
+
+      const zones = await server.services.appConnection.gcp.listCloudDnsZones(
+        { connectionId, gcpProjectId },
+        req.permission
+      );
+
+      return zones;
+    }
+  });
 };

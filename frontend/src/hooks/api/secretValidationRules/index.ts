@@ -10,7 +10,6 @@ export type {
   TCreateSecretValidationRuleDTO,
   TDeleteSecretValidationRuleDTO,
   TGeneratedCredentialProvider,
-  TReusePrevention,
   TSecretValidationRule,
   TSecretValidationRuleConfig,
   TStaticSecretsRuleConfig,

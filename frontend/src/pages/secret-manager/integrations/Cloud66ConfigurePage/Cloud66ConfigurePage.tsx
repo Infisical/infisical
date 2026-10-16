@@ -4,12 +4,19 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -72,8 +79,6 @@ export const Cloud66ConfigurePage = () => {
         secretPath
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -86,68 +91,87 @@ export const Cloud66ConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Cloud 66 Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="Cloud 66 Application" className="mt-4">
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Cloud 66 Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field className="mt-4" data-invalid={false}>
+            <FieldLabel htmlFor="cloud66-project-environment">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
+            >
+              <SelectTrigger className="w-full" id="cloud66-project-environment">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
+                  <SelectItem
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
+                  >
+                    {sourceEnvironment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field data-invalid={false}>
+            <FieldLabel htmlFor="cloud66-secrets-path">Secrets Path</FieldLabel>
+            <Input
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+              id="cloud66-secrets-path"
+            />
+          </Field>
+          <Field className="mt-4" data-invalid={false}>
+            <FieldLabel htmlFor="cloud66-cloud-66-application">Cloud 66 Application</FieldLabel>
+            <Select
+              value={targetApp}
+              onValueChange={(val) => setTargetApp(val)}
+              disabled={integrationAuthApps.length === 0}
+            >
+              <SelectTrigger className="w-full" id="cloud66-cloud-66-application">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.name}
+                      key={`target-app-${integrationAuthApp.name}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No applications found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
             isDisabled={integrationAuthApps.length === 0}
+            variant="outline"
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-app-${integrationAuthApp.name}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No applications found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-        >
-          Create Integration
-        </Button>
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (

@@ -3,6 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -20,8 +21,13 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import {
+  CertificateApplicationAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -43,7 +49,6 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
-import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -56,7 +61,12 @@ import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-colle
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
-import { triggerAutoSyncForCertificate } from "@app/services/pki-sync/pki-sync-utils";
+import {
+  findPkiSyncIdsHoldingCertificate,
+  queueCertificateFilterReconcile,
+  triggerAutoSyncForCertificate,
+  triggerSyncsForDeletedCertificate
+} from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -67,6 +77,8 @@ import {
   getCaCertChains,
   rebuildCaCrl
 } from "../certificate-authority/certificate-authority-fns";
+import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
+import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
   detectSanType,
@@ -81,10 +93,12 @@ import {
   extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
+  normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
-  revocationReasonToCrlCode,
-  splitPemChain
+  parsePemCertificateChain,
+  resolveCertificateDeletionEligibility,
+  revocationReasonToCrlCode
 } from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
@@ -138,12 +152,14 @@ type TCertificateServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "primaryNode">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
@@ -151,7 +167,8 @@ type TCertificateServiceFactoryDep = {
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
-  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
+  internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -170,11 +187,13 @@ export const certificateServiceFactory = ({
   kmsService,
   permissionService,
   certificateSyncDAL,
+  auditLogService,
   pkiSyncDAL,
   pkiSyncQueue,
   certificateAuthorityService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationDAL,
   certificateProfileDAL,
   pkiApplicationProfileDAL,
@@ -185,7 +204,8 @@ export const certificateServiceFactory = ({
   usageCounterDAL,
   keyStore,
   usageMeteringService,
-  hsmConnectorService
+  caKeySourceService,
+  internalCertificateAuthorityDAL
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -212,6 +232,12 @@ export const certificateServiceFactory = ({
   /**
    * Return details for certificate with serial number [serialNumber]
    */
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const getCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
     // Validation: require either id or serialNumber
     if (!id && !serialNumber) {
@@ -419,15 +445,38 @@ export const certificateServiceFactory = ({
 
     return {
       cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
       certPrivateKey
     };
+  };
+
+  const $canRevokeThroughIssuer = async (caId: string) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId).catch(() => null);
+    if (!ca) return false;
+
+    return caSupportsCapability((ca.externalCa?.type as CaType) ?? CaType.INTERNAL, CaCapability.REVOKE_CERTIFICATES);
   };
 
   /**
    * Delete certificate with serial number [serialNumber]
    */
-  const deleteCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
+  const deleteCert = async ({
+    id,
+    serialNumber,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId,
+    auditLogInfo
+  }: TDeleteCertDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({
+        message: id
+          ? `Certificate with id '${id}' not found`
+          : `Certificate with serial number '${serialNumber}' not found`
+      });
+    }
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
@@ -467,6 +516,23 @@ export const certificateServiceFactory = ({
       );
     }
 
+    const deletionEligibility = resolveCertificateDeletionEligibility(cert);
+    if (!deletionEligibility) {
+      const certName = cert.friendlyName || cert.commonName || cert.serialNumber;
+      const expiresAt = cert.notAfter.toISOString();
+
+      let message = `Certificate '${certName}' is still valid until ${expiresAt} and cannot be deleted. Delete it once it has expired.`;
+      if (cert.status === CertStatus.REVOKED) {
+        message = `Certificate '${certName}' was revoked but does not expire until ${expiresAt}. Delete it once it has expired.`;
+      } else if (cert.caId && (await $canRevokeThroughIssuer(cert.caId))) {
+        message = `Certificate '${certName}' is still valid until ${expiresAt} and cannot be deleted. Revoke it to retire it early, then delete it once it has expired.`;
+      }
+
+      throw new BadRequestError({ message });
+    }
+
+    const pkiSyncIdsHoldingCertificate = await findPkiSyncIdsHoldingCertificate(cert.id, { certificateSyncDAL });
+
     let deletedCert;
     try {
       deletedCert = await certificateDAL.transaction(async (tx) => {
@@ -503,18 +569,21 @@ export const certificateServiceFactory = ({
       throw err;
     }
 
-    // Trigger auto sync for PKI syncs connected to this certificate
-    await triggerAutoSyncForCertificate(cert.id, {
-      certificateSyncDAL,
-      pkiSyncDAL,
-      pkiSyncQueue
-    });
+    await triggerSyncsForDeletedCertificate(
+      cert.id,
+      pkiSyncIdsHoldingCertificate,
+      { pkiSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL },
+      { commonName: cert.commonName, projectId: cert.projectId, applicationId: cert.applicationId },
+      auditLogInfo
+    );
 
     usageMeteringService.emitForProject(cert.projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(cert.projectId, WildcardCerts.key);
 
     return {
-      deletedCert
+      deletedCert,
+      deletionEligibility,
+      applicationName: await $resolveApplicationName(deletedCert.applicationId)
     };
   };
 
@@ -544,11 +613,6 @@ export const certificateServiceFactory = ({
     }
   };
 
-  /**
-   * Revoke certificate with serial number [serialNumber].
-   * Note: Revoking a certificate adds it to the certificate revocation list (CRL)
-   * of its issuing CA
-   */
   const revokeCert = async ({
     id,
     serialNumber,
@@ -649,7 +713,7 @@ export const certificateServiceFactory = ({
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
-    if (ca.internalCa && cert.profileId && cert.source === CertificateSource.Imported) {
+    if (ca.internalCa?.id && cert.profileId && cert.source === CertificateSource.Imported) {
       const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
       if (!certBody) {
         throw new NotFoundError({ message: "Certificate body not found" });
@@ -688,16 +752,33 @@ export const certificateServiceFactory = ({
     }
 
     const revokedAt = new Date();
-    await certificateDAL.update(
-      {
-        id: cert.id
-      },
-      {
-        status: CertStatus.REVOKED,
-        revokedAt,
-        revocationReason: revocationReasonToCrlCode(revocationReason)
+    const revokedCertId = cert.id;
+    const revokedCertApplicationId = cert.applicationId ?? null;
+    await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.update(
+        {
+          id: revokedCertId
+        },
+        {
+          status: CertStatus.REVOKED,
+          revokedAt,
+          revocationReason: revocationReasonToCrlCode(revocationReason)
+        },
+        tx
+      );
+
+      if (!ca.externalCa?.id) {
+        await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
-    );
+    });
+
+    await certificateAlertEventEmitter.notify({
+      certificateId: revokedCertId,
+      projectId: ca.projectId,
+      orgId: actorOrgId,
+      eventType: CertificateApplicationAlertEvent.Revocation,
+      applicationId: revokedCertApplicationId
+    });
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
@@ -708,6 +789,10 @@ export const certificateServiceFactory = ({
       pkiSyncDAL,
       pkiSyncQueue
     });
+
+    if (cert.applicationId) {
+      await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
+    }
 
     // rebuild CRL (TODO: move to interval-based cron job)
     // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
@@ -720,7 +805,7 @@ export const certificateServiceFactory = ({
         projectDAL,
         certificateDAL,
         kmsService,
-        hsmConnectorService
+        caKeySourceService
       });
     }
 
@@ -748,7 +833,7 @@ export const certificateServiceFactory = ({
         }
       : expandInternalCa(ca);
 
-    return { revokedAt, cert, ca: caResult };
+    return { revokedAt, cert, applicationName: await $resolveApplicationName(cert.applicationId), ca: caResult };
   };
 
   /**
@@ -841,7 +926,8 @@ export const certificateServiceFactory = ({
       certificate: certObj.toString("pem"),
       certificateChain,
       serialNumber: certObj.serialNumber,
-      cert
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId)
     };
   };
 
@@ -1063,13 +1149,16 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId,
     friendlyName,
-    certificatePem,
-    chainPem,
-    privateKeyPem,
+    certificatePem: rawCertificatePem,
+    chainPem: rawChainPem,
+    privateKeyPem: rawPrivateKeyPem,
     profileId,
     externalMetadata
   }: TImportCertDTO) => {
     const collectionId = pkiCollectionId;
+    const certificatePem = normalizePemText(rawCertificatePem);
+    const chainPem = rawChainPem ? normalizePemText(rawChainPem) : rawChainPem;
+    const privateKeyPem = rawPrivateKeyPem ? normalizePemText(rawPrivateKeyPem) : rawPrivateKeyPem;
 
     const resolveProjectId = async (): Promise<string> => {
       if (projectIdInput) return projectIdInput;
@@ -1148,7 +1237,13 @@ export const certificateServiceFactory = ({
 
     // Verify the certificate chain when one is provided
     if (chainPem) {
-      const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
+      const chainCerts = parsePemCertificateChain(chainPem);
+      if (!chainCerts) {
+        throw new BadRequestError({
+          message:
+            "The certificate chain contains a block that is not a valid certificate. Paste each certificate in full, including its BEGIN and END lines."
+        });
+      }
 
       // Remove leaf cert from the chain if it's present
       if (chainCerts[0]?.equal(leafCert)) {
@@ -1188,7 +1283,9 @@ export const certificateServiceFactory = ({
       try {
         privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
       } catch (err) {
-        throw new BadRequestError({ message: "Invalid private key format" });
+        throw new BadRequestError({
+          message: "Invalid private key. Provide an unencrypted private key in PEM format."
+        });
       }
 
       try {
@@ -1239,6 +1336,7 @@ export const certificateServiceFactory = ({
     const certificateBuffer = Buffer.from(certificatePem);
     const certificateFields = extractCertificateFields(certificateBuffer);
     const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
+    const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
 
     await linkage?.verifyCertificate({
       serialNumber,
@@ -1319,7 +1417,8 @@ export const certificateServiceFactory = ({
             ...certificateFields,
             // Issuance records these from what it was asked to produce. An imported certificate has
             // no such request, so they come from the certificate itself.
-            ...certificateAlgorithms
+            ...certificateAlgorithms,
+            customExtensions: importedCustomExtensions.length ? JSON.stringify(importedCustomExtensions) : null
           },
           tx
         );
@@ -1369,12 +1468,17 @@ export const certificateServiceFactory = ({
     usageMeteringService.emitForProject(projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(projectId, WildcardCerts.key);
 
+    if (cert.id && cert.applicationId) {
+      await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
+    }
+
     return {
       certificate: certificatePem,
       certificateChain: chainPem,
       privateKey: privateKeyPem,
       serialNumber,
       cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
       profileName: linkage?.profileName ?? null,
       caName: linkage?.caName ?? null
     };
@@ -1512,7 +1616,8 @@ export const certificateServiceFactory = ({
       certificateChain,
       privateKey,
       serialNumber: cert.serialNumber,
-      cert
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId)
     };
   };
 
@@ -1599,7 +1704,8 @@ export const certificateServiceFactory = ({
 
     return {
       pkcs12Data,
-      cert
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId)
     };
   };
 
@@ -1642,6 +1748,9 @@ export const certificateServiceFactory = ({
     }
 
     const [updatedCert] = await certificateDAL.update({ id: cert.id }, { applicationId });
+
+    await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
+
     return { certificate: updatedCert, application };
   };
 

@@ -6,7 +6,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
 import z from "zod";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 
 const schema = z.object({
@@ -40,60 +54,61 @@ export function AzureKeyVaultAuthorizePage() {
         <title>Authorize Azure Key Vault Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Authenticate with a specific tenant ID or let OAuth handle it automatically."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Microsoft Azure.png"
-                height={30}
-                width={30}
-                alt="Azure Key Vault logo"
-              />
-            </div>
-            <span className="ml-2.5">Azure Key Vault Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/azure-key-vault"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
-          <Controller
-            control={control}
-            name="tenantId"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Tenant ID (optional)"
-                errorText={error?.message}
-                isError={Boolean(error)}
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img
+              src="/images/integrations/Microsoft Azure.png"
+              height={30}
+              width={30}
+              alt="Azure Key Vault logo"
+            />
+            <span>Azure Key Vault Integration</span>
+          </CardTitle>
+          <CardDescription>
+            Authenticate with a specific tenant ID or let OAuth handle it automatically.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/azure-key-vault"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Input {...field} placeholder="2e39537c-9a01-4bd6-a7b8-c3b88cbb8db9" />
-              </FormControl>
-            )}
-          />
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            className="mt-2 w-min"
-            size="sm"
-            type="submit"
-          >
-            Connect to Azure Key Vault
-          </Button>
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-5">
+          <CardContent>
+            <Controller
+              control={control}
+              name="tenantId"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="azurekeyvault-tenantid">Tenant ID (optional)</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="2e39537c-9a01-4bd6-a7b8-c3b88cbb8db9"
+                    id="azurekeyvault-tenantid"
+                    isError={Boolean(error)}
+                    aria-describedby={error ? "azurekeyvault-tenantid-error" : undefined}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="azurekeyvault-tenantid-error">{error?.message}</FieldError>
+                  )}
+                </Field>
+              )}
+            />
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button size="sm" type="submit" variant="project">
+              Connect to Azure Key Vault
+            </Button>
+          </CardFooter>
         </form>
       </Card>
     </div>

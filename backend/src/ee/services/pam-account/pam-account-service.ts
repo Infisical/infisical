@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
+import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -19,6 +20,7 @@ import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { logger } from "@app/lib/logger";
 import { createSshKeyPair, SshCertKeyAlgorithm } from "@app/lib/ssh";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -28,11 +30,12 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
+import { testBuiltConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import {
-  PamAccessStatus,
+  accountTypeSupportsSessionLogMasking,
   PamAccessType,
   PamAccountType,
+  PamAccountWarning,
   PamHeartbeatStatus,
   PamProductRole,
   PamSessionStatus
@@ -49,6 +52,7 @@ import {
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
 import {
+  getInheritedRecordingS3Config,
   mintCorsProbeUrl,
   resolveOverridesS3Config,
   validateGatewayAttachment,
@@ -68,23 +72,30 @@ import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   buildGatewayConnectionTest,
   CLOUD_CONNECTION_VALIDATORS,
-  TestConnectionMode
+  testVerifiesCredential
 } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
+  ACCOUNT_TYPE_CONFIGS,
   applyForcedFields,
+  gatewaySupportsAccountType,
+  gatewaySupportsClickHouseNative,
   getAccountAccessibilityIssues,
   hasRevealableCredential,
   isCredentialConfigured,
   noRevealableCredentialMessage,
   normalizeCredentialAuthMethod,
+  ORACLE_MAX_PASSWORD_LENGTH,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
+  requiresClickHouseNative,
   sanitizeCredentials,
   suppliesCredentialSecret,
   type TSshInternalMetadata,
+  type TSupportedAccountType,
   validateConnectionDetails,
-  validateCredentials
+  validateCredentials,
+  webAccessUnavailableReason
 } from "./pam-account-schemas";
 import {
   TCreatePamAccountDTO,
@@ -105,7 +116,7 @@ type TPamAccountServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
@@ -115,7 +126,8 @@ type TPamAccountServiceFactoryDep = {
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
+  gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "findHealthyGatewaysByPoolId">;
   gatewayV2Service: Pick<
     TGatewayV2ServiceFactory,
     "getPlatformConnectionDetailsByGatewayId" | "getPAMConnectionDetails"
@@ -134,6 +146,15 @@ type TPamAccountServiceFactoryDep = {
     | "checkGrant"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+};
+
+const assertOraclePasswordIsUsable = (accountType: PamAccountType, credentials: unknown) => {
+  if (accountType !== PamAccountType.OracleDB) return;
+  const { password } = credentials as { password?: string };
+  if (!password || password.length <= ORACLE_MAX_PASSWORD_LENGTH) return;
+  throw new BadRequestError({
+    message: `The gateway cannot sign in to Oracle with a password longer than ${ORACLE_MAX_PASSWORD_LENGTH} characters, so this account could not be checked or rotated. Use a password of ${ORACLE_MAX_PASSWORD_LENGTH} characters or fewer.`
+  });
 };
 
 const assertPasswordMeetsRequirements = (credentials: unknown, templateSettings: unknown) => {
@@ -196,6 +217,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     kmsService,
     gatewayV2Service,
     gatewayPoolService,
+    gatewayPoolMembershipDAL,
+    gatewayV2DAL,
     licenseService
   } = deps;
 
@@ -226,6 +249,68 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   }) => {
     const accessibilityIssues = getAccountAccessibilityIssues(a);
     return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };
+  };
+
+  // The gateway performs the masking, so a build predating built-in detection ignores the
+  // template's setting without reporting anything. Derived server-side because listing gateways is
+  // an org-admin permission, and a PAM member who can see the account must still see this.
+  const $resolveMaskingDegraded = async (
+    orgId: string,
+    accounts: {
+      accountType: string;
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
+      templateGatewayId: string | null;
+      templateGatewayPoolId: string | null;
+      templateSettings: unknown;
+    }[]
+  ) => {
+    const candidates = accounts.map((a) => ({
+      enabled:
+        accountTypeSupportsSessionLogMasking(a.accountType as PamAccountType) &&
+        PamTemplateSettingsSchema.safeParse(a.templateSettings).data?.sessionLogMaskingBuiltInDetection === true,
+      // Mirrors the session launch path: each field falls back to the template independently,
+      // and a direct gateway wins over a pool.
+      gatewayId: a.gatewayId ?? a.templateGatewayId,
+      gatewayPoolId: a.gatewayPoolId ?? a.templateGatewayPoolId
+    }));
+
+    if (!candidates.some((c) => c.enabled)) return candidates.map(() => false);
+
+    const supportsMasking = (gateway: { capabilities?: unknown }) =>
+      (gateway.capabilities as { sessionLogMaskingBuiltInDetection?: boolean } | undefined)
+        ?.sessionLogMaskingBuiltInDetection === true;
+
+    // Only reachable members can serve a session, so an offline one lacking the capability must not
+    // make the account look degraded. Same reachability filter pool selection uses.
+    const poolIds = [
+      ...new Set(candidates.filter((c) => c.enabled && !c.gatewayId && c.gatewayPoolId).map((c) => c.gatewayPoolId!))
+    ];
+    const poolDegraded = new Map<string, boolean>();
+    await Promise.all(
+      poolIds.map(async (poolId) => {
+        const healthy = await gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
+        poolDegraded.set(
+          poolId,
+          healthy.some((gateway) => !supportsMasking(gateway))
+        );
+      })
+    );
+
+    const directIds = [...new Set(candidates.filter((c) => c.enabled && c.gatewayId).map((c) => c.gatewayId!))];
+    const unsupported = new Set(
+      directIds.length
+        ? (await gatewayV2DAL.find({ orgId, $in: { id: directIds } }))
+            .filter((g) => !supportsMasking(g))
+            .map((g) => g.id)
+        : []
+    );
+
+    return candidates.map((c) => {
+      if (!c.enabled) return false;
+      if (c.gatewayId) return unsupported.has(c.gatewayId);
+      return poolDegraded.get(c.gatewayPoolId ?? "") ?? false;
+    });
   };
 
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
@@ -314,7 +399,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       )
     ]);
 
-    return accounts.map((a) => {
+    const maskingDegraded = await $resolveMaskingDegraded(ctx.actorOrgId, accounts);
+
+    return accounts.map((a, idx) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
       const { requiresApproval, requireReason, allowBreakGlass } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
@@ -338,18 +425,21 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
         isStale: a.isStale,
+        warnings: maskingDegraded[idx] ? [PamAccountWarning.SessionLogMaskingDegraded] : [],
         heartbeatStatus: (a.heartbeatStatus as PamHeartbeatStatus | null) ?? null,
         heartbeatEnabled: Boolean(a.heartbeatEnabled),
         requiresApproval,
         supportsCredentialReveal: revealableById.get(a.id) ?? false,
         requireReason,
-        accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
+        accessStatus: requiresApproval
+          ? (statusEntry?.accessStatus ?? ApprovalAccessStatus.None)
+          : ApprovalAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
         pendingRequestId: statusEntry?.pendingRequestId ?? null,
         canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),
         credentialAccessStatus: requiresApproval
-          ? (credentialStatusEntry?.accessStatus ?? PamAccessStatus.None)
-          : PamAccessStatus.None,
+          ? (credentialStatusEntry?.accessStatus ?? ApprovalAccessStatus.None)
+          : ApprovalAccessStatus.None,
         credentialPendingRequestId: credentialStatusEntry?.pendingRequestId ?? null,
         permissions: permissionsByAccountId.get(a.id) ?? [],
         createdAt: a.createdAt,
@@ -398,6 +488,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       settingsOverrides: account.settingsOverrides ?? null,
       connectionDetails,
       credentials,
+      webAccessUnavailableReason: webAccessUnavailableReason(account.accountType as PamAccountType, connectionDetails),
       ...computeAccessibility(account),
       isStale: account.isStale,
       createdAt: account.createdAt,
@@ -533,9 +624,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       return true;
     }
 
-    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
-    if (!test) return false;
-
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: effectiveGatewayId,
@@ -546,21 +634,35 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new BadRequestError({ message: "A gateway must be attached to this account." });
     }
 
-    const result = await testConnectionWithGateway(
-      test.host,
-      test.port,
-      gatewayId,
-      gatewayV2Service,
-      test.request,
-      CONNECTION_TEST_TIMEOUT_MS
-    );
+    const attachedGateway = await gatewayV2DAL.findOne({ id: gatewayId });
+    const capabilities = attachedGateway?.capabilities as {
+      supported_account_types?: string[];
+      clickhouseNativeProtocol?: boolean;
+    } | null;
+    if (!gatewaySupportsAccountType(accountType, capabilities?.supported_account_types)) {
+      throw new BadRequestError({
+        message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ${ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType].name} accounts. Update the gateway, then try again.`
+      });
+    }
+
+    // Otherwise this passes over HTTP and every native client fails at session time, with nothing to point at.
+    if (requiresClickHouseNative(accountType, connectionDetails) && !gatewaySupportsClickHouseNative(capabilities)) {
+      throw new BadRequestError({
+        message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ClickHouse's native protocol. Update the gateway, or clear the native port to use this account over HTTP only.`
+      });
+    }
+
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
+    if (!test) return false;
+
+    const result = await testBuiltConnectionWithGateway(test, gatewayId, gatewayV2Service, CONNECTION_TEST_TIMEOUT_MS);
 
     // a null result means the gateway couldn't be reached (offline / pre-protocol) — skip rather than block
     if (result && !result.ok) {
       throw new BadRequestError({ message: `Connection test failed: ${result.errorMessage}` });
     }
 
-    return Boolean(result?.ok) && test.request.mode !== TestConnectionMode.Tcp;
+    return Boolean(result?.ok) && testVerifiesCredential(test.request);
   };
 
   const create = async ({
@@ -608,6 +710,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const currentPamAccountCount = await pamAccountDAL.countByOrgId(ctx.actorOrgId);
       if (currentPamAccountCount >= plan.maxPamAccounts) {
         throw new BadRequestError({
+          name: "PAM_ACCOUNT_LIMIT_REACHED",
           message: "Failed to create PAM account due to plan limit reached. Upgrade plan to add more PAM accounts."
         });
       }
@@ -633,7 +736,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       deps,
       effectiveGatewayId,
       effectiveGatewayId ? null : (gatewayPoolId ?? template.gatewayPoolId),
-      ctx
+      ctx,
+      { inheritedFrom: gatewayId ? undefined : `Account template '${template.name}'` }
     );
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
@@ -641,7 +745,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       deps,
       settingsOverrides,
       recordingConnectionId ?? template.recordingConnectionId,
-      ctx
+      ctx,
+      recordingConnectionId ? getInheritedRecordingS3Config(settingsOverrides, template.settings) : undefined
     );
 
     const forced = applyForcedFields(accountType, {
@@ -650,6 +755,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     });
     const validatedConnectionDetails = validateConnectionDetails(accountType, forced.connectionDetails);
     const validatedCredentials = validateCredentials(accountType, forced.credentials);
+    assertOraclePasswordIsUsable(accountType, validatedCredentials);
     assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
     // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
@@ -821,7 +927,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         deps,
         effectiveGatewayId,
         effectiveGatewayId ? null : (nextGatewayPoolId ?? nextTemplateGatewayPoolId),
-        ctx
+        ctx,
+        {
+          previousGatewayId: existing.gatewayId ?? existing.templateGatewayId,
+          inheritedFrom: nextGatewayId ? undefined : `Account template '${template?.name ?? existing.templateName}'`
+        }
       );
     }
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
@@ -831,7 +941,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       settingsOverrides,
       (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
         existing.templateRecordingConnectionId,
-      ctx
+      ctx,
+      recordingConnectionId
+        ? getInheritedRecordingS3Config(
+            settingsOverrides === undefined ? existing.settingsOverrides : settingsOverrides,
+            template ? template.settings : existing.templateSettings
+          )
+        : undefined
     );
 
     const updateData: Record<string, unknown> = {};
@@ -868,6 +984,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         const templateSettings = templateId
           ? (await pamAccountTemplateDAL.findById(templateId))?.settings
           : existing.templateSettings;
+        if ((credentials as { password?: string }).password) {
+          assertOraclePasswordIsUsable(accountType, effectiveCredentials);
+        }
         assertPasswordMeetsRequirements(effectiveCredentials, templateSettings);
       }
 
@@ -878,9 +997,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const oldConn = validateConnectionDetails(accountType, existingConnectionDetails) as {
         host?: string;
         port?: number;
+        nativePort?: number;
       };
-      const newConn = effectiveConnectionDetails as { host?: string; port?: number };
-      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) connectionTargetChanged = true;
+      const newConn = effectiveConnectionDetails as { host?: string; port?: number; nativePort?: number };
+      // Re-pointing nativePort sends the stored credential somewhere new on the next heartbeat.
+      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port || oldConn.nativePort !== newConn.nativePort)
+        connectionTargetChanged = true;
 
       const oldUsername = (existingCredentials as { username?: string }).username;
       const newUsername = (effectiveCredentials as { username?: string }).username;
@@ -1227,7 +1349,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           // Machine identities cannot satisfy MFA, so launch rejects them outright (see
           // pam-session-service). Callers acting as an identity should treat this as unusable.
           requireMfa,
-          accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
+          accessStatus: requiresApproval
+            ? (statusEntry?.accessStatus ?? ApprovalAccessStatus.None)
+            : ApprovalAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           pendingRequestId: statusEntry?.pendingRequestId ?? null,
           canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),

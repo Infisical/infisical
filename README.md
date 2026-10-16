@@ -9,12 +9,12 @@
 </p>
 
 <h4 align="center">
-  <a href="https://infisical.com/slack">Slack</a> |
+  <a href="https://community.infisical.com/">Community</a> |
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
   <a href="https://www.infisical.com">Website</a> |
-  <a href="https://twitter.com/infisical">Twitter</a> |
+  <a href="https://x.com/infisical">X</a> |
   <a href="https://infisical.com/careers">Hiring (Remote/SF)</a>
 </h4>
 
@@ -28,12 +28,12 @@
   <a href="https://cloudsmith.io/~infisical/repos/">
     <img src="https://img.shields.io/badge/Downloads-6.95M-orange" alt="Cloudsmith downloads" />
   </a>
-  <a href="https://infisical.com/slack">
-    <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
+  <a href="https://community.infisical.com/">
+    <img src="https://img.shields.io/badge/community-forum-blueviolet" alt="Infisical community forum" />
   </a>
 </h4>
 
-<img src="/img/infisical_github_repo3.png" width="100%" alt="Infisical secrets management dashboard" />
+<img src="/img/infisical_github_repo4.png" width="100%" alt="Infisical secrets management dashboard" />
 
 ## Introduction
 
@@ -48,9 +48,9 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 Centralize your application secrets and configuration across every environment, with versioning, rotation, and leak prevention built in.
 
 - **[Dashboard](https://infisical.com/docs/documentation/platform/project)**: Manage secrets across projects and environments (e.g. development, production, etc.) through a user-friendly interface.
-- **[Secret Syncs](https://infisical.com/docs/integrations/secret-syncs/overview)**: Sync secrets to platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/cloud/vercel), [AWS](https://infisical.com/docs/integrations/cloud/aws-secret-manager), and use tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more.
+- **[Secret Syncs](https://infisical.com/docs/integrations/secret-syncs/overview)**: Sync secrets to platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/secret-syncs/vercel), [AWS](https://infisical.com/docs/integrations/secret-syncs/aws-secrets-manager), and use tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more.
 - **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery](https://infisical.com/docs/documentation/platform/pit-recovery)**: Keep track of every secret and project state; roll back when needed.
-- **[Secret Rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview)**: Rotate secrets at regular intervals for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/secret-rotation/postgres-credentials), [MySQL](https://infisical.com/docs/documentation/platform/secret-rotation/mysql), [AWS IAM](https://infisical.com/docs/documentation/platform/secret-rotation/aws-iam-user-secret), and more.
+- **[Secret Rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview)**: Rotate secrets at regular intervals for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/secret-rotation/postgres-credentials), [MySQL](https://infisical.com/docs/documentation/platform/secret-rotation/mysql-credentials), [AWS IAM](https://infisical.com/docs/documentation/platform/secret-rotation/aws-iam-user-secret), and more.
 - **[Dynamic Secrets](https://infisical.com/docs/documentation/platform/dynamic-secrets/overview)**: Generate ephemeral secrets on-demand for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/dynamic-secrets/postgresql), [MySQL](https://infisical.com/docs/documentation/platform/dynamic-secrets/mysql), [RabbitMQ](https://infisical.com/docs/documentation/platform/dynamic-secrets/rabbit-mq), and more.
 - **[Secret Scanning and Leak Prevention](https://infisical.com/docs/cli/scanning-overview)**: Prevent secrets from leaking to git.
 - **[Infisical Kubernetes Operator](https://infisical.com/docs/documentation/guides/kubernetes-operator)**: Deliver secrets to your Kubernetes workloads and automatically reload deployments.
@@ -82,10 +82,10 @@ Centrally manage cryptographic keys and use them to encrypt and decrypt data acr
 
 Manage and secure access to critical infrastructure like databases and servers with policy-based controls, approvals, and full session visibility.
 
-- **[Privileged Access Management](https://infisical.com/docs/documentation/platform/pam/overview)**: Decouple user identity from infrastructure credentials. Users authenticate with their SSO identity while Infisical brokers just-in-time access to resources like [PostgreSQL](https://infisical.com/docs/documentation/platform/pam/getting-started/resources/postgresql), [SSH servers](https://infisical.com/docs/documentation/platform/pam/getting-started/resources/ssh), [Kubernetes](https://infisical.com/docs/documentation/platform/pam/getting-started/resources/kubernetes), [Active Directory](https://infisical.com/docs/documentation/platform/pam/getting-started/resources/active-directory), and more.
-- **[Session Recording](https://infisical.com/docs/documentation/platform/pam/product-reference/session-recording)**: Capture and replay privileged sessions for audit and compliance, with [AI session insights](https://infisical.com/docs/documentation/platform/pam/product-reference/ai-session-insights) to surface risky activity.
-- **[Credential Rotation](https://infisical.com/docs/documentation/platform/pam/product-reference/credential-rotation)**: Automatically rotate the underlying credentials for managed resources so static secrets never leave Infisical.
-- **[Web Access](https://infisical.com/docs/documentation/platform/pam/product-reference/web-access/overview)**: Connect to SSH, PostgreSQL, Redis, and Windows RDP resources directly from the browser.
+- **[Privileged Access Management](https://infisical.com/docs/documentation/platform/pam/overview)**: Decouple user identity from infrastructure credentials. Users authenticate with their SSO identity while Infisical brokers just-in-time access to resources like [PostgreSQL](https://infisical.com/docs/documentation/platform/pam/accounts/postgresql), [SSH servers](https://infisical.com/docs/documentation/platform/pam/accounts/ssh), [Kubernetes](https://infisical.com/docs/documentation/platform/pam/accounts/kubernetes), [Active Directory](https://infisical.com/docs/documentation/platform/pam/accounts/windows-ad), and more.
+- **[Session Recording](https://infisical.com/docs/documentation/platform/pam/sessions/session-recording)**: Capture and replay privileged sessions for audit and compliance, with AI session insights to surface risky activity.
+- **[Credential Rotation](https://infisical.com/docs/documentation/platform/pam/product-reference/credential-rotation/overview)**: Automatically rotate the underlying credentials for managed resources so static secrets never leave Infisical.
+- **[Web Access](https://infisical.com/docs/documentation/platform/pam/accounts/overview)**: Connect to SSH, PostgreSQL, Redis, and Windows RDP resources directly from the browser.
 
 ### General Platform:
 
@@ -138,7 +138,7 @@ To scan your full git history, run:
 infisical scan --verbose
 ```
 
-Install pre commit hook to scan each commit before you push to your repository
+Install a pre-commit hook to scan each commit before you push to your repository
 
 ```
 infisical scan install --pre-commit-hook
@@ -148,9 +148,9 @@ Learn about Infisical's code scanning feature [here](https://infisical.com/docs/
 
 ## Open-source vs. paid
 
-This repo available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license.
+This repo is available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license.
 
-If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://infisical.cal.com/vlad/infisical-demo).
+If you are interested in managed Infisical Cloud or self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://infisical.cal.com/vlad/infisical-demo).
 
 ## Security
 
@@ -166,7 +166,7 @@ Whether it's big or small, we love contributions. Check out our guide to see how
 
 Not sure where to get started? You can:
 
-- Join our <a href="https://infisical.com/slack">Slack</a>, and ask us any questions there.
+- Join our <a href="https://community.infisical.com/">community</a>, and ask us any questions there.
 
 ## We are hiring!
 

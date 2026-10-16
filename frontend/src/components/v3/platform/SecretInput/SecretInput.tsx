@@ -1,12 +1,46 @@
 /* eslint-disable react/no-danger */
-import { forwardRef, TextareaHTMLAttributes, useEffect, useState } from "react";
+import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
+import { IconButton } from "../../generic/IconButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 import { cn } from "../../utils";
+import { getInvisibleCharacterSummary, splitSuspiciousCharacters } from "./invisibleCharacters";
 
 const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
+
+const markInvisibleChars = (text: string, chunkKey: number) => {
+  const nodes: ReactNode[] = [];
+  let offset = 0;
+
+  splitSuspiciousCharacters(text).forEach(({ text: part, isSuspicious }) => {
+    if (isSuspicious) {
+      nodes.push(
+        <span
+          key={`secret-value-invisible-${chunkKey}-${offset}`}
+          className="rounded-xs bg-warning/25 outline outline-1 outline-warning/70"
+        >
+          {part}
+        </span>
+      );
+    } else {
+      nodes.push(part);
+    }
+    offset += part.length;
+  });
+
+  return nodes;
+};
+
+// One dot per character, keeping line breaks, so a value being typed shows its length and shape the
+// way a password field does.
+const maskPerCharacter = (content: string) => [
+  Array.from(content, (char) => (char === "\n" ? "\n" : "\u2022")).join(""),
+  <br key="secret-value-mask-linebreak" />
+];
 
 const syntaxHighlight = (
   content?: string | null,
@@ -18,7 +52,8 @@ const syntaxHighlight = (
   hoveredPart?: string,
   isCmdOrCtrlPressed?: boolean,
   onClickSegment?: (segment: string, allSegments: string[]) => void,
-  placeholder?: string
+  placeholder?: string,
+  isMaskedPerCharacter?: boolean
 ) => {
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
@@ -27,7 +62,7 @@ const syntaxHighlight = (
   if (placeholder && (content === "" || !content)) return placeholder;
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
-  if (!isVisible) return HIDDEN_SECRET_VALUE;
+  if (!isVisible) return isMaskedPerCharacter ? maskPerCharacter(content) : HIDDEN_SECRET_VALUE;
 
   let skipNext = false;
   const formattedContent = content.split(REGEX).flatMap((el, i) => {
@@ -81,7 +116,7 @@ const syntaxHighlight = (
                     }
                   }}
                 >
-                  {segment}
+                  {markInvisibleChars(segment, i)}
                 </span>
                 {segmentIndex < parts.length - 1 && (
                   <span className="ph-no-capture pointer-events-none text-secret/80">.</span>
@@ -97,7 +132,7 @@ const syntaxHighlight = (
       skipNext = false;
       return [];
     }
-    return el;
+    return markInvisibleChars(el, i);
   });
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
@@ -107,14 +142,22 @@ const syntaxHighlight = (
   );
 };
 
+export type SecretInputVariant = "default" | "plain";
+
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   value?: string | null;
+  variant?: SecretInputVariant;
   isVisible?: boolean;
   valueAlwaysHidden?: boolean;
+  // Masks with one dot per character instead of a fixed-length mask, which reveals the value's
+  // length. Meant for a value the user is typing, not a stored one.
+  maskEachCharacter?: boolean;
   isImport?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
   containerClassName?: string;
+  // Grows from a textarea-height box with the value top-aligned, for standalone form fields.
+  isMultiline?: boolean;
   canEditButNotView?: boolean;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
@@ -123,16 +166,19 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 };
 
 const commonClassName =
-  "text-sm leading-[1.45rem] caret-white border-none outline-hidden w-full break-all";
+  "w-full border-none text-sm leading-5 break-all caret-foreground outline-hidden";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
     {
       value,
+      variant = "default",
       isVisible,
       isImport,
       valueAlwaysHidden,
+      maskEachCharacter,
       containerClassName,
+      isMultiline,
       onBlur,
       isDisabled,
       isReadOnly,
@@ -181,25 +227,44 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const shouldRevealValue = isVisible || (isSecretFocused && !valueAlwaysHidden);
     const shouldBindRealValue = isVisible || isSecretFocused;
+    const shouldShowMask =
+      !isErrorLoadingValue && (isLoadingValue || (Boolean(value) && !shouldRevealValue));
+
+    const invisibleChars = useMemo(
+      () =>
+        value && !isLoadingValue && !isErrorLoadingValue ? getInvisibleCharacterSummary(value) : [],
+      [value, isLoadingValue, isErrorLoadingValue]
+    );
 
     return (
       <div
+        data-slot="secret-input"
+        data-variant={variant}
         data-invalid={isError}
         className={cn(
-          "no-scrollbar min-h-9 w-full overflow-auto rounded-md border border-border bg-transparent transition-[color,box-shadow]",
-          "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-          "data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+          "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
+          variant === "default" &&
+            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+          variant === "plain" && invisibleChars.length > 0 && "flex",
+          variant === "default" && isMultiline && "min-h-16 items-start py-1",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
       >
-        <div className="relative overflow-hidden px-3 pt-[6px] pb-[4px]">
+        <div
+          className={cn(
+            "relative w-full min-w-0 overflow-hidden",
+            variant === "default" && "px-2.5 py-1"
+          )}
+        >
           <div
             aria-hidden
             className={cn(
               "pointer-events-none whitespace-break-spaces",
               commonClassName,
-              !value && "text-muted"
+              maskEachCharacter && "font-mono",
+              !value && "text-muted",
+              shouldShowMask && "tracking-normal"
             )}
           >
             {syntaxHighlight(
@@ -214,7 +279,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               hoveredPart,
               isCmdOrCtrlPressed,
               onClickSegment,
-              placeholder
+              placeholder,
+              maskEachCharacter
             )}
           </div>
           <textarea
@@ -223,8 +289,12 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             aria-label="secret value"
             ref={ref}
             className={cn(
-              "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent px-3 py-1 text-transparent focus:border-0",
-              commonClassName
+              "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0",
+              variant === "default" && "px-2.5 py-1",
+              commonClassName,
+              // Monospaced in both layers, so each dot sits over the character it hides and the caret
+              // in the transparent textarea lines up with them.
+              maskEachCharacter && "font-mono"
             )}
             onFocus={(evt) => {
               onFocus?.(evt);
@@ -254,6 +324,34 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
+        {invisibleChars.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="Value contains invisible characters"
+                variant="ghost"
+                size="xs"
+                className={cn(
+                  "border-transparent bg-transparent text-warning hover:bg-transparent hover:text-warning data-[state=open]:bg-transparent",
+                  "sticky top-0 self-start",
+                  variant === "default" && "mt-1 mr-2.5"
+                )}
+              >
+                <TriangleAlertIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">
+              <p>This value contains invisible characters that can break it when used:</p>
+              <ul className="mt-1 list-disc pl-4">
+                {invisibleChars.map(({ codePoint, label, count }) => (
+                  <li key={codePoint}>
+                    {count}x {label} ({codePoint})
+                  </li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   }

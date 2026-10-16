@@ -1,6 +1,9 @@
+import RE2 from "re2";
+
 import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
 
 import { PamHeartbeatStatus } from "../pam/pam-enums";
+import { ORACLE_MIN_GATEWAY_VERSION } from "../pam-account/pam-account-schemas";
 import { TPamHeartbeatConfig } from "../pam-account-template/pam-account-template-schemas";
 
 export const HEARTBEAT_TIMEOUT_MS = 15_000;
@@ -60,6 +63,13 @@ export const statusForFailureKind = (kind: GatewayFailureKind | null): PamHeartb
 // rather than an answer from the target.
 export const UNCLASSIFIED_FAILURE_NOTE =
   "This gateway is too old to tell a rejected credential from an unreachable target. Update the gateway for an accurate result.";
+
+const GATEWAY_MISSING_CHECK_PATTERN = new RE2("unsupported (SQL dialect|test-connection mode)", "i");
+
+export const GATEWAY_MISSING_CHECK_NOTE = `This account's gateway does not support checking this account type. Update the gateway to ${ORACLE_MIN_GATEWAY_VERSION} or later.`;
+
+export const gatewayIsMissingCheckSupport = (message?: string): boolean =>
+  Boolean(message && GATEWAY_MISSING_CHECK_PATTERN.test(message));
 
 export const describeFailure = (kind: GatewayFailureKind | null, message?: string): string | undefined => {
   if (kind !== null) return message;

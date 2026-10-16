@@ -6,6 +6,7 @@ import {
 } from "@app/services/app-connection/cloud-66/cloud-66-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TCloud66EnvVar, TCloud66SyncWithCredentials } from "./cloud66-sync-types";
@@ -39,7 +40,8 @@ const deleteCloud66EnvVar = (accessToken: string, stackId: string, key: string) 
   );
 
 export const Cloud66SyncFns = {
-  async syncSecrets(secretSync: TCloud66SyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TCloud66SyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -113,7 +115,8 @@ export const Cloud66SyncFns = {
     return Object.fromEntries(existingEnvVars.map((envVar) => [envVar.key, { value: envVar.value }]));
   },
 
-  async removeSecrets(secretSync: TCloud66SyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TCloud66SyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { stackId }

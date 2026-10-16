@@ -1,27 +1,36 @@
 import { useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faBugs,
-  faCircleInfo
-} from "@fortawesome/free-solid-svg-icons";
+import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Card,
-  CardBody,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  DocumentationLinkBadge,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { isValidPath } from "@app/helpers/string";
@@ -110,68 +119,64 @@ export const HashicorpVaultConfigurePage = () => {
   };
 
   return integrationAuth ? (
-    <div className="flex h-full w-full flex-col items-center justify-center">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-6">
       <Helmet>
         <title>Set Up Vault Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Select which environment or folder in Infisical you want to sync to which path in HashiCorp Vault."
-        >
-          <div className="flex flex-row items-center">
-            <div className="inline-flex items-center">
+      <form onSubmit={handleSubmit(handleFormSubmit)} noValidate className="w-full max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>
               <img
                 src="/images/integrations/Vault.png"
                 height={30}
                 width={30}
                 alt="HCP Vault logo"
               />
-            </div>
-            <span className="ml-2.5">HashiCorp Vault Integration</span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/hashicorp-vault"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <CardBody>
-          <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+              HashiCorp Vault Integration
+              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/hashicorp-vault" />
+            </CardTitle>
+            <CardDescription>
+              Select which environment or folder in Infisical you want to sync to which path in
+              HashiCorp Vault.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
             <Controller
               control={control}
               name="selectedSourceEnvironment"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isRequired
-                  label="Project Environment"
-                >
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    className="w-full border border-mineshaft-500"
-                  >
-                    {currentProject?.environments.map((sourceEnvironment) => (
-                      <SelectItem
-                        value={sourceEnvironment.slug}
-                        key={`vault-environment-${sourceEnvironment.slug}`}
-                      >
-                        {sourceEnvironment.name}
-                      </SelectItem>
-                    ))}
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HashicorpVaultConfigurePage-field-1">
+                    Project Environment
+                    <span className="text-danger">*</span>
+                  </FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id="HashicorpVaultConfigurePage-field-1"
+                      aria-describedby="HashicorpVaultConfigurePage-field-1-feedback"
+                      isError={Boolean(error)}
+                      className="w-full"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentProject?.environments.map((sourceEnvironment) => (
+                        <SelectItem
+                          value={sourceEnvironment.slug}
+                          key={`vault-environment-${sourceEnvironment.slug}`}
+                        >
+                          {sourceEnvironment.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  {Boolean(error) && (
+                    <FieldError id="HashicorpVaultConfigurePage-field-1-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
 
@@ -179,15 +184,32 @@ export const HashicorpVaultConfigurePage = () => {
               control={control}
               name="secretPath"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isRequired
-                  label="Secrets Path"
-                  helperText="A path to your secrets in Infisical."
-                >
-                  <Input {...field} autoCorrect="off" spellCheck={false} placeholder="/" />
-                </FormControl>
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HashicorpVaultConfigurePage-field-2">
+                    Secrets Path
+                    <span className="text-danger">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="HashicorpVaultConfigurePage-field-2"
+                    aria-required
+                    aria-describedby="HashicorpVaultConfigurePage-field-2-feedback"
+                    isError={Boolean(error)}
+                    {...field}
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="/"
+                  />
+                  {!error && (
+                    <FieldDescription id="HashicorpVaultConfigurePage-field-2-feedback">
+                      A path to your secrets in Infisical.
+                    </FieldDescription>
+                  )}
+                  {Boolean(error) && (
+                    <FieldError id="HashicorpVaultConfigurePage-field-2-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
 
@@ -195,15 +217,32 @@ export const HashicorpVaultConfigurePage = () => {
               control={control}
               name="vaultEnginePath"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Vault KV Secrets Engine Path"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  helperText="A path where your KV Secrets Engine is enabled."
-                  isRequired
-                >
-                  <Input autoCorrect="off" spellCheck={false} {...field} placeholder="kv" />
-                </FormControl>
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HashicorpVaultConfigurePage-field-3">
+                    Vault KV Secrets Engine Path
+                    <span className="text-danger">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="HashicorpVaultConfigurePage-field-3"
+                    aria-required
+                    aria-describedby="HashicorpVaultConfigurePage-field-3-feedback"
+                    isError={Boolean(error)}
+                    autoCorrect="off"
+                    spellCheck={false}
+                    {...field}
+                    placeholder="kv"
+                  />
+                  {!error && (
+                    <FieldDescription id="HashicorpVaultConfigurePage-field-3-feedback">
+                      A path where your KV Secrets Engine is enabled.
+                    </FieldDescription>
+                  )}
+                  {Boolean(error) && (
+                    <FieldError id="HashicorpVaultConfigurePage-field-3-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
 
@@ -211,40 +250,50 @@ export const HashicorpVaultConfigurePage = () => {
               control={control}
               name="vaultSecretPath"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Vault Secret(s) Path"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  helperText="A path for storing secrets within the KV Secrets Engine."
-                  isRequired
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HashicorpVaultConfigurePage-field-4">
+                    Vault Secret(s) Path
+                    <span className="text-danger">*</span>
+                  </FieldLabel>
                   <Input
+                    id="HashicorpVaultConfigurePage-field-4"
+                    aria-required
+                    aria-describedby="HashicorpVaultConfigurePage-field-4-feedback"
+                    isError={Boolean(error)}
                     autoCorrect="off"
                     spellCheck={false}
                     {...field}
                     placeholder="machine/dev"
                   />
-                </FormControl>
+                  {!error && (
+                    <FieldDescription id="HashicorpVaultConfigurePage-field-4-feedback">
+                      A path for storing secrets within the KV Secrets Engine.
+                    </FieldDescription>
+                  )}
+                  {Boolean(error) && (
+                    <FieldError id="HashicorpVaultConfigurePage-field-4-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
-
-            <Button type="submit" isLoading={isSubmitting}>
+          </CardContent>
+          <CardFooter className="justify-end border-t pt-4">
+            <Button type="submit" isPending={isSubmitting} variant="project">
               Create Integration
             </Button>
-          </form>
-        </CardBody>
-      </Card>
-      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
-        <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
-        </div>
-        <span className="mt-4 text-sm text-mineshaft-300">
+          </CardFooter>
+        </Card>
+      </form>
+      <Alert variant="info" className="w-full max-w-lg">
+        <InfoIcon />
+        <AlertTitle>Pro Tip</AlertTitle>
+        <AlertDescription>
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in Vault with secrets from Infisical.
-        </span>
-      </div>
+        </AlertDescription>
+      </Alert>
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
@@ -259,12 +308,12 @@ export const HashicorpVaultConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-foreground underline decoration-project underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

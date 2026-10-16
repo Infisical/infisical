@@ -4,8 +4,7 @@ import { format } from "date-fns";
 import { MoreHorizontal, Plus, Radar, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Button,
   Card,
@@ -28,6 +27,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -36,6 +36,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
 import {
   TPamDiscoverySource,
   useDeletePamDiscoverySource,
@@ -180,8 +181,8 @@ export const PamDiscoveryPage = () => {
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           {meta?.icon && (
-                            <img
-                              src={`/images/integrations/${meta.icon}`}
+                            <ProviderIcon
+                              icon={meta.icon}
                               alt={meta.name}
                               className="size-5 rounded-sm"
                             />
@@ -284,12 +285,13 @@ export const PamDiscoveryPage = () => {
         }}
       />
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteSource.isOpen}
-        onChange={(isOpen) => handlePopUpToggle("deleteSource", isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteSource", isOpen)}
         title={`Delete ${(popUp.deleteSource.data as TPamDiscoverySource | undefined)?.name ?? "source"}?`}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action is irreversible."
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </>
   );

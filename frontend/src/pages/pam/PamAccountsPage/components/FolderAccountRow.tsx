@@ -10,6 +10,7 @@ import {
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { AccountHealthBadge } from "../../components/AccountHealthBadge";
+import { AccountMaskingBadge } from "../../components/AccountMaskingBadge";
 import { AccountStaleBadge } from "../../components/AccountStaleBadge";
 import { PamAccountRow } from "../../components/PamAccountRow";
 import { AccountAccessibilityBadgeWithPermission } from "./AccountAccessibilityBadgeWithPermission";
@@ -94,6 +95,7 @@ export const FolderAccountRow = ({
             issues={account.accessibilityIssues}
           />
           <AccountStaleBadge isStale={account.isStale} />
+          <AccountMaskingBadge warnings={account.warnings} />
           <AccountHealthBadge status={account.heartbeatStatus} enabled={account.heartbeatEnabled} />
         </>
       }

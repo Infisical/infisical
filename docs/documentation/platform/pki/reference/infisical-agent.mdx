@@ -1,6 +1,6 @@
 ---
 title: "Infisical Agent reference"
-sidebarTitle: "Infisical Agent"
+sidebarTitle: "Infisical Agent reference"
 description: "Configuration reference for the Infisical Agent's certificate management mode."
 ---
 
@@ -163,7 +163,7 @@ Each entry in the `certificates` list accepts the following parameters:
 | `attributes.key-algorithm` | Optional | The algorithm for the certificate key pair. One of: `RSA_2048`, `RSA_3072`, `RSA_4096`, `EC_prime256v1`, `EC_secp384r1`, `EC_secp521r1` |
 | `attributes.signature-algorithm` | Optional | The algorithm used to sign the certificate. One of: `RSA-SHA256`, `RSA-SHA384`, `RSA-SHA512`, `ECDSA-SHA256`, `ECDSA-SHA384`, `ECDSA-SHA512` |
 | `attributes.key-usages` | Optional | The list of key usage values. One or more of: `digital_signature`, `key_encipherment`, `non_repudiation`, `data_encipherment`, `key_agreement`, `key_cert_sign`, `crl_sign`, `encipher_only`, `decipher_only` |
-| `attributes.extended-key-usages` | Optional | The list of extended key usage values. One or more of: `server_auth`, `client_auth`, `code_signing`, `email_protection`, `timestamping`, `ocsp_signing` |
+| `attributes.extended-key-usages` | Optional | The list of extended key usage values. One or more of: `server_auth`, `client_auth`, `code_signing`, `email_protection`, `timestamping`, `ocsp_signing`, `smart_card_logon` |
 | `csr-path` | Conditional | The path to a pre-generated certificate signing request (CSR) file (e.g. `/etc/ssl/csr.pem`). See [Using a pre-generated CSR](#one-time-issuance-from-a-pre-generated-csr) |
 | `csr` | Conditional | The CSR content inline, as an alternative to `csr-path` |
 | `file-output.private-key.path` | Required unless using `csr-path`/`csr` | The path to store the private key |
@@ -173,6 +173,7 @@ Each entry in the `certificates` list accepts the following parameters:
 | `file-output.chain.path` | Optional | The path to store the certificate chain |
 | `file-output.chain.permission` | Optional (defaults to `0600`) | The octal file permissions for the chain file (e.g. `0644`) |
 | `file-output.chain.omit-root` | Optional (defaults to `true`) | Whether to exclude the root CA certificate from the written chain |
+| `file-output.combine-certificate-chain` | Optional (defaults to `false`) | Whether to write the certificate followed by its chain to `certificate.path` as a single full-chain file. When `true`, `chain.path` is ignored and `chain.omit-root` still applies. See [Full-chain certificate file](#full-chain-certificate-file) |
 | `lifecycle.renew-before-expiry` | Optional (auto-renewal is disabled if not set) | How long before expiration the agent should renew the certificate (e.g. `14d`). Must be shorter than the certificate's TTL |
 | `lifecycle.replace-on-renewals` | Optional (defaults to `false`) | Only valid with `certificate-id`. Whether the agent should deliver the most recent renewal of that certificate instead of the certificate itself |
 | `lifecycle.status-check-interval` | Optional (defaults to `10s`) | How frequently the agent checks certificate status and renewal needs |
@@ -351,6 +352,46 @@ certificates:
         command: "systemctl reload nginx && logger 'Certificate renewed'"
         timeout: 30
 ```
+
+### Full-chain certificate file
+
+Some web servers and proxies, such as NGINX, expect the certificate and its intermediate chain in one file. With `combine-certificate-chain: true`, the agent writes the certificate followed by the chain to `certificate.path` on issuance and on every renewal. No concatenation script is needed.
+
+```yaml expandable
+version: v2
+
+infisical:
+  address: "https://app.infisical.com"
+
+auth:
+  type: "universal-auth"
+  config:
+    client-id: "/etc/infisical/client-id"
+    client-secret: "/etc/infisical/client-secret"
+
+certificates:
+  - application-name: "web-services"
+    profile-name: "web-server"
+    attributes:
+      common-name: "api.example.com"
+      ttl: "30d"
+    lifecycle:
+      renew-before-expiry: "14d"
+      status-check-interval: "6h"
+    file-output:
+      combine-certificate-chain: true
+      private-key:
+        path: "/etc/ssl/private/api.example.com.key"
+        permission: "0600"
+      certificate:
+        path: "/etc/ssl/certs/api.example.com.fullchain.pem"
+        permission: "0644"
+```
+
+- Point the server's certificate setting at the combined file and its key setting at the private key (`ssl_certificate` and `ssl_certificate_key` in NGINX)
+- Reload the server after issuance and renewal with [post-event hooks](#post-event-hooks)
+- The root CA is left out of the file by default (set `file-output.chain.omit-root: false` to include it)
+- On restart, the agent rewrites the file and runs `on-issuance` only when the file differs from the current certificate and chain (for example, after the option is turned on for an existing leaf-only file)
 
 ### Tracking an existing certificate
 

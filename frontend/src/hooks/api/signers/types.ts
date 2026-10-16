@@ -34,7 +34,8 @@ export enum SignerKeyAlgorithm {
 
 export enum CertKeySource {
   Infisical = "infisical",
-  Hsm = "hsm"
+  Hsm = "hsm",
+  AwsKms = "aws-kms"
 }
 
 export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly SignerKeyAlgorithm[] = [
@@ -167,6 +168,7 @@ export const signingAlgorithmLabels: Record<SigningAlgorithm, string> = {
   [SigningAlgorithm.ECDSA_SHA_256]: "ECDSA (SHA-256)",
   [SigningAlgorithm.ECDSA_SHA_384]: "ECDSA (SHA-384)",
   [SigningAlgorithm.ECDSA_SHA_512]: "ECDSA (SHA-512)",
+  [SigningAlgorithm.ED25519]: "Ed25519",
   [SigningAlgorithm.ML_DSA_44]: "ML-DSA-44",
   [SigningAlgorithm.ML_DSA_65]: "ML-DSA-65",
   [SigningAlgorithm.ML_DSA_87]: "ML-DSA-87"

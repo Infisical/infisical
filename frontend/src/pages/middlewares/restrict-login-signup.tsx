@@ -7,7 +7,7 @@ import DOMPurify from "dompurify";
 import rehypeRaw from "rehype-raw";
 import { z } from "zod";
 
-import { Button } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
@@ -52,13 +52,13 @@ export const AuthConsentWrapper = () => {
     <>
       <GtmHead />
       {config.authConsentContent && !hasConsented && (
-        <div className="bg-opacity-90 fixed inset-0 z-50 flex items-center justify-center bg-mineshaft-700/80">
-          <div className="max-h-[80vh] w-4/12 overflow-y-auto rounded-lg bg-bunker-800 p-6 text-white">
+        <div className="bg-opacity-90 fixed inset-0 z-50 flex items-center justify-center bg-surface-hover/80">
+          <div className="max-h-[80vh] w-4/12 overflow-y-auto rounded-lg bg-page p-6 text-foreground-inverse">
             <ReactMarkdown rehypePlugins={[rehypeRaw]}>
               {DOMPurify.sanitize(config.authConsentContent)}
             </ReactMarkdown>
             <div className="mt-6 flex justify-end">
-              <Button onClick={handleConsent} colorSchema="secondary">
+              <Button onClick={handleConsent} variant="outline">
                 OK
               </Button>
             </div>

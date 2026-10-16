@@ -20,7 +20,8 @@ export const PkiCertificatePoliciesSchema = z.object({
   validity: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  basicConstraints: z.unknown().nullable().optional()
+  basicConstraints: z.unknown().nullable().optional(),
+  customExtensions: z.unknown().nullable().optional()
 });
 
 export type TPkiCertificatePolicies = z.infer<typeof PkiCertificatePoliciesSchema>;

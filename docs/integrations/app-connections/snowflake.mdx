@@ -1,207 +1,109 @@
 ---
 title: "Snowflake connection"
 sidebarTitle: "Snowflake"
-description: "Learn how to configure a Snowflake Connection for Infisical."
+description: "Learn how to configure a Snowflake connection for Infisical."
 ---
 
-Infisical supports connecting to Snowflake using a **Username** and a **Programmatic Access Token (PAT)**. PATs are scoped, revocable credentials that authenticate as a Snowflake user without exposing the user's password.
+import CreateUserAndToken from "/snippets/app-connections/snowflake/create-user-and-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/snowflake/form-fields.mdx";
+
+A Snowflake connection authenticates Infisical to your Snowflake account as a Snowflake user, with a [programmatic access token](https://docs.snowflake.com/en/user-guide/programmatic-access-tokens) that you generate for that user. Infisical can then sync secrets into a Snowflake schema and rotate the key pairs of Snowflake users.
+
+<Note>
+    This guide only authenticates Infisical with Snowflake. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
 
 ## Prerequisites
 
-- A [Snowflake account](https://app.snowflake.com/) with permission to create Programmatic Access Tokens.
-- The **account identifier** for your Snowflake instance, which combines your organization name and account name. You can find it in your Snowflake login URL (`https://app.snowflake.com/orgName/accountName/#/account/users`) or under **Account Details** in Snowsight.
+- A [Snowflake account](https://app.snowflake.com/) where you can create users, roles, and network policies, such as with the `ACCOUNTADMIN` role
 
-<Tip>
-    Create a dedicated Snowflake user (or role) for Infisical rather than reusing a personal account. This keeps the connection's blast radius small and makes it easy to rotate or revoke access independently.
-</Tip>
+## Step 1: Create a Snowflake user and programmatic access token
 
-## Create a Snowflake programmatic access token
+Infisical needs a Snowflake user with a programmatic access token, a network policy, and a role with privileges for the integration you'll set up.
 
-<Steps>
-    <Step title="Open Snowsight User Settings">
-        In [Snowsight](https://app.snowflake.com/), open the side bar menu and select **Users & roles** under **Governance & Security**.
+<CreateUserAndToken />
 
-        ![Snowflake User Profile](/images/app-connections/snowflake/step-1.png)
-    </Step>
+## Step 2: Create the app connection
 
-    <Step title="Create a new User">
-        Click **Create user** in the top-right corner.
+Next, create the app connection in Infisical.
 
-        ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-2.png)
-    </Step>
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Organization Settings**, then open the **App Connections** tab.
 
-    <Step title="Create a network policy">
-        Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user. To create one, hover over **Projects**, click on **Workspaces**, and create a network policy. The snippet below creates one that allows access from any IP.
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **+ Add Connection** and choose **Snowflake Connection**.
 
+            ![Select Snowflake Connection](/images/app-connections/snowflake/snowflake-app-connection-option.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
 
-        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
+            <ConnectionFormFields />
 
+            Then, select **Connect to Snowflake**.
 
-        ```SQL
-        CREATE NETWORK POLICY INFISICAL_SYNC_POLICY
-            ALLOWED_IP_LIST = ('0.0.0.0/0')
-            COMMENT = 'Allow access from any IP';
-        
-        ALTER USER INFISICAL set NETWORK_POLICY = 'INFISICAL_SYNC_POLICY';
-        ```
+            ![Snowflake Connection Form](/images/app-connections/snowflake/snowflake-app-connection-form.png)
+        </Step>
+    </Steps>
+</View>
 
-        <Warning>
-            Be careful with the IPs you allow in your network policy. Using `0.0.0.0/0` allows access from **any IP address**, which can be dangerous in production. Prefer restricting the list to only the IP ranges that should be allowed to authenticate (for example, your corporate NAT(s) and/or Infisical's outbound IPs if you have them).
-        </Warning>
-    </Step>
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Snowflake Connection**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
 
-    <Step title="Configure user details and role">
-        Provide a **Username** and assign a role. Then grant the role the privileges required for how you intend to use the connection.
+            <ConnectionFormFields />
 
-        ![Configure User](/images/app-connections/snowflake/step-3.png)
+            Then, select **Connect to Snowflake**.
+        </Step>
+    </Steps>
+</View>
 
-        To run the grant statements below, select the **Projects** tab and click on **Workspaces** to open the query editor.
+When you submit the form, Infisical signs in to Snowflake with the account identifier, username, and token, and shows Snowflake's error if the sign-in fails.
 
-        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
+<Check>
+    Your Snowflake app connection is ready to use.
+</Check>
 
-        <Tabs>
-            <Tab title="Secret Syncs">
-                The role must have permission to create and manage secrets in the target database. The following snippet grants the minimum privileges required for operations on specific tables and schemas.
+<Accordion title="Create the connection with the API">
+    Send the account identifier, username, and programmatic access token to the create endpoint for Snowflake connections. The token goes in the `password` field.
 
-                ```SQL
-                -- Grant INFISICAL user access to SECRET_SYNC_TEST
-                CREATE ROLE IF NOT EXISTS INFISICAL_ROLE;
-                GRANT ROLE INFISICAL_ROLE TO USER INFISICAL; -- Change INFISICAL to be your user
-
-                GRANT ALL PRIVILEGES ON DATABASE SECRET_SYNC_TEST TO ROLE INFISICAL_ROLE;
-                GRANT ALL PRIVILEGES ON SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
-                GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS; -- Transfers ownership
-                GRANT OWNERSHIP ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS; -- Transfers ownership
-                ```
-
-                <Note>
-                    If you select a custom role, note that **secret ownership is enforced per object**. Existing secrets in the target schema remain owned by their creator unless you transfer ownership. Infisical must use a role that **owns every secret it manages** (required for `CREATE OR REPLACE SECRET` and `DROP SECRET`). If the schema already has secrets, run the `GRANT OWNERSHIP ON ALL SECRETS ...` statement; always keep the `GRANT OWNERSHIP ON FUTURE SECRETS ...` statement.
-                </Note>
-            </Tab>
-            <Tab title="Secret Rotations">
-                For [Snowflake User Key Pair rotation](/documentation/platform/secret-rotation/snowflake-user-key-pair), the connection's role must be able to alter the target user whose key pair will be rotated. Grant a role that can manage the user and assign it to your connection user:
-
-                ```SQL
-                -- create a role Infisical will use to manage the target user
-                CREATE ROLE IF NOT EXISTS INFISICAL_ROTATION_ROLE;
-
-                -- allow the role to alter the target user's RSA public key
-                GRANT OWNERSHIP ON USER MY_TARGET_USER TO ROLE INFISICAL_ROTATION_ROLE;
-
-                -- (optional) allow the role to create the target user if it does not exist yet
-                GRANT CREATE USER ON ACCOUNT TO ROLE INFISICAL_ROTATION_ROLE;
-
-                -- assign the role to the user backing your Snowflake Connection
-                GRANT ROLE INFISICAL_ROTATION_ROLE TO USER MY_CONNECTION_USER;
-                ```
-
-                If the target user already exists, the connection's role only needs privileges to **alter** it (e.g. `OWNERSHIP` on the user). If the user does **not** exist yet, the role additionally requires the `CREATE USER` privilege on the account.
-
-                <Tip>
-                    To learn more about managing users and privileges in Snowflake, see their [access control documentation](https://docs.snowflake.com/en/user-guide/security-access-control-overview).
-                </Tip>
-            </Tab>
-        </Tabs>
-    </Step>
-
-
-    <Step title="Generate a Programmatic Access Token">
-        Hover over **Governance & Security** and click on **Users & roles**. Select the user you want to use in Infisical. Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.
-
-        ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-5.png)
-        ![Fill up PAT info](/images/app-connections/snowflake/step-6.png)
-    </Step>
-    <Step title="Copy the Token">
-        Copy the generated token. Snowflake only displays it once — store it somewhere secure for the next step.
-
-        ![Copy Programmatic Access Token](/images/app-connections/snowflake/step-7.png)
-    </Step>
-
-    <Step title="Copy the Snowflake Account">
-        Copy the **Account identifier**. The fastest way is to read it from your Snowsight URL (`https://app.snowflake.com/orgName/accountName/#/account/users`), where the identifier is `orgName-accountName`.
-
-        Alternatively, click your username in the bottom-left corner, open **Account details**, and copy the **Account** value from the **Config File** tab.
-
-        ![Account details button](/images/app-connections/snowflake/account-info-left-corner.png)
-        ![Account details](/images/app-connections/snowflake/account-details.png)
-        ![Account info](/images/app-connections/snowflake/account-info.png)
-    </Step>
-</Steps>
-
-
-## Create Snowflake connection in Infisical
-
-<Tabs>
-    <Tab title="Infisical UI">
-        <Steps>
-            <Step title="Navigate to App Connections">
-                In your Infisical dashboard, go to **Integrations** → **App Connections** in your organization.
-
-                ![App Connections Tab](/images/app-connections/general/add-connection.png)
-            </Step>
-            <Step title="Select Snowflake Connection">
-                Click **Add Connection** and choose **Snowflake** from the list of available connections.
-
-                ![Select Snowflake Connection](/images/app-connections/snowflake/snowflake-app-connection-option.png)
-            </Step>
-            <Step title="Fill out Connection Form">
-                Complete the form with:
-                - A **name** for the connection (e.g. `snowflake-prod`)
-                - An optional **description**
-                - The Snowflake **Account** identifier (e.g. `orgName-accountName`)
-                - The Snowflake **Username** (The name of the user that was created)
-                - The **Programmatic Access Token** generated in the previous section
-
-                ![Snowflake Connection Form](/images/app-connections/snowflake/snowflake-app-connection-form.png)
-            </Step>
-            <Step title="Connection Created">
-                After clicking **Create**, Infisical validates the credentials by opening a connection to your Snowflake account. Once validated, your **Snowflake Connection** is ready to use.
-
-                ![Snowflake Connection Created](/images/app-connections/snowflake/snowflake-app-connection-created.png)
-            </Step>
-        </Steps>
-    </Tab>
-    <Tab title="API">
-        Create a Snowflake connection via the API.
-
-        ### Sample request
-
-        ```bash Request
-        curl --request POST \
-          --url https://app.infisical.com/api/v1/app-connections/snowflake \
-          --header 'Content-Type: application/json' \
-          --data '{
-            "name": "my-snowflake-connection",
-            "method": "username-and-token",
-            "credentials": {
-              "account": "xy12345.us-east-1",
-              "username": "<YOUR-SNOWFLAKE-USERNAME>",
-              "password": "<YOUR-PROGRAMMATIC-ACCESS-TOKEN>"
-            }
-          }'
-        ```
-
-        ### Sample response
-
-        ```bash Response
-        {
-          "appConnection": {
-            "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
-            "name": "my-snowflake-connection",
-            "description": null,
-            "version": 1,
-            "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
-            "createdAt": "2025-04-23T19:46:34.831Z",
-            "updatedAt": "2025-04-23T19:46:34.831Z",
-            "isPlatformManagedCredentials": false,
-            "app": "snowflake",
-            "method": "username-and-token",
-            "credentials": {
-              "account": "xy12345.us-east-1",
-              "username": "<YOUR-SNOWFLAKE-USERNAME>"
-            }
-          }
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/snowflake \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-snowflake-connection",
+        "method": "username-and-token",
+        "credentials": {
+          "account": "<org-name>-<account-name>",
+          "username": "<snowflake-username>",
+          "password": "<programmatic-access-token>"
         }
-        ```
-    </Tab>
-</Tabs>
+      }'
+    ```
+</Accordion>
+
+## Step 3: Configure integrations
+
+Now that your Snowflake app connection is configured, you can use it to set up the following integrations:
+
+<CardGroup cols={2}>
+    <Card title="Snowflake secret sync" icon="refresh-cw" href="/integrations/secret-syncs/snowflake">
+        Sync secrets from Infisical to Snowflake secrets in a schema.
+    </Card>
+    <Card title="Snowflake user key pair rotation" icon="key" href="/documentation/platform/secret-rotation/snowflake-user-key-pair">
+        Rotate the RSA key pair of a Snowflake user.
+    </Card>
+</CardGroup>

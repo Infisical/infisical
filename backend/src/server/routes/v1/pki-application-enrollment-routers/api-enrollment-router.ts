@@ -63,6 +63,7 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
           type: EventType.SET_PKI_APPLICATION_API_ENROLLMENT,
           metadata: {
             applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
             profileId: req.params.profileId,
             autoRenew: result.api.autoRenew,
             renewBeforeDays: result.api.renewBeforeDays
@@ -124,6 +125,7 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
           type: EventType.CLEAR_PKI_APPLICATION_API_ENROLLMENT,
           metadata: {
             applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
             profileId: req.params.profileId
           }
         }

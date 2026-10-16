@@ -3,10 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
@@ -14,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionMemberActions,
@@ -96,7 +96,7 @@ const Page = withPermission(
     };
 
     return (
-      <div className="mx-auto flex max-w-8xl flex-col">
+      <div className="@container mx-auto flex max-w-8xl flex-col">
         {membership && (
           <>
             <Link
@@ -105,7 +105,7 @@ const Page = withPermission(
               search={{
                 selectedTab: OrgAccessControlTabSections.Member
               }}
-              className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+              className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
             >
               <ChevronLeftIcon size={16} />
               {isSubOrganization ? "Sub-" : ""}Organization Users
@@ -215,9 +215,9 @@ const Page = withPermission(
                 </DropdownMenu>
               )}
             </PageHeader>
-            <div className="flex flex-col gap-5 lg:flex-row">
+            <div className="flex flex-col gap-5 @4xl:flex-row">
               <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
-              <div className="flex flex-1 flex-col gap-y-5">
+              <div className="flex min-w-0 flex-1 flex-col gap-y-5">
                 <UserProjectsSection membershipId={membershipId} />
                 <UserGroupsSection orgMembership={membership} />
                 <UserAuditLogsSection orgMembership={membership} />
@@ -225,39 +225,44 @@ const Page = withPermission(
             </div>
           </>
         )}
-        <DeleteActionModal
+        <DeleteConfirmDialog
           isOpen={popUp.removeMember.isOpen}
           title={`Are you sure you want to remove member with username ${
             (popUp?.removeMember?.data as { username: string })?.username || ""
           }?`}
-          onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
+          description="This action is irreversible."
+          onOpenChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
+          confirmKey="confirm"
+          onConfirm={() =>
             onRemoveMemberSubmit(
               (popUp?.removeMember?.data as { orgMembershipId: string })?.orgMembershipId
             )
           }
         />
-        <DeleteActionModal
+        <DeleteConfirmDialog
           isOpen={popUp.deactivateMember.isOpen}
           title={`Are you sure you want to deactivate member with username ${
             (popUp?.deactivateMember?.data as { username: string })?.username || ""
           }?`}
-          onChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
+          description="This action is irreversible."
+          onOpenChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
+          confirmKey="confirm"
+          onConfirm={() =>
             onDeactivateMemberSubmit(
               (popUp?.deactivateMember?.data as { orgMembershipId: string })?.orgMembershipId
             )
           }
-          buttonText="Deactivate"
+          confirmLabel="Deactivate"
         />
 
-        <UpgradePlanModal
+        <UpgradeGate
+          paywallKey="organization.user-details-by-id"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={popUp.upgradePlan?.data?.text}
-          isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+          intent={{
+            ...CustomRolesUpgradeIntent,
+            isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
+          }}
         />
         <UserOrgMembershipModal
           popUp={popUp}
