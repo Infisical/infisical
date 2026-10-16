@@ -135,9 +135,9 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The last time each user or identity joined the project or had a role, privilege or folder grant created or
-  // changed. Which secrets a change opened up is not recorded, so any of them restarts the window. Membership
-  // updatedAt is left out because logins bump it.
+  // The last time each user or identity joined the project or had a role, privilege or folder grant created,
+  // changed or expired. Which secrets a change opened up is not recorded, so any of them restarts the window; an
+  // expired restrictive folder grant can restore access. Membership updatedAt is left out because logins bump it.
   const findAccessChangedAt = async (projectId: string, tx?: Knex) => {
     try {
       const [roleChanges, privilegeChanges] = await Promise.all([
@@ -150,19 +150,24 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
             db.ref("actorIdentityId").withSchema(TableName.Membership),
             db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
             db.ref("createdAt").withSchema(TableName.MembershipRole),
-            db.ref("updatedAt").withSchema(TableName.MembershipRole)
+            db.ref("updatedAt").withSchema(TableName.MembershipRole),
+            db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole)
           ),
         (tx || db.replicaNode())(TableName.AdditionalPrivilege)
           .where({ projectId })
-          .select("actorUserId", "actorIdentityId", "createdAt", "updatedAt")
+          .select("actorUserId", "actorIdentityId", "createdAt", "updatedAt", "temporaryAccessEndTime")
       ]);
 
+      const now = new Date();
       const changedAtByActorId = new Map<string, Date>();
       [...roleChanges, ...privilegeChanges].forEach((change) => {
         const actorId = change.actorUserId ?? change.actorIdentityId;
         if (!actorId) return;
         const dates = [change.createdAt, change.updatedAt];
         if ("membershipCreatedAt" in change) dates.push(change.membershipCreatedAt as Date);
+        if (change.temporaryAccessEndTime && new Date(change.temporaryAccessEndTime) <= now) {
+          dates.push(change.temporaryAccessEndTime);
+        }
         const latest = new Date(Math.max(...dates.map((date) => new Date(date).getTime())));
         const current = changedAtByActorId.get(actorId);
         if (!current || latest > current) changedAtByActorId.set(actorId, latest);
