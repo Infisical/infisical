@@ -88,7 +88,9 @@ describe("CloudflareWorkersSyncFns", () => {
 
     await expect(
       CloudflareWorkersSyncFns.syncSecrets(syncWith(CloudflareWorkersVariableType.Text), payloadOf({ CACHE: "value" }))
-    ).rejects.toThrow("same name as another binding on the Cloudflare Worker, such as a KV namespace or a service: CACHE.");
+    ).rejects.toThrow(
+      "same name as another binding on the Cloudflare Worker, such as a KV namespace or a service: CACHE."
+    );
 
     expect(patch).not.toHaveBeenCalled();
   });
