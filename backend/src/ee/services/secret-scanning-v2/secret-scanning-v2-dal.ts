@@ -283,6 +283,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           db.ref("status").withSchema(TableName.SecretScanningScan).as("scanStatus"),
           db.ref("statusMessage").withSchema(TableName.SecretScanningScan).as("scanStatusMessage"),
           db.ref("createdAt").withSchema(TableName.SecretScanningScan).as("scanCreatedAt"),
+          db.ref("startedAt").withSchema(TableName.SecretScanningScan).as("scanStartedAt"),
           db.ref("status").withSchema(TableName.SecretScanningFinding).as("findingStatus"),
           db.ref("id").withSchema(TableName.SecretScanningFinding).as("findingId")
         );
@@ -297,9 +298,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           {
             key: "scanId",
             label: "scans" as const,
-            mapper: ({ scanId, scanCreatedAt, scanStatus, scanStatusMessage }) => ({
+            mapper: ({ scanId, scanCreatedAt, scanStartedAt, scanStatus, scanStatusMessage }) => ({
               id: scanId,
               createdAt: scanCreatedAt,
+              startedAt: scanStartedAt,
               status: scanStatus,
               statusMessage: scanStatusMessage
             })
@@ -336,11 +338,17 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
               })
             : null;
 
+        // a queued scan has no start time yet, so the last scan time comes from the latest scan that actually started
+        const lastScannedAt = scans.reduce<Date | null>((latest, { startedAt }) => {
+          if (!startedAt) return latest;
+          return !latest || new Date(startedAt) > new Date(latest) ? startedAt : latest;
+        }, null);
+
         return {
           ...dataSource,
           lastScanStatus: lastScan?.status ?? null,
           lastScanStatusMessage: lastScan?.statusMessage ?? null,
-          lastScannedAt: lastScan?.createdAt ?? null,
+          lastScannedAt,
           unresolvedFindings: scans.length ? findings.length : null,
           resourceCount: resourceCountByDataSourceId.get(dataSource.id) ?? 0
         };
@@ -374,6 +382,11 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `LEFT JOIN LATERAL (SELECT "status", "statusMessage", "createdAt" FROM ?? WHERE "resourceId" = ??.id ORDER BY "createdAt" DESC LIMIT 1) AS "lastScan" ON TRUE`,
           [TableName.SecretScanningScan, TableName.SecretScanningResource]
         )
+        // a queued scan has no start time yet, so the last scan time comes from the latest scan that actually started
+        .joinRaw(
+          `LEFT JOIN LATERAL (SELECT "startedAt" FROM ?? WHERE "resourceId" = ??.id AND "startedAt" IS NOT NULL ORDER BY "startedAt" DESC LIMIT 1) AS "lastStartedScan" ON TRUE`,
+          [TableName.SecretScanningScan, TableName.SecretScanningResource]
+        )
         .joinRaw(
           `LEFT JOIN LATERAL (SELECT COUNT(*)::int AS "count" FROM ?? WHERE "resourceId" = ??.id AND "status" = ?) AS "unresolved" ON TRUE`,
           [TableName.SecretScanningFinding, TableName.SecretScanningResource, SecretScanningFindingStatus.Unresolved]
@@ -382,7 +395,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .select(
           db.ref("status").withSchema("lastScan").as("lastScanStatus"),
           db.ref("statusMessage").withSchema("lastScan").as("lastScanStatusMessage"),
-          db.ref("createdAt").withSchema("lastScan").as("lastScannedAt"),
+          db.ref("startedAt").withSchema("lastStartedScan").as("lastScannedAt"),
           db.ref("count").withSchema("unresolved").as("unresolvedFindings")
         );
 
@@ -405,7 +418,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           break;
         case SecretScanningResourceOrderBy.LastScanned:
           // never-scanned resources go last in either direction
-          void resourcesQuery.orderByRaw(`"lastScan"."createdAt" ${direction} NULLS LAST`);
+          void resourcesQuery.orderByRaw(`"lastStartedScan"."startedAt" ${direction} NULLS LAST`);
           break;
         case SecretScanningResourceOrderBy.Name:
         default:
