@@ -2353,14 +2353,8 @@ const OverviewPageContent = () => {
           env,
           type: SecretType.Shared,
           tags:
-            pendingCreate.tags?.map(
-              (tag) =>
-                ({
-                  ...tag,
-                  createdAt: "",
-                  updatedAt: ""
-                }) as WsTag
-            ) ?? [],
+            pendingCreate.tags?.map((tag) => ({ ...tag, createdAt: "", updatedAt: "" }) as WsTag) ??
+            [],
           secretMetadata: pendingCreate.secretMetadata ?? [],
           skipMultilineEncoding: pendingCreate.skipMultilineEncoding ?? false,
           version: 0,
