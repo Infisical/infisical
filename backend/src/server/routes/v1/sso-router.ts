@@ -42,38 +42,50 @@ let serverInstance: FastifyZodProvider | null = null;
 
 // Build a set of trusted hosts from SITE_URL and CORS_ALLOWED_ORIGINS to prevent
 // open-redirect attacks via Host header injection on OAuth callback endpoints.
-const getTrustedHosts = (): Set<string> => {
+const getTrustedHosts = (): Map<string, string> => {
   const appCfg = getConfig();
-  const hosts = new Set<string>();
-  if (appCfg.SITE_URL) {
+  const hosts = new Map<string, string>();
+  const configuredOrigins = [appCfg.SITE_URL, ...(appCfg.CORS_ALLOWED_ORIGINS ?? [])];
+
+  for (const configuredOrigin of configuredOrigins) {
+    if (!configuredOrigin) continue;
+
     try {
-      hosts.add(new URL(appCfg.SITE_URL).host);
-    } catch {
-      // ignore malformed SITE_URL
-    }
-  }
-  if (appCfg.CORS_ALLOWED_ORIGINS) {
-    for (const origin of appCfg.CORS_ALLOWED_ORIGINS) {
-      try {
-        hosts.add(new URL(origin).host);
-      } catch {
-        // ignore malformed origins
+      const url = new URL(configuredOrigin);
+
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        continue;
       }
+
+      const host = url.host.toLowerCase();
+
+      if (!hosts.has(host)) {
+        hosts.set(host, url.origin);
+      }
+    } catch {
+      // ignore malformed configured origins
     }
   }
+
   return hosts;
 };
 
-// Derive the OAuth callback URL from the incoming request so that the session cookie domain
-// matches the callback domain. Uses req.host (includes port) to support non-default ports.
-// Returns null if the request host is not in the trusted set, allowing callers to fall back
-// to SITE_URL.
-const getOAuthCallbackUrl = (req: { protocol: string; host: string }, path: string): string | null => {
-  const trustedHosts = getTrustedHosts();
-  if (!req.host || !trustedHosts.has(req.host)) {
+// Derive the OAuth callback URL from the configured public origin that matches
+// the incoming request host. This preserves non-default ports while preventing
+// the internal reverse-proxy protocol from overriding the public protocol.
+const getOAuthCallbackUrl = (req: { host: string }, path: string): string | null => {
+  if (!req.host) {
     return null;
   }
-  return `${req.protocol}://${req.host}${path}`;
+
+  const trustedHosts = getTrustedHosts();
+  const trustedOrigin = trustedHosts.get(req.host.toLowerCase());
+
+  if (!trustedOrigin) {
+    return null;
+  }
+
+  return `${trustedOrigin}${path}`;
 };
 
 export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
