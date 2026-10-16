@@ -21,7 +21,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DocumentationLinkBadge,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -186,7 +188,12 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <Field>
-              <FieldLabel htmlFor="new-project-name">Project Name</FieldLabel>
+              <FieldLabel htmlFor="new-project-name">
+                Project Name
+                {selectedProjectType === ProjectType.SecretManager && (
+                  <DocumentationLinkBadge href="https://infisical.com/docs/documentation/guides/organization-structure" />
+                )}
+              </FieldLabel>
               <Input
                 id="new-project-name"
                 {...field}
@@ -195,6 +202,12 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
                 autoComplete="off"
                 name="new-project-name"
               />
+              {selectedProjectType === ProjectType.SecretManager && (
+                <FieldDescription>
+                  Use one project per application or service, with environments for deployment
+                  stages and folders for its components.
+                </FieldDescription>
+              )}
               {error && <FieldError>{error.message}</FieldError>}
             </Field>
           )}
