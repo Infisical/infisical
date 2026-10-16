@@ -81,7 +81,7 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
       ],
       body: z
         .object({
-          projectId: z.string().trim().uuid().describe(SECRET_COMMITS.CREATE.projectId),
+          projectId: z.string().trim().min(1).max(36).describe(SECRET_COMMITS.CREATE.projectId),
           environment: z.string().trim().min(1).max(64).describe(SECRET_COMMITS.CREATE.environment),
           secretPath: z
             .string()
