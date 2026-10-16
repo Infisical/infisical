@@ -1294,7 +1294,8 @@
                   "cli/usage",
                   "cli/upgrade",
                   "cli/project-config",
-                  "cli/faq"
+                  "cli/faq",
+                  "cli/troubleshooting"
                 ]
               },
               {

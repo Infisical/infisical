@@ -1,0 +1,53 @@
+---
+title: "Troubleshoot failed CLI commands"
+description: "Find out why a CLI command failed, using the request ID, status code, and message that the CLI prints."
+---
+
+When a CLI command fails on a request to Infisical, the error the CLI prints includes the ID that Infisical gave the request, the HTTP status code, and the message from the server. Save that error, because the request ID in it identifies the request in the Infisical server logs.
+
+## Prerequisites
+
+- The [Infisical CLI](/cli/install), version 0.44.0 or later
+
+## Where the CLI prints the error
+
+When a command fails, the CLI prints the error to stderr as plain text and exits with status `1`. These flags don't change that:
+
+- `--log-format` and `--log-destination` change only the CLI's log messages, so they don't turn the error into JSON or move it to stdout (see the [global flags](/cli/reference#global-flags))
+- `--silent` hides update notices and profile notices, but not the error
+
+## Save the error
+
+To keep the error, redirect stderr to a file with `2>`. For example, this command logs in with [Universal Auth](/documentation/platform/identities/universal-auth), and if the login fails, the error is saved to `infisical-login.err`:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+
+infisical login --method=universal-auth --silent 2>infisical-login.err
+```
+
+- The CLI reads the Client ID and Client Secret from the environment variables, so the Client Secret doesn't appear in the command
+- `2>` saves only stderr, so anything the command prints to stdout, such as the access token after a successful login, stays out of the file
+- `--silent` keeps update notices out of the file
+
+In a CI pipeline, use your pipeline's secret store to set the two environment variables, and keep `infisical-login.err` as a build artifact.
+
+## What the saved error contains
+
+If the login in the [example](#save-the-error) fails, it writes a file like this one:
+
+```text
+error: unable to authenticate with universal auth [err=APIError: CallUniversalAuthLogin unsuccessful response [POST https://app.infisical.com/api/v1/auth/universal-auth/login] [status-code=401] [reqId=req-GtrYueO5e3VWDG] [message="Invalid credentials"]].
+
+Check your credentials or verify you're using the correct domain. Current domain: https://app.infisical.com
+```
+
+The error shows the request ID in `reqId`, the HTTP status code in `status-code`, and the message from the server in `message`. It doesn't contain the Client Secret or an access token, so you can store it and share it.
+
+## Look up the request ID
+
+Where you look up the request ID depends on where Infisical runs:
+
+- If you self-host Infisical, search your Infisical server's logs for the request ID (every line the server logs for that request includes it, along with the route, the response status, and the error)
+- If you use Infisical Cloud, share the request ID in the [Infisical community](https://community.infisical.com/)
