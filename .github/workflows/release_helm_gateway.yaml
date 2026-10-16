@@ -6,6 +6,8 @@ jobs:
   freeze-check:
     name: Release freeze check
     uses: ./.github/workflows/release-freeze-check.yml
+    with:
+      freeze: ${{ vars.DEPLOY_FREEZE }}
 
   test-helm:
     name: Test Helm Chart
