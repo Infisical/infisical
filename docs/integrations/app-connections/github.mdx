@@ -11,80 +11,74 @@ Infisical supports three methods for connecting to GitHub.
         Infisical will use a GitHub App with finely grained permissions to connect to GitHub.
 
         <Accordion title="Self-Hosted Instance">
-            Using the GitHub integration with app authentication on a self-hosted instance of Infisical requires configuring an application on GitHub
-            and registering your instance with it.
+            On a self-hosted instance, a GitHub App can be registered in one of two ways: as a **Private** app, created directly from Infisical for a single organization or project, or as the **Instance**-wide default app, shared across your whole instance and configured via environment variables.
 
-            <Steps>
-                <Step title="Create an application on GitHub">
-                    Navigate to the GitHub App settings [here](https://github.com/settings/apps). Click **New GitHub App**.
+            <Tabs>
+                <Tab title="Private App (via Infisical)">
+                    This initiates registration of a GitHub App scoped to your organization or a single project directly from Infisical.
 
-                    ![integrations github app create](/images/integrations/github/app/self-hosted-github-app-create.png)
+                    <Steps>
+                        <Step title="Navigate to App Connections">
+                            Navigate to the **Integrations** tab in the desired project (or your organization's **App Connections** page to make the app available across all projects), then select **App Connections**.
+                        </Step>
+                        <Step title="Add Connection">
+                            Select **Add Connection**, then select **GitHub**.
+                        </Step>
+                        <Step title="Create a new GitHub App">
+                            Select the **GitHub App** method, then select the gear icon next to **Select a GitHub App** to open **Manage GitHub Apps**.
 
-                    Give the application a name, a homepage URL (your self-hosted domain i.e. `https://your-domain.com`), and a callback URL (i.e. `https://your-domain.com/organization/app-connections/github/oauth/callback`).
-
-                    ![integrations github app basic details](/images/integrations/github/app/self-hosted-github-app-basic-details.png)
-
-                    Enable request user authorization during app installation.
-                    ![integrations github app enable auth](/images/integrations/github/app/self-hosted-github-app-enable-oauth.png)
-
-                    Disable webhook by unchecking the Active checkbox.
-                    ![integrations github app webhook](/images/integrations/github/app/self-hosted-github-app-webhook.png)
-
-                    Set the repository permissions as follows: Metadata: Read-only, Secrets: Read and write, Environments: Read and write, Actions: Read.
-                    ![integrations github app repository](/images/integrations/github/app/self-hosted-github-app-repository.png)
-
-                    Similarly, set the organization permissions as follows: Secrets: Read and write.
-                    ![integrations github app organization](/images/integrations/github/app/self-hosted-github-app-organization.png)
-
-                    Create the GitHub application.
-                    ![integrations github app create confirm](/images/integrations/github/app/self-hosted-github-app-create-confirm.png)
+                            Select **Create GitHub App**, give it a name, and select **Continue on GitHub**. You'll be redirected to GitHub to confirm creation using GitHub's App Manifest flow, which automatically configures the required permissions and callback URL. You'll be redirected back to Infisical once the app is created.
+                        </Step>
+                        <Step title="Use the connection">
+                            Your new GitHub App will now appear in the **Select a GitHub App** list. Select it, then select **Connect to GitHub** to install and authorize it.
+                        </Step>
+                    </Steps>
 
                     <Note>
-                        If you have a GitHub organization, you can create an application under it
-                        in your organization Settings > Developer settings > GitHub Apps > New GitHub App.
+                        GitHub Apps are scoped to where they were created: apps created from the organization's App Connections page are available to every project, while apps created from a project's App Connections page are only available within that project.
                     </Note>
-                </Step>
-                <Step title="Add your application credentials to Infisical">
-                    Generate a new **Client Secret** for your GitHub application.
-                    ![integrations github app create secret](/images/integrations/github/app/self-hosted-github-app-secret.png)
+                </Tab>
+                <Tab title="Instance-wide Default App (via Environment Variables)">
+                    This registers one GitHub App as the shared default for your entire self-hosted instance, available to every organization and project as the **Instance** option.
 
-                    Generate a new **Private Key** for your GitHub application.
-                    ![integrations github app create private key](/images/integrations/github/app/self-hosted-github-app-private-key.png)
+                    <Steps>
+                        <Step title="Create an application on GitHub">
+                            Navigate to the GitHub App settings [here](https://github.com/settings/apps). Select **New GitHub App**.
 
-                    Obtain the necessary GitHub application credentials. This would be the application slug, client ID, app ID, client secret, and private key.
-                    ![integrations github app credentials](/images/integrations/github/app/self-hosted-github-app-credentials.png)
+                            Give the application a name, a homepage URL (your self-hosted domain i.e. `https://your-domain.com`), and a callback URL (i.e. `https://your-domain.com/organization/app-connections/github/oauth/callback`).
 
-                    Back in your Infisical instance, you can configure the GitHub App credentials in one of two ways:
+                            Enable request user authorization during app installation, and disable webhook by unchecking the Active checkbox.
 
-                    **Option 1: Server Admin Panel (Recommended)**
+                            Set the repository permissions as follows: Metadata: Read-only, Secrets: Read and write, Environments: Read and write, Actions: Read. Set the organization permissions as follows: Secrets: Read and write.
 
-                    Navigate to the server admin panel > **Integrations** > **GitHub App** and enter the GitHub application credentials:
-                    ![integrations github app admin panel](/images/integrations/github/app/self-hosted-github-app-admin-panel.png)
+                            Create the GitHub application.
 
-                    - **Client ID**: The Client ID of your GitHub application
-                    - **Client Secret**: The Client Secret of your GitHub application
-                    - **App Slug**: The Slug of your GitHub application (found in the URL)
-                    - **App ID**: The App ID of your GitHub application
-                    - **Private Key**: The Private Key of your GitHub application
+                            <Note>
+                                If you have a GitHub organization, you can create an application under it
+                                in your organization Settings > Developer settings > GitHub Apps > New GitHub App.
+                            </Note>
+                        </Step>
+                        <Step title="Add your application credentials to Infisical">
+                            Generate a new **Client Secret** and a new **Private Key** for your GitHub application, and obtain its application slug, client ID, and app ID.
 
-                    **Option 2: Environment Variables**
+                            Add the following environment variables to your Infisical instance:
 
-                    Alternatively, you can add the new environment variables for the credentials of your GitHub application:
+                            - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID`: The **Client ID** of your GitHub application.
+                            - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET`: The **Client Secret** of your GitHub application.
+                            - `INF_APP_CONNECTION_GITHUB_APP_SLUG`: The **Slug** of your GitHub application. This is the one found in the URL.
+                            - `INF_APP_CONNECTION_GITHUB_APP_ID`: The **App ID** of your GitHub application.
+                            - `INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY`: The **Private Key** of your GitHub application.
+                            - `INF_APP_CONNECTION_GITHUB_APP_HOST` *(GitHub Enterprise Server only)*: The hostname of the GitHub instance where the shared GitHub App is registered (e.g. `github.mycompany.com`). Defaults to `github.com`.
 
-                    - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID`: The **Client ID** of your GitHub application.
-                    - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET`: The **Client Secret** of your GitHub application.
-                    - `INF_APP_CONNECTION_GITHUB_APP_SLUG`: The **Slug** of your GitHub application. This is the one found in the URL.
-                    - `INF_APP_CONNECTION_GITHUB_APP_ID`: The **App ID** of your GitHub application.
-                    - `INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY`: The **Private Key** of your GitHub application.
-                    - `INF_APP_CONNECTION_GITHUB_APP_HOST` *(GitHub Enterprise Server only)*: The hostname of the GitHub instance where the shared GitHub App is registered (e.g. `github.mycompany.com`). Only required when the shared app is registered on a GHES instance. Defaults to `github.com`.
+                            <Note>
+                                If your shared GitHub App is registered on a GitHub Enterprise Server instance, you must set `INF_APP_CONNECTION_GITHUB_APP_HOST` to that instance's hostname. Without it, the OAuth exchange will be directed to `github.com` instead of your GHES host.
+                            </Note>
 
-                    <Note>
-                        If your shared GitHub App is registered on a GitHub Enterprise Server instance, you must set `INF_APP_CONNECTION_GITHUB_APP_HOST` to that instance's hostname. Without it, the OAuth exchange will be directed to `github.com` instead of your GHES host.
-                    </Note>
-
-                    Once configured, you can use the GitHub integration via app authentication. If you configured the credentials using environment variables, restart your Infisical instance for the changes to take effect. If you configured them through the server admin panel, allow approximately 5 minutes for the changes to propagate.
-                </Step>
-            </Steps>
+                            Restart your Infisical instance for the changes to take effect. Your app will then be available as the **Instance** option when connecting to GitHub.
+                        </Step>
+                    </Steps>
+                </Tab>
+            </Tabs>
         </Accordion>
 
         ## Setup GitHub connection in Infisical
