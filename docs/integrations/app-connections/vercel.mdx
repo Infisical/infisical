@@ -9,28 +9,28 @@ Infisical supports connecting to Vercel using API Tokens.
 ## Setup Vercel connection in Infisical
 
 <Steps>
-    <Step title="Move to API Tokens on Vercel">
-        Navigate to the Vercel **Account Settings** page by selecting your profile icon in the top-right corner.
-        ![Vercel API Tokens Tab](/images/app-connections/vercel/vercel-main-page.png)
+    <Step title="Navigate to Tokens on Vercel">
+        Navigate to the Vercel **Account Settings** page by clicking on your profile icon in the top-right corner.
+        ![Vercel Account Settings](/images/app-connections/vercel/vercel-main-page.png)
     </Step>
-    <Step title="Open API Tokens Tab">
-        Select the **API Tokens** tab from the left sidebar navigation menu.
-        ![Vercel API Tokens Tab](/images/app-connections/vercel/vercel-settings-page.png)
+    <Step title="Open Tokens Tab">
+        Select the **Tokens** tab from the left sidebar navigation menu.
+        ![Vercel Tokens Tab](/images/app-connections/vercel/vercel-settings-page.png)
     </Step>
-    <Step title="Create the API Token">
-        Select the **Create** button and provide a name for your token (e.g., "Infisical Integration"). 
+    <Step title="Create the Token">
+        Click the **Create** button and provide a name for your token (e.g., "Infisical Integration"). 
         Choose appropriate scope permissions based on your requirements.
         <Note>
-            If you configure an expiry date for your API token, you'll need to manually rotate to a new token prior to expiration to avoid integration downtime. Consider setting a calendar reminder for this task.
+            If you configure an expiry date for your token, you will need to manually rotate to a new token prior to expiration to avoid integration downtime. Consider setting a calendar reminder for this task.
         </Note>
-        ![Vercel Create API Token](/images/app-connections/vercel/vercel-create-token.png)
+        ![Vercel Create Token](/images/app-connections/vercel/vercel-create-token.png)
     </Step>
-    <Step title="Copy the API Token">
-        After creation, a modal with the API token will be displayed. Copy this token immediately and store it securely, as you won't be able to view it again after closing this dialog.
-        ![Vercel Copy API Token](/images/app-connections/vercel/vercel-copy-token.png)
+    <Step title="Copy the Token">
+        After creation, a modal with the token will be displayed. Copy this token immediately and store it securely, as you won't be able to view it again after closing this dialog.
+        ![Vercel Copy Token](/images/app-connections/vercel/vercel-copy-token.png)
     </Step>
     <Step title="Token Created">
-        You should now see your newly created token in the list of API tokens on the Vercel dashboard.
+        You should now see your newly created token in the list of tokens on the Vercel dashboard.
         ![Vercel Connection Created](/images/app-connections/vercel/vercel-token-created.png)
     </Step>
     <Step title="Setup Vercel Connection in Infisical">
@@ -44,11 +44,11 @@ Infisical supports connecting to Vercel using API Tokens.
 
                     Click the **+ Add Connection** button and select the **Vercel Connection** option from the available integrations.
                     ![Select Vercel Connection](/images/app-connections/vercel/vercel-app-connection-option.png)
-                3. Fill the Vercel Connection Modal
+                    3. Fill the Vercel Connection Modal
 
                     Complete the Vercel Connection form by entering:
                     - A descriptive name for the connection
-                    - The API Token you generated in steps 3-4
+                    - The Token you generated in steps 3-4
                     - An optional description for future reference
                     ![Vercel Connection Modal](/images/app-connections/vercel/vercel-app-connection-modal.png)
                 4. Connection Created
@@ -71,7 +71,7 @@ Infisical supports connecting to Vercel using API Tokens.
                             "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                             "method": "api-token",
                             "credentials": {
-                                "apiToken": "...",
+                                "apiToken": "..."
                             }
                         }'
                 ```
