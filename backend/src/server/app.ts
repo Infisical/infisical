@@ -11,7 +11,7 @@ import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
 import websocket from "@fastify/websocket";
-import fastify from "fastify";
+import fastify, { FastifyInstance } from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
@@ -28,6 +28,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
+import { registerOpenApiDocs } from "./openapi/openapi-plugin";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
@@ -35,7 +36,6 @@ import { fastifyIp } from "./plugins/ip";
 import { maintenanceMode } from "./plugins/maintenanceMode";
 import { registerResponseSchemaHooks } from "./plugins/response-schema-hooks";
 import { registerServeUI } from "./plugins/serve-ui";
-import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
 type TMain = {
@@ -149,7 +149,10 @@ export const main = async ({
     }
 
     await server.register(fastifyErrHandler);
-    await server.register(fastifySwagger, { fullSpec: appCfg.isOpenApiFullSpec });
+    await registerOpenApiDocs(server as unknown as FastifyInstance, {
+      dir: path.join(__dirname, "../openapi"),
+      nodeEnv: appCfg.NODE_ENV
+    });
     await server.register(fastifyFormBody);
     await server.register(websocket, {
       options: { maxPayload: 64 * 1024 } // 64 KB
@@ -196,7 +199,6 @@ export const main = async ({
     }
 
     await server.ready();
-    server.swagger();
     return server;
   } catch (err) {
     server.log.error(err);
