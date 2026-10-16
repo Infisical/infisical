@@ -37,6 +37,16 @@ export type TValidateTokenForUserDTO = {
   code: string;
   userId: string;
   orgId?: string;
+  // When false the token survives a successful validation, so the same code can be validated again
+  // until it expires or is explicitly revoked. Only safe for high-entropy, single-recipient tokens
+  // whose validation on its own grants nothing (see verifyUserToOrg).
+  consumeToken?: boolean;
+};
+
+export type TRevokeTokensForUserDTO = {
+  type: TokenType;
+  userId: string;
+  orgId?: string;
 };
 
 export type TUpsertTokenForUserDALDTO = {
