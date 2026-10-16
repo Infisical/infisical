@@ -1,6 +1,6 @@
 export const AGENT_PROMPT = [
   "Help me get set up with Infisical for secrets management. Do the following:",
-  "1. Install the Infisical setup skill with `npx skills add Infisical/ai-skills --skill infisical-setup --agent <agent> -y`, replacing `<agent>` with your own name, such as `claude-code`, `cursor`, or `codex`.",
+  "1. Install the Infisical setup skill with `npx skills add Infisical/ai-skills --skill infisical-setup --agent <agent> -y`, replacing `<agent>` with your own name, such as `claude-code`, `cursor`, or `codex`. If the install fails, stop and tell me instead of installing a different skill.",
   "2. Follow the `infisical-setup` skill to install the Infisical CLI, connect this project to Infisical, and import the secrets from any `.env` files here into it. Don't open or read the files yourself.",
   "3. Suggest the most relevant next steps."
 ].join("\n\n");
