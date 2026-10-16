@@ -118,6 +118,7 @@ h.InstanceAdmin(t)                       // super admin; Isolated only
 proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 proj.NewUser(t, fixture.WithPrincipalName("bob"), fixture.WithRoles("admin"))
 proj.Grant(t, principal, "developer")
+proj.NewRole(t, "reader", fixture.Permission{Subject: "secrets", Action: []string{"read"}})
 
 secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "value", secretmanager.As(member))
 secretmanager.GetSecret(t, proj, "dev", "DB_URL")

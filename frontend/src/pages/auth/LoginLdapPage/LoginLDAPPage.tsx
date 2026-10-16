@@ -116,6 +116,7 @@ export const LoginLdapPage = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               type="text"
+              autoComplete="username"
               placeholder="Enter your LDAP username..."
               required
               disabled={passedUsername !== undefined}

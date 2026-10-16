@@ -195,6 +195,7 @@ Render
 Railway
 Qovery
 Northflank
+Portainer
 Fly.io
 DigitalOcean
 Cloudflare
@@ -310,6 +311,10 @@ Kemp
 LoadMaster
 NetScaler
 Citrix
+Palo Alto Networks
+Alto
+PAN-OS
+Panorama
 F5
 BIG-IP
 iControl
@@ -399,7 +404,7 @@ Notion
 # The `(?:s|'s)?` suffix accepts the plural and possessive forms.
 2FA
 ABAC
-ACL
+ACL(?:s|'s)?
 ACM
 ACME
 AD

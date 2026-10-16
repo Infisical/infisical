@@ -366,7 +366,10 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
             )}
           </div>
 
-          <SheetFooter className="border-t">
+          <SheetFooter className="justify-end border-t">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
+              Cancel
+            </Button>
             <OrgPermissionCan
               I={OrgPermissionHoneyTokenActions.Setup}
               a={OrgPermissionSubjects.HoneyTokens}
@@ -382,9 +385,6 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                 </Button>
               )}
             </OrgPermissionCan>
-            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
-              Cancel
-            </Button>
           </SheetFooter>
         </form>
       </SheetContent>

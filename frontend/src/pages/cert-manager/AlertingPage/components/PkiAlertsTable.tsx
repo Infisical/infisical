@@ -1,15 +1,17 @@
-import { faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
+import { CircleAlertIcon } from "lucide-react";
 
 import {
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -31,37 +33,42 @@ export const PkiAlertsTable = ({ handlePopUpOpen }: Props) => {
     projectId
   });
 
+  if (!isPending && !data?.alerts?.length) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <CircleAlertIcon />
+          </EmptyMedia>
+          <EmptyTitle>No alerts have been created for any certificate collections</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Alert Name</Th>
-            <Th>Alert Before Days</Th>
-            <Th>Certificate Collection</Th>
-            <Th className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
-          {isPending && <TableSkeleton columns={4} innerKey="project-pki-alerts" />}
-          {!isPending &&
-            data?.alerts.map((alert) => {
-              return (
-                <PkiAlertRow
-                  key={`alert-${alert.id}`}
-                  alert={alert}
-                  handlePopUpOpen={handlePopUpOpen}
-                />
-              );
-            })}
-        </TBody>
-      </Table>
-      {!isPending && !data?.alerts?.length && (
-        <EmptyState
-          title="No alerts have been created for any certificate collections"
-          icon={faExclamationCircle}
-        />
-      )}
-    </TableContainer>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Alert Name</TableHead>
+          <TableHead>Alert Before Days</TableHead>
+          <TableHead>Certificate Collection</TableHead>
+          <TableHead className="w-5" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {isPending && <TableSkeletonRows columns={4} />}
+        {!isPending &&
+          data?.alerts.map((alert) => {
+            return (
+              <PkiAlertRow
+                key={`alert-${alert.id}`}
+                alert={alert}
+                handlePopUpOpen={handlePopUpOpen}
+              />
+            );
+          })}
+      </TableBody>
+    </Table>
   );
 };

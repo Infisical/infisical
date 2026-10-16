@@ -14,7 +14,7 @@ This documentation provides an overview of how to use Infisical with [Gradle](ht
 To run a Gradle task with Infisical, you can use the `run` command. The basic structure is:
 
 ```
-infisical run -- [Your command here]
+infisical sm run -- [Your command here]
 ```
 
 For example, to run the `generateFile` task in Gradle:
@@ -30,7 +30,7 @@ task generateFile {
 ```
 
 ```
-infisical run -- gradle generateFile
+infisical sm run -- gradle generateFile
 ```
 
 With this command, Infisical will automatically inject the environment variables associated with the current Infisical project into the Gradle process. 
@@ -43,7 +43,7 @@ Your Gradle script can then access these variables using `System.getenv('VARIABL
 Assuming you have different build profiles (e.g., 'development', 'production'), you can use Infisical to switch between them:
 
 ```
-infisical run -- gradle build
+infisical sm run -- gradle build
 ```
 
 Inside your `build.gradle`, you might have:
@@ -59,7 +59,7 @@ if (System.getenv('PROFILE') == 'production') {
 If you want to run tests against different database configurations:
 
 ```
-infisical run -- gradle test
+infisical sm run -- gradle test
 ```
 
 Your test configuration in `build.gradle` can then adjust the database URL accordingly:
@@ -75,7 +75,7 @@ test {
 For automated CI/CD pipelines, you might want to inject a build number or version:
 
 ```
-infisical run -- gradle assemble
+infisical sm run -- gradle assemble
 ```
 
 And in `build.gradle`:

@@ -23,7 +23,7 @@ import {
 
 const PageContent = () => {
   const navigate = useNavigate();
-  const { type, dataSourceId, projectId, orgId } = useParams({
+  const { type, dataSourceId, orgId } = useParams({
     from: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.id,
     select: (params) => ({
       ...params,
@@ -64,11 +64,8 @@ const PageContent = () => {
           leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
           onClick={() => {
             navigate({
-              to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-              params: {
-                orgId,
-                projectId
-              }
+              to: "/organizations/$orgId/secret-scanning/data-sources",
+              params: { orgId }
             });
           }}
         >

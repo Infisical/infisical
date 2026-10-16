@@ -9,6 +9,7 @@ import {
   DocumentationLinkBadge,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
@@ -385,7 +386,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-warning">
               {shouldReissue
                 ? "Saving reissues the certificate immediately. The signer switches to the new certificate."
@@ -404,7 +405,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                 {ctaLabel}
               </Button>
             </div>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>

@@ -345,9 +345,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
         {!filteredDataSources?.length && (
           <EmptyState
             title={
-              dataSources.length
-                ? "No data sources match search..."
-                : "This project has no data sources configured"
+              dataSources.length ? "No data sources match search..." : "No data sources configured"
             }
             icon={dataSources.length ? faSearch : faCubesStacked}
           />

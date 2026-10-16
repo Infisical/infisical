@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { RefreshCwIcon, Trash2Icon } from "lucide-react";
 
@@ -7,7 +8,7 @@ import { Loader } from "./Loader";
 
 /**
  * `Loader` is the branded Infisical loading animation — the stroke-draw of the
- * logo mark. It is the single source for that animation: the mark, the two
+ * logo mark. It is the single source for that animation: the mark, the
  * tints, and the size scale all live here, and every product call site composes
  * it rather than naming a Lottie asset itself, including the router's full-page
  * pending state in `main.tsx`.
@@ -43,8 +44,24 @@ const meta = {
   tags: ["autodocs"],
   argTypes: {
     variant: {
+      description:
+        "Token variants recolor the existing animated mark without changing its motion. The product variant uses --product-color, just like Button.",
       control: "select",
-      options: ["brand", "inverse"]
+      options: [
+        "brand",
+        "inverse",
+        "neutral",
+        "background",
+        "org",
+        "sub-org",
+        "project",
+        "success",
+        "info",
+        "warning",
+        "pam",
+        "av",
+        "product"
+      ]
     },
     size: {
       control: "select",
@@ -72,7 +89,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "The default: the brand-colored mark at `md`. It is the one tint for every loading state, from the router's pending page to a `Card` body waiting on a fetch, so consecutive loaders never switch color. Use it on standard product surfaces — a `Card` body waiting on a fetch, or a section that owns its own loading state. The animation loops for as long as the wait lasts, or remains on its fully drawn first frame when the operating system requests reduced motion. It carries no progress information, so pair it with copy when the wait is long enough to need explaining."
+          "The default: the brand-colored mark at `md`. Standalone loaders and `PageLoader` keep this tint. Pending controls choose their tint from the button variant instead. The animation loops for as long as the wait lasts, or remains on its fully drawn first frame when the operating system requests reduced motion. It carries no progress information, so pair it with copy when the wait is long enough to need explaining."
       }
     }
   }
@@ -94,7 +111,7 @@ export const VariantInverse: Story = {
     docs: {
       description: {
         story:
-          "Black mark, the only alternative to `brand`, for inverted surfaces where the foreground color is the background — the solid `default` `IconButton`, and anything else painted `bg-foreground`. Shown here on `bg-foreground`, since it is invisible against the page."
+          "The explicit black mark for inverted surfaces. Shown here on `bg-foreground`, since it is invisible against the dark page. Automatic pending controls use theme-aware tokens instead."
       }
     }
   }
@@ -109,7 +126,23 @@ export const VariantBrand: Story = {
     docs: {
       description: {
         story:
-          "The colored mark and the default tint. Use it everywhere except inverted surfaces, where `inverse` keeps the stroke legible."
+          "The colored mark and the standalone default tint. Choose a token variant when the loader needs to follow the surface's scope or semantic intent."
+      }
+    }
+  }
+};
+
+export const VariantProduct: Story = {
+  name: "Variant: Product",
+  args: {
+    variant: "product",
+    style: { "--product-color": "var(--color-product-kms)" } as CSSProperties
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set --product-color to the product's existing token. This example uses the KMS token; the product-color utility resolves its light-theme tint just as it does for a product Button."
       }
     }
   }
@@ -142,7 +175,7 @@ export const ExamplePendingButton: Story = {
     docs: {
       description: {
         story:
-          "`Button` composes `Loader` itself: set `isPending` and the label goes transparent while the `sm` mark draws over the control. Prefer `isPending` over rendering a `Loader` as a Button child — it also disables the control, which is what stops the double submit. `LDAPModal`'s Test Connection button is the one legacy exception: it swaps its label for an inline mark instead of overlaying one."
+          "`Button` composes `Loader` itself: set `isPending` and the label goes transparent while the `sm` mark draws over the control. Scope and product variants choose their matching token; danger and uncolored variants choose neutral. Prefer `isPending` over rendering a `Loader` as a Button child — it also disables the control, which is what stops the double submit."
       }
     }
   },
@@ -164,7 +197,7 @@ export const ExamplePendingIconButton: Story = {
     docs: {
       description: {
         story:
-          "`IconButton` composes `Loader` the same way, sizing the mark to the control and switching to the `inverse` tint on the solid `default` variant so the stroke stays legible against `bg-foreground`. Use it for row actions and toolbar triggers that fire a mutation."
+          "`IconButton` uses the same variant mapping as `Button`, sizing the mark to the control. Its solid `default` variant uses the background token so the mark stays legible against `bg-foreground` in both themes. Use it for row actions and toolbar triggers that fire a mutation."
       }
     }
   },

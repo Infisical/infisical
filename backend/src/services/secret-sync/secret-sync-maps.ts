@@ -2,6 +2,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TDaytonaConnection } from "@app/services/app-connection/daytona";
+import { getPortainerInstanceUrl } from "@app/services/app-connection/portainer/portainer-connection-fns";
+import { TPortainerConnection } from "@app/services/app-connection/portainer/portainer-connection-types";
 import { CloudflarePagesVariableType } from "@app/services/secret-sync/cloudflare-pages/cloudflare-pages-constants";
 import { CloudflareWorkersVariableType } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-constants";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
@@ -36,6 +38,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.CloudflareSecretsStore]: "Cloudflare Secrets Store",
   [SecretSync.Supabase]: "Supabase",
   [SecretSync.Rundeck]: "Rundeck",
+  [SecretSync.Portainer]: "Portainer",
   [SecretSync.Zabbix]: "Zabbix",
   [SecretSync.Railway]: "Railway",
   [SecretSync.Checkly]: "Checkly",
@@ -90,6 +93,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CloudflareSecretsStore]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Rundeck]: AppConnection.Rundeck,
+  [SecretSync.Portainer]: AppConnection.Portainer,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
@@ -144,6 +148,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.CloudflareSecretsStore]: SecretSyncPlanType.Regular,
   [SecretSync.Supabase]: SecretSyncPlanType.Regular,
   [SecretSync.Rundeck]: SecretSyncPlanType.Regular,
+  [SecretSync.Portainer]: SecretSyncPlanType.Regular,
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular,
   [SecretSync.Railway]: SecretSyncPlanType.Regular,
   [SecretSync.Checkly]: SecretSyncPlanType.Regular,
@@ -207,6 +212,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
   [SecretSync.Supabase]: ["projectName"],
   [SecretSync.Rundeck]: [],
+  [SecretSync.Portainer]: [],
   [SecretSync.Zabbix]: ["hostName", "macroType"],
   [SecretSync.Railway]: ["projectName", "environmentName", "serviceName"],
   [SecretSync.Checkly]: ["groupName", "accountName"],
@@ -234,6 +240,36 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
+
+// Portainer environment and stack IDs are local to an instance, so identical IDs on
+// different instances are not the same destination. The same address behind two
+// gateways is two instances too, while `https://host` and `https://host:443` are one.
+const getPortainerInstanceKey = (connection: TPortainerConnection) => {
+  const url = new URL(getPortainerInstanceUrl(connection));
+  const route = connection.gatewayPoolId ?? connection.gatewayId ?? "direct";
+
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}@${route}`;
+};
+
+const portainerDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId) return true;
+
+  if (existingSync.connectionId === newSync.connectionId) {
+    return true;
+  }
+
+  if (!existingSync.connectionId) return false;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  return (
+    getPortainerInstanceKey(existingConn as TPortainerConnection) ===
+    getPortainerInstanceKey(newConn as TPortainerConnection)
+  );
+};
 const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
   if (!newSync.connectionId) return true;
 
@@ -358,6 +394,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.CloudflareSecretsStore]: defaultDuplicateCheck,
   [SecretSync.Supabase]: defaultDuplicateCheck,
   [SecretSync.Rundeck]: defaultDuplicateCheck,
+  [SecretSync.Portainer]: portainerDuplicateCheck,
   [SecretSync.Zabbix]: defaultDuplicateCheck,
   [SecretSync.Railway]: defaultDuplicateCheck,
   [SecretSync.Checkly]: defaultDuplicateCheck,

@@ -86,7 +86,10 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
       <div className="p-4">
         <Alert variant="danger">
           <CircleAlertIcon />
-          <AlertTitle>Could not load project roles</AlertTitle>
+          <AlertTitle>
+            Could not load{" "}
+            {currentProject?.type === ProjectType.CertificateManager ? "roles" : "project roles"}
+          </AlertTitle>
           <AlertDescription>
             <span>Retry to edit this user&apos;s roles.</span>
             <Button
@@ -165,7 +168,10 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
           )}
         </ProjectPermissionCan>
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           type="submit"
           variant="project"
@@ -173,9 +179,6 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
           isPending={roleForm.formState.isSubmitting}
         >
           Save Roles
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
         </Button>
       </SheetFooter>
     </form>

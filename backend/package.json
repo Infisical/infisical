@@ -213,6 +213,7 @@
     "@peculiar/asn1-schema": "^2.3.8",
     "@peculiar/asn1-x509": "^2.6.1",
     "@peculiar/x509": "^1.12.1",
+    "@platformatic/kafka": "^2.12.1",
     "@react-email/components": "^1.0.1",
     "@simplewebauthn/server": "^13.2.2",
     "@sindresorhus/slugify": "1.1.0",

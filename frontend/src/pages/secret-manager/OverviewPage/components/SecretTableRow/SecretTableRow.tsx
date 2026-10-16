@@ -50,6 +50,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 
+import { useOverviewTelemetry } from "../../OverviewTelemetry";
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import {
@@ -149,6 +150,7 @@ export const SecretTableRow = ({
   activityId,
   onActivityChange
 }: Props) => {
+  const telemetry = useOverviewTelemetry();
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
   const [isSecretVisible, setIsSecretVisible] = useToggle();
@@ -649,7 +651,18 @@ export const SecretTableRow = ({
                     </TableHead>
                     <TableHead>Value</TableHead>
                     <TableHead variant="action" className="w-px">
-                      <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => {
+                          telemetry.interaction({
+                            action: isSecretVisible ? "hide" : "reveal",
+                            source: "row",
+                            resourceType: "secret"
+                          });
+                          setIsSecretVisible.toggle();
+                        }}
+                      >
                         {isSecretVisible ? (
                           <>
                             <EyeOffIcon />

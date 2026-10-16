@@ -281,6 +281,10 @@ export type TNetScalerConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.NetScaler;
 };
 
+export type TPaloAltoNetworksConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.PaloAltoNetworks;
+};
+
 export type TKeeperConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Keeper;
 };
@@ -351,6 +355,10 @@ export type TRundeckConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Rundeck;
 };
 
+export type TPortainerConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Portainer;
+};
+
 export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TriggerDev;
 };
@@ -369,6 +377,10 @@ export type TSpaceliftConnectionOption = TAppConnectionOptionBase & {
 
 export type TDaytonaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Daytona;
+};
+
+export type TS3CompatibleConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.S3Compatible;
 };
 
 export type TAppConnectionOption =
@@ -437,6 +449,7 @@ export type TAppConnectionOption =
   | TExternalInfisicalConnectionOption
   | TDopplerConnectionOption
   | TNetScalerConnectionOption
+  | TPaloAltoNetworksConnectionOption
   | TKeeperConnectionOption
   | TKempLoadMasterConnectionOption
   | TAnthropicConnectionOption
@@ -454,13 +467,15 @@ export type TAppConnectionOption =
   | TConvexConnectionOption
   | TTriggerDevConnectionOption
   | TRundeckConnectionOption
+  | TPortainerConnectionOption
   | THasuraCloudConnectionOption
   | TQoveryConnectionOption
   | TLiteLLMConnectionOption
   | TFireworksConnectionOption
   | TNutanixPrismCentralConnectionOption
   | TSpaceliftConnectionOption
-  | TDaytonaConnectionOption;
+  | TDaytonaConnectionOption
+  | TS3CompatibleConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -528,6 +543,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
   [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
+  [AppConnection.PaloAltoNetworks]: TPaloAltoNetworksConnectionOption;
   [AppConnection.Keeper]: TKeeperConnectionOption;
   [AppConnection.KempLoadMaster]: TKempLoadMasterConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
@@ -545,6 +561,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.Rundeck]: TRundeckConnectionOption;
+  [AppConnection.Portainer]: TPortainerConnectionOption;
   [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
   [AppConnection.Qovery]: TQoveryConnectionOption;
   [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
@@ -552,4 +569,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
   [AppConnection.Daytona]: TDaytonaConnectionOption;
+  [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
 };

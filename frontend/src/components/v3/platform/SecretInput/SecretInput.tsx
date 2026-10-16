@@ -156,6 +156,8 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isReadOnly?: boolean;
   isDisabled?: boolean;
   containerClassName?: string;
+  // Grows from a textarea-height box with the value top-aligned, for standalone form fields.
+  isMultiline?: boolean;
   canEditButNotView?: boolean;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
@@ -176,6 +178,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       valueAlwaysHidden,
       maskEachCharacter,
       containerClassName,
+      isMultiline,
       onBlur,
       isDisabled,
       isReadOnly,
@@ -243,6 +246,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           variant === "default" &&
             "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           variant === "plain" && invisibleChars.length > 0 && "flex",
+          variant === "default" && isMultiline && "min-h-16 items-start py-1",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}

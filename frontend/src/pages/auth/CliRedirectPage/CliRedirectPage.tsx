@@ -1,11 +1,10 @@
 import { Helmet } from "react-helmet";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useSearch } from "@tanstack/react-router";
+import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
-import { IconButton, SecretInput } from "@app/components/v2";
+import { SecretInput } from "@app/components/v2";
 import { Button } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { useTimedReset } from "@app/hooks";
@@ -63,16 +62,10 @@ export const CliRedirectPage = () => {
             <div className="dark relative flex max-h-36 max-w-xl flex-col items-center space-y-4 overflow-y-auto rounded-md border border-border-subtle bg-surface-base p-3">
               <SecretInput value={cliToken as string} />
               <div className="mx-1 flex">
-                <IconButton
-                  variant="outline_bg"
-                  colorSchema="primary"
-                  ariaLabel="copy to clipboard"
-                  onClick={copyUrlToClipboard}
-                  className="flex items-center rounded-sm py-2"
-                >
-                  <FontAwesomeIcon className="pr-2" icon={isUrlCopied ? faCheck : faCopy} /> Copy to
-                  clipboard
-                </IconButton>
+                <Button variant="outline" onClick={copyUrlToClipboard}>
+                  {isUrlCopied ? <CheckIcon /> : <CopyIcon />}
+                  Copy to clipboard
+                </Button>
               </div>
             </div>
           </>

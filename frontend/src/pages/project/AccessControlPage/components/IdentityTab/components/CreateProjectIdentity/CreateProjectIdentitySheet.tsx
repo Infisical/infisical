@@ -11,6 +11,7 @@ import { CreateProjectIdentityForm } from "./CreateProjectIdentityForm";
 
 const PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.SecretScanning]: "Secret Scanning",
   [ProjectType.PAM]: "PAM",
   [ProjectType.AgentVault]: "Agent Vault"
 };
