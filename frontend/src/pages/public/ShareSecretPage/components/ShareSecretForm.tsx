@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
@@ -43,7 +43,6 @@ import {
   SelectTrigger,
   SelectValue,
   Separator,
-  SheetClose,
   SheetFooter,
   Toggle,
   Tooltip,
@@ -164,6 +163,8 @@ type Props = {
   allowSecretSharingOutsideOrganization?: boolean;
   maxSharedSecretLifetime?: number;
   maxSharedSecretViewLimit?: number | null;
+  onCancel?: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
 export const ShareSecretForm = ({
@@ -171,7 +172,9 @@ export const ShareSecretForm = ({
   value,
   allowSecretSharingOutsideOrganization = true,
   maxSharedSecretLifetime,
-  maxSharedSecretViewLimit
+  maxSharedSecretViewLimit,
+  onCancel,
+  onDirtyChange
 }: Props) => {
   const [result, setResult] = useState<ShareResult | null>(null);
   const [isPasswordVisible, setIsPasswordVisible] = useToggle(false);
@@ -199,7 +202,7 @@ export const ShareSecretForm = ({
     reset,
     setValue,
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { isSubmitting, isDirty },
     watch
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -212,6 +215,11 @@ export const ShareSecretForm = ({
         filteredExpiresInOptions[Math.min(filteredExpiresInOptions.length - 1, 2)].value.toString()
     }
   });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   const isLimitingView = watch("shouldLimitView");
   const isAllowingExternalEmails = watch("allowExternalEmails");
@@ -724,11 +732,9 @@ export const ShareSecretForm = ({
               Powered by Infisical
             </Badge>
           ) : (
-            <SheetClose asChild>
-              <Button variant="ghost" isDisabled={isSubmitting}>
-                Cancel
-              </Button>
-            </SheetClose>
+            <Button variant="ghost" isDisabled={isSubmitting} onClick={onCancel}>
+              Cancel
+            </Button>
           )}
           <Button
             variant="project"
