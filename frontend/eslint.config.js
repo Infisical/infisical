@@ -1,5 +1,4 @@
 // For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
-import { plugin as shadcn } from "@shadcn/lint";
 import storybook from "eslint-plugin-storybook";
 
 import js from "@eslint/js";
@@ -215,20 +214,6 @@ export default tseslint.config(
       "react/no-array-index-key": "off",
       "react/no-danger": "off",
       "react/no-unstable-nested-components": "off"
-    }
-  },
-  {
-    files: ["src/pages/design-system/**/*.{ts,tsx}"],
-    plugins: { shadcn },
-    settings: {
-      shadcn: {
-        ui: "@app/components/v4/ui",
-        note: "Tokens live in src/components/v4/tokens.json. Square corners are the default."
-      }
-    },
-    rules: {
-      "shadcn/no-raw-colors": "error",
-      "shadcn/no-restyle": ["error", { allow: ["layout"] }]
     }
   },
   storybook.configs["flat/recommended"]

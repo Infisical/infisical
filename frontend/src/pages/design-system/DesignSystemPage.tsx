@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 
-import { useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
@@ -28,9 +27,11 @@ const sections = [
 ];
 
 export const DesignSystemPage = () => {
-  const { resolvedTheme, setTheme } = useTheme();
   const [corners, setCorners] = useState<"square" | "soft">("square");
-  const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
+  const [theme, setTheme] = useState<"dark" | "light">(() =>
+    document.documentElement.dataset.theme === "light" ? "light" : "dark"
+  );
+  const nextTheme = theme === "dark" ? "light" : "dark";
 
   return (
     <div
@@ -60,9 +61,13 @@ export const DesignSystemPage = () => {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setTheme(nextTheme, "navbar-toggle")}
+            onClick={() => {
+              document.documentElement.dataset.theme = nextTheme;
+              document.documentElement.style.colorScheme = nextTheme;
+              setTheme(nextTheme);
+            }}
           >
-            {resolvedTheme === "dark" ? "Light" : "Dark"}
+            {theme === "dark" ? "Light" : "Dark"}
           </Button>
         </div>
       </header>

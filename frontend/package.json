@@ -12,6 +12,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint ./src --max-warnings 0",
+    "lint:v4": "eslint src/pages/design-system --config eslint.v4.config.js --max-warnings 0",
     "lint:fix": "eslint --fix ./src --max-warnings 0",
     "test": "vitest run -c vitest.config.mts",
     "type:check": "tsc --noEmit --project ./tsconfig.app.json",
