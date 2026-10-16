@@ -1,4 +1,5 @@
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
@@ -9,6 +10,9 @@ import {
   Input,
   TextArea
 } from "@app/components/v3";
+import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { TAppConnection } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { slugSchema } from "@app/lib/schemas";
 
 export const rotationSchema = z.object({
@@ -37,11 +41,35 @@ export const genericAppConnectionFieldsSchema = z.object({
   rotation: rotationSchema.optional()
 });
 
+const getSuggestedConnectionName = (app?: AppConnection, method?: TAppConnection["method"]) => {
+  if (!app || !APP_CONNECTION_MAP[app]) return "";
+
+  const providerSlug = slugify(APP_CONNECTION_MAP[app].name, {
+    lowercase: true,
+    decamelize: false
+  });
+  const methodSlug = method ? slugify(method, { lowercase: true }) : "";
+
+  return [providerSlug, methodSlug.replace(new RegExp(`^${providerSlug}-`), "")]
+    .filter(Boolean)
+    .join("-")
+    .slice(0, 64)
+    .replace(/-+$/, "");
+};
+
 export const GenericAppConnectionsFields = () => {
   const {
     register,
+    control,
     formState: { errors }
-  } = useFormContext<{ name: string; description?: string | null }>();
+  } = useFormContext<{
+    name: string;
+    description?: string | null;
+    app?: AppConnection;
+    method?: TAppConnection["method"];
+  }>();
+  const [app, method] = useWatch({ control, name: ["app", "method"] });
+  const suggestedName = getSuggestedConnectionName(app, method);
 
   return (
     <>
@@ -51,6 +79,7 @@ export const GenericAppConnectionsFields = () => {
           id="app-connection-name"
           autoFocus
           placeholder="my-app-connection"
+          suggestedValue={suggestedName}
           isError={Boolean(errors.name?.message)}
           {...register("name")}
           autoComplete="off"
