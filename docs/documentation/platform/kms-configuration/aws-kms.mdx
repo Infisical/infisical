@@ -3,6 +3,8 @@ title: "AWS Key Management Service"
 description: "Learn how to manage encryption using AWS KMS"
 ---
 
+import EksPodIdentitySessionTags from "/snippets/aws/eks-pod-identity-session-tags.mdx";
+
 To enhance the security of your Infisical projects, you can now encrypt your secrets using an external Key Management Service (KMS).
 When external KMS is configured for your project, all encryption and decryption operations will be handled by the chosen KMS.
 This guide will walk you through the steps needed to configure external KMS support with AWS KMS.
@@ -26,6 +28,7 @@ Before you begin, you'll first need to choose a method of authentication with AW
       <Note>
         **For Dedicated Instances**: Your AWS account ID differs from the one provided above. Please reach out to Infisical support to obtain your AWS account ID.
       </Note>
+      <EksPodIdentitySessionTags />
       4. Optionally, enable **Require external ID** and enter your Infisical **project ID** to further enhance security.
     </Step>
     <Step title="Add Required Permissions for the IAM Role">

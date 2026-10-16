@@ -4,6 +4,7 @@ description: "Learn how to dynamically generate AWS IAM Users."
 ---
 
 import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+import EksPodIdentitySessionTags from "/snippets/aws/eks-pod-identity-session-tags.mdx";
 
 The Infisical AWS IAM dynamic secret allows you to generate AWS IAM Users and temporary credentials on demand based on a configured AWS policy. Infisical supports several authentication methods to connect to your AWS account, including assuming an IAM Role, using IAM Roles for Service Accounts (IRSA) on EKS, or static Access Keys.
 
@@ -104,6 +105,8 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
             To connect your self-hosted Infisical instance with AWS, you need to set up an AWS IAM User account that can assume the configured AWS IAM Role.
 
             If your instance is deployed on AWS, the aws-sdk will automatically retrieve the credentials. Ensure that you assign the provided permission policy to your deployed instance, such as ECS or EC2.
+
+            <EksPodIdentitySessionTags />
 
             The following steps are for instances not deployed on AWS:
             <Steps>
