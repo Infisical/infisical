@@ -298,7 +298,7 @@ Both root and intermediate CAs can be AWS KMS-backed. They support the `RSA 2048
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["kms:CreateKey", "kms:TagResource"],
+      "Action": ["kms:CreateKey", "kms:TagResource", "kms:CreateAlias"],
       "Resource": "*"
     },
     {
@@ -313,7 +313,7 @@ Both root and intermediate CAs can be AWS KMS-backed. They support the `RSA 2048
 }
 ```
 
-Each CA signing key is created with the `author=infisical` and `purpose=certificate-authority` tags, so the second statement only allows signing with and deleting keys created for CAs.
+Each CA signing key is created with the `author=infisical` and `purpose=certificate-authority` tags, so the second statement only allows signing with and deleting keys created for CAs. Each key also gets an alias named after the CA, such as `alias/infisical-ca-kms-root-ca-x7k2p`, so you can find it in the AWS KMS console.
 
 ### Create the CA
 

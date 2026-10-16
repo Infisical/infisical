@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  CreateAliasCommand,
+  CreateAliasCommandInput,
   CreateKeyCommand,
   GetPublicKeyCommand,
   KMSClient,
@@ -81,6 +83,7 @@ const opensslPkeySign = (privateKeyDer: Buffer, input: Buffer, pkeyOpts: string[
 const fakeKms = ({ publicKeySpki, sign }: { publicKeySpki: Buffer; sign: (input: TSignInput) => Buffer }) => {
   const signCalls: TSignInput[] = [];
   const createCalls: Record<string, unknown>[] = [];
+  const aliasCalls: CreateAliasCommandInput[] = [];
 
   const send = async (command: unknown) => {
     if (command instanceof CreateKeyCommand) {
@@ -89,6 +92,10 @@ const fakeKms = ({ publicKeySpki, sign }: { publicKeySpki: Buffer; sign: (input:
     }
     if (command instanceof GetPublicKeyCommand) {
       return { PublicKey: publicKeySpki };
+    }
+    if (command instanceof CreateAliasCommand) {
+      aliasCalls.push(command.input);
+      return {};
     }
     if (command instanceof SignCommand) {
       const input = command.input as TSignInput;
@@ -99,7 +106,7 @@ const fakeKms = ({ publicKeySpki, sign }: { publicKeySpki: Buffer; sign: (input:
   };
   vi.spyOn(KMSClient.prototype, "send").mockImplementation(send as never);
 
-  return { signCalls, createCalls, publicKeySpki };
+  return { signCalls, createCalls, aliasCalls, publicKeySpki };
 };
 
 const spkiOf = (publicKey: KeyObject) => publicKey.export({ format: "der", type: "spki" });
@@ -348,6 +355,43 @@ describe("AWS KMS CA key source", () => {
     const command = send.mock.calls[0][0] as unknown;
     expect(command).toBeInstanceOf(ScheduleKeyDeletionCommand);
     expect((command as ScheduleKeyDeletionCommand).input).toEqual({ KeyId: KEY_ARN, PendingWindowInDays: 30 });
+  });
+
+  test("names the new key with an alias built from the CA name", async () => {
+    const { aliasCalls } = rsaKms();
+    const provider = awsKmsCaKeySourceFactory(buildDeps());
+
+    await provider.createKey({
+      projectId: "project",
+      caName: "root-ca",
+      keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+      input: { appConnectionId: "conn", region: AWSRegion.US_EAST_1 }
+    });
+
+    expect(aliasCalls).toHaveLength(1);
+    expect(aliasCalls[0].TargetKeyId).toBe(KEY_ARN);
+    expect(aliasCalls[0].AliasName).toMatch(/^alias\/infisical-ca-root-ca-[a-zA-Z0-9]{5}$/);
+  });
+
+  test("still creates the key when the alias cannot be created", async () => {
+    const accessDenied = Object.assign(new Error("denied"), { name: "AccessDeniedException" });
+    const { publicKeySpki } = rsaKms();
+    vi.spyOn(KMSClient.prototype, "send").mockImplementation((async (command: unknown) => {
+      if (command instanceof CreateKeyCommand) return { KeyMetadata: { Arn: KEY_ARN } };
+      if (command instanceof GetPublicKeyCommand) return { PublicKey: publicKeySpki };
+      if (command instanceof CreateAliasCommand) throw accessDenied;
+      return {};
+    }) as never);
+    const provider = awsKmsCaKeySourceFactory(buildDeps());
+
+    const created = await provider.createKey({
+      projectId: "project",
+      caName: "root-ca",
+      keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+      input: { appConnectionId: "conn", region: AWSRegion.US_EAST_1 }
+    });
+
+    expect(created.externalKeyId).toBe(KEY_ARN);
   });
 
   test("schedules deletion of a newly created key whose public key cannot be read", async () => {

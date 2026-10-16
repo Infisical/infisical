@@ -1,4 +1,5 @@
 import {
+  CreateAliasCommand,
   CreateKeyCommand,
   GetPublicKeyCommand,
   KeyUsageType,
@@ -19,6 +20,7 @@ import { getPqcCrypto, isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { bufferToArrayBuffer } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -154,6 +156,16 @@ export const awsKmsCaKeySourceFactory = ({
         if (!publicKeySpki) {
           throw new BadRequestError({ message: `AWS KMS did not return a public key for '${keyArn}'.` });
         }
+        await client
+          .send(
+            new CreateAliasCommand({
+              AliasName: `alias/infisical-ca-${caName}-${alphaNumericNanoId(5)}`,
+              TargetKeyId: keyArn
+            })
+          )
+          .catch((aliasError: unknown) => {
+            logger.warn(aliasError, `Failed to create alias for AWS KMS CA key [keyArn=${keyArn}]`);
+          });
         return { appConnectionId, externalKeyId: keyArn, publicKeySpki: Buffer.from(publicKeySpki) };
       } catch (error) {
         await $scheduleKeyDeletion(client, keyArn).catch((deletionError: unknown) => {
