@@ -35,14 +35,14 @@ const getSuggestedSyncName = ({
     }
   }
 
-  return slugify(
-    [SECRET_SYNC_MAP[destination].name, destinationLabel, environment?.slug]
-      .filter(Boolean)
-      .join(" "),
-    { lowercase: true }
-  )
-    .slice(0, 64)
+  const environmentSlug = environment?.slug ? slugify(environment.slug, { lowercase: true }) : "";
+  const prefix = slugify(`${SECRET_SYNC_MAP[destination].name} ${destinationLabel}`, {
+    lowercase: true
+  })
+    .slice(0, environmentSlug ? 63 - environmentSlug.length : 64)
     .replace(/-+$/, "");
+
+  return [prefix, environmentSlug].filter(Boolean).join("-");
 };
 
 export const SecretSyncDetailsFields = () => {

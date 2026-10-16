@@ -84,6 +84,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             e.defaultPrevented ||
             e.key !== "Tab" ||
             e.shiftKey ||
+            e.currentTarget.readOnly ||
             e.currentTarget.value
           )
             return;
