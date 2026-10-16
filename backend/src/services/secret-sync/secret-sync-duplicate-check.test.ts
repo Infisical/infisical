@@ -1,7 +1,6 @@
-import { CloudflareWorkersVariableType } from "./cloudflare-workers/cloudflare-workers-constants";
 import { areSecretSyncDestinationConfigsEqual } from "./secret-sync-duplicate-check";
 import { SecretSync } from "./secret-sync-enums";
-import { DESTINATION_DUPLICATE_CHECK_MAP } from "./secret-sync-maps";
+import { SECRET_SYNC_SKIP_FIELDS_MAP } from "./secret-sync-maps";
 
 describe("secret sync destination comparison", () => {
   test.each([
@@ -54,6 +53,31 @@ describe("secret sync destination comparison", () => {
     ).toBe(true);
   });
 
+  test.each([
+    [SecretSync.CloudflarePages, { projectName: "site", environment: "production" }],
+    [SecretSync.CloudflareWorkers, { scriptId: "worker" }]
+  ] as const)(
+    "treats %s syncs to the same target as duplicates whatever their variable type",
+    (destination, config) => {
+      expect(
+        areSecretSyncDestinationConfigsEqual(
+          destination,
+          { ...config, variableType: "secret_text" },
+          { ...config, variableType: "plain_text" },
+          SECRET_SYNC_SKIP_FIELDS_MAP[destination]
+        )
+      ).toBe(true);
+      expect(
+        areSecretSyncDestinationConfigsEqual(
+          destination,
+          config,
+          { ...config, variableType: "plain_text" },
+          SECRET_SYNC_SKIP_FIELDS_MAP[destination]
+        )
+      ).toBe(true);
+    }
+  );
+
   test("does not strip empty values in other providers", () => {
     expect(
       areSecretSyncDestinationConfigsEqual(
@@ -63,54 +87,5 @@ describe("secret sync destination comparison", () => {
         []
       )
     ).toBe(false);
-  });
-});
-
-describe("Cloudflare Workers duplicate check", () => {
-  const workersSync = (variableType?: CloudflareWorkersVariableType, syncNonSecretBindings?: boolean) => ({
-    connectionId: null,
-    destinationConfig: { scriptId: "worker", variableType },
-    syncOptions: { syncNonSecretBindings }
-  });
-
-  test.each([
-    [
-      "a Secret and a Text sync",
-      workersSync(CloudflareWorkersVariableType.Secret),
-      workersSync(CloudflareWorkersVariableType.Text),
-      false
-    ],
-    [
-      "two Text syncs",
-      workersSync(CloudflareWorkersVariableType.Text),
-      workersSync(CloudflareWorkersVariableType.Text),
-      true
-    ],
-    [
-      "a sync saved without a type and a Secret sync",
-      workersSync(),
-      workersSync(CloudflareWorkersVariableType.Secret),
-      true
-    ],
-    [
-      "a Secret sync that also syncs plaintext and JSON variables and a Text sync",
-      workersSync(CloudflareWorkersVariableType.Secret, true),
-      workersSync(CloudflareWorkersVariableType.Text),
-      true
-    ],
-    [
-      "a JSON sync and a sync saved without a type that also syncs plaintext and JSON variables",
-      workersSync(CloudflareWorkersVariableType.Json),
-      workersSync(undefined, true),
-      true
-    ]
-  ])("%s: duplicate is %s", async (_, existingSync, newSync, isDuplicate) => {
-    await expect(
-      DESTINATION_DUPLICATE_CHECK_MAP[SecretSync.CloudflareWorkers]({
-        existingSync,
-        newSync,
-        decryptConnection: vi.fn()
-      })
-    ).resolves.toBe(isDuplicate);
   });
 });

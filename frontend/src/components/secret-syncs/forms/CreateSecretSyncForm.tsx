@@ -235,8 +235,7 @@ export const CreateSecretSyncForm = ({
     projectId: currentProject?.id || "",
     connectionId: watch("connection")?.id,
     enabled: true,
-    destinationConfig: getSecretSyncDestinationConfig(destination, watch("destinationConfig")),
-    syncOptions: watch("syncOptions")
+    destinationConfig: getSecretSyncDestinationConfig(destination, watch("destinationConfig"))
   });
 
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");

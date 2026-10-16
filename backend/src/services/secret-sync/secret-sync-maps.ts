@@ -4,11 +4,9 @@ import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-
 import { TDaytonaConnection } from "@app/services/app-connection/daytona";
 import { getPortainerInstanceUrl } from "@app/services/app-connection/portainer/portainer-connection-fns";
 import { TPortainerConnection } from "@app/services/app-connection/portainer/portainer-connection-types";
-import { CloudflarePagesVariableType } from "@app/services/secret-sync/cloudflare-pages/cloudflare-pages-constants";
-import { CloudflareWorkersVariableType } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-constants";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
-import { DestinationDuplicateCheckFn, DuplicateCheckSyncFields } from "@app/services/secret-sync/secret-sync-types";
+import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
 export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.AWSParameterStore]: "AWS Parameter Store",
@@ -207,6 +205,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
     "groupId",
     "projectId"
   ],
+  // Syncs of any variable type write to the same variables, so blocking duplicate destinations has to
+  // cover them all or one project could overwrite another project's variables.
   [SecretSync.CloudflarePages]: ["variableType"],
   [SecretSync.CloudflareWorkers]: ["variableType"],
   [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
@@ -318,25 +318,6 @@ const daytonaDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync
   return existingOrgId === newOrgId;
 };
 
-// Syncs of different variable types own different variables, so they can share a destination. Syncs saved
-// before the type could be chosen have none and sync as secrets.
-const cloudflareVariableTypeDuplicateCheck =
-  (defaultVariableType: string): DestinationDuplicateCheckFn =>
-  async ({ existingSync, newSync }) =>
-    (existingSync.destinationConfig.variableType ?? defaultVariableType) ===
-    (newSync.destinationConfig.variableType ?? defaultVariableType);
-
-// A Secret sync with syncNonSecretBindings also deletes plaintext and JSON variables that it doesn't sync,
-// so it can't share a Worker with any other sync.
-const ownsEveryWorkerVariable = ({ destinationConfig, syncOptions }: DuplicateCheckSyncFields) =>
-  (destinationConfig.variableType ?? CloudflareWorkersVariableType.Secret) === CloudflareWorkersVariableType.Secret &&
-  Boolean(syncOptions?.syncNonSecretBindings);
-
-const cloudflareWorkersDuplicateCheck: DestinationDuplicateCheckFn = async (params) =>
-  ownsEveryWorkerVariable(params.existingSync) ||
-  ownsEveryWorkerVariable(params.newSync) ||
-  cloudflareVariableTypeDuplicateCheck(CloudflareWorkersVariableType.Secret)(params);
-
 const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
   const existingConfig = existingSync.destinationConfig;
   const newConfig = newSync.destinationConfig;
@@ -400,8 +381,8 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
 
     return existingTargetEnv === newTargetEnv;
   },
-  [SecretSync.CloudflarePages]: cloudflareVariableTypeDuplicateCheck(CloudflarePagesVariableType.Secret),
-  [SecretSync.CloudflareWorkers]: cloudflareWorkersDuplicateCheck,
+  [SecretSync.CloudflarePages]: defaultDuplicateCheck,
+  [SecretSync.CloudflareWorkers]: defaultDuplicateCheck,
   [SecretSync.CloudflareSecretsStore]: defaultDuplicateCheck,
   [SecretSync.Supabase]: defaultDuplicateCheck,
   [SecretSync.Rundeck]: defaultDuplicateCheck,

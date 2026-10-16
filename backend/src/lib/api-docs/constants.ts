@@ -3509,7 +3509,7 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
       variableType:
-        "The type of variable to sync secrets as: secret_text, plain_text or json. Infisical replaces any secret or variable of the same name with this type and only deletes variables of this type. If omitted, secrets are synced as secret_text but keys that already exist as plaintext or JSON variables are skipped."
+        "The type of variable to sync secrets as: secret_text (the default for new syncs), plain_text or json. Infisical converts a secret or variable of the same name to this type, except that with syncNonSecretBindings on, existing plaintext and JSON variables keep their type. Infisical only deletes variables of this type. Syncs created before this option existed have no type and skip keys that already exist as plaintext or JSON variables."
     },
     CLOUDFLARE_SECRETS_STORE: {
       storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",

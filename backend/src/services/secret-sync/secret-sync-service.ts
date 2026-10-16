@@ -499,14 +499,7 @@ export const secretSyncServiceFactory = ({
   };
 
   const checkDuplicateDestination = async (
-    {
-      destination,
-      destinationConfig,
-      syncOptions,
-      connectionId,
-      excludeSyncId,
-      projectId
-    }: TCheckDuplicateDestinationDTO,
+    { destination, destinationConfig, connectionId, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
     actor: OrgServiceActor
   ) => {
     const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
@@ -568,13 +561,11 @@ export const secretSyncServiceFactory = ({
             const isDuplicate = await DESTINATION_DUPLICATE_CHECK_MAP[destination]({
               existingSync: {
                 connectionId: sync.connectionId,
-                destinationConfig: sync.destinationConfig as Record<string, unknown>,
-                syncOptions: sync.syncOptions as Record<string, unknown>
+                destinationConfig: sync.destinationConfig as Record<string, unknown>
               },
               newSync: {
                 connectionId: connectionId ?? null,
-                destinationConfig,
-                syncOptions
+                destinationConfig
               },
               decryptConnection
             });
@@ -707,7 +698,6 @@ export const secretSyncServiceFactory = ({
         {
           destination: params.destination,
           destinationConfig: params.destinationConfig,
-          syncOptions: params.syncOptions,
           connectionId: params.connectionId,
           projectId
         },
@@ -845,7 +835,6 @@ export const secretSyncServiceFactory = ({
           {
             destination,
             destinationConfig: params.destinationConfig ?? (secretSync.destinationConfig as Record<string, unknown>),
-            syncOptions: params.syncOptions ?? (secretSync.syncOptions as Record<string, unknown>),
             connectionId: params.connectionId ?? connectionId,
             projectId: secretSync.projectId,
             excludeSyncId: secretSync.id
