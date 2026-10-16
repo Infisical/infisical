@@ -271,6 +271,7 @@ export * from "./trusted-ips";
 export * from "./user-actions";
 export * from "./user-aliases";
 export * from "./user-encryption-keys";
+export * from "./user-feature-discoveries";
 export * from "./user-group-membership";
 export * from "./user-mfa-recovery-codes";
 export * from "./user-secret-activation";

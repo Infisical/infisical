@@ -20,6 +20,7 @@ import { ProjectPermissionSub, useOrganization, useProject } from "@app/context"
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretSyncs } from "@app/hooks/api/secretSyncs";
+import { useSecretSyncDiscovery } from "@app/hooks/useSecretSyncDiscovery";
 
 import { SecretSyncsTable } from "./SecretSyncTable";
 
@@ -35,6 +36,7 @@ export const SecretSyncsTab = () => {
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { unseenSecretSyncCount } = useSecretSyncDiscovery();
 
   useEffect(() => {
     if (!addSync) return;
@@ -114,6 +116,15 @@ export const SecretSyncsTab = () => {
                 >
                   <PlusIcon />
                   Add Sync
+                  {unseenSecretSyncCount > 0 && (
+                    <>
+                      <span
+                        aria-hidden
+                        className="absolute -top-1 -right-1 size-2.5 rounded-full bg-project ring-2 ring-card"
+                      />
+                      <span className="sr-only">New sync destinations available</span>
+                    </>
+                  )}
                 </Button>
               )}
             </ProjectPermissionCan>

@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
-import { Loader2Icon, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CheckIcon, Loader2Icon, Search } from "lucide-react";
 
 import {
   EnterpriseSecretSyncsUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import {
+  Badge,
+  Button,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -16,9 +18,11 @@ import {
   InputGroupInput
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
-import { useSubscription } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { POPULAR_SECRET_SYNCS, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, useSecretSyncOptions } from "@app/hooks/api/secretSyncs";
+import { useSecretSyncDiscovery } from "@app/hooks/useSecretSyncDiscovery";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 type Props = {
   onSelect: (destination: SecretSync) => void;
@@ -30,11 +34,15 @@ type SyncOption = {
   enterprise?: boolean;
 };
 
+const RECENTLY_ADDED_LIMIT = 3;
+
 const ProviderCard = ({
   destination,
+  isNew,
   onClick
 }: {
   destination: SecretSync;
+  isNew?: boolean;
   onClick: () => void;
 }) => {
   const { name, image, category, description } = SECRET_SYNC_MAP[destination];
@@ -54,7 +62,10 @@ const ProviderCard = ({
         </span>
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-semibold text-foreground">{name}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-foreground">{name}</p>
+          {isNew && <Badge variant="project">New</Badge>}
+        </div>
         <p className="text-xs leading-relaxed text-muted">{description}</p>
       </div>
     </button>
@@ -67,11 +78,27 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+  const { newSecretSyncReleases, unseenSecretSyncCount, markSecretSyncsSeen } =
+    useSecretSyncDiscovery();
   const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const [search, setSearch] = useState("");
 
   const handleSelect = (option: SyncOption) => {
+    const release = newSecretSyncReleases.find((r) => r.destination === option.destination);
+    if (release) {
+      markSecretSyncsSeen([release.releaseId]);
+      analytics.captureForOrganization(
+        AnalyticsEvent.SecretSyncRecentlyAddedSelected,
+        currentOrg.id,
+        {
+          projectId: currentProject.id,
+          releaseId: release.releaseId
+        }
+      );
+    }
     if (option.enterprise && !subscription.enterpriseSecretSyncs) {
       if (onEnterpriseUpgrade) {
         onEnterpriseUpgrade(() => onSelect(option.destination));
@@ -119,7 +146,31 @@ export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
     [optionsByDestination]
   );
 
+  const newDestinations = useMemo(
+    () => new Set(newSecretSyncReleases.map(({ destination }) => destination)),
+    [newSecretSyncReleases]
+  );
+
+  const recentlyAddedReleases = useMemo(
+    () =>
+      newSecretSyncReleases
+        .filter(({ destination }) => optionsByDestination.has(destination))
+        .slice(0, RECENTLY_ADDED_LIMIT),
+    [newSecretSyncReleases, optionsByDestination]
+  );
+
   const isSearching = search.trim().length > 0;
+
+  const hasRecordedView = useRef(false);
+  useEffect(() => {
+    if (isPending || isSearching || !recentlyAddedReleases.length || hasRecordedView.current)
+      return;
+    hasRecordedView.current = true;
+    analytics.captureForOrganization(AnalyticsEvent.SecretSyncRecentlyAddedViewed, currentOrg.id, {
+      projectId: currentProject.id,
+      releaseIds: recentlyAddedReleases.map(({ releaseId }) => releaseId)
+    });
+  }, [isPending, isSearching, recentlyAddedReleases]);
 
   if (isPending) {
     return (
@@ -151,6 +202,7 @@ export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
                 <ProviderCard
                   key={option.destination}
                   destination={option.destination}
+                  isNew={newDestinations.has(option.destination)}
                   onClick={() => handleSelect(option)}
                 />
               ))}
@@ -169,6 +221,31 @@ export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
         </section>
       ) : (
         <>
+          {recentlyAddedReleases.length > 0 && (
+            <section>
+              <div className="mb-3 flex min-h-7 items-center justify-between">
+                <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Recently Added
+                </p>
+                {unseenSecretSyncCount > 0 && (
+                  <Button variant="ghost" size="xs" onClick={() => markSecretSyncsSeen()}>
+                    <CheckIcon />
+                    Mark as Seen
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {recentlyAddedReleases.map(({ destination }) => (
+                  <ProviderCard
+                    key={destination}
+                    destination={destination}
+                    isNew
+                    onClick={() => handleSelect(optionsByDestination.get(destination)!)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
           {popularOptions.length > 0 && (
             <section>
               <SectionLabel>Popular</SectionLabel>
@@ -177,6 +254,7 @@ export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
                   <ProviderCard
                     key={option.destination}
                     destination={option.destination}
+                    isNew={newDestinations.has(option.destination)}
                     onClick={() => handleSelect(option)}
                   />
                 ))}
@@ -190,6 +268,7 @@ export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
                 <ProviderCard
                   key={option.destination}
                   destination={option.destination}
+                  isNew={newDestinations.has(option.destination)}
                   onClick={() => handleSelect(option)}
                 />
               ))}
