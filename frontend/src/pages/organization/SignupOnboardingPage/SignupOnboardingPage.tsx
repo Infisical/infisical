@@ -11,6 +11,10 @@ import OrgNameStep from "@app/components/auth/OrgNameStep";
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
+import {
+  getSignupTrialIntent,
+  getSignupTrialProjectType
+} from "@app/components/auth/signupTrialIntent";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import { PageLoader } from "@app/components/v3";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
@@ -44,7 +48,9 @@ export const SignupOnboardingPage = () => {
   const [inviteEmails, setInviteEmails] = useState("");
   const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
-  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>(() =>
+    getSignupTrialProjectType(getSignupTrialIntent())
+  );
   const [createdProjects, setCreatedProjects] = useState<
     Partial<Record<SignupProductType, Project>>
   >({});

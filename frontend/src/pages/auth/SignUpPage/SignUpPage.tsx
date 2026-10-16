@@ -18,6 +18,10 @@ import { OnboardingStepTransition } from "@app/components/auth/OnboardingStepTra
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
+import {
+  captureSignupTrialIntent,
+  getSignupTrialProjectType
+} from "@app/components/auth/signupTrialIntent";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import { createNotification } from "@app/components/notifications";
@@ -64,7 +68,9 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   const [inviteEmails, setInviteEmails] = useState("");
   const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
-  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>(() =>
+    isInvite ? [] : getSignupTrialProjectType(captureSignupTrialIntent(window.location.search))
+  );
   const [createdProjects, setCreatedProjects] = useState<
     Partial<Record<SignupProductType, Project>>
   >({});
