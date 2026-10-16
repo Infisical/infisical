@@ -403,11 +403,14 @@ export const secretFolderServiceFactory = ({
           }
           if (name !== folder.name) {
             // ensure that new folder name is unique
-            const folderToCheck = await folderDAL.findOne({
-              name,
-              envId: env.id,
-              parentId: parentFolder.id
-            });
+            const folderToCheck = await folderDAL.findOne(
+              {
+                name,
+                envId: env.id,
+                parentId: parentFolder.id
+              },
+              tx
+            );
 
             if (folderToCheck) {
               throw new BadRequestError({
@@ -475,7 +478,7 @@ export const secretFolderServiceFactory = ({
     // Execute with provided transaction or create new one
     const result = providedTx ? await executeBulkUpdate(providedTx) : await folderDAL.transaction(executeBulkUpdate);
 
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, providedTx);
     await permissionService.invalidateProjectFolderPermissionCache(projectId, providedTx);
     return {
       projectId,

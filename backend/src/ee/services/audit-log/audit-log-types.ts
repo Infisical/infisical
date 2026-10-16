@@ -215,7 +215,8 @@ export enum SecretApprovalEvent {
   Delete = "delete",
   CreateMany = "create-many",
   UpdateMany = "update-many",
-  DeleteMany = "delete-many"
+  DeleteMany = "delete-many",
+  Commit = "commit"
 }
 
 export enum UserAgentType {

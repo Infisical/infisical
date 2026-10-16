@@ -537,7 +537,9 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: true,
-      description: "Commit changes",
+      deprecated: true,
+      description:
+        "Commit changes. Deprecated: use POST /api/v4/commits, which returns the applied changes or the approval request.",
       security: [
         {
           bearerAuth: []
@@ -665,7 +667,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           type: EventType.PIT_PROCESS_NEW_COMMIT_RAW,
           metadata: {
             commitId: result.commitId,
-            approvalId: result.approvalId,
+            approvalId: result.approval?.id,
             projectId: req.body.projectId,
             environment: req.body.environment,
             secretPath: req.body.secretPath,
