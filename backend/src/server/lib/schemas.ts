@@ -4,6 +4,7 @@ import { z } from "zod";
 import { TemporaryPermissionMode } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import { re2Validator } from "@app/lib/zod";
 
 interface SlugSchemaInputs {
   min?: number;
@@ -25,6 +26,18 @@ export const slugSchema = ({ min = 1, max = 64, field = "Slug", trim = true }: S
       message: `${field} field can only contain lowercase letters, numbers, and hyphens`
     });
 };
+
+// Project slugs allow underscores as word separators in addition to hyphens, so they cannot reuse
+// `slugSchema`: that validator normalizes with slugify, which rewrites `_` to `-` and therefore
+// rejects slugs the project write paths accept.
+export const projectSlugSchema = z
+  .string()
+  .trim()
+  .max(64, { message: "Slug must be 64 characters or fewer" })
+  .refine(re2Validator(/^[a-z0-9]+(?:[_-][a-z0-9]+)*$/), {
+    message:
+      "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+  });
 
 export const GenericResourceNameSchema = z
   .string()
