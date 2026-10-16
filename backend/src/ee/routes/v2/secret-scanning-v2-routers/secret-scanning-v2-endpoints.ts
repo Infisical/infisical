@@ -17,6 +17,7 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { ApiDocsTags, SecretScanningDataSources } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -260,6 +261,38 @@ export const registerSecretScanningEndpoints = <
           }
         })
         .catch(() => {});
+
+      // Discovery only picks up resources that push after setup, so start from everything already accessible.
+      // Best effort: the data source exists either way, and the rest can be added from its resources tab.
+      if (dataSource.isDiscoveryEnabled) {
+        try {
+          const { resources, dataSourceName } = await server.services.secretScanningV2.addAllSecretScanningResources(
+            { type, dataSourceId: dataSource.id },
+            req.permission
+          );
+
+          if (resources.length) {
+            await server.services.auditLog.createAuditLog({
+              ...req.auditLogInfo,
+              projectId: dataSource.projectId,
+              event: {
+                type: EventType.SECRET_SCANNING_RESOURCE_ADD,
+                metadata: {
+                  type,
+                  dataSourceId: dataSource.id,
+                  dataSourceName,
+                  resources: resources.map((resource) => ({ resourceId: resource.id, resourceName: resource.name }))
+                }
+              }
+            });
+          }
+        } catch (error) {
+          logger.error(
+            error,
+            `secretScanningV2: Failed to add resources to new data source [dataSourceId=${dataSource.id}] [projectId=${dataSource.projectId}]`
+          );
+        }
+      }
 
       return { dataSource };
     }
