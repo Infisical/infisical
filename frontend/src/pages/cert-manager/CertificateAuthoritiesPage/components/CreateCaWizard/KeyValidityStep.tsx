@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Controller, UseFormReturn } from "react-hook-form";
-import { Link } from "@tanstack/react-router";
+import { SingleValue } from "react-select";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import {
-  AwsKmsCaSigningUpgradeIntent,
   PostQuantumCertificatesUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
@@ -23,36 +24,42 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
+import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import {
+  ProjectPermissionAppConnectionActions,
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { InternalCaType } from "@app/hooks/api/ca/enums";
 import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { CertKeySource } from "@app/hooks/api/signers";
+import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { CaWizardForm } from "./schemas";
-import {
-  AwsConnectionOption,
-  HsmConnectorOption,
-  isKeyAlgorithmSupportedByKeySource
-} from "./types";
+import { HsmConnectorOption, isKeyAlgorithmSupportedByKeySource } from "./types";
+
+const CREATE_AWS_CONNECTION_OPTION = {
+  id: `_create:${AppConnection.AWS}`,
+  name: `Create ${APP_CONNECTION_MAP[AppConnection.AWS].name} Connection`
+};
 
 const KEY_SOURCE_DESCRIPTIONS: Record<CertKeySource, string> = {
   [CertKeySource.Infisical]: "Infisical generates and manages the CA keypair for you.",
   [CertKeySource.Hsm]:
     "The CA keypair is generated on a Hardware Security Module and every signature is performed there.",
   [CertKeySource.AwsKms]:
-    "The CA keypair is generated in AWS KMS and every signature is performed there. The private key never leaves AWS."
+    "The CA keypair is generated in AWS KMS and every signature is performed there."
 };
 
 type Props = {
   form: UseFormReturn<CaWizardForm>;
   hsmConnectorOptions: HsmConnectorOption[];
   isHsmConnectorsLoading: boolean;
-  awsConnectionOptions: AwsConnectionOption[];
+  awsConnectionOptions: TAvailableAppConnection[];
   isAwsConnectionsLoading: boolean;
 };
 
@@ -64,11 +71,19 @@ export const KeyValidityStep = ({
   isAwsConnectionsLoading
 }: Props) => {
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const isHsmLicensed = Boolean(subscription?.hsm);
   const isAwsKmsLicensed = Boolean(subscription?.pkiAwsKmsSigning);
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const [isCreateAwsConnectionOpen, setIsCreateAwsConnectionOpen] = useState(false);
+  const [createdAwsConnection, setCreatedAwsConnection] = useState<TAvailableAppConnection | null>(
+    null
+  );
+  const canCreateAppConnection = permission.can(
+    ProjectPermissionAppConnectionActions.Create,
+    ProjectPermissionSub.AppConnections
+  );
   const canAttachHsm = permission.can(
     ProjectPermissionHsmConnectorActions.Attach,
     ProjectPermissionSub.HsmConnectors
@@ -94,13 +109,6 @@ export const KeyValidityStep = ({
               <Select
                 value={field.value}
                 onValueChange={(value) => {
-                  if (value === CertKeySource.AwsKms && !isAwsKmsLicensed) {
-                    openUpgradeGate({
-                      intent: AwsKmsCaSigningUpgradeIntent,
-                      paywallKey: "cert-manager.ca-key-source"
-                    });
-                    return;
-                  }
                   field.onChange(value);
                   if (
                     !isKeyAlgorithmSupportedByKeySource(
@@ -128,7 +136,7 @@ export const KeyValidityStep = ({
                       )}
                     </div>
                   </SelectItem>
-                  <SelectItem value={CertKeySource.AwsKms}>
+                  <SelectItem value={CertKeySource.AwsKms} disabled={!isAwsKmsLicensed}>
                     <div className="flex items-center gap-2">
                       AWS KMS
                       {!isAwsKmsLicensed && <Badge variant="info">Enterprise</Badge>}
@@ -191,33 +199,31 @@ export const KeyValidityStep = ({
                   AWS Connection <span className="text-danger">*</span>
                 </FieldLabel>
                 <FieldContent>
-                  <FilterableSelect<AwsConnectionOption>
+                  <FilterableSelect
                     isLoading={isAwsConnectionsLoading}
-                    options={awsConnectionOptions}
-                    value={awsConnectionOptions.find((o) => o.id === field.value) ?? null}
-                    onChange={(selected) => {
-                      const opt = selected as AwsConnectionOption | null;
-                      field.onChange(opt?.id ?? null);
+                    options={[
+                      ...(canCreateAppConnection ? [CREATE_AWS_CONNECTION_OPTION] : []),
+                      ...awsConnectionOptions
+                    ]}
+                    value={
+                      [...awsConnectionOptions, createdAwsConnection].find(
+                        (option) => option?.id === field.value
+                      ) ?? null
+                    }
+                    onChange={(newValue) => {
+                      const selected = newValue as SingleValue<{ id: string }>;
+                      if (selected?.id === CREATE_AWS_CONNECTION_OPTION.id) {
+                        setIsCreateAwsConnectionOpen(true);
+                        return;
+                      }
+                      field.onChange(selected?.id ?? null);
                     }}
-                    getOptionLabel={(opt) => opt.name}
-                    getOptionValue={(opt) => opt.id}
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.id}
+                    components={{ Option: AppConnectionOption }}
                     placeholder="Select an AWS connection..."
-                    /* eslint-disable-next-line react/no-unstable-nested-components */
                     noOptionsMessage={() =>
-                      awsConnectionOptions.length === 0 ? (
-                        <>
-                          No AWS connections yet.{" "}
-                          <Link
-                            to="/organizations/$orgId/cert-manager/app-connections"
-                            params={{ orgId: currentOrg.id }}
-                            className="underline"
-                          >
-                            Add an AWS connection
-                          </Link>
-                        </>
-                      ) : (
-                        "No match."
-                      )
+                      "No AWS connections available. Contact an admin to create one."
                     }
                     isError={Boolean(error)}
                   />
@@ -357,6 +363,19 @@ export const KeyValidityStep = ({
             )}
           />
         </>
+      )}
+      {isAwsKms && (
+        <AddAppConnectionModal
+          isOpen={isCreateAwsConnectionOpen}
+          onOpenChange={setIsCreateAwsConnectionOpen}
+          projectType={currentProject.type}
+          projectId={currentProject.id}
+          app={AppConnection.AWS}
+          onComplete={(connection) => {
+            setCreatedAwsConnection(connection);
+            form.setValue("appConnectionId", connection.id, { shouldValidate: true });
+          }}
+        />
       )}
       {upgradeGate}
     </FieldGroup>

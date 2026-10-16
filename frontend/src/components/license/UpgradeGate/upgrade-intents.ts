@@ -37,7 +37,6 @@ export const UpgradeFeature = {
   CertificateAuthorities: "certificate-authorities",
   ExternalCertificateAuthorities: "external-certificate-authorities",
   PostQuantumCertificates: "post-quantum-certificates",
-  AwsKmsCaSigning: "aws-kms-ca-signing",
   CertificateIssuanceLimits: "certificate-issuance-limits",
   Pam: "pam",
   PamAccountLimit: "pam-account-limit",
@@ -311,16 +310,6 @@ export const PostQuantumCertificatesUpgradeIntent = {
   title: "Select Post-Quantum Algorithm",
   description:
     "Post-quantum certificate algorithms are included with the Enterprise plan. Review the plan to continue."
-} satisfies UpgradeIntent;
-
-export const AwsKmsCaSigningUpgradeIntent = {
-  featureKey: UpgradeFeature.AwsKmsCaSigning,
-  productKey: BillingProduct.CertificateManagement,
-  planKey: BillingPlan.Enterprise,
-  upgradeLabel: "Unlock AWS KMS Signing Keys",
-  title: "Keep CA Keys in AWS KMS",
-  description:
-    "Keeping certificate authority signing keys in AWS KMS is included with the Enterprise plan. Review the plan to continue."
 } satisfies UpgradeIntent;
 
 export const CertificateIssuanceLimitsUpgradeIntent = {

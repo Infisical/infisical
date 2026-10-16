@@ -95,7 +95,7 @@ export const CaSection = () => {
   const caPendingDelete = caPendingDeleteData as TInternalCertificateAuthority | undefined;
   const pendingDeleteHsmKeyLabel =
     caPendingDelete?.configuration?.keySource === CertKeySource.Hsm
-      ? caPendingDelete?.configuration?.hsmKeyLabel
+      ? caPendingDelete?.configuration?.externalKeyId
       : undefined;
   const pendingDeleteAwsKmsKeyArn =
     caPendingDelete?.configuration?.keySource === CertKeySource.AwsKms

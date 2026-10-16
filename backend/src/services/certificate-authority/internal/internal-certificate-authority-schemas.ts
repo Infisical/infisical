@@ -77,7 +77,12 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .uuid()
       .optional()
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorId),
-    hsmKeyLabel: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel),
+    hsmKeyLabel: z
+      .string()
+      .optional()
+      .describe(
+        JSON.stringify({ deprecated: true, description: CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel })
+      ),
     appConnectionId: z
       .string()
       .uuid()

@@ -61,7 +61,8 @@ export const hsmCaKeySourceFactory = ({
       return {
         hsmConnectorId: reference.hsmConnectorId ?? undefined,
         hsmConnectorName: hsmConnector?.name,
-        hsmKeyLabel: reference.externalKeyId ?? undefined
+        hsmKeyLabel: reference.externalKeyId ?? undefined,
+        externalKeyId: reference.externalKeyId ?? undefined
       };
     },
 

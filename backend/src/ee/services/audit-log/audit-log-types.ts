@@ -3017,7 +3017,6 @@ type TCaKeySourceAuditMetadata = {
   keySource?: string;
   hsmConnectorId?: string;
   hsmConnectorName?: string;
-  hsmKeyLabel?: string;
   appConnectionId?: string;
   appConnectionName?: string;
   externalKeyId?: string;

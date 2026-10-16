@@ -100,11 +100,6 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
       enabled: isOpen && Boolean(subscription?.pkiAwsKmsSigning)
     });
 
-  const awsConnectionOptions = useMemo(
-    () => awsConnections.map((c) => ({ id: c.id, name: c.name })),
-    [awsConnections]
-  );
-
   const buildDefaultValues = (): CaWizardForm => ({
     ...DEFAULT_VALUES,
     isOcspEnabled: Boolean(subscription?.pkiOcsp)
@@ -250,7 +245,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
                   form={form}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
-                  awsConnectionOptions={awsConnectionOptions}
+                  awsConnectionOptions={awsConnections}
                   isAwsConnectionsLoading={isAwsConnectionsLoading}
                 />
               )}

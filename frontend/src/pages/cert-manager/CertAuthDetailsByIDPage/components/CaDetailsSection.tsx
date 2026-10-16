@@ -321,11 +321,11 @@ export const CaDetailsSection = ({ caId }: Props) => {
                     {ca.configuration.hsmConnectorName ?? ca.configuration.hsmConnectorId ?? "-"}
                   </DetailValue>
                 </Detail>
-                {ca.configuration.hsmKeyLabel && (
+                {ca.configuration.externalKeyId && (
                   <Detail>
                     <DetailLabel>HSM Key Label</DetailLabel>
                     <DetailValue className="font-mono text-xs break-all">
-                      {ca.configuration.hsmKeyLabel}
+                      {ca.configuration.externalKeyId}
                     </DetailValue>
                   </Detail>
                 )}

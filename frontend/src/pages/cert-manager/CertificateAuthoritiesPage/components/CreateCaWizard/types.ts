@@ -32,8 +32,6 @@ export const isKeyAlgorithmSupportedByKeySource = (
 
 export type HsmConnectorOption = { id: string; name: string; slotLabel: string };
 
-export type AwsConnectionOption = { id: string; name: string };
-
 export type WizardStep = {
   name: string;
   shortDescription: string;

@@ -732,7 +732,6 @@ const CA_KEY_SOURCE_AUDIT_FIELDS = [
   "keySource",
   "hsmConnectorId",
   "hsmConnectorName",
-  "hsmKeyLabel",
   "appConnectionId",
   "appConnectionName",
   "externalKeyId",

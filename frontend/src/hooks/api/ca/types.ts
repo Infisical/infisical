@@ -160,7 +160,6 @@ export type TInternalCertificateAuthority = {
     keySource?: CertKeySource;
     hsmConnectorId?: string;
     hsmConnectorName?: string;
-    hsmKeyLabel?: string;
     appConnectionId?: string;
     appConnectionName?: string;
     region?: string;
