@@ -54,7 +54,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "createDynamicSecret",
       tags: [ApiDocsTags.DynamicSecrets],
+      description: "Create a dynamic secret",
       body: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.CREATE.projectSlug),
         provider: DynamicSecretProviderSchema.describe(DYNAMIC_SECRETS.CREATE.provider),
@@ -154,7 +156,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "updateDynamicSecret",
       tags: [ApiDocsTags.DynamicSecrets],
+      description: "Update a dynamic secret",
       params: z.object({
         name: z.string().toLowerCase().describe(DYNAMIC_SECRETS.UPDATE.name)
       }),
@@ -255,7 +259,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "deleteDynamicSecret",
       tags: [ApiDocsTags.DynamicSecrets],
+      description: "Delete a dynamic secret",
       params: z.object({
         name: z.string().toLowerCase().describe(DYNAMIC_SECRETS.DELETE.name)
       }),
@@ -325,7 +331,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "getDynamicSecretByName",
       tags: [ApiDocsTags.DynamicSecrets],
+      description: "Retrieve a dynamic secret by name",
       params: z.object({
         name: z.string().min(1).describe(DYNAMIC_SECRETS.GET_BY_NAME.name)
       }),
@@ -381,7 +389,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "listDynamicSecrets",
       tags: [ApiDocsTags.DynamicSecrets],
+      description: "List dynamic secrets",
       querystring: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST.projectSlug),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRETS.LIST.path),
@@ -429,7 +439,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "listDynamicSecretLeases",
       tags: [ApiDocsTags.DynamicSecrets],
+      description: "List leases for a dynamic secret",
       params: z.object({
         name: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.name)
       }),
