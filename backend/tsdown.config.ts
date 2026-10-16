@@ -12,6 +12,7 @@ export default defineConfig({
   // the telemetry instrumentation import.
   entry: {
     main: src("main.ts"),
+    "server/openapi/generate-openapi": src("server/openapi/generate-openapi.ts"),
     "db/knexfile": src("db/knexfile.ts"),
     "db/auditlog-knexfile": src("db/auditlog-knexfile.ts"),
     "db/rename-migrations-to-mjs": src("db/rename-migrations-to-mjs.ts"),
