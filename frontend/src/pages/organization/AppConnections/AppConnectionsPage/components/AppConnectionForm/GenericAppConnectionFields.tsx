@@ -42,19 +42,17 @@ export const genericAppConnectionFieldsSchema = z.object({
 });
 
 const getSuggestedConnectionName = (app?: AppConnection, method?: TAppConnection["method"]) => {
-  if (!app || !APP_CONNECTION_MAP[app]) return "";
+  if (!app || !method || !APP_CONNECTION_MAP[app]) return "";
 
   const providerSlug = slugify(APP_CONNECTION_MAP[app].name, {
     lowercase: true,
     decamelize: false
   });
-  const methodSlug = method ? slugify(method, { lowercase: true }) : "";
+  const providerWords = providerSlug.split("-");
+  const methodWords = slugify(method, { lowercase: true }).split("-");
+  while (methodWords.length > 1 && providerWords.includes(methodWords[0])) methodWords.shift();
 
-  return [providerSlug, methodSlug.replace(new RegExp(`^${providerSlug}-`), "")]
-    .filter(Boolean)
-    .join("-")
-    .slice(0, 64)
-    .replace(/-+$/, "");
+  return [providerSlug, ...methodWords].join("-").slice(0, 64).replace(/-+$/, "");
 };
 
 export const GenericAppConnectionsFields = () => {
