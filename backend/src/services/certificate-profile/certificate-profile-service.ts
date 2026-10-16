@@ -528,7 +528,7 @@ export const certificateProfileServiceFactory = ({
     const existingSlugProfile = await certificateProfileDAL.findBySlugAndProjectId(data.slug, projectId);
     if (existingSlugProfile) {
       throw new ConflictError({
-        message: `A certificate profile named '${data.slug}' already exists in this project. Choose a different name.`
+        message: `A certificate profile named '${data.slug}' already exists. Choose a different name.`
       });
     }
 
@@ -817,7 +817,7 @@ export const certificateProfileServiceFactory = ({
       );
       if (conflictingProfile && conflictingProfile.id !== profileId) {
         throw new ConflictError({
-          message: `A certificate profile named '${data.slug}' already exists in this project. Choose a different name.`
+          message: `A certificate profile named '${data.slug}' already exists. Choose a different name.`
         });
       }
     }

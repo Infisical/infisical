@@ -69,6 +69,7 @@ import {
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 import { normalizeSlugInput } from "@app/lib/schemas";
 import { filterUsages } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import {
@@ -913,7 +914,8 @@ export const CreateProfileModal = ({
     try {
       await saveProfile(data);
     } catch (error) {
-      if (!axios.isAxiosError(error) || error.response?.status !== 409) throw error;
+      if (!axios.isAxiosError(error) || error.response?.data?.error !== ApiErrorTypes.ConflictError)
+        throw error;
       setSelectedStepIndex(0);
       setError("slug", { type: "server", message: error.response.data?.message });
     }
