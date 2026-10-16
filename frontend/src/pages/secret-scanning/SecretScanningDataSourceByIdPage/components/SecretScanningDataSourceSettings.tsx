@@ -1,4 +1,4 @@
-import { PencilIcon, TrashIcon } from "lucide-react";
+import { TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -11,9 +11,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Detail,
-  DetailLabel,
-  DetailValue,
   Field,
   FieldContent,
   FieldDescription,
@@ -23,11 +20,9 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   doesDataSourceSupportDiscovery,
   RESOURCE_DESCRIPTION_HELPER,
-  SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
 import { usePopUp } from "@app/hooks";
@@ -37,7 +32,7 @@ import {
 } from "@app/hooks/api/secretScanningV2";
 
 import { DataSourceConfigDisplay } from "./DataSourceConfigDisplay";
-import { EditDataSourceDetailsDialog } from "./EditDataSourceDetailsDialog";
+import { DataSourceDetailsCard } from "./DataSourceDetailsCard";
 
 type TScanToggleName = "isHistoricalScanEnabled" | "isScanNewCommitsEnabled" | "isDiscoveryEnabled";
 
@@ -53,18 +48,13 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
     ProjectPermissionSub.SecretScanningDataSources
   );
 
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "deleteDataSource",
-    "editDetails"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["deleteDataSource"] as const);
 
   const updateDataSource = useUpdateSecretScanningDataSource();
 
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type];
   const { pluralNoun, pluralTitle } = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
   const supportsDiscovery = doesDataSourceSupportDiscovery(dataSource);
-  const connectionDetails =
-    APP_CONNECTION_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type]];
 
   const handleToggle = async (name: TScanToggleName, label: string, isEnabled: boolean) => {
     await updateDataSource.mutateAsync({
@@ -109,46 +99,7 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
   return (
     <>
       <div className="flex flex-col gap-5">
-        <Card>
-          <CardHeader>
-            <CardTitle>General</CardTitle>
-            <CardDescription>How this data source appears across Secret Scanning.</CardDescription>
-            <CardAction>
-              <Button
-                variant="outline"
-                isDisabled={!canEdit}
-                onClick={() => handlePopUpOpen("editDetails")}
-              >
-                <PencilIcon />
-                Edit
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <Detail>
-                <DetailLabel>Name</DetailLabel>
-                <DetailValue>{dataSource.name}</DetailValue>
-              </Detail>
-              {dataSource.connection && (
-                <Detail>
-                  <DetailLabel>{connectionDetails.name} Connection</DetailLabel>
-                  <DetailValue>{dataSource.connection.name}</DetailValue>
-                </Detail>
-              )}
-              <Detail className="md:col-span-2">
-                <DetailLabel>Description</DetailLabel>
-                <DetailValue>
-                  {dataSource.description ? (
-                    <p className="whitespace-pre-wrap">{dataSource.description}</p>
-                  ) : (
-                    <span className="text-muted">None</span>
-                  )}
-                </DetailValue>
-              </Detail>
-            </div>
-          </CardContent>
-        </Card>
+        <DataSourceDetailsCard dataSource={dataSource} canEdit={canEdit} />
 
         <Card>
           <CardHeader>
@@ -209,11 +160,6 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
           </CardHeader>
         </Card>
       </div>
-      <EditDataSourceDetailsDialog
-        dataSource={dataSource}
-        isOpen={popUp.editDetails.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
-      />
       <DeleteSecretScanningDataSourceModal
         dataSource={dataSource}
         isOpen={popUp.deleteDataSource.isOpen}
