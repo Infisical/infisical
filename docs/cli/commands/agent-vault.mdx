@@ -122,7 +122,7 @@ Launch an agent through an Agent Vault proxy. Everything after `--` is the agent
 
 - Fetches the proxy's certificate authority from the proxy, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`.
 - Gets a session: the one you pass with `--session-token`, or one created now with the access bundle named by `--access-bundle`. Exactly one of the two is required, and either can come from an environment variable instead of the flag.
-- Starts the agent with `HTTPS_PROXY` and `HTTP_PROXY` pointing at the proxy, `NO_PROXY` set to `localhost,127.0.0.1` merged with your own `NO_PROXY` and `--no-proxy`, and the certificate trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
+- Starts the agent with `HTTPS_PROXY` and `HTTP_PROXY` pointing at the proxy, `NO_PROXY` set to `localhost,127.0.0.1` merged with your own `NO_PROXY` and `--no-proxy`, and the certificate trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`. The rest of your environment is inherited, except `INFISICAL_AGENT_VAULT_SESSION_TOKEN` when it holds a session other than this run's, so the agent cannot run on a different one.
 
 The CLI prints the proxy's name and fingerprint and, for a session it created, when it expires, then hands the terminal to the agent. When the agent exits, a session created with `--access-bundle` is revoked unless `--keep-session` was set. A session passed with `--session-token` is left alone.
 
@@ -169,12 +169,14 @@ infisical agent-vault run --access-bundle code-review --proxy 10.0.1.5:17323 -- 
 
 How long the new session lives: one number and one unit, such as `30m`, `8h`, or `7d` (not `2h30m`), or `never`. One minute is the shortest. Only applies with `--access-bundle`.
 
+The default is `never`, because the session is revoked when the agent exits. An expiry would only govern a session that outlived the command, and a short one also cuts off an agent that is still running.
+
 ```bash
 # Example
 infisical agent-vault run --access-bundle code-review --ttl 8h --proxy 10.0.1.5:17323 -- claude
 ```
 
-Default value: `7d`
+Default value: `never`
 
 #### `--keep-session`
 
