@@ -10,6 +10,7 @@ type UseDuplicateDestinationCheckProps = {
   connectionId?: string;
   enabled?: boolean;
   destinationConfig?: unknown;
+  syncOptions?: unknown;
 };
 
 export const useDuplicateDestinationCheck = ({
@@ -18,7 +19,8 @@ export const useDuplicateDestinationCheck = ({
   excludeSyncId,
   connectionId,
   enabled = true,
-  destinationConfig
+  destinationConfig,
+  syncOptions
 }: UseDuplicateDestinationCheckProps) => {
   const normalizedConfig = useMemo(
     () => getSecretSyncDestinationConfig(destination, destinationConfig),
@@ -40,6 +42,7 @@ export const useDuplicateDestinationCheck = ({
     projectId,
     excludeSyncId,
     connectionId,
+    syncOptions,
     {
       enabled: shouldCheck,
       staleTime: 0,

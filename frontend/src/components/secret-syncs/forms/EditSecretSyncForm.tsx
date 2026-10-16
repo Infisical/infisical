@@ -157,6 +157,7 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
     secretSync.projectId,
     secretSync.id,
     formMethods.watch("connection")?.id,
+    pendingFormData?.syncOptions,
     { enabled: checkDuplicateEnabled && Boolean(destinationConfigToCheck) }
   );
 

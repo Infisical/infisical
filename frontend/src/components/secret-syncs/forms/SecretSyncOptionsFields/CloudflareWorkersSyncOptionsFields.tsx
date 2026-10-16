@@ -41,12 +41,15 @@ export const CloudflareWorkersSyncOptionsFields = () => {
       <Controller
         name="destinationConfig.variableType"
         control={control}
-        defaultValue={CloudflareWorkersVariableType.Secret}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
             <FieldLabel htmlFor="cloudflare-workers-variable-type">Variable type</FieldLabel>
             <FieldContent>
-              <Select value={value} onValueChange={onChange}>
+              {/* Only a type the user picks is saved, so editing an older sync keeps its behavior */}
+              <Select
+                value={value ?? CloudflareWorkersVariableType.Secret}
+                onValueChange={onChange}
+              >
                 <SelectTrigger
                   id="cloudflare-workers-variable-type"
                   className="w-full"

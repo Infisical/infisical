@@ -276,9 +276,10 @@ export const CloudflareWorkersSyncFns = {
     const existingSecretsMap = Object.fromEntries(existingSecrets.map(({ key, type }) => [key, type]));
     const secretMapKeys = new Set(Object.keys(secretMap));
 
-    // Cloudflare rejects a secret with the same name as a plaintext or JSON variable. A sync with Secret
-    // chosen explicitly removes those variables so it can write the secrets. Syncs saved before the type
-    // could be chosen keep skipping those keys, unless shouldSyncNonSecretBindings updates them in place.
+    // Cloudflare rejects a secret with the same name as a plaintext or JSON variable, so those keys can't go
+    // through secrets-bulk. A sync with Secret chosen explicitly turns them into secrets in the settings
+    // update below, in one step so a failure can't leave them missing. Syncs saved before the type could be
+    // chosen skip them, unless shouldSyncNonSecretBindings updates them in place.
     const bindingKeysToConvert = new Set(
       variableType === CloudflareWorkersVariableType.Secret && !shouldSyncNonSecretBindings
         ? Object.keys(secretMap).filter((key) => nonSecretBindingKeys.has(key))
@@ -286,7 +287,7 @@ export const CloudflareWorkersSyncFns = {
     );
 
     const syncableEntries = Object.entries(secretMap).filter(
-      ([key]) => shouldSyncNonSecretBindings || bindingKeysToConvert.has(key) || !nonSecretBindingKeys.has(key)
+      ([key]) => shouldSyncNonSecretBindings || !nonSecretBindingKeys.has(key)
     );
 
     const bindingEntries: Array<[string, { value: string }]> = [];
@@ -319,9 +320,10 @@ export const CloudflareWorkersSyncFns = {
 
         $validateJsonBindings(settingsData.result.bindings, updatedBindingMap);
 
-        const keptBindings = settingsData.result.bindings.filter((binding) => !bindingKeysToConvert.has(binding.name));
-
-        const updatedBindings = keptBindings.map((binding) => {
+        const updatedBindings = settingsData.result.bindings.map((binding) => {
+          if (bindingKeysToConvert.has(binding.name)) {
+            return { type: CLOUDFLARE_SECRET_TYPE, name: binding.name, text: secretMap[binding.name].value };
+          }
           if (binding.type !== CLOUDFLARE_SECRET_TYPE && updatedBindingMap[binding.name] !== undefined) {
             const newValue = updatedBindingMap[binding.name].value;
             if (binding.type === "json") {

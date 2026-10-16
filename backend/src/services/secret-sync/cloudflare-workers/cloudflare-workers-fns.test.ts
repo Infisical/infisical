@@ -106,12 +106,11 @@ describe("CloudflareWorkersSyncFns", () => {
       payloadOf({ API_URL: "new" })
     );
 
-    expect(patch).toHaveBeenCalledTimes(2);
-    expect(await patchedBindings(0)).toEqual([{ type: "kv_namespace", name: "CACHE" }]);
-    expect(patch.mock.calls[1][0]).toMatch(/\/secrets-bulk$/);
-    expect(patch.mock.calls[1][1]).toEqual({
-      secrets: { API_URL: { name: "API_URL", text: "new", type: "secret_text" } }
-    });
+    expect(patch).toHaveBeenCalledTimes(1);
+    expect(await patchedBindings()).toEqual([
+      { type: "secret_text", name: "API_URL", text: "new" },
+      { type: "kv_namespace", name: "CACHE" }
+    ]);
   });
 
   it("keeps skipping same-name text variables for syncs saved without a type", async () => {

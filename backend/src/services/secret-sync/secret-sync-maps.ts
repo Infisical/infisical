@@ -8,7 +8,7 @@ import { CloudflarePagesVariableType } from "@app/services/secret-sync/cloudflar
 import { CloudflareWorkersVariableType } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-constants";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
-import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
+import { DestinationDuplicateCheckFn, DuplicateCheckSyncFields } from "@app/services/secret-sync/secret-sync-types";
 
 export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.AWSParameterStore]: "AWS Parameter Store",
@@ -326,6 +326,17 @@ const cloudflareVariableTypeDuplicateCheck =
     (existingSync.destinationConfig.variableType ?? defaultVariableType) ===
     (newSync.destinationConfig.variableType ?? defaultVariableType);
 
+// A Secret sync with syncNonSecretBindings also deletes plaintext and JSON variables that it doesn't sync,
+// so it can't share a Worker with any other sync.
+const ownsEveryWorkerVariable = ({ destinationConfig, syncOptions }: DuplicateCheckSyncFields) =>
+  (destinationConfig.variableType ?? CloudflareWorkersVariableType.Secret) === CloudflareWorkersVariableType.Secret &&
+  Boolean(syncOptions?.syncNonSecretBindings);
+
+const cloudflareWorkersDuplicateCheck: DestinationDuplicateCheckFn = async (params) =>
+  ownsEveryWorkerVariable(params.existingSync) ||
+  ownsEveryWorkerVariable(params.newSync) ||
+  cloudflareVariableTypeDuplicateCheck(CloudflareWorkersVariableType.Secret)(params);
+
 const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
   const existingConfig = existingSync.destinationConfig;
   const newConfig = newSync.destinationConfig;
@@ -390,7 +401,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
     return existingTargetEnv === newTargetEnv;
   },
   [SecretSync.CloudflarePages]: cloudflareVariableTypeDuplicateCheck(CloudflarePagesVariableType.Secret),
-  [SecretSync.CloudflareWorkers]: cloudflareVariableTypeDuplicateCheck(CloudflareWorkersVariableType.Secret),
+  [SecretSync.CloudflareWorkers]: cloudflareWorkersDuplicateCheck,
   [SecretSync.CloudflareSecretsStore]: defaultDuplicateCheck,
   [SecretSync.Supabase]: defaultDuplicateCheck,
   [SecretSync.Rundeck]: defaultDuplicateCheck,
