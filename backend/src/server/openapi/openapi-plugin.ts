@@ -42,7 +42,6 @@ const SpecQuerySchema = z.object({
 });
 
 const artifactNameFor = (format: SpecFormat, tagSlug?: string) => {
-  // Only the JSON spec is filtered by tag.
   if (format === "yaml") return OPENAPI_YAML_ARTIFACT;
   return tagSlug ? taggedArtifactName(tagSlug) : OPENAPI_JSON_ARTIFACT;
 };
@@ -163,7 +162,7 @@ export const registerOpenApiDocs = async (
   // without the files must not start.
   if (nodeEnv === "production") {
     throw new Error(
-      `The OpenAPI spec files are missing from '${dir}'. 'npm run build' writes them; check that the image copies dist/openapi.`
+      `The OpenAPI spec files are missing from '${dir}'. 'npm run build' writes them; check that the image copies dist/openapi. When running from source (eg 'npm run dev'), set NODE_ENV=development to build the spec in memory instead.`
     );
   }
 

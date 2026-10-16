@@ -21,7 +21,7 @@ export const buildOpenApiSpec = async (): Promise<TOpenApiDocument> => {
   // Routers only reach these from handlers, which never run here.
   server.decorate("services", {} as FastifyZodProvider["services"]);
   server.decorate("store", {} as FastifyZodProvider["store"]);
-  // @ts-expect-error akhilmhdh: even on setting it fastify as Redis | Cluster it's throwing error
+  // @ts-expect-error the redis decoration type (Redis | Cluster) does not type check when set to an empty object
   server.decorate("redis", {} as FastifyZodProvider["redis"]);
   server.decorate("cookieSigningKey", PLACEHOLDER_COOKIE_SECRET);
   // The SSO routers register @fastify/session, which requires it.

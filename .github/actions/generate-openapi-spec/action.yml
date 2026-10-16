@@ -22,6 +22,7 @@ runs:
   using: "composite"
   steps:
     - name: Set up Node
+      id: setup-node
       uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version: "26"
@@ -31,7 +32,7 @@ runs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.source-path }}/backend/node_modules
-        key: openapi-node-modules-${{ runner.os }}-${{ hashFiles(format('{0}/backend/package-lock.json', inputs.source-path)) }}
+        key: openapi-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles(format('{0}/backend/package-lock.json', inputs.source-path), format('{0}/backend/package.json', inputs.source-path)) }}
 
     - name: Install dependencies
       if: steps.restore.outputs.cache-hit != 'true'

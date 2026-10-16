@@ -31,7 +31,7 @@ answered with a 400. `registerOpenApiDocs` decides at boot where the files come 
   records this server's own routes with the full-spec transform, and the first request
   for each file builds it in memory with the same code the generator uses. This is how
   the dev stack serves the full spec, and how `make generate-client` in `tests/` gets it.
-- No files and `NODE_ENV` is `production`: refuse to boot.
+- No files and `NODE_ENV` is `production`: refuse to boot. `NODE_ENV` defaults to `production`, so `npm run dev` on the host needs `NODE_ENV=development`. The generator also fails when `INFISICAL_RUN_MODES` lacks `api`, since the spec would hold only `/api/status`.
 
 ## Invariants
 

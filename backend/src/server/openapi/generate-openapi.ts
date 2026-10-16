@@ -1,5 +1,5 @@
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { initEnvConfig } from "@app/lib/config/env";
+import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger } from "@app/lib/logger";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 
@@ -34,6 +34,12 @@ const run = async () => {
   initLogger();
   // Without the DAL arguments this only parses the environment.
   await initEnvConfig(undefined as unknown as THsmServiceFactory, undefined as unknown as TKmsRootConfigDALFactory);
+
+  if (!getConfig().isApiRunModeEnabled) {
+    throw new Error(
+      "The OpenAPI spec would be missing the API routes because INFISICAL_RUN_MODES does not include 'api'. Unset INFISICAL_RUN_MODES or include 'api' when generating the spec."
+    );
+  }
 
   await writeOpenApiArtifacts(await buildOpenApiArtifacts(await buildOpenApiSpec()), outDir);
 };
