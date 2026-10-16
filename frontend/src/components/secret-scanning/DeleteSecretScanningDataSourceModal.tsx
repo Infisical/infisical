@@ -51,8 +51,8 @@ export const DeleteSecretScanningDataSourceModal = ({
       description={
         <Alert variant="danger" appearance="borderless">
           <AlertDescription>
-            This permanently deletes the findings and scan history of this data source. This
-            cannot be undone.
+            This permanently deletes the findings and scan history of this data source. This cannot
+            be undone.
           </AlertDescription>
         </Alert>
       }

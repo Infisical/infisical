@@ -355,7 +355,9 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                         <TooltipTrigger asChild>
                           <IconButton
                             size="sm"
-                            variant={policyLayout === POLICY_LAYOUT.Compact ? scopeVariant : "outline"}
+                            variant={
+                              policyLayout === POLICY_LAYOUT.Compact ? scopeVariant : "outline"
+                            }
                             aria-label="List view"
                             aria-pressed={policyLayout === POLICY_LAYOUT.Compact}
                             className={policyLayout === POLICY_LAYOUT.Compact ? "z-10" : ""}

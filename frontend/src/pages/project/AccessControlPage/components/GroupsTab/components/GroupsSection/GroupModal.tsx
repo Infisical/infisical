@@ -257,7 +257,12 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         <Button variant="ghost" type="button" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant={scopeVariant} type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          variant={scopeVariant}
+          type="submit"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Add
         </Button>
       </DialogFooter>
