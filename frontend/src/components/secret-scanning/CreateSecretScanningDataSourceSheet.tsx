@@ -3,7 +3,11 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { TSecretScanningDataSourceForm } from "@app/components/secret-scanning/forms/schemas";
 import { DiscardChangesAlertDialog, Sheet, SheetContent } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
+import { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { DataSourceTab } from "@app/pages/secret-scanning/SecretScanningDataSourceByIdPage/data-source-tabs";
 
 import { SecretScanningDataSourceForm } from "./forms";
 import {
@@ -30,6 +34,7 @@ export const CreateSecretScanningDataSourceSheet = ({ isOpen, onOpenChange }: Pr
   } = useRouterState();
 
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
 
   useEffect(() => {
     if (connectionId && connectionName) {
@@ -65,6 +70,18 @@ export const CreateSecretScanningDataSourceSheet = ({ isOpen, onOpenChange }: Pr
     onOpenChange(false);
   }, [onOpenChange]);
 
+  const handleCreated = useCallback(
+    (dataSource: TSecretScanningDataSource) => {
+      closeSheet();
+      navigate({
+        to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
+        params: { orgId: currentOrg.id, dataSourceId: dataSource.id, type: dataSource.type },
+        search: { selectedTab: DataSourceTab.Resources }
+      });
+    },
+    [closeSheet, navigate, currentOrg.id]
+  );
+
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
 
@@ -89,7 +106,7 @@ export const CreateSecretScanningDataSourceSheet = ({ isOpen, onOpenChange }: Pr
             <SecretScanningDataSourceForm
               initialType={initialFormData?.type}
               initialFormData={initialFormData}
-              onComplete={closeSheet}
+              onComplete={handleCreated}
               onCancel={requestDiscard}
               onDirtyChange={setIsDirty}
               onSubmittingChange={setIsSubmitting}
