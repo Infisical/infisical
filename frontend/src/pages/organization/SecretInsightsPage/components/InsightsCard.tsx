@@ -6,7 +6,6 @@ import {
   ChevronRightIcon,
   ChevronUpIcon,
   FolderIcon,
-  LockIcon,
   SearchIcon,
   SearchXIcon
 } from "lucide-react";
@@ -93,16 +92,12 @@ export const InsightsCard = ({
   data,
   hasMore,
   onLoadMore,
-  isLoadingMore,
-  isPlanRestricted = false
+  isLoadingMore
 }: {
   data: TOrgProjectsInsights;
   hasMore: boolean;
   onLoadMore: () => void;
   isLoadingMore: boolean;
-  // Without the insights entitlement the row set is empty because nothing was fetched, so the card
-  // must not report the org as healthy
-  isPlanRestricted?: boolean;
 }) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -142,7 +137,6 @@ export const InsightsCard = ({
   const visible = showAll || isSearching ? filtered : filtered.slice(0, COLLAPSED_ROW_COUNT);
 
   const getDescription = () => {
-    if (isPlanRestricted) return "Upgrade your plan to see project-level issues.";
     if (isHealthy) return "No projects have outstanding issues right now.";
     return `${data.projectsWithIssues} of ${data.totalProjects} projects have outstanding issues, ordered by severity.`;
   };
@@ -153,15 +147,6 @@ export const InsightsCard = ({
         icon: <SearchXIcon />,
         title: "No projects match your search",
         description: `No project name or slug matches "${search.trim()}".`
-      };
-    }
-
-    if (isPlanRestricted) {
-      return {
-        icon: <LockIcon />,
-        title: "Project insights are not on your current plan",
-        description:
-          "Upgrade to see failed rotations, failed syncs, stale secrets, and duplicated secrets for every project."
       };
     }
 

@@ -1,11 +1,10 @@
-import { ComponentPropsWithoutRef, forwardRef, ReactNode, useMemo, useState } from "react";
+import { ComponentPropsWithoutRef, forwardRef, useMemo, useState } from "react";
 import { GlobeIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { cn } from "@app/components/v3/utils";
 import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
-import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 type TServiceIcon = {
   label: string;
@@ -81,36 +80,17 @@ export const ServiceIcon = ({
   return <ServiceChip icon={icon} className={className} />;
 };
 
-// Host patterns collapse to one chip per provider. Services keep a chip each under their own name,
-// since two services on one provider are still two services.
+// Host patterns collapse to one chip per provider.
 type Props = {
+  hostPatterns: string[];
   maxVisible?: number;
-  emptyPlaceholder?: ReactNode;
   className?: string;
-} & (
-  | { hostPatterns: string[]; services?: never }
-  | { services: Pick<TAgentVaultService, "name" | "hostPattern">[]; hostPatterns?: never }
-);
+};
 
-export const ServiceIconStack = ({
-  hostPatterns,
-  services,
-  maxVisible = 4,
-  emptyPlaceholder = <span className="text-muted">&mdash;</span>,
-  className
-}: Props) => {
-  const icons = useMemo(
-    () =>
-      services
-        ? services.map((service) => ({
-            label: service.name,
-            image: findTemplateForHostPattern(service.hostPattern)?.image
-          }))
-        : iconsFromHostPatterns(hostPatterns),
-    [hostPatterns, services]
-  );
+export const ServiceIconStack = ({ hostPatterns, maxVisible = 4, className }: Props) => {
+  const icons = useMemo(() => iconsFromHostPatterns(hostPatterns), [hostPatterns]);
 
-  if (icons.length === 0) return emptyPlaceholder;
+  if (icons.length === 0) return <span className="text-muted">&mdash;</span>;
 
   const visible = icons.slice(0, maxVisible);
   const hidden = icons.slice(maxVisible);

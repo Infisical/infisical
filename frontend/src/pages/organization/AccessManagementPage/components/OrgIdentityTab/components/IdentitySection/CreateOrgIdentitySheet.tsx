@@ -27,6 +27,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateOrgIdentity, useGetOrgRoles } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -51,8 +52,9 @@ type Props = {
 };
 
 const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
   const {
@@ -178,7 +180,7 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
         </Button>
         <Button
           type="submit"
-          variant={isSubOrganization ? "sub-org" : "org"}
+          variant={scopeVariant}
           isPending={isSubmitting}
           isDisabled={isSubmitting}
         >
