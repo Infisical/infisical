@@ -474,6 +474,7 @@ export const ShareSecretForm = ({
               </AccordionTrigger>
               <AccordionContent className="flex flex-col gap-6">
                 <FieldSet className="gap-4">
+                  <FieldLegend className="sr-only">Access</FieldLegend>
                   {!isViewLimitEnforced && (
                     <Controller
                       control={control}
