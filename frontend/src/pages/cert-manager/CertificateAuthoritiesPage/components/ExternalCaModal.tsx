@@ -274,8 +274,14 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     let issuer = "";
     if (configuration && "directoryUrl" in configuration) {
       try {
-        const labels = new URL(configuration.directoryUrl).hostname.split(".");
-        issuer = labels.length > 1 ? labels[labels.length - 2] : labels[0];
+        const { hostname } = new URL(configuration.directoryUrl);
+        if (/[a-z]/i.test(hostname) && !hostname.includes(":")) {
+          const labels = hostname.split(".");
+          if (labels.length > 1) labels.pop();
+          if (labels.length > 1 && /^(ac|co|com|edu|gov|net|org)$/.test(labels[labels.length - 1]))
+            labels.pop();
+          issuer = labels[labels.length - 1];
+        }
       } catch {
         issuer = "";
       }
