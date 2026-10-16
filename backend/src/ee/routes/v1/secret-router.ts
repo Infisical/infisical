@@ -4,6 +4,7 @@ import { ProjectPermissionSecretActions } from "@app/ee/services/permission/proj
 import { RAW_SECRETS } from "@app/lib/api-docs";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { BaseSecretNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -91,14 +92,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: z.string().trim().min(1).describe(RAW_SECRETS.GET_READ_ACTIVITY.secretName)
+        secretName: BaseSecretNameSchema.max(500).describe(RAW_SECRETS.GET_READ_ACTIVITY.secretName)
       }),
       querystring: z.object({
-        projectId: z.string().trim().describe(RAW_SECRETS.GET_READ_ACTIVITY.projectId),
+        projectId: z.string().trim().max(36).describe(RAW_SECRETS.GET_READ_ACTIVITY.projectId),
         environment: z.string().trim().min(1).max(255).describe(RAW_SECRETS.GET_READ_ACTIVITY.environment),
         secretPath: z
           .string()
           .trim()
+          .max(1024)
           .default("/")
           .transform(prefixWithSlash)
           .transform(removeTrailingSlash)

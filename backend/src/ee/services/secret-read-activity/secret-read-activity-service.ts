@@ -52,6 +52,8 @@ const REACH_YIELD_INTERVAL = 100;
 // cached and listed, about 200 KB per project.
 const UNUSED_SECRET_ACCESS_MAX_LISTED = 1000;
 
+type TCachedUnusedSecretAccess = TUnusedSecretAccess & { secretId: string };
+
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -305,46 +307,68 @@ export const secretReadActivityServiceFactory = ({
       )
     );
 
-    const rowsBySecret: (TUnusedSecretAccess & { secretTags: string[] })[][] = [];
-    for (const { secret, environment, secretPath, trackedSince, reads } of activities) {
+    const unreadActorsOf = ({ secret, environment, secretPath, trackedSince, reads }: (typeof activities)[number]) =>
+      actorGroups
+        .filter(([{ permission }]) =>
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment,
+            secretPath,
+            secretName: secret.key,
+            secretTags: secret.tags?.map((tag) => tag.slug)
+          })
+        )
+        .flat()
+        .filter(
+          (actor) =>
+            !reads.has(`${actor.actorType}:${actor.id}`) &&
+            coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), windowStart)
+        );
+
+    // Only counts are kept for every secret: a large project can have millions of unread pairs, and only the
+    // highest-ranked ones are listed, so their rows are built in a second pass.
+    const unreadCounts: { activityIndex: number; count: number }[] = [];
+    for (let activityIndex = 0; activityIndex < activities.length; activityIndex += 1) {
       // Permission checks are synchronous, so yield between secrets to keep a large project from blocking other requests.
       // eslint-disable-next-line no-await-in-loop
       await new Promise<void>((resolve) => {
         setImmediate(resolve);
       });
-      const subjectFields = {
-        environment,
-        secretPath,
-        secretName: secret.key,
-        secretTags: secret.tags?.map((tag) => tag.slug)
-      };
-      rowsBySecret.push(
-        actorGroups
-          .filter(([{ permission }]) =>
-            hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, subjectFields)
-          )
-          .flat()
-          .flatMap((actor) => {
-            if (
-              reads.has(`${actor.actorType}:${actor.id}`) ||
-              !coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), windowStart)
-            ) {
-              return [];
-            }
-            return {
-              secretKey: secret.key,
-              environment,
-              secretPath,
-              actorType: actor.actorType,
-              actorId: actor.id,
-              actorName: actor.name,
-              secretTags: subjectFields.secretTags ?? []
-            };
-          })
+      unreadCounts.push({ activityIndex, count: unreadActorsOf(activities[activityIndex]).length });
+    }
+    unreadCounts.sort((a, b) => b.count - a.count);
+
+    const rows: TCachedUnusedSecretAccess[] = [];
+    for (const { activityIndex, count } of unreadCounts) {
+      if (rows.length >= UNUSED_SECRET_ACCESS_MAX_LISTED || count === 0) break;
+      const activity = activities[activityIndex];
+      unreadActorsOf(activity).forEach((actor) =>
+        rows.push({
+          secretId: activity.secret.id,
+          secretKey: activity.secret.key,
+          environment: activity.environment,
+          secretPath: activity.secretPath,
+          actorType: actor.actorType,
+          actorId: actor.id,
+          actorName: actor.name
+        })
       );
     }
-    const ranked = rowsBySecret.sort((a, b) => b.length - a.length).flat();
-    return { rows: ranked.slice(0, UNUSED_SECRET_ACCESS_MAX_LISTED), totalCount: ranked.length };
+    return {
+      rows: rows.slice(0, UNUSED_SECRET_ACCESS_MAX_LISTED),
+      totalCount: unreadCounts.reduce((total, { count }) => total + count, 0)
+    };
+  };
+
+  // Concurrent requests on a cold cache share one computation per project instead of each scanning the project.
+  const inFlightComputations = new Map<string, ReturnType<typeof $computeUnusedSecretAccess>>();
+  const $computeUnusedSecretAccessOnce = (projectId: string, orgId: string) => {
+    const inFlight = inFlightComputations.get(projectId);
+    if (inFlight) return inFlight;
+    const computation = $computeUnusedSecretAccess(projectId, orgId).finally(() => {
+      inFlightComputations.delete(projectId);
+    });
+    inFlightComputations.set(projectId, computation);
+    return computation;
   };
 
   // The whole project is computed once a day and cached, so paging through it is cheap.
@@ -359,12 +383,18 @@ export const secretReadActivityServiceFactory = ({
       keyStore,
       key: cacheKey,
       ttlSeconds: UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS,
-      fetcher: () => $computeUnusedSecretAccess(projectId, actor.orgId)
+      fetcher: () => $computeUnusedSecretAccessOnce(projectId, actor.orgId)
     });
-    const [remainingTTL, instanceTrackingStartedAt, project] = await Promise.all([
+    const [remainingTTL, instanceTrackingStartedAt, project, tree, currentSecrets] = await Promise.all([
       getCacheTtl(keyStore, cacheKey),
       $getTrackingStartedAt(),
-      projectDAL.findById(projectId)
+      projectDAL.findById(projectId),
+      loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId),
+      rows.length
+        ? secretV2BridgeDAL.find({
+            $in: { [`${TableName.SecretV2}.id` as "id"]: [...new Set(rows.map((row) => row.secretId))] }
+          })
+        : []
     ]);
     // Reads are known from the later of when tracking began and when the project was created, and nothing can be
     // called unused until a whole window has passed since then.
@@ -372,17 +402,25 @@ export const secretReadActivityServiceFactory = ({
       Math.max(instanceTrackingStartedAt?.getTime() ?? 0, project?.createdAt.getTime() ?? 0)
     );
 
-    // The cache is shared by everyone in the project, so each caller only gets the secrets they could see anyway.
-    const visibleRows = rows
-      .filter((row) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-          environment: row.environment,
-          secretPath: row.secretPath,
-          secretName: row.secretKey,
-          secretTags: row.secretTags
-        })
-      )
-      .map(({ secretTags, ...row }) => row);
+    // The cache is shared by everyone in the project and can be a day old, so each row is checked against the
+    // secret as it is now: deleted secrets drop out, and a caller only gets the secrets they could see anyway.
+    const currentSecretById = new Map(currentSecrets.map((secret) => [secret.id, secret]));
+    const visibleRows = rows.flatMap(({ secretId, ...row }): TUnusedSecretAccess[] => {
+      const secret = currentSecretById.get(secretId);
+      const location = secret && tree.locationOf(secret.folderId);
+      if (!secret || !location) return [];
+      const canDescribe = hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.DescribeSecret,
+        {
+          environment: location.environment,
+          secretPath: location.secretPath,
+          secretName: secret.key,
+          secretTags: secret.tags?.map((tag) => tag.slug)
+        }
+      );
+      return canDescribe ? [{ ...row, secretKey: secret.key, ...location }] : [];
+    });
 
     // Unsorted, the list keeps its ranking. The sort is stable, so ties keep it too.
     const sorted = orderBy
@@ -396,6 +434,7 @@ export const secretReadActivityServiceFactory = ({
       unusedAccess: sorted.slice(offset, offset + limit),
       totalCount: visibleRows.length,
       unlistedCount: totalCount - rows.length,
+      projectName: project?.name ?? "",
       trackingStartedAt: projectTrackingStartedAt,
       unusedAccessFrom: new Date(projectTrackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS),
       remainingTTL

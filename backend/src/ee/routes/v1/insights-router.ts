@@ -479,7 +479,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         "List the users and machine identities that can read a secret's value but have not read it in the last 30 days",
       security: [{ bearerAuth: [] }],
       params: z.object({
-        projectId: z.string().trim().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.projectId)
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.projectId)
       }),
       querystring: z.object({
         offset: z.coerce.number().int().min(0).max(10000).default(0).describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.offset),
@@ -497,11 +497,21 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const { unusedAccess, totalCount, unlistedCount, trackingStartedAt, unusedAccessFrom, remainingTTL } =
-        await server.services.secretReadActivity.listUnusedSecretAccess({ projectId, ...req.query }, req.permission);
+      const {
+        unusedAccess,
+        totalCount,
+        unlistedCount,
+        trackingStartedAt,
+        unusedAccessFrom,
+        remainingTTL,
+        projectName
+      } = await server.services.secretReadActivity.listUnusedSecretAccess({ projectId, ...req.query }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
-        event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS, metadata: { projectId } },
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS,
+          metadata: { projectId, projectName }
+        },
         ...req.auditLogInfo
       });
 

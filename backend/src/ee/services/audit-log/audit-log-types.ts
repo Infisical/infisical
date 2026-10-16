@@ -5935,6 +5935,7 @@ interface ViewSecretManagementInsightsUnusedAccessEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS;
   metadata: {
     projectId: string;
+    projectName: string;
   };
 }
 
