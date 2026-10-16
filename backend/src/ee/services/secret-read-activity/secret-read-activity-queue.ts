@@ -38,7 +38,8 @@ const SECRET_READ_GATE_TTL_SECONDS = 25 * 60 * 60;
 const SECRET_READ_STREAM_MAX_LENGTH = 300_000;
 const SECRET_READ_FLUSH_BATCH_SIZE = 1000;
 const SECRET_READ_FLUSH_MAX_ENTRIES = 50_000;
-const SECRET_READ_CONSUMER_LOCK_TTL_MS = 60_000;
+// Covers the cron manager's default handler timeout, so a slow flush still holds the lock until it finishes.
+const SECRET_READ_CONSUMER_LOCK_TTL_MS = 5 * 60 * 1000;
 // The cap counts entries, not bytes, so this bounds an entry at about 3.7 KB and a full stream at about 1.1 GB.
 const SECRET_READ_STREAM_ENTRY_MAX_SECRETS = 100;
 
@@ -143,6 +144,7 @@ export const secretReadActivityQueueServiceFactory = ({
     isFiltered,
     includeImports,
     expandSecretReferences,
+    includesPersonalOverrides,
     notModified,
     secrets,
     imports = []
@@ -150,7 +152,8 @@ export const secretReadActivityQueueServiceFactory = ({
     if (!$isTrackedReader(actor)) return;
 
     try {
-      if (!isFiltered && includeImports && expandSecretReferences) {
+      // A personal override replaces the shared value, so a read that returns overrides only covers what it returned.
+      if (!isFiltered && includeImports && expandSecretReferences && !includesPersonalOverrides) {
         const normalizedPath = normalizeSecretPath(secretPath);
         await $record(
           { actor, actorId, projectId },
@@ -313,7 +316,10 @@ export const secretReadActivityQueueServiceFactory = ({
       // eslint-disable-next-line no-await-in-loop
       rows.push(...(await $resolveProjectReads(projectId, projectReads)));
     }
-    await secretReadActivityDAL.upsertLastReads(rows);
+    // A read that waited in the stream past the window counts for nothing, and its month's partition may already be
+    // dropped, so writing it would fail the whole batch on every retry.
+    const windowStart = getReadActivityWindowStart();
+    await secretReadActivityDAL.upsertLastReads(rows.filter((row) => row.lastReadAt >= windowStart));
     await keyStore.streamTrim(KeyStorePrefixes.SecretReadActivityStream, lastId, true);
     logger.info(`secret-read-activity: Flushed read stream [entries=${entries.length}] [rows=${rows.length}]`);
   };

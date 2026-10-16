@@ -238,6 +238,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           isFiltered: Boolean(req.query.tagSlugs?.length || req.query.metadataFilter?.length),
           includeImports: req.query.includeImports,
           expandSecretReferences: req.query.expandSecretReferences,
+          includesPersonalOverrides: req.query.includePersonalOverrides,
           notModified,
           secrets,
           imports

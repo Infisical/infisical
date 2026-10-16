@@ -60,6 +60,7 @@ export type TRecordBulkSecretReadDTO = TSecretReader & {
   isFiltered: boolean;
   includeImports: boolean;
   expandSecretReferences: boolean;
+  includesPersonalOverrides?: boolean;
   notModified?: boolean;
   secrets: TReturnedSecret[];
   imports?: { secrets: TReturnedSecret[] }[];
