@@ -1591,37 +1591,39 @@ export const SecretEditTableRow = ({
             )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <IconButton
-                aria-label="Edit secret value"
-                variant="ghost"
-                size="xs"
-                className="size-7 border-0"
-                isDisabled={
-                  isPendingDelete ||
-                  isImportedSecret ||
-                  isManagedSecret ||
-                  isLoadingEditValue ||
-                  Boolean(revokedProjectFolderGrant) ||
-                  (isCreatable ? !canCreate : !canEditSecretValue)
-                }
-                onClick={() => {
-                  if (isSingleEnvView && !isCreatable && !isOverride) {
-                    handleOpenValueSheet();
-                    return;
+              <span className="inline-flex">
+                <IconButton
+                  aria-label="Edit secret value"
+                  variant="ghost"
+                  size="xs"
+                  className="size-7 border-0"
+                  isDisabled={
+                    isPendingDelete ||
+                    isImportedSecret ||
+                    isManagedSecret ||
+                    isLoadingEditValue ||
+                    Boolean(revokedProjectFolderGrant) ||
+                    (isCreatable ? !canCreate : !canEditSecretValue)
                   }
-                  setFocus("value", { shouldSelect: true });
-                }}
-              >
-                <EditIcon className="size-3.5" />
-              </IconButton>
+                  onClick={() => {
+                    if (isSingleEnvView && !isCreatable && !isOverride) {
+                      handleOpenValueSheet();
+                      return;
+                    }
+                    setFocus("value", { shouldSelect: true });
+                  }}
+                >
+                  <EditIcon className="size-3.5" />
+                </IconButton>
+              </span>
             </TooltipTrigger>
             <TooltipContent>
               {isImportedSecret
                 ? "Cannot Edit Imported Secret"
                 : isHoneyTokenSecret
-                  ? "Cannot Edit Honey Token Secret"
+                  ? "Honey token secrets are managed by Infisical and can't be edited"
                   : isRotatedSecret
-                    ? "Cannot Edit Rotated Secret"
+                    ? "Rotated secrets are managed by their secret rotation and can't be edited"
                     : (isCreatable ? !canCreate : !canEditSecretValue)
                       ? "Access Denied"
                       : isCreatable

@@ -375,10 +375,13 @@ export const SelectionPanel = ({
     (shouldShowDelete && (selectedKeysCount > 0 || selectedRotationCount > 0)) ||
     canMoveSelectedFolders;
 
-  const isMoveDisabled = isHoneyTokenSelected;
+  const isMoveDisabled = isManagedSecretSelected;
   let moveDisabledReason = "";
   if (isHoneyTokenSelected) {
     moveDisabledReason = "Moving honey tokens is not supported";
+  } else if (isManagedSecretSelected) {
+    moveDisabledReason =
+      "Rotated secrets are managed by their secret rotation. Move the rotation instead.";
   }
 
   const isDeleteDisabled = areRotationsSelected || isManagedSecretSelected;
