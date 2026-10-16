@@ -1186,14 +1186,14 @@ const OverviewPageContent = () => {
   const previousTelemetry = useRef<{
     telemetry: typeof overviewTelemetry;
     flows: typeof telemetryFlows;
-  }>();
+  }>(undefined);
   useEffect(() => {
     if (previousTelemetry.current && previousTelemetry.current.flows !== telemetryFlows)
       previousTelemetry.current.telemetry.cancelOpenFlows();
     previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
   }, [overviewTelemetry, telemetryFlows]);
-  const viewedProjectRef = useRef<string>();
-  const loadedProjectRef = useRef<string>();
+  const viewedProjectRef = useRef<string>(undefined);
+  const loadedProjectRef = useRef<string>(undefined);
   useEffect(() => {
     if (!isProjectV3 || viewedProjectRef.current === projectId) return;
     viewedProjectRef.current = projectId;
@@ -2353,8 +2353,14 @@ const OverviewPageContent = () => {
           env,
           type: SecretType.Shared,
           tags:
-            pendingCreate.tags?.map((tag) => ({ ...tag, createdAt: "", updatedAt: "" }) as WsTag) ??
-            [],
+            pendingCreate.tags?.map(
+              (tag) =>
+                ({
+                  ...tag,
+                  createdAt: "",
+                  updatedAt: ""
+                }) as WsTag
+            ) ?? [],
           secretMetadata: pendingCreate.secretMetadata ?? [],
           skipMultilineEncoding: pendingCreate.skipMultilineEncoding ?? false,
           version: 0,

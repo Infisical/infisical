@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 export interface DiffContainerProps {
   variant?: "added" | "removed";
   children: React.ReactNode;
-  containerRef?: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
   isSingleLine?: boolean;
 }

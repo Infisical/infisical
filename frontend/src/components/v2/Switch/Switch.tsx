@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { type JSX, ReactNode } from "react";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { twMerge } from "tailwind-merge";
 

@@ -226,7 +226,7 @@ export const SecretEditTableRow = ({
   onExpandedChange
 }: Props) => {
   const telemetry = useOverviewTelemetry();
-  const valueSheetFlow = useRef<OverviewFlowHandle>();
+  const valueSheetFlow = useRef<OverviewFlowHandle>(undefined);
   const valueSheetOwner = useRef({});
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -477,7 +477,7 @@ export const SecretEditTableRow = ({
     | undefined;
   // Serialize metadata for effect dependency since watch() returns same array ref for nested changes
   const serializedMetadata = JSON.stringify(watchedMetadata);
-  const batchAutoApplyTimer = useRef<ReturnType<typeof setTimeout>>();
+  const batchAutoApplyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastAppliedRef = useRef<{
     value: unknown;
     key: unknown;

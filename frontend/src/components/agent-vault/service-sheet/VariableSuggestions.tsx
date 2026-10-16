@@ -23,7 +23,7 @@ export const useVariableAutocomplete = ({
   inputRef,
   onInsert
 }: {
-  inputRef: RefObject<HTMLInputElement>;
+  inputRef: RefObject<HTMLInputElement | null>;
   /** The whole new value, and where in it the caret belongs. */
   onInsert: (value: string, caret: number) => void;
 }) => {

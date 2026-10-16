@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { AlertTriangle, ArrowLeftRight, Info, MoreHorizontal, Pencil } from "lucide-react";
 
 import { SamlSsoUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";

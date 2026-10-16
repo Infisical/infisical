@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { SiGithub, SiYoutube } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, LayoutGrid, Users } from "lucide-react";

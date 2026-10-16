@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useLocation, useParams } from "@tanstack/react-router";
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";

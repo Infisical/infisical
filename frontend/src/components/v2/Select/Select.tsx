@@ -1,4 +1,4 @@
-import { forwardRef, ReactNode } from "react";
+import { forwardRef, type JSX, ReactNode } from "react";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { faCaretDown, faCaretUp, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";

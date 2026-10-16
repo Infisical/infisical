@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { ArrowLeftRight, MoreHorizontal, Pencil } from "lucide-react";
 
 import { LdapUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";

@@ -1,4 +1,4 @@
-import { cloneElement, ReactElement, ReactNode } from "react";
+import { cloneElement, type JSX, ReactElement, ReactNode } from "react";
 import { faExclamationTriangle, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Label from "@radix-ui/react-label";
