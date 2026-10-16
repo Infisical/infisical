@@ -39,12 +39,15 @@ import { TSecretReadActivityQueueServiceFactory } from "./secret-read-activity-q
 import {
   TGetSecretReadActivityDTO,
   TListUnusedSecretAccessDTO,
+  TReachSecret,
   TReadActivityScope,
+  TSecretReach,
   TSecretReachGraph,
   TUnusedSecretAccess
 } from "./secret-read-activity-types";
 
 const UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS = 24 * 60 * 60;
+const REACH_YIELD_INTERVAL = 100;
 // A large project can have millions of unread secret and actor pairs, so only the highest-ranked entries are
 // cached and listed, about 200 KB per project.
 const UNUSED_SECRET_ACCESS_MAX_LISTED = 1000;
@@ -141,36 +144,45 @@ export const secretReadActivityServiceFactory = ({
     }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const localReferences = new Map<string, string[]>();
-    const localReferencesOf = (secret: TSecret) => {
-      if (!localReferences.has(secret.id)) {
-        localReferences.set(
-          secret.id,
-          secret.encryptedValue
-            ? getAllSecretReferences(decryptor({ cipherTextBlob: secret.encryptedValue }).toString()).localReferences
-            : []
+    const secretById = new Map([...secretsByFolder.values()].flat().map((secret) => [secret.id, secret]));
+
+    // Indexed by referenced key once per folder: scanning the folder again for every secret in it would be
+    // quadratic in the folder's size, and the reach is computed synchronously.
+    const referencersByFolder = new Map<string, Map<string, TReachSecret[]>>();
+    const referencersOf = (folderId: string) => {
+      const indexed = referencersByFolder.get(folderId);
+      if (indexed) return indexed;
+
+      const referencersByKey = new Map<string, TReachSecret[]>();
+      const add = (key: string, referencer: TReachSecret) => {
+        const referencers = referencersByKey.get(key);
+        if (referencers) referencers.push(referencer);
+        else referencersByKey.set(key, [referencer]);
+      };
+      (secretsByFolder.get(folderId) ?? []).forEach((secret) => {
+        if (!secret.encryptedValue) return;
+        const { localReferences } = getAllSecretReferences(
+          decryptor({ cipherTextBlob: secret.encryptedValue }).toString()
         );
-      }
-      return localReferences.get(secret.id) as string[];
+        new Set(localReferences).forEach((key) => add(key, secret));
+      });
+      referencesOf(folderId).forEach((reference) =>
+        add(
+          reference.secretKey,
+          secretById.get(reference.secretId) ?? { id: reference.secretId, folderId: reference.folderId }
+        )
+      );
+      referencersByFolder.set(folderId, referencersByKey);
+      return referencersByKey;
     };
 
     // Replication imports are included: a replicated copy is checked against the reader's access to its source.
     const importsByLocation = groupBy(await secretImportDAL.find({ projectId }), (secretImport) =>
       toLocationKey({ environment: secretImport.importEnv.id, secretPath: secretImport.importPath })
     );
-    const secretById = new Map([...secretsByFolder.values()].flat().map((secret) => [secret.id, secret]));
     const graph: TSecretReachGraph = {
-      getReferencers: ({ id, folderId, key }) => [
-        ...(secretsByFolder.get(folderId) ?? []).filter(
-          (other) => other.id !== id && key !== undefined && localReferencesOf(other).includes(key)
-        ),
-        ...referencesOf(folderId)
-          .filter((reference) => reference.secretKey === key)
-          .map(
-            (reference) =>
-              secretById.get(reference.secretId) ?? { id: reference.secretId, folderId: reference.folderId }
-          )
-      ],
+      getReferencers: ({ id, folderId, key }) =>
+        key === undefined ? [] : (referencersOf(folderId).get(key) ?? []).filter((referencer) => referencer.id !== id),
       getImporterFolderIds: (folderId) =>
         folderById[folderId]
           ? (
@@ -191,7 +203,17 @@ export const secretReadActivityServiceFactory = ({
         )
         .map((secret) => ({ secret, ...location }));
     });
-    const reaches = targets.map(({ secret }) => computeSecretReach(secret, graph));
+    // Each reach is synchronous work, so yield between batches to keep a large project from blocking other requests.
+    const reaches: TSecretReach[] = [];
+    for (let index = 0; index < targets.length; index += 1) {
+      if (index > 0 && index % REACH_YIELD_INTERVAL === 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise<void>((resolve) => {
+          setImmediate(resolve);
+        });
+      }
+      reaches.push(computeSecretReach(targets[index].secret, graph));
+    }
     const reads = indexSecretReads(
       await secretReadActivityDAL.findLastReads(
         [...new Set(reaches.flatMap((reach) => [...reach.folderIds, ...reach.secretIds]))],
@@ -283,7 +305,7 @@ export const secretReadActivityServiceFactory = ({
       )
     );
 
-    const rowsBySecret: TUnusedSecretAccess[][] = [];
+    const rowsBySecret: (TUnusedSecretAccess & { secretTags: string[] })[][] = [];
     for (const { secret, environment, secretPath, trackedSince, reads } of activities) {
       // Permission checks are synchronous, so yield between secrets to keep a large project from blocking other requests.
       // eslint-disable-next-line no-await-in-loop
@@ -315,7 +337,8 @@ export const secretReadActivityServiceFactory = ({
               secretPath,
               actorType: actor.actorType,
               actorId: actor.id,
-              actorName: actor.name
+              actorName: actor.name,
+              secretTags: subjectFields.secretTags ?? []
             };
           })
       );
@@ -329,7 +352,7 @@ export const secretReadActivityServiceFactory = ({
     { projectId, offset, limit, orderBy, orderDirection }: TListUnusedSecretAccessDTO,
     actor: OrgServiceActor
   ) => {
-    await checkInsightsPermission(permissionService, licenseService, projectId, actor);
+    const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(projectId, "unused-secret-access");
     const { rows, totalCount } = await withCache({
@@ -349,17 +372,29 @@ export const secretReadActivityServiceFactory = ({
       Math.max(instanceTrackingStartedAt?.getTime() ?? 0, project?.createdAt.getTime() ?? 0)
     );
 
+    // The cache is shared by everyone in the project, so each caller only gets the secrets they could see anyway.
+    const visibleRows = rows
+      .filter((row) =>
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment: row.environment,
+          secretPath: row.secretPath,
+          secretName: row.secretKey,
+          secretTags: row.secretTags
+        })
+      )
+      .map(({ secretTags, ...row }) => row);
+
     // Unsorted, the list keeps its ranking. The sort is stable, so ties keep it too.
     const sorted = orderBy
-      ? [...rows].sort((a, b) => {
+      ? [...visibleRows].sort((a, b) => {
           const [first, second] = orderDirection === OrderByDirection.DESC ? [b, a] : [a, b];
           return first[orderBy].localeCompare(second[orderBy]);
         })
-      : rows;
+      : visibleRows;
 
     return {
       unusedAccess: sorted.slice(offset, offset + limit),
-      totalCount: rows.length,
+      totalCount: visibleRows.length,
       unlistedCount: totalCount - rows.length,
       trackingStartedAt: projectTrackingStartedAt,
       unusedAccessFrom: new Date(projectTrackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS),
