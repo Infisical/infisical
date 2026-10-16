@@ -36,8 +36,12 @@ const formatRemainingTtl = (seconds: number) => {
     const remainingSeconds = Math.max(1, seconds);
     return `${remainingSeconds} ${remainingSeconds === 1 ? "second" : "seconds"}`;
   }
-  const minutes = Math.ceil(seconds / 60);
-  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  if (seconds < 60 * 60) {
+    const minutes = Math.ceil(seconds / 60);
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  }
+  const hours = Math.ceil(seconds / (60 * 60));
+  return `${hours} ${hours === 1 ? "hour" : "hours"}`;
 };
 
 export const UnusedSecretAccessCard = () => {
@@ -213,6 +217,12 @@ export const UnusedSecretAccessCard = () => {
           onChangePage={setPage}
           onChangePerPage={setPerPage}
         />
+        {data.unlistedCount > 0 && (
+          <p className="mt-2 text-xs text-muted">
+            Showing the {totalCount.toLocaleString()} entries with the most unused access.{" "}
+            {data.unlistedCount.toLocaleString()} more are not listed.
+          </p>
+        )}
       </>
     );
   };

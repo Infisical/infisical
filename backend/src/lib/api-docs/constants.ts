@@ -952,7 +952,9 @@ export const INSIGHTS = {
     limit: "The maximum number of entries to return per page.",
     orderBy: "The field to sort by. Without it, the secrets with the most unused access come first.",
     orderDirection: "The direction to sort in.",
-    totalCount: "The total number of entries across all pages.",
+    totalCount: "The number of entries that can be paged through, at most 1,000.",
+    unlistedCount:
+      "The number of further entries with less unused access that are not listed. Zero unless the project has more than 1,000.",
     trackingStartedAt:
       "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
     unusedAccessFrom:

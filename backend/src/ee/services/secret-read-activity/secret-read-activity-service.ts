@@ -44,7 +44,10 @@ import {
   TUnusedSecretAccess
 } from "./secret-read-activity-types";
 
-const UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS = 30;
+const UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS = 24 * 60 * 60;
+// A large project can have millions of unread secret and actor pairs, so only the highest-ranked entries are
+// cached and listed, about 200 KB per project.
+const UNUSED_SECRET_ACCESS_MAX_LISTED = 1000;
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
@@ -317,10 +320,11 @@ export const secretReadActivityServiceFactory = ({
           })
       );
     }
-    return rowsBySecret.sort((a, b) => b.length - a.length).flat();
+    const ranked = rowsBySecret.sort((a, b) => b.length - a.length).flat();
+    return { rows: ranked.slice(0, UNUSED_SECRET_ACCESS_MAX_LISTED), totalCount: ranked.length };
   };
 
-  // The whole project is computed once and cached, so paging through it is cheap.
+  // The whole project is computed once a day and cached, so paging through it is cheap.
   const listUnusedSecretAccess = async (
     { projectId, offset, limit, orderBy, orderDirection }: TListUnusedSecretAccessDTO,
     actor: OrgServiceActor
@@ -328,7 +332,7 @@ export const secretReadActivityServiceFactory = ({
     await checkInsightsPermission(permissionService, licenseService, projectId, actor);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(projectId, "unused-secret-access");
-    const unusedAccess = await withCache({
+    const { rows, totalCount } = await withCache({
       keyStore,
       key: cacheKey,
       ttlSeconds: UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS,
@@ -347,15 +351,16 @@ export const secretReadActivityServiceFactory = ({
 
     // Unsorted, the list keeps its ranking. The sort is stable, so ties keep it too.
     const sorted = orderBy
-      ? [...unusedAccess].sort((a, b) => {
+      ? [...rows].sort((a, b) => {
           const [first, second] = orderDirection === OrderByDirection.DESC ? [b, a] : [a, b];
           return first[orderBy].localeCompare(second[orderBy]);
         })
-      : unusedAccess;
+      : rows;
 
     return {
       unusedAccess: sorted.slice(offset, offset + limit),
-      totalCount: sorted.length,
+      totalCount: rows.length,
+      unlistedCount: totalCount - rows.length,
       trackingStartedAt: projectTrackingStartedAt,
       unusedAccessFrom: new Date(projectTrackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS),
       remainingTTL

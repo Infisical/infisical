@@ -497,7 +497,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const { unusedAccess, totalCount, trackingStartedAt, unusedAccessFrom, remainingTTL } =
+      const { unusedAccess, totalCount, unlistedCount, trackingStartedAt, unusedAccessFrom, remainingTTL } =
         await server.services.secretReadActivity.listUnusedSecretAccess({ projectId, ...req.query }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -509,7 +509,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
 
-      return { unusedAccess, totalCount, trackingStartedAt, unusedAccessFrom };
+      return { unusedAccess, totalCount, unlistedCount, trackingStartedAt, unusedAccessFrom };
     }
   });
 

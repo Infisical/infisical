@@ -69,6 +69,7 @@ export const SecretsProjectsSchema = z.object({
 
 export const UnusedSecretAccessSchema = z.object({
   totalCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.totalCount),
+  unlistedCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.unlistedCount),
   trackingStartedAt: z.date().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.trackingStartedAt),
   unusedAccessFrom: z.date().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.unusedAccessFrom),
   unusedAccess: z
