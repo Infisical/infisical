@@ -98,6 +98,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
       text: "Successfully updated organization details",
       type: "success"
     });
+    reset({ name, slug, defaultMembershipRole });
   };
 
   return (
@@ -215,7 +216,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
                 isPending={isPending}
                 isDisabled={!isAllowed || !isDirty}
               >
-                Save changes
+                Save Changes
               </Button>
             )}
           </OrgPermissionCan>

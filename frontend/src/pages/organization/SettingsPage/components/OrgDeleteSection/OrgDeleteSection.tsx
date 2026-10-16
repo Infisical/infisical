@@ -75,7 +75,7 @@ export const OrgDeleteSection = () => {
           onClick={() => handlePopUpOpen("deleteOrg")}
         >
           <Trash2Icon />
-          {`Delete ${currentOrg?.name}`}
+          Delete Organization
         </Button>
       </CardFooter>
       <AlertDialog

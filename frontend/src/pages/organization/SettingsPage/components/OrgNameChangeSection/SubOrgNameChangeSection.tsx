@@ -159,7 +159,7 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
                 isPending={isPending}
                 isDisabled={!isAllowed || !isDirty}
               >
-                Save changes
+                Save Changes
               </Button>
             )}
           </OrgPermissionCan>
