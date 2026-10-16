@@ -431,6 +431,12 @@ import {
   TValidateRundeckConnectionCredentialsSchema
 } from "./rundeck";
 import {
+  TS3CompatibleConnection,
+  TS3CompatibleConnectionConfig,
+  TS3CompatibleConnectionInput,
+  TValidateS3CompatibleConnectionCredentialsSchema
+} from "./s3-compatible";
+import {
   TSalesforceConnection,
   TSalesforceConnectionConfig,
   TSalesforceConnectionInput,
@@ -633,6 +639,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TS3CompatibleConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -735,6 +742,7 @@ export type TAppConnectionInput = { id: string } & (
   | TStripeConnectionInput
   | TKeeperConnectionInput
   | THpeIloConnectionInput
+  | TS3CompatibleConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -870,7 +878,8 @@ export type TAppConnectionConfig =
   | TDaytonaConnectionConfig
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
-  | THpeIloConnectionConfig;
+  | THpeIloConnectionConfig
+  | TS3CompatibleConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -963,7 +972,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDaytonaConnectionCredentialsSchema
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
-  | TValidateHpeIloConnectionCredentialsSchema;
+  | TValidateHpeIloConnectionCredentialsSchema
+  | TValidateS3CompatibleConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

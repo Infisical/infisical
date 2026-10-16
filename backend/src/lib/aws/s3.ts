@@ -1,3 +1,5 @@
+import type { Agent } from "node:https";
+
 import {
   GetObjectCommand,
   HeadBucketCommand,
@@ -23,6 +25,33 @@ export type TS3AccessCheck = { ok: true } | { ok: false; failure: "unreachable" 
 
 export type TS3Bucket = ReturnType<typeof createS3Bucket>;
 
+export const createS3Client = ({
+  region,
+  credentials,
+  endpoint,
+  httpsAgent
+}: {
+  region: string;
+  credentials: TS3Credentials;
+  endpoint?: string;
+  httpsAgent?: Agent;
+}) =>
+  new S3Client({
+    region,
+    sha256: CustomAWSHasher,
+    credentials,
+    requestHandler: { ...AWS_REQUEST_TIMEOUTS, ...(httpsAgent && { httpsAgent }) },
+    ...(endpoint
+      ? {
+          endpoint,
+          forcePathStyle: true,
+          // not every S3-compatible provider accepts the SDK's default flexible checksums
+          requestChecksumCalculation: "WHEN_REQUIRED",
+          responseChecksumValidation: "WHEN_REQUIRED"
+        }
+      : { useFipsEndpoint: crypto.isFipsModeEnabled() })
+  });
+
 export const createS3Bucket = ({
   region,
   bucket,
@@ -32,13 +61,7 @@ export const createS3Bucket = ({
   bucket: string;
   credentials: TS3Credentials;
 }) => {
-  const client = new S3Client({
-    region,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    sha256: CustomAWSHasher,
-    credentials,
-    requestHandler: AWS_REQUEST_TIMEOUTS
-  });
+  const client = createS3Client({ region, credentials });
   // The request timeout stops once the headers arrive, so a reply that stalls after them needs an overall limit.
   const sendOptions = () => ({ abortSignal: AbortSignal.timeout(S3_CALL_TIMEOUT_MS) });
 
