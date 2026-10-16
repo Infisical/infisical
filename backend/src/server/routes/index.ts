@@ -314,6 +314,7 @@ import { certificateDALFactory } from "@app/services/certificate/certificate-dal
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { caAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
+import { caKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { caSigningConfigDALFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-dal";
 import { caSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -2405,17 +2406,6 @@ export const registerRoutes = async (
     auditLogService
   });
 
-  const projectCleanupQueue = projectCleanupQueueFactory({
-    cronJob,
-    queueService,
-    projectDAL,
-    membershipUserDAL,
-    userDAL,
-    kmsService,
-    keyStore,
-    auditLogService
-  });
-
   const projectEnvService = projectEnvServiceFactory({
     permissionService,
     projectEnvDAL,
@@ -3343,6 +3333,30 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const caKeySourceService = caKeySourceServiceFactory({
+    hsmConnectorService,
+    hsmConnectorDAL,
+    certificateAuthoritySecretDAL,
+    appConnectionDAL,
+    appConnectionService,
+    kmsService,
+    projectDAL,
+    licenseService
+  });
+
+  const projectCleanupQueue = projectCleanupQueueFactory({
+    cronJob,
+    queueService,
+    projectDAL,
+    membershipUserDAL,
+    userDAL,
+    kmsService,
+    certificateAuthoritySecretDAL,
+    caKeySourceService,
+    keyStore,
+    auditLogService
+  });
+
   const certificateProfileService = certificateProfileServiceFactory({
     certificateProfileDAL,
     certificatePolicyDAL,
@@ -3357,7 +3371,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCertDAL,
-    hsmConnectorService,
+    caKeySourceService,
     externalCertificateAuthorityDAL,
     permissionService,
     kmsService,
@@ -3624,7 +3638,7 @@ export const registerRoutes = async (
     pkiSyncDAL,
     pkiSyncQueue,
     internalCertificateAuthorityDAL,
-    hsmConnectorService,
+    caKeySourceService,
     gatewayV2Service,
     gatewayPoolService
   });
@@ -3636,7 +3650,7 @@ export const registerRoutes = async (
     certificateDAL,
     projectDAL,
     kmsService,
-    hsmConnectorService,
+    caKeySourceService,
     keyStore
   });
 
@@ -3660,7 +3674,7 @@ export const registerRoutes = async (
     licenseService,
     caSigningConfigDAL,
     usageMeteringService,
-    hsmConnectorService
+    caKeySourceService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
@@ -3707,7 +3721,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     usageMeteringService,
-    hsmConnectorService,
+    caKeySourceService,
     certificateAuthoritySecretDAL,
     licenseService,
     telemetryService,
@@ -3798,7 +3812,7 @@ export const registerRoutes = async (
     certificatePolicyService,
     licenseService,
     usageMeteringService,
-    hsmConnectorService,
+    caKeySourceService,
     internalCertificateAuthorityDAL
   });
 
@@ -3955,7 +3969,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCertDAL,
-    hsmConnectorService,
+    caKeySourceService,
     kmsService,
     projectDAL,
     permissionService
@@ -4102,6 +4116,7 @@ export const registerRoutes = async (
   });
 
   const certificateV3Service = certificateV3ServiceFactory({
+    caKeySourceService,
     usageCounterDAL,
     pkiApplicationDAL,
     keyStore,
