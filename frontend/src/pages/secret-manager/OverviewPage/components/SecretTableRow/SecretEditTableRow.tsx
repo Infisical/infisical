@@ -1143,7 +1143,7 @@ export const SecretEditTableRow = ({
         <Tooltip
           delayDuration={1000}
           skipDelayDuration={0}
-          open={isFieldFocused ? false : undefined}
+          open={isFieldFocused || !field.value ? false : undefined}
         >
           <TooltipTrigger asChild>
             <Input
@@ -1151,12 +1151,12 @@ export const SecretEditTableRow = ({
               readOnly={
                 isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue
               }
-              placeholder={error?.message || "Secret name"}
+              placeholder="Secret name"
               isError={Boolean(error)}
               {...field}
               value={field.value ?? ""}
               className={twMerge(
-                "field-sizing-content h-auto w-auto max-w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
+                "field-sizing-content h-auto w-auto max-w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none focus-visible:border-transparent focus-visible:ring-0",
                 isPendingDelete && "text-danger/75 line-through"
               )}
               onChange={(event) => {
@@ -1167,7 +1167,11 @@ export const SecretEditTableRow = ({
               }}
               onFocus={() => setIsFieldFocused.on()}
               onKeyDown={handleEditShortcut}
+              onScroll={(e) => {
+                if (document.activeElement !== e.currentTarget) e.currentTarget.scrollLeft = 0;
+              }}
               onBlur={(e) => {
+                e.currentTarget.scrollLeft = 0;
                 field.onBlur();
                 if (!isBatchMode && field.onChange) field.onChange(e);
                 setIsFieldFocused.off();
@@ -2211,9 +2215,14 @@ export const SecretEditTableRow = ({
         <TableCell
           isTruncatable
           className={twMerge(
-            "border-r",
+            "cursor-text border-r",
             isOverride && "border-l border-b-border/50 border-l-override"
           )}
+          onClick={(event) => {
+            const target = event.target as HTMLElement;
+            if (!event.currentTarget.contains(target) || target.closest("input, button")) return;
+            event.currentTarget.querySelector("input")?.focus();
+          }}
         >
           <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
             <div className="flex items-center gap-1.5">
