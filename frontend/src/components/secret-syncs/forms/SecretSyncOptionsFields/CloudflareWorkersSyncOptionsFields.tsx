@@ -13,6 +13,7 @@ import {
   Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { CloudflareWorkersSyncTarget } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
 
 import { TSecretSyncForm } from "../schemas";
 
@@ -23,6 +24,11 @@ export const CloudflareWorkersSyncOptionsFields = () => {
 
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
   const syncNonSecretBindings = watch("syncOptions.syncNonSecretBindings");
+  const target = watch("destinationConfig.target") ?? CloudflareWorkersSyncTarget.Script;
+
+  if (target !== CloudflareWorkersSyncTarget.Script) {
+    return null;
+  }
 
   return (
     <>

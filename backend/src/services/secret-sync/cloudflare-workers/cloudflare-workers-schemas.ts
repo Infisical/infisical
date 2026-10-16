@@ -12,18 +12,35 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { CloudflareWorkersSyncTarget } from "./cloudflare-workers-sync-enums";
 
-const CloudflareWorkersSyncDestinationConfigSchema = z.object({
-  scriptId: z
-    .string()
-    .min(1, "Script ID is required")
-    .max(64)
-    .refine((val) => {
-      const re2 = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/);
-      return re2.test(val);
-    }, "Invalid script ID format")
-    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.scriptId)
-});
+const CloudflareWorkersSyncDestinationConfigSchema = z
+  .object({
+    scriptId: z
+      .string()
+      .min(1, "Script ID is required")
+      .max(64)
+      .refine((val) => {
+        const re2 = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/);
+        return re2.test(val);
+      }, "Invalid script ID format")
+      .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.scriptId),
+    target: z
+      .nativeEnum(CloudflareWorkersSyncTarget)
+      .optional()
+      .default(CloudflareWorkersSyncTarget.Script)
+      .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.target),
+    previewName: z.string().min(1).optional().describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.previewName)
+  })
+  .superRefine((config, ctx) => {
+    if (config.target === CloudflareWorkersSyncTarget.Preview && !config.previewName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Preview name is required when targeting a specific Preview.",
+        path: ["previewName"]
+      });
+    }
+  });
 
 const CloudflareWorkersSyncAdditionalOptionsSchema = z.object({
   syncNonSecretBindings: z

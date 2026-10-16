@@ -32,6 +32,12 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
 
       - **Cloudflare Connection**: The Cloudflare Connection to authenticate with.
       - **Cloudflare Workers Script**: Choose the Cloudflare Workers script you want to sync secrets to.
+      - **Sync Target**: Choose where secrets are applied: the Worker script itself, the [Previews Base config](https://developers.cloudflare.com/workers/previews/configuration/#secrets) (applied to new Previews as they're created), or a specific [Preview](https://developers.cloudflare.com/workers/previews/get-started/) deployment.
+      - **Preview Name**: Required when **Sync Target** is set to a specific Preview. This is the name of the Preview to sync secrets to, which defaults to the Preview's Git branch name.
+
+    <Note>
+      Syncing to the Previews Base config or a specific Preview only supports secrets, not plaintext or JSON variable bindings. Syncing secrets to a specific Preview requires that Preview to already have a deployment; deploy it first with `wrangler versions upload --preview-alias <name>` or the Cloudflare dashboard.
+    </Note>
 
     5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
     ![Configure Options](/images/secret-syncs/cloudflare-workers/cloudflare-workers-sync-options.png)
@@ -77,6 +83,30 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
         },
         "destinationConfig": {
           "scriptId": "my-workers-script"
+        }
+      }'
+    ```
+
+    To sync secrets to a specific Preview instead of the Worker script, set `destinationConfig.target` to `preview` and provide `previewName`:
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/secret-syncs/cloudflare-workers \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-cloudflare-workers-preview-sync",
+        "projectId": "your-project-id",
+        "connectionId": "your-cloudflare-connection-id",
+        "environment": "staging",
+        "secretPath": "/my-secrets",
+        "isEnabled": true,
+        "syncOptions": {
+          "initialSyncBehavior": "overwrite-destination"
+        },
+        "destinationConfig": {
+          "scriptId": "my-workers-script",
+          "target": "preview",
+          "previewName": "my-branch-name"
         }
       }'
     ```
