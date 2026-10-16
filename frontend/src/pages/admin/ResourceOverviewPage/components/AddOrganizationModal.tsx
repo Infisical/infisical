@@ -133,6 +133,9 @@ const Content = ({ onClose }: ContentProps) => {
         render={({ field, fieldState: { error } }) => {
           const isKnownEmail = (email: string, user: Invitee) =>
             (user.email || user.username)?.toLowerCase() === email.toLowerCase();
+          const isSearching = searchUserFilter !== debouncedSearchTerm || isPending;
+          // Results for an earlier query would sit above the Invite row and take Enter.
+          const isStaleForEmail = isSearching && isValidEmail(searchUserFilter.trim());
 
           return (
             <Field>
@@ -140,7 +143,7 @@ const Content = ({ onClose }: ContentProps) => {
               <Combobox<Invitee>
                 id={adminSelectId}
                 multiple
-                options={users}
+                options={isStaleForEmail ? [] : users}
                 value={field.value}
                 onValueChange={field.onChange}
                 onClear={() => field.onChange([])}
@@ -161,7 +164,7 @@ const Content = ({ onClose }: ContentProps) => {
                 searchPlaceholder="Search users or enter an email..."
                 searchAriaLabel="Search users or enter an email to invite"
                 emptyMessage="No users found. Enter a valid email address to invite a new user."
-                isLoading={searchUserFilter !== debouncedSearchTerm || isPending}
+                isLoading={isSearching}
                 isError={Boolean(error)}
                 shouldFilter={false}
                 includeMissingSelectedOptions={false}
