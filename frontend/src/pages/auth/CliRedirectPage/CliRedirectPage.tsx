@@ -1,11 +1,20 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useSearch } from "@tanstack/react-router";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, TerminalIcon } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
-import { SecretInput } from "@app/components/v2";
-import { Button } from "@app/components/v3";
+import {
+  Button,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton
+} from "@app/components/v3";
+import { SecretInput } from "@app/components/v3/platform";
 import { SessionStorageKeys } from "@app/const";
 import { useTimedReset } from "@app/hooks";
 
@@ -27,6 +36,7 @@ export const CliRedirectPage = () => {
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
     initialState: false
   });
+  const [isTokenVisible, setIsTokenVisible] = useState(false);
   const cliToken = getTerminalCliToken();
   const { org_id: dashboardOrgId } = useSearch({ from: "/cli-redirect" });
 
@@ -39,56 +49,79 @@ export const CliRedirectPage = () => {
   };
 
   return (
-    <AuthPageLayout variant="focused" contentClassName="max-w-xl">
+    <AuthPageLayout variant="focused">
       <Helmet>
         <title>Infisical CLI | Login Successful!</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <AuthPagePanel className="flex flex-col items-center space-y-4 text-foreground-cool">
-        {cliToken ? (
-          <>
-            <div className="pb-4">
-              <p className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-center text-3xl font-medium text-transparent">
-                Unable to reach CLI
-              </p>
-              <p className="text-light mt-2 mb-1 text-center text-lg text-muted">
-                Your login was successful but, Infisical couldn&apos;t automatically push your login
-                token to the CLI.
-              </p>
-              <p className="text-light mb-1 text-center text-lg text-muted">
-                Please copy the token below and manually provide it to your CLI.
-              </p>
+      {cliToken ? (
+        <AuthPagePanel className="text-center">
+          <CardHeader className="mb-6 items-center gap-2 text-center">
+            <div
+              aria-hidden="true"
+              className="mb-4 flex size-12 items-center justify-center justify-self-center rounded-lg bg-card text-foreground/80"
+            >
+              <KeyRoundIcon className="size-5" strokeWidth={1.75} />
             </div>
-            <div className="dark relative flex max-h-36 max-w-xl flex-col items-center space-y-4 overflow-y-auto rounded-md border border-border-subtle bg-surface-base p-3">
-              <SecretInput value={cliToken as string} />
-              <div className="mx-1 flex">
-                <Button variant="outline" onClick={copyUrlToClipboard}>
-                  {isUrlCopied ? <CheckIcon /> : <CopyIcon />}
-                  Copy to clipboard
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-center text-3xl font-medium text-transparent">
-              Head back to your terminal
+            <CardTitle className="justify-center text-center font-alliance text-2xl font-normal">
+              Unable to reach CLI
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-label">
+              Your login was successful, but Infisical couldn&apos;t automatically push your login
+              token to the CLI. Please copy the token below and manually provide it to your CLI.
             </p>
-            <p className="text-light mb-1 text-lg text-muted">
+            <InputGroup>
+              <SecretInput
+                variant="plain"
+                value={cliToken as string}
+                isVisible={isTokenVisible}
+                data-slot="input-group-control"
+                containerClassName="px-2.5 py-2 font-mono text-left"
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  aria-label={isTokenVisible ? "Hide token" : "Reveal token"}
+                  onClick={() => setIsTokenVisible((current) => !current)}
+                >
+                  {isTokenVisible ? <EyeOffIcon /> : <EyeIcon />}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <Button variant="project" size="lg" isFullWidth onClick={copyUrlToClipboard}>
+              {isUrlCopied ? <CheckIcon /> : <CopyIcon />}
+              Copy to clipboard
+            </Button>
+          </CardContent>
+        </AuthPagePanel>
+      ) : (
+        <AuthPagePanel className="text-center">
+          <CardHeader className="mb-6 items-center gap-2 text-center">
+            <div
+              aria-hidden="true"
+              className="mb-4 flex size-12 items-center justify-center justify-self-center rounded-lg bg-card text-foreground/80"
+            >
+              <TerminalIcon className="size-5" strokeWidth={1.75} />
+            </div>
+            <CardTitle className="justify-center text-center font-alliance text-2xl font-normal">
+              Head back to your terminal
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-label">
               You&apos;ve successfully logged in to the Infisical CLI
             </p>
             {dashboardOrgId && (
-              <div className="pt-6">
-                <Button asChild variant="outline">
-                  <Link to="/organizations/$orgId/projects" params={{ orgId: dashboardOrgId }}>
-                    Open Infisical Dashboard
-                  </Link>
-                </Button>
-              </div>
+              <Button asChild variant="outline" className="self-center">
+                <Link to="/organizations/$orgId/projects" params={{ orgId: dashboardOrgId }}>
+                  Open Infisical Dashboard
+                </Link>
+              </Button>
             )}
-          </>
-        )}
-      </AuthPagePanel>
+          </CardContent>
+        </AuthPagePanel>
+      )}
     </AuthPageLayout>
   );
 };
