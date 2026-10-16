@@ -7,6 +7,6 @@ This folder is the Infisical 2.0 component source of truth. It is incubating. Pr
 - The docs chrome matches the shadcn docs layout (header, 288px sidebar, 640px article, preview frame). Brand tokens override their type, color, and radius.
 - Orgs have no avatar.
 - After UI edits, run `npm run lint` in `frontend/`. Also run `npm run lint:v4`. That command is `@shadcn/lint` (`no-raw-colors`, `no-restyle`) on the docs route. It is not part of `npm run lint`, because loading it there blows the 15 minute CI lint cap. Do not add spacing or type classes to a v4 component. Wrap it instead.
-- Add components with `npx shadcn@latest add <name> -y` from `frontend/`, which reads `components.json`. Do not run `shadcn init` here. It would retarget the app.
+- Add components with `npx shadcn@latest add <name> -y` from `frontend/`, which reads `components.json`. Do not run `shadcn init` here. It would retarget the app. The CLI resolves aliases from the root `tsconfig.json`, which is a solution file and must not gain a `paths` block: that slows the frontend lint past its 15 minute CI cap. If add cannot resolve `@app/*`, copy the `paths` block from `tsconfig.app.json` for that command only, and do not commit it.
 - Primitives import `cn` from the `cn` package. That is the registry's helper. Do not rewrite those imports.
 - These registry items need React 19 and are not installed yet: attachment, bubble, code-block, direction, marker, message, message-scroller, questionnaire, trace.
