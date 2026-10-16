@@ -1,6 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Clock } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -10,6 +9,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -96,21 +96,18 @@ export const OrgUserAccessTokenLimitSection = () => {
   ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <Clock className="size-4 text-accent" />
-          Session Length
-        </CardTitle>
-        <CardDescription>
-          Specify the duration of each login session for users in this organization.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-          {(isAllowed) => (
-            <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
-              <div className="flex max-w-sm gap-4">
+    <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+      {(isAllowed) => (
+        <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
+          <Card className="gap-0 overflow-hidden p-0">
+            <CardHeader className="p-6">
+              <CardTitle>Session Length</CardTitle>
+              <CardDescription>
+                Specify the duration of each login session for users in this organization.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="max-w-md px-6 pb-6">
+              <div className="flex gap-4">
                 <Controller
                   control={control}
                   name="expirationValue"
@@ -164,19 +161,21 @@ export const OrgUserAccessTokenLimitSection = () => {
                   )}
                 />
               </div>
+            </CardContent>
+            <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
               <Button
                 variant="org"
+                size="sm"
                 type="submit"
                 isPending={isSubmitting}
                 isDisabled={!isAllowed || !isDirty}
-                className="mt-4"
               >
-                Save
+                Save changes
               </Button>
-            </form>
-          )}
-        </OrgPermissionCan>
-      </CardContent>
-    </Card>
+            </CardFooter>
+          </Card>
+        </form>
+      )}
+    </OrgPermissionCan>
   );
 };
