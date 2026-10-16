@@ -403,12 +403,16 @@ const ProjectIdentityFormContent = ({
 
 export const CreateProjectIdentityForm = (props: Props) => {
   const { projectId, projectType } = props;
+  const isProductScoped = projectType === ProjectType.PAM || projectType === ProjectType.AgentVault;
 
   const { data: availableData, isPending: isAvailableLoading } = useQuery(
     projectIdentityMembershipQuery.listAvailable({ projectId, projectType })
   );
-  const { data: membershipsData, isPending: isMembershipsLoading } =
-    useListProjectIdentityMemberships({ projectId, projectType, limit: 1000 });
+  const { data: membershipsData, isLoading: isMembershipsLoading } =
+    useListProjectIdentityMemberships(
+      { projectId, projectType, limit: 1000 },
+      { enabled: isProductScoped }
+    );
 
   const assignableIdentities = useMemo(() => {
     const alreadyMembers = new Set(
