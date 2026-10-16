@@ -31,7 +31,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    project: z.object({ name: z.string(), id: z.string(), type: z.string().optional() }),
+    project: z.object({ name: z.string(), id: z.string(), type: z.nativeEnum(ProjectType) }),
     role: z.object({ name: z.string(), slug: z.string(), description: z.string().nullish() })
   })
   .required();
@@ -144,7 +144,6 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
                   getOptionValue={(option) => option.id}
                   getOptionLabel={(option) => option.name}
                   getOptionGroup={(option) => getProjectTitle(option.type)}
-                  getOptionKeywords={(option) => [getProjectTitle(option.type)]}
                   placeholder="Select project..."
                   searchPlaceholder="Search projects..."
                   searchAriaLabel="Search projects"
