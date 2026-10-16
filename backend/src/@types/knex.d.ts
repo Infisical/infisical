@@ -164,18 +164,18 @@ import {
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
+  TDelegatedApprovalPolicies,
+  TDelegatedApprovalPoliciesInsert,
+  TDelegatedApprovalPoliciesUpdate,
+  TDelegatedApprovalRequests,
+  TDelegatedApprovalRequestsInsert,
+  TDelegatedApprovalRequestsUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
-  TExternalApprovalPolicies,
-  TExternalApprovalPoliciesInsert,
-  TExternalApprovalPoliciesUpdate,
-  TExternalApprovalRequests,
-  TExternalApprovalRequestsInsert,
-  TExternalApprovalRequestsUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -1990,15 +1990,15 @@ declare module "knex/types/tables" {
       TSecretChangeRequestsInsert,
       TSecretChangeRequestsUpdate
     >;
-    [TableName.ExternalApprovalPolicies]: KnexOriginal.CompositeTableType<
-      TExternalApprovalPolicies,
-      TExternalApprovalPoliciesInsert,
-      TExternalApprovalPoliciesUpdate
+    [TableName.DelegatedApprovalPolicies]: KnexOriginal.CompositeTableType<
+      TDelegatedApprovalPolicies,
+      TDelegatedApprovalPoliciesInsert,
+      TDelegatedApprovalPoliciesUpdate
     >;
-    [TableName.ExternalApprovalRequests]: KnexOriginal.CompositeTableType<
-      TExternalApprovalRequests,
-      TExternalApprovalRequestsInsert,
-      TExternalApprovalRequestsUpdate
+    [TableName.DelegatedApprovalRequests]: KnexOriginal.CompositeTableType<
+      TDelegatedApprovalRequests,
+      TDelegatedApprovalRequestsInsert,
+      TDelegatedApprovalRequestsUpdate
     >;
     [TableName.PkiCertificatePolicy]: KnexOriginal.CompositeTableType<
       TPkiCertificatePolicies,

@@ -4,8 +4,8 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.ExternalApprovalPolicies))) {
-    await knex.schema.createTable(TableName.ExternalApprovalPolicies, (t) => {
+  if (!(await knex.schema.hasTable(TableName.DelegatedApprovalPolicies))) {
+    await knex.schema.createTable(TableName.DelegatedApprovalPolicies, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.uuid("policyId").notNullable().unique();
@@ -18,11 +18,11 @@ export async function up(knex: Knex): Promise<void> {
 
       t.timestamps(true, true, true);
     });
-    await createOnUpdateTrigger(knex, TableName.ExternalApprovalPolicies);
+    await createOnUpdateTrigger(knex, TableName.DelegatedApprovalPolicies);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ExternalApprovalRequests))) {
-    await knex.schema.createTable(TableName.ExternalApprovalRequests, (t) => {
+  if (!(await knex.schema.hasTable(TableName.DelegatedApprovalRequests))) {
+    await knex.schema.createTable(TableName.DelegatedApprovalRequests, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.uuid("requestId").notNullable().unique();
@@ -35,14 +35,14 @@ export async function up(knex: Knex): Promise<void> {
 
       t.timestamps(true, true, true);
     });
-    await createOnUpdateTrigger(knex, TableName.ExternalApprovalRequests);
+    await createOnUpdateTrigger(knex, TableName.DelegatedApprovalRequests);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await dropOnUpdateTrigger(knex, TableName.ExternalApprovalRequests);
-  await knex.schema.dropTableIfExists(TableName.ExternalApprovalRequests);
+  await dropOnUpdateTrigger(knex, TableName.DelegatedApprovalRequests);
+  await knex.schema.dropTableIfExists(TableName.DelegatedApprovalRequests);
 
-  await dropOnUpdateTrigger(knex, TableName.ExternalApprovalPolicies);
-  await knex.schema.dropTableIfExists(TableName.ExternalApprovalPolicies);
+  await dropOnUpdateTrigger(knex, TableName.DelegatedApprovalPolicies);
+  await knex.schema.dropTableIfExists(TableName.DelegatedApprovalPolicies);
 }

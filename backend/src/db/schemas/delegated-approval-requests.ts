@@ -9,7 +9,7 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const ExternalApprovalRequestsSchema = z.object({
+export const DelegatedApprovalRequestsSchema = z.object({
   id: z.string().uuid(),
   requestId: z.string().uuid(),
   status: z.string(),
@@ -20,8 +20,8 @@ export const ExternalApprovalRequestsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TExternalApprovalRequests = z.infer<typeof ExternalApprovalRequestsSchema>;
-export type TExternalApprovalRequestsInsert = Omit<z.input<typeof ExternalApprovalRequestsSchema>, TImmutableDBKeys>;
-export type TExternalApprovalRequestsUpdate = Partial<
-  Omit<z.input<typeof ExternalApprovalRequestsSchema>, TImmutableDBKeys>
+export type TDelegatedApprovalRequests = z.infer<typeof DelegatedApprovalRequestsSchema>;
+export type TDelegatedApprovalRequestsInsert = Omit<z.input<typeof DelegatedApprovalRequestsSchema>, TImmutableDBKeys>;
+export type TDelegatedApprovalRequestsUpdate = Partial<
+  Omit<z.input<typeof DelegatedApprovalRequestsSchema>, TImmutableDBKeys>
 >;
