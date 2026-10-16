@@ -131,15 +131,8 @@ const Content = ({ onClose }: ContentProps) => {
       />
       <Controller
         render={({ field, fieldState: { error } }) => {
-          const email = searchUserFilter.trim();
-          const isNewEmail =
-            isValidEmail(email) &&
-            ![...users, ...field.value].some(
-              (user) => (user.email || user.username)?.toLowerCase() === email.toLowerCase()
-            );
-          const inviteOption: Invitee | null = isNewEmail
-            ? { id: `invite:${email.toLowerCase()}`, email }
-            : null;
+          const isKnownEmail = (email: string, user: Invitee) =>
+            (user.email || user.username)?.toLowerCase() === email.toLowerCase();
 
           return (
             <Field>
@@ -147,15 +140,23 @@ const Content = ({ onClose }: ContentProps) => {
               <Combobox<Invitee>
                 id={adminSelectId}
                 multiple
-                options={inviteOption ? [inviteOption, ...users] : users}
+                options={users}
                 value={field.value}
                 onValueChange={field.onChange}
                 onClear={() => field.onChange([])}
                 getOptionLabel={getUserLabel}
                 getOptionValue={(user) => user.id}
-                renderOption={(user) =>
-                  user.id.startsWith("invite:") ? `Invite "${user.email}"` : getUserLabel(user)
-                }
+                creation={{
+                  isValid: (email) => isValidEmail(email),
+                  isDuplicate: isKnownEmail,
+                  formatLabel: (email) => `Invite "${email}"`,
+                  emptyLabel: "Type an email to invite",
+                  onCreate: (email) =>
+                    field.onChange([
+                      ...field.value,
+                      { id: `invite:${email.toLowerCase()}`, email: email.toLowerCase() }
+                    ])
+                }}
                 placeholder="Search users or invite by email..."
                 searchPlaceholder="Search users or enter an email..."
                 searchAriaLabel="Search users or enter an email to invite"
@@ -163,7 +164,7 @@ const Content = ({ onClose }: ContentProps) => {
                 isLoading={searchUserFilter !== debouncedSearchTerm || isPending}
                 isError={Boolean(error)}
                 shouldFilter={false}
-                includeMissingSelectedOptions
+                includeMissingSelectedOptions={false}
                 modal
                 onInputValueChange={(value) => {
                   setSearchUserFilter(value);
