@@ -1,3 +1,7 @@
+## 1.12.0 (September 24, 2026)
+Changes:
+* Added support for setting a PriorityClass on the Infisical Deployment via `infisical.priorityClassName`. Empty by default, so nothing changes unless you set it.
+
 ## 1.11.0 (September 17, 2026)
 Changes:
 * `infisical.autoBootstrap.secretDestination.namespace` now defaults to `""` instead of the literal `"default"`. Helm's `default` function only substitutes on an empty value, so the non-empty `"default"` meant the template's documented fall back to the release namespace never applied. Every install that left this key alone wrote the root identity token to the `default` namespace and created the bootstrap Role and RoleBinding there, and the bootstrap Job still reported success. Fresh installs now place the secret and its RBAC in the release namespace.
