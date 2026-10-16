@@ -1,18 +1,25 @@
 import { Controller, useForm } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FilterableSelect,
-  FormControl,
+  Combobox,
+  DialogBody,
+  DialogClose,
+  DialogFooter,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
-import { Combobox, Field, FieldError, FieldLabel } from "@app/components/v3";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   CaSigningConfigType,
@@ -120,121 +127,136 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        name="appConnectionId"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>
-              Microsoft ADCS Connection <span className="text-danger">*</span>
-            </FieldLabel>
-            <Combobox
-              isError={Boolean(error)}
-              modal
-              isClearable={false}
-              isLoading={isAdcsPending}
-              value={(availableAdcsConnections || []).find((conn) => conn.id === value) ?? null}
-              onValueChange={(option) => {
-                onChange(option.id);
-              }}
-              options={availableAdcsConnections || []}
-              placeholder="Select a Microsoft ADCS connection..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              creation={connectionCreation}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-      <Controller
-        control={control}
-        name="template"
-        render={({ field: { onChange, value, ...field }, fieldState: { error } }) => {
-          if (isTemplatesLoading && !!selectedConnectionId) {
-            return (
-              <FormControl label="Certificate Template" isRequired>
-                <FilterableSelect
-                  isLoading
-                  isDisabled
-                  options={[]}
-                  value={null}
-                  onChange={() => {}}
-                  placeholder="Loading templates..."
-                />
-              </FormControl>
-            );
-          }
-          if (templates.length > 0) {
-            return (
-              <FormControl
-                label="Certificate Template"
-                errorText={error?.message}
+    <form className="contents" onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogBody>
+        <Controller
+          control={control}
+          name="appConnectionId"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Microsoft ADCS Connection <span className="text-danger">*</span>
+              </FieldLabel>
+              <Combobox
                 isError={Boolean(error)}
-                isRequired
-              >
-                <FilterableSelect
-                  isDisabled={!selectedConnectionId}
-                  value={templates.find((t) => t.name === value) ? { label: value, value } : null}
-                  onChange={(option) => {
-                    const selected = option as SingleValue<{ label: string; value: string }>;
-                    onChange(selected?.value ?? "");
-                  }}
-                  options={templates.map((t) => ({ label: t.name, value: t.name }))}
-                  placeholder="Select a template..."
-                  getOptionLabel={(option) => option.label}
-                  getOptionValue={(option) => option.value}
+                modal
+                isClearable={false}
+                isLoading={isAdcsPending}
+                value={(availableAdcsConnections || []).find((conn) => conn.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.id);
+                }}
+                options={availableAdcsConnections || []}
+                placeholder="Select a Microsoft ADCS connection..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                creation={connectionCreation}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="template"
+          render={({ field: { onChange, value, ...field }, fieldState: { error } }) => {
+            if (isTemplatesLoading && !!selectedConnectionId) {
+              return (
+                <Field className="mb-4">
+                  <FieldLabel>
+                    Certificate Template <span className="text-danger">*</span>
+                  </FieldLabel>
+                  <Combobox
+                    isLoading
+                    isDisabled
+                    modal
+                    isClearable={false}
+                    options={[]}
+                    value={null}
+                    onValueChange={() => {}}
+                    getOptionLabel={() => ""}
+                    getOptionValue={() => ""}
+                    placeholder="Loading templates..."
+                  />
+                </Field>
+              );
+            }
+            if (templates.length > 0) {
+              return (
+                <Field className="mb-4">
+                  <FieldLabel>
+                    Certificate Template <span className="text-danger">*</span>
+                  </FieldLabel>
+                  <Combobox
+                    isError={Boolean(error)}
+                    isDisabled={!selectedConnectionId}
+                    modal
+                    isClearable={false}
+                    value={templates.find((t) => t.name === value) ? { label: value, value } : null}
+                    onValueChange={(option) => onChange(option.value)}
+                    options={templates.map((t) => ({ label: t.name, value: t.name }))}
+                    placeholder="Select a template..."
+                    getOptionLabel={(option) => option.label}
+                    getOptionValue={(option) => option.value}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              );
+            }
+            return (
+              <Field className="mb-4">
+                <FieldLabel>
+                  Certificate Template <span className="text-danger">*</span>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  isError={Boolean(error)}
+                  required
+                  value={value}
+                  onChange={onChange}
+                  placeholder="SubCA"
                 />
-              </FormControl>
+                <FieldDescription>
+                  Enter the subordinate CA template name (e.g. SubCA).
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </Field>
             );
-          }
-          return (
-            <FormControl
-              label="Certificate Template"
-              errorText={error?.message}
-              isError={Boolean(error)}
-              isRequired
-              helperText="Enter the subordinate CA template name (e.g. SubCA)."
-            >
-              <Input {...field} value={value} onChange={onChange} placeholder="SubCA" />
-            </FormControl>
-          );
-        }}
-      />
-      <Controller
-        control={control}
-        name="maxPathLength"
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Path Length" errorText={error?.message} isError={Boolean(error)}>
-            <Select {...field} onValueChange={onChange} className="w-full">
-              {[-1, 0, 1, 2, 3].map((value) => (
-                <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
-                  {String(value)}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
+          }}
+        />
+        <Controller
+          control={control}
+          name="maxPathLength"
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>Path Length</FieldLabel>
+              <Select value={field.value} onValueChange={onChange}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {[-1, 0, 1, 2, 3].map((value) => (
+                    <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
+                      {String(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost" type="button">
+            Cancel
+          </Button>
+        </DialogClose>
+        <Button variant="neutral" type="submit" isPending={isSubmitting}>
           Install
         </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("installCaCert", false)}
-        >
-          Cancel
-        </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 };

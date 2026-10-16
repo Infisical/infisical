@@ -19,7 +19,7 @@ import {
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
-import { useDebounce } from "@app/hooks";
+import { useDebounce, useScopeVariant } from "@app/hooks";
 import {
   useAddIdentityToGroup,
   useAddUserToGroup,
@@ -99,6 +99,7 @@ export const AddGroupMembersModal = ({
   handlePopUpToggle,
   isOidcManageGroupMembershipsEnabled
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const popUpData = popUp?.addGroupMembers?.data as { groupId: string; slug: string } | undefined;
   const groupId = popUpData?.groupId ?? "";
   const groupSlug = popUpData?.slug ?? "";
@@ -288,7 +289,7 @@ export const AddGroupMembersModal = ({
               Cancel
             </Button>
             <Button
-              variant="org"
+              variant={scopeVariant}
               type="submit"
               isPending={isSubmitting}
               isDisabled={isSubmitting || selectedCount === 0}

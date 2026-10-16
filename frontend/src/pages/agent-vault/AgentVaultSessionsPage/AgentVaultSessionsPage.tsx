@@ -440,7 +440,7 @@ export const AgentVaultSessionsPage = () => {
                         </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
+                        {format(new Date(session.createdAt), "MMM dd, yyyy hh:mm a")}
                       </TableCell>
                       <TableCell>
                         <SessionExpiry expiresAt={session.expiresAt} />

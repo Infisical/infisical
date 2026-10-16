@@ -8,6 +8,7 @@ import { Button, Field, FieldError, FieldLabel, SheetClose, TextArea } from "@ap
 import { useOrganization } from "@app/context";
 import { emailListSchema, parseEmailList } from "@app/helpers/email";
 import { findOrgMembershipRole } from "@app/helpers/roles";
+import { useScopeVariant } from "@app/hooks";
 import {
   useAddUsersToOrg,
   useAddUserToWsNonE2EE,
@@ -59,6 +60,7 @@ export const AddOrgMemberModal = ({
   completeInviteLinks,
   setCompleteInviteLinks
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
 
   const { data: organizationRoles, isPending: isOrganizationRolesPending } = useGetOrgRoles(
@@ -223,7 +225,7 @@ export const AddOrgMemberModal = ({
           </MemberFormSheetBody>
           <MemberFormSheetFooter>
             <SheetClose asChild>
-              <Button type="button" variant="org">
+              <Button type="button" variant={scopeVariant}>
                 Done
               </Button>
             </SheetClose>

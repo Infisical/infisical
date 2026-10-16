@@ -59,7 +59,7 @@ In the table, E is the number of external consumer files and I is the number of 
 | `Menu/Menu.tsx` | 1 / 0 | One remaining type reference; replace with actual V3 contract, then delete source/exports. | `frontend/src/layouts/OrganizationLayout/components/MenuIconButton/MenuIconButton.tsx:19` |
 | `Modal/Modal.tsx` | 55 / 2 | V3 Dialog/Sheet chosen by form size; follow the overlay recipe for nested overlays, pending close, discard, mutation errors, and focus. | `frontend/src/pages/organization/AccessManagementPage/components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal.tsx:65` |
 | `NoticeBanner/NoticeBanner.tsx` | 0 / 0 | Deleted in first wave; no consumer. | Only its own/root barrels exported it. |
-| `NoticeBannerV2/NoticeBannerV2.tsx` | 2 / 0 | V3 Alert composition; preserve warnings and associated actions. | `frontend/src/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewSecretRotationV2GeneratedCredentials.tsx:273` |
+| `NoticeBannerV2/NoticeBannerV2.tsx` | 2 / 0 | Deleted unused implementation, empty family index, and stale root export; no consumer changes. | At `e05f750eb36506dac9a599709055ffb33d5b58ab`, no incoming implementation edge or external symbol reference remained. The root barrel exported only the empty family index. |
 | `PageHeader/PageHeader.tsx` | 32 / 0 | V3 PageHeader owns the normal 40px bottom boundary; remove only header-boundary compensation and preserve body spacing, actions, scopes and responsive intent. | `frontend/src/pages/organization/ProjectsPage/ProjectsPage.tsx:53` |
 | `Pagination/Pagination.tsx` | 12 / 0 | V3 Pagination; preserve page origin, size change, counts, and filtering/reset behavior. | `frontend/src/pages/organization/GroupDetailsByIDPage/components/AddGroupProjectModal.tsx:163` |
 | `PasswordGenerator/PasswordGenerator.tsx` | 0 / 0 | Deleted in first wave; V3 generator remains independent. | No external consumer; its private Slider also deleted. |
@@ -67,7 +67,7 @@ In the table, E is the number of external consumer files and I is the number of 
 | `Popoverv2/Popoverv2.tsx` | 0 / 1 | Deleted with unused DatePicker in first wave. | Only DatePicker referenced it outside its own family. |
 | `RadioGroup/RadioGroup.tsx` | 0 / 0 | Deleted in first wave, including an obsolete commented import. | No actual incoming module edge or external symbol reference. |
 | `SecretInput/SecretInput.tsx` | 1 / 0 | V3 specialist input; preserve masking, permission boundaries, reveal, copy, and ref behavior. | `frontend/src/pages/auth/CliRedirectPage/CliRedirectPage.tsx:64` |
-| `SecretPathInput/SecretPathInput.tsx` | 12 / 0 | V3 SecretPathInput; verify environment/path selection, permission filtering, loading, and controlled values. | `frontend/src/pages/secret-manager/integrations/RundeckConfigurePage/RundeckConfigurePage.tsx:161` |
+| `SecretPathInput/SecretPathInput.tsx` | 12 / 0 | Deleted the unused V2 implementation and family index in this candidate, not yet on merged main. The independent V3 SecretPathInput and its consumers are unchanged; workflow parity remains a separate validation boundary. | No incoming module or declaration references at `13f5e7fe562a803a9b6de1d512cb27f67868ea6d`; no root export, computed/glob ingress, or top-level CSS import or executable initializer. |
 | `Select/Select.tsx` and components | 58 / 0 | V3 Select/Combobox chosen by interaction; preserve option values and form semantics. | `frontend/src/pages/secret-scanning/SecretScanningFindingsPage/components/SecretScanningUpdateFindingModal.tsx:94` |
 | `Skeleton/Skeleton.tsx` | 3 / 1 | V3 Skeleton; preserve meaningful loading shape and table ownership. | `frontend/src/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal.tsx:54` |
 | `Slider/Slider.tsx` | 0 / 1 | Deleted with unused PasswordGenerator in first wave. | PasswordGenerator was its only external-family consumer. |
@@ -181,6 +181,14 @@ Use this recipe for every V2 `Modal`, `DeleteActionModal`, and `ConfirmActionMod
 | `onEscapeKeyDown` that only protects a nested popup | Remove. Keep handlers that implement product behavior, such as a discard guard. |
 
 V2 controls rendered inside the overlay move to V3 in the same change. A V2 `Select`, `FilterableSelect`, `Dropdown`, or `Tooltip` inside a V3 overlay does not join the layer contract. `FilterableSelect` becomes `Combobox`. Remove caller-owned `onPopupOpenChange` registries that only guard the parent Escape.
+
+**Creating an option with a form.** Dialog creation renders `DialogHeader` followed by `renderForm`. Return `<form className="flex min-h-0 flex-1 flex-col gap-6">` with `DialogBody` for fields and `DialogFooter` for actions. Do not pad the whole form or replace the footer with an inset button row. The dialog shell supplies its padding and the footer extends to its edges, as in the Dialog stories.
+
+Use `creation.mode = "sheet"` for multi-step forms, with the existing Sheet `size` (`form`, `wide`, or `workspace`). It uses the same `renderForm({ initialInput, complete, cancel })`, `isPending`, and `onDismiss(cancel)` contract as dialog creation. Return form content with a scrollable body and `SheetFooter`, not another `Sheet` or `SheetContent`. The default header requires `title` and `description`. Set `showHeader: false` when the form owns its header, and provide `SheetHeader`, `SheetTitle`, and `SheetDescription` inside `renderForm` for the accessible name and description. Follow the Header → body → Footer composition and body padding in the Sheet stories.
+
+Use one caller-owned pending state for the form and `creation.isPending`, including sub-wizard persistence. Route `onDismiss` and the form's Cancel through the same discard guard. Update controlled options and selection before calling `complete`. Completion closes the creation overlay and returns focus to the Combobox input. Cancel preserves the query and reopens the option popup without changing the selection. See `Combobox.creation.stories.tsx` for canonical dialog and sheet compositions.
+
+**Starting an in-place creation workflow.** Use `creation.mode = "action"` with `onAction(inputValue)` when the existing form switches into a sub-wizard without opening another overlay. The Create row remains available for empty, duplicate, and unmatched queries unless `isDisabled` is set. Selection closes only the picker and calls `onAction` with the trimmed query. This mode does not persist, track pending work, or select an option; the caller owns the workflow and any later option/selection updates.
 
 Before:
 

@@ -339,7 +339,7 @@ judgment. Two adjustments to that rule, both small enough to enumerate:
 Three things are first-party outright, because they sit outside an org and the nav boundary doesn't
 reach them:
 - account self-management (user, password, MFA, sessions, login, signup, notifications, announcements)
-- super-admin routes (`v1/admin-router.ts`, `ee/v1/rate-limit-router.ts`), where `verifySuperAdmin` reads
+- super-admin routes (`v1/admin-router.ts`), where `verifySuperAdmin` reads
   `user.superAdmin` rather than an ability
 - `POST /v2/organizations`, and the org reads that return more than the token's org: `GET /v1/organization`,
   `GET /v1/organization/accessible-with-sub-orgs`, `GET /v1/organization/:organizationId`. All pass
@@ -679,7 +679,7 @@ Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the
 
 Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` (~line 541) and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, and `stop`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers.
 
-**Only `general-workers` pods start the manager's timers**, so only they execute a scheduled handler; every pod still calls `register`. The separate `cronJobs` array in `src/server/routes/index.ts` is deliberately **not** gated: those refresh the process's own caches (license, rate limits, env overrides), not fleet work.
+**Only `general-workers` pods start the manager's timers**, so only they execute a scheduled handler; every pod still calls `register`. The separate `cronJobs` array in `src/server/routes/index.ts` is deliberately **not** gated: those refresh the process's own caches (license, env overrides), not fleet work.
 
 **Per-process refreshes use `startLocalRefresh` (`src/lib/cron/local-refresh.ts`), never the cron manager and never a raw `new CronJob`.** The cron manager runs a job once per fleet, which would leave every other pod's in-memory state stale; a wall-clock cron pattern makes every pod fire in the same second. The helper starts each process at a random offset within one interval (random per process on purpose, unlike the manager's deterministic hash), skips a tick while the previous run is in flight, logs and swallows errors, and unrefs its timers. Its `stop()` handle is what goes in `cronJobs`. It records `infisical.local_refresh.*` on the `InfisicalCore` meter, labelled by `name` as `job.name`, so a new refresh needs no metric code; keep `name` a fixed string. A failing refresh keeps retrying on every tick rather than giving up after N failures, because stopping would freeze the pod's state at whatever it last loaded. The `consecutive_failures` gauge (reset on success) is the alerting signal.
 
@@ -736,7 +736,7 @@ Adding a new alertable resource type:
 1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), an `events` list (each event carries its own `conditionSchema` for the "when", so a scheduled expiry and an event-triggered change on the same resource type don't share one shape), `buildViewUrl` / `buildPayload` / `targetId`, one discovery method per trigger type you declare (below), and the two authorization hooks `assertPermission` + `assertResourceInScope`. Test sends need nothing from you: they go through the generic `buildTestAlertPayload` (`alert-test-payload-fns.ts`).
 2. Register it on the singleton registry in `src/server/routes/index.ts` (`alertProviderRegistry.register(...)`).
 
-That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example that declares both trigger types (`identity.authentication.expiry` scheduled, `identity.authentication.auth-method-changed` event-triggered).
+That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example that declares both trigger types (`identity.authentication.expiry` scheduled, `identity.authentication.auth-method-changed` event-triggered). `audit-log-stream-alert-provider.ts` is the smallest event-only example: the stream delivery path emits `audit-log.stream.delivery-failed` (contract in `ee/services/audit-log-stream/audit-log-stream-events.ts`) only on the healthy to failing edge, in the transaction that drops the rows. Its alerts are org-wide only: the event carries no `resourceId`, because the consumer matches alerts by the event's `resourceId` and resource-less alerts only hear resource-less events.
 
 **Each event declares how it fires**, and the trigger decides which discovery method the provider owes:
 
@@ -862,6 +862,9 @@ new consumer gets them for free.
 provider's. A
 `resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
 emit site shows up in the logs on its first event.
+
+Approval lifecycle events reach the outbox through `TApprovalResource.buildEvent`, which the approval
+service emits inside each transition's transaction (PAM folder alerts use it).
 
 **The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
 event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)
@@ -1021,6 +1024,29 @@ and nothing on our side errors. `TCaSigner` (`services/certificate-authority/ca-
 `signTbs` for this and abstracts over software, HSM and PQC CAs. PQC needs no special case beyond taking
 the signature OID from `pqcNameToOid`.
 
+### Internal CA key sources
+
+An internal CA's signing key lives in Infisical (`keySource: infisical`, encrypted private key) or
+outside it. Every external source (HSM, AWS KMS) is a provider in
+`services/certificate-authority/ca-key-source/`, registered in `caKeySourceServiceFactory`, and
+implements four things: `supportedKeyAlgorithms`, `assertCanUse` (permission to use the connection),
+`createKey` (entitlement check, then key creation; returns the columns to store) and `buildSigner` (returns a `TCaSigner`, usually through
+`buildExternalCaSigner`, which swaps a remote signature into structures built with a throwaway key).
+CA creation and `getCaSigner` branch only on Infisical versus external, so adding a source means a
+provider, a `CertKeySource` value, an arm in `certificate_authority_secret_key_source_chk`, and the
+wizard option. Every external source stores its key in the generic `externalKeyId` and
+`publicKeySpki` columns, and cloud KMS sources reach the key through `appConnectionId` (HSM through
+`hsmConnectorId`). Each provider's `describeKey` builds the key fields of the CA read response and
+the CA create and delete audit events, which is how the API still exposes an HSM CA's
+`externalKeyId` as `hsmKeyLabel`.
+Releasing a key is two-phase, through `prepareKeyReleases`. The provider's optional
+`prepareKeyRelease` resolves what it needs (AWS KMS decrypts the connection and builds its client)
+before the CA rows are deleted, and the returned function runs after the delete commits. The order
+matters: a project hard delete cascades away project-scoped connections and the project KMS key in
+the same transaction. Keys are released on CA delete, on project hard delete, and when CA creation
+fails after its key was made. AWS KMS schedules deletion with a 30-day window; HSM keeps its key. A
+failure is logged, never thrown, so the original outcome stands.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -1033,7 +1059,7 @@ EE routes register before community routes so they can override/extend endpoints
 
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/CLAUDE.md`](src/ee/services/agent-vault/CLAUDE.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
 
-**Secret Scanning** is single-project (see the root `CLAUDE.md`): `secret-scanning-v2-project-resolver.ts` picks and lazily creates the active project, and routes that take `projectId` read `req.internalSecretScanningProjectId`.
+**Secret Scanning** is single-project (see the root `CLAUDE.md`): `secret-scanning-v2-project-bootstrap.ts` creates the project with the org when it has a creator to make admin (like PAM and Agent Vault), `secret-scanning-v2-project-resolver.ts` picks the active project and lazily creates it, with every org admin as project admin, for older orgs and for orgs created from the admin console, whose admins are only invited after the org exists, and routes that take `projectId` read `req.internalSecretScanningProjectId`.
 
 **Dynamic secret lease secrets needed at revoke time go in `dynamic_secret_leases.encryptedLeaseData`**, never in `externalEntityId` or `config` (both plaintext, and `externalEntityId` is returned by every lease route and logged in audit events). A provider opts in by listing the `create()` `data` keys in `persistedLeaseFields`; the lease service encrypts them with the project's SecretManager key and every revoke path passes them back as `metadata.leaseData`. Lease routes return `SanitizedDynamicSecretLeaseSchema` so the column never reaches a response. Secret *config* fields are listed separately in `DYNAMIC_SECRET_SECRET_FIELDS` (`providers/redact.ts`), as dotted paths so nested secrets work (`clientAuth.clientSecret`): reads strip them via `redactStoredInputs`, and an update that omits one keeps the stored value via `restoreOmittedSecretFields`, because the update merge is shallow.
 

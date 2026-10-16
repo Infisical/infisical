@@ -201,7 +201,7 @@ Prerequisites:
     The example command below will print the secrets using the service token passed as a credential. When done, click  **Save**.
 
     ```
-    infisical secrets --env=dev --path=/
+    infisical sm secrets --env=dev --path=/
     ```
 
     ![Jenkins step 11](../../images/integrations/jenkins/jenkins_11.png)
@@ -238,13 +238,13 @@ Prerequisites:
         stages {
             stage('Run Infisical') {
                 steps {
-                    sh("infisical secrets --env=dev --path=/")
+                    sh("infisical sm secrets --env=dev --path=/")
 
                     // doesn't work
-                    // sh("docker run --rm test-container infisical secrets")
+                    // sh("docker run --rm test-container infisical sm secrets")
 
                     // works
-                    // sh("docker run -e INFISICAL_TOKEN=${INFISICAL_TOKEN} --rm test-container infisical secrets --env=dev --path=/")
+                    // sh("docker run -e INFISICAL_TOKEN=${INFISICAL_TOKEN} --rm test-container infisical sm secrets --env=dev --path=/")
 
                     // doesn't work
                     // sh("docker-compose up -d")

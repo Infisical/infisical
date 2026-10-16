@@ -149,7 +149,12 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
           <div className="mt-6 flex justify-end">
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
               {(isAllowed) => (
-                <Button variant="org" type="submit" isPending={isPending} isDisabled={!isAllowed}>
+                <Button
+                  variant="sub-org"
+                  type="submit"
+                  isPending={isPending}
+                  isDisabled={!isAllowed}
+                >
                   Save
                 </Button>
               )}

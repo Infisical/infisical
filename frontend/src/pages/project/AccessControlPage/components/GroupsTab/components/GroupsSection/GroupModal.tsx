@@ -26,6 +26,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
@@ -33,7 +34,6 @@ import {
   useListWorkspaceGroups,
   useSearchOrganizationGroups
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -55,8 +55,7 @@ type Props = {
 const Content = ({ onClose }: { onClose: () => void }) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
 
   const orgId = currentOrg?.id || "";
 
@@ -266,7 +265,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     <div className="flex flex-col gap-4">
       <p className="text-sm">
         {totalOrgGroups === 0
-          ? `Your organization has no groups yet. Create one at the organization level to add it to ${isCertManager ? productLabel : "this project"}.`
+          ? `Your organization has no groups yet. Create one at the organization level to add it to ${hidesProjects(currentProject?.type) ? productLabel : "this project"}.`
           : "Every group in your organization is already added. To add another group, create one at the organization level first."}
       </p>
       <DialogFooter>
@@ -286,8 +285,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
 
   return (
     <Dialog

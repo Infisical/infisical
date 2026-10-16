@@ -30,7 +30,6 @@ import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { agentVaultServiceVariableReferenceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-variable-reference-dal";
-import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-variable-dal";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
@@ -42,6 +41,8 @@ import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-sessio
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { agentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
+import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
+import { agentVaultVariableServiceFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -173,8 +174,6 @@ import { projectTemplateUserMembershipDALFactory } from "@app/ee/services/projec
 import { proxiedServiceCredentialDALFactory } from "@app/ee/services/proxied-service/proxied-service-credential-dal";
 import { proxiedServiceDALFactory } from "@app/ee/services/proxied-service/proxied-service-dal";
 import { proxiedServiceServiceFactory } from "@app/ee/services/proxied-service/proxied-service-service";
-import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
-import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-relay-config-dal";
 import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-config-dal";
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
@@ -260,6 +259,8 @@ import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider
 import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
 import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
 import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { auditLogStreamAlertDALFactory } from "@app/services/alert/providers/audit-log-stream-alert-dal";
+import { auditLogStreamAlertProviderFactory } from "@app/services/alert/providers/audit-log-stream-alert-provider";
 import { certManagerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-alert-provider";
 import { certManagerApplicationAlertProviderFactory } from "@app/services/alert/providers/cert-manager-application-alert-provider";
 import { certManagerCertificateAlertDALFactory } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
@@ -267,6 +268,8 @@ import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/
 import { certManagerSignerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-signer-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { pamFolderAlertDALFactory } from "@app/services/alert/providers/pam-folder-alert-dal";
+import { pamFolderAlertProviderFactory } from "@app/services/alert/providers/pam-folder-alert-provider";
 import { secretReminderAlertDALFactory } from "@app/services/alert/providers/secret-reminder-alert-dal";
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
@@ -315,6 +318,7 @@ import { certificateDALFactory } from "@app/services/certificate/certificate-dal
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { caAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
+import { caKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { caSigningConfigDALFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-dal";
 import { caSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -689,7 +693,6 @@ export const registerRoutes = async (
   const orgMembershipDAL = orgMembershipDALFactory(db);
   const userActivationDAL = userActivationDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
-  const rateLimitDAL = rateLimitDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
   const projectAccessRequestDAL = projectAccessRequestDALFactory(db);
@@ -1131,6 +1134,12 @@ export const registerRoutes = async (
     })
   );
   alertProviderRegistry.register(
+    auditLogStreamAlertProviderFactory({
+      auditLogStreamAlertDAL: auditLogStreamAlertDALFactory(db),
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
     secretReminderAlertProviderFactory({
       secretReminderAlertDAL: secretReminderAlertDALFactory(db),
       folderDAL,
@@ -1158,6 +1167,13 @@ export const registerRoutes = async (
       permissionService,
       licenseService,
       certManagerProjectResolver
+    })
+  );
+  alertProviderRegistry.register(
+    pamFolderAlertProviderFactory({
+      pamFolderAlertDAL: pamFolderAlertDALFactory(db),
+      permissionService,
+      licenseService
     })
   );
   const alertRecipientResolver = alertRecipientResolverFactory({
@@ -1263,7 +1279,8 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     keyStore,
-    queueService
+    queueService,
+    eventEmitter: eventOutboxService
   });
 
   const auditLogStreamOutboxQueue = auditLogStreamOutboxQueueFactory({
@@ -1773,11 +1790,6 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
-  const rateLimitService = rateLimitServiceFactory({
-    rateLimitDAL,
-    licenseService
-  });
-
   const secretScanningQueue = secretScanningQueueFactory({
     telemetryService,
     smtpService,
@@ -1992,6 +2004,12 @@ export const registerRoutes = async (
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
   const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
+
+  const agentVaultVariableService = agentVaultVariableServiceFactory({
+    agentVaultVariableDAL,
+    permissionService,
+    kmsService
+  });
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL,
@@ -2395,17 +2413,6 @@ export const registerRoutes = async (
     cronJob,
     queueService,
     projectEnvDAL,
-    keyStore,
-    auditLogService
-  });
-
-  const projectCleanupQueue = projectCleanupQueueFactory({
-    cronJob,
-    queueService,
-    projectDAL,
-    membershipUserDAL,
-    userDAL,
-    kmsService,
     keyStore,
     auditLogService
   });
@@ -3337,6 +3344,30 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const caKeySourceService = caKeySourceServiceFactory({
+    hsmConnectorService,
+    hsmConnectorDAL,
+    certificateAuthoritySecretDAL,
+    appConnectionDAL,
+    appConnectionService,
+    kmsService,
+    projectDAL,
+    licenseService
+  });
+
+  const projectCleanupQueue = projectCleanupQueueFactory({
+    cronJob,
+    queueService,
+    projectDAL,
+    membershipUserDAL,
+    userDAL,
+    kmsService,
+    certificateAuthoritySecretDAL,
+    caKeySourceService,
+    keyStore,
+    auditLogService
+  });
+
   const certificateProfileService = certificateProfileServiceFactory({
     certificateProfileDAL,
     certificatePolicyDAL,
@@ -3351,7 +3382,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCertDAL,
-    hsmConnectorService,
+    caKeySourceService,
     externalCertificateAuthorityDAL,
     permissionService,
     kmsService,
@@ -3642,7 +3673,7 @@ export const registerRoutes = async (
     pkiSyncDAL,
     pkiSyncQueue,
     internalCertificateAuthorityDAL,
-    hsmConnectorService,
+    caKeySourceService,
     gatewayV2Service,
     gatewayPoolService
   });
@@ -3654,7 +3685,7 @@ export const registerRoutes = async (
     certificateDAL,
     projectDAL,
     kmsService,
-    hsmConnectorService,
+    caKeySourceService,
     keyStore
   });
 
@@ -3678,7 +3709,7 @@ export const registerRoutes = async (
     licenseService,
     caSigningConfigDAL,
     usageMeteringService,
-    hsmConnectorService
+    caKeySourceService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
@@ -3725,7 +3756,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     usageMeteringService,
-    hsmConnectorService,
+    caKeySourceService,
     certificateAuthoritySecretDAL,
     licenseService,
     telemetryService,
@@ -3816,7 +3847,7 @@ export const registerRoutes = async (
     certificatePolicyService,
     licenseService,
     usageMeteringService,
-    hsmConnectorService,
+    caKeySourceService,
     internalCertificateAuthorityDAL
   });
 
@@ -3902,7 +3933,6 @@ export const registerRoutes = async (
   });
 
   const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
-    licenseService,
     pamFolderNotificationConfigDAL,
     approvalPolicyDAL,
     userGroupMembershipDAL,
@@ -3956,6 +3986,7 @@ export const registerRoutes = async (
     groupDAL,
     slackIntegrationDAL,
     kmsService,
+    eventEmitter: eventOutboxService,
     resources: approvalResources
   });
 
@@ -3973,7 +4004,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCertDAL,
-    hsmConnectorService,
+    caKeySourceService,
     kmsService,
     projectDAL,
     permissionService
@@ -3989,7 +4020,6 @@ export const registerRoutes = async (
     identityDAL,
     pamFolderNotificationConfigDAL,
     workflowIntegrationDAL,
-    licenseService,
     approvalPolicyService,
     pamAccessApprovalResource
   });
@@ -4003,7 +4033,8 @@ export const registerRoutes = async (
     userDAL,
     userGroupMembershipDAL,
     notificationService,
-    smtpService
+    smtpService,
+    alertService
   });
 
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
@@ -4120,6 +4151,7 @@ export const registerRoutes = async (
   });
 
   const certificateV3Service = certificateV3ServiceFactory({
+    caKeySourceService,
     usageCounterDAL,
     pkiApplicationDAL,
     keyStore,
@@ -4634,7 +4666,6 @@ export const registerRoutes = async (
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
     secretValidationRule: secretValidationRuleService,
-    rateLimit: rateLimitService,
     folder: folderService,
     resourceMetadata: resourceMetadataService,
     secretImport: secretImportService,
@@ -4697,6 +4728,7 @@ export const registerRoutes = async (
     pamProjectResolver,
     agentVaultProjectResolver,
     agentVaultAccessBundle: agentVaultAccessBundleService,
+    agentVaultVariable: agentVaultVariableService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
@@ -4808,14 +4840,10 @@ export const registerRoutes = async (
   }
 
   // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
-  // (env overrides, license plan, rate limits, admin integration config), so an API pod that stopped
+  // (env overrides, license plan, admin integration config), so an API pod that stopped
   // running them would serve stale config rather than shed background work.
   const cronJobs: TLocalRefreshHandle[] = [];
   if (appCfg.isProductionMode) {
-    const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
-    if (rateLimitSyncJob) {
-      cronJobs.push(rateLimitSyncJob);
-    }
     const licenseSyncJob = await licenseService.initializeBackgroundSync();
     if (licenseSyncJob) {
       cronJobs.push(licenseSyncJob);

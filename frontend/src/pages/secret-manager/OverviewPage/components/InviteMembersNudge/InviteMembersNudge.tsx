@@ -6,7 +6,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
   Card,
@@ -24,15 +23,11 @@ import { emailListSchema, parseEmailList } from "@app/helpers/email";
 import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { SecretsActivationProperties } from "@app/lib/analytics/events";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
 import { useFloatingBarClearance } from "./useFloatingBarClearance";
-
-const ACTIVATION_EVENTS = {
-  Viewed: "Secrets Activation Modal Viewed",
-  Invited: "Secrets Activation Modal Members Invited",
-  Dismissed: "Secrets Activation Modal Dismissed"
-} as const;
 
 const SUCCESS_AUTO_DISMISS_MS = 3000;
 
@@ -83,9 +78,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
-  const telemetry = new Telemetry().getInstance();
-  const baseEventProps = {
-    orgId,
+  const baseEventProps: SecretsActivationProperties = {
     projectId,
     projectType: currentProject?.type,
     presentation: "card",
@@ -96,7 +89,11 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
   useEffect(() => {
     if (isOpen && !hasViewedRef.current) {
       hasViewedRef.current = true;
-      telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
+      analytics.captureForOrganization(
+        AnalyticsEvent.SecretsActivationModalViewed,
+        orgId,
+        baseEventProps
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -119,7 +116,11 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
 
   const onDismiss = () => {
     if (isSubmitting) return;
-    telemetry.capture(ACTIVATION_EVENTS.Dismissed, baseEventProps);
+    analytics.captureForOrganization(
+      AnalyticsEvent.SecretsActivationModalDismissed,
+      orgId,
+      baseEventProps
+    );
     close();
   };
 
@@ -147,7 +148,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
       });
     }
 
-    telemetry.capture(ACTIVATION_EVENTS.Invited, {
+    analytics.captureForOrganization(AnalyticsEvent.SecretsActivationModalMembersInvited, orgId, {
       ...baseEventProps,
       invitedCount: usernames.length
     });

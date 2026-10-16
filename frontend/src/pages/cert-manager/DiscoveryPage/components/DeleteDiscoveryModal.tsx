@@ -1,4 +1,4 @@
-import { DeleteActionModal } from "@app/components/v2";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 
 type Props = {
   isOpen: boolean;
@@ -9,13 +9,13 @@ type Props = {
 
 export const DeleteDiscoveryModal = ({ isOpen, onOpenChange, onConfirm, discoveryName }: Props) => {
   return (
-    <DeleteActionModal
+    <DeleteConfirmDialog
       isOpen={isOpen}
-      onChange={onOpenChange}
+      onOpenChange={onOpenChange}
       title={`Delete discovery job "${discoveryName}"?`}
-      subTitle="This action will also remove all associated scan history."
-      deleteKey="confirm"
-      onDeleteApproved={onConfirm}
+      description="This action will also remove all associated scan history."
+      confirmKey="confirm"
+      onConfirm={onConfirm}
     />
   );
 };

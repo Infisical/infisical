@@ -131,12 +131,12 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
           )}
         />
       </div>
-      <SheetFooter className="border-t">
-        <Button type="submit" variant="sub-org" isPending={isSubmitting} isDisabled={isSubmitting}>
-          Assign to Sub-Organization
-        </Button>
+      <SheetFooter className="justify-end border-t">
         <Button type="button" variant="outline" onClick={() => onClose()}>
           Cancel
+        </Button>
+        <Button type="submit" variant="sub-org" isPending={isSubmitting} isDisabled={isSubmitting}>
+          Assign to Sub-Organization
         </Button>
       </SheetFooter>
     </form>

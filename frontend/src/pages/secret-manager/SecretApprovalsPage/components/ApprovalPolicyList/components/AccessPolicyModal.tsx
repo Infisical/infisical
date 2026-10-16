@@ -1135,12 +1135,12 @@ const Form = ({
           </>
         )}
       </div>
-      <SheetFooter className="border-t">
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
-          {isEditMode ? "Update Policy" : "Add Policy"}
-        </Button>
+      <SheetFooter className="justify-end border-t">
         <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
           Close
+        </Button>
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {isEditMode ? "Update Policy" : "Add Policy"}
         </Button>
       </SheetFooter>
     </form>
