@@ -18,15 +18,24 @@ export const getLiteLLMConnectionListItem = () => {
 export const validateLiteLLMConnectionCredentials = async (config: TLiteLLMConnectionConfig) => {
   const { apiKey, instanceUrl } = config.credentials;
   const baseUrl = removeTrailingSlash(instanceUrl);
+  const headers = { Authorization: `Bearer ${apiKey}` };
 
   // safeRequest guards the user-supplied host against SSRF (blocks localhost/private IPs outside of dev mode)
   try {
-    await safeRequest.get(`${baseUrl}/key/info`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`
-      },
-      validateStatus: (status) => status === 200
+    const { status } = await safeRequest.get(`${baseUrl}/key/info`, {
+      headers,
+      validateStatus: (code) => code === 200 || code === 404
     });
+
+    // The proxy master key is read from LITELLM_MASTER_KEY and has no row in LiteLLM's key table, so
+    // /key/info authenticates it but then 404s. /user/list confirms it is a valid admin key instead.
+    if (status === 404) {
+      await safeRequest.get(`${baseUrl}/user/list`, {
+        headers,
+        params: { page_size: 1 },
+        validateStatus: (code) => code === 200
+      });
+    }
   } catch (error: unknown) {
     logger.error(
       { errorMessage: error instanceof Error ? error.message : "Unknown error" },
