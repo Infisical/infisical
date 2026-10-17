@@ -67,7 +67,7 @@ import {
 } from "@app/context";
 import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
@@ -88,6 +88,7 @@ export const MemberRoleDetailsSection = ({
   isMembershipDetailsLoading,
   onOpenUpgradeModal
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { user } = useUser();
   const userId = user?.id;
   const { projectId, currentProject } = useProject();
@@ -368,7 +369,7 @@ export const MemberRoleDetailsSection = ({
                         !isAllowed || isOwnProjectMembershipDetails || !canModifyMemberRoles;
                       const button = (
                         <Button
-                          variant="project"
+                          variant={scopeVariant}
                           size="xs"
                           onClick={() => {
                             handlePopUpOpen("modifyManyRoles");

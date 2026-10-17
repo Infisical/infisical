@@ -230,6 +230,10 @@ import {
   SanitizedRundeckConnectionSchema
 } from "@app/services/app-connection/rundeck";
 import {
+  S3CompatibleConnectionListItemSchema,
+  SanitizedS3CompatibleConnectionSchema
+} from "@app/services/app-connection/s3-compatible";
+import {
   SalesforceConnectionListItemSchema,
   SanitizedSalesforceConnectionSchema
 } from "@app/services/app-connection/salesforce";
@@ -378,6 +382,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedStripeConnectionSchema.options,
   ...SanitizedKeeperConnectionSchema.options,
   ...SanitizedHpeIloConnectionSchema.options,
+  ...SanitizedS3CompatibleConnectionSchema.options,
   ...SanitizedJiraConnectionSchema.options
 ]);
 
@@ -473,6 +478,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   StripeConnectionListItemSchema,
   KeeperConnectionListItemSchema,
   HpeIloConnectionListItemSchema,
+  S3CompatibleConnectionListItemSchema,
   JiraConnectionListItemSchema
 ]);
 

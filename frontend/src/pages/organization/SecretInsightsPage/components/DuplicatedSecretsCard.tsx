@@ -24,11 +24,7 @@ import { useGetOrgSecretsDuplication } from "@app/hooks/api/secretInsights";
 
 import { DuplicateGroupList } from "./DuplicateGroupList";
 
-type Props = {
-  isPlanRestricted: boolean;
-};
-
-export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
+export const DuplicatedSecretsCard = () => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg.id;
   const { permission } = useOrgPermission();
@@ -37,31 +33,14 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
     OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
     OrgPermissionSubjects.SecretsManagementInsights
   );
-  const canQuery = canSearchAllValues && !isPlanRestricted;
 
-  const tracking = useOrgSecretValueTracking({ orgId, enabled: canQuery });
+  const tracking = useOrgSecretValueTracking({ orgId, enabled: canSearchAllValues });
 
   const { data, isPending, isError } = useGetOrgSecretsDuplication(orgId, {
-    enabled: canQuery && tracking.isTrackingOn
+    enabled: canSearchAllValues && tracking.isTrackingOn
   });
 
   const renderBody = () => {
-    if (isPlanRestricted) {
-      return (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <LockIcon />
-            </EmptyMedia>
-            <EmptyTitle>Duplicate detection is not on your current plan</EmptyTitle>
-            <EmptyDescription>
-              Upgrade to locate secrets that share a value across every project in the organization.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      );
-    }
-
     if (!canSearchAllValues) {
       return (
         <Empty className="border">
@@ -119,7 +98,7 @@ export const DuplicatedSecretsCard = ({ isPlanRestricted }: Props) => {
   };
 
   const remainingMinutes =
-    canQuery && data?.remainingTtl != null && data.remainingTtl >= 0
+    canSearchAllValues && data?.remainingTtl != null && data.remainingTtl >= 0
       ? Math.max(1, Math.ceil(data.remainingTtl / 60))
       : null;
 

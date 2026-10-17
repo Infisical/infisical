@@ -1,5 +1,5 @@
 import { formatDistance } from "date-fns";
-import { CheckIcon, RotateCwIcon, XIcon } from "lucide-react";
+import { CheckIcon, ClockIcon, RotateCwIcon, XIcon } from "lucide-react";
 
 import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { SecretScanningScanStatus } from "@app/hooks/api/secretScanningV2";
@@ -64,7 +64,16 @@ export const SecretScanningScanStatusBadge = ({
     );
   }
 
-  if (status === SecretScanningScanStatus.Queued || status === SecretScanningScanStatus.Scanning) {
+  if (status === SecretScanningScanStatus.Queued) {
+    return (
+      <Badge variant="neutral">
+        <ClockIcon />
+        Queued
+      </Badge>
+    );
+  }
+
+  if (status === SecretScanningScanStatus.Scanning) {
     return (
       <Badge variant="info">
         <RotateCwIcon className="animate-spin" />

@@ -1,4 +1,5 @@
 export enum GitLabDataSourceScope {
+  Account = "account",
   Project = "project",
   Group = "group"
 }

@@ -189,6 +189,7 @@ import { ValidateRenderConnectionCredentialsSchema } from "./render/render-conne
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateRundeckConnectionCredentialsSchema } from "./rundeck";
 import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
+import { ValidateS3CompatibleConnectionCredentialsSchema } from "./s3-compatible";
 import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
@@ -337,6 +338,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
+  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema
 };
 
@@ -1209,6 +1211,14 @@ export const appConnectionServiceFactory = ({
         err instanceof DatabaseError &&
         (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
       ) {
+        if (
+          (err.error as { constraint?: string }).constraint === "certificate_authority_secret_appconnectionid_foreign"
+        ) {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because a certificate authority signs with an AWS KMS key reached through it. Delete that certificate authority first."
+          });
+        }
         throw new BadRequestError({
           message:
             "Cannot delete App Connection with existing connections. Remove all existing connections and try again."

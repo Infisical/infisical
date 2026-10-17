@@ -23,6 +23,20 @@ export enum SecretScanningFindingStatus {
   Ignore = "ignore"
 }
 
+export enum SecretScanningResourceOrderBy {
+  Name = "name",
+  Status = "status",
+  LastScanned = "lastScanned"
+}
+
+export enum SecretScanningFindingOrderBy {
+  CreatedAt = "createdAt",
+  Rule = "rule",
+  ResourceName = "resourceName",
+  Author = "author",
+  Status = "status"
+}
+
 export enum SecretScanningFindingSeverity {
   High = "high",
   Medium = "medium",

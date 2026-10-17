@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { FormatOptionLabelMeta, MultiValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import axios from "axios";
 import {
   CircleAlertIcon,
@@ -246,6 +247,21 @@ const Form = ({
   const formUserBypassers = watch("userBypassers");
   const formGroupBypassers = watch("groupBypassers");
   const formEnvironments = watch("environments");
+  const formPolicyType = watch("policyType");
+  const formSecretPath = watch("secretPath");
+  const suggestedName =
+    isEditMode || !formPolicyType || !formEnvironments?.length
+      ? ""
+      : slugify(
+          [
+            policyDetails[formPolicyType].name,
+            ...formEnvironments.map((env) => env.slug),
+            formSecretPath ?? ""
+          ].join(" "),
+          { lowercase: true, decamelize: false }
+        )
+          .slice(0, 255)
+          .replace(/-+$/, "");
   const bypasserCount = (formUserBypassers || []).length + (formGroupBypassers || []).length;
   const allowedSelfApprovals = watch("allowedSelfApprovals");
 
@@ -711,6 +727,7 @@ const Form = ({
                   {...field}
                   value={field.value || ""}
                   placeholder="e.g. Production Approvals"
+                  suggestedValue={suggestedName}
                   isError={Boolean(error)}
                   autoComplete="off"
                   name="policy-name"
@@ -1135,12 +1152,12 @@ const Form = ({
           </>
         )}
       </div>
-      <SheetFooter className="border-t">
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
-          {isEditMode ? "Update Policy" : "Add Policy"}
-        </Button>
+      <SheetFooter className="justify-end border-t">
         <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
           Close
+        </Button>
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {isEditMode ? "Update Policy" : "Add Policy"}
         </Button>
       </SheetFooter>
     </form>

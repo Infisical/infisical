@@ -64,7 +64,7 @@ import {
 } from "./emails";
 import DynamicSecretLeaseRevocationFailedTemplate from "./emails/DynamicSecretLeaseRevocationFailedTemplate";
 
-export type TSmtpConfig = SMTPTransport.Options;
+export type TSmtpConfig = SMTPTransport.Options & Pick<SMTPTransport.MailOptions, "from">;
 export type TSmtpAttachment = {
   filename: string;
   content: Buffer | string;

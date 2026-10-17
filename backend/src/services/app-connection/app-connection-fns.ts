@@ -265,6 +265,11 @@ import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckConnectionCredentials } from "./rundeck";
 import {
+  getS3CompatibleConnectionListItem,
+  S3CompatibleConnectionMethod,
+  validateS3CompatibleConnectionCredentials
+} from "./s3-compatible";
+import {
   getSalesforceConnectionListItem,
   SalesforceConnectionMethod,
   validateSalesforceConnectionCredentials
@@ -494,6 +499,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getStripeConnectionListItem(),
     getKeeperConnectionListItem(),
     getHpeIloConnectionListItem(),
+    getS3CompatibleConnectionListItem(),
     getJiraConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
@@ -737,6 +743,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -767,6 +774,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Auth Token";
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
+    case S3CompatibleConnectionMethod.AccessKey:
       return "Access Key";
     case AwsConnectionMethod.AssumeRole:
       return "Assume Role";
@@ -1027,6 +1035,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
   [AppConnection.Keeper]: platformManagedCredentialsNotSupported,
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
+  [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
   [AppConnection.Jira]: platformManagedCredentialsNotSupported
 };
 

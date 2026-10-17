@@ -29,6 +29,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateGroup, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -64,6 +65,7 @@ export const OrgGroupModal = ({
   setWizardStep,
   isSubOrganization
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const { data: roles } = useGetOrgRoles(currentOrg?.id || "");
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateGroup();
@@ -199,7 +201,7 @@ export const OrgGroupModal = ({
           Cancel
         </Button>
         <Button
-          variant="org"
+          variant={scopeVariant}
           type="submit"
           isPending={createIsLoading || updateIsLoading}
           isDisabled={createIsLoading || updateIsLoading}

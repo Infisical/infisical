@@ -31,8 +31,8 @@ export const ProductSettingsPage = () => {
         <title>Product Settings | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
+      <div>
+        <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader
             scope={projectType}
             title="Product Settings"

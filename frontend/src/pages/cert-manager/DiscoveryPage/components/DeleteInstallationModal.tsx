@@ -1,4 +1,4 @@
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 
 type Props = {
   isOpen: boolean;
@@ -14,7 +14,7 @@ export const DeleteInstallationModal = ({
   installationName
 }: Props) => {
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       title={`Delete installation "${installationName}"?`}

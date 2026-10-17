@@ -6,7 +6,7 @@ import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -293,7 +293,7 @@ describe("CertificateProfileService", () => {
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthoritySecretDAL: { findOne: vi.fn() } as never,
       certificateAuthorityCertDAL: { find: vi.fn() } as never,
-      hsmConnectorService: {} as never,
+      caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
@@ -481,7 +481,7 @@ describe("CertificateProfileService", () => {
       ).rejects.toThrow(ForbiddenRequestError);
     });
 
-    it("should throw ForbiddenRequestError when profile slug already exists", async () => {
+    it("should throw ConflictError when profile slug already exists", async () => {
       (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(sampleProfile);
 
       await expect(
@@ -490,7 +490,7 @@ describe("CertificateProfileService", () => {
           projectId: "project-123",
           data: validProfileData
         })
-      ).rejects.toThrow(ForbiddenRequestError);
+      ).rejects.toThrow(ConflictError);
     });
 
     it("should create profile with EST enrollment type but no EST config (config attached to Application junction)", async () => {
@@ -911,7 +911,7 @@ describe("CertificateProfileService", () => {
             projectId: "project-123",
             data: duplicateSlugData
           })
-        ).rejects.toThrow(ForbiddenRequestError);
+        ).rejects.toThrow(ConflictError);
       });
 
       it("should validate auto-renewal configuration", async () => {

@@ -1,4 +1,4 @@
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 
 type Props = {
   isOpen: boolean;
@@ -9,7 +9,7 @@ type Props = {
 
 export const DeleteDiscoveryModal = ({ isOpen, onOpenChange, onConfirm, discoveryName }: Props) => {
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       title={`Delete discovery job "${discoveryName}"?`}

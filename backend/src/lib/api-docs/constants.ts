@@ -104,6 +104,7 @@ export enum ApiDocsTags {
   PamDiscovery = "PAM Discovery",
   AgentVault = "Agent Vault",
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultVariables = "Agent Vault Variables",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
@@ -2849,11 +2850,19 @@ export const CertificateAuthorities = {
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
       keySource:
-        "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector.",
+        "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.",
       hsmConnectorId:
         "The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.",
       hsmKeyLabel:
-        "The label of the CA's signing key on the HSM. Not user-supplied: it is the HSM Connector's configured key name prefix followed by a per-CA label built from the CA name and a random 5-character suffix (ca-<name>-<slug>).",
+        "Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.",
+      appConnectionId:
+        "The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.",
+      appConnectionName: "The name of the AWS connection the CA's signing key is reached through. Not user-supplied.",
+      hsmConnectorName: "The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.",
+      region:
+        "The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.",
+      externalKeyId:
+        "The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.",
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
@@ -3220,6 +3229,14 @@ export const AppConnections = {
       apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
       apiKeyId: "The API Key ID used to authenticate with Spacelift.",
       apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
+    },
+    S3_COMPATIBLE: {
+      endpoint:
+        "The S3 API endpoint of the storage provider, without a bucket name: 'https://s3.<region>.amazonaws.com' (AWS S3), 'https://<account-id>.r2.cloudflarestorage.com' (Cloudflare R2), 'https://storage.googleapis.com' (Google Cloud Storage), 'https://<namespace>.compat.objectstorage.<region>.oraclecloud.com' (OCI Object Storage), or a hostname allowed in the Server Console.",
+      accessKeyId: "The Access Key ID used to authenticate with the storage provider.",
+      secretAccessKey: "The Secret Access Key used to authenticate with the storage provider.",
+      region:
+        "The region to sign requests for when the endpoint is a hostname allowed in the Server Console. Defaults to 'us-east-1'. The built-in providers take the region from the endpoint."
     }
   },
   PALO_ALTO_NETWORKS_LOOKUPS: {
@@ -3953,7 +3970,10 @@ export const SecretScanningDataSources = {
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
-      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
+      isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created, and for ${autoScanDescription.noun} added to its configuration later. Defaults to true.`,
+      isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
+      isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Defaults to true, except for GitLab project scope, which does not support it.`,
       config: `The configuration parameters to use for this Data Source.`
     };
   },
@@ -3965,7 +3985,10 @@ export const SecretScanningDataSources = {
       dataSourceId: `The ID of the ${typeName} Data Source to be updated.`,
       name: `The updated name of the ${typeName} Data Source. Must be slug-friendly.`,
       description: `The updated description of the ${typeName} Data Source.`,
-      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
+      isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} added to this Data Source's configuration.`,
+      isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Not supported for GitLab project scope.`,
       config: `The updated configuration parameters to use for this Data Source.`
     };
   },
@@ -3977,33 +4000,50 @@ export const SecretScanningDataSources = {
     resourceId: `The ID of the individual Data Source resource to trigger a scan for.`
   }),
   LIST_RESOURCES: (type: SecretScanningDataSource) => ({
-    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`,
+    search: "Only return resources whose name contains this text, ignoring case.",
+    orderBy:
+      "The field to order resources by: name, status, or lastScanned. Status orders by what needs attention first in ascending order: failed scans, unresolved findings (most first), running scans, queued scans, never scanned, then clean.",
+    orderDirection: "The direction to order resources in. Either 'asc' or 'desc'.",
+    offset: "The number of resources to skip.",
+    limit: "The number of resources to return."
   }),
   LIST_SCANS: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list scans for.`
   }),
+  ADD_RESOURCE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to add resources to.`,
+    resourceName: `The full name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} resource to scan, as the App Connection lists it. A resource already added is ignored.`
+  }),
+  REMOVE_RESOURCE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to remove the resource from.`,
+    resourceId: "The ID of the resource to remove. Its scans and findings are deleted with it."
+  }),
   CONFIG: {
-    GITHUB: {
-      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
-    },
     GITLAB: {
-      includeProjects: 'The projects to include when scanning. Defaults to all projects (["*"]).',
-      scope: "The GitLab scope scanning should occur at (project or group level).",
+      scope:
+        "Where projects are added from: account (projects the connection can read, added one at a time), group, or project (deprecated, kept for existing Data Sources).",
       projectId: "The ID of the project to scan.",
       projectName: "The name of the project to scan.",
       groupId: "The ID of the group to scan projects from.",
       groupName: "The name of the group to scan projects from."
     },
     BITBUCKET: {
-      workspaceSlug: "The workspace to scan.",
-      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+      workspaceSlug: "The workspace to scan."
     }
   }
 };
 
 export const SecretScanningFindings = {
   LIST: {
-    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`
+    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`,
+    status: "Only return findings with this status.",
+    dataSourceId: "Only return findings detected in this Data Source.",
+    resourceId: "Only return findings detected in this resource, such as a repository or project.",
+    orderBy: "The field to sort findings by.",
+    orderDirection: "The direction to sort findings in.",
+    offset: "The number of findings to skip, for pagination.",
+    limit: "The maximum number of findings to return, from 1 to 100."
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
@@ -4431,7 +4471,7 @@ export const ENCRYPTION_KEY_ROTATION = {
   }
 };
 
-const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to the access bundle's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
+const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to Agent Vault's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
 
 export const AGENT_VAULT = {
   ACCESS_BUNDLE: {
@@ -4499,9 +4539,21 @@ export const AGENT_VAULT = {
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
     revealedValue: "The variable's value.",
-    serviceIds:
-      "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
-    createdAt: "When the variable was added to the access bundle.",
+    orderBy: "What to sort variables by: key, or serviceCount for how many services use each one.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match variables whose key contains this text.",
+    keys: "Return only the variables with these exact keys, comma-separated. Every one that exists is returned unless limit is set.",
+    limit: "The maximum number of variables to return. Defaults to 20, or to the number of keys when keys is given.",
+    offset: "How many variables to skip.",
+    totalCount: "How many variables match the search, across every page.",
+    usedByServices:
+      "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. A variable in use can't be deleted.",
+    usedByServiceId: "The ID of a service that uses this variable.",
+    usedByServiceName: "The name of the service.",
+    usedByServiceHostPattern: "The host pattern of the service.",
+    usedByServiceAccessBundleId: "The ID of the access bundle the service belongs to.",
+    usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
+    createdAt: "When the variable was added.",
     updatedAt: "When the variable was last changed."
   },
   MEMBER: {

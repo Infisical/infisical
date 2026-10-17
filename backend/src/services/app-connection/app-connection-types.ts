@@ -437,6 +437,12 @@ import {
   TValidateRundeckConnectionCredentialsSchema
 } from "./rundeck";
 import {
+  TS3CompatibleConnection,
+  TS3CompatibleConnectionConfig,
+  TS3CompatibleConnectionInput,
+  TValidateS3CompatibleConnectionCredentialsSchema
+} from "./s3-compatible";
+import {
   TSalesforceConnection,
   TSalesforceConnectionConfig,
   TSalesforceConnectionInput,
@@ -639,6 +645,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TS3CompatibleConnection
   | TJiraConnection
 );
 
@@ -742,6 +749,7 @@ export type TAppConnectionInput = { id: string } & (
   | TStripeConnectionInput
   | TKeeperConnectionInput
   | THpeIloConnectionInput
+  | TS3CompatibleConnectionInput
   | TJiraConnectionInput
 );
 
@@ -879,6 +887,7 @@ export type TAppConnectionConfig =
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
   | THpeIloConnectionConfig
+  | TS3CompatibleConnectionConfig
   | TJiraConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -973,6 +982,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema
+  | TValidateS3CompatibleConnectionCredentialsSchema
   | TValidateJiraConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

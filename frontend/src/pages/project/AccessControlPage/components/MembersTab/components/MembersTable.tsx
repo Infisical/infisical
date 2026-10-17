@@ -65,7 +65,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import { usePagination, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import { useGetProjectRoles, useGetWorkspaceUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -90,6 +90,7 @@ type Filter = {
 };
 
 export const MembersTable = ({ handlePopUpOpen }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const { user } = useUser();
   const navigate = useNavigate();
@@ -225,7 +226,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              variant={isTableFiltered ? "project" : "outline"}
+              variant={isTableFiltered ? scopeVariant : "outline"}
               aria-label={isProjectRolesLoading ? "Loading role filters" : "Filter users by role"}
               isDisabled={isProjectRolesLoading || isProjectRolesError}
             >

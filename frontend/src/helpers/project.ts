@@ -127,8 +127,7 @@ export const hasIntermediateProjectsView = (type: ProjectType) =>
 
 const PROJECT_TYPES_WITH_PROJECT_TEMPLATES = new Set<ProjectType>([
   ProjectType.SecretManager,
-  ProjectType.KMS,
-  ProjectType.PAM
+  ProjectType.KMS
 ]);
 
 export const hasProjectTemplates = (type: ProjectType) =>

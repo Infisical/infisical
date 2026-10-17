@@ -1,6 +1,6 @@
 import { memberDisplayName } from "@app/components/agent-vault/MemberName";
 import { createNotification } from "@app/components/notifications";
-import { DeleteConfirmDialog } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { useRevokeAgentVaultSession } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
@@ -28,7 +28,7 @@ export const RevokeSessionDialog = ({ session, onOpenChange }: Props) => {
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={Boolean(session)}
       onOpenChange={onOpenChange}
       title={`Revoke Session for "${session ? memberDisplayName(session.actor) : ""}"`}

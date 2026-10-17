@@ -889,7 +889,7 @@ const ImportSecretsContent = ({
             </TabsContent>
           </div>
         </Tabs>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
@@ -898,7 +898,6 @@ const ImportSecretsContent = ({
               variant="project"
               type="submit"
               form={PASTE_SECRETS_FORM_ID}
-              className="ml-auto"
               isDisabled={!isPasteDirty}
             >
               Parse Secrets
@@ -1225,7 +1224,7 @@ const ImportSecretsContent = ({
         </div>
       </div>
 
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
         {!initialParsedSecrets && (
           <Button
             variant="outline"
