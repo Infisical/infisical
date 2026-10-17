@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { type JSX, ReactNode, useEffect, useState } from "react";
 
 import { useToggle } from "@app/hooks";
 
