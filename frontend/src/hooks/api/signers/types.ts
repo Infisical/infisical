@@ -5,15 +5,11 @@ export type TGetUserSignerPermissionDTO = {
   signerId: string;
 };
 
-export type TSignerExternalConfiguration =
-  | {
-      caType: CaType.DIGICERT;
-      reissueFromExternalOrderId?: string;
-    }
-  | {
-      caType: CaType.ADCS;
-      template?: string;
-    };
+export type TSignerExternalConfiguration = {
+  reissueFromExternalOrderId?: string;
+  importFromExternalOrderId?: string;
+  template?: string;
+};
 
 export enum SignerStatus {
   Pending = "pending",
@@ -358,6 +354,8 @@ export type TCreateSignerApprovalPolicyInput = {
 export type TSignerCertificateInput = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
+  hsmKeyLabel?: string;
+  hsmKeyId?: string;
 };
 
 export type TCreateSignerDTO = {
@@ -394,10 +392,7 @@ export type TReissueSignerCertificateDTO = {
   commonName?: string;
   certificateTtlDays?: number;
   keyAlgorithm?: SignerKeyAlgorithm;
-  certificate?: {
-    keySource: CertKeySource;
-    hsmConnectorId?: string;
-  };
+  certificate?: TSignerCertificateInput;
   externalConfiguration?: TSignerExternalConfiguration;
 };
 

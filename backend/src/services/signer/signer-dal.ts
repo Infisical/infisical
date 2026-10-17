@@ -177,5 +177,33 @@ export const signerDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithCertificate, findByStatusWithCertificate, findByProjectId, countByProjectId };
+  const findOneByCurrentHsmKey = async (
+    hsmConnectorId: string,
+    hsmPublicKeySpki: Buffer,
+    excludeSignerId: string | undefined,
+    tx?: Knex
+  ): Promise<TPkiSigners | undefined> => {
+    try {
+      let query = (tx || db.replicaNode())(TableName.PkiSigners)
+        .join(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
+        .where(`${TableName.Certificate}.hsmConnectorId`, hsmConnectorId)
+        .where(`${TableName.Certificate}.hsmPublicKeySpki`, hsmPublicKeySpki)
+        .select(selectAllTableCols(TableName.PkiSigners));
+      if (excludeSignerId) {
+        query = query.whereNot(`${TableName.PkiSigners}.id`, excludeSignerId);
+      }
+      return (await query.first()) as TPkiSigners | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSignerByCurrentHsmKey" });
+    }
+  };
+
+  return {
+    ...orm,
+    findByIdWithCertificate,
+    findByStatusWithCertificate,
+    findByProjectId,
+    countByProjectId,
+    findOneByCurrentHsmKey
+  };
 };
