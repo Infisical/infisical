@@ -19,22 +19,27 @@ export const Route = createFileRoute(
   component: ApprovalRequestDetailPage,
   validateSearch: zodValidator(ApprovalRequestSearchSchema),
   beforeLoad: ({ context, params, search }) => {
+    const parent =
+      search.policyType === ApprovalPolicyType.CertCodeSigning
+        ? {
+            label: "Requests",
+            link: linkOptions({
+              to: "/organizations/$orgId/cert-manager/requests",
+              params: { orgId: params.orgId },
+              search: { selectedTab: "signing-requests" as const }
+            })
+          }
+        : {
+            label: "Approvals",
+            link: linkOptions({
+              to: "/organizations/$orgId/cert-manager/approvals",
+              params: { orgId: params.orgId }
+            })
+          };
     return {
       breadcrumbs: [
         ...context.breadcrumbs,
-        {
-          label: "Approvals",
-          link: linkOptions({
-            to: "/organizations/$orgId/cert-manager/approvals",
-            params: { orgId: params.orgId },
-            search: {
-              section:
-                search.policyType === ApprovalPolicyType.CertCodeSigning
-                  ? "code-signing"
-                  : "certificates"
-            }
-          })
-        },
+        parent,
         {
           label: "Approval Request"
         }
