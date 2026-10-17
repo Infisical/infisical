@@ -1,6 +1,6 @@
 # Dialog
 
-> **v4 status:** Implemented as [`ui/dialog.tsx`](../../ui/dialog.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#dialog`.
+> **v4 status:** Implemented as [`ui/dialog.tsx`](../../ui/dialog.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
 
 A focused task that needs a few fields: a title that names the task, one line on why, the fields, then Cancel and one primary that repeats the title's verb.
 

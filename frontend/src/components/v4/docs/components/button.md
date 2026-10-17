@@ -1,6 +1,6 @@
 # Button
 
-> **v4 status:** Implemented as [`ui/button.tsx`](../../ui/button.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#button`.
+> **v4 status:** Partly implemented. The base is [`ui/button.tsx`](../../ui/button.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#button`. The `primary`, `accent` and `danger-ghost` variants, `loading` with the halftone band, `selected`, and `icon` / `iconRight` are not yet implemented.
 
 One action, named with a verb: "Add secret", "Approve", "Revoke access". Secondary is the default; use primary once per view for the thing the page is for.
 

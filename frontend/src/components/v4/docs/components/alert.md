@@ -1,6 +1,6 @@
 # Alert
 
-> **v4 status:** Partly implemented. The base is [`ui/alert.tsx`](../../ui/alert.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#alert`. `Banner` is not yet implemented.
+> **v4 status:** Partly implemented. The base is [`ui/alert.tsx`](../../ui/alert.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. `Banner` is not yet implemented.
 
 Says what happened and what to do next, inline in the page. Each tone has its wash, border, icon and a deep title color, and `Banner` is the full-width form for standing conditions like working in production: `accent-wash` ground, `accent-line` border, ink text and an `accent-fg` icon and link.
 

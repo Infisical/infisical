@@ -1,6 +1,6 @@
 # Popover
 
-> **v4 status:** Implemented as [`ui/popover.tsx`](../../ui/popover.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#popover`.
+> **v4 status:** Implemented as [`ui/popover.tsx`](../../ui/popover.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
 
 A small task that keeps its context: change a rotation schedule, pick a scope, confirm a reference. Anything longer becomes a Dialog or a Sheet.
 

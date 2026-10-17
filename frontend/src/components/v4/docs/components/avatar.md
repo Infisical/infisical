@@ -1,6 +1,6 @@
 # Avatar
 
-> **v4 status:** Partly implemented. The base is [`ui/avatar.tsx`](../../ui/avatar.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#avatar`. `AvatarGroup` and `Identity` are not yet implemented.
+> **v4 status:** Partly implemented. The base is [`ui/avatar.tsx`](../../ui/avatar.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. `AvatarGroup` and `Identity` are not yet implemented.
 
 Shows who or what acted. People get initials on ink, machines a server glyph on tint, agents a robot glyph on the accent, so the three kinds read apart at a glance.
 

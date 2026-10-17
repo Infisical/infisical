@@ -4,7 +4,7 @@ Usage guidelines for each Infisical 2.0 component and pattern. Read [`../DESIGN.
 
 Each page opens with its v4 status:
 
-- **Implemented**: the shadcn Radix primitive in `ui/` covers it, restyled by `v4.css`.
+- **Implemented**: the shadcn Radix primitive in `ui/` covers the core behavior, restyled by `v4.css`. Its props keep shadcn names, so map the "You provide" list onto them.
 - **Partly implemented**: the primitive is installed, and the page names what still has to be built on top of it.
 - **Not yet implemented**: no v4 code yet. The page describes the target behavior for whoever builds it.
 
@@ -21,7 +21,7 @@ The "You provide" lists come from the 2.0 reference implementation. Treat them a
 | [Avatar](components/avatar.md) | Partly implemented | [`ui/avatar.tsx`](../ui/avatar.tsx) |
 | [Badge](components/badge.md) | Implemented | [`ui/badge.tsx`](../ui/badge.tsx) |
 | [Breadcrumb](components/breadcrumb.md) | Partly implemented | [`ui/breadcrumb.tsx`](../ui/breadcrumb.tsx) |
-| [Button](components/button.md) | Implemented | [`ui/button.tsx`](../ui/button.tsx) |
+| [Button](components/button.md) | Partly implemented | [`ui/button.tsx`](../ui/button.tsx) |
 | [ButtonGroup](components/button-group.md) | Implemented | [`ui/button-group.tsx`](../ui/button-group.tsx) |
 | [Card](components/card.md) | Partly implemented | [`ui/card.tsx`](../ui/card.tsx) |
 | [Checkbox](components/checkbox.md) | Implemented | [`ui/checkbox.tsx`](../ui/checkbox.tsx) |

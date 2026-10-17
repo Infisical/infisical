@@ -1,6 +1,6 @@
 # Spinner
 
-> **v4 status:** Partly implemented. The base is [`ui/spinner.tsx`](../../ui/spinner.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#spinner`. The pixel-grid mark, the page spinner and the busy-button halftone described here are not yet implemented.
+> **v4 status:** Partly implemented. The base is [`ui/spinner.tsx`](../../ui/spinner.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. The pixel-grid mark, the page spinner and the busy-button halftone described here are not yet implemented.
 
 The Infisical infinity, moving while something works: two pixels for a line of text, or the mark in pixels for a card or a whole view. Loader wraps it with a label.
 

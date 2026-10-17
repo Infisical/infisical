@@ -1,6 +1,6 @@
 # Separator
 
-> **v4 status:** Implemented as [`ui/separator.tsx`](../../ui/separator.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#separator`.
+> **v4 status:** Implemented as [`ui/separator.tsx`](../../ui/separator.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
 
 A 1px rule. `line` between sections, `line-soft` between rows inside a surface, vertical between groups in a toolbar, and labeled for time breaks in activity.
 

@@ -1,6 +1,6 @@
 # Tooltip
 
-> **v4 status:** Implemented as [`ui/tooltip.tsx`](../../ui/tooltip.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#tooltip`.
+> **v4 status:** Implemented as [`ui/tooltip.tsx`](../../ui/tooltip.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
 
 A short label for an icon button or a truncated value, on hover after 300ms and on focus at once. Ink bubble, on-ink text, an 8px nub pointing at the trigger.
 

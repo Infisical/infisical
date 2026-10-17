@@ -1,6 +1,6 @@
 # Sheet
 
-> **v4 status:** Implemented as [`ui/sheet.tsx`](../../ui/sheet.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#sheet`.
+> **v4 status:** Implemented as [`ui/sheet.tsx`](../../ui/sheet.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
 
 Details and edits for one row without leaving the list. It slides over the right edge at 440px, with the object's type as an eyebrow, its name as the title and its state as badges.
 

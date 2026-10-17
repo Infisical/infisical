@@ -1,6 +1,6 @@
 # CommandMenu
 
-> **v4 status:** Partly implemented. The base is [`ui/command.tsx`](../../ui/command.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#command`. Pages, the crumb in the search row and the SearchTrigger described here are not yet implemented on top of it.
+> **v4 status:** Partly implemented. The base is [`ui/command.tsx`](../../ui/command.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Pages, the crumb in the search row and the SearchTrigger described here are not yet implemented on top of it.
 
 Global navigation and search, opened with `mod+K` from any page: a search row, results grouped under eyebrows that filter and rank as you type, pages to drill into, and a footer of key hints. It is a 600px dialog near the top of the page on `scrim`, so the page stays in view under it.
 

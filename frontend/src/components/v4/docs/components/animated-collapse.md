@@ -1,6 +1,6 @@
 # AnimatedCollapse
 
-> **v4 status:** Partly implemented. The base is [`ui/collapsible.tsx`](../../ui/collapsible.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#collapsible`. It covers open and close. The height and fade animation described here is not yet implemented.
+> **v4 status:** Partly implemented. The base is [`ui/collapsible.tsx`](../../ui/collapsible.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. It covers open and close. The height and fade animation described here is not yet implemented.
 
 Shows and hides a region by animating its height, over 200ms on the shared slide curve (`cubic-bezier(.2, 0, 0, 1)`, the tab indicator's), with a matching fade. A utility for disclosures, accordions, settings that reveal their options, FileTree folders and Json nodes.
 

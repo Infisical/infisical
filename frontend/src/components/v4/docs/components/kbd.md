@@ -1,6 +1,6 @@
 # Kbd
 
-> **v4 status:** Implemented as [`ui/kbd.tsx`](../../ui/kbd.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#kbd`.
+> **v4 status:** Implemented as [`ui/kbd.tsx`](../../ui/kbd.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
 
 A keyboard shortcut drawn as flat key caps: mono, `muted` on a `tint` cap with a `line` border, one cap per key, 2px apart. Menus, tooltips and inputs draw their shortcut hints with it.
 

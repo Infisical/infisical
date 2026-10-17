@@ -1,6 +1,6 @@
 # Breadcrumb
 
-> **v4 status:** Partly implemented. The base is [`ui/breadcrumb.tsx`](../../ui/breadcrumb.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#breadcrumb`. The `product` and `eyebrow` variants and switching crumbs are not yet implemented.
+> **v4 status:** Partly implemented. The base is [`ui/breadcrumb.tsx`](../../ui/breadcrumb.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. The `product` and `eyebrow` variants and switching crumbs are not yet implemented.
 
 Shows where a page sits: organization, project, environment, path. Ancestors are `text2` links; the current page is ink at 600 and not a link.
 

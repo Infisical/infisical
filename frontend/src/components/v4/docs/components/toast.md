@@ -1,6 +1,6 @@
 # Toast
 
-> **v4 status:** Implemented as [`ui/sonner.tsx`](../../ui/sonner.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#sonner`.
+> **v4 status:** Implemented as [`ui/sonner.tsx`](../../ui/sonner.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
 
 Confirms what just happened, bottom right, newest at the bottom. It offers Undo instead of asking first. It follows the theme: `surface` with a `line` border and `shadow-pop` in light, a raised gray in dark.
 

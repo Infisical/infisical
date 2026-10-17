@@ -1,6 +1,6 @@
 # Table
 
-> **v4 status:** Partly implemented. The base is [`ui/table.tsx`](../../ui/table.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#table`. Column sizing, `maxWidth` truncation and load more are not yet implemented.
+> **v4 status:** Partly implemented. The base is [`ui/table.tsx`](../../ui/table.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Column sizing, `maxWidth` truncation and load more are not yet implemented.
 
 Built for scanning hundreds of rows: an uppercase header inside the tint frame, 48px rows on the inset surface, columns that fit their content, the primary column in mono, and row actions at the end, never in the name.
 

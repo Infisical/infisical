@@ -1,6 +1,6 @@
 # Sidebar
 
-> **v4 status:** Partly implemented. The base is [`ui/sidebar.tsx`](../../ui/sidebar.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#sidebar`. The Infisical composite described here (tools row, spaces, account button, rail, Switcher) is not yet implemented on top of it.
+> **v4 status:** Partly implemented. The base is [`ui/sidebar.tsx`](../../ui/sidebar.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. The Infisical composite described here (tools row, spaces, account button, rail, Switcher) is not yet implemented on top of it.
 
 The app's navigation, beside the inset: a tools row (collapse, search, invite), a switch between spaces (Home, Organization), sections of nav rows, footer rows, and one account button that holds both you and the organization, on `sidebar` with a 1px `sidebar-line` on its right edge. It is 224px wide and collapses to a 53px rail of icons. The current page is neutral; only counts take the accent.
 
@@ -22,7 +22,7 @@ The app's navigation, beside the inset: a tools row (collapse, search, invite), 
 - With `spaces`, the nav shows one space at a time: Home (the products) or Organization (integrations, access, audit logs, billing, settings). A segmented switch under the tools row picks it, in even segments across the sidebar, on a `sidebar-hover` track with the `surface` thumb.
 - The space holding the current page shows by default, and a page opened from elsewhere (the command menu, a link) brings its space with it. Switching only changes what the nav lists; the page stays until you pick a row.
 - A space that is not showing but holds a count gets a 6px `accent-fg` dot after its label, and screen readers hear "has updates", so nothing waiting on you hides behind the switch.
-- In the rail the switch is a 36px pill of the spaces' icons stacked under the tools (Home `apps`, Organization `building`), the shown one on the `surface` thumb, each with a tooltip; the dot moves to the icon's corner.
+- In the rail the switch is a 36px pill of the spaces' icons stacked under the tools (Home `apps`, Organization `building`; the icon names the space, never an organization, which has no icon), the shown one on the `surface` thumb, each with a tooltip; the dot moves to the icon's corner.
 - The nav landmark takes the space's name ("Home navigation"). The switch is a tablist: Left and Right (Up and Down in the rail) move between spaces.
 
 ## Layout
