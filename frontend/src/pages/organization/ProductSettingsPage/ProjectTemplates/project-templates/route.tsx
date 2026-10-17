@@ -27,7 +27,7 @@ export const Route = createFileRoute(
         })
       },
       {
-        label: "Project Templates"
+        label: "Project Template"
       }
     ]
   }),

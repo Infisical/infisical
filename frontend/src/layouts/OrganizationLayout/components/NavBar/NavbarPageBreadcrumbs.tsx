@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Link, type LinkProps, useParams, useRouterState } from "@tanstack/react-router";
+import { Link, type LinkProps, useRouterState } from "@tanstack/react-router";
 
 import {
   Breadcrumb,
@@ -9,7 +9,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from "@app/components/v3";
-import { useImplicitProduct } from "@app/hooks";
 
 export type TNavBreadcrumb = {
   label: string;
@@ -27,11 +26,9 @@ export const useNavBreadcrumbs = () =>
   });
 
 export const NavbarPageBreadcrumbs = () => {
-  const params = useParams({ strict: false });
-  const implicitProduct = useImplicitProduct();
   const breadcrumbs = useNavBreadcrumbs();
 
-  if ((!params.projectId && !implicitProduct) || !breadcrumbs.length) return null;
+  if (!breadcrumbs.length) return null;
 
   return (
     <Breadcrumb className="hidden h-full min-w-0 items-center border-l border-border-soft pr-2 pl-4 md:flex">

@@ -41,6 +41,8 @@ const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.AgentVault
 ];
 
+const ORG_PRODUCT_PAGE_PATH_RE = /^\/organizations\/[^/]+\/projects\/([^/]+)\//;
+
 const TypeSelectInner = ({
   currentType,
   currentProjectName,
@@ -249,6 +251,13 @@ export const TypeSelect = () => {
     if (project) {
       return <TypeSelectInner currentType={project.type} showDivider />;
     }
+    return null;
+  }
+
+  const orgProductSlug = pathname.match(ORG_PRODUCT_PAGE_PATH_RE)?.[1];
+  const orgProductType = orgProductSlug ? urlSlugToProjectType(orgProductSlug) : null;
+  if (orgProductType) {
+    return <TypeSelectInner currentType={orgProductType} />;
   }
 
   return null;

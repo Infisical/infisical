@@ -620,6 +620,7 @@ export const Navbar = () => {
                 </NavbarSwitcherContent>
               </NavbarSwitcher>
             </div>
+            {!isProjectScope && <NavbarPageBreadcrumbs />}
             {!isProjectScope && (
               <OrgPermissionCan
                 I={OrgPermissionBillingActions.Read}

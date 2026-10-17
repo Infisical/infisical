@@ -10,10 +10,14 @@ export const Route = createFileRoute(
     breadcrumbs: [
       {
         label: "Networking",
-        link: linkOptions({ to: "/organizations/$orgId/networking" as const, params })
+        link: linkOptions({
+          to: "/organizations/$orgId/networking" as const,
+          params,
+          search: { selectedTab: "relays" }
+        })
       },
       {
-        label: "Relays"
+        label: "Relay"
       }
     ]
   })

@@ -1,5 +1,7 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
+import { OrgAccessControlTabSections } from "@app/types/org";
+
 import { UserDetailsByIDPage } from "./UserDetailsByIDPage";
 
 export const Route = createFileRoute(
@@ -10,10 +12,14 @@ export const Route = createFileRoute(
     breadcrumbs: [
       {
         label: "Access Control",
-        link: linkOptions({ to: "/organizations/$orgId/access-management" as const, params })
+        link: linkOptions({
+          to: "/organizations/$orgId/access-management" as const,
+          params,
+          search: { selectedTab: OrgAccessControlTabSections.Member }
+        })
       },
       {
-        label: "Users"
+        label: "User"
       }
     ]
   })
