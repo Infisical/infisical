@@ -1,4 +1,5 @@
 import {
+  Fragment,
   SetStateAction,
   useCallback,
   useEffect,
@@ -15,6 +16,7 @@ import { isSortable } from "@dnd-kit/react/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
+import { defaultRangeExtractor, Range, useVirtualizer } from "@tanstack/react-virtual";
 import { AxiosError } from "axios";
 import {
   ArrowDownZAIcon,
@@ -231,6 +233,7 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
+import { useSecretManagerScrollContainer } from "@app/layouts/SecretManagerLayout";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
@@ -417,6 +420,14 @@ const OverviewPageContent = () => {
   });
   const { permission } = useProjectPermission();
   const tableRef = useRef<HTMLDivElement>(null);
+  // The row marking where the virtualized secret rows begin, held as state rather than a ref so
+  // that the effect measuring its offset re-runs the moment it mounts. It only exists in the
+  // loaded branch of the table body, and tableView is already "table" while that branch still
+  // renders skeletons, so an effect keyed on tableView never sees the row appear.
+  const [secretRowsStartElement, setSecretRowsStartElement] = useState<HTMLTableRowElement | null>(
+    null
+  );
+  const secretManagerScrollContainer = useSecretManagerScrollContainer();
   const { currentProject, projectId } = useProject();
   const { user } = useUser();
   const { data: approvalCount } = useGetSecretApprovalRequestCount({ projectId });
@@ -3278,6 +3289,179 @@ const OverviewPageContent = () => {
     };
   }, [tableRef, tableView, isTableEmpty, columnKey, savedWidths?.join(",")]);
 
+  const [secretRowsScrollMargin, setSecretRowsScrollMargin] = useState(0);
+
+  // A row's unsaved value or name edit lives in that row's own form until it is saved or, in batch
+  // mode, until its debounce hands it to the batch store. Unmounting the row would throw it away,
+  // so rows that report unsaved edits stay in the rendered set no matter where they scroll to.
+  // Keyed by secret key, which is arbitrary user input, so a Set rather than a plain object: a
+  // secret named "toString" or "constructor" would read back truthy from Object.prototype and pin
+  // its row for the life of the page.
+  const [unsavedRows, setUnsavedRows] = useState<Set<string>>(() => new Set());
+
+  const handleSecretRowUnsavedChange = useCallback((key: string, hasUnsavedChanges: boolean) => {
+    setUnsavedRows((prev) => {
+      if (prev.has(key) === hasUnsavedChanges) return prev;
+
+      const next = new Set(prev);
+      if (hasUnsavedChanges) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const pinnedSecretRowIndices = useMemo(() => {
+    if (!unsavedRows.size) return [] as number[];
+
+    const indices: number[] = [];
+    mergedSecKeys.forEach((key, index) => {
+      if (unsavedRows.has(key)) indices.push(index);
+    });
+    return indices;
+  }, [unsavedRows, mergedSecKeys]);
+
+  const secretRowsRangeExtractor = useCallback(
+    (range: Range) => {
+      if (!pinnedSecretRowIndices.length) return defaultRangeExtractor(range);
+
+      const indices = new Set(defaultRangeExtractor(range));
+      pinnedSecretRowIndices.forEach((index) => indices.add(index));
+      return Array.from(indices).sort((a, b) => a - b);
+    },
+    [pinnedSecretRowIndices]
+  );
+
+  const measureSecretRowGroup = useCallback((element: Element) => {
+    // One logical secret row is its main <tr> plus any following override or expanded
+    // sibling <tr> carrying the same data-index, so sum the group's height.
+    const index = element.getAttribute("data-index");
+    let height = 0;
+    let node: Element | null = element;
+    while (node instanceof HTMLElement && node.getAttribute("data-index") === index) {
+      height += node.offsetHeight;
+      node = node.nextElementSibling;
+    }
+    return height;
+  }, []);
+
+  const secretRowVirtualizer = useVirtualizer({
+    count: mergedSecKeys.length,
+    getScrollElement: () => secretManagerScrollContainer,
+    estimateSize: () => (isSingleEnvView ? 56 : 40),
+    overscan: 8,
+    scrollMargin: secretRowsScrollMargin,
+    measureElement: measureSecretRowGroup,
+    rangeExtractor: secretRowsRangeExtractor,
+    getItemKey: (index) => mergedSecKeys[index]
+  });
+
+  const measureSecretRowsScrollMargin = useCallback(() => {
+    const scrollElement = secretManagerScrollContainer;
+    if (!secretRowsStartElement || !scrollElement) return;
+
+    const next =
+      secretRowsStartElement.getBoundingClientRect().top -
+      scrollElement.getBoundingClientRect().top +
+      scrollElement.scrollTop;
+    setSecretRowsScrollMargin((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
+  }, [secretRowsStartElement, secretManagerScrollContainer]);
+
+  // Measure once the sentinel is mounted, then leave the observer to track it. Everything that
+  // moves the sentinel also resizes the table's own box or the scroll container's: rows arriving
+  // in the blocks above it grow the table, and the card header rewrapping is a response to the
+  // width the observer is already watching. The selection panel is portalled and fixed, so it
+  // never moves the sentinel at all. Re-measuring on every commit instead would make this the
+  // one unconditional setState scheduled from a layout effect, which React counts as a nested
+  // update: any commit that moves the sentinel would then schedule the next one without bound.
+  useLayoutEffect(() => {
+    const scrollElement = secretManagerScrollContainer;
+    const tableElement = tableRef.current;
+    if (!secretRowsStartElement || !scrollElement || !tableElement) return undefined;
+
+    measureSecretRowsScrollMargin();
+    const resizeObserver = new ResizeObserver(measureSecretRowsScrollMargin);
+    resizeObserver.observe(tableElement);
+    resizeObserver.observe(scrollElement);
+
+    // eslint-disable-next-line consistent-return
+    return () => resizeObserver.disconnect();
+  }, [secretManagerScrollContainer, secretRowsStartElement, measureSecretRowsScrollMargin]);
+
+  const secretVirtualItems = secretRowVirtualizer.getVirtualItems();
+  const secretRowsTotalSize = secretRowVirtualizer.getTotalSize();
+  const secretRowsSpacerCols = visibleEnvs.length + 2;
+
+  // A pinned row sits outside the scrolled window, so the rendered indices are not always one
+  // contiguous run. Pad ahead of every item that does not start where the previous one ended,
+  // which keeps each row on its own offset and the table's height equal to the virtual total.
+  const { rows: secretRowsRenderPlan, bottomSpacer: secretRowsBottomSpacer } = (() => {
+    const rows: { index: number; key: string; spacerBefore: number }[] = [];
+    let cursor = 0;
+
+    secretVirtualItems.forEach((virtualItem) => {
+      const start = virtualItem.start - secretRowsScrollMargin;
+      rows.push({
+        index: virtualItem.index,
+        key: mergedSecKeys[virtualItem.index],
+        spacerBefore: Math.max(0, start - cursor)
+      });
+      cursor = Math.max(cursor, virtualItem.end - secretRowsScrollMargin);
+    });
+
+    return { rows, bottomSpacer: rows.length ? Math.max(0, secretRowsTotalSize - cursor) : 0 };
+  })();
+
+  // Windowing puts only a slice of the secret rows in the DOM, so assistive technology would
+  // otherwise announce the rendered subset as the whole table and renumber rows while scrolling.
+  // Same mechanism TableVirtualBody uses for its own windowed rows: the real total on the table
+  // and a stable 1-based position on each row. The spacer rows are already kept out of the tree
+  // with aria-hidden. Written to the DOM rather than drilled through every row component, because
+  // these rows come from eight components and two of them are outside this change.
+  // A plain effect, not a layout effect: this is announced content, not geometry, so it does not
+  // need to land before paint.
+  useEffect(() => {
+    const table = tableRef.current?.querySelector<HTMLTableElement>(":scope > table");
+    const body = table?.tBodies[0];
+    if (!table || !body) return;
+
+    const headerRows = Array.from(table.tHead?.rows ?? []);
+    headerRows.forEach((row, index) => row.setAttribute("aria-rowindex", String(index + 1)));
+
+    // Every <tr> the table exposes is a row to assistive technology, including a secret's
+    // personal-override row and its expanded sub-table, so each one is counted and numbered.
+    // Those companion rows repeat their secret's data-index, which is what marks where a new
+    // secret starts; the rows between two secrets belong to the earlier one.
+    const rows = Array.from(body.rows).filter((row) => !row.hasAttribute("aria-hidden"));
+
+    let exposed = 0;
+    let unmounted = 0;
+    let mountedSecrets = 0;
+    let lastDataIndex: string | null = null;
+
+    rows.forEach((row) => {
+      const dataIndex = row.getAttribute("data-index");
+
+      if (dataIndex !== null && dataIndex !== lastDataIndex) {
+        // Secrets the window skipped over still occupy positions, one row each: an unmounted
+        // row's own companions cannot be known without mounting it.
+        unmounted = Number(dataIndex) - mountedSecrets;
+        mountedSecrets += 1;
+      } else if (dataIndex === null && mountedSecrets > 0) {
+        // Past the virtualized block, so everything it did not render is now behind us.
+        unmounted = mergedSecKeys.length - mountedSecrets;
+      }
+
+      lastDataIndex = dataIndex;
+      exposed += 1;
+      row.setAttribute("aria-rowindex", String(headerRows.length + unmounted + exposed));
+    });
+
+    table.setAttribute(
+      "aria-rowcount",
+      String(headerRows.length + exposed + (mergedSecKeys.length - mountedSecrets))
+    );
+  }, [secretRowsRenderPlan, mergedSecKeys.length, tableView]);
+
   let quickAddSaveLabel: string | undefined;
   if (isBatchModeActive) quickAddSaveLabel = "Add Pending Change";
   else if (visibleEnvs.length > 1) quickAddSaveLabel = "Add to all environments";
@@ -4224,44 +4408,70 @@ const OverviewPageContent = () => {
                             }
                           />
                         ))}
-                        {mergedSecKeys.map((key) => (
-                          <SecretTableRow
-                            isSelected={
-                              !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
-                            }
-                            onToggleSecretSelect={(_, isShiftKey) => {
-                              if (!hasPendingBatchChanges)
-                                toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
-                            }}
-                            isExpanded={expandedSecretRows.has(key)}
-                            onToggleExpand={toggleSecretRowExpand}
-                            isSecretVisible={isSecretRowVisible(key)}
-                            onToggleSecretVisible={toggleSecretRowVisible}
-                            secretPath={secretPath}
-                            getImportedSecretByKey={getImportedSecretByKey}
-                            isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
-                            onSecretCreate={handleSecretCreate}
-                            onSecretDelete={handleSecretDelete}
-                            onSecretUpdate={handleSecretUpdate}
-                            key={overviewRowKey("secret", key)}
-                            environments={visibleEnvs}
-                            secretKey={key}
-                            getSecretByKey={getSecretByKeyWithPending}
-                            importedBy={importedBy}
-                            isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
-                            isBatchMode={isBatchModeActive}
-                            onBatchRevert={handleBatchRevert}
-                            isSelectionDisabled={hasPendingBatchChanges}
-                            onCopySecret={handleCopySecret}
-                            onAccessInsightsUpgrade={() =>
-                              openUpgradeGate({
-                                intent: SecretAccessInsightsUpgradeIntent
-                              })
-                            }
-                            activityId={getTableRowActivityId("secret", key)}
-                            onActivityChange={handleTableRowActivityChange}
+                        <tr ref={setSecretRowsStartElement} aria-hidden>
+                          <td
+                            colSpan={secretRowsSpacerCols}
+                            style={{ height: 0, padding: 0, border: 0 }}
                           />
+                        </tr>
+                        {secretRowsRenderPlan.map(({ index, key, spacerBefore }) => (
+                          <Fragment key={overviewRowKey("secret", key)}>
+                            {spacerBefore > 0 && (
+                              <tr aria-hidden>
+                                <td
+                                  colSpan={secretRowsSpacerCols}
+                                  style={{ height: spacerBefore, padding: 0, border: 0 }}
+                                />
+                              </tr>
+                            )}
+                            <SecretTableRow
+                              isSelected={
+                                !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
+                              }
+                              onToggleSecretSelect={(_, isShiftKey) => {
+                                if (!hasPendingBatchChanges)
+                                  toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
+                              }}
+                              isExpanded={expandedSecretRows.has(key)}
+                              onToggleExpand={toggleSecretRowExpand}
+                              isSecretVisible={isSecretRowVisible(key)}
+                              onToggleSecretVisible={toggleSecretRowVisible}
+                              secretPath={secretPath}
+                              getImportedSecretByKey={getImportedSecretByKey}
+                              isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
+                              onSecretCreate={handleSecretCreate}
+                              onSecretDelete={handleSecretDelete}
+                              onSecretUpdate={handleSecretUpdate}
+                              virtualIndex={index}
+                              measureElement={secretRowVirtualizer.measureElement}
+                              onUnsavedChange={handleSecretRowUnsavedChange}
+                              environments={visibleEnvs}
+                              secretKey={key}
+                              getSecretByKey={getSecretByKeyWithPending}
+                              importedBy={importedBy}
+                              isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
+                              isBatchMode={isBatchModeActive}
+                              onBatchRevert={handleBatchRevert}
+                              isSelectionDisabled={hasPendingBatchChanges}
+                              onCopySecret={handleCopySecret}
+                              onAccessInsightsUpgrade={() =>
+                                openUpgradeGate({
+                                  intent: SecretAccessInsightsUpgradeIntent
+                                })
+                              }
+                              activityId={getTableRowActivityId("secret", key)}
+                              onActivityChange={handleTableRowActivityChange}
+                            />
+                          </Fragment>
                         ))}
+                        {secretRowsBottomSpacer > 0 && (
+                          <tr aria-hidden>
+                            <td
+                              colSpan={secretRowsSpacerCols}
+                              style={{ height: secretRowsBottomSpacer, padding: 0, border: 0 }}
+                            />
+                          </tr>
+                        )}
                         {tableView === "table" && (
                           <SecretNoAccessTableRow
                             environments={visibleEnvs}
