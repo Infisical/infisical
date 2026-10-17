@@ -278,6 +278,12 @@ export const SignerKeyStep = ({
                 <FieldDescription>
                   Sign with the certificate already issued in this order and its key on the HSM.
                 </FieldDescription>
+                {field.value !== ExternalOrderMode.UseExisting && (
+                  <FieldDescription className="text-warning">
+                    Reissuing replaces the certificate in this order. DigiCert revokes the previous
+                    one within 72 hours, after which it can no longer be used to sign.
+                  </FieldDescription>
+                )}
               </FieldContent>
               <Toggle
                 id="use-existing-key"

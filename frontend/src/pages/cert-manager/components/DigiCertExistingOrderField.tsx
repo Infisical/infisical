@@ -38,18 +38,11 @@ export const DigiCertExistingOrderField = ({ form, digicert }: DigiCertExistingO
       digicert.productNameId
     );
 
-  const now = Date.now();
-  const orderOptions = codeSigningOrders
-    .filter(
-      (o) =>
-        o.status.toLowerCase() === "issued" &&
-        (!o.validTill || new Date(o.validTill).getTime() > now)
-    )
-    .map((o) => ({
-      value: String(o.orderId),
-      label: `${o.commonName || o.organizationName || "Code signing certificate"} (#${o.orderId})`,
-      commonName: o.commonName
-    }));
+  const orderOptions = codeSigningOrders.map((o) => ({
+    value: String(o.orderId),
+    label: `${o.commonName || o.organizationName || "Code signing certificate"} (#${o.orderId})`,
+    commonName: o.commonName
+  }));
   type OrderOption = (typeof orderOptions)[number];
 
   const externalOrderId = form.watch("externalOrderId") as string | null;

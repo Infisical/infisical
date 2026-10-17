@@ -521,6 +521,17 @@ export const signerServiceFactory = ({
         message: `The certificate in DigiCert order ${imported.orderId} is already used by signer '${signerUsingCertificate.name}'.`
       });
     }
+    const signerUsingKey = await signerDAL.findOneByCurrentHsmKey(
+      imported.hsm.hsmConnectorId,
+      imported.hsm.hsmPublicKeySpki,
+      signerId,
+      tx
+    );
+    if (signerUsingKey) {
+      throw new ConflictError({
+        message: `The private key of the certificate in DigiCert order ${imported.orderId} is already used by another signer. Each signer needs its own key.`
+      });
+    }
     await certificateDAL.updateById(imported.certificateId, imported.hsm, tx);
   };
 
