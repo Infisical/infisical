@@ -1119,6 +1119,14 @@ export const SecretEditTableRow = ({
     actionBarResizeObserverRef.current = observer;
   }, []);
 
+  const isEditValueDisabled =
+    isPendingDelete ||
+    isImportedSecret ||
+    isManagedSecret ||
+    isLoadingEditValue ||
+    Boolean(revokedProjectFolderGrant) ||
+    (isCreatable ? !canCreate : !canEditSecretValue);
+
   const getTooltipContentForSecretSharing = () => {
     if (!currentProject.secretSharing) {
       return "Secret Sharing Disabled";
@@ -1584,42 +1592,49 @@ export const SecretEditTableRow = ({
             )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <IconButton
-                aria-label="Edit secret value"
-                variant="ghost"
-                size="xs"
-                className="size-7 border-0"
-                isDisabled={
-                  isPendingDelete ||
-                  isImportedSecret ||
-                  isManagedSecret ||
-                  isLoadingEditValue ||
-                  Boolean(revokedProjectFolderGrant) ||
-                  (isCreatable ? !canCreate : !canEditSecretValue)
-                }
-                onClick={() => {
-                  if (isSingleEnvView && !isCreatable && !isOverride) {
-                    handleOpenValueSheet();
-                    return;
-                  }
-                  setFocus("value", { shouldSelect: true });
-                }}
+              <span
+                className="inline-flex"
+                {...(isEditValueDisabled && {
+                  role: "button",
+                  tabIndex: 0,
+                  "aria-disabled": true,
+                  "aria-label": "Edit secret value"
+                })}
               >
-                <EditIcon className="size-3.5" />
-              </IconButton>
+                <IconButton
+                  aria-label="Edit secret value"
+                  variant="ghost"
+                  size="xs"
+                  className="size-7 border-0"
+                  isDisabled={isEditValueDisabled}
+                  onClick={() => {
+                    if (isSingleEnvView && !isCreatable && !isOverride) {
+                      handleOpenValueSheet();
+                      return;
+                    }
+                    setFocus("value", { shouldSelect: true });
+                  }}
+                >
+                  <EditIcon className="size-3.5" />
+                </IconButton>
+              </span>
             </TooltipTrigger>
             <TooltipContent>
-              {isImportedSecret
-                ? "Cannot Edit Imported Secret"
-                : isHoneyTokenSecret
-                  ? "Cannot Edit Honey Token Secret"
-                  : isRotatedSecret
-                    ? "Cannot Edit Rotated Secret"
-                    : (isCreatable ? !canCreate : !canEditSecretValue)
-                      ? "Access Denied"
-                      : isCreatable
-                        ? "Add Value"
-                        : "Edit Value"}
+              {isPendingDelete
+                ? "Discard Pending Changes First"
+                : isImportedSecret
+                  ? "Cannot Edit Imported Secret"
+                  : isHoneyTokenSecret
+                    ? "Honey token secrets are managed by Infisical and can't be edited"
+                    : isRotatedSecret
+                      ? "Rotated secrets are managed by their secret rotation and can't be edited"
+                      : revokedProjectFolderGrant
+                        ? "This secret share was revoked, so it can't be edited"
+                        : (isCreatable ? !canCreate : !canEditSecretValue)
+                          ? "Access Denied"
+                          : isCreatable
+                            ? "Add Value"
+                            : "Edit Value"}
             </TooltipContent>
           </Tooltip>
           <Tooltip>
