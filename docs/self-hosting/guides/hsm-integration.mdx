@@ -570,7 +570,7 @@ Below you'll find a list of the attributes each key will be created with.
               # Mount the issuer CA certificate to "/opt/cloudhsm/etc/customerCA.crt"
               -v /aws-files/customerCA.crt:/opt/cloudhsm/etc/customerCA.crt \
 
-              # Set the HSM library path to whats expected within Docker (/opt/cloudhsm/lib/libcloudhsm_pkcs11.so)
+              # Set the HSM library path to what's expected within Docker (/opt/cloudhsm/lib/libcloudhsm_pkcs11.so)
               -e HSM_LIB_PATH="/opt/cloudhsm/lib/libcloudhsm_pkcs11.so" \
               # Set the HSM PIN to the username and password of the HSM user, separated by a colon
               -e HSM_PIN=CryptoUserUsername:CryptoUserPassword \
