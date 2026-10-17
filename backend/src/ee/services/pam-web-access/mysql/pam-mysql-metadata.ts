@@ -3,6 +3,7 @@ import mysql from "mysql2/promise";
 import { logger } from "@app/lib/logger";
 
 import { type OneShotOptions } from "../pam-data-explorer-session-handler";
+import { setSessionVariables } from "./pam-mysql-data-explorer-fns";
 import { getSchemasQuery, getTablesQuery } from "./pam-mysql-data-explorer-metadata";
 
 const buildConnection = async ({ relayPort, username, database }: OneShotOptions): Promise<mysql.Connection> => {
@@ -24,7 +25,7 @@ const buildConnection = async ({ relayPort, username, database }: OneShotOptions
 const withConnection = async <T>(opts: OneShotOptions, fn: (conn: mysql.Connection) => Promise<T>): Promise<T> => {
   const conn = await buildConnection(opts);
   try {
-    await conn.query("SET SESSION max_execution_time = 30000");
+    await setSessionVariables(conn);
     return await fn(conn);
   } finally {
     await conn.end().catch((err) => {

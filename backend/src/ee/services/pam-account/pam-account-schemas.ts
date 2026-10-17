@@ -108,6 +108,42 @@ export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 
 export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.133";
 
+// MariaDB uses the MySQL wire protocol, so both types share these fields
+const MYSQL_COMPATIBLE_CONFIG = {
+  connectionDetails: z.object({
+    host: z.string().trim().min(1).max(255),
+    port: z.coerce.number(),
+    database: z.string().trim().min(1).max(64),
+    sslEnabled: z.boolean(),
+    sslRejectUnauthorized: z.boolean(),
+    sslCertificate: optionalTrimmedString
+  }),
+  credentials: z.object({
+    username: z.string().trim().min(1).max(32),
+    password: z
+      .string()
+      .trim()
+      .max(256)
+      .transform((v) => v || undefined)
+      .optional()
+  }),
+  sanitizedCredentials: z.object({ username: z.string() }),
+  ui: {
+    port: { defaultValue: 3306 },
+    sslEnabled: { label: "SSL Enabled" },
+    sslRejectUnauthorized: {
+      label: "Reject Unauthorized",
+      showWhen: { field: "sslEnabled", equals: true }
+    },
+    sslCertificate: {
+      label: "SSL Certificate",
+      widget: PamFieldWidget.Textarea,
+      showWhen: { field: "sslEnabled", equals: true }
+    },
+    password: { widget: PamFieldWidget.Password, secret: true }
+  }
+} as const;
+
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
@@ -202,40 +238,15 @@ export const ACCOUNT_TYPE_CONFIGS = {
   },
 
   [PamAccountType.MySQL]: {
+    ...MYSQL_COMPATIBLE_CONFIG,
     name: "MySQL",
-    icon: "MySql.png",
-    connectionDetails: z.object({
-      host: z.string().trim().min(1).max(255),
-      port: z.coerce.number(),
-      database: z.string().trim().min(1).max(64),
-      sslEnabled: z.boolean(),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: optionalTrimmedString
-    }),
-    credentials: z.object({
-      username: z.string().trim().min(1).max(32),
-      password: z
-        .string()
-        .trim()
-        .max(256)
-        .transform((v) => v || undefined)
-        .optional()
-    }),
-    sanitizedCredentials: z.object({ username: z.string() }),
-    ui: {
-      port: { defaultValue: 3306 },
-      sslEnabled: { label: "SSL Enabled" },
-      sslRejectUnauthorized: {
-        label: "Reject Unauthorized",
-        showWhen: { field: "sslEnabled", equals: true }
-      },
-      sslCertificate: {
-        label: "SSL Certificate",
-        widget: PamFieldWidget.Textarea,
-        showWhen: { field: "sslEnabled", equals: true }
-      },
-      password: { widget: PamFieldWidget.Password, secret: true }
-    }
+    icon: "MySql.png"
+  },
+
+  [PamAccountType.MariaDB]: {
+    ...MYSQL_COMPATIBLE_CONFIG,
+    name: "MariaDB",
+    icon: "MariaDB.svg"
   },
 
   [PamAccountType.MsSQL]: {
@@ -1012,6 +1023,7 @@ export type TWindowsAdConnectionDetails = z.infer<
 export const SQL_ROTATABLE_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
   PamAccountType.MySQL,
+  PamAccountType.MariaDB,
   PamAccountType.MsSQL,
   PamAccountType.OracleDB
 ] as const;
@@ -1074,6 +1086,7 @@ export const extractGatewayTarget = async (
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
+    case PamAccountType.MariaDB:
     case PamAccountType.MsSQL:
     case PamAccountType.OracleDB:
     case PamAccountType.Redis:
@@ -1158,9 +1171,12 @@ export const resolveSelectedHost = (
   return requestedHost || hosts[0];
 };
 
-// The account type the gateway sees. Windows AD is brokered through the Windows RDP protocol
-export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccountType =>
-  accountType === PamAccountType.WindowsAd ? PamAccountType.Windows : accountType;
+// The account type the gateway sees. Windows AD goes over Windows RDP, MariaDB over MySQL
+export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccountType => {
+  if (accountType === PamAccountType.WindowsAd) return PamAccountType.Windows;
+  if (accountType === PamAccountType.MariaDB) return PamAccountType.MySQL;
+  return accountType;
+};
 
 export const gatewaySupportsAccountType = (
   accountType: PamAccountType,
