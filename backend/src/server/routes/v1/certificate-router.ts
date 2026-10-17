@@ -2079,7 +2079,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       operationId: "exportCertificatePkcs12",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Download certificate in PKCS12 format",
-      produces: ["application/octet-stream"],
       params: z.object({
         id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
@@ -2088,11 +2087,15 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         alias: z.string().trim().min(1, "Alias is required").max(255).describe(CERTIFICATES.EXPORT_PKCS12.alias)
       }),
       response: {
-        200: z
-          .any()
-          .describe(
-            JSON.stringify({ type: "string", format: "binary", description: CERTIFICATES.EXPORT_PKCS12.keystore })
-          )
+        200: z.any().describe(
+          JSON.stringify({
+            content: {
+              "application/octet-stream": {
+                schema: { type: "string", format: "binary", description: CERTIFICATES.EXPORT_PKCS12.keystore }
+              }
+            }
+          })
+        )
       }
     },
     handler: async (req, reply) => {
