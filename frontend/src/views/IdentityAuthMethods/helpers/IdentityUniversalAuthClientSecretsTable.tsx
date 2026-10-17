@@ -211,7 +211,7 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No client secrets have been generated</EmptyTitle>
-            <EmptyDescription>Generate a client secret to get start</EmptyDescription>
+            <EmptyDescription>Generate a client secret to get started</EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}
