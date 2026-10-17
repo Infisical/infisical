@@ -386,9 +386,9 @@ export const identityAliCloudAuthServiceFactory = ({
     const identityAliCloudAuth = await identityAliCloudAuthDAL.findOne({ identityId });
 
     if (
-      (accessTokenMaxTTL || identityAliCloudAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityAliCloudAuth.accessTokenTTL) >
-        (accessTokenMaxTTL || identityAliCloudAuth.accessTokenMaxTTL)
+      Number(accessTokenMaxTTL || identityAliCloudAuth.accessTokenMaxTTL) > 0 &&
+      Number(accessTokenTTL || identityAliCloudAuth.accessTokenTTL) >
+        Number(accessTokenMaxTTL || identityAliCloudAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
