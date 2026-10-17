@@ -56,6 +56,11 @@ export type THsmConnectorTestResult = {
   members: THsmConnectorTestMemberResult[];
 };
 
+export type THsmConnectorKey = {
+  keyId: string;
+  keyAlgorithm: string;
+};
+
 export type THsmConnectorLinkedCertificate = {
   id: string;
   commonName: string;

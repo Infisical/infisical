@@ -5026,6 +5026,8 @@ interface CreatePkiSignerEvent {
     approvalPolicyId?: string | null;
     keySource?: CertKeySource;
     hsmConnectorId?: string | null;
+    hsmKeyLabel?: string;
+    hsmKeyId?: string;
     externalConfiguration?: TSignerExternalConfigurationInput;
   };
 }
@@ -5120,10 +5122,13 @@ interface ReissuePkiSignerCertificateEvent {
     signerId: string;
     name: string;
     caId: string;
+    certificateId?: string | null;
     commonName?: string;
     keyAlgorithm?: string;
     keySource?: string;
     hsmConnectorId?: string;
+    hsmKeyLabel?: string;
+    hsmKeyId?: string;
     hsmKeyAlgorithm?: string;
     externalConfiguration?: TSignerExternalConfigurationInput;
   };

@@ -32,6 +32,7 @@ export const PkiSignerCertificateIssuanceJobsSchema = z.object({
   keySource: z.string().default("infisical"),
   hsmConnectorId: z.string().uuid().nullable().optional(),
   hsmKeyLabel: z.string().nullable().optional(),
+  hsmKeyId: z.string().nullable().optional(),
   hsmPublicKeySpki: zodBuffer.nullable().optional()
 });
 

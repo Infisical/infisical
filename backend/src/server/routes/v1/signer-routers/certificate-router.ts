@@ -9,7 +9,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import {
-  HSM_SUPPORTED_KEY_ALGORITHMS,
+  refineSignerCertificateInput,
+  SignerCertificateInputSchema,
   SignerExternalConfigurationSchema,
   SignerIdParamsSchema,
   SignerKeyAlgorithm
@@ -32,31 +33,10 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
           commonName: z.string().trim().min(1).max(256).optional(),
           certificateTtlDays: z.number().int().min(1).max(3650).optional(),
           keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
-          certificate: z
-            .object({
-              keySource: z.nativeEnum(CertKeySource),
-              hsmConnectorId: z.string().uuid().optional()
-            })
-            .optional(),
+          certificate: SignerCertificateInputSchema.extend({ keySource: z.nativeEnum(CertKeySource) }).optional(),
           externalConfiguration: SignerExternalConfigurationSchema.optional()
         })
-        .superRefine((data, ctx) => {
-          if (data.certificate?.keySource !== CertKeySource.Hsm) return;
-          if (!data.certificate.hsmConnectorId) {
-            ctx.addIssue({
-              code: "custom",
-              message: `hsmConnectorId is required when keySource = '${CertKeySource.Hsm}'`,
-              path: ["certificate", "hsmConnectorId"]
-            });
-          }
-          if (!data.keyAlgorithm || !HSM_SUPPORTED_KEY_ALGORITHMS.includes(data.keyAlgorithm)) {
-            ctx.addIssue({
-              code: "custom",
-              message: `keyAlgorithm must be one of ${HSM_SUPPORTED_KEY_ALGORITHMS.join(", ")} when keySource = '${CertKeySource.Hsm}'`,
-              path: ["keyAlgorithm"]
-            });
-          }
-        }),
+        .superRefine(refineSignerCertificateInput),
       response: { 200: PkiSignersSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -70,6 +50,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
         actorOrgId: req.permission.orgId
       });
 
+      const isImport = Boolean(req.body.externalConfiguration?.importFromExternalOrderId);
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: signer.projectId,
@@ -79,10 +60,13 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             signerId: signer.id,
             name: signer.name,
             caId: req.body.caId,
-            commonName: req.body.commonName,
-            keyAlgorithm: req.body.keyAlgorithm,
+            commonName: isImport ? (signer.commonName ?? undefined) : req.body.commonName,
+            keyAlgorithm: isImport ? (signer.keyAlgorithm ?? undefined) : req.body.keyAlgorithm,
+            ...(isImport ? { certificateId: signer.certificateId } : {}),
             keySource: req.body.certificate?.keySource,
             hsmConnectorId: req.body.certificate?.hsmConnectorId,
+            hsmKeyLabel: req.body.certificate?.hsmKeyLabel,
+            hsmKeyId: req.body.certificate?.hsmKeyId,
             externalConfiguration: req.body.externalConfiguration
           }
         }

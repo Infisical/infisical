@@ -1,21 +1,24 @@
 import { ReactNode, useEffect } from "react";
 import { Control, Controller, useController, useWatch } from "react-hook-form";
-import { AlertTriangleIcon } from "lucide-react";
+import { AxiosError } from "axios";
+import { AlertTriangleIcon, InfoIcon } from "lucide-react";
 
 import {
   Badge,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -25,12 +28,23 @@ import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { useDebounce } from "@app/hooks";
+import { THsmConnectorKey, useListHsmConnectorKeys } from "@app/hooks/api/hsmConnectors";
 import {
   CertKeySource,
   HSM_SUPPORTED_KEY_ALGORITHMS,
   SignerKeyAlgorithm,
   signerKeyAlgorithmLabels
 } from "@app/hooks/api/signers";
+
+import { ExternalOrderMode, isUsingExistingCertificate } from "./DigiCertExistingOrderField";
+
+const shortenKeyId = (keyId: string) => (keyId.length > 8 ? `${keyId.slice(0, 8)}...` : keyId);
+
+const formatHsmKeyOption = (key: THsmConnectorKey) =>
+  key.keyAlgorithm
+    ? `ID ${shortenKeyId(key.keyId)} (${key.keyAlgorithm.replace("_", " ")})`
+    : `ID ${shortenKeyId(key.keyId)}`;
 
 export type HsmConnectorOption = { id: string; name: string; slotLabel: string };
 
@@ -41,6 +55,7 @@ type SignerKeyStepProps = {
   hsmConnectorOptions: HsmConnectorOption[];
   isHsmConnectorsLoading: boolean;
   minRsaKeyBits?: number;
+  currentKeyAlgorithm?: SignerKeyAlgorithm;
 };
 
 export const SignerKeyStep = ({
@@ -48,7 +63,8 @@ export const SignerKeyStep = ({
   requiresHsm,
   hsmConnectorOptions,
   isHsmConnectorsLoading,
-  minRsaKeyBits
+  minRsaKeyBits,
+  currentKeyAlgorithm
 }: SignerKeyStepProps) => {
   const { subscription } = useSubscription();
   const isHsmLicensed = Boolean(subscription?.hsm);
@@ -60,8 +76,71 @@ export const SignerKeyStep = ({
 
   const keySource = useWatch({ control, name: "keySource" });
   const isHsm = keySource === CertKeySource.Hsm;
+  const externalOrderId = useWatch({ control, name: "externalOrderId" }) as
+    | string
+    | null
+    | undefined;
+  const externalOrderMode = useWatch({ control, name: "externalOrderMode" }) as ExternalOrderMode;
+  const usingExistingCertificate = isUsingExistingCertificate({
+    externalOrderId,
+    externalOrderMode
+  });
+
+  const hsmConnectorId = useWatch({ control, name: "hsmConnectorId" }) as string | null | undefined;
+  const {
+    field: hsmKeyLabelField,
+    fieldState: { error: hsmKeyLabelError }
+  } = useController({ control, name: "hsmKeyLabel" });
+  const {
+    field: hsmKeyIdField,
+    fieldState: { error: hsmKeyIdError }
+  } = useController({ control, name: "hsmKeyId" });
+  const { field: hsmKeyIdRequiredField } = useController({ control, name: "hsmKeyIdRequired" });
+  const [debouncedKeyLabel] = useDebounce(((hsmKeyLabelField.value as string) ?? "").trim());
+  const {
+    data: matchingHsmKeys,
+    isFetching: isHsmKeyLookupPending,
+    error: hsmKeyLookupError
+  } = useListHsmConnectorKeys(hsmConnectorId, debouncedKeyLabel, {
+    enabled: isHsm && usingExistingCertificate
+  });
+  const hsmKeyChoices = (matchingHsmKeys ?? []).filter((key) => Boolean(key.keyId));
+  const canChooseHsmKey = (matchingHsmKeys?.length ?? 0) > 1 && hsmKeyChoices.length > 0;
+
+  useEffect(() => {
+    const keys = matchingHsmKeys ?? [];
+    hsmKeyIdRequiredField.onChange(keys.length > 1 && keys.some((key) => Boolean(key.keyId)));
+    if (keys.length === 1) {
+      hsmKeyIdField.onChange(keys[0].keyId);
+    } else if (!keys.some((key) => key.keyId === hsmKeyIdField.value)) {
+      hsmKeyIdField.onChange("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchingHsmKeys]);
+
+  let hsmKeyLookupHint = "The label of the certificate's private key on the HSM.";
+  if (isHsmKeyLookupPending) {
+    hsmKeyLookupHint = "Looking up the key...";
+  } else if (matchingHsmKeys?.length === 1) {
+    hsmKeyLookupHint = matchingHsmKeys[0].keyId
+      ? `Found the key (ID ${shortenKeyId(matchingHsmKeys[0].keyId)}).`
+      : "Found the key.";
+  } else if (matchingHsmKeys && matchingHsmKeys.length > 1) {
+    hsmKeyLookupHint = canChooseHsmKey
+      ? `${matchingHsmKeys.length} keys have this label. Select one below.`
+      : `${matchingHsmKeys.length} keys have this label and none has a key ID. Give the keys unique labels.`;
+  }
+  let hsmKeyLookupProblem: string | undefined;
+  if (hsmKeyLookupError) {
+    hsmKeyLookupProblem =
+      (hsmKeyLookupError as AxiosError<{ message?: string }>)?.response?.data?.message ??
+      "Could not look up the key.";
+  } else if (matchingHsmKeys?.length === 0) {
+    hsmKeyLookupProblem = "No private key with this label in the connector's slot.";
+  }
 
   const isAlgorithmAllowed = (algo: SignerKeyAlgorithm): boolean => {
+    if (algo === currentKeyAlgorithm) return true;
     if (isHsm && !HSM_SUPPORTED_KEY_ALGORITHMS.includes(algo)) return false;
     if (minRsaKeyBits && algo.startsWith("RSA_") && Number(algo.slice(4)) < minRsaKeyBits)
       return false;
@@ -71,11 +150,21 @@ export const SignerKeyStep = ({
 
   const { field: keyAlgorithmField } = useController({ control, name: "keyAlgorithm" });
   useEffect(() => {
-    if (algorithmOptions.length > 0 && !isAlgorithmAllowed(keyAlgorithmField.value)) {
+    if (
+      !usingExistingCertificate &&
+      algorithmOptions.length > 0 &&
+      !isAlgorithmAllowed(keyAlgorithmField.value)
+    ) {
       keyAlgorithmField.onChange(algorithmOptions[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHsm, minRsaKeyBits, keyAlgorithmField.value]);
+  }, [
+    isHsm,
+    minRsaKeyBits,
+    keyAlgorithmField.value,
+    usingExistingCertificate,
+    currentKeyAlgorithm
+  ]);
 
   let keySourceHint: ReactNode = "Infisical manages the keypair.";
   if (requiresHsm) {
@@ -142,18 +231,18 @@ export const SignerKeyStep = ({
                 HSM Connector <span className="text-danger">*</span>
               </FieldLabel>
               <FieldContent>
-                <FilterableSelect<HsmConnectorOption>
+                <Combobox<HsmConnectorOption>
+                  isClearable={false}
                   isLoading={isHsmConnectorsLoading}
                   options={hsmConnectorOptions}
                   value={hsmConnectorOptions.find((o) => o.id === field.value) ?? null}
-                  onChange={(selected) => {
-                    const opt = selected as HsmConnectorOption | null;
-                    field.onChange(opt?.id ?? null);
-                  }}
+                  onValueChange={(opt) => field.onChange(opt.id)}
                   getOptionLabel={(opt) => `${opt.name} (slot ${opt.slotLabel})`}
                   getOptionValue={(opt) => opt.id}
                   placeholder="Select an HSM Connector..."
-                  noOptionsMessage={() =>
+                  searchPlaceholder="Search HSM Connectors..."
+                  searchAriaLabel="Search HSM Connectors"
+                  emptyMessage={
                     hsmConnectorOptions.length === 0
                       ? "No HSM Connectors configured. Add one in Settings → HSM Connectors."
                       : "No match."
@@ -168,28 +257,114 @@ export const SignerKeyStep = ({
         />
       )}
 
-      <Field>
-        <FieldLabel>
-          Key algorithm <span className="text-danger">*</span>
-        </FieldLabel>
-        <FieldContent>
-          <Select value={keyAlgorithmField.value} onValueChange={keyAlgorithmField.onChange}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              {algorithmOptions.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {signerKeyAlgorithmLabels[value]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FieldDescription>
-            RSA is widely compatible; ECDSA is smaller and faster.
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+      {isHsm && externalOrderId && (
+        <Controller
+          name="externalOrderMode"
+          control={control}
+          render={({ field }) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <div className="flex items-center gap-1.5">
+                  <FieldLabel htmlFor="use-existing-key">Use existing key</FieldLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="h-3.5 w-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      When off, DigiCert reissues the certificate and revokes the current one.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <FieldDescription>
+                  Sign with the certificate already issued in this order and its key on the HSM.
+                </FieldDescription>
+              </FieldContent>
+              <Toggle
+                id="use-existing-key"
+                variant="project"
+                checked={field.value === ExternalOrderMode.UseExisting}
+                onCheckedChange={(checked) =>
+                  field.onChange(
+                    checked ? ExternalOrderMode.UseExisting : ExternalOrderMode.Reissue
+                  )
+                }
+              />
+            </Field>
+          )}
+        />
+      )}
+
+      {isHsm && usingExistingCertificate && (
+        <Field>
+          <FieldLabel>
+            Key label <span className="text-danger">*</span>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              {...hsmKeyLabelField}
+              value={hsmKeyLabelField.value ?? ""}
+              placeholder="acme-code-signing-2026"
+              isError={Boolean(hsmKeyLabelError || hsmKeyLookupProblem)}
+            />
+            <FieldDescription>{hsmKeyLookupHint}</FieldDescription>
+            <FieldError
+              errors={[
+                hsmKeyLabelError,
+                hsmKeyLookupProblem ? { message: hsmKeyLookupProblem } : undefined
+              ]}
+            />
+          </FieldContent>
+        </Field>
+      )}
+
+      {isHsm && usingExistingCertificate && canChooseHsmKey && (
+        <Field>
+          <FieldLabel>
+            Key ID <span className="text-danger">*</span>
+          </FieldLabel>
+          <FieldContent>
+            <Select value={hsmKeyIdField.value || undefined} onValueChange={hsmKeyIdField.onChange}>
+              <SelectTrigger className="w-full" isError={Boolean(hsmKeyIdError)}>
+                <SelectValue placeholder="Select a key..." />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {hsmKeyChoices.map((key) => (
+                  <SelectItem key={key.keyId} value={key.keyId}>
+                    {formatHsmKeyOption(key)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>The key&apos;s CKA_ID on the HSM.</FieldDescription>
+            <FieldError errors={[hsmKeyIdError]} />
+          </FieldContent>
+        </Field>
+      )}
+
+      {!usingExistingCertificate && (
+        <Field>
+          <FieldLabel>
+            Key algorithm <span className="text-danger">*</span>
+          </FieldLabel>
+          <FieldContent>
+            <Select value={keyAlgorithmField.value} onValueChange={keyAlgorithmField.onChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {algorithmOptions.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {signerKeyAlgorithmLabels[value]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              RSA is widely compatible; ECDSA is smaller and faster.
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+      )}
     </FieldGroup>
   );
 };

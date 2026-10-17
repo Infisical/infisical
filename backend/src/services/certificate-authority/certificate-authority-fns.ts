@@ -458,6 +458,8 @@ export const getCaSigner = async ({
 
     const connectorId = caSecret.hsmConnectorId;
     const keyLabel = caSecret.hsmKeyLabel;
+    const keyId = caSecret.hsmKeyId;
+    const publicKeySpki = caSecret.hsmPublicKeySpki;
     const signer = buildHsmCaSigner({
       caPublicKey,
       keyAlgorithm,
@@ -467,6 +469,8 @@ export const getCaSigner = async ({
           connectorId,
           projectId: ca.projectId,
           keyLabel,
+          keyId,
+          publicKeySpki,
           mechanism,
           data,
           isDigest

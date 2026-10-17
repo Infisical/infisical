@@ -39,6 +39,27 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
+  const completeIfPending = async (
+    jobId: string,
+    certificateId: string,
+    tx?: Knex
+  ): Promise<TPkiSignerCertificateIssuanceJobs | null> => {
+    try {
+      const [row] = await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
+        .where({ id: jobId, status: SignerIssuanceJobStatus.Pending })
+        .update({
+          status: SignerIssuanceJobStatus.Completed,
+          certificateId,
+          failureReason: null,
+          updatedAt: new Date()
+        } as Record<string, unknown>)
+        .returning("*");
+      return row ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CompleteSignerIssuanceJob" });
+    }
+  };
+
   const claimForAttempt = async (
     jobId: string,
     expectedAttempts: number,
@@ -76,5 +97,5 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findDuePending, cancelOpenForSigner, claimForAttempt, findLatestForSigner };
+  return { ...orm, findDuePending, cancelOpenForSigner, completeIfPending, claimForAttempt, findLatestForSigner };
 };

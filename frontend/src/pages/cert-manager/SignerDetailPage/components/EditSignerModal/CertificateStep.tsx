@@ -1,27 +1,23 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { InfoIcon } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
-  Input,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Input
 } from "@app/components/v3";
-import { useDigiCertConnectionListOrders } from "@app/hooks/api/appConnections/digicert";
 import { getCaIssuanceCapabilities } from "@app/hooks/api/ca";
 import { CaType } from "@app/hooks/api/ca/enums";
 
 import { AdcsTemplateField } from "../../../components/AdcsTemplateField";
+import { DigiCertExistingOrderField } from "../../../components/DigiCertExistingOrderField";
 import { CertificateForm } from "./schemas";
-import { CaGroup, CaOption } from "./types";
+import { CaOption } from "./types";
 
 type CertificateStepProps = {
   form: ReturnType<typeof useForm<CertificateForm>>;
@@ -36,43 +32,17 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
 
   const digicertCfg = selectedCa?.digicert;
   const canReuseOrder = caps.supportsExistingOrderReuse && Boolean(digicertCfg);
-  const { data: codeSigningOrders = [], isLoading: isOrdersLoading } =
-    useDigiCertConnectionListOrders(
-      digicertCfg?.appConnectionId ?? "",
-      digicertCfg?.organizationId ?? 0,
-      digicertCfg?.productNameId ?? "",
-      { enabled: canReuseOrder }
-    );
-
-  const orderOptions = codeSigningOrders.map((o) => ({
-    value: String(o.orderId),
-    label: `${o.commonName || o.organizationName || "Code signing certificate"} (#${o.orderId})`,
-    commonName: o.commonName
-  }));
-  type OrderOption = (typeof orderOptions)[number];
-
-  const reissueOrderId = form.watch("reissueFromExternalOrderId");
-  const isReissue = Boolean(reissueOrderId);
+  const externalOrderId = form.watch("externalOrderId");
+  const hasExternalOrder = Boolean(externalOrderId);
 
   const isAdcs = selectedCa?.caType === CaType.ADCS;
   const adcsConnectionId = selectedCa?.adcs?.appConnectionId;
 
   useEffect(() => {
-    if (!canReuseOrder && reissueOrderId) {
-      form.setValue("reissueFromExternalOrderId", null);
+    if (!canReuseOrder && externalOrderId) {
+      form.setValue("externalOrderId", null);
     }
-  }, [canReuseOrder, reissueOrderId, form]);
-
-  useEffect(() => {
-    if (
-      canReuseOrder &&
-      !isOrdersLoading &&
-      reissueOrderId &&
-      !codeSigningOrders.some((order) => String(order.orderId) === reissueOrderId)
-    ) {
-      form.setValue("reissueFromExternalOrderId", null);
-    }
-  }, [canReuseOrder, isOrdersLoading, reissueOrderId, codeSigningOrders, form]);
+  }, [canReuseOrder, externalOrderId, form]);
 
   return (
     <FieldGroup>
@@ -85,25 +55,21 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
               Certificate Authority <span className="text-danger">*</span>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect<CaOption>
+              <Combobox<CaOption>
+                isClearable={false}
                 isLoading={isCasLoading}
                 options={caOptions}
                 value={caOptions.find((o) => o.id === field.value) ?? null}
-                onChange={(selected) => {
-                  const opt = selected as CaOption | null;
-                  field.onChange(opt?.id ?? "");
-                }}
+                onValueChange={(opt) => field.onChange(opt.id)}
                 getOptionLabel={(opt) => opt.name}
                 getOptionValue={(opt) => opt.id}
-                groupBy={caOptions.length > 0 ? "groupType" : undefined}
-                getGroupHeaderLabel={
-                  caOptions.length > 0
-                    ? (groupType: CaGroup) =>
-                        groupType === "internal" ? "Internal CAs" : "External CAs"
-                    : undefined
+                getOptionGroup={(opt) =>
+                  opt.groupType === "internal" ? "Internal CAs" : "External CAs"
                 }
                 placeholder="Select a Certificate Authority..."
-                noOptionsMessage={() => "No active CAs available."}
+                searchPlaceholder="Search Certificate Authorities..."
+                searchAriaLabel="Search Certificate Authorities"
+                emptyMessage="No active CAs available."
                 isError={Boolean(error)}
               />
               <FieldDescription>
@@ -124,59 +90,11 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
         />
       )}
 
-      {canReuseOrder && (
-        <Controller
-          name="reissueFromExternalOrderId"
-          control={form.control}
-          render={({ field }) => (
-            <Field>
-              <FieldLabel>
-                <span className="inline-flex items-center gap-1.5">
-                  Reuse an existing order (optional)
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoIcon className="h-3.5 w-3.5 text-muted" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Issue into an existing order instead of creating a new one. The name and
-                      validity are inherited from that order.
-                    </TooltipContent>
-                  </Tooltip>
-                </span>
-              </FieldLabel>
-              <FieldContent>
-                <FilterableSelect<OrderOption>
-                  isLoading={isOrdersLoading}
-                  isClearable
-                  options={orderOptions}
-                  value={orderOptions.find((o) => o.value === field.value) ?? null}
-                  onChange={(selected) => {
-                    const opt = selected as OrderOption | null;
-                    field.onChange(opt?.value ?? null);
-                    form.setValue(
-                      "commonName",
-                      opt ? opt.commonName || "Code signing certificate" : ""
-                    );
-                  }}
-                  getOptionLabel={(opt) => opt.label}
-                  getOptionValue={(opt) => opt.value}
-                  placeholder="Issue a new certificate"
-                  noOptionsMessage={() => "No existing orders found."}
-                />
-                <FieldDescription>Leave empty to issue a new certificate.</FieldDescription>
-                {field.value && (
-                  <FieldDescription className="text-warning">
-                    Reissuing replaces the certificate in this order. DigiCert revokes the previous
-                    one within 72 hours, after which it can no longer be used to sign.
-                  </FieldDescription>
-                )}
-              </FieldContent>
-            </Field>
-          )}
-        />
+      {canReuseOrder && digicertCfg && (
+        <DigiCertExistingOrderField form={form} digicert={digicertCfg} />
       )}
 
-      {!isReissue && (
+      {!hasExternalOrder && (
         <Controller
           name="commonName"
           control={form.control}
@@ -202,7 +120,7 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
         />
       )}
 
-      {!isReissue && (
+      {!hasExternalOrder && (
         <Controller
           name="certificateTtlDays"
           control={form.control}

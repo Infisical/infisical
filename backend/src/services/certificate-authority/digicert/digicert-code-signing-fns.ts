@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -35,7 +36,7 @@ import {
 
 // DigiCert caps code signing order validity at 459 days (CA/Browser Forum ballot CSC-31 set a
 // 460-day ceiling effective 2026-03-01; DigiCert's API enforces 459).
-const MAX_CS_VALIDITY_DAYS = 459;
+export const MAX_CS_VALIDITY_DAYS = 459;
 
 // server_platform.id=-1 ("Other") is DigiCert's value for the customer-supplied-CSR lane.
 const CS_SERVER_PLATFORM_OTHER = -1;
@@ -148,6 +149,20 @@ export const digiCertCodeSigningFns = ({
     return { ca, digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
   };
 
+  const $getOwnedCodeSigningOrder = async (caId: string, orderId: number) => {
+    const context = await loadDigiCertCsContext(caId, { requireCodeSigning: true });
+    const order = await context.client.getOrder(orderId);
+    if (
+      order.organization?.id !== context.digicertCa.configuration.organizationId ||
+      order.product?.name_id !== context.digicertCa.configuration.productNameId
+    ) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} belongs to a different organization or product than this certificate authority.`
+      });
+    }
+    return { ...context, order };
+  };
+
   const orderCodeSigningCertificate = async ({
     caId,
     csr,
@@ -240,17 +255,7 @@ export const digiCertCodeSigningFns = ({
     signatureHash: "sha256" | "sha384" | "sha512";
     comments?: string;
   }): Promise<{ orderId: number; certificateId: number | null }> => {
-    const { digicertCa, client } = await loadDigiCertCsContext(caId, { requireCodeSigning: true });
-
-    const targetOrder = await client.getOrder(previousOrderId);
-    if (
-      targetOrder.organization?.id !== digicertCa.configuration.organizationId ||
-      targetOrder.product?.name_id !== digicertCa.configuration.productNameId
-    ) {
-      throw new BadRequestError({
-        message: `DigiCert order ${previousOrderId} does not belong to this CA's organization/product and cannot be reissued here.`
-      });
-    }
+    const { client } = await $getOwnedCodeSigningOrder(caId, previousOrderId);
 
     const reissuePayload: TReissueCodeSigningOrderRequest = {
       certificate: {
@@ -278,16 +283,7 @@ export const digiCertCodeSigningFns = ({
   };
 
   const assertCodeSigningOrderReusable = async (caId: string, orderId: number): Promise<void> => {
-    const { digicertCa, client } = await loadDigiCertCsContext(caId, { requireCodeSigning: true });
-    const order = await client.getOrder(orderId);
-    const sameOrg = order.organization?.id === digicertCa.configuration.organizationId;
-    const sameProduct = order.product?.name_id === digicertCa.configuration.productNameId;
-    if (!sameOrg || !sameProduct) {
-      throw new BadRequestError({
-        message:
-          "That DigiCert order belongs to a different organization or product than this certificate authority and cannot be reused."
-      });
-    }
+    await $getOwnedCodeSigningOrder(caId, orderId);
   };
 
   const getCodeSigningOrderStatus = async (caId: string, orderId: number): Promise<TCodeSigningOrderInfo> => {
@@ -301,6 +297,33 @@ export const digiCertCodeSigningFns = ({
     };
   };
 
+  const fetchIssuedCodeSigningCertificate = async (
+    caId: string,
+    orderId: number
+  ): Promise<{ pemBundle: string; certificate: x509.X509Certificate }> => {
+    const { client, order } = await $getOwnedCodeSigningOrder(caId, orderId);
+    if (normalizeCodeSigningStatus(order.status) !== CodeSigningOrderStatus.Issued || !order.certificate?.id) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} has no issued certificate to use (order status: '${order.status}').`
+      });
+    }
+
+    const pemBundle = await client.downloadCertificatePem(order.certificate.id);
+    const certificate = new x509.X509Certificate(extractLeafAndChain(pemBundle).leaf);
+    if (certificate.notAfter < new Date()) {
+      throw new BadRequestError({
+        message: `The certificate in DigiCert order ${orderId} expired on ${certificate.notAfter.toISOString()}.`
+      });
+    }
+    const eku = certificate.getExtension(x509.ExtendedKeyUsageExtension);
+    if (!eku?.usages.some((usage) => usage === x509.ExtendedKeyUsage.codeSigning)) {
+      throw new BadRequestError({
+        message: `The certificate in DigiCert order ${orderId} does not have the code signing extended key usage.`
+      });
+    }
+    return { pemBundle, certificate };
+  };
+
   const downloadCodeSigningCertificate = async ({
     caId,
     orderId,
@@ -308,18 +331,23 @@ export const digiCertCodeSigningFns = ({
     keyAlgorithm,
     signatureAlgorithm,
     applicationId,
-    profileId
+    profileId,
+    pemBundle: providedPemBundle
   }: {
     caId: string;
     orderId: number;
-    digicertCertificateId: number;
+    digicertCertificateId?: number;
+    pemBundle?: string;
     keyAlgorithm?: string;
     signatureAlgorithm?: string;
     applicationId?: string | null;
     profileId?: string | null;
   }): Promise<{ certificateId: string; certificatePem: string }> => {
     const { ca, client } = await loadDigiCertCsContext(caId);
-    const pemBundle = await client.downloadCertificatePem(digicertCertificateId);
+    if (!providedPemBundle && !digicertCertificateId) {
+      throw new BadRequestError({ message: `DigiCert order ${orderId} has no certificate to download.` });
+    }
+    const pemBundle = providedPemBundle ?? (await client.downloadCertificatePem(digicertCertificateId as number));
     const { leaf, chain } = extractLeafAndChain(pemBundle);
 
     const certObj = new x509.X509Certificate(leaf);
@@ -343,40 +371,53 @@ export const digiCertCodeSigningFns = ({
       plainText: Buffer.from(chain)
     });
 
-    const createdCertificateId = await certificateDAL.transaction(async (tx) => {
-      const cert = await certificateDAL.create(
-        {
-          ...parsedFields,
-          caId: ca.id,
-          applicationId: applicationId ?? undefined,
-          profileId: profileId ?? undefined,
-          status: CertStatus.ACTIVE,
-          projectId: ca.projectId,
-          friendlyName: parsedFields.commonName || "",
-          commonName: parsedFields.commonName || "",
-          keyUsages: parsedFields.keyUsages ?? [],
-          extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
-          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
-          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
-          externalMetadata: {
-            type: CaType.DIGICERT,
-            orderId
-          } satisfies TDigiCertExternalMetadata
-        },
-        tx
-      );
+    const createdCertificateId = await certificateDAL
+      .transaction(async (tx) => {
+        const cert = await certificateDAL.create(
+          {
+            ...parsedFields,
+            caId: ca.id,
+            applicationId: applicationId ?? undefined,
+            profileId: profileId ?? undefined,
+            status: CertStatus.ACTIVE,
+            projectId: ca.projectId,
+            friendlyName: parsedFields.commonName || "",
+            commonName: parsedFields.commonName || "",
+            keyUsages: parsedFields.keyUsages ?? [],
+            extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
+            keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+            signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
+            externalMetadata: {
+              type: CaType.DIGICERT,
+              orderId
+            } satisfies TDigiCertExternalMetadata
+          },
+          tx
+        );
 
-      await certificateBodyDAL.create(
-        {
-          certId: cert.id,
-          encryptedCertificate,
-          encryptedCertificateChain
-        },
-        tx
-      );
+        await certificateBodyDAL.create(
+          {
+            certId: cert.id,
+            encryptedCertificate,
+            encryptedCertificateChain
+          },
+          tx
+        );
 
-      return cert.id;
-    });
+        return cert.id;
+      })
+      .catch(async (error: unknown) => {
+        if ((error as { error?: { code?: string } })?.error?.code === DatabaseErrorCode.UniqueViolation) {
+          const concurrentCert = await certificateDAL.transaction((tx) =>
+            certificateDAL.findOne({ caId: ca.id, serialNumber: certObj.serialNumber }, tx)
+          );
+          if (concurrentCert) return concurrentCert.id;
+          throw new BadRequestError({
+            message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority. Remove that copy from the certificate inventory, then try again.`
+          });
+        }
+        throw error;
+      });
 
     return { certificateId: createdCertificateId, certificatePem: leaf };
   };
@@ -388,6 +429,7 @@ export const digiCertCodeSigningFns = ({
     findCodeSigningOrderByReference,
     assertCodeSigningOrderReusable,
     getCodeSigningOrderStatus,
+    fetchIssuedCodeSigningCertificate,
     downloadCodeSigningCertificate
   };
 };

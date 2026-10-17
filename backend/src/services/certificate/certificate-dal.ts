@@ -949,6 +949,14 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
 
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    try {
+      return await tx(TableName.Certificate).where({ id }).forUpdate().first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate by id for update" });
+    }
+  };
+
   const findLatestRenewalOf = async (anchor: { id: string; orderId: string }, tx?: Knex): Promise<string | null> => {
     try {
       const newer = await (tx || db.replicaNode())(TableName.Certificate)
@@ -1469,6 +1477,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findWithPrivateKeyInfo,
     findWithFullDetails,
     findLatestRenewalOf,
+    findByIdForUpdate,
     getDashboardStats,
     getActivityTrend,
     getPqcTrend

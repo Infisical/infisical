@@ -103,3 +103,20 @@ export const HsmConnectorLinkedResourcesResponseSchema = z.object({
   ),
   totalCount: z.number()
 });
+
+export const HsmConnectorKeysQuerySchema = z.object({
+  label: z.string().trim().min(1).max(128).describe("The exact label (CKA_LABEL) of the private keys to look up.")
+});
+
+export const HsmConnectorKeysResponseSchema = z.object({
+  keys: z
+    .array(
+      z.object({
+        keyId: z.string().describe("The hex-encoded PKCS#11 key ID (CKA_ID). Empty when the key has none."),
+        keyAlgorithm: z
+          .string()
+          .describe("The key's algorithm, such as RSA_3072 or ECC_P256. Empty when it can't be determined.")
+      })
+    )
+    .describe("The private keys in the HSM Connector's slot that have the label, sorted by key ID.")
+});

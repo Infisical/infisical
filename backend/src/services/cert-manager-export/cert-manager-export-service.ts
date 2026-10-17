@@ -237,6 +237,7 @@ export const certManagerExportServiceFactory = ({
               keySource: sourceSecret.keySource,
               hsmConnectorId: sourceSecret.hsmConnectorId,
               hsmKeyLabel: sourceSecret.hsmKeyLabel,
+              hsmKeyId: sourceSecret.hsmKeyId,
               hsmPublicKeySpki: sourceSecret.hsmPublicKeySpki,
               encryptedPrivateKey: sourceSecret.encryptedPrivateKey
                 ? await reencrypt(sourceSecret.encryptedPrivateKey)

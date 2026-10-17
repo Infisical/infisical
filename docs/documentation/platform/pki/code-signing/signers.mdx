@@ -145,7 +145,7 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
     Change which CA issues the certificate and its identity.
 
     - **Certificate Authority**: swap to another CA. Saving with a different CA reissues the certificate immediately from the new CA.
-    - **Reuse an existing order**: offered by some CAs (DigiCert code signing). Point the Signer at an existing order to reuse that order slot instead of placing a new one. Common Name and Validity are inherited from the order.
+    - **Existing order**: offered by some CAs (DigiCert code signing). Select an existing order, then choose whether to [use its existing key or reissue the certificate](/documentation/platform/pki/guides/code-signing/digicert-code-signing#use-an-existing-order). Common Name and Validity come from the order.
     - **Common Name** and **Validity (days)**: edit them to change the identity on the certificate. Saving reissues the certificate with the new values, and the signer switches to the new certificate.
     - **Renew before (days)**: edit any time, 1 to 30, must be less than Validity.
 
@@ -160,7 +160,7 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
     - **Key algorithm**: pick a different algorithm. Changing it generates a new key and reissues the certificate.
 
     <Note>
-      Renewals always issue a new certificate from the same CA with a fresh key pair. Old artifacts remain valid under the old certificate. New sign operations use the new one.
+      Renewals issue a new certificate from the same CA. HSM-backed signers keep the same HSM key, and other signers get a new key pair. Old artifacts remain valid under the old certificate. New sign operations use the new one.
     </Note>
 
     Press **Save** to apply the changes.

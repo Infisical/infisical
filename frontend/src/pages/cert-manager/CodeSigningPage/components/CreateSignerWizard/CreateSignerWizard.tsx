@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PenTool } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DocumentationLinkBadge,
@@ -28,10 +27,15 @@ import {
   CertKeySource,
   SignerKeyAlgorithm,
   SignerMemberRole,
+  TSignerExternalConfiguration,
   useCreateSigner
 } from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
 
+import {
+  ExternalOrderMode,
+  isUsingExistingCertificate
+} from "../../../components/DigiCertExistingOrderField";
 import { SignerKeyStep } from "../../../components/SignerKeyStep";
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { ApprovalPolicyStep } from "./ApprovalPolicyStep";
@@ -158,7 +162,11 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: state.keyAlgorithm,
       keySource: state.keySource,
       hsmConnectorId: state.hsmConnectorId,
-      reissueFromExternalOrderId: state.reissueFromExternalOrderId,
+      externalOrderId: state.externalOrderId,
+      externalOrderMode: state.externalOrderMode,
+      hsmKeyLabel: state.hsmKeyLabel,
+      hsmKeyId: state.hsmKeyId,
+      hsmKeyIdRequired: state.hsmKeyIdRequired,
       adcsTemplate: state.adcsTemplate
     }
   });
@@ -185,7 +193,11 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
       keySource: CertKeySource.Infisical,
       hsmConnectorId: null,
-      reissueFromExternalOrderId: null,
+      externalOrderId: null,
+      externalOrderMode: ExternalOrderMode.Reissue,
+      hsmKeyLabel: "",
+      hsmKeyId: "",
+      hsmKeyIdRequired: false,
       adcsTemplate: ""
     });
   };
@@ -215,26 +227,25 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
             }
           : undefined;
 
+      const usingExistingCertificate = isUsingExistingCertificate(state);
       const certificate =
         state.keySource === CertKeySource.Hsm && state.hsmConnectorId
           ? {
               keySource: CertKeySource.Hsm,
-              hsmConnectorId: state.hsmConnectorId
+              hsmConnectorId: state.hsmConnectorId,
+              hsmKeyLabel: usingExistingCertificate ? state.hsmKeyLabel : undefined,
+              hsmKeyId: usingExistingCertificate && state.hsmKeyId ? state.hsmKeyId : undefined
             }
           : undefined;
 
       const selectedCaType = caOptions.find((o) => o.id === state.caId)?.caType;
-      let externalConfiguration;
-      if (state.reissueFromExternalOrderId) {
-        externalConfiguration = {
-          caType: CaType.DIGICERT,
-          reissueFromExternalOrderId: state.reissueFromExternalOrderId
-        } as const;
+      let externalConfiguration: TSignerExternalConfiguration | undefined;
+      if (state.externalOrderId) {
+        externalConfiguration = usingExistingCertificate
+          ? { importFromExternalOrderId: state.externalOrderId }
+          : { reissueFromExternalOrderId: state.externalOrderId };
       } else if (selectedCaType === CaType.ADCS && state.adcsTemplate.trim()) {
-        externalConfiguration = {
-          caType: CaType.ADCS,
-          template: state.adcsTemplate.trim()
-        } as const;
+        externalConfiguration = { template: state.adcsTemplate.trim() };
       }
 
       await createSigner.mutateAsync({
@@ -242,10 +253,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         name: state.name,
         description: state.description || undefined,
         caId: state.caId,
-        commonName: state.commonName,
-        certificateTtlDays: state.certificateTtlDays,
+        commonName: usingExistingCertificate ? undefined : state.commonName,
+        certificateTtlDays: usingExistingCertificate ? undefined : state.certificateTtlDays,
         certificateRenewBeforeDays: state.certificateRenewBeforeDays,
-        keyAlgorithm: state.keyAlgorithm,
+        keyAlgorithm: usingExistingCertificate ? undefined : state.keyAlgorithm,
         members: state.pendingMembers.map((m) => ({
           kind: m.kind,
           id: m.id,
@@ -257,11 +268,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       });
 
       handleClose(false);
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to create signer"
-      });
+      // eslint-disable-next-line no-empty
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -280,7 +288,11 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: values.keyAlgorithm,
       keySource: values.keySource,
       hsmConnectorId: values.hsmConnectorId ?? null,
-      reissueFromExternalOrderId: values.reissueFromExternalOrderId ?? null,
+      externalOrderId: values.externalOrderId ?? null,
+      externalOrderMode: values.externalOrderMode,
+      hsmKeyLabel: values.hsmKeyLabel ?? "",
+      hsmKeyId: values.hsmKeyId ?? "",
+      hsmKeyIdRequired: values.hsmKeyIdRequired ?? false,
       adcsTemplate: values.adcsTemplate ?? ""
     }));
   };
@@ -300,7 +312,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         "commonName",
         "certificateTtlDays",
         "certificateRenewBeforeDays",
-        "reissueFromExternalOrderId"
+        "externalOrderId"
       ]);
       if (!ok) return;
       if (
@@ -315,7 +327,13 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       return;
     }
     if (step === 2) {
-      const ok = await certificateForm.trigger(["keySource", "keyAlgorithm", "hsmConnectorId"]);
+      const ok = await certificateForm.trigger([
+        "keySource",
+        "keyAlgorithm",
+        "hsmConnectorId",
+        "hsmKeyLabel",
+        "hsmKeyId"
+      ]);
       if (!ok) return;
       persistCertificateForm();
       setStep(3);

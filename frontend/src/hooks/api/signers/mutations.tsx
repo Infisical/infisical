@@ -129,11 +129,16 @@ export const useReissueSignerCertificate = () => {
       );
       return data;
     },
-    onSuccess: (signer) => {
+    onSuccess: (signer, { externalConfiguration }) => {
       queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
-      createNotification({ text: "Certificate re-issue scheduled", type: "success" });
+      createNotification({
+        text: externalConfiguration?.importFromExternalOrderId
+          ? "Signer switched to the order's certificate"
+          : "Certificate re-issue scheduled",
+        type: "success"
+      });
     }
   });
 };

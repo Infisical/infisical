@@ -427,7 +427,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     let caSigner: TCaSigner;
     let localKeys: CryptoKeyPair | undefined;
-    let hsmKey: { keyLabel: string; publicKeySpkiDer: Buffer } | undefined;
+    let hsmKey: { keyLabel: string; keyId: string | null; publicKeySpkiDer: Buffer } | undefined;
 
     if (useHsm) {
       if (!dto.hsmConnectorId) {
@@ -476,12 +476,21 @@ export const internalCertificateAuthorityServiceFactory = ({
         ["verify"]
       );
       const connectorId = dto.hsmConnectorId;
-      const { keyLabel } = generated;
+      const { keyLabel, keyId } = generated;
       caSigner = buildHsmCaSigner({
         caPublicKey,
         keyAlgorithm,
         sign: (data, mechanism, isDigest) =>
-          hsmConnectorService.sign({ connectorId, projectId, keyLabel, mechanism, data, isDigest })
+          hsmConnectorService.sign({
+            connectorId,
+            projectId,
+            keyLabel,
+            keyId,
+            publicKeySpki: generated.publicKeySpkiDer,
+            mechanism,
+            data,
+            isDigest
+          })
       });
     } else {
       const cryptoEngine = isPqcAlgorithm(keyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
@@ -625,6 +634,7 @@ export const internalCertificateAuthorityServiceFactory = ({
                 keySource: CertKeySource.Hsm,
                 hsmConnectorId: dto.hsmConnectorId,
                 hsmKeyLabel: hsmKey.keyLabel,
+                hsmKeyId: hsmKey.keyId,
                 hsmPublicKeySpki: hsmKey.publicKeySpkiDer
               },
               tx

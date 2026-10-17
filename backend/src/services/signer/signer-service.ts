@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import * as x509 from "@peculiar/x509";
 import { KeyObject } from "crypto";
+import { Knex } from "knex";
 
 import {
   AccessScope,
@@ -30,7 +31,7 @@ import {
   Pkcs11Mechanism,
   wrapRsaPkcs1DigestInfo
 } from "@app/lib/csr/pkcs11-algorithm-map";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 
@@ -63,12 +64,13 @@ import {
 import { ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { getCertificateCredentials } from "../certificate/certificate-fns";
+import { extractCertificateAlgorithms, getCertificateCredentials } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";
+import { MAX_CS_VALIDITY_DAYS } from "../certificate-authority/digicert/digicert-code-signing-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "../certificate-authority/internal/internal-certificate-authority-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
@@ -86,6 +88,7 @@ import {
 } from "./signer-enums";
 import { formatSignerIssuanceErrorReason } from "./signer-issuance-errors";
 import {
+  assertHsmKeyMatchesCertificate,
   issueHsmBackedSignerCertificate,
   issueSignerCertificate,
   mapCertKeyAlgorithmToHsmKeyAlgorithm,
@@ -106,13 +109,24 @@ import {
   TListSigningOperationsDTO,
   TReissueCertificateDTO,
   TSignDataDTO,
+  TSignerCertificateInput,
   TSignerExternalCaConfig,
+  TSignerExternalConfigurationInput,
   TUpdateSignerDTO
 } from "./signer-types";
 import { TSigningOperationDALFactory } from "./signing-operation-dal";
 
 const MAX_DATA_BYTES = 128;
 const DEFAULT_CERTIFICATE_TTL_DAYS = 365;
+
+const IMPORTABLE_HSM_KEY_ALGORITHMS: readonly string[] = [
+  CertKeyAlgorithm.RSA_3072,
+  CertKeyAlgorithm.RSA_4096,
+  CertKeyAlgorithm.ECDSA_P256,
+  CertKeyAlgorithm.ECDSA_P384
+];
+
+const IMPORTED_CERTIFICATE_FALLBACK_COMMON_NAME = "Code signing certificate";
 
 const CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES = new Set<CaType>([
   CaType.AWS_PCA,
@@ -150,18 +164,24 @@ type TSignerServiceFactoryDep = {
   signingOperationDAL: TSigningOperationDALFactory;
   hsmConnectorService: Pick<
     THsmConnectorServiceFactory,
-    "sign" | "generateKeyPair" | "getPublicKey" | "assertAttachPermission"
+    "sign" | "signWithKeyId" | "generateKeyPair" | "getPublicKey" | "assertAttachPermission"
   >;
-  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "findByIdForUpdate">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   signerIssuanceService: Pick<
     TSignerIssuanceServiceFactory,
-    "requestIssuance" | "getLatestIssuanceKeyConfig" | "runPendingJobNow"
+    "requestIssuance" | "getLatestIssuanceKeyConfig" | "runPendingJobNow" | "cancelOpenJobs"
   >;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
-  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "revokeCertificate" | "assertCodeSigningOrderReusable">;
+  digicertFns: Pick<
+    TDigiCertCertificateAuthorityFns,
+    | "revokeCertificate"
+    | "assertCodeSigningOrderReusable"
+    | "fetchIssuedCodeSigningCertificate"
+    | "downloadCodeSigningCertificate"
+  >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
@@ -267,6 +287,17 @@ type TResolvedInfisicalReissue = {
   keyAlgorithm: CertKeyAlgorithm;
 };
 type TResolvedReissueTarget = TResolvedHsmReissue | TResolvedInfisicalReissue;
+
+export const assertExternalConfigurationMatchesCaType = (
+  externalConfiguration: TSignerExternalConfigurationInput | undefined,
+  caType: CaType | null
+) => {
+  if (externalConfiguration?.caType && externalConfiguration.caType !== caType) {
+    throw new BadRequestError({
+      message: `externalConfiguration.caType '${externalConfiguration.caType}' does not match the type of the selected certificate authority ('${caType ?? "none"}').`
+    });
+  }
+};
 
 export const resolveReissueTarget = ({
   dto,
@@ -406,6 +437,93 @@ export const signerServiceFactory = ({
     return certificateId;
   };
 
+  const $parseDigiCertOrderId = (
+    value: string | undefined,
+    caType: CaType | null,
+    field: "reissueFromExternalOrderId" | "importFromExternalOrderId"
+  ): number | undefined => {
+    if (!value) return undefined;
+    if (caType !== CaType.DIGICERT) {
+      throw new BadRequestError({
+        message: `${field === "reissueFromExternalOrderId" ? "Reissuing from an existing order" : "Using the certificate from an existing order"} is only supported for DigiCert code signing certificate authorities.`
+      });
+    }
+    const orderId = Number(value);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      throw new BadRequestError({ message: `${field} must be a valid DigiCert order id.` });
+    }
+    return orderId;
+  };
+
+  const $importExistingDigiCertCertificate = async (input: {
+    caId: string;
+    projectId: string;
+    orderId: number;
+    certificate?: TSignerCertificateInput;
+    actor: Parameters<typeof hsmConnectorService.assertAttachPermission>[0];
+    signerId?: string;
+  }) => {
+    const { caId, projectId, orderId } = input;
+    const hsmConnectorId = input.certificate?.hsmConnectorId;
+    const hsmKeyLabel = input.certificate?.hsmKeyLabel;
+    const requestedHsmKeyId = input.certificate?.hsmKeyId;
+    if (input.certificate?.keySource !== CertKeySource.Hsm || !hsmConnectorId || !hsmKeyLabel) {
+      throw new BadRequestError({
+        message:
+          "Using an existing DigiCert certificate requires an HSM Connector and the label of the certificate's private key on that HSM."
+      });
+    }
+    await hsmConnectorService.assertAttachPermission(input.actor, hsmConnectorId, projectId);
+
+    const { pemBundle, certificate } = await digicertFns.fetchIssuedCodeSigningCertificate(caId, orderId);
+    const { keyAlgorithm } = extractCertificateAlgorithms(certificate);
+    if (!keyAlgorithm || !IMPORTABLE_HSM_KEY_ALGORITHMS.includes(keyAlgorithm)) {
+      throw new BadRequestError({
+        message: `The certificate in DigiCert order ${orderId} uses an unsupported key type (${keyAlgorithm ?? "unknown"}). Supported key types are RSA-3072, RSA-4096, ECDSA P-256, and ECDSA P-384.`
+      });
+    }
+
+    const { hsmKeyId } = await assertHsmKeyMatchesCertificate(
+      { hsmConnectorService },
+      { hsmConnectorId, projectId, hsmKeyLabel, hsmKeyId: requestedHsmKeyId, certificate }
+    );
+
+    const { certificateId } = await digicertFns.downloadCodeSigningCertificate({ caId, orderId, pemBundle });
+
+    const validityDays = Math.round(
+      (certificate.notAfter.getTime() - certificate.notBefore.getTime()) / (24 * 60 * 60 * 1000)
+    );
+    return {
+      orderId,
+      certificateId,
+      hsm: {
+        keySource: CertKeySource.Hsm,
+        hsmConnectorId,
+        hsmKeyLabel,
+        hsmKeyId: hsmKeyId ?? requestedHsmKeyId ?? null,
+        hsmPublicKeySpki: Buffer.from(certificate.publicKey.rawData)
+      },
+      commonName: certificate.subjectName.getField("CN")[0] || IMPORTED_CERTIFICATE_FALLBACK_COMMON_NAME,
+      certificateTtlDays: Math.min(Math.max(validityDays, 1), MAX_CS_VALIDITY_DAYS),
+      keyAlgorithm: keyAlgorithm as CertKeyAlgorithm
+    };
+  };
+
+  const $attachImportedCertificate = async (
+    imported: Awaited<ReturnType<typeof $importExistingDigiCertCertificate>>,
+    signerId: string | undefined,
+    tx: Knex
+  ) => {
+    await certificateDAL.findByIdForUpdate(imported.certificateId, tx);
+    const signerUsingCertificate = await signerDAL.findOne({ certificateId: imported.certificateId }, tx);
+    if (signerUsingCertificate && signerUsingCertificate.id !== signerId) {
+      throw new ConflictError({
+        message: `The certificate in DigiCert order ${imported.orderId} is already used by signer '${signerUsingCertificate.name}'.`
+      });
+    }
+    await certificateDAL.updateById(imported.certificateId, imported.hsm, tx);
+  };
+
   const create = async (dto: TCreateSignerDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.actor,
@@ -473,7 +591,7 @@ export const signerServiceFactory = ({
     let resolvedCaId: string | null = null;
     let resolvedCaType: CaType | null = null;
     if (usingCa) {
-      if (!dto.commonName) {
+      if (!dto.commonName && !dto.externalConfiguration?.importFromExternalOrderId) {
         throw new BadRequestError({ message: "commonName is required when issuing a certificate from a CA." });
       }
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId as string);
@@ -488,30 +606,28 @@ export const signerServiceFactory = ({
     }
 
     if (resolvedCaType) assertCaTypeSupportsCodeSigning(resolvedCaType);
+    assertExternalConfigurationMatchesCaType(dto.externalConfiguration, resolvedCaType);
 
     let createDigicertLifecycle: { mode: "reissue"; previousOrderId: number } | undefined;
     const createExternalConfig = dto.externalConfiguration;
-    const reissueFromExternalOrderId =
-      createExternalConfig?.caType === CaType.DIGICERT ? createExternalConfig.reissueFromExternalOrderId : undefined;
-    if (reissueFromExternalOrderId) {
-      if (resolvedCaType !== CaType.DIGICERT) {
-        throw new BadRequestError({
-          message:
-            "Reissuing from an existing order is only supported for DigiCert code signing certificate authorities."
-        });
-      }
-      const previousOrderId = Number(reissueFromExternalOrderId);
-      if (!Number.isInteger(previousOrderId) || previousOrderId <= 0) {
-        throw new BadRequestError({ message: "reissueFromExternalOrderId must be a valid DigiCert order id." });
-      }
-      await digicertFns.assertCodeSigningOrderReusable(resolvedCaId as string, previousOrderId);
-      createDigicertLifecycle = { mode: "reissue", previousOrderId };
+    const reissueOrderId = $parseDigiCertOrderId(
+      createExternalConfig?.reissueFromExternalOrderId,
+      resolvedCaType,
+      "reissueFromExternalOrderId"
+    );
+    const importOrderId = $parseDigiCertOrderId(
+      createExternalConfig?.importFromExternalOrderId,
+      resolvedCaType,
+      "importFromExternalOrderId"
+    );
+    if (reissueOrderId) {
+      await digicertFns.assertCodeSigningOrderReusable(resolvedCaId as string, reissueOrderId);
+      createDigicertLifecycle = { mode: "reissue", previousOrderId: reissueOrderId };
     }
 
     const isExternalCa = resolvedCaType !== null && resolvedCaType !== CaType.INTERNAL;
 
-    const adcsTemplate =
-      createExternalConfig?.caType === CaType.ADCS ? createExternalConfig.template?.trim() || undefined : undefined;
+    const adcsTemplate = createExternalConfig?.template?.trim() || undefined;
     if (adcsTemplate && resolvedCaType !== CaType.ADCS) {
       throw new BadRequestError({
         message:
@@ -537,7 +653,19 @@ export const signerServiceFactory = ({
       });
     }
 
-    const keyAlgorithm: CertKeyAlgorithm = (dto.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
+    const importedCertificate =
+      importOrderId && resolvedCaId
+        ? await $importExistingDigiCertCertificate({
+            caId: resolvedCaId,
+            projectId: dto.projectId,
+            orderId: importOrderId,
+            certificate: dto.certificate,
+            actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+          })
+        : null;
+
+    const keyAlgorithm: CertKeyAlgorithm =
+      importedCertificate?.keyAlgorithm ?? (dto.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
 
     let issuedCertificateId: string | null = null;
     if (usingCa && resolvedCaId && !isExternalCa) {
@@ -552,11 +680,17 @@ export const signerServiceFactory = ({
       });
     }
 
-    const finalCertificateId = usingExistingCert ? (dto.certificateId as string) : issuedCertificateId;
-    const initialStatus: SignerStatus = isExternalCa ? SignerStatus.Pending : SignerStatus.Active;
+    const finalCertificateId = usingExistingCert
+      ? (dto.certificateId as string)
+      : (importedCertificate?.certificateId ?? issuedCertificateId);
+    const initialStatus: SignerStatus =
+      isExternalCa && !importedCertificate ? SignerStatus.Pending : SignerStatus.Active;
 
     try {
       const result = await signerDAL.transaction(async (tx) => {
+        if (importedCertificate) {
+          await $attachImportedCertificate(importedCertificate, undefined, tx);
+        }
         const project = await projectDAL.findOne({ id: dto.projectId }, tx);
         if (!project) {
           throw new NotFoundError({ message: "Certificate Manager has not been set up for this organization." });
@@ -582,8 +716,10 @@ export const signerServiceFactory = ({
             description: dto.description,
             certificateId: finalCertificateId,
             caId: resolvedCaId,
-            commonName: usingCa ? dto.commonName : null,
-            certificateTtlDays: usingCa ? (dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS) : null,
+            commonName: usingCa ? (importedCertificate?.commonName ?? dto.commonName) : null,
+            certificateTtlDays: usingCa
+              ? (importedCertificate?.certificateTtlDays ?? dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS)
+              : null,
             certificateRenewBeforeDays: usingCa ? (dto.certificateRenewBeforeDays ?? null) : null,
             keyAlgorithm,
             status: initialStatus,
@@ -790,7 +926,7 @@ export const signerServiceFactory = ({
         return { ...signer, approvalPolicyId: policy.id };
       });
 
-      if (usingCa && resolvedCaId && isExternalCa && resolvedCaType) {
+      if (usingCa && resolvedCaId && isExternalCa && resolvedCaType && !importedCertificate) {
         try {
           const certificateInput = dto.certificate;
           await signerIssuanceService.requestIssuance({
@@ -1148,6 +1284,7 @@ export const signerServiceFactory = ({
 
   const $reissueExternalSigner = async (ctx: TReissueExecutionContext) => {
     const { dto, signer, reissueCaType, target, currentCert, recoveredKeyConfig, commonName, certificateTtlDays } = ctx;
+    const reusedHsmKeyRow = currentCert?.hsmKeyLabel ? currentCert : recoveredKeyConfig;
     const reissueHsm = target.isHsm
       ? {
           hsmConnectorId: target.hsmConnectorId,
@@ -1155,6 +1292,7 @@ export const signerServiceFactory = ({
           hsmKeyLabel: target.switchingKeySource
             ? undefined
             : (currentCert?.hsmKeyLabel ?? recoveredKeyConfig?.hsmKeyLabel ?? undefined),
+          hsmKeyId: target.switchingKeySource ? undefined : reusedHsmKeyRow?.hsmKeyId,
           hsmPublicKeySpki: target.switchingKeySource
             ? undefined
             : (currentCert?.hsmPublicKeySpki ?? recoveredKeyConfig?.hsmPublicKeySpki ?? undefined),
@@ -1217,6 +1355,7 @@ export const signerServiceFactory = ({
             certificateTtlDays,
             hsmConnectorId: target.hsmConnectorId,
             hsmKeyLabel: currentCert.hsmKeyLabel,
+            hsmKeyId: currentCert.hsmKeyId,
             expectedPublicKeySpkiDer: currentCert.hsmPublicKeySpki ?? undefined,
             hsmKeyAlgorithm: target.hsmKeyAlgorithm
           });
@@ -1278,28 +1417,58 @@ export const signerServiceFactory = ({
 
     const reissueCaType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
     assertCaTypeSupportsCodeSigning(reissueCaType);
+    assertExternalConfigurationMatchesCaType(dto.externalConfiguration, reissueCaType);
     const reissueIsExternal = reissueCaType !== CaType.INTERNAL;
 
     const reissueExternalConfig = dto.externalConfiguration;
-    const reissueFromExternalOrderId =
-      reissueExternalConfig?.caType === CaType.DIGICERT ? reissueExternalConfig.reissueFromExternalOrderId : undefined;
-    let explicitReissueOrderId: number | undefined;
-    if (reissueFromExternalOrderId) {
-      if (reissueCaType !== CaType.DIGICERT) {
-        throw new BadRequestError({
-          message:
-            "Reissuing from an existing order is only supported for DigiCert code signing certificate authorities."
-        });
-      }
-      explicitReissueOrderId = Number(reissueFromExternalOrderId);
-      if (!Number.isInteger(explicitReissueOrderId) || explicitReissueOrderId <= 0) {
-        throw new BadRequestError({ message: "reissueFromExternalOrderId must be a valid DigiCert order id." });
-      }
+    const explicitReissueOrderId = $parseDigiCertOrderId(
+      reissueExternalConfig?.reissueFromExternalOrderId,
+      reissueCaType,
+      "reissueFromExternalOrderId"
+    );
+    const importOrderId = $parseDigiCertOrderId(
+      reissueExternalConfig?.importFromExternalOrderId,
+      reissueCaType,
+      "importFromExternalOrderId"
+    );
+    if (explicitReissueOrderId) {
       await digicertFns.assertCodeSigningOrderReusable(ca.id, explicitReissueOrderId);
     }
 
-    const providedAdcsTemplate =
-      reissueExternalConfig?.caType === CaType.ADCS ? reissueExternalConfig.template?.trim() || undefined : undefined;
+    if (importOrderId) {
+      const imported = await $importExistingDigiCertCertificate({
+        caId: ca.id,
+        projectId: signer.projectId,
+        orderId: importOrderId,
+        certificate: dto.certificate,
+        actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
+        signerId: signer.id
+      });
+      return signerDAL.transaction(async (tx) => {
+        await signerIssuanceService.cancelOpenJobs(
+          signer.id,
+          "Superseded by an existing DigiCert certificate attached to the signer.",
+          tx
+        );
+        await $attachImportedCertificate(imported, signer.id, tx);
+        return signerDAL.updateById(
+          signer.id,
+          {
+            caId: ca.id,
+            commonName: imported.commonName,
+            certificateTtlDays: imported.certificateTtlDays,
+            keyAlgorithm: imported.keyAlgorithm,
+            externalCaConfig: null,
+            certificateId: imported.certificateId,
+            status: SignerStatus.Active,
+            certificateFailureReason: null
+          },
+          tx
+        );
+      });
+    }
+
+    const providedAdcsTemplate = reissueExternalConfig?.template?.trim() || undefined;
     if (providedAdcsTemplate && reissueCaType !== CaType.ADCS) {
       throw new BadRequestError({
         message:
@@ -1754,16 +1923,17 @@ export const signerServiceFactory = ({
           mech.mechanism === Pkcs11Mechanism.RsaPkcs
             ? wrapRsaPkcs1DigestInfo(dto.signingAlgorithm, dataBuffer)
             : dataBuffer;
-        let raw = await hsmConnectorService.sign({
+        const signature = await hsmConnectorService.sign({
           connectorId: certificate.hsmConnectorId as string,
           projectId,
           keyLabel: certificate.hsmKeyLabel as string,
+          keyId: certificate.hsmKeyId,
+          publicKeySpki: certificate.hsmPublicKeySpki ?? null,
           mechanism: mech.mechanism,
           data: hsmData,
           isDigest: dto.isDigest
         });
-        if (mech.isEcdsa) raw = ecdsaRawRsToDer(raw);
-        signatureBuffer = raw;
+        signatureBuffer = mech.isEcdsa ? ecdsaRawRsToDer(signature) : signature;
       } else {
         const privateKeyPem = certPrivateKey as Buffer;
         const svc = signingService(keyAlgorithm);
@@ -2052,6 +2222,7 @@ export const signerServiceFactory = ({
               hsmConnectorId: autoRenewCert.hsmConnectorId,
               hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(autoRenewCert.keyAlgorithm),
               hsmKeyLabel: autoRenewCert.hsmKeyLabel ?? undefined,
+              hsmKeyId: autoRenewCert.hsmKeyId,
               hsmPublicKeySpki: autoRenewCert.hsmPublicKeySpki ?? undefined
             }
           : undefined;
@@ -2101,6 +2272,7 @@ export const signerServiceFactory = ({
           certificateTtlDays: ttlDays,
           hsmConnectorId: existingCert.hsmConnectorId,
           hsmKeyLabel: existingCert.hsmKeyLabel,
+          hsmKeyId: existingCert.hsmKeyId,
           expectedPublicKeySpkiDer: existingCert.hsmPublicKeySpki ?? undefined,
           hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(existingCert.keyAlgorithm)
         });
