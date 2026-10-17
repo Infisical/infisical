@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   BanIcon,
@@ -41,9 +42,12 @@ import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enu
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
@@ -59,6 +63,13 @@ const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
 
 const TRIGGERED_STICKY_CELL_CLASS_NAME =
   "bg-[color-mix(in_srgb,var(--color-danger)_5%,var(--color-container))] group-hover:bg-[color-mix(in_srgb,var(--color-danger)_10%,var(--color-container-hover))]";
+
+// On a hover-capable pointer the status badge gives its gap up and only takes it back while the row
+// is hovered or focused, which is exactly when the action bar is shown. The bar now also stays
+// shown while this row's menu is open, so the gap has to follow the same condition the bar's
+// visibility does: otherwise moving the pointer off a row whose menu is open drops the gap while
+// the bar is still held visible, and the bar lands on top of the badge.
+const STATUS_BADGE_ACTION_BAR_GAP_CLASS_NAME = "[@media(hover:hover)]:mr-16";
 
 type Props = {
   honeyTokenName: string;
@@ -83,6 +94,18 @@ export const HoneyTokenTableRow = ({
   const [, isNameCopied, setIsNameCopied] = useTimedReset<boolean>({ initialState: false });
 
   const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
+  // The overflow menu's content is portaled out of the row, so moving the pointer into it counts
+  // as leaving the row and neither hover nor focus-within holds the bar open. Track the menu's own
+  // open state and keep the bar mounted while it is in use, the way the secret edit row does.
+  // An expanded row renders one menu per environment, so this is keyed by environment slug rather
+  // than a single boolean; a shared boolean would open every environment's menu at once.
+  const [openActionMenuEnv, setOpenActionMenuEnv] = useState<string | null>(null);
+  const shouldMountActionBar = shouldRenderActions || openActionMenuEnv !== null;
   const totalCols = environments.length + 2;
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -100,14 +123,20 @@ export const HoneyTokenTableRow = ({
     return !ht || ht.status === HoneyTokenStatus.Revoked;
   });
 
-  const renderActionButtons = (honeyToken: TDashboardHoneyToken) => {
+  const renderActionButtons = (honeyToken: TDashboardHoneyToken, envSlug: string) => {
     const isRevoked = honeyToken.status === HoneyTokenStatus.Revoked;
+    // The menu is portaled, so moving the pointer into it leaves the row and drops both
+    // `group-hover` and `group-focus-within`. Mounting the bar is not enough on its own: without
+    // this the bar would fade to opacity 0 and the trigger collapse to width 0 underneath the open
+    // menu. Keyed by environment so only the row whose menu is open is held visible.
+    const isActionMenuOpen = openActionMenuEnv === envSlug;
 
     return (
       <div
         className={twMerge(
           "flex items-center rounded-md border border-border bg-container-hover p-0.5",
-          TABLE_ROW_ACTION_BAR_CLASS_NAME
+          TABLE_ROW_ACTION_BAR_CLASS_NAME,
+          isActionMenuOpen && TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME
         )}
       >
         <Tooltip>
@@ -115,7 +144,10 @@ export const HoneyTokenTableRow = ({
             <IconButton
               variant="ghost"
               size="xs"
-              className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+              className={twMerge(
+                TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+                isActionMenuOpen && TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME
+              )}
               aria-label={`View details for ${honeyToken.name}`}
               onClick={() => onViewDetails(honeyToken)}
             >
@@ -143,12 +175,23 @@ export const HoneyTokenTableRow = ({
             <TooltipContent>Revoked honey tokens cannot be edited.</TooltipContent>
           </Tooltip>
         ) : (
-          <DropdownMenu>
+          <DropdownMenu
+            open={openActionMenuEnv === envSlug}
+            onOpenChange={(isOpen) =>
+              setOpenActionMenuEnv((current) => {
+                if (isOpen) return envSlug;
+                return current === envSlug ? null : current;
+              })
+            }
+          >
             <DropdownMenuTrigger asChild>
               <IconButton
                 variant="ghost"
                 size="xs"
-                className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                className={twMerge(
+                  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+                  isActionMenuOpen && TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME
+                )}
                 aria-label={`More actions for ${honeyToken.name}`}
               >
                 <EllipsisIcon />
@@ -244,9 +287,11 @@ export const HoneyTokenTableRow = ({
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
         className={twMerge(
-          "group hover:z-10",
+          groupClassName,
+          "hover:z-10",
           isTriggered && !isExpanded && "bg-danger/5 hover:bg-danger/10"
         )}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -300,13 +345,14 @@ export const HoneyTokenTableRow = ({
               <div
                 className={twMerge(
                   "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",
-                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
+                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
+                  openActionMenuEnv === singleEnvSlug && STATUS_BADGE_ACTION_BAR_GAP_CLASS_NAME
                 )}
               >
                 {renderStatusBadge(singleEnvToken)}
               </div>
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderActionButtons(singleEnvToken)}
+                {shouldMountActionBar && renderActionButtons(singleEnvToken, singleEnvSlug)}
               </div>
             </div>
           ) : (
@@ -417,13 +463,15 @@ export const HoneyTokenTableRow = ({
                               <div
                                 className={twMerge(
                                   "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",
-                                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
+                                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
+                                  openActionMenuEnv === slug &&
+                                    STATUS_BADGE_ACTION_BAR_GAP_CLASS_NAME
                                 )}
                               >
                                 {renderStatusBadge(honeyToken)}
                               </div>
                               <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
-                                {renderActionButtons(honeyToken)}
+                                {renderActionButtons(honeyToken, slug)}
                               </div>
                             </div>
                           </TableCell>

@@ -185,6 +185,8 @@ type Props = {
   // that is outstanding so it can keep the row mounted instead of discarding the edit on scroll.
   unsavedChangeId?: string;
   onUnsavedChange?: (id: string, hasUnsavedChanges: boolean) => void;
+  /** False while the owning row is idle, which keeps the hover action bar out of the DOM. */
+  shouldRenderHoverActions?: boolean;
   onCopySecret?: () => void;
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
   onExpandedChange?: (isExpanded: boolean) => void;
@@ -228,6 +230,7 @@ export const SecretEditTableRow = ({
   revokedProjectFolderGrant,
   unsavedChangeId,
   onUnsavedChange,
+  shouldRenderHoverActions = true,
   onCopySecret,
   onAccessInsightsUpgrade,
   onExpandedChange
@@ -1143,6 +1146,11 @@ export const SecretEditTableRow = ({
     actionBarResizeObserverRef.current = observer;
   }, []);
 
+  // Hover is not the only thing that opens the bar, so keep it mounted whenever a popover or the
+  // dropdown is holding it open. main has since removed the focused-field hover-zone affordance
+  // that used to feed this hold as well, so shouldStayExpanded is now the whole of it.
+  const shouldMountActionBar = shouldRenderHoverActions || shouldStayExpanded;
+
   const getTooltipContentForSecretSharing = () => {
     if (!currentProject.secretSharing) {
       return "Secret Sharing Disabled";
@@ -1418,12 +1426,7 @@ export const SecretEditTableRow = ({
           )}
         </ProjectPermissionCan>
       )}
-      {!(
-        isDirty &&
-        (dirtyFields.key || dirtyFields.value) &&
-        !isImportedSecret &&
-        !isBatchMode
-      ) && (
+      {shouldMountActionBar && !isDirtyState && (
         <div
           ref={actionBarRef}
           data-table-row-filter-positioner
