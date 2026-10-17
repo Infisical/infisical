@@ -90,5 +90,6 @@ export enum AppConnection {
   Stripe = "stripe",
   Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",
+  ServiceNow = "servicenow",
   S3Compatible = "s3-compatible"
 }

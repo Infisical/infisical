@@ -387,6 +387,14 @@ export const appConnections = [
     category: "SaaS",
   },
   {
+    name: "ServiceNow",
+    slug: "servicenow",
+    path: "/integrations/app-connections/servicenow",
+    description:
+      "Learn how to connect ServiceNow to route Infisical access requests through ServiceNow approvals.",
+    category: "SaaS",
+  },
+  {
     name: "OpenRouter",
     slug: "openrouter",
     path: "/integrations/app-connections/openrouter",
