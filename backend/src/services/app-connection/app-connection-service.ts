@@ -137,6 +137,7 @@ import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHpeIloConnectionCredentialsSchema } from "./hpe-ilo";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateJiraConnectionCredentialsSchema } from "./jira";
 import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
 import { keeperConnectionService } from "./keeper/keeper-connection-service";
 import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
@@ -337,7 +338,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
-  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema
+  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
+  [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

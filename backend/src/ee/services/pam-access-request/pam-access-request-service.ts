@@ -179,7 +179,7 @@ export const pamAccessRequestServiceFactory = ({
       throw new NotFoundError({ message: "Folder not found" });
     }
 
-    const { steps, bypassers } = await approvalPolicyService.getScopeConfiguration(
+    const { steps, bypassers, autoApproval } = await approvalPolicyService.getScopeConfiguration(
       ApprovalPolicyType.PamAccess,
       ApprovalPolicyScope.PamFolder,
       folderId,
@@ -189,7 +189,8 @@ export const pamAccessRequestServiceFactory = ({
     return {
       steps: steps.map((step) => ({ approvers: step.approvers })),
       notificationConfigs: await getNotificationConfigs(folderId),
-      breakGlassUsers: bypassers
+      breakGlassUsers: bypassers,
+      autoApproval
     };
   };
 
@@ -199,6 +200,7 @@ export const pamAccessRequestServiceFactory = ({
     steps,
     notificationConfigs,
     breakGlassUsers,
+    autoApproval,
     ...ctx
   }: TSetApprovalConfigurationDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
@@ -279,6 +281,7 @@ export const pamAccessRequestServiceFactory = ({
       {
         steps: steps.map((step) => ({ requiredApprovals: 1, approvers: step.approvers })),
         ...(managesBreakGlass ? { bypassers: dedupedBreakGlassUsers } : {}),
+        ...(autoApproval ? { autoApproval } : {}),
         name: `PAM Folder Approval - ${folder.name}`,
         conditions: [],
         constraints: { accessDuration: { min: "30s", max: "7d" } }
@@ -296,7 +299,8 @@ export const pamAccessRequestServiceFactory = ({
       folderId,
       stepCount: steps.length,
       notificationConfigCount: notificationConfigs?.length,
-      breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined
+      breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined,
+      autoApprovalRuleCount: autoApproval?.rules.length
     };
   };
 
@@ -387,6 +391,7 @@ export const pamAccessRequestServiceFactory = ({
     duration,
     accessType = PamAccessType.Session,
     breakGlass = false,
+    autoApprovalInputs,
     ...ctx
   }: TCreateAccessRequestDTO) => {
     const trimmedReason = reason?.trim() || undefined;
@@ -439,6 +444,8 @@ export const pamAccessRequestServiceFactory = ({
         },
         justification: trimmedReason,
         skipApproverNotification: breakGlass,
+        autoApprovalInputs,
+        skipAutoApproval: breakGlass,
         machineIdentityId: ctx.actor === ActorType.IDENTITY ? ctx.actorId : undefined,
         requesterName: requester.name,
         requesterEmail: requester.email
@@ -618,7 +625,7 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    if (!account.folderId) return { steps: [] };
+    if (!account.folderId) return { steps: [], autoApprovalInputs: [] };
 
     return approvalPolicyService.getApproverRoster(
       ApprovalPolicyType.PamAccess,

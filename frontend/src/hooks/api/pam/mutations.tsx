@@ -27,6 +27,7 @@ import {
   TGetPamAccountCredentialsDTO,
   TImportPamDiscoveredAccountResult,
   TImportPamDiscoveredAccountsDTO,
+  TPamAccessRequest,
   TPamAccessResponse,
   TPamAccountCredentials,
   TPamAccountTemplate,
@@ -793,7 +794,10 @@ export const useCreatePamAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: TCreatePamAccessRequestDTO) => {
-      const { data } = await apiRequest.post("/api/v1/pam/access-requests", params);
+      const { data } = await apiRequest.post<{ request: TPamAccessRequest }>(
+        "/api/v1/pam/access-requests",
+        params
+      );
       return data;
     },
     onSuccess: () => {
@@ -908,11 +912,12 @@ export const useSetPamApprovalConfig = () => {
       folderId,
       steps,
       notificationConfigs,
-      breakGlassUsers
+      breakGlassUsers,
+      autoApproval
     }: TSetPamApprovalConfigDTO) => {
       const { data } = await apiRequest.put(
         `/api/v1/pam/folders/${folderId}/approval-configuration`,
-        { steps, notificationConfigs, breakGlassUsers }
+        { steps, notificationConfigs, breakGlassUsers, autoApproval }
       );
       return data;
     },
