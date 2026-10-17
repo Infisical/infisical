@@ -8,7 +8,11 @@ import {
   DetailLabel,
   DetailValue
 } from "@app/components/v3";
-import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultCredentialType,
+  AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField
+} from "@app/hooks/api/agentVault";
 
 import {
   CREDENTIAL_LABELS,
@@ -24,11 +28,15 @@ const credentialPreview = (form: {
   credentialType: AgentVaultCredentialType;
   headerName?: string;
   headerPrefix?: string;
+  memberProvidedFields: TAgentVaultMemberProvidedField[];
 }): string | null => {
   if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
   if (form.credentialType === AgentVaultCredentialType.Basic) return `Authorization: Basic ${MASK}`;
   const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
-  return `${form.headerName || "Authorization"}: ${prefix}${MASK}`;
+  const value = form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue)
+    ? "<member value>"
+    : MASK;
+  return `${form.headerName || "Authorization"}: ${prefix}${value}`;
 };
 
 const alignColumns = (rows: string[][]) => {
@@ -69,7 +77,12 @@ export const ReviewFields = ({ isUpdate }: Props) => {
         : ""
     ]);
 
-  const outcome = (value: string | undefined, canClear: boolean) => {
+  const outcome = (
+    value: string | undefined,
+    canClear: boolean,
+    field: TAgentVaultMemberProvidedField
+  ) => {
+    if (form.memberProvidedFields.includes(field)) return "Set by each member";
     if (!isUpdate) return value ? "Set" : "None";
     if (value === UNCHANGED_SECRET) return "Unchanged";
     if (value) return "Replaced";
@@ -120,13 +133,17 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           {isBasic && (
             <Detail>
               <DetailLabel>Username</DetailLabel>
-              <DetailValue>{outcome(form.username, true)}</DetailValue>
+              <DetailValue>
+                {outcome(form.username, true, AgentVaultVariableReferenceField.CredentialUsername)}
+              </DetailValue>
             </Detail>
           )}
           {form.credentialType !== AgentVaultCredentialType.Passthrough && (
             <Detail>
               <DetailLabel>{secretLabel}</DetailLabel>
-              <DetailValue>{outcome(form.secret, isBasic)}</DetailValue>
+              <DetailValue>
+                {outcome(form.secret, isBasic, AgentVaultVariableReferenceField.CredentialValue)}
+              </DetailValue>
             </Detail>
           )}
         </div>

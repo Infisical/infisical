@@ -14,7 +14,8 @@ import {
 } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
-  useGetAgentVaultSessionLogSettings
+  useGetAgentVaultSessionLogSettings,
+  useListAgentVaultAccessBundlesRequiringSetup
 } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -28,11 +29,18 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
   const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
   const { subscription } = useSubscription();
+  const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup();
+  const needsSetup = Boolean(requiringSetup?.totalCount);
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
-    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
-    { label: "Variables", icon: Braces, pathSuffix: "variables", hidden: !isAdmin }
+    {
+      label: "Access Bundles",
+      icon: Package,
+      pathSuffix: "access-bundles",
+      alertVariant: needsSetup ? "warning" : undefined
+    },
+    { label: "Variables", icon: Braces, pathSuffix: "variables" }
   ];
 
   const infrastructureItems: NavItem[] = [

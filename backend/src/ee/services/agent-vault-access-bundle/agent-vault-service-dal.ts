@@ -32,5 +32,46 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByAccessBundleId, findByIdInAccessBundle };
+  // Reads the primary even without a tx, like findByIdInAccessBundle.
+  const findByIdInProject = async (
+    { id, projectId }: { id: string; projectId: string },
+    tx?: Knex
+  ): Promise<(TAgentVaultServices & { accessBundleName: string }) | undefined> => {
+    try {
+      return (await (tx || db)(TableName.AgentVaultService)
+        .join(
+          TableName.AgentVaultAccessBundle,
+          `${TableName.AgentVaultService}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .where(`${TableName.AgentVaultService}.id`, id)
+        .where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId)
+        .first(
+          `${TableName.AgentVaultService}.*`,
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName")
+        )) as (TAgentVaultServices & { accessBundleName: string }) | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault service in project" });
+    }
+  };
+
+  // A personal values save holds this until it commits. A service update writes the row, so it waits for the
+  // save, and a save that starts after the update reads the fields the update left.
+  const lockForPersonalValues = async (
+    id: string,
+    tx: Knex
+  ): Promise<Pick<TAgentVaultServices, "id" | "credentialType" | "memberProvidedFields"> | undefined> => {
+    try {
+      return (await tx(TableName.AgentVaultService)
+        .where({ id })
+        .forShare()
+        .first("id", "credentialType", "memberProvidedFields")) as
+        | Pick<TAgentVaultServices, "id" | "credentialType" | "memberProvidedFields">
+        | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault service for personal values" });
+    }
+  };
+
+  return { ...orm, findByAccessBundleId, findByIdInAccessBundle, findByIdInProject, lockForPersonalValues };
 };
