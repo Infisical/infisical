@@ -32,6 +32,11 @@ import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-
 import { agentVaultServiceVariableReferenceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-variable-reference-dal";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
+import {
+  agentVaultPersonalValueDALFactory,
+  agentVaultPersonalValueReferenceDALFactory
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
+import { agentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
@@ -1995,6 +2000,8 @@ export const registerRoutes = async (
   const agentVaultServiceSubstitutionDAL = agentVaultServiceSubstitutionDALFactory(db);
   const agentVaultVariableDAL = agentVaultVariableDALFactory(db);
   const agentVaultServiceVariableReferenceDAL = agentVaultServiceVariableReferenceDALFactory(db);
+  const agentVaultPersonalValueDAL = agentVaultPersonalValueDALFactory(db);
+  const agentVaultPersonalValueReferenceDAL = agentVaultPersonalValueReferenceDALFactory(db);
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
@@ -2007,6 +2014,16 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const agentVaultPersonalValueService = agentVaultPersonalValueServiceFactory({
+    agentVaultPersonalValueDAL,
+    agentVaultPersonalValueReferenceDAL,
+    agentVaultVariableDAL,
+    agentVaultServiceDAL,
+    permissionService,
+    membershipDAL,
+    kmsService
+  });
+
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
@@ -2014,6 +2031,8 @@ export const registerRoutes = async (
     agentVaultServiceSubstitutionDAL,
     agentVaultVariableDAL,
     agentVaultServiceVariableReferenceDAL,
+    agentVaultPersonalValueDAL,
+    agentVaultPersonalValueService,
     permissionService,
     kmsService,
     membershipDAL,
@@ -2054,7 +2073,10 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    usageMeteringService
+    usageMeteringService,
+    agentVaultPersonalValueDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const pamProjectResolver = pamProjectResolverFactory({
@@ -2142,6 +2164,7 @@ export const registerRoutes = async (
     agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
     agentVaultVariableDAL,
+    agentVaultPersonalValueDAL,
     agentVaultSessionDAL,
     agentVaultSessionLogConfigDAL,
     membershipDAL,
@@ -4700,6 +4723,7 @@ export const registerRoutes = async (
     agentVaultProjectResolver,
     agentVaultAccessBundle: agentVaultAccessBundleService,
     agentVaultVariable: agentVaultVariableService,
+    agentVaultPersonalValue: agentVaultPersonalValueService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,

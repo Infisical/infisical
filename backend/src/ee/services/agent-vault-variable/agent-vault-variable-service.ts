@@ -13,12 +13,15 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
+import { AgentVaultVariableScope } from "../agent-vault/agent-vault-enums";
+import { ownerOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
-import { AGENT_VAULT_MAX_VARIABLES } from "../agent-vault/agent-vault-variable-fns";
+import { AGENT_VAULT_MAX_PERSONAL_VARIABLES, AGENT_VAULT_MAX_VARIABLES } from "../agent-vault/agent-vault-variable-fns";
 import {
   TAgentVaultServiceUsingVariable,
   TAgentVaultVariable,
-  TAgentVaultVariableDALFactory
+  TAgentVaultVariableDALFactory,
+  TAgentVaultVariableOwnerScope
 } from "./agent-vault-variable-dal";
 import {
   TAgentVaultVariableScoped,
@@ -39,6 +42,11 @@ const AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT = 20;
 
 export type TAgentVaultVariableServiceFactory = ReturnType<typeof agentVaultVariableServiceFactory>;
 
+const isPersonal = (variable: TAgentVaultVariable) => Boolean(variable.userId || variable.identityId);
+
+const isOwnedBy = (variable: TAgentVaultVariable, owner: TAgentVaultOwner) =>
+  owner.userId ? variable.userId === owner.userId : variable.identityId === owner.identityId;
+
 export const agentVaultVariableServiceFactory = ({
   agentVaultVariableDAL,
   permissionService,
@@ -47,20 +55,64 @@ export const agentVaultVariableServiceFactory = ({
   const getProjectCipher = (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-  // Variables are admin only, reads included: a member can use a service without seeing what it is built from, and
-  // Edit on access bundles is the action only an admin holds.
-  const assertCanManageVariables = async ({ projectId, ctx }: TAgentVaultVariableScoped) => {
+  /**
+   * Shared variables are admin only, reads included: a member can use a service without seeing what it is built
+   * from, and Edit on access bundles is the action only an admin holds. Personal variables are the caller's own,
+   * and any Agent Vault member keeps them. Nobody, an admin included, can name or read another actor's.
+   */
+  const resolveScope = async (
+    { projectId, ctx }: TAgentVaultVariableScoped,
+    scope: AgentVaultVariableScope
+  ): Promise<TAgentVaultVariableOwnerScope> => {
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    if (scope === AgentVaultVariableScope.Shared) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      );
+      return { projectId, owner: null };
+    }
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      ProjectPermissionAgentVaultAccessBundleActions.Read,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    return { projectId, owner: ownerOf(ctx) };
+  };
+
+  const notFound = (variableId: string) => new NotFoundError({ message: `Variable with ID '${variableId}' not found` });
+
+  // A variable the caller may not act on reads exactly like one that does not exist, so an id never confirms that
+  // someone else's personal variable is there.
+  const findAccessibleVariable = async ({ variableId, projectId, ctx }: TVariableByIdDTO) => {
+    const variable = await agentVaultVariableDAL.findByIdInProject({ id: variableId, projectId });
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+
+    if (!variable) throw notFound(variableId);
+    if (isPersonal(variable)) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultAccessBundleActions.Read,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      );
+      const owner = ownerOf(ctx);
+      if (!isOwnedBy(variable, owner)) throw notFound(variableId);
+      return { variable, scope: { projectId, owner } };
+    }
+    if (
+      permission.cannot(
+        ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      )
+    ) {
+      throw notFound(variableId);
+    }
+    return { variable, scope: { projectId, owner: null } };
   };
 
   // Values never leave through this projection; only the audited value endpoint returns one.
   const projectVariable = (variable: TAgentVaultVariable, services: TAgentVaultServiceUsingVariable[]) => ({
     id: variable.id,
     key: variable.key,
+    scope: isPersonal(variable) ? AgentVaultVariableScope.Personal : AgentVaultVariableScope.Shared,
     usedByServices: services
       .filter((service) => service.variableId === variable.id)
       .map(
@@ -76,26 +128,37 @@ export const agentVaultVariableServiceFactory = ({
     updatedAt: variable.updatedAt
   });
 
-  const notFound = (variableId: string) => new NotFoundError({ message: `Variable with ID '${variableId}' not found` });
+  const duplicateKeyMessage = (key: string, { owner }: TAgentVaultVariableOwnerScope) =>
+    owner ? `You already have a variable named '${key}'.` : `A variable named '${key}' already exists.`;
 
-  const duplicateKeyMessage = (key: string) => `A variable named '${key}' already exists.`;
-
-  const inUseMessage = (key: string, services: TAgentVaultServiceUsingVariable[]) => {
+  const inUseMessage = (
+    key: string,
+    services: TAgentVaultServiceUsingVariable[],
+    { owner }: TAgentVaultVariableOwnerScope
+  ) => {
     const names = services
       .map((service) => `'${service.serviceName}' (access bundle '${service.accessBundleName}')`)
       .join(", ");
+    if (owner) {
+      return services.length === 1
+        ? `The variable '${key}' is used by your personal values for the service ${names}. Change those values before deleting it.`
+        : `The variable '${key}' is used by your personal values for the services ${names}. Change those values before deleting it.`;
+    }
     return services.length === 1
       ? `The variable '${key}' is used by the service ${names}. Remove it from that service before deleting it.`
       : `The variable '${key}' is used by the services ${names}. Remove it from those services before deleting it.`;
   };
 
-  const listVariables = async ({ projectId, ctx, limit, ...query }: TListVariablesDTO) => {
-    await assertCanManageVariables({ projectId, ctx });
+  const sealValue = async (projectId: string, value: string) =>
+    (await getProjectCipher(projectId)).encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
+
+  const listVariables = async ({ projectId, ctx, scope: scopeName, limit, ...query }: TListVariablesDTO) => {
+    const scope = await resolveScope({ projectId, ctx }, scopeName);
 
     // A lookup by keys returns every key that exists unless the caller caps it, so a missing entry always means
     // the key doesn't exist.
     const { variables, totalCount } = await agentVaultVariableDAL.findForList({
-      projectId,
+      ...scope,
       ...query,
       limit: limit ?? query.keys?.length ?? AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT
     });
@@ -104,50 +167,59 @@ export const agentVaultVariableServiceFactory = ({
     return { variables: variables.map((variable) => projectVariable(variable, services)), totalCount };
   };
 
-  const createVariable = async ({ key, value, ...rest }: TCreateVariableDTO) => {
-    await assertCanManageVariables(rest);
+  const createVariable = async ({ key, value, scope: scopeName, ...rest }: TCreateVariableDTO) => {
+    const scope = await resolveScope(rest, scopeName);
+    const { owner } = scope;
+    const encryptedValue = await sealValue(rest.projectId, value);
+    const cap = owner ? AGENT_VAULT_MAX_PERSONAL_VARIABLES : AGENT_VAULT_MAX_VARIABLES;
 
-    const { encryptor } = await getProjectCipher(rest.projectId);
-    const encryptedValue = encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
-
-    // Serialised per project so the count and the key check are authoritative. The unique index is the backstop.
+    // Serialised per project, or per owner for personal variables, so the count and the key check are
+    // authoritative. The unique indexes are the backstop.
     const write = () =>
       agentVaultVariableDAL.transaction(async (tx) => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateAgentVaultVariable(rest.projectId)]);
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [
+          owner
+            ? PgSqlLock.CreateAgentVaultPersonalVariable(rest.projectId, owner.userId ?? owner.identityId!)
+            : PgSqlLock.CreateAgentVaultVariable(rest.projectId)
+        ]);
 
-        const existing = await agentVaultVariableDAL.findKeysByProjectId(rest.projectId, tx);
+        const existing = await agentVaultVariableDAL.findKeys(scope, tx);
         if (existing.some((variable) => variable.key === key)) {
-          throw new BadRequestError({ message: duplicateKeyMessage(key) });
+          throw new BadRequestError({ message: duplicateKeyMessage(key, scope) });
         }
-        if (existing.length >= AGENT_VAULT_MAX_VARIABLES) {
+        if (existing.length >= cap) {
           throw new BadRequestError({
-            message: `Agent Vault can hold at most ${AGENT_VAULT_MAX_VARIABLES} variables. Delete one that no service uses first.`
+            message: owner
+              ? `You can keep at most ${cap} variables in Agent Vault. Delete one that none of your values use first.`
+              : `Agent Vault can hold at most ${cap} shared variables. Delete one that no service uses first.`
           });
         }
 
-        return agentVaultVariableDAL.create({ projectId: rest.projectId, key, encryptedValue }, tx);
+        return agentVaultVariableDAL.create(
+          {
+            projectId: rest.projectId,
+            userId: owner?.userId ?? null,
+            identityId: owner?.identityId ?? null,
+            key,
+            encryptedValue
+          },
+          tx
+        );
       });
 
     try {
       return { variable: projectVariable(await write(), []) };
     } catch (err) {
-      if (isUniqueViolation(err)) throw new BadRequestError({ message: duplicateKeyMessage(key) });
+      if (isUniqueViolation(err)) throw new BadRequestError({ message: duplicateKeyMessage(key, scope) });
       throw err;
     }
   };
 
   const updateVariable = async ({ variableId, key, value, ...rest }: TUpdateVariableDTO) => {
-    await assertCanManageVariables(rest);
+    const { variable, scope } = await findAccessibleVariable({ variableId, ...rest });
 
-    const variable = await agentVaultVariableDAL.findByIdInProject({ id: variableId, projectId: rest.projectId });
-    if (!variable) throw notFound(variableId);
-
-    const encryptedValue =
-      value === undefined
-        ? undefined
-        : (await getProjectCipher(rest.projectId)).encryptor({ plainText: Buffer.from(JSON.stringify({ value })) })
-            .cipherTextBlob;
+    const encryptedValue = value === undefined ? undefined : await sealValue(rest.projectId, value);
 
     const write = () =>
       agentVaultVariableDAL.transaction(async (tx) => {
@@ -158,11 +230,11 @@ export const agentVaultVariableServiceFactory = ({
         if (!current) throw notFound(variableId);
 
         if (key !== undefined && key !== current.key) {
-          const clash = await agentVaultVariableDAL.findByKeyInProject({ key, projectId: rest.projectId }, tx);
-          if (clash) throw new BadRequestError({ message: duplicateKeyMessage(key) });
+          const clash = await agentVaultVariableDAL.findByKey({ key, ...scope }, tx);
+          if (clash) throw new BadRequestError({ message: duplicateKeyMessage(key, scope) });
         }
 
-        // A rename is this row alone. Sealed fields name the variable by id, so nothing that uses it changes.
+        // A rename is this row alone. Sealed text names the variable by id, so nothing that uses it changes.
         await agentVaultVariableDAL.updateById(current.id, { key, ...(encryptedValue ? { encryptedValue } : {}) }, tx);
         const updated = await agentVaultVariableDAL.findByIdInProject(
           { id: current.id, projectId: rest.projectId },
@@ -176,7 +248,9 @@ export const agentVaultVariableServiceFactory = ({
     try {
       result = await write();
     } catch (err) {
-      if (isUniqueViolation(err)) throw new BadRequestError({ message: duplicateKeyMessage(key ?? variable.key) });
+      if (isUniqueViolation(err)) {
+        throw new BadRequestError({ message: duplicateKeyMessage(key ?? variable.key, scope) });
+      }
       throw err;
     }
 
@@ -184,10 +258,10 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   const deleteVariable = async ({ variableId, ...rest }: TVariableByIdDTO) => {
-    await assertCanManageVariables(rest);
+    const { scope } = await findAccessibleVariable({ variableId, ...rest });
 
-    // The refusal here is the real check. The row lock waits for any service save adding a reference to this
-    // variable, since those take it FOR SHARE. The deferred foreign key only backs it up, and only raises at commit.
+    // The refusal here is the real check. The row lock waits for any save adding a reference to this variable, since
+    // those take it FOR SHARE. The deferred foreign keys only back it up, and only raise at commit.
     const remove = () =>
       agentVaultVariableDAL.transaction(async (tx) => {
         const variable = await agentVaultVariableDAL.lockByIdInProject(
@@ -197,7 +271,7 @@ export const agentVaultVariableServiceFactory = ({
         if (!variable) throw notFound(variableId);
 
         const services = await agentVaultVariableDAL.findServicesUsing([variable.id], tx);
-        if (services.length) throw new ConflictError({ message: inUseMessage(variable.key, services) });
+        if (services.length) throw new ConflictError({ message: inUseMessage(variable.key, services, scope) });
 
         await agentVaultVariableDAL.deleteById(variable.id, tx);
         return variable;
@@ -208,8 +282,9 @@ export const agentVaultVariableServiceFactory = ({
     } catch (err) {
       if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
         throw new ConflictError({
-          message:
-            "This variable is still used by a service. Remove it from every service that uses it, then delete it."
+          message: scope.owner
+            ? "One of your values still uses this variable. Change every value that uses it, then delete it."
+            : "This variable is still used by a service. Remove it from every service that uses it, then delete it."
         });
       }
       throw err;
@@ -217,16 +292,13 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   const getVariableValue = async ({ variableId, ...rest }: TVariableByIdDTO) => {
-    await assertCanManageVariables(rest);
-
-    const variable = await agentVaultVariableDAL.findByIdInProject({ id: variableId, projectId: rest.projectId });
-    if (!variable) throw notFound(variableId);
+    const { variable } = await findAccessibleVariable({ variableId, ...rest });
 
     const { decryptor } = await getProjectCipher(rest.projectId);
     const { value } = JSON.parse(decryptor({ cipherTextBlob: variable.encryptedValue }).toString("utf-8")) as {
       value: string;
     };
-    return { variableId: variable.id, key: variable.key, value };
+    return { variable: projectVariable(variable, []), value };
   };
 
   return { listVariables, createVariable, updateVariable, deleteVariable, getVariableValue };

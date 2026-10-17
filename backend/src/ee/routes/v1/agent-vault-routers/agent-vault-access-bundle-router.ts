@@ -33,6 +33,8 @@ import {
   AgentVaultMemberRevokeIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
+  AgentVaultPersonalValueInputSchema,
+  AgentVaultPersonalValuesSchema,
   AgentVaultProductMemberSchema,
   AgentVaultServiceSchema,
   AgentVaultSubstitutionsInputSchema,
@@ -81,6 +83,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "List the Agent Vault access bundles you can reach",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       querystring: z.object({
+        requiresSetup: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+          .describe(AGENT_VAULT.ACCESS_BUNDLE.requiresSetup),
         orderBy: z
           .enum(["name", "serviceCount", "createdAt"])
           .default("createdAt")
@@ -93,7 +100,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           accessBundles: AccessBundleSchema.extend({
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
-            hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns)
+            hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
+            servicesRequiringSetup: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetup)
           }).array(),
           totalCount: z.number()
         })
@@ -169,7 +177,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           accessBundle: AccessBundleSchema.extend({
-            services: AgentVaultServiceSchema.partial({ variableReferences: true }).array()
+            services: AgentVaultServiceSchema.partial({ variableReferences: true })
+              .extend({ personalValues: AgentVaultPersonalValuesSchema.nullable() })
+              .array()
           })
         })
       }
@@ -334,6 +344,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerPrefix : undefined,
             allowedMethods: service.allowedMethods,
             allowedPathPrefixes: service.allowedPathPrefixes,
+            memberProvidedFields:
+              service.credential.type === AgentVaultCredentialType.Passthrough
+                ? undefined
+                : service.credential.memberProvidedFields,
             customHeaderNames: service.customHeaders.map((header) => header.name),
             substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder),
             variableKeys: variableKeysOf(service)
@@ -425,6 +439,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
                 : undefined,
             allowedMethods: req.body.allowedMethods,
             allowedPathPrefixes: req.body.allowedPathPrefixes,
+            // The setting after the update, present whenever the update touched the credential.
+            memberProvidedFields:
+              req.body.credential && service.credential.type !== AgentVaultCredentialType.Passthrough
+                ? service.credential.memberProvidedFields
+                : undefined,
             customHeaderNames: req.body.customHeaders?.map((header) => header.name),
             // A row omitting a value keeps the stored secret, so sending one is what marks a rotation.
             // Without this a rotation and a no-op save write the same row.
@@ -508,6 +527,109 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       });
 
       return { service };
+    }
+  });
+
+  // The caller's own values for a service that leaves some fields to each member. Always the caller's: nobody, an
+  // admin included, can name or read another's, and a stored value never comes back. Read them with the bundle.
+  server.route({
+    method: "PATCH",
+    url: "/:accessBundleId/services/:serviceId/personal-values",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "setAgentVaultServicePersonalValues",
+      description:
+        "Set your personal values for a service. A field you send replaces what you saved for it, and a field you leave out keeps its saved value. Every field the service leaves to its members must be set once the update is applied.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+      }),
+      body: z.object({
+        values: AgentVaultPersonalValueInputSchema.array().min(1).max(2).describe(AGENT_VAULT.PERSONAL_VALUE.values)
+      }),
+      response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { personalValues, replaced } = await server.services.agentVaultPersonalValue.setPersonalValues({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        serviceId: req.params.serviceId,
+        values: req.body.values
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET,
+          metadata: {
+            accessBundleId: personalValues.accessBundleId,
+            accessBundleName: personalValues.accessBundleName,
+            serviceId: personalValues.serviceId,
+            serviceName: personalValues.serviceName,
+            fields: req.body.values.map((value) => value.field),
+            replaced,
+            variableKeys: [
+              ...new Set(
+                personalValues.fields
+                  .filter((field) => req.body.values.some((value) => value.field === field.field))
+                  .flatMap((field) => field.variableReferences.map((reference) => reference.key))
+              )
+            ]
+          }
+        }
+      });
+
+      return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accessBundleId/services/:serviceId/personal-values",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "deleteAgentVaultServicePersonalValues",
+      description:
+        "Delete your personal values for a service. Until you set them again, the proxy refuses that service's requests from your sessions.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+      }),
+      response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { personalValues } = await server.services.agentVaultPersonalValue.deletePersonalValues({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        serviceId: req.params.serviceId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE,
+          metadata: {
+            accessBundleId: personalValues.accessBundleId,
+            accessBundleName: personalValues.accessBundleName,
+            serviceId: personalValues.serviceId,
+            serviceName: personalValues.serviceName
+          }
+        }
+      });
+
+      return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
     }
   });
 
