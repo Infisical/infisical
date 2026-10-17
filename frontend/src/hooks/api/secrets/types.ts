@@ -160,6 +160,17 @@ export type TGetSecretAccessListDTO = {
   includeAllEntities?: boolean;
 };
 
+export type TGetSecretReadActivityDTO = Omit<TGetSecretAccessListDTO, "includeAllEntities">;
+
+export type TSecretReadActivity = {
+  trackedSince: string;
+  reads: {
+    actorType: "user" | "identity";
+    actorId: string;
+    lastReadAt: string;
+  }[];
+};
+
 export type TCreateSecretsV3DTO = {
   secretKey: string;
   secretValue: string;

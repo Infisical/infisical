@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
-import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
@@ -15,7 +15,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionHoneyTokenActions,
-  ProjectPermissionInsightsActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
@@ -41,9 +40,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TInsightsDALFactory } from "./insights-dal";
 import {
   addAccessVolumeEntry,
+  assertInsightsPlanEnabled,
   buildAccessVolumeDayBuckets,
   buildAccessVolumeWindow,
   buildStaticSecretUsageWindow,
+  checkInsightsPermission,
   collapseAccessVolumeDays,
   resolveUserDisplayNames,
   reviveDates,
@@ -115,40 +116,6 @@ export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
 
 // Both halves of the product (the per-project dashboard and the org-wide aggregates) are gated on the
 // same entitlement, so the check and its message live in one place.
-const assertInsightsPlanEnabled = async (
-  licenseService: TInsightsServiceFactoryDep["licenseService"],
-  orgId: string
-) => {
-  const plan = await licenseService.getPlan(orgId);
-  if (!plan.secretAccessInsights) {
-    throw new BadRequestError({
-      message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
-    });
-  }
-};
-
-const checkInsightsPermission = async (
-  permissionService: TInsightsServiceFactoryDep["permissionService"],
-  licenseService: TInsightsServiceFactoryDep["licenseService"],
-  projectId: string,
-  actor: OrgServiceActor
-) => {
-  await assertInsightsPlanEnabled(licenseService, actor.orgId);
-
-  const { permission } = await permissionService.getProjectPermission({
-    actor: actor.type,
-    actorId: actor.id,
-    projectId,
-    actorAuthMethod: actor.authMethod,
-    actorOrgId: actor.orgId,
-    actionProjectType: ActionProjectType.SecretManager
-  });
-
-  ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionInsightsActions.Read, ProjectPermissionSub.Insights);
-
-  return { permission };
-};
-
 export const PROJECT_WARNINGS_CHUNK_SIZE = 1000;
 
 // One value genuinely can sit in thousands of places in a large org, and the caller is chasing a

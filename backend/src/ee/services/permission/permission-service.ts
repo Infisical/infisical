@@ -80,6 +80,7 @@ import {
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
+  fetchProjectFolderScopedPrivileges,
   getProjectPermissionFingerprint,
   interpolatePermissionRules,
   interpolateStoredIdentityRules,
@@ -942,6 +943,20 @@ export const permissionServiceFactory = ({
   };
 
   const getProjectPermissions: TPermissionServiceFactory["getProjectPermissions"] = async (projectId, orgId) => {
+    // The project-wide listings below leave folder grants out, so they are loaded once for the whole project and
+    // applied per actor the way getProjectPermission applies them: Secret Manager projects only, never to admins.
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    const folderScopedPrivilegesByActorId =
+      project?.type === ProjectType.SecretManager
+        ? await fetchProjectFolderScopedPrivileges(projectId, { additionalPrivilegeDAL, secretFolderDAL })
+        : new Map<string, TCachedFolderScopedPrivileges["privileges"]>();
+    const folderScopedPrivilegesOf = (actorId: string, roles: { role: string }[] = []) =>
+      roles.some(({ role }) => role === ProjectMembershipRole.Admin)
+        ? undefined
+        : folderScopedPrivilegesByActorId.get(actorId)?.filter(isActiveRole);
+
     // fetch user permissions
     const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId, orgId);
     const userPermissions = rawUserProjectPermissions.map((userProjectPermission) => {
@@ -953,7 +968,11 @@ export const permissionServiceFactory = ({
           permissions
         })) || [];
 
-      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const rules = buildProjectPermissionRules(
+        rolePermissions.concat(additionalPrivileges),
+        undefined,
+        folderScopedPrivilegesOf(userProjectPermission.userId, userProjectPermission.roles)
+      );
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           userProjectPermission.metadata,
@@ -992,7 +1011,11 @@ export const permissionServiceFactory = ({
           permissions
         })) || [];
 
-      const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+      const rules = buildProjectPermissionRules(
+        rolePermissions.concat(additionalPrivileges),
+        undefined,
+        folderScopedPrivilegesOf(identityProjectPermission.identityId, identityProjectPermission.roles)
+      );
       const metadataKeyValuePair = escapeHandlebarsMissingDict(
         objectify(
           identityProjectPermission.metadata,

@@ -22,6 +22,8 @@ import {
   TGetSecretBlindIndexStatusResponse,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
+  TGetUnusedSecretAccessDTO,
+  TGetUnusedSecretAccessResponse,
   TOrgAuthMethodUsage,
   TOrgProjectsInsights,
   TOrgSecretAccessVolume,
@@ -35,6 +37,8 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "calendar-events", params] as const,
   accessVolume: (params: TGetSecretAccessVolumeDTO) =>
     [...secretInsightsKeys.all(), "access-volume", params] as const,
+  unusedSecretAccess: (params: TGetUnusedSecretAccessDTO) =>
+    [...secretInsightsKeys.all(), "unused-secret-access", params] as const,
   // accessLocations: (params: TGetSecretAccessLocationsDTO) =>
   //   [...secretInsightsKeys.all(), "access-locations", params] as const,
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
@@ -115,6 +119,39 @@ export const useGetSecretAccessVolume = (
       return data;
     },
     staleTime: INSIGHTS_STALE_TIME,
+    ...options
+  });
+};
+
+export const useGetUnusedSecretAccess = (
+  params: TGetUnusedSecretAccessDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetUnusedSecretAccessResponse,
+      unknown,
+      TGetUnusedSecretAccessResponse,
+      ReturnType<typeof secretInsightsKeys.unusedSecretAccess>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.unusedSecretAccess(params),
+    queryFn: async () => {
+      const { projectId, ...query } = params;
+      const res = await apiRequest.get<Omit<TGetUnusedSecretAccessResponse, "remainingTtl">>(
+        `/api/v1/insights/${projectId}/secrets/unused-access`,
+        { params: query }
+      );
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
+    },
+    // Fresh until the server's cached copy expires, so the next fetch returns the recomputed list.
+    staleTime: (query) => {
+      const remainingTtl = query.state.data?.remainingTtl ?? -1;
+      return remainingTtl > 0 ? remainingTtl * 1000 : INSIGHTS_STALE_TIME;
+    },
+    placeholderData: (previousData) => previousData,
     ...options
   });
 };

@@ -303,6 +303,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "View Secrets Management Calendar Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME]:
     "View Secrets Management Access Volume Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS]:
+    "View Secrets Management Unused Access Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION]:
     "View Organization Secrets Management Auth Method Distribution Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS]:

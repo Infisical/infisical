@@ -7,4 +7,5 @@ export { DuplicatedSecretsCard } from "./DuplicatedSecretsCard";
 export { InsightsSummaryCards } from "./InsightsSummaryCards";
 export { SecretAccessChart } from "./SecretAccessChart";
 export type { CalendarEvent } from "./types";
+export { UnusedSecretAccessCard } from "./UnusedSecretAccessCard";
 // export { WorldMap } from "./WorldMap";

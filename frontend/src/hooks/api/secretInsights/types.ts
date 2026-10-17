@@ -1,3 +1,4 @@
+import { OrderByDirection } from "../generic/types";
 import { IdentityAuthMethod } from "../identities/enums";
 
 export type TCalendarRotation = {
@@ -49,6 +50,39 @@ export type TSecretAccessVolumeDay = {
 
 export type TGetSecretAccessVolumeDTO = {
   projectId: string;
+};
+
+export enum UnusedSecretAccessOrderBy {
+  SecretKey = "secretKey",
+  Environment = "environment",
+  SecretPath = "secretPath",
+  Actor = "actorName"
+}
+
+export type TGetUnusedSecretAccessDTO = {
+  projectId: string;
+  offset: number;
+  limit: number;
+  orderBy?: UnusedSecretAccessOrderBy;
+  orderDirection?: OrderByDirection;
+};
+
+export type TUnusedSecretAccess = {
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+  actorType: "user" | "identity";
+  actorId: string;
+  actorName: string;
+};
+
+export type TGetUnusedSecretAccessResponse = {
+  unusedAccess: TUnusedSecretAccess[];
+  totalCount: number;
+  unlistedCount: number;
+  trackingStartedAt: string;
+  unusedAccessFrom: string;
+  remainingTtl: number;
 };
 
 export type TGetInsightsSummaryDTO = {
