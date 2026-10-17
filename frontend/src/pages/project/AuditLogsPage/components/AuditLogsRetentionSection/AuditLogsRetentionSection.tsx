@@ -27,7 +27,7 @@ import {
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getProjectTitle, isOrgScopedProduct } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
 
 const formSchema = z.object({
@@ -37,6 +37,7 @@ const formSchema = z.object({
 type TForm = z.infer<typeof formSchema>;
 
 export const AuditLogsRetentionSection = () => {
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: updateAuditLogsRetention } = useUpdateWorkspaceAuditLogsRetention();
 
   const { currentProject } = useProject();
@@ -142,7 +143,7 @@ export const AuditLogsRetentionSection = () => {
           </CardContent>
           <CardFooter className="justify-end">
             <Button
-              variant="project"
+              variant={scopeVariant}
               size="sm"
               type="submit"
               isPending={isSubmitting}

@@ -76,8 +76,8 @@ type Props = {
 
 export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
   const [isTokenVisible, setIsTokenVisible] = useToggle(false);
-  const [, isTokenCopied, setTokenCopied] = useTimedReset({ initialState: false });
-  const [, isCommandCopied, setCommandCopied] = useTimedReset({ initialState: false });
+  const [, isTokenCopied, setTokenCopied] = useTimedReset<boolean>({ initialState: false });
+  const [, isCommandCopied, setCommandCopied] = useTimedReset<boolean>({ initialState: false });
 
   const { data: appConnections = [], isPending: isLoadingConnections } = useListAppConnections();
   const { data: existingConfig } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
@@ -366,7 +366,10 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
             )}
           </div>
 
-          <SheetFooter className="border-t">
+          <SheetFooter className="justify-end border-t">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
+              Cancel
+            </Button>
             <OrgPermissionCan
               I={OrgPermissionHoneyTokenActions.Setup}
               a={OrgPermissionSubjects.HoneyTokens}
@@ -382,9 +385,6 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                 </Button>
               )}
             </OrgPermissionCan>
-            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
-              Cancel
-            </Button>
           </SheetFooter>
         </form>
       </SheetContent>

@@ -324,7 +324,10 @@ export const AlertForm = ({
           />
         </div>
 
-        <SheetFooter className="sticky bottom-0 border-t bg-popover">
+        <SheetFooter className="sticky bottom-0 justify-end border-t bg-popover">
+          <Button type="button" variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
+            Cancel
+          </Button>
           <Button
             type="submit"
             variant={scopeVariant}
@@ -332,9 +335,6 @@ export const AlertForm = ({
             isDisabled={isSubmitting}
           >
             {isEditing ? "Update Alert" : "Create Alert"}
-          </Button>
-          <Button type="button" variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
-            Cancel
           </Button>
         </SheetFooter>
       </form>

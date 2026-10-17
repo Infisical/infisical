@@ -63,7 +63,7 @@ import {
   useUser
 } from "@app/context";
 import { getProjectLabel } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   useDeleteProjectUserAdditionalPrivilege,
   useListProjectUserPrivileges,
@@ -83,6 +83,7 @@ type Props = {
 };
 
 export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: Props) => {
+  const scopeVariant = useScopeVariant();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -407,7 +408,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                         const isEditDisabled = !isAllowed || !canModifyMemberPrivileges;
                         const button = (
                           <Button
-                            variant="project"
+                            variant={scopeVariant}
                             size="xs"
                             onClick={() => {
                               handlePopUpOpen("modifyPrivilege");

@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
+import { Alert, AlertDescription, DeleteConfirmDialog } from "@app/components/v3";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
   TSecretScanningDataSource,
@@ -44,16 +44,20 @@ export const DeleteSecretScanningDataSourceModal = ({
   };
 
   return (
-    <DeleteActionModal
+    <DeleteConfirmDialog
       isOpen={isOpen}
-      onChange={onOpenChange}
-      title={`Are you sure you want to delete ${name}?`}
-      deleteKey={name}
-      onDeleteApproved={handleDeleteDataSource}
-    >
-      <p className="mt-1 font-sans text-sm text-muted">
-        Findings associated with this data source will be preserved.
-      </p>
-    </DeleteActionModal>
+      onOpenChange={onOpenChange}
+      title={`Delete ${name}?`}
+      description={
+        <Alert variant="danger" appearance="borderless">
+          <AlertDescription>
+            This permanently deletes the findings and scan history of this data source. This cannot
+            be undone.
+          </AlertDescription>
+        </Alert>
+      }
+      confirmKey={name}
+      onConfirm={handleDeleteDataSource}
+    />
   );
 };

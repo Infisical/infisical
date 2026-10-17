@@ -10,12 +10,12 @@ import {
 } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -229,13 +229,13 @@ const Page = () => {
         installation={installation}
       />
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteInstallation.isOpen}
         title="Are you sure you want to delete this installation?"
-        subTitle="This action cannot be undone. The installation record will be permanently deleted."
-        onChange={(isOpen) => handlePopUpToggle("deleteInstallation", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action cannot be undone. The installation record will be permanently deleted."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteInstallation", isOpen)}
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </div>
   );

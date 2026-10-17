@@ -78,6 +78,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.GoDaddy]: "GoDaddy",
   [AppConnection.Convex]: "Convex",
   [AppConnection.Rundeck]: "Rundeck",
+  [AppConnection.Portainer]: "Portainer",
   [AppConnection.HasuraCloud]: "Hasura Cloud",
   [AppConnection.Qovery]: "Qovery",
   [AppConnection.Cloud66]: "Cloud 66",
@@ -90,7 +91,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.MicrosoftIntune]: "Microsoft Intune",
   [AppConnection.Stripe]: "Stripe",
   [AppConnection.Keeper]: "Keeper",
-  [AppConnection.HpeIloRedFish]: "HPE iLO"
+  [AppConnection.HpeIloRedFish]: "HPE iLO",
+  [AppConnection.S3Compatible]: "S3-Compatible Storage"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -171,6 +173,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.GoDaddy]: AppConnectionPlanType.Regular,
   [AppConnection.Convex]: AppConnectionPlanType.Regular,
   [AppConnection.Rundeck]: AppConnectionPlanType.Regular,
+  [AppConnection.Portainer]: AppConnectionPlanType.Regular,
   [AppConnection.HasuraCloud]: AppConnectionPlanType.Regular,
   [AppConnection.Qovery]: AppConnectionPlanType.Regular,
   [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
@@ -183,5 +186,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Enterprise,
   [AppConnection.Stripe]: AppConnectionPlanType.Regular,
   [AppConnection.Keeper]: AppConnectionPlanType.Regular,
-  [AppConnection.HpeIloRedFish]: AppConnectionPlanType.Regular
+  [AppConnection.HpeIloRedFish]: AppConnectionPlanType.Regular,
+  [AppConnection.S3Compatible]: AppConnectionPlanType.Regular
 };

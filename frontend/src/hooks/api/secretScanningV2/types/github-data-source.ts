@@ -5,9 +5,7 @@ import { TSecretScanningDataSourceBase } from "./shared";
 
 export type TGitHubDataSource = TSecretScanningDataSourceBase & {
   type: SecretScanningDataSource.GitHub;
-  config: {
-    includeRepos: string[];
-  };
+  config: Record<string, never>;
 };
 
 export type TGitHubDataSourceOption = {

@@ -5,6 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
+import { isExternalCaKeySource } from "@app/services/certificate-authority/ca-key-source/ca-key-source-fns";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
@@ -16,7 +17,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
-import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TExportCertManagerProjectDTO, TExportCertManagerProjectResult } from "./cert-manager-export-types";
 
@@ -178,16 +178,16 @@ export const certManagerExportServiceFactory = ({
         else sourceSecretsByCaId.set(secret.caId, [secret]);
       }
 
-      const hsmBackedCaIds = new Set(
-        allSourceSecrets.filter((s) => s.keySource === CertKeySource.Hsm).map((s) => s.caId)
+      const externallyKeyedCaIds = new Set(
+        allSourceSecrets.filter((s) => isExternalCaKeySource(s.keySource)).map((s) => s.caId)
       );
-      if (hsmBackedCaIds.size) {
+      if (externallyKeyedCaIds.size) {
         const names = sourceInternalCAs
-          .filter((ca) => hsmBackedCaIds.has(ca.id))
+          .filter((ca) => externallyKeyedCaIds.has(ca.id))
           .map((ca) => ca.name)
           .join(", ");
         throw new BadRequestError({
-          message: `Cannot export HSM-backed certificate authorities (${names}). Their signing keys live on an HSM reached through a connector that exists only in the source project, so they cannot be recreated in the destination. Delete these certificate authorities, then export again.`
+          message: `Cannot export certificate authorities whose signing keys are held in an HSM or AWS KMS (${names}). Their keys are reached through a connection that is not exported, so they cannot be recreated in the destination. Delete these certificate authorities, then export again.`
         });
       }
 
@@ -235,9 +235,6 @@ export const certManagerExportServiceFactory = ({
             {
               caId: newCa.id,
               keySource: sourceSecret.keySource,
-              hsmConnectorId: sourceSecret.hsmConnectorId,
-              hsmKeyLabel: sourceSecret.hsmKeyLabel,
-              hsmPublicKeySpki: sourceSecret.hsmPublicKeySpki,
               encryptedPrivateKey: sourceSecret.encryptedPrivateKey
                 ? await reencrypt(sourceSecret.encryptedPrivateKey)
                 : undefined

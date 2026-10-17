@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
+import {
+  getSelfHostedLicenseState,
+  SELF_HOSTED_LICENSE_COPY
+} from "@app/components/license/self-hosted-license";
 import { getSafeUpgradeReturnPath } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -10,7 +14,8 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission
+  useOrgPermission,
+  useSubscription
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useDebounce } from "@app/hooks";
@@ -41,13 +46,14 @@ const ORG_PAGE_SIZE = 10;
 // `view` optionally opens the product sheet straight into a sub-view (e.g. the set-commitment flow
 // from the "commit and save" nudge) instead of the default plans view.
 type BillingV2Flow =
-  | { type: "sheet"; prodId: string; view?: "commitment" }
+  | { type: "sheet"; prodId: string; view?: "commitment"; trialTier?: string }
   | { type: "breakdown"; prodId: string; dimensionKey?: string };
 
 export const BillingV2Page = () => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
+  const { subscription } = useSubscription();
   const orgId = currentOrg?.id ?? "";
   const hasManageBillingPermission = permission.can(
     OrgPermissionBillingActions.ManageBilling,
@@ -83,7 +89,7 @@ export const BillingV2Page = () => {
     isError,
     refetch
   } = useGetBillingV2Overview(selectedOrgId);
-  const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
+  const { data: catalog = [], isPending: isCatalogPending } = useGetBillingV2Catalog(selectedOrgId);
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
   const confirmTrialPayment = useConfirmBillingV2TrialPayment();
@@ -103,23 +109,46 @@ export const BillingV2Page = () => {
   const trialApprovalUrl = trialApproval?.orgId === selectedOrgId ? trialApproval.url : null;
   const deepLinkSearch = new URLSearchParams(window.location.search);
   const upgradeProduct = deepLinkSearch.get("upgradeProduct");
+  const upgradePlan = deepLinkSearch.get("upgradePlan");
+  const upgradeCycle = deepLinkSearch.get("upgradeCycle");
   const upgradeReturnPath = getSafeUpgradeReturnPath(
     deepLinkSearch.get("upgradeReturnPath"),
     window.location.origin
   );
 
   useEffect(() => {
-    if (
-      flow ||
-      openedUpgradeProduct.current ||
-      !upgradeProduct ||
-      !catalog.some((product) => product.id === upgradeProduct)
-    ) {
+    if (flow || openedUpgradeProduct.current || !upgradeProduct) {
+      return;
+    }
+    const product = catalog.find((candidate) => candidate.id === upgradeProduct);
+    const hasProduct = Boolean(product);
+    if (upgradePlan) {
+      if (isCatalogPending || (hasProduct && !overview && !isError)) return;
+      const trialPlan = product?.plans.find((plan) => plan.tier === upgradePlan);
+      const canTrial =
+        !isError &&
+        hasManageBillingPermission &&
+        Boolean(overview?.selfServe) &&
+        Boolean(trialPlan?.selfServe && trialPlan.trialable);
+      if (!canTrial) {
+        if (upgradeReturnPath) window.location.replace(upgradeReturnPath);
+        return;
+      }
+    } else if (!hasProduct) {
       return;
     }
     openedUpgradeProduct.current = true;
-    setFlow({ type: "sheet", prodId: upgradeProduct });
-  }, [catalog, flow, upgradeProduct]);
+    setFlow({ type: "sheet", prodId: upgradeProduct, trialTier: upgradePlan ?? undefined });
+  }, [
+    catalog,
+    flow,
+    upgradeProduct,
+    upgradePlan,
+    isCatalogPending,
+    overview,
+    isError,
+    hasManageBillingPermission
+  ]);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -161,10 +190,16 @@ export const BillingV2Page = () => {
 
   const close = () => {
     setFlow(null);
+    if (flow?.type === "sheet" && flow.trialTier && upgradeReturnPath) {
+      window.location.assign(upgradeReturnPath);
+      return;
+    }
     if (openedUpgradeProduct.current) {
       const url = new URL(window.location.href);
       url.searchParams.delete("upgradeProduct");
       url.searchParams.delete("upgradeReturnPath");
+      url.searchParams.delete("upgradePlan");
+      url.searchParams.delete("upgradeCycle");
       window.history.replaceState(
         window.history.state,
         "",
@@ -275,10 +310,10 @@ export const BillingV2Page = () => {
     refetch();
   };
 
-  // A managed (self-hosted licensed) org can't self-serve through Stripe; its plan is set by the license.
+  // A managed (self-hosted) org can't self-serve through Stripe; its plan is set by its license state.
   const isManaged = overview ? overview.mode === "managed" : !isInfisicalCloud();
   const pageDescription = isManaged
-    ? "View your subscription, products, and usage. Your plan is managed through your license."
+    ? SELF_HOSTED_LICENSE_COPY[getSelfHostedLicenseState(subscription)].pageDescription
     : "Manage your subscription, products, and payment. Payment is handled securely through Stripe.";
 
   return (
@@ -343,6 +378,9 @@ export const BillingV2Page = () => {
           entitlement={overview?.entitlements[flow.prodId]}
           hasActiveSubscription={hasActiveSubscription}
           initialView={flow.view}
+          initialTrialTier={flow.trialTier}
+          showAnnualTrialNote={Boolean(flow.trialTier) && upgradeCycle === "annual"}
+          trialOrgName={flow.trialTier ? currentOrg?.name : undefined}
           returnPath={upgradeReturnPath ?? window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           selfServe={overview?.selfServe ?? true}

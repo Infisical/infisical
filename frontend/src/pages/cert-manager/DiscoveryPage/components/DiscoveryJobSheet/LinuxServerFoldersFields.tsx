@@ -11,6 +11,7 @@ import {
 } from "./discovery-job-form-schema";
 
 const FOLDER_SEPARATORS: string[] = [];
+const FOLDER_PASTE_DELIMITER = /[\n\r]/;
 
 const FolderListField = ({
   name,
@@ -48,6 +49,7 @@ const FolderListField = ({
               }}
               onValidationError={setTagError}
               separators={FOLDER_SEPARATORS}
+              pasteDelimiter={FOLDER_PASTE_DELIMITER}
               placeholder={placeholder}
               isError={Boolean(message)}
               className="font-mono"
