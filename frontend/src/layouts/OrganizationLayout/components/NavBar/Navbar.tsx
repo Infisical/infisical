@@ -103,6 +103,7 @@ import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
+import { NavbarPageBreadcrumbs } from "./NavbarPageBreadcrumbs";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { OrganizationProductPlans } from "./OrganizationProductPlans";
 import { VersionBadge } from "./VersionBadge";
@@ -638,6 +639,7 @@ export const Navbar = () => {
                 <TypeSelect />
                 <ProjectSelect />
                 <ApplicationSelect />
+                <NavbarPageBreadcrumbs />
               </>
             )}
           </>
