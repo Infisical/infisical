@@ -105,6 +105,26 @@ export const applyRequestOrdering = (
   orderDirection = OrderByDirection.DESC
 ) => query.orderByRaw(`${getOrderExpression(orderBy)} ${orderDirection}`).orderBy("id", OrderByDirection.ASC);
 
+export const findFolderIdsByPathPattern = (db: Knex, projectId: string, pattern: string) =>
+  db
+    .withRecursive(
+      "folder_paths",
+      ["id", "path", "depth"],
+      db.raw(
+        `SELECT f.id, '/'::text, 0
+        FROM ?? f JOIN ?? e ON f."envId" = e.id
+        WHERE e."projectId" = ? AND f."parentId" IS NULL
+        UNION ALL
+        SELECT c.id, CASE WHEN p.path = '/' THEN '/' || c.name ELSE p.path || '/' || c.name END, p.depth + 1
+        FROM ?? c JOIN folder_paths p ON c."parentId" = p.id
+        WHERE p.depth < 20`,
+        [TableName.SecretFolder, TableName.Environment, projectId, TableName.SecretFolder]
+      )
+    )
+    .select("id")
+    .from("folder_paths")
+    .whereILike("path", pattern);
+
 export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   const secretApprovalRequestOrm = ormify(db, TableName.SecretApprovalRequest);
 
@@ -622,7 +642,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .orWhereRaw(`?? ilike ?`, [db.ref("committerIdentityName"), `%${sanitizeSqlLikeString(search)}%`])
             .orWhereILike("environmentName", `%${sanitizeSqlLikeString(search)}%`)
             .orWhereILike("environment", `%${sanitizeSqlLikeString(search)}%`)
-            .orWhereILike("policySecretPath", `%${sanitizeSqlLikeString(search)}%`);
+            .orWhereILike("policySecretPath", `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereIn(
+              "folderId",
+              findFolderIdsByPathPattern(tx || db.replicaNode(), projectId, `%${sanitizeSqlLikeString(search)}%`)
+            );
         });
       }
 
@@ -851,7 +875,10 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .orWhereILike(`environmentName`, `%${sanitizeSqlLikeString(search)}%`)
             .orWhereILike(`environment`, `%${sanitizeSqlLikeString(search)}%`)
             .orWhereILike(`policySecretPath`, `%${sanitizeSqlLikeString(search)}%`)
-            .orWhereILike(`requestFolderPath`, `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereIn(
+              "folderId",
+              findFolderIdsByPathPattern(tx || db.replicaNode(), projectId, `%${sanitizeSqlLikeString(search)}%`)
+            )
             .orWhereILike(`secretKey`, `%${sanitizeSqlLikeString(search)}%`);
         });
       }
