@@ -21,7 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionCertificateActions,
@@ -540,7 +540,7 @@ const Page = () => {
         handlePopUpToggle={handlePopUpToggle}
         applicationName={fromApplication}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteCertificate.isOpen}
         title="Are you sure you want to delete this certificate?"
         description="This action cannot be undone. The certificate will be permanently deleted."

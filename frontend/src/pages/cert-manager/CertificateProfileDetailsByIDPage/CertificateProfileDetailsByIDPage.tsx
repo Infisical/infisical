@@ -8,7 +8,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -148,7 +148,7 @@ const Page = () => {
                   mode="edit"
                 />
 
-                <DeleteConfirmDialog
+                <ConfirmationAlertDialog
                   isOpen={isDeleteModalOpen}
                   title={`Delete Certificate Profile ${profile.slug}?`}
                   description="This action is irreversible."

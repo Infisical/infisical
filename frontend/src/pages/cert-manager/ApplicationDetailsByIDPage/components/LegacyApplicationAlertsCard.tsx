@@ -9,7 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -175,7 +175,7 @@ export const LegacyApplicationAlertsCard = ({ applicationId, canDelete }: Props)
         onOpenChange={(isOpen) => !isOpen && setViewAlertId(undefined)}
         alertId={viewAlertId}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(deleteAlert)}
         confirmKey="delete"
         title={`Delete Legacy Alert "${deleteAlert?.name ?? ""}"?`}

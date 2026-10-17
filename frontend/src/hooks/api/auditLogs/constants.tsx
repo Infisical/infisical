@@ -267,6 +267,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN]: "Trigger Secret Scanning Data Source Scan",
   [EventType.SECRET_SCANNING_DATA_SOURCE_SCAN]: "Secret Scanning Data Source Scan",
   [EventType.SECRET_SCANNING_RESOURCE_LIST]: "List Secret Scanning Resources",
+  [EventType.SECRET_SCANNING_RESOURCE_ADD]: "Add Secret Scanning Resources",
+  [EventType.SECRET_SCANNING_RESOURCE_REMOVE]: "Remove Secret Scanning Resource",
   [EventType.SECRET_SCANNING_SCAN_LIST]: "List Secret Scanning Scans",
   [EventType.SECRET_SCANNING_FINDING_LIST]: "List Secret Scanning Findings",
   [EventType.SECRET_SCANNING_FINDING_UPDATE]: "Update Secret Scanning Finding Status",

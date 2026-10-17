@@ -5,10 +5,10 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -198,13 +198,13 @@ const Page = () => {
         discovery={popUp.editJob.data as TPkiDiscovery | undefined}
       />
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteJob.isOpen}
         title="Are you sure you want to delete this discovery job?"
-        subTitle="This action cannot be undone. The discovery configuration will be permanently deleted."
-        onChange={(isOpen) => handlePopUpToggle("deleteJob", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action cannot be undone. The discovery configuration will be permanently deleted."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteJob", isOpen)}
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </div>
   );

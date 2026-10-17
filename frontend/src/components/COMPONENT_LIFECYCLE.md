@@ -11,10 +11,12 @@ The [V3 migration ledger](V3_MIGRATION.md) tracks source removal, coverage, and 
 | `FilterableSelect`                                                                                                                     | Deprecated                    | Use V3 `Combobox` where its contract fits.                                                                    |
 | `Button`, `Card`, `Checkbox`, `EmptyState`, `IconButton`, `Input`, `Pagination`, `Select`, `Switch`, `TextArea`, `Tooltip`             | Ready for focused deprecation | Supported V3 replacements exist. Check representative consumers before adding component-specific guidance.    |
 | `Accordion`, `Alert`, `CopyButton`, `Dropdown`, `HoverCardv2`, `Skeleton`, `Spinner`, `Table`, `Tabs` | Blocked                       | Composition, interaction, or state parity still needs verification.                                           |
-| `ConfirmActionModal`, `DeleteActionModal`, `Modal`                                                                             | Ready for focused deprecation | Follow the overlay recipe in the [V3 migration ledger](V3_MIGRATION.md#overlay-migration-recipe).             |
+| `ConfirmActionModal`, `DeleteActionModal` | Deprecated | Use V3 `ConfirmationAlertDialog` and follow the overlay recipe in the [V3 migration ledger](V3_MIGRATION.md#overlay-migration-recipe). `ConfirmActionModal` has no remaining consumers. The last `DeleteActionModal` consumer is under Secret Scanning, so removal waits for that area. |
+| `Modal` | Ready for focused deprecation | Follow the overlay recipe in the [V3 migration ledger](V3_MIGRATION.md#overlay-migration-recipe). |
 | `ContentLoader`, `FormControl`, `GenericFieldLabel`, `Tag`                                                    | Blocked                       | The V3 replacements require consumer-specific composition or accessibility changes.                           |
-| `SecretInput`, `SecretPathInput`                                                | Blocked                       | Security-sensitive or specialist behavior needs workflow-level parity validation.                             |
-| `NoticeBannerV2`                                                                                                                       | Blocked                       | Verify that V3 `Alert` covers existing layout and action requirements.                                        |
+| `SecretInput`                                                | Blocked                       | Security-sensitive or specialist behavior needs workflow-level parity validation.                             |
+| `SecretPathInput` | Removed in candidate | Deleted the unused V2 implementation and family index. No incoming module or declaration references remained at `13f5e7fe562a803a9b6de1d512cb27f67868ea6d`. The independent V3 implementation and its consumers are unchanged; this does not certify workflow parity or removal on merged main. |
+| `NoticeBannerV2` | Removed | Deleted the unused implementation, empty family index, and stale root export. No external or internal consumers remained at `e05f750eb36506dac9a599709055ffb33d5b58ab`. |
 
 ### Removed unused V2 families
 
@@ -25,6 +27,7 @@ The 2026-10-04 source audit found no external consumers of `Blur`, `CreatableSel
 | Components                     | Status     | Direction                                                             |
 | ------------------------------ | ---------- | --------------------------------------------------------------------- |
 | `PageHeader` | Supported | Owns the normal 40px bottom boundary (`mb-10`). Remove header-boundary parent gaps and redundant caller margins when adopting it; preserve independent body/card spacing in body containers. `className` supports intentional compact/responsive boundaries. See its spacing stories. |
+| `DeleteConfirmDialog` | Deprecated | Renamed to `ConfirmationAlertDialog`, which also covers non-delete confirms. The alias stays only so in-flight branches compile; remove it once no import remains. |
 | `ReactSelect/FilterableSelect` | Deprecated | Use `Combobox`; keep compatibility available while consumers migrate. |
 | `ReactSelect/CreatableSelect`  | Deprecated | Use `Combobox` with inline `creation` for values needing no metadata, or dialog `creation` for caller-owned forms and persistence. Keep compatibility for react-select-specific component overrides; migrate consumers separately. |
 

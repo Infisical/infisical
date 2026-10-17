@@ -1,24 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faBugs,
-  faCircleInfo
-} from "@fortawesome/free-solid-svg-icons";
+import { faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  DocumentationLinkBadge,
+  Field,
+  FieldDescription,
+  FieldLabel,
   Input,
   Select,
+  SelectContent,
   SelectItem,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -50,7 +61,7 @@ const initialSyncBehaviors = [
 
 export const VercelConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState(
@@ -63,7 +74,6 @@ export const VercelConfigurePage = () => {
   const [targetAppId, setTargetAppId] = useState("");
   const [targetEnvironment, setTargetEnvironment] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.VercelConfigurePage.id,
@@ -105,8 +115,6 @@ export const VercelConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       const targetApp = integrationAuthApps?.find(
         (integrationAuthApp) => integrationAuthApp.appId === targetAppId
       );
@@ -130,7 +138,6 @@ export const VercelConfigurePage = () => {
         }
       });
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -171,170 +178,203 @@ export const VercelConfigurePage = () => {
     integrationAuthApps &&
     targetAppId &&
     targetEnvironment ? (
-    <div className="flex h-full w-full flex-col items-center justify-center">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-6">
       <Helmet>
         <title>Set Up Vercel Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control p-0">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Select which environment or folder in Infisical you want to sync to Vercel's environment variables."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center">
-              <img src="/images/integrations/Vercel.png" height={30} width={30} alt="Vercel logo" />
-            </div>
-            <span className="ml-2">Vercel Integration </span>
-            <a
-              target="_blank"
-              href="https://infisical.com/docs/integrations/cloud/vercel"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <FormControl label="Infisical Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border-strong"
-          >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`azure-key-vault-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl
-          label="Vercel App"
-          helperText={
-            <Tooltip
-              className="max-w-md"
-              content="Double check Infisical's access permissions in Vercel by navigating to Team > Integrations > Infisical > Settings > Manage Access."
-            >
-              <div>
-                <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
-              </div>
-            </Tooltip>
-          }
-          className="px-6"
-        >
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => {
-              if (vercelEnvironments.every((env) => env.slug !== targetEnvironment)) {
-                setTargetEnvironment(vercelEnvironments[0].slug);
-              }
-
-              setTargetAppId(val);
-            }}
-            className="w-full border border-border-strong"
-            isDisabled={integrationAuthApps.length === 0}
-          >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`target-app-${integrationAuthApp.appId as string}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <FormControl label="Vercel App Environment" className="px-6">
-          <Select
-            value={targetEnvironment}
-            onValueChange={(val) => setTargetEnvironment(val)}
-            className="w-full border border-border-strong"
-          >
-            {selectedVercelEnvironments.map((vercelEnvironment) => (
-              <SelectItem
-                value={vercelEnvironment.slug}
-                key={`target-environment-${vercelEnvironment.slug}`}
-              >
-                {vercelEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        {targetEnvironment === "preview" && filteredBranches && (
-          <FormControl label="Vercel Preview Branch (Optional)" className="px-6">
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img src="/images/integrations/Vercel.png" height={30} width={30} alt="Vercel logo" />
+            Vercel Integration
+            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/vercel" />
+          </CardTitle>
+          <CardDescription>
+            Select which environment or folder in Infisical you want to sync to Vercel&apos;s
+            environment variables.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="VercelConfigurePage-field-1">
+              Infisical Project Environment
+            </FieldLabel>
             <Select
-              value={targetBranch}
-              onValueChange={(val) => setTargetBranch(val)}
-              className="w-full border border-border-strong"
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
             >
-              {filteredBranches.map((branchName) => (
-                <SelectItem value={branchName} key={`target-branch-${branchName}`}>
-                  {branchName}
-                </SelectItem>
-              ))}
+              <SelectTrigger
+                id="VercelConfigurePage-field-1"
+                aria-describedby="VercelConfigurePage-field-1-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
+                  <SelectItem
+                    value={sourceEnvironment.slug}
+                    key={`azure-key-vault-environment-${sourceEnvironment.slug}`}
+                  >
+                    {sourceEnvironment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
-        )}
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="VercelConfigurePage-field-2">Secrets Path</FieldLabel>
+            <Input
+              id="VercelConfigurePage-field-2"
+              aria-describedby="VercelConfigurePage-field-2-feedback"
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="VercelConfigurePage-field-3">Vercel App</FieldLabel>
+            <Select
+              value={targetAppId}
+              onValueChange={(val) => {
+                if (vercelEnvironments.every((env) => env.slug !== targetEnvironment)) {
+                  setTargetEnvironment(vercelEnvironments[0].slug);
+                }
 
-        <FormControl label="Initial Sync Behavior" className="px-6">
-          <Select
-            value={initialSyncBehavior}
-            onValueChange={(val) => setInitialSyncBehavior(val as IntegrationSyncBehavior)}
-            className="w-full border border-border-strong text-sm"
+                setTargetAppId(val);
+              }}
+              disabled={integrationAuthApps.length === 0}
+            >
+              <SelectTrigger
+                id="VercelConfigurePage-field-3"
+                aria-describedby="VercelConfigurePage-field-3-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.appId as string}
+                      key={`target-app-${integrationAuthApp.appId as string}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No projects found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            <FieldDescription id="VercelConfigurePage-field-3-feedback">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
+                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  {
+                    "Double check Infisical's access permissions in Vercel by navigating to Team > Integrations > Infisical > Settings > Manage Access."
+                  }
+                </TooltipContent>
+              </Tooltip>
+            </FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="VercelConfigurePage-field-4">Vercel App Environment</FieldLabel>
+            <Select value={targetEnvironment} onValueChange={(val) => setTargetEnvironment(val)}>
+              <SelectTrigger
+                id="VercelConfigurePage-field-4"
+                aria-describedby="VercelConfigurePage-field-4-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedVercelEnvironments.map((vercelEnvironment) => (
+                  <SelectItem
+                    value={vercelEnvironment.slug}
+                    key={`target-environment-${vercelEnvironment.slug}`}
+                  >
+                    {vercelEnvironment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          {targetEnvironment === "preview" && filteredBranches && (
+            <Field>
+              <FieldLabel htmlFor="VercelConfigurePage-field-5">
+                Vercel Preview Branch (Optional)
+              </FieldLabel>
+              <Select value={targetBranch} onValueChange={(val) => setTargetBranch(val)}>
+                <SelectTrigger
+                  id="VercelConfigurePage-field-5"
+                  aria-describedby="VercelConfigurePage-field-5-feedback"
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredBranches.map((branchName) => (
+                    <SelectItem value={branchName} key={`target-branch-${branchName}`}>
+                      {branchName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+          <Field>
+            <FieldLabel htmlFor="VercelConfigurePage-field-6">Initial Sync Behavior</FieldLabel>
+            <Select
+              value={initialSyncBehavior}
+              onValueChange={(val) => setInitialSyncBehavior(val as IntegrationSyncBehavior)}
+            >
+              <SelectTrigger
+                id="VercelConfigurePage-field-6"
+                aria-describedby="VercelConfigurePage-field-6-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {initialSyncBehaviors.map((syncBehavior) => (
+                  <SelectItem
+                    value={syncBehavior.value}
+                    key={`sync-behavior-${syncBehavior.value}`}
+                  >
+                    {syncBehavior.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            variant="project"
           >
-            {initialSyncBehaviors.map((syncBehavior) => (
-              <SelectItem value={syncBehavior.value} key={`sync-behavior-${syncBehavior.value}`}>
-                {syncBehavior.label}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="secondary"
-          variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-        >
-          Create Integration
-        </Button>
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
-      <div className="mt-6 w-full max-w-md border-t border-border-faint" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
-        <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground-secondary" />{" "}
-          <span className="text-md ml-3 text-foreground">Pro Tip</span>
-        </div>
-        <span className="mt-4 text-sm text-label">
+      <Alert variant="info" className="w-full max-w-lg">
+        <InfoIcon />
+        <AlertTitle>Pro Tip</AlertTitle>
+        <AlertDescription>
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in Vercel with secrets from Infisical.
-        </span>
-      </div>
+        </AlertDescription>
+      </Alert>
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">

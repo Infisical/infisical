@@ -18,6 +18,12 @@ import { OnboardingStepTransition } from "@app/components/auth/OnboardingStepTra
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
+import {
+  bindSignupTrialIntent,
+  captureSignupTrialIntent,
+  clearSignupTrialIntent,
+  getSignupTrialProjectType
+} from "@app/components/auth/signupTrialIntent";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import { createNotification } from "@app/components/notifications";
@@ -61,10 +67,12 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     isInvite ? SignupSection.UserInfo : SignupSection.Email
   );
   const [orgId, setOrgId] = useState("");
-  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
   const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
-  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>(() =>
+    isInvite ? [] : getSignupTrialProjectType(captureSignupTrialIntent(window.location.search))
+  );
   const [createdProjects, setCreatedProjects] = useState<
     Partial<Record<SignupProductType, Project>>
   >({});
@@ -120,7 +128,9 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   const handleUserInfoComplete = async (newOrgId?: string) => {
+    if (newOrgId) bindSignupTrialIntent(newOrgId);
     if (isInvite) {
+      clearSignupTrialIntent();
       const userOrgs = await fetchOrganizations();
       const inviteOrgId = userOrgs[0]?.id;
 

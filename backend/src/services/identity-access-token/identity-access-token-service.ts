@@ -17,11 +17,14 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import {
+  assertJwtNotExpired,
   assertMinimalRenewClaims,
   assertRevocableClaims,
   computeIssuedTtl,
   computePerTokenMarkerExpiry,
+  computeReseededUsesRemainingTtl,
   computeRevocationVerdictFingerprint,
+  computeUsesRemainingTtl,
   evaluateRevocationMarkers,
   hasFullRenewClaims,
   hasLegacyTokenWithoutExpExceededMaxAge,
@@ -84,7 +87,7 @@ type TIdentityAccessTokenServiceFactoryDep = {
     TKeyStoreFactory,
     | "getItem"
     | "getItemPrimary"
-    | "incrementBy"
+    | "decrementIfExists"
     | "setItemWithExpiry"
     | "setItemWithExpiryNX"
     | "incrementSeededWithExpiry"
@@ -320,7 +323,6 @@ export const identityAccessTokenServiceFactory = ({
   const issueIdentityAccessToken = async (
     input: TIssueIdentityAccessTokenInput
   ): Promise<TIssueIdentityAccessTokenOutput> => {
-    const appCfg = getConfig();
     const issuedAt = new Date();
 
     const period = Number(input.accessTokenPeriod) || 0;
@@ -390,12 +392,7 @@ export const identityAccessTokenServiceFactory = ({
     });
 
     if (numUsesLimit > 0) {
-      await setUsesRemaining(
-        input.identityId,
-        identityAccessToken.id,
-        numUsesLimit,
-        appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-      );
+      await setUsesRemaining(input.identityId, identityAccessToken.id, numUsesLimit, computeUsesRemainingTtl(ttl));
     }
 
     return { accessToken, identityAccessToken };
@@ -497,12 +494,29 @@ export const identityAccessTokenServiceFactory = ({
       if (remainingFromState === null) {
         // Counter was lost (Redis flush). Re-seed from the JWT's numUsesLimit claim
         // and allow this request; subsequent requests decrement the live counter.
-        await setUsesRemaining(token.identityId, tokenId, numUsesLimit - 1, appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE);
-      } else {
-        const remaining = await keyStore.incrementBy(
-          KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId),
-          -1
+        // The JWT was verified before the read, so recheck it: a token that expired in
+        // between must not be handed a fresh budget.
+        assertJwtNotExpired({ exp: token.exp });
+        await setUsesRemaining(
+          token.identityId,
+          tokenId,
+          numUsesLimit - 1,
+          computeReseededUsesRemainingTtl({
+            exp: token.exp,
+            accessTokenMaxTTL: source.accessTokenMaxTTL,
+            creationEpoch: source.creationEpoch,
+            legacyEnforcedAt: appCfg.LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT
+          })
         );
+      } else {
+        const remaining = await keyStore.decrementIfExists(
+          KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId)
+        );
+        if (remaining === null) {
+          throw new UnauthorizedError({
+            message: "Failed to authorize: token usage could not be recorded, please retry the request"
+          });
+        }
         if (remaining < 0) {
           throw new UnauthorizedError({ message: "Failed to authorize: token usage limit reached" });
         }
@@ -613,6 +627,9 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     const numUsesLimit = decodedToken.numUsesLimit ?? source.numUsesLimit;
+    if (numUsesLimit > 0 && existingRemaining === null) {
+      assertJwtNotExpired({ exp: decodedToken.exp, nowSeconds });
+    }
     const ipRestrictionEnabled = Boolean(decodedToken.ipRestrictionEnabled);
 
     const { accessToken: renewedToken } = signIdentityAccessToken({
@@ -638,7 +655,7 @@ export const identityAccessTokenServiceFactory = ({
     // the Redis counter to the current remaining budget.
     if (numUsesLimit > 0) {
       const remainingUses = existingRemaining === null ? numUsesLimit : Math.max(0, existingRemaining);
-      await setUsesRemaining(decodedToken.identityId, tokenId, remainingUses, appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE);
+      await setUsesRemaining(decodedToken.identityId, tokenId, remainingUses, computeUsesRemainingTtl(ttl));
     }
 
     return {

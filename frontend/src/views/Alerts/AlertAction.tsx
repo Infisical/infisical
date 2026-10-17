@@ -46,8 +46,9 @@ import { AddAlertModal } from "./AddAlertModal";
 import { getChannelIcon } from "./channelIcons";
 
 type Props = {
-  resourceType?: AlertResourceType;
-  resourceId: string;
+  resourceType: AlertResourceType;
+  // Alerts that watch every resource of the type in scope when omitted.
+  resourceId?: string;
   channelPaywall?: TAlertChannelPaywall;
   // Org-scoped when omitted.
   projectId?: string;
@@ -63,7 +64,7 @@ const getEnabledChannelTypes = (alert: TAlert): AlertChannelType[] =>
   );
 
 export const AlertAction = ({
-  resourceType = AlertResourceType.IdentityAuthentication,
+  resourceType,
   resourceId,
   channelPaywall,
   projectId,
@@ -72,7 +73,7 @@ export const AlertAction = ({
 }: Props) => {
   const { data: alerts = [] } = useListAlerts({
     resourceType,
-    resourceId,
+    ...(resourceId ? { resourceId } : {}),
     ...(projectId ? { projectId } : {})
   });
 
@@ -85,10 +86,17 @@ export const AlertAction = ({
   const deleteAlert = useDeleteAlert();
 
   const enabledCount = alerts.filter((alert) => alert.enabled).length;
-  const usedEventTypes = alerts.map((alert) => alert.eventType as AlertEventType);
-  const canAddAlert = ALERT_RESOURCE_EVENT_TYPES[resourceType].some(
-    (eventType) => !usedEventTypes.includes(eventType)
-  );
+  // The backend allows one alert per event only for an alert bound to a resource. Alerts that watch every
+  // resource of the type can repeat an event, eg to send the same failure to two teams.
+  const isResourceBound = Boolean(resourceId);
+  const usedEventTypes = isResourceBound
+    ? alerts.map((alert) => alert.eventType as AlertEventType)
+    : [];
+  const canAddAlert =
+    !isResourceBound ||
+    ALERT_RESOURCE_EVENT_TYPES[resourceType].some(
+      (eventType) => !usedEventTypes.includes(eventType)
+    );
 
   const openAlertForm = (alert?: TAlert) => {
     setSelectedAlert(alert);
@@ -262,8 +270,8 @@ export const AlertAction = ({
           <AddAlertModal
             isOpen={popUp.alert.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("alert", isOpen)}
-            projectId={projectId}
             resourceType={resourceType}
+            projectId={projectId}
             resourceId={resourceId}
             channelPaywall={channelPaywall}
             alert={selectedAlert}
@@ -271,17 +279,18 @@ export const AlertAction = ({
           />
           <AlertDialog
             open={popUp.deleteAlert.isOpen}
-            confirmationValue={selectedAlert?.name}
+            confirmationValue="delete"
             onOpenChange={(open) => handlePopUpToggle("deleteAlert", open)}
           >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Remove Alert?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This permanently removes the alert and stops its notifications.
+                  This permanently removes &quot;{selectedAlert?.name}&quot; and stops its
+                  notifications.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogConfirmationField inputProps={{ placeholder: selectedAlert?.name }} />
+              <AlertDialogConfirmationField inputProps={{ placeholder: "delete" }} />
               <Alert variant="danger" appearance="borderless">
                 <AlertDescription>Removing this alert cannot be undone.</AlertDescription>
               </Alert>

@@ -26,6 +26,7 @@ import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useGetUserProjects } from "@app/hooks/api";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import {
@@ -78,9 +79,10 @@ export const OrgSecretScanningTab = () => {
         return;
       }
     }
+    setSecretScanningActiveProjectCookie(currentOrg.id, project.id);
     navigate({
-      to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-      params: { orgId: currentOrg.id, projectId: project.id }
+      to: "/organizations/$orgId/secret-scanning/data-sources",
+      params: { orgId: currentOrg.id }
     });
   };
 
