@@ -68,22 +68,20 @@ describe("Jira ticket checks", () => {
     expect(check(JiraTicketConstraint.Status, facts(), ["approved", "Scheduled"]).pass).toBe(true);
     expect(check(JiraTicketConstraint.Status, facts({ status: "In Progress" }), ["Approved", "Scheduled"])).toEqual({
       pass: false,
-      reason: "status is In Progress, needs Approved or Scheduled"
+      reason: "status isn't Approved or Scheduled"
     });
   });
 
-  test("project, type, and label checks fail with the value they found", () => {
-    expect(check(JiraTicketConstraint.Project, facts({ projectKey: "OPS" }), ["PAY"]).reason).toBe(
-      "project is OPS, needs PAY"
-    );
+  test("project, type, and label checks fail without revealing the ticket's values", () => {
+    expect(check(JiraTicketConstraint.Project, facts({ projectKey: "OPS" }), ["PAY"]).reason).toBe("project isn't PAY");
     expect(check(JiraTicketConstraint.Type, facts({ issueType: null }), ["Incident"]).reason).toBe(
-      "type is not set, needs Incident"
+      "type isn't Incident"
     );
     expect(check(JiraTicketConstraint.Label, facts({ labels: [] }), ["oncall"]).reason).toBe(
-      "has no labels, needs oncall"
+      "doesn't have label oncall"
     );
     expect(check(JiraTicketConstraint.Label, facts({ labels: ["incident"] }), ["oncall"]).reason).toBe(
-      "labels are incident, needs oncall"
+      "doesn't have label oncall"
     );
     expect(check(JiraTicketConstraint.Label, facts({ labels: ["incident", "OnCall"] }), ["oncall"]).pass).toBe(true);
   });
@@ -101,9 +99,9 @@ describe("Jira ticket checks", () => {
     expect(
       check(
         JiraTicketConstraint.AssignedToRequester,
-        facts({ assignee: { matchesRequester: false, reason: "PAY-123 is unassigned" } })
+        facts({ assignee: { matchesRequester: false, reason: "PAY-123 isn't assigned to the requester" } })
       ).reason
-    ).toBe("PAY-123 is unassigned");
+    ).toBe("PAY-123 isn't assigned to the requester");
     expect(check(JiraTicketConstraint.Approved, facts({ approval: { approved: true, reason: null } })).pass).toBe(true);
   });
 });

@@ -141,15 +141,14 @@ const matchAssigneeToRequester = async (
   const { key } = issue;
   const email = ctx.requester.email?.trim().toLowerCase();
   const assignee = issue.fields?.assignee;
+  const notAssigned = { matchesRequester: false, reason: `${key} isn't assigned to the requester` };
 
   if (!email)
     return { matchesRequester: false, reason: "Requests from machine identities can't match a Jira assignee" };
-  if (!assignee) return { matchesRequester: false, reason: `${key} is unassigned` };
+  if (!assignee) return notAssigned;
 
   if (assignee.emailAddress) {
-    return assignee.emailAddress.toLowerCase() === email
-      ? { matchesRequester: true, reason: null }
-      : { matchesRequester: false, reason: `${key} is assigned to someone else` };
+    return assignee.emailAddress.toLowerCase() === email ? { matchesRequester: true, reason: null } : notAssigned;
   }
 
   // Jira hides this assignee's email, so find the requester's own Jira account by email instead
@@ -166,9 +165,7 @@ const matchAssigneeToRequester = async (
       return { matchesRequester: false, reason: "The requester's email address matches more than one Jira user" };
     }
 
-    return isSameJiraUser(conn, candidates[0], assignee)
-      ? { matchesRequester: true, reason: null }
-      : { matchesRequester: false, reason: `${key} is assigned to someone else` };
+    return isSameJiraUser(conn, candidates[0], assignee) ? { matchesRequester: true, reason: null } : notAssigned;
   } catch (error) {
     return {
       matchesRequester: false,
@@ -182,34 +179,19 @@ const readLatestApproval = async (
   key: string,
   deps: TAutoApprovalProviderDeps
 ): Promise<NonNullable<TJiraTicketFacts["approval"]>> => {
+  const notApproved = { approved: false, reason: `${key} isn't approved in Jira` };
   try {
     const approvals = await listJiraIssueApprovals(conn, key, deps);
-    if (!approvals.length) return { approved: false, reason: `${key} has no Jira approvals` };
-
     const sorted = [...approvals].sort((a, b) => (a.createdDate?.epochMillis ?? 0) - (b.createdDate?.epochMillis ?? 0));
-    const latest = sorted[sorted.length - 1];
-
-    if (latest.finalDecision === "approved") return { approved: true, reason: null };
-
-    return {
-      approved: false,
-      reason:
-        latest.finalDecision === "declined"
-          ? `The latest Jira approval on ${key} was declined`
-          : `The latest Jira approval on ${key} is still pending`
-    };
+    return sorted[sorted.length - 1]?.finalDecision === "approved" ? { approved: true, reason: null } : notApproved;
   } catch (error) {
-    if (isJiraNotFoundError(error)) {
-      return { approved: false, reason: `${key} isn't a Jira Service Management request, so it has no approvals` };
-    }
+    if (isJiraNotFoundError(error)) return notApproved;
     return { approved: false, reason: `Couldn't read Jira approvals on ${key}: ${getJiraErrorMessage(error)}` };
   }
 };
 
 const testValue = (actual: string | null, values: string[], noun: string): TAutoApprovalTestResult =>
-  includesIgnoreCase(values, actual)
-    ? { pass: true }
-    : { pass: false, reason: `${noun} is ${actual ?? "not set"}, needs ${anyOf(values)}` };
+  includesIgnoreCase(values, actual) ? { pass: true } : { pass: false, reason: `${noun} isn't ${anyOf(values)}` };
 
 export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection> = {
   app: AppConnection.Jira,
@@ -312,12 +294,7 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
           },
           test: (facts: TJiraTicketFacts, values) => {
             if (facts.labels.some((label) => includesIgnoreCase(values, label))) return { pass: true };
-            return {
-              pass: false,
-              reason: facts.labels.length
-                ? `labels are ${facts.labels.slice(0, 5).join(", ")}, needs ${anyOf(values)}`
-                : `has no labels, needs ${anyOf(values)}`
-            };
+            return { pass: false, reason: `doesn't have label ${anyOf(values)}` };
           }
         }
       }
