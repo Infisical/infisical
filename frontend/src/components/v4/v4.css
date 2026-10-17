@@ -1,5 +1,6 @@
 /* Infisical 2.0 tokens for the v4 subtree. Do not @theme these: Tailwind theme
    variables are global, and v3 owns the app. Overrides inherit only inside .v4.
+   body:has(.v4) carries them to Radix portals, which mount under body.
    theme.css maps the --v4-* values to v4-prefixed Tailwind utilities. */
 
 @font-face {
@@ -26,7 +27,7 @@
   font-display: swap;
 }
 
-.v4 {
+:is(.v4, body:has(.v4)) {
   --corners: 0;
   --radius-xs: calc(1px * var(--corners));
   --radius-sm: calc(1.5px * var(--corners));
@@ -213,7 +214,7 @@
   font-family: Archivo, "Helvetica Neue", Helvetica, sans-serif;
 }
 
-[data-theme="dark"] .v4 {
+[data-theme="dark"] :is(.v4, body:has(.v4)) {
   --corners: 0;
   --radius-xs: calc(1px * var(--corners));
   --radius-sm: calc(1.5px * var(--corners));
@@ -324,38 +325,38 @@
   font-family: Archivo, "Helvetica Neue", Helvetica, sans-serif;
 }
 
-.v4[data-corners="soft"] {
+:is(.v4[data-corners="soft"], body:has(.v4[data-corners="soft"])) {
   --corners: 1;
 }
 
-.v4 :where(h1, h2, h3, h4, h5, h6) {
+:is(.v4, body:has(.v4)) :where(h1, h2, h3, h4, h5, h6) {
   font-family: inherit;
 }
 
-.v4 :where(code, kbd, pre, .font-mono) {
+:is(.v4, body:has(.v4)) :where(code, kbd, pre, .font-mono) {
   font-family: "Geist Mono", ui-monospace, Menlo, monospace;
 }
 
 /* Infisical control sizes. Radix Nova defaults to 32px; the brand default is 36px. */
-.v4 [data-slot="button"][data-size="default"],
-.v4 [data-slot="input"],
-.v4 [data-slot="select-trigger"] {
+:is(.v4, body:has(.v4)) [data-slot="button"][data-size="default"],
+:is(.v4, body:has(.v4)) [data-slot="input"],
+:is(.v4, body:has(.v4)) [data-slot="select-trigger"] {
   height: var(--v4-size-control-md);
 }
 
-.v4 [data-slot="button"][data-size="sm"] {
+:is(.v4, body:has(.v4)) [data-slot="button"][data-size="sm"] {
   height: var(--v4-size-control-sm);
 }
 
-.v4 [data-slot="button"][data-size="lg"] {
+:is(.v4, body:has(.v4)) [data-slot="button"][data-size="lg"] {
   height: var(--v4-size-control-lg);
 }
 
-.v4 [data-slot="button"][data-variant="destructive"] {
+:is(.v4, body:has(.v4)) [data-slot="button"][data-variant="destructive"] {
   background: var(--v4-bad);
   color: var(--v4-on-bad);
 }
 
-.v4 [data-slot="button"][data-variant="destructive"]:hover {
+:is(.v4, body:has(.v4)) [data-slot="button"][data-variant="destructive"]:hover {
   background: var(--v4-bad-hover);
 }
