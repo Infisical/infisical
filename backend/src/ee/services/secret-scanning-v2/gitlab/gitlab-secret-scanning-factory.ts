@@ -1,4 +1,5 @@
 import { Camelize, GitbeakerRequestError, GroupHookSchema, ProjectHookSchema } from "@gitbeaker/rest";
+import pLimit from "p-limit";
 import { join } from "path";
 
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
@@ -8,6 +9,7 @@ import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
+  isDataSourceWebhookRequired,
   replaceNonChangesWithNewlines,
   toFindingDetails
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
@@ -19,11 +21,14 @@ import {
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryParams,
   TSecretScanningFactoryPostInitialization,
+  TSecretScanningFactorySetupWebhook,
   TSecretScanningFactoryTeardown,
+  TSecretScanningFactoryUpdateWebhook,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { GitLabProjectRegex } from "@app/lib/regex";
 import { TGitLabConnection } from "@app/services/app-connection/gitlab";
@@ -40,78 +45,124 @@ import {
   TQueueGitLabResourceDiffScan
 } from "./gitlab-secret-scanning-types";
 
+const PROJECT_HOOK_CONCURRENCY = 5;
+
+type TGitLabProjectHook = { projectId: number; projectName: string; hookId: number };
+
 export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TSecretScanningFactoryParams) => {
-  const initialize: TSecretScanningFactoryInitialize<
-    TGitLabDataSourceInput,
-    TGitLabConnection,
-    TGitLabDataSourceCredentials
-  > = async ({ payload: { config, name }, connection }, callback) => {
-    const token = alphaNumericNanoId(64);
+  type TGitLabClient = Awaited<ReturnType<typeof getGitLabConnectionClient>>;
+  type THookableConfig = Exclude<TGitLabDataSourceInput["config"], { scope: GitLabDataSourceScope.Account }>;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
-    const appCfg = getConfig();
+  const getHookUrl = () => `${getConfig().SITE_URL}/secret-scanning/webhooks/gitlab`;
 
-    if (config.scope === GitLabDataSourceScope.Project) {
-      const { projectId } = config;
-      const project = await client.Projects.show(projectId);
+  const removeProjectHooks = async (client: TGitLabClient, hooks: TGitLabProjectHook[]) => {
+    const limit = pLimit(PROJECT_HOOK_CONCURRENCY);
+    await Promise.all(
+      hooks.map((hook) =>
+        limit(async () => {
+          try {
+            await client.ProjectHooks.remove(hook.projectId, hook.hookId);
+          } catch (error) {
+            logger.warn(
+              error,
+              `secretScanningV2: GitLab - Failed to remove project webhook [projectId=${hook.projectId}] [hookId=${hook.hookId}]`
+            );
+          }
+        })
+      )
+    );
+  };
 
-      if (!project) {
-        throw new BadRequestError({ message: `Could not find project with ID ${projectId}.` });
+  // All or nothing: a project left without a hook would silently miss new commit scans.
+  const addProjectHooks = async (
+    client: TGitLabClient,
+    projectNames: string[],
+    token: string,
+    dataSourceId: string
+  ): Promise<TGitLabProjectHook[]> => {
+    const limit = pLimit(PROJECT_HOOK_CONCURRENCY);
+    const added: TGitLabProjectHook[] = [];
+    const failed: string[] = [];
+
+    await Promise.all(
+      projectNames.map((projectName) =>
+        limit(async () => {
+          try {
+            const hook: Camelize<ProjectHookSchema> = await client.ProjectHooks.add(projectName, getHookUrl(), {
+              token,
+              pushEvents: true,
+              enableSslVerification: true,
+              // @ts-expect-error gitbeaker is outdated, and the types don't support these fields yet
+              name: `Infisical Secret Scanning - ${dataSourceId}`,
+              custom_headers: [{ key: "x-data-source-id", value: dataSourceId }]
+            });
+            added.push({ projectId: hook.projectId, projectName, hookId: hook.id });
+          } catch (error) {
+            const reason =
+              error instanceof GitbeakerRequestError
+                ? (error.cause?.description ?? error.message)
+                : (error as Error)?.message || "Unknown error";
+            failed.push(`"${projectName}" (${reason})`);
+          }
+        })
+      )
+    );
+
+    if (failed.length) {
+      await removeProjectHooks(client, added);
+      throw new BadRequestError({
+        message: `Could not add a webhook to ${failed.length} GitLab project(s): ${failed.join(", ")}. Scanning new commits needs the connection to have at least the Maintainer role on every included project. Grant that role, remove these projects, or turn off Scan New Commits.`
+      });
+    }
+
+    return added;
+  };
+
+  const removeHook = async (client: TGitLabClient, config: THookableConfig, hookId: number) => {
+    try {
+      if (config.scope === GitLabDataSourceScope.Project) {
+        await client.ProjectHooks.remove(config.projectId, hookId);
+      } else {
+        await client.GroupHooks.remove(config.groupId, hookId);
       }
+    } catch {
+      // do nothing, just try to clean up webhook
+    }
+  };
 
-      let hook: Camelize<ProjectHookSchema>;
-      try {
-        hook = await client.ProjectHooks.add(projectId, `${appCfg.SITE_URL}/secret-scanning/webhooks/gitlab`, {
+  const createHook = async (client: TGitLabClient, config: THookableConfig, token: string, name: string) => {
+    try {
+      if (config.scope === GitLabDataSourceScope.Project) {
+        const project = await client.Projects.show(config.projectId);
+
+        if (!project) {
+          throw new BadRequestError({ message: `Could not find project with ID ${config.projectId}.` });
+        }
+
+        const hook: Camelize<ProjectHookSchema> = await client.ProjectHooks.add(config.projectId, getHookUrl(), {
           token,
           pushEvents: true,
           enableSslVerification: true,
           // @ts-expect-error gitbeaker is outdated, and the types don't support this field yet
           name: `Infisical Secret Scanning - ${name}`
         });
-      } catch (error) {
-        if (error instanceof GitbeakerRequestError) {
-          throw new BadRequestError({ message: `${error.message}: ${error.cause?.description ?? "Unknown Error"}` });
-        }
-
-        throw error;
+        return hook.id;
       }
 
-      try {
-        return await callback({
-          credentials: {
-            token,
-            hookId: hook.id
-          }
-        });
-      } catch (error) {
-        try {
-          await client.ProjectHooks.remove(projectId, hook.id);
-        } catch {
-          // do nothing, just try to clean up webhook
-        }
+      const group = await client.Groups.show(config.groupId);
 
-        throw error;
+      if (!group) {
+        throw new BadRequestError({ message: `Could not find group with ID ${config.groupId}.` });
       }
-    }
 
-    // group scope
-    const { groupId } = config;
-
-    const group = await client.Groups.show(groupId);
-
-    if (!group) {
-      throw new BadRequestError({ message: `Could not find group with ID ${groupId}.` });
-    }
-
-    let hook: Camelize<GroupHookSchema>;
-    try {
-      hook = await client.GroupHooks.add(groupId, `${appCfg.SITE_URL}/secret-scanning/webhooks/gitlab`, {
+      const hook: Camelize<GroupHookSchema> = await client.GroupHooks.add(config.groupId, getHookUrl(), {
         token,
         pushEvents: true,
         enableSslVerification: true,
         // @ts-expect-error gitbeaker is outdated, and the types don't support this field yet
         name: `Infisical Secret Scanning - ${name}`
       });
+      return hook.id;
     } catch (error) {
       if (error instanceof GitbeakerRequestError) {
         throw new BadRequestError({ message: `${error.message}: ${error.cause?.description ?? "Unknown Error"}` });
@@ -119,21 +170,55 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
 
       throw error;
     }
+  };
+
+  // The data source ID only exists after the row is written, so the hook is pointed at it in a second call.
+  const bindHookToDataSource = async (
+    client: TGitLabClient,
+    config: THookableConfig,
+    hookId: number,
+    dataSourceId: string
+  ) => {
+    try {
+      if (config.scope === GitLabDataSourceScope.Project) {
+        await client.ProjectHooks.edit(config.projectId, hookId, getHookUrl(), {
+          // @ts-expect-error gitbeaker is outdated, and the types don't support this field yet
+          name: `Infisical Secret Scanning - ${dataSourceId}`,
+          custom_headers: [{ key: "x-data-source-id", value: dataSourceId }]
+        });
+      } else {
+        await client.GroupHooks.edit(config.groupId, hookId, getHookUrl(), {
+          // @ts-expect-error gitbeaker is outdated, and the types don't support this field yet
+          name: `Infisical Secret Scanning - ${dataSourceId}`,
+          custom_headers: [{ key: "x-data-source-id", value: dataSourceId }]
+        });
+      }
+    } catch (error) {
+      await removeHook(client, config, hookId);
+      throw error;
+    }
+  };
+
+  const initialize: TSecretScanningFactoryInitialize<
+    TGitLabDataSourceInput,
+    TGitLabConnection,
+    TGitLabDataSourceCredentials
+  > = async ({ payload, connection }, callback) => {
+    const { config, name } = payload;
+
+    if (!isDataSourceWebhookRequired(payload)) return callback({});
+
+    // An account data source starts with no projects; each one gets its hook as it is added.
+    if (config.scope === GitLabDataSourceScope.Account) return callback({});
+
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const token = alphaNumericNanoId(64);
+    const hookId = await createHook(client, config, token, name);
 
     try {
-      return await callback({
-        credentials: {
-          token,
-          hookId: hook.id
-        }
-      });
+      return await callback({ credentials: { token, hookId } });
     } catch (error) {
-      try {
-        await client.GroupHooks.remove(groupId, hook.id);
-      } catch {
-        // do nothing, just try to clean up webhook
-      }
-
+      await removeHook(client, config, hookId);
       throw error;
     }
   };
@@ -143,52 +228,54 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     TGitLabConnection,
     TGitLabDataSourceCredentials
   > = async ({ connection, dataSourceId, credentials, payload: { config } }) => {
+    if (!credentials || !("hookId" in credentials) || config.scope === GitLabDataSourceScope.Account) return;
+
     const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
-    const appCfg = getConfig();
+    await bindHookToDataSource(client, config, credentials.hookId, dataSourceId);
+  };
 
-    const hookUrl = `${appCfg.SITE_URL}/secret-scanning/webhooks/gitlab`;
-    const { hookId } = credentials;
+  const setupWebhook: TSecretScanningFactorySetupWebhook<
+    TGitLabDataSourceWithConnection,
+    TGitLabDataSourceCredentials
+  > = async ({ dataSource: { id, name, connection, config }, resourceNames }) => {
+    if (config.scope === GitLabDataSourceScope.Account) {
+      if (!resourceNames.length) return undefined;
 
-    if (config.scope === GitLabDataSourceScope.Project) {
-      const { projectId } = config;
+      const accountClient = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+      const accountToken = alphaNumericNanoId(64);
+      const projectHooks = await addProjectHooks(accountClient, resourceNames, accountToken, id);
 
-      try {
-        await client.ProjectHooks.edit(projectId, hookId, hookUrl, {
-          // @ts-expect-error gitbeaker is outdated, and the types don't support this field yet
-          name: `Infisical Secret Scanning - ${dataSourceId}`,
-          custom_headers: [{ key: "x-data-source-id", value: dataSourceId }]
-        });
-      } catch (error) {
-        try {
-          await client.ProjectHooks.remove(projectId, hookId);
-        } catch {
-          // do nothing, just try to clean up webhook
-        }
-
-        throw error;
-      }
-
-      return;
+      return { token: accountToken, projectHooks };
     }
 
-    // group-scope
-    const { groupId } = config;
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const token = alphaNumericNanoId(64);
+    const hookId = await createHook(client, config, token, name);
+    await bindHookToDataSource(client, config, hookId, id);
 
-    try {
-      await client.GroupHooks.edit(groupId, hookId, hookUrl, {
-        // @ts-expect-error gitbeaker is outdated, and the types don't support this field yet
-        name: `Infisical Secret Scanning - ${dataSourceId}`,
-        custom_headers: [{ key: "x-data-source-id", value: dataSourceId }]
-      });
-    } catch (error) {
-      try {
-        await client.GroupHooks.remove(groupId, hookId);
-      } catch {
-        // do nothing, just try to clean up webhook
-      }
+    return { token, hookId };
+  };
 
-      throw error;
-    }
+  const updateWebhook: TSecretScanningFactoryUpdateWebhook<
+    TGitLabDataSourceWithConnection,
+    TGitLabDataSourceCredentials
+  > = async ({ dataSource: { id, connection, config }, resourceNames, credentials }) => {
+    if (config.scope !== GitLabDataSourceScope.Account || !("projectHooks" in credentials)) return undefined;
+
+    const kept = credentials.projectHooks.filter((hook) => resourceNames.includes(hook.projectName));
+    const stale = credentials.projectHooks.filter((hook) => !resourceNames.includes(hook.projectName));
+    const missing = resourceNames.filter((projectName) => !kept.some((hook) => hook.projectName === projectName));
+
+    if (!stale.length && !missing.length) return undefined;
+
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const added = await addProjectHooks(client, missing, credentials.token, id);
+
+    return {
+      credentials: { token: credentials.token, projectHooks: [...kept, ...added] },
+      finalize: () => removeProjectHooks(client, stale),
+      revert: () => removeProjectHooks(client, added)
+    };
   };
 
   const listRawResources: TSecretScanningFactoryListRawResources<TGitLabDataSourceWithConnection> = async (
@@ -216,22 +303,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       ];
     }
 
-    // group-scope
+    const projects =
+      config.scope === GitLabDataSourceScope.Account
+        ? await client.Projects.all({ membership: true, archived: false })
+        : await client.Groups.allProjects(config.groupId, { archived: false });
 
-    const { groupId, includeProjects } = config;
-
-    const projects = await client.Groups.allProjects(groupId, {
-      archived: false
-    });
-
-    const filteredProjects: typeof projects = [];
-    if (!includeProjects || includeProjects.includes("*")) {
-      filteredProjects.push(...projects);
-    } else {
-      filteredProjects.push(...projects.filter((project) => includeProjects.includes(project.pathWithNamespace)));
-    }
-
-    return filteredProjects.map(({ id, pathWithNamespace }) => ({
+    return projects.map(({ id, pathWithNamespace }) => ({
       name: pathWithNamespace,
       externalId: id.toString()
     }));
@@ -277,25 +354,19 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   const teardown: TSecretScanningFactoryTeardown<
     TGitLabDataSourceWithConnection,
     TGitLabDataSourceCredentials
-  > = async ({ dataSource: { connection, config }, credentials: { hookId } }) => {
+  > = async ({ dataSource: { connection, config }, credentials }) => {
+    if (!credentials) return;
+
     const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
 
-    if (config.scope === GitLabDataSourceScope.Project) {
-      const { projectId } = config;
-      try {
-        await client.ProjectHooks.remove(projectId, hookId);
-      } catch (error) {
-        // do nothing, just try to clean up webhook
-      }
+    if ("projectHooks" in credentials) {
+      await removeProjectHooks(client, credentials.projectHooks);
       return;
     }
 
-    const { groupId } = config;
-    try {
-      await client.GroupHooks.remove(groupId, hookId);
-    } catch (error) {
-      // do nothing, just try to clean up webhook
-    }
+    if (config.scope === GitLabDataSourceScope.Account) return;
+
+    await removeHook(client, config, credentials.hookId);
   };
 
   const getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<
@@ -391,6 +462,8 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     initialize,
     postInitialization,
     teardown,
+    setupWebhook,
+    updateWebhook,
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
     validateConfigUpdate

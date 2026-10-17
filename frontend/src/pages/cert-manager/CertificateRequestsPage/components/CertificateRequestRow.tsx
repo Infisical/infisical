@@ -145,7 +145,11 @@ export const CertificateRequestRow = ({ request, onViewCertificates, application
         }
         return <Badge variant="project">Pending Approval</Badge>;
       default:
-        return <Badge variant="outline">{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
+        return (
+          <Badge variant="outline">
+            {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+          </Badge>
+        );
     }
   };
 

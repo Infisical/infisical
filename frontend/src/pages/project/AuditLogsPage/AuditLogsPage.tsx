@@ -4,10 +4,12 @@ import { LookingForOrgPageLink } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import { hidesProjects } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 
 import { ProjectAuditLogsTabs } from "./components";
 
 export const AuditLogsPage = () => {
+  const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const projectsHidden = hidesProjects(currentProject.type);
   return (
@@ -25,7 +27,7 @@ export const AuditLogsPage = () => {
           >
             <LookingForOrgPageLink page="auditLogs" />
           </PageHeader>
-          <ProjectAuditLogsTabs variant="project" />
+          <ProjectAuditLogsTabs variant={scopeVariant} />
         </div>
       </div>
     </div>

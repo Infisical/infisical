@@ -37,9 +37,10 @@ export const OrgSidebar = () => {
     (hasIntermediateProjectsView(projectType!) || pathname.includes("/product-settings"));
   const { isSubOrganization } = useOrganization();
 
-  let scope: "project" | "sub-org" | "org" | "pam" | "agent-vault" = "org";
+  let scope: "project" | "sub-org" | "org" | "pam" | "agent-vault" | "secret-scanning" = "org";
   if (orgScopedProduct === ProjectType.PAM) scope = "pam";
   else if (orgScopedProduct === ProjectType.AgentVault) scope = "agent-vault";
+  else if (orgScopedProduct === ProjectType.SecretScanning) scope = "secret-scanning";
   else if (isInsideProject || isOnProjectTypeListing) scope = "project";
   else if (isSubOrganization) scope = "sub-org";
 

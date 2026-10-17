@@ -39,7 +39,7 @@ export const SignerExternalConfigurationSchema = z.object({
 });
 
 export const SignerCertificateInputSchema = z.object({
-  keySource: z.nativeEnum(CertKeySource).optional(),
+  keySource: z.enum([CertKeySource.Infisical, CertKeySource.Hsm]).optional(),
   hsmConnectorId: z.string().uuid().optional(),
   hsmKeyLabel: z
     .string()

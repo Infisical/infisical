@@ -263,7 +263,7 @@ export const HoneyTokenForm = ({
         <HoneyTokenConfigurationFields environments={environments} />
       )}
       {currentStep.key === "mapping" && <HoneyTokenMappingFields />}
-      {currentStep.key === "details" && <HoneyTokenDetailsFields />}
+      {currentStep.key === "details" && <HoneyTokenDetailsFields isUpdate={isUpdate} />}
     </>
   );
 

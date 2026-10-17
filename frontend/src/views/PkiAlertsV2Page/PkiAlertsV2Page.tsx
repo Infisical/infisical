@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  DeleteActionModal,
   Input,
   Pagination,
   Skeleton,
@@ -16,6 +15,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { useDeletePkiAlertV2, useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 
@@ -189,12 +189,13 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
         alertId={viewModal.alertId}
       />
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={deleteModal.isOpen}
-        deleteKey="delete"
+        description="This action is irreversible."
+        confirmKey="delete"
         title={`Delete PKI Alert "${deleteModal.name}"`}
-        onChange={(isOpen) => setDeleteModal({ isOpen, alertId: undefined, name: undefined })}
-        onDeleteApproved={handleDeleteAlert}
+        onOpenChange={(isOpen) => setDeleteModal({ isOpen, alertId: undefined, name: undefined })}
+        onConfirm={handleDeleteAlert}
       />
     </div>
   );

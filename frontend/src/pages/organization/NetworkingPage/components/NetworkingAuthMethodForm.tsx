@@ -21,6 +21,7 @@ import {
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker/GatewayPicker";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 
 import {
   NETWORKING_AUTH_METHOD_OPTIONS,
@@ -247,6 +248,7 @@ export const NetworkingAuthMethodForm = ({
   currentGatewayId,
   onUpdate
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { isSubOrganization, currentOrg } = useOrganization();
   const initialMethod: NetworkingAuthMethod = currentMethod.method;
   const initialAws = currentMethod.method === "aws" ? currentMethod.config : undefined;
@@ -838,7 +840,7 @@ export const NetworkingAuthMethodForm = ({
                     <div className="flex items-center gap-2">
                       <Toggle
                         id="gateway-k8s-verify-tls"
-                        variant="org"
+                        variant={scopeVariant}
                         checked={field.value}
                         onCheckedChange={field.onChange}
                         disabled={isDisabled || isSaving}

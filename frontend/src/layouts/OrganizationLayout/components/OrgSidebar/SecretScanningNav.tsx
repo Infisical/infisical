@@ -1,5 +1,6 @@
 import { Cable, Database, FileText, Search, Settings, Shield } from "lucide-react";
 
+import { SidebarCollapsibleGroup } from "@app/components/v3";
 import {
   ProjectPermissionSub,
   useOrganization,
@@ -41,15 +42,19 @@ export const SecretScanningNav = ({
     }
   );
 
-  const items: NavItem[] = [
+  const generalItems: NavItem[] = [
     { label: "Data Sources", icon: Database, pathSuffix: "data-sources" },
     {
       label: "Findings",
       icon: Search,
       pathSuffix: "findings",
-      badgeCount: unresolvedFindings || undefined
+      badgeCount: unresolvedFindings || undefined,
+      badgeVariant: "danger" as const
     },
-    { label: "App Connections", icon: Cable, pathSuffix: "app-connections" },
+    { label: "App Connections", icon: Cable, pathSuffix: "app-connections" }
+  ];
+
+  const administrationItems: NavItem[] = [
     {
       label: "Access Control",
       icon: Shield,
@@ -65,5 +70,13 @@ export const SecretScanningNav = ({
       submenu: getSecretScanningSettingsSubmenu(Boolean(instanceState?.isMultiInstance))
     }
   ];
-  return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;
+
+  return (
+    <>
+      <ProjectNavList items={generalItems} onSubmenuOpen={onSubmenuOpen} />
+      <SidebarCollapsibleGroup label="Administration">
+        <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+    </>
+  );
 };

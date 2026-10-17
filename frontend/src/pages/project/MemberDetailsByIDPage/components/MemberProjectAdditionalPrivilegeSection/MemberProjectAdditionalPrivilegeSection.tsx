@@ -26,7 +26,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -63,7 +63,7 @@ import {
   useUser
 } from "@app/context";
 import { getProjectLabel } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   useDeleteProjectUserAdditionalPrivilege,
   useListProjectUserPrivileges,
@@ -83,6 +83,7 @@ type Props = {
 };
 
 export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: Props) => {
+  const scopeVariant = useScopeVariant();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -407,7 +408,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                         const isEditDisabled = !isAllowed || !canModifyMemberPrivileges;
                         const button = (
                           <Button
-                            variant="project"
+                            variant={scopeVariant}
                             size="xs"
                             onClick={() => {
                               handlePopUpOpen("modifyPrivilege");
@@ -461,7 +462,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
           />
         </SheetContent>
       </Sheet>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePrivilege.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("deletePrivilege", isOpen);
@@ -481,7 +482,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
         isPending={deletePrivilegeMutation.isPending}
         onConfirm={handlePrivilegeDelete}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.revokeAccess.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("revokeAccess", isOpen);

@@ -9,7 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog
+  ConfirmationAlertDialog
 } from "@app/components/v3";
 import { useOrganization, useUser } from "@app/context";
 import {
@@ -95,7 +95,7 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeUserFromProject.isOpen}
         confirmKey="remove"
         title={`Do you want to remove this user from ${

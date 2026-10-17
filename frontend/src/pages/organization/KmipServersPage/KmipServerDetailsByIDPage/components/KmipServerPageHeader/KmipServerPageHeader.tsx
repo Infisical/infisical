@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -124,7 +124,7 @@ export const KmipServerPageHeader = ({ kmipServer, orgId, backLink }: Props) => 
         </DropdownMenu>
       </PageHeader>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteKmipServer.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteKmipServer", isOpen)}
         title={`Delete KMIP Server ${kmipServer.name}?`}

@@ -33,7 +33,9 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
           commonName: z.string().trim().min(1).max(256).optional(),
           certificateTtlDays: z.number().int().min(1).max(3650).optional(),
           keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
-          certificate: SignerCertificateInputSchema.extend({ keySource: z.nativeEnum(CertKeySource) }).optional(),
+          certificate: SignerCertificateInputSchema.extend({
+            keySource: z.enum([CertKeySource.Infisical, CertKeySource.Hsm])
+          }).optional(),
           externalConfiguration: SignerExternalConfigurationSchema.optional()
         })
         .superRefine(refineSignerCertificateInput),
