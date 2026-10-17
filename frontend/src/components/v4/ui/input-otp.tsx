@@ -1,7 +1,8 @@
 import * as React from "react";
-import { cn } from "cn";
 import { OTPInput, OTPInputContext } from "input-otp";
 import { MinusIcon } from "lucide-react";
+
+import { cn } from "@app/components/v4/lib/utils";
 
 function InputOTP({
   className,
@@ -28,10 +29,7 @@ function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="input-otp-group"
-      className={cn(
-        "has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:has-aria-invalid:ring-destructive/40 flex items-center rounded-lg has-aria-invalid:ring-3",
-        className
-      )}
+      className={cn("flex items-center rounded-lg has-aria-invalid:border-v4-bad", className)}
       {...props}
     />
   );
@@ -52,7 +50,7 @@ function InputOTPSlot({
       data-slot="input-otp-slot"
       data-active={isActive}
       className={cn(
-        "border-input aria-invalid:border-destructive data-[active=true]:aria-invalid:border-destructive data-[active=true]:aria-invalid:ring-destructive/20 dark:bg-input/30 dark:data-[active=true]:aria-invalid:ring-destructive/40 relative flex size-8 items-center justify-center border-y border-r text-sm transition-all outline-none first:rounded-l-lg first:border-l last:rounded-r-lg data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:ring-3 data-[active=true]:ring-ring/50",
+        "relative flex size-8 items-center justify-center border-y border-r border-v4-control text-sm transition-all outline-none first:rounded-l-lg first:border-l last:rounded-r-lg aria-invalid:border-v4-bad data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:outline-3 data-[active=true]:outline-v4-nudge data-[active=true]:outline-solid data-[active=true]:aria-invalid:border-v4-bad data-[active=true]:aria-invalid:outline-v4-bad-nudge dark:bg-v4-control/30",
         className
       )}
       {...props}

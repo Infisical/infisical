@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
-import { cn } from "cn";
 import { CheckIcon, SearchIcon } from "lucide-react";
 
+import { cn } from "@app/components/v4/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        "text-popover-foreground flex size-full flex-col overflow-hidden rounded-xl! bg-popover p-1",
+        "flex size-full flex-col overflow-hidden rounded-xl! bg-popover p-1 text-v4-ink",
         className
       )}
       {...props}
@@ -60,7 +60,7 @@ function CommandInput({
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="border-input/30 bg-input/30 h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:pl-2!">
+      <InputGroup className="h-8! rounded-lg! border-v4-control/30 bg-v4-control/30 shadow-none! *:data-[slot=input-group-addon]:pl-2!">
         <CommandPrimitive.Input
           data-slot="command-input"
           className={cn(
@@ -111,7 +111,7 @@ function CommandGroup({
     <CommandPrimitive.Group
       data-slot="command-group"
       className={cn(
-        "**:[[cmdk-group-heading]]:text-muted-foreground overflow-hidden p-1 text-foreground **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium",
+        "overflow-hidden p-1 text-foreground **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-v4-muted",
         className
       )}
       {...props}
@@ -157,7 +157,7 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) 
     <span
       data-slot="command-shortcut"
       className={cn(
-        "text-muted-foreground ml-auto text-xs tracking-widest group-data-selected/command-item:text-foreground",
+        "ml-auto text-xs tracking-widest text-v4-muted group-data-selected/command-item:text-foreground",
         className
       )}
       {...props}

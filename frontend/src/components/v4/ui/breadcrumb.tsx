@@ -1,7 +1,8 @@
 import * as React from "react";
-import { cn } from "cn";
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
 import { Slot } from "radix-ui";
+
+import { cn } from "@app/components/v4/lib/utils";
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -14,7 +15,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
     <ol
       data-slot="breadcrumb-list"
       className={cn(
-        "text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm wrap-break-word",
+        "flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-v4-muted",
         className
       )}
       {...props}

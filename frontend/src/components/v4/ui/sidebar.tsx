@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
 import { PanelLeftIcon } from "lucide-react";
 import { Slot } from "radix-ui";
 
 import { useIsMobile } from "@app/components/v4/hooks/use-mobile";
+import { cn } from "@app/components/v4/lib/utils";
 import { Button } from "@app/components/v4/ui/button";
 import { Input } from "@app/components/v4/ui/input";
 import { Separator } from "@app/components/v4/ui/separator";

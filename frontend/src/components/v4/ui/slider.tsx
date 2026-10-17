@@ -1,6 +1,7 @@
 import * as React from "react";
-import { cn } from "cn";
 import { Slider as SliderPrimitive } from "radix-ui";
+
+import { cn } from "@app/components/v4/lib/utils";
 
 function Slider({
   className,
@@ -41,7 +42,7 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
-          className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
+          className="relative block size-3 shrink-0 rounded-full border border-ring bg-white transition-[color,box-shadow] select-none after:absolute after:-inset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v4-ink focus-visible:outline-solid disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>

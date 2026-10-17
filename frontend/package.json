@@ -108,7 +108,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "cn": "^0.4.0",
     "cva": "npm:class-variance-authority@^0.7.1",
     "date-fns": "^4.1.0",
     "diff": "^8.0.3",

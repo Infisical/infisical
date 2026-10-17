@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./legacy.css";
+@import "./components/v4/theme.css";
 
 /* Tailwind directives */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
