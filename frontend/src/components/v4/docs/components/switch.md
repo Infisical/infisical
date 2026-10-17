@@ -1,6 +1,6 @@
 # Switch
 
-> **v4 status:** Implemented as [`ui/switch.tsx`](../../ui/switch.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/switch.tsx`](../../ui/switch.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Turns a setting on or off right away. On is an ink track with a yellow knob in light, and a yellow track with a black knob in dark.
 

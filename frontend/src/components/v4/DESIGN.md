@@ -16,7 +16,7 @@ Run the frontend and open `/design-system`. It lists every installed primitive f
 | `tokens.json` | The source of truth for every token: colors per theme, type styles, spacing, sizes, radii, shadows, opacity. Each token has a usage note. |
 | `v4.css` | The tokens as CSS custom properties scoped to `.v4`, mapped onto the shadcn variables (`--color-background`, `--color-primary`, ...) plus `--v4-*` for brand colors shadcn has no slot for, and the `@font-face` rules. |
 | `ui/` | The shadcn Radix primitives (`radix-nova`), restyled by `v4.css`. |
-| `docs/components/<name>.md` | Guidelines for one component: what it is for, what you provide, and its rules. Each starts with its v4 status: implemented, partly implemented, or not yet implemented. |
+| `docs/components/<name>.md` | Guidelines for one component: what it is for, what you provide, and its rules. Each starts with its v4 status: primitive installed, partly implemented, or not yet implemented. |
 | `docs/patterns/<name>.md` | Product patterns (AccessList, ActivityLog, ApprovalQueue). They compose List and Item rows rather than being components of their own. |
 | `assets/icons` | The 51 line icons as SVG path data. |
 | `assets/logos` | The mark and wordmark in each ink. |

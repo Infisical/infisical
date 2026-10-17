@@ -7,7 +7,7 @@ A JSON value pretty-printed as a tree whose objects and arrays open and close, f
 ## You provide
 
 - `value`: any JSON value, or a JSON string (invalid JSON shows as plain code).
-- `defaultExpandDepth`: how many levels start open (default 2). Pass a large number to open everything. To expand or collapse all from a header action, change it and remount with a `key`, as the preview does.
+- `defaultExpandDepth`: how many levels start open (default 2). Pass a large number to open everything. To expand or collapse all from a header action, change it and remount with a `key`.
 - `redact`: key names (case-insensitive) or a function of the key. Their values show as `"••••••••"` and copy as `"<redacted>"`.
 - `wrap` to wrap long strings, `maxLines` or `maxHeight`, `label` (its accessible name).
 

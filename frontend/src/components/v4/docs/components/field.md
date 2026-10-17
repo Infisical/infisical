@@ -1,6 +1,6 @@
 # Field
 
-> **v4 status:** Implemented as [`ui/field.tsx`](../../ui/field.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Partly implemented. The base is [`ui/field.tsx`](../../ui/field.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Wiring the label, description and error to the control (`htmlFor`, `aria-describedby`, `aria-invalid`) is not automatic yet; pass the ids yourself.
 
 Wraps one control with its label, then either help text or an error, never both. It wires `id`, `htmlFor`, `aria-describedby` and the invalid state into Input, SecretInput, InputGroup, Select and Combobox for you.
 

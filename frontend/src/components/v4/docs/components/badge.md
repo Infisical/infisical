@@ -1,6 +1,6 @@
 # Badge
 
-> **v4 status:** Implemented as [`ui/badge.tsx`](../../ui/badge.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/badge.tsx`](../../ui/badge.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 One or two words about an object's type or state. Status badges always carry the word, and a dot when the state is live; color is never the only signal.
 

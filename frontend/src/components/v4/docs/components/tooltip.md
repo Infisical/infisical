@@ -1,6 +1,6 @@
 # Tooltip
 
-> **v4 status:** Implemented as [`ui/tooltip.tsx`](../../ui/tooltip.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/tooltip.tsx`](../../ui/tooltip.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 A short label for an icon button or a truncated value, on hover after 300ms and on focus at once. Ink bubble, on-ink text, an 8px nub pointing at the trigger.
 
@@ -13,5 +13,5 @@ A short label for an icon button or a truncated value, on hover after 300ms and 
 ## Rules
 
 - Never put anything interactive or essential in a tooltip; use a Popover.
-- Disabled buttons get no hover or focus, so their tooltip never shows. Explain the rule with an info icon button beside it, as the preview does.
+- Disabled buttons get no hover or focus, so their tooltip never shows. Explain the rule with an info icon button beside it.
 - Do not tooltip a button that already has a visible label.

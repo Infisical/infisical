@@ -1,6 +1,6 @@
 # Input
 
-> **v4 status:** Implemented as [`ui/input.tsx`](../../ui/input.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#input`.
+> **v4 status:** Primitive installed: [`ui/input.tsx`](../../ui/input.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#input`. Its core behavior is there; check the primitive before relying on anything else described below.
 
 A single-line text box, 36px tall. Its `control` border turns `ink` on focus, with a 3px outline of `ink` at `opacity-nudge` outside it. Use `mono` for keys, paths and hostnames; use SecretInput for values.
 

@@ -1,6 +1,6 @@
 # Pagination
 
-> **v4 status:** Implemented as [`ui/pagination.tsx`](../../ui/pagination.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/pagination.tsx`](../../ui/pagination.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Says how many there are and moves through them. It sits where the table ends, range on the left, controls on the right.
 

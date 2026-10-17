@@ -1,6 +1,6 @@
 # ButtonGroup
 
-> **v4 status:** Implemented as [`ui/button-group.tsx`](../../ui/button-group.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/button-group.tsx`](../../ui/button-group.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Keeps related actions together: attached for one object's tools, split for a main action with alternatives, a toolbar for icon buttons, and spaced buttons for footers.
 

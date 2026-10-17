@@ -1,6 +1,6 @@
 # Item
 
-> **v4 status:** Implemented as [`ui/item.tsx`](../../ui/item.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/item.tsx`](../../ui/item.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 The layout of one object: a lead, then text whose first line holds the title, a badge and the meta, then the actions. Item owns spacing, alignment and overflow, and never draws a box; List, Card, Tile and Identity put it in theirs.
 

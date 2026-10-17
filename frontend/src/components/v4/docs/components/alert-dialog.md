@@ -1,6 +1,6 @@
 # AlertDialog
 
-> **v4 status:** Implemented as [`ui/alert-dialog.tsx`](../../ui/alert-dialog.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/alert-dialog.tsx`](../../ui/alert-dialog.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Confirms something that is hard to undo. Name the object, say what breaks, and make the safe choice easy: Cancel comes first and is focused unless typing is required.
 

@@ -1,6 +1,6 @@
 # Combobox
 
-> **v4 status:** Implemented as [`ui/combobox.tsx`](../../ui/combobox.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/combobox.tsx`](../../ui/combobox.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Type to filter a long list, then pick one value or several. Matches are highlighted in the accent; if nothing matches and `onCreate` is set, the last row offers to create it.
 

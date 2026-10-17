@@ -1,6 +1,6 @@
 # DropdownMenu
 
-> **v4 status:** Implemented as [`ui/dropdown-menu.tsx`](../../ui/dropdown-menu.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/dropdown-menu.tsx`](../../ui/dropdown-menu.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 A short list of actions on one object, opened from a button. Arrow keys move, Enter picks, Escape closes and returns focus to the trigger.
 

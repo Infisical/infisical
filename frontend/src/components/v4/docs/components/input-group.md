@@ -1,6 +1,6 @@
 # InputGroup
 
-> **v4 status:** Implemented as [`ui/input-group.tsx`](../../ui/input-group.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/input-group.tsx`](../../ui/input-group.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 An input with something attached: a leading icon or text, a trailing unit, a shortcut hint, a copy button, or a button joined to its edge.
 

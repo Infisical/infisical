@@ -1,6 +1,6 @@
 # Tabs
 
-> **v4 status:** Implemented as [`ui/tabs.tsx`](../../ui/tabs.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#tabs`.
+> **v4 status:** Primitive installed: [`ui/tabs.tsx`](../../ui/tabs.tsx), a shadcn Radix primitive restyled by `v4.css`. Preview it at `/design-system#tabs`. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Switches between sections of one object, or between views of the same data. Underline tabs sit on a `line` rule under a 2px ink bar; segmented tabs sit in a `tint` track under a `surface` thumb with a `control` border. Either runs horizontally or vertically, and the bar or thumb slides to the tab you pick.
 

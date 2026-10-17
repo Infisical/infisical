@@ -28,7 +28,7 @@ Built for scanning hundreds of rows: an uppercase header inside the tint frame, 
 - Virtual tables: give variable columns a `width` or `maxWidth` so tracks hold still as rows mount.
 - `loadMore` is for batches the person asks for. Say how many are loaded ("Showing 1,000 of 12,408") and drop `loadMore` once everything is in. To show more at once as well, grow `height` with each press up to a ceiling, as the preview does (360px, then five rows more per press, up to 840px).
 - A selected row takes the `select` ground and its text steps up to `ink`. No edge bar, border or shadow on rows.
-- When rows are selected, swap the toolbar for bulk actions and a count ("2 selected"), as the preview does.
+- When rows are selected, swap the toolbar for bulk actions and a count ("2 selected").
 - Put Pagination under a paged table and say how many there are.
 - Row menus (DropdownMenu) float out of the table on their own, so the scroll box never clips them.
 - Pick one variant per table and keep it for the page. Striped suits long rows read across; bordered suits dense numbers and comparisons.

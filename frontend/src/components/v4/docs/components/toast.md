@@ -1,6 +1,6 @@
 # Toast
 
-> **v4 status:** Implemented as [`ui/sonner.tsx`](../../ui/sonner.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/sonner.tsx`](../../ui/sonner.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Confirms what just happened, bottom right, newest at the bottom. It offers Undo instead of asking first. It follows the theme: `surface` with a `line` border and `shadow-pop` in light, a raised gray in dark.
 
@@ -9,7 +9,7 @@ Confirms what just happened, bottom right, newest at the bottom. It offers Undo 
 - `title` (past tense: "Secret saved"), `description` (what follows: "Syncing to Vercel and GitHub Actions").
 - `tone`: `neutral`, `ok`, `bad`; or `loading` for work in progress (the inline Spinner, no dismiss). `icon` to override.
 - `action` `{ label, onClick }` in `accent-fg` ("Undo", "Retry"): ink in light, the accent in dark; `onDismiss`; `duration` in ms to auto-dismiss (leave errors up).
-- `ToastStack` holds them: fixed bottom right by default, `inline` for layouts like this preview.
+- `ToastStack` holds them: fixed bottom right by default, `inline` to place them in the page flow.
 
 ## Rules
 

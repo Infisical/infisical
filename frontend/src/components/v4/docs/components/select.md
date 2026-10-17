@@ -1,6 +1,6 @@
 # Select
 
-> **v4 status:** Implemented as [`ui/select.tsx`](../../ui/select.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/select.tsx`](../../ui/select.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Pick one value from a short, known list. The trigger looks like an Input with an up-down chevron; the list is a listbox with keyboard support and a check on the chosen option.
 

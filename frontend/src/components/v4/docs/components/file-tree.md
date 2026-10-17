@@ -21,7 +21,7 @@ Folders and files as a tree, for repository files, secret folders and certificat
 
 ## Rules
 
-- In a Card, use the flush body so rows run edge to edge. In a Popover, let the tree bleed to the popover's edges between `line-soft` rules, and say where the pick goes under it, as the preview does.
+- In a Card, use the flush body so rows run edge to edge. In a Popover, let the tree bleed to the popover's edges between `line-soft` rules, and say where the pick goes under it.
 - Keep `meta` short and in one voice for the whole tree: counts or one status badge, not both.
 - Open the path to the selected item by default, so people see where they are.
 - Disabled folders stay visible and focusable, with a `label` that says why ("shared, read only").

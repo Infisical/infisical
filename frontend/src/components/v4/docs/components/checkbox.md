@@ -1,6 +1,6 @@
 # Checkbox
 
-> **v4 status:** Implemented as [`ui/checkbox.tsx`](../../ui/checkbox.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/checkbox.tsx`](../../ui/checkbox.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 An independent yes or no, or one of several picks in a list. Checked is an ink square with an on-ink check; a parent with some children checked shows the mixed state.
 

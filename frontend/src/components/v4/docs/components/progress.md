@@ -1,6 +1,6 @@
 # Progress
 
-> **v4 status:** Implemented as [`ui/progress.tsx`](../../ui/progress.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Partly implemented. The base is [`ui/progress.tsx`](../../ui/progress.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. The indeterminate animation and `ProgressSteps` are not yet implemented.
 
 Shows real counts when you have them. A 6px ink bar on a `line-soft` track; usage meters turn `warn` at 80% and `bad` at 100%, and the words change with them.
 

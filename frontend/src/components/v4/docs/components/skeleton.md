@@ -1,6 +1,6 @@
 # Skeleton
 
-> **v4 status:** Implemented as [`ui/skeleton.tsx`](../../ui/skeleton.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet.
+> **v4 status:** Primitive installed: [`ui/skeleton.tsx`](../../ui/skeleton.tsx), a shadcn Radix primitive restyled by `v4.css`. It is listed at `/design-system`, with no rendered preview yet. Its core behavior is there; check the primitive before relying on anything else described below.
 
 Holds the shape of content while it loads, so the layout does not jump. Blocks are `line-soft` and pulse gently; they stop under reduced motion.
 
