@@ -193,7 +193,7 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...CustomRolesUpgradeIntent,
-          isEnterpriseFeature: true
+          isEnterpriseFeature: false
         }}
       />
     </form>
