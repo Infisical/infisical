@@ -323,6 +323,32 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     memberProvidedFields: TAgentVaultMemberProvidedField[] | null;
   };
 
+  // Sending a value replaces the stored secret, and so does a write that drops a field the admin held: handing it to
+  // members, or changing the type over a secret that was stored.
+  const isStoredSecretReplaced = (
+    credential: TAgentVaultCredentialUpdate,
+    stored: TAgentVaultServices,
+    written: TCredentialWrite["secret"]
+  ) => {
+    if (written === undefined) return false;
+    if (credential.type !== stored.credentialType) return Boolean(stored.encryptedCredential) || written !== null;
+    if (credential.type === AgentVaultCredentialType.Passthrough) return false;
+
+    const previousMemberFields = (stored.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
+    const keyOfField: [TAgentVaultMemberProvidedField, string][] =
+      credential.type === AgentVaultCredentialType.Bearer
+        ? [[AgentVaultVariableReferenceField.CredentialValue, "value"]]
+        : [
+            [AgentVaultVariableReferenceField.CredentialUsername, "username"],
+            [AgentVaultVariableReferenceField.CredentialValue, "password"]
+          ];
+    return keyOfField.some(
+      ([field, key]) =>
+        (credential as Record<string, unknown>)[key] !== undefined ||
+        (!previousMemberFields.includes(field) && written?.[key] === undefined)
+    );
+  };
+
   const BASIC_NEEDS_A_HALF_MESSAGE =
     "A basic credential needs a username, a password, or both. Set one, or leave one to each member.";
 
@@ -1223,6 +1249,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     let credentialUpdate = {};
     // Undefined leaves the sealed secret, and the references read off it, as they are.
     let writtenSecret: TCredentialWrite["secret"];
+    let credentialReplaced = false;
     let effectiveCredentialConfig = service.credentialConfig as TAgentVaultCredentialConfig;
     if (credential) {
       const { config, secret, memberProvidedFields } = mergeCredential(
@@ -1237,6 +1264,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
       }
       writtenSecret = secret;
+      credentialReplaced = isStoredSecretReplaced(credential, service, secret);
 
       credentialUpdate = {
         credentialType: credential.type,
@@ -1513,7 +1541,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         result.updatedSubstitutions,
         result.variableReferences
       ),
-      accessBundleName: bundle.name
+      accessBundleName: bundle.name,
+      credentialReplaced
     };
   };
 

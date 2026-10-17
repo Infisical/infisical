@@ -2,6 +2,8 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  AccessScope,
+  ProjectMembershipRole,
   RESOURCE_SCOPE,
   ResourceType,
   TableName,
@@ -139,7 +141,8 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
    * Clears what these actors saved for the services of `accessBundleId` (or of every bundle in the project) where
    * they no longer hold a grant, directly or through any group they are in, so being granted the bundle again
    * starts from nothing. An admin reaches every bundle without a grant, so only the actors a revoke named are
-   * considered: everyone else's values are left alone.
+   * considered, and one who is still a project admin, directly or through a group, keeps everything. Call it after
+   * the revoke, removal or demotion has been written in `tx`, so the admin check sees the new roles.
    */
   const deleteForActorsWithoutGrant = async (
     {
@@ -200,6 +203,38 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
           if (identityIds.length) void actor.orWhereIn(`${table}.identityId`, identityIds);
         })
         .whereExists(services)
+        .whereNotExists((admin) => {
+          void admin
+            .from(TableName.Membership)
+            .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .where(`${TableName.Membership}.scopeProjectId`, projectId)
+            .where(`${TableName.Membership}.isActive`, true)
+            .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+            .where((live) => {
+              void live
+                .where(`${TableName.MembershipRole}.isTemporary`, false)
+                .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", tx.fn.now());
+            })
+            .where((holder) => {
+              void holder
+                .whereRaw(`??.?? = ??.??`, [TableName.Membership, "actorUserId", table, "userId"])
+                .orWhereRaw(`??.?? = ??.??`, [TableName.Membership, "actorIdentityId", table, "identityId"])
+                .orWhereIn(
+                  `${TableName.Membership}.actorGroupId`,
+                  tx(TableName.UserGroupMembership)
+                    .whereRaw(`??.?? = ??.??`, [TableName.UserGroupMembership, "userId", table, "userId"])
+                    .select("groupId")
+                )
+                .orWhereIn(
+                  `${TableName.Membership}.actorGroupId`,
+                  tx(TableName.IdentityGroupMembership)
+                    .whereRaw(`??.?? = ??.??`, [TableName.IdentityGroupMembership, "identityId", table, "identityId"])
+                    .select("groupId")
+                );
+            })
+            .select(tx.raw("1"));
+        })
         .delete();
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete agent vault personal values without a grant" });

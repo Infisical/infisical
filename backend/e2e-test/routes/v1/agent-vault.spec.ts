@@ -2176,6 +2176,93 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("an admin keeps their values through a revoke, and a demotion clears the ones they hold no grant for", async () => {
+      const granted = await createAccessBundle("mp-admin-granted");
+      const ungranted = await createAccessBundle("mp-admin-ungranted");
+      const credential = { type: "bearer", memberProvidedFields: ["credential-value"] };
+      const grantedService = await createService(granted.id, {
+        name: "linear",
+        hostPattern: "api.linear.app",
+        credential
+      });
+      const ungrantedService = await createService(ungranted.id, {
+        name: "notion",
+        hostPattern: "api.notion.com",
+        credential
+      });
+
+      const admin = await createMemberIdentity(`mp-admin-${Date.now()}`);
+      const valuesOf = async () =>
+        (await testDb("agent_vault_personal_values").where({ identityId: admin.id }).select("serviceId"))
+          .map((row: { serviceId: string }) => row.serviceId)
+          .sort();
+      try {
+        const promote = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [admin.id],
+          role: "admin"
+        });
+        expect(promote.statusCode).toBe(200);
+        expect((await inject("POST", membersUrl(granted.id), { machineIdentityIds: [admin.id] })).statusCode).toBe(200);
+        expect((await setValues(admin.as, granted.id, grantedService.id, { "credential-value": "a" })).statusCode).toBe(
+          200
+        );
+        expect(
+          (await setValues(admin.as, ungranted.id, ungrantedService.id, { "credential-value": "b" })).statusCode
+        ).toBe(200);
+
+        // Still an admin, so the bundle is still theirs to use.
+        expect((await inject("DELETE", membersUrl(granted.id), { machineIdentityIds: [admin.id] })).statusCode).toBe(
+          200
+        );
+        expect(await valuesOf()).toEqual([grantedService.id, ungrantedService.id].sort());
+
+        expect((await inject("POST", membersUrl(granted.id), { machineIdentityIds: [admin.id] })).statusCode).toBe(200);
+        const demote = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [admin.id],
+          role: "member"
+        });
+        expect(demote.statusCode).toBe(200);
+        expect(await valuesOf()).toEqual([grantedService.id]);
+      } finally {
+        await admin.cleanup();
+      }
+    });
+
+    test("a personal variable on a bundle the member lost drops out of Used By and can be deleted", async () => {
+      const bundle = await createAccessBundle("mp-lost-reach");
+      const service = await createService(bundle.id, {
+        name: "sentry",
+        hostPattern: "sentry.io",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+
+      const member = await createMemberIdentity(`mp-lost-reach-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        const created = await member.as("POST", variablesUrl, { scope: "personal", key: "SENTRY", value: "s" });
+        expect(created.statusCode).toBe(200);
+        const variableId = (JSON.parse(created.payload) as { variable: { id: string } }).variable.id;
+        expect(
+          (await setValues(member.as, bundle.id, service.id, { "credential-value": "{{SENTRY}}" })).statusCode
+        ).toBe(200);
+        expect((await member.as("DELETE", `${variablesUrl}/${variableId}`)).statusCode).toBe(409);
+
+        // Paths outside Agent Vault (a group removal, a lapsed role) drop the grant without clearing values, and the
+        // API has no way to stage that here.
+        await testDb("memberships").where({ scopeResourceId: bundle.id, actorIdentityId: member.id }).del();
+
+        const listed = await member.as("GET", personalVariablesUrl);
+        expect(listed.statusCode).toBe(200);
+        expect(JSON.parse(listed.payload).variables).toEqual([
+          expect.objectContaining({ id: variableId, usedByServices: [] })
+        ]);
+        expect((await member.as("DELETE", `${variablesUrl}/${variableId}`)).statusCode).toBe(200);
+        expect(await testDb("agent_vault_personal_values").where({ identityId: member.id })).toHaveLength(0);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("an admin is asked for values only on the bundles granted to them", async () => {
       const ungranted = await createAccessBundle("mp-mine-ungranted");
       const service = await createService(ungranted.id, {

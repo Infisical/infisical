@@ -140,6 +140,7 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.AgentVaultPersonalValueReference);
   await dropOnUpdateTrigger(knex, TableName.AgentVaultPersonalValueReference);
 
+  await knex.raw(`DROP VIEW IF EXISTS analytics.??`, [TableName.AgentVaultPersonalValue]);
   await knex.schema.dropTableIfExists(TableName.AgentVaultPersonalValue);
   await dropOnUpdateTrigger(knex, TableName.AgentVaultPersonalValue);
 

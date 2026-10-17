@@ -2010,6 +2010,8 @@ export const registerRoutes = async (
 
   const agentVaultVariableService = agentVaultVariableServiceFactory({
     agentVaultVariableDAL,
+    agentVaultPersonalValueDAL,
+    membershipDAL,
     permissionService,
     kmsService
   });

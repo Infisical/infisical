@@ -270,10 +270,15 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   service row: a credential type change deletes every member's values for the service, and taking a field back
   from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only
   the new one.
-- **Losing a bundle clears what an actor saved for its services** (`clearPersonalValuesAfterRevoke`), so a later grant
-  starts from nothing. It runs on a bundle revoke and on removal from Agent Vault, for the actors the revoke named
-  and the members of a named group, and skips anyone who still holds the bundle through another grant. Admins
-  reach every bundle without a grant, so the cleanup never sweeps actors the revoke didn't name. Personal variables survive all of this.
+- **Losing a bundle through Agent Vault clears what an actor saved for its services** (`clearPersonalValuesAfterRevoke`).
+  It runs on a bundle revoke, on removal from Agent Vault, and on a demotion from admin, for the actors named and the
+  members of a named group, after that change is written. It skips anyone who still holds the bundle through another
+  grant, and anyone who is still a project admin, since an admin reaches every bundle. Platform paths (group
+  removal, a lapsed role, project, org or SCIM removal) don't run it, so values can outlive the grant there and
+  return with a later one. They are only ever the same actor's, and resolve still checks reach. Deleting a personal
+  variable also clears the owner's values on bundles they no longer reach, which otherwise would hold the variable
+  in place with nothing able to edit them. Personal variables survive all of this, and their Used By lists only
+  the bundles the owner still reaches.
 - Personal variables follow the shared variables' reference rules: sealed text names them by id, a reference row
   per personal value (`agent_vault_personal_value_references`, a deferred foreign key), the delete takes the variable
   row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. Used By on a variable reads

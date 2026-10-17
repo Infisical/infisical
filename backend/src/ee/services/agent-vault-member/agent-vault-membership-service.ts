@@ -578,6 +578,20 @@ export const agentVaultMembershipServiceFactory = ({
         tx
       );
 
+      // A demoted admin no longer reaches the bundles they hold no grant on, so what they saved there goes.
+      if (role !== ProjectMembershipRole.Admin) {
+        await clearPersonalValuesAfterRevoke(
+          { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+          {
+            projectId,
+            userIds: named(toChange, AgentVaultMemberType.User),
+            identityIds: named(toChange, AgentVaultMemberType.MachineIdentity),
+            groupIds: named(toChange, AgentVaultMemberType.Group)
+          },
+          tx
+        );
+      }
+
       return {
         updated: toChange.map((actor) => ({
           type: actor.type,

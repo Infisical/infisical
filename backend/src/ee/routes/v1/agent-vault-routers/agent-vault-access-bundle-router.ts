@@ -56,18 +56,6 @@ const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   updatedAt: true
 });
 
-// A passthrough switch is a replacement: mergeCredential returns a null secret and updateService nulls
-// the sealed column. The old check only looked at bearer and basic, so it reported no replacement for the
-// one case that destroys the credential outright.
-const isStoredSecretReplaced = (credential?: z.infer<typeof AgentVaultCredentialUpdateSchema>) => {
-  if (!credential) return false;
-  if (credential.type === AgentVaultCredentialType.Bearer) return credential.value !== undefined;
-  if (credential.type === AgentVaultCredentialType.Basic) {
-    return credential.username !== undefined || credential.password !== undefined;
-  }
-  return true;
-};
-
 const variableKeysOf = (service: { variableReferences: { key: string }[] }) => [
   ...new Set(service.variableReferences.map((reference) => reference.key))
 ];
@@ -407,13 +395,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { service, accessBundleName } = await server.services.agentVaultAccessBundle.updateService({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        accessBundleId: req.params.accessBundleId,
-        serviceId: req.params.serviceId,
-        ...req.body
-      });
+      const { service, accessBundleName, credentialReplaced } =
+        await server.services.agentVaultAccessBundle.updateService({
+          projectId: req.internalAgentVaultProjectId,
+          ctx: actorContext(req),
+          accessBundleId: req.params.accessBundleId,
+          serviceId: req.params.serviceId,
+          ...req.body
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -454,7 +443,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             substitutionsReplaced: req.body.substitutions
               ?.filter((substitution) => substitution.value !== undefined)
               .map((substitution) => substitution.placeholder),
-            credentialReplaced: isStoredSecretReplaced(req.body.credential),
+            credentialReplaced,
             variableKeys:
               req.body.credential || req.body.customHeaders || req.body.substitutions
                 ? variableKeysOf(service)

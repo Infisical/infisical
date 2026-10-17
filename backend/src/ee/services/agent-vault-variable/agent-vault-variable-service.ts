@@ -9,14 +9,17 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { TGenericPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultVariableScope } from "../agent-vault/agent-vault-enums";
 import { ownerOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { AGENT_VAULT_MAX_PERSONAL_VARIABLES, AGENT_VAULT_MAX_VARIABLES } from "../agent-vault/agent-vault-variable-fns";
+import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import {
   TAgentVaultServiceUsingVariable,
   TAgentVaultVariable,
@@ -34,6 +37,8 @@ import {
 
 type TAgentVaultVariableServiceFactoryDep = {
   agentVaultVariableDAL: TAgentVaultVariableDALFactory;
+  agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "delete">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
@@ -49,6 +54,8 @@ const isOwnedBy = (variable: TAgentVaultVariable, owner: TAgentVaultOwner) =>
 
 export const agentVaultVariableServiceFactory = ({
   agentVaultVariableDAL,
+  agentVaultPersonalValueDAL,
+  membershipDAL,
   permissionService,
   kmsService
 }: TAgentVaultVariableServiceFactoryDep) => {
@@ -108,6 +115,25 @@ export const agentVaultVariableServiceFactory = ({
     return { variable, scope: { projectId, owner: null } };
   };
 
+  // A member who lost a bundle keeps their personal variables, but not a view into the bundle: its services drop out
+  // of what they see. Shared variables are admin-only, and an admin reaches every bundle.
+  const splitByReach = async (
+    { projectId, ctx, owner }: { projectId: string; ctx: TGenericPermission; owner: TAgentVaultOwner | null },
+    services: TAgentVaultServiceUsingVariable[]
+  ) => {
+    if (!owner || !services.length) return { reachable: services, unreachable: [] };
+    const { accessBundleIds } = await getAgentVaultReachability(
+      { permissionService, membershipDAL },
+      { projectId, ctx }
+    );
+    if (!accessBundleIds) return { reachable: services, unreachable: [] };
+    const reach = new Set(accessBundleIds);
+    return {
+      reachable: services.filter((service) => reach.has(service.accessBundleId)),
+      unreachable: services.filter((service) => !reach.has(service.accessBundleId))
+    };
+  };
+
   // Values never leave through this projection; only the audited value endpoint returns one.
   const projectVariable = (variable: TAgentVaultVariable, services: TAgentVaultServiceUsingVariable[]) => ({
     id: variable.id,
@@ -162,9 +188,12 @@ export const agentVaultVariableServiceFactory = ({
       ...query,
       limit: limit ?? query.keys?.length ?? AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT
     });
-    const services = await agentVaultVariableDAL.findServicesUsing(variables.map((variable) => variable.id));
+    const { reachable } = await splitByReach(
+      { projectId, ctx, owner: scope.owner },
+      await agentVaultVariableDAL.findServicesUsing(variables.map((variable) => variable.id))
+    );
 
-    return { variables: variables.map((variable) => projectVariable(variable, services)), totalCount };
+    return { variables: variables.map((variable) => projectVariable(variable, reachable)), totalCount };
   };
 
   const createVariable = async ({ key, value, scope: scopeName, ...rest }: TCreateVariableDTO) => {
@@ -254,11 +283,16 @@ export const agentVaultVariableServiceFactory = ({
       throw err;
     }
 
-    return { variable: projectVariable(result.updated, result.services), previousKey: result.previous.key };
+    const { reachable } = await splitByReach({ ...rest, owner: scope.owner }, result.services);
+    return { variable: projectVariable(result.updated, reachable), previousKey: result.previous.key };
   };
 
   const deleteVariable = async ({ variableId, ...rest }: TVariableByIdDTO) => {
     const { scope } = await findAccessibleVariable({ variableId, ...rest });
+    const { accessBundleIds } = scope.owner
+      ? await getAgentVaultReachability({ permissionService, membershipDAL }, rest)
+      : { accessBundleIds: null };
+    const reach = accessBundleIds ? new Set(accessBundleIds) : null;
 
     // The refusal here is the real check. The row lock waits for any save adding a reference to this variable, since
     // those take it FOR SHARE. The deferred foreign keys only back it up, and only raise at commit.
@@ -271,7 +305,17 @@ export const agentVaultVariableServiceFactory = ({
         if (!variable) throw notFound(variableId);
 
         const services = await agentVaultVariableDAL.findServicesUsing([variable.id], tx);
-        if (services.length) throw new ConflictError({ message: inUseMessage(variable.key, services, scope) });
+        const blocking = reach ? services.filter((service) => reach.has(service.accessBundleId)) : services;
+        if (blocking.length) throw new ConflictError({ message: inUseMessage(variable.key, blocking, scope) });
+
+        // What the owner saved on a bundle they no longer reach can't be edited or used, so it doesn't hold the
+        // variable in place.
+        if (scope.owner && services.length) {
+          await agentVaultPersonalValueDAL.delete(
+            { ...scope.owner, $in: { serviceId: services.map((service) => service.serviceId) } },
+            tx
+          );
+        }
 
         await agentVaultVariableDAL.deleteById(variable.id, tx);
         return variable;
