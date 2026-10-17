@@ -233,6 +233,7 @@ import {
 } from "@app/hooks/utils";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -302,6 +303,13 @@ import {
   overviewResponsePhase,
   withOverviewTelemetry
 } from "./OverviewTelemetry";
+import {
+  CreatedResourceType,
+  getOverviewRowNames,
+  getSecretImportRowName,
+  pinCreatedFirst,
+  useCreatedResources
+} from "./useCreatedResources";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -1012,13 +1020,132 @@ const OverviewPageContent = () => {
     (isPlaceholderData && !overview?.totalCount) ||
     showDelayedOverviewSkeleton;
 
+  // Rows the user just created stay pinned to the top of the table until they leave this folder,
+  // so the active sort or pagination can't move a new row out of view.
+  const { pinned, pinnedSecretEnvironment, isPinned, isHighlighted } = useCreatedResources({
+    projectId,
+    projectSlug,
+    secretPath,
+    isListed: (type, name) => getOverviewRowNames(overview, type).includes(name)
+  });
+
+  const pinnedSecretKeys = pinned[CreatedResourceType.Secret] ?? [];
+  const { data: pinnedSecretsOverview } = useGetProjectSecretsOverview(
+    {
+      ...overviewQueryParams,
+      orderBy: DashboardSecretsOrderBy.CreatedAt,
+      orderDirection: OrderByDirection.DESC,
+      sortEnvironment:
+        visibleEnvs.length > 1
+          ? (visibleEnvs.find((env) => env.slug === pinnedSecretEnvironment) ?? visibleEnvs[0]).slug
+          : undefined,
+      includeFolders: false,
+      includeDynamicSecrets: false,
+      includeImports: false,
+      includeSecretRotations: false,
+      includeHoneyTokens: false,
+      includeProxiedServices: false,
+      limit: Math.min(pinnedSecretKeys.length + 10, 100),
+      offset: 0
+    },
+    {
+      enabled: isProjectV3 && pinnedSecretKeys.length > 0 && overviewQueryParams.includeSecrets
+    }
+  );
+
+  const pinnedResourceFilters = {
+    includeFolders:
+      overviewQueryParams.includeFolders && Boolean(pinned[CreatedResourceType.Folder]?.length),
+    includeDynamicSecrets:
+      overviewQueryParams.includeDynamicSecrets &&
+      Boolean(pinned[CreatedResourceType.DynamicSecret]?.length),
+    includeSecretRotations:
+      overviewQueryParams.includeSecretRotations &&
+      Boolean(pinned[CreatedResourceType.SecretRotation]?.length),
+    includeHoneyTokens:
+      overviewQueryParams.includeHoneyTokens &&
+      Boolean(pinned[CreatedResourceType.HoneyToken]?.length),
+    includeProxiedServices:
+      overviewQueryParams.includeProxiedServices &&
+      Boolean(pinned[CreatedResourceType.ProxiedService]?.length)
+  };
+  const { data: pinnedResourcesOverview } = useGetProjectSecretsOverview(
+    {
+      ...overviewQueryParams,
+      ...pinnedResourceFilters,
+      orderBy: DashboardSecretsOrderBy.Name,
+      orderDirection: OrderByDirection.ASC,
+      sortEnvironment: undefined,
+      includeSecrets: false,
+      includeImports: false,
+      limit: 100,
+      offset: 0
+    },
+    { enabled: isProjectV3 && Object.values(pinnedResourceFilters).some(Boolean) }
+  );
+
+  const secrets = useMemo(
+    () =>
+      pinCreatedFirst(
+        overview?.secrets,
+        pinnedSecretsOverview?.secrets,
+        pinned[CreatedResourceType.Secret],
+        (secret) => secret.key
+      ),
+    [overview?.secrets, pinnedSecretsOverview?.secrets, pinned]
+  );
+  const folders = useMemo(
+    () =>
+      pinCreatedFirst(
+        overview?.folders,
+        pinnedResourcesOverview?.folders,
+        pinned[CreatedResourceType.Folder],
+        (folder) => folder.name
+      ),
+    [overview?.folders, pinnedResourcesOverview?.folders, pinned]
+  );
+  const dynamicSecrets = useMemo(
+    () =>
+      pinCreatedFirst(
+        overview?.dynamicSecrets,
+        pinnedResourcesOverview?.dynamicSecrets,
+        pinned[CreatedResourceType.DynamicSecret],
+        (dynamicSecret) => dynamicSecret.name
+      ),
+    [overview?.dynamicSecrets, pinnedResourcesOverview?.dynamicSecrets, pinned]
+  );
+  const secretRotations = useMemo(
+    () =>
+      pinCreatedFirst(
+        overview?.secretRotations,
+        pinnedResourcesOverview?.secretRotations,
+        pinned[CreatedResourceType.SecretRotation],
+        (secretRotation) => secretRotation.name
+      ),
+    [overview?.secretRotations, pinnedResourcesOverview?.secretRotations, pinned]
+  );
+  const honeyTokens = useMemo(
+    () =>
+      pinCreatedFirst(
+        overview?.honeyTokens,
+        pinnedResourcesOverview?.honeyTokens,
+        pinned[CreatedResourceType.HoneyToken],
+        (honeyToken) => honeyToken.name
+      ),
+    [overview?.honeyTokens, pinnedResourcesOverview?.honeyTokens, pinned]
+  );
+  const proxiedServices = useMemo(
+    () =>
+      pinCreatedFirst(
+        overview?.proxiedServices,
+        pinnedResourcesOverview?.proxiedServices,
+        pinned[CreatedResourceType.ProxiedService],
+        (proxiedService) => proxiedService.name
+      ),
+    [overview?.proxiedServices, pinnedResourcesOverview?.proxiedServices, pinned]
+  );
+
   const {
-    secrets,
-    folders,
-    dynamicSecrets,
-    secretRotations,
-    honeyTokens,
-    proxiedServices,
     totalFolderCount,
     totalSecretCount,
     totalDynamicSecretCount,
@@ -1337,7 +1464,8 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "createEnvironment"
+    "createEnvironment",
+    "createSharedSecret"
   ] as const);
   const popupFlows = useMemo<
     Partial<Record<keyof typeof popUp, Omit<OverviewFlowProperties, "phase">>>
@@ -3967,6 +4095,14 @@ const OverviewPageContent = () => {
                               isVisible={isSingleEnvSecretsVisible}
                               activityId={getTableRowActivityId("secret-import", imp.id)}
                               onActivityChange={handleTableRowActivityChange}
+                              isPinned={isPinned(
+                                CreatedResourceType.SecretImport,
+                                getSecretImportRowName(imp.importEnv.slug, imp.importPath)
+                              )}
+                              isHighlighted={isHighlighted(
+                                CreatedResourceType.SecretImport,
+                                getSecretImportRowName(imp.importEnv.slug, imp.importPath)
+                              )}
                             />
                           ))}
                         {!isSingleEnvView &&
@@ -3994,6 +4130,14 @@ const OverviewPageContent = () => {
                                   importPath
                                 )}
                                 onActivityChange={handleTableRowActivityChange}
+                                isPinned={isPinned(
+                                  CreatedResourceType.SecretImport,
+                                  getSecretImportRowName(importEnvSlug, importPath)
+                                )}
+                                isHighlighted={isHighlighted(
+                                  CreatedResourceType.SecretImport,
+                                  getSecretImportRowName(importEnvSlug, importPath)
+                                )}
                               />
                             )
                           )}
@@ -4004,6 +4148,8 @@ const OverviewPageContent = () => {
                           ) => (
                             <FolderTableRow
                               folderName={folderName}
+                              isPinned={isPinned(CreatedResourceType.Folder, folderName)}
+                              isHighlighted={isHighlighted(CreatedResourceType.Folder, folderName)}
                               description={description}
                               isFolderPresentInEnv={isFolderPresentInEnv}
                               isSelected={
@@ -4037,6 +4183,14 @@ const OverviewPageContent = () => {
                         {dynamicSecretNames.map((dynamicSecretName, index) => (
                           <DynamicSecretTableRow
                             dynamicSecretName={dynamicSecretName}
+                            isPinned={isPinned(
+                              CreatedResourceType.DynamicSecret,
+                              dynamicSecretName
+                            )}
+                            isHighlighted={isHighlighted(
+                              CreatedResourceType.DynamicSecret,
+                              dynamicSecretName
+                            )}
                             isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
                             getDynamicSecretByName={getDynamicSecretByName}
                             getDynamicSecretStatusesByName={getDynamicSecretStatusesByName}
@@ -4066,6 +4220,14 @@ const OverviewPageContent = () => {
                         {secretRotationNames.map((secretRotationName, index) => (
                           <SecretRotationTableRow
                             secretRotationName={secretRotationName}
+                            isPinned={isPinned(
+                              CreatedResourceType.SecretRotation,
+                              secretRotationName
+                            )}
+                            isHighlighted={isHighlighted(
+                              CreatedResourceType.SecretRotation,
+                              secretRotationName
+                            )}
                             isSecretRotationInEnv={isSecretRotationPresentInEnv}
                             environments={visibleEnvs}
                             getSecretRotationByName={getSecretRotationByName}
@@ -4118,6 +4280,11 @@ const OverviewPageContent = () => {
                         {honeyTokenNames.map((honeyTokenName, index) => (
                           <HoneyTokenTableRow
                             honeyTokenName={honeyTokenName}
+                            isPinned={isPinned(CreatedResourceType.HoneyToken, honeyTokenName)}
+                            isHighlighted={isHighlighted(
+                              CreatedResourceType.HoneyToken,
+                              honeyTokenName
+                            )}
                             isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                             environments={visibleEnvs}
                             getHoneyTokenByName={getHoneyTokenByName}
@@ -4135,6 +4302,14 @@ const OverviewPageContent = () => {
                           <ProxiedServiceTableRow
                             key={`overview-ps-${proxiedServiceName}-${index + 1}`}
                             proxiedServiceName={proxiedServiceName}
+                            isPinned={isPinned(
+                              CreatedResourceType.ProxiedService,
+                              proxiedServiceName
+                            )}
+                            isHighlighted={isHighlighted(
+                              CreatedResourceType.ProxiedService,
+                              proxiedServiceName
+                            )}
                             environments={visibleEnvs}
                             isProxiedServiceInEnv={isProxiedServicePresentInEnv}
                             getProxiedServiceByName={getProxiedServiceByName}
@@ -4178,6 +4353,8 @@ const OverviewPageContent = () => {
                             }
                             activityId={getTableRowActivityId("secret", key)}
                             onActivityChange={handleTableRowActivityChange}
+                            isPinned={isPinned(CreatedResourceType.Secret, key)}
+                            isHighlighted={isHighlighted(CreatedResourceType.Secret, key)}
                           />
                         ))}
                         {tableView === "table" && (
@@ -4341,6 +4518,7 @@ const OverviewPageContent = () => {
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             isBatchMode={isBatchModeActive}
             onSecretCreated={checkSecretsActivation}
+            onShareSecret={(secret) => handlePopUpOpen("createSharedSecret", secret)}
             onUploadSecrets={(env) => {
               setImportParsedSecrets(env ?? null);
               handlePopUpClose("addSecretsInAllEnvs");
@@ -4366,6 +4544,7 @@ const OverviewPageContent = () => {
           />
         </SheetContent>
       </Sheet>
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <Dialog
         open={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}

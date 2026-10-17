@@ -562,6 +562,12 @@ html[data-platform="ios"] {
     }
   }
 
+  @keyframes rowHighlight {
+    from {
+      background-color: color-mix(in oklab, var(--color-project) 15%, var(--color-container));
+    }
+  }
+
   @keyframes popup {
     0% {
       transform: scale(0.2);
@@ -653,6 +659,10 @@ html[data-platform="ios"] {
 
   .popup {
     animation: popup 300ms ease-in-out;
+  }
+
+  .row-highlight > td {
+    animation: rowHighlight 2500ms ease-out;
   }
 
   .spin {

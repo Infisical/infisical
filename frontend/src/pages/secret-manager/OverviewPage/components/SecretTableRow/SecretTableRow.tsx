@@ -119,6 +119,8 @@ type Props = {
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  isPinned?: boolean;
+  isHighlighted?: boolean;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -148,7 +150,9 @@ export const SecretTableRow = ({
   onCopySecret,
   onAccessInsightsUpgrade,
   activityId,
-  onActivityChange
+  onActivityChange,
+  isPinned,
+  isHighlighted
 }: Props) => {
   const telemetry = useOverviewTelemetry();
   const [isFormExpanded, setIsFormExpanded] = useToggle();
@@ -297,9 +301,11 @@ export const SecretTableRow = ({
   return (
     <>
       <TableRow
+        data-secret-key={secretKey}
         onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
         className={twMerge(
           "group hover:z-10",
+          isHighlighted && "row-highlight",
           (isSingleEnvView ? isSingleEnvBaseActive || isSelected : isRowActive || isSelected) &&
             TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
           pendingActionRowClass(singleEnvPendingAction)
@@ -363,6 +369,7 @@ export const SecretTableRow = ({
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
+            isNew={isPinned}
             isBatchMode={isBatchMode}
             onBatchRevert={onBatchRevert}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
@@ -474,6 +481,7 @@ export const SecretTableRow = ({
                         Secret share revoked
                       </Badge>
                     )}
+                  {!isFormExpanded && isPinned && <Badge variant="project">New</Badge>}
                 </div>
                 <div
                   className={twMerge(
