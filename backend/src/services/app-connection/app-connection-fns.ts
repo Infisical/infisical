@@ -372,6 +372,8 @@ const PKI_APP_CONNECTIONS = [
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
+const PAM_APP_CONNECTIONS = [AppConnection.Jira];
+
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
     case ProjectType.SecretManager:
@@ -387,7 +389,7 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
     case ProjectType.KMS:
       return false;
     case ProjectType.PAM:
-      return false;
+      return PAM_APP_CONNECTIONS.includes(app);
     case ProjectType.AgentVault:
       return AGENT_VAULT_APP_CONNECTIONS.includes(app);
     default:

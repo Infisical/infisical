@@ -1,0 +1,26 @@
+import { ReactElement, ReactNode } from "react";
+
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+
+export const SectionLabel = ({ children }: { children: ReactNode }) => (
+  <p className="text-xs font-medium tracking-wider text-muted uppercase">{children}</p>
+);
+
+// A disabled button gets no pointer events, so the tooltip hangs off a wrapper
+export const DisabledReason = ({
+  reason,
+  children
+}: {
+  reason?: string;
+  children: ReactElement;
+}) => {
+  if (!reason) return children;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex shrink-0">{children}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">{reason}</TooltipContent>
+    </Tooltip>
+  );
+};

@@ -685,7 +685,13 @@
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
                   },
-                  "documentation/platform/pam/access-requests/overview",
+                  {
+                    "group": "Access requests",
+                    "pages": [
+                      "documentation/platform/pam/access-requests/overview",
+                      "documentation/platform/pam/access-requests/auto-approval"
+                    ]
+                  },
                   "documentation/platform/pam/ai-agents/overview",
                   {
                     "group": "Credential rotation",

@@ -1,6 +1,6 @@
 ---
 title: "Access requests"
-sidebarTitle: "Access requests"
+sidebarTitle: "Overview"
 description: "Require approval before a member can use a sensitive account."
 ---
 
@@ -72,7 +72,7 @@ graph TD
 
 From the **Accounts** page, a member sees every account they can reach. Gated accounts show a **key icon** instead of the rocket (launch) button — select the key or select **Request Access** from the menu to start a request.
 
-To request, the member provides a **reason** and a **duration**, both fixed at submission. The account then shows **Pending Approval** until it clears.
+To request, the member provides a **reason** and a **duration**, both fixed at submission. If the account can be [auto-approved](/documentation/platform/pam/access-requests/auto-approval), the form also has optional fields for linking records, such as a Jira ticket, and a request whose records pass one of the folder's rules is approved as soon as it's submitted. Otherwise, the account shows **Pending Approval** until it clears.
 
 Once approved, the key icon switches to the rocket icon and the member can launch sessions until the grant expires.
 
@@ -89,7 +89,7 @@ Every request carries the reason and duration set by the requester and moves thr
 | State | What it means |
 |-------|---------------|
 | **Pending Approval** | Filed and waiting on an approver. |
-| **Approved** | An approver signed off. The access it asked for is now active and the member can launch sessions. |
+| **Approved** | An approver or an [auto-approval rule](/documentation/platform/pam/access-requests/auto-approval) approved the request. The access it asked for is now active and the member can launch sessions. |
 | **Expired** | The requested duration ran out and the access closed on its own. |
 | **Rejected** | An approver declined the request. No access was granted. |
 | **Revoked** | Active access was ended early by a Folder Admin before its duration ran out. |

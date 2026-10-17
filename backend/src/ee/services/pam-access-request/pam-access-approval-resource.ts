@@ -30,6 +30,7 @@ import {
   TApprovalRequestDALFactory,
   TApprovalRequestGrantsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { getAutoApprovalSummary } from "@app/services/approval-policy/auto-approval/auto-approval-fns";
 import {
   matchesPamAccessSubject,
   matchPamAccessGrants,
@@ -489,6 +490,20 @@ export const pamAccessApprovalResourceFactory = ({
     }
   };
 
+  // The account's template opts it in with Allow Auto-Approval
+  const allowsAutoApproval: NonNullable<TPamAccessApprovalResource["allowsAutoApproval"]> = async ({
+    projectId,
+    requestData
+  }) => {
+    const { accountId } = requestData as { accountId?: string };
+    if (!accountId) return false;
+
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId) return false;
+
+    return resolveAccessControls(account.templatePolicies).allowAutoApproval;
+  };
+
   const assertCanReview: NonNullable<TPamAccessApprovalResource["assertCanReview"]> = async ({
     request,
     decision,
@@ -812,6 +827,37 @@ export const pamAccessApprovalResourceFactory = ({
       };
     }
 
+    if (event === ApprovalNotificationEvent.AutoApproved) {
+      const summary = getAutoApprovalSummary(request.autoApprovalEvidence);
+      const ruleName = summary?.ruleName ?? "an auto-approval rule";
+      const linkedRecords = summary?.linkedRecords.map(({ label, value }) => `${label} ${value}`).join(", ");
+      const requestUrl = `${cfg.SITE_URL}/organizations/${orgId}/pam/approval-requests?requestId=${request.id}`;
+
+      return {
+        inApp: {
+          type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
+          title: "Access auto-approved",
+          body: `**${escapeMarkdown(requesterName)}** was granted ${accessTypeLabel} to **${escapeMarkdown(accountName)}** by the auto-approval rule "${escapeMarkdown(ruleName)}".`,
+          link: requestUrl
+        },
+        email: {
+          subjectLine: "PAM Access Auto-Approved",
+          template: SmtpTemplates.AccessPamRequestAutoApproved,
+          substitutions: {
+            requesterFullName: requesterName,
+            requesterEmail,
+            folderName: folder?.name ?? undefined,
+            accountName,
+            accessDuration: formatDuration(inputs.duration),
+            accessTypeLabel,
+            ruleName,
+            linkedRecords: linkedRecords || undefined,
+            requestUrl
+          }
+        }
+      };
+    }
+
     // A decided request leaves the approver inbox, so its messages link to the accounts page instead
     const approved = event === ApprovalNotificationEvent.Approved;
     return {
@@ -995,6 +1041,26 @@ export const pamAccessApprovalResourceFactory = ({
       };
     }
 
+    if (action === ApprovalAuditAction.RequestAutoApproved) {
+      const summary = getAutoApprovalSummary(request.autoApprovalEvidence);
+      if (!summary) return null;
+
+      const [grant] = grantId ? [] : await approvalRequestGrantsDAL.find({ requestId: request.id });
+      return {
+        type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED,
+        metadata: {
+          ...scope,
+          requestId: request.id,
+          grantId: grantId ?? grant?.id,
+          requesterName: request.requesterName,
+          requesterEmail: request.requesterEmail,
+          duration: inputs?.duration,
+          accessType: inputs?.accessType ?? PamAccessType.Session,
+          ...summary
+        }
+      };
+    }
+
     if (action !== ApprovalAuditAction.RequestBypassed || !grantId) return null;
 
     const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : null;
@@ -1073,6 +1139,7 @@ export const pamAccessApprovalResourceFactory = ({
     verifyPolicyActors,
     assertCanCreateRequest,
     assertCanReview,
+    allowsAutoApproval,
     isBreakGlassEligible,
     assertBreakGlassEligible,
     assertCanRevokeGrant,

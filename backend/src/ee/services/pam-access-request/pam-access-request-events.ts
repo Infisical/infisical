@@ -14,7 +14,8 @@ const EVENT_BY_APPROVAL_EVENT: Record<ApprovalNotificationEvent, PamAccessReques
   [ApprovalNotificationEvent.Requested]: PamAccessRequestEvent.Requested,
   [ApprovalNotificationEvent.Approved]: PamAccessRequestEvent.Approved,
   [ApprovalNotificationEvent.Rejected]: PamAccessRequestEvent.Denied,
-  [ApprovalNotificationEvent.Bypassed]: PamAccessRequestEvent.Bypassed
+  [ApprovalNotificationEvent.Bypassed]: PamAccessRequestEvent.Bypassed,
+  [ApprovalNotificationEvent.AutoApproved]: PamAccessRequestEvent.Approved
 };
 
 export const buildPamAccessRequestEvent = ({

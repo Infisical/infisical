@@ -69,6 +69,7 @@ import {
   TApprovalResourceRegistry,
   TApprovalScopeConfiguration,
   TApprovalSubjectActor,
+  TAutoApprovalAffordance,
   TBypassAffordances,
   TCreatePolicyDTO,
   TCreateRequestDTO,
@@ -84,6 +85,9 @@ import {
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
 import { createApprovalRequestWithSteps } from "./approval-request-fns";
+import { toAutoApprovalOutcome } from "./auto-approval/auto-approval-fns";
+import { TAutoApprovalServiceFactory } from "./auto-approval/auto-approval-service";
+import { TAutoApprovalConfig, TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -111,6 +115,18 @@ type TApprovalPolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   eventEmitter: TEventEmitter;
+  autoApprovalService: Pick<
+    TAutoApprovalServiceFactory,
+    | "validateConfig"
+    | "replaceConfig"
+    | "findByPolicyIds"
+    | "toPolicyResponse"
+    | "getInputDetails"
+    | "parseInputValues"
+    | "evaluate"
+    | "getCatalog"
+    | "listOptions"
+  >;
   resources: TApprovalResourceRegistry;
 };
 
@@ -139,6 +155,7 @@ export const approvalPolicyServiceFactory = ({
   userDAL,
   groupDAL,
   eventEmitter,
+  autoApprovalService,
   resources
 }: TApprovalPolicyServiceFactoryDep) => {
   const $resource = (policyType: ApprovalPolicyType) => {
@@ -239,14 +256,18 @@ export const approvalPolicyServiceFactory = ({
       status?: string | null;
       requesterId?: string | null;
       policyId?: string | null;
+      autoApprovedAt?: Date | null;
+      autoApprovalEvidence?: unknown;
     }
   >(
     request: R,
     actor: TApprovalActor,
     ctx: TDecorationContext = $buildDecorationContext(actor)
-  ): Promise<R & TBypassAffordances> => {
+  ): Promise<R & TBypassAffordances & TAutoApprovalAffordance> => {
+    const autoApproval = toAutoApprovalOutcome(request);
+
     if (!resources[request.type as ApprovalPolicyType]?.isBreakGlassEligible) {
-      return { ...request, canBreakGlass: false, isBreakGlass: false, bypassReason: null };
+      return { ...request, canBreakGlass: false, isBreakGlass: false, bypassReason: null, autoApproval };
     }
 
     let canBreakGlass = false;
@@ -292,8 +313,29 @@ export const approvalPolicyServiceFactory = ({
       ...request,
       canBreakGlass,
       isBreakGlass,
-      bypassReason
+      bypassReason,
+      autoApproval
     };
+  };
+
+  const $assertSupportsAutoApproval = (policyType: ApprovalPolicyType, autoApproval?: TAutoApprovalConfig) => {
+    const configuresAutoApproval = Boolean(autoApproval?.rules.length || autoApproval?.inputs.length);
+    if (configuresAutoApproval && policyType === ApprovalPolicyType.CertRequest) {
+      throw new BadRequestError({
+        message: "Auto-approval rules aren't available for certificate request policies"
+      });
+    }
+  };
+
+  const $withAutoApproval = async <T extends { id: string }>(policies: T[], tx?: Knex) => {
+    const stored = await autoApprovalService.findByPolicyIds(
+      policies.map((policy) => policy.id),
+      tx
+    );
+    return policies.map((policy) => ({
+      ...policy,
+      autoApproval: autoApprovalService.toPolicyResponse(stored.get(policy.id))
+    }));
   };
 
   const $resolveScope = async (
@@ -602,7 +644,8 @@ export const approvalPolicyServiceFactory = ({
       steps,
       bypassForMachineIdentities,
       enforcementLevel,
-      bypassers
+      bypassers,
+      autoApproval
     }: TCreatePolicyDTO,
     actor: TApprovalActor
   ) => {
@@ -662,6 +705,11 @@ export const approvalPolicyServiceFactory = ({
       approvers: steps.flatMap((step) => step.approvers ?? []),
       bypassers: bypassers ?? []
     });
+
+    $assertSupportsAutoApproval(policyType, autoApproval);
+    const autoApprovalConfig = autoApproval
+      ? await autoApprovalService.validateConfig({ projectId, config: autoApproval, actor })
+      : undefined;
 
     const writePolicy = async (tx: Knex) => {
       const newPolicy = await approvalPolicyDAL.create(
@@ -727,7 +775,12 @@ export const approvalPolicyServiceFactory = ({
         );
       }
 
-      return newPolicy;
+      if (autoApprovalConfig) {
+        await autoApprovalService.replaceConfig(newPolicy.id, autoApprovalConfig, tx);
+      }
+
+      const [withAutoApproval] = await $withAutoApproval([newPolicy], tx);
+      return withAutoApproval;
     };
 
     const policy = await (onePolicyPerScope
@@ -772,7 +825,7 @@ export const approvalPolicyServiceFactory = ({
       scopeId: dbScopeId
     });
 
-    return { policies, projectId };
+    return { policies: await $withAutoApproval(policies), projectId };
   };
 
   const getById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
@@ -792,12 +845,13 @@ export const approvalPolicyServiceFactory = ({
 
     $assertPolicyType(policy.type, policyType);
 
-    const [steps, bypassers] = await Promise.all([
+    const [steps, bypassers, [withAutoApproval]] = await Promise.all([
       approvalPolicyDAL.findStepsByPolicyId(policyId),
-      approvalPolicyDAL.findBypassersByPolicyId(policyId)
+      approvalPolicyDAL.findBypassersByPolicyId(policyId),
+      $withAutoApproval([policy])
     ]);
 
-    return { policy: { ...policy, steps, bypassers } };
+    return { policy: { ...withAutoApproval, steps, bypassers } };
   };
 
   const updateById = async (
@@ -810,7 +864,8 @@ export const approvalPolicyServiceFactory = ({
       steps,
       bypassForMachineIdentities,
       enforcementLevel,
-      bypassers
+      bypassers,
+      autoApproval
     }: TUpdatePolicyDTO,
     actor: TApprovalActor,
     policyType: ApprovalPolicyType
@@ -852,6 +907,11 @@ export const approvalPolicyServiceFactory = ({
       approvers: steps?.flatMap((step) => step.approvers ?? []) ?? [],
       bypassers: bypassers ?? []
     });
+
+    $assertSupportsAutoApproval(policy.type as ApprovalPolicyType, autoApproval);
+    const autoApprovalConfig = autoApproval
+      ? await autoApprovalService.validateConfig({ projectId: policy.projectId, config: autoApproval, actor })
+      : undefined;
 
     const updatedPolicy = await approvalPolicyDAL.transaction(async (tx) => {
       const updateDoc: Partial<TApprovalPolicies> = {};
@@ -937,7 +997,12 @@ export const approvalPolicyServiceFactory = ({
         }
       }
 
-      return updated;
+      if (autoApprovalConfig) {
+        await autoApprovalService.replaceConfig(policyId, autoApprovalConfig, tx);
+      }
+
+      const [withAutoApproval] = await $withAutoApproval([updated], tx);
+      return withAutoApproval;
     });
 
     const [fetchedSteps, fetchedBypassers] = await Promise.all([
@@ -1002,6 +1067,7 @@ export const approvalPolicyServiceFactory = ({
     requesterName,
     requesterEmail,
     skipApproverNotification,
+    autoApprovalEvidence,
     tx
   }: TCreateRequestFromPolicyDTO) => {
     const requestWithSteps = await createApprovalRequestWithSteps(
@@ -1019,7 +1085,8 @@ export const approvalPolicyServiceFactory = ({
         requesterName,
         requesterEmail,
         scopeType: policy.scopeType ?? null,
-        scopeId: policy.scopeId ?? null
+        scopeId: policy.scopeId ?? null,
+        autoApprovalEvidence
       },
       {
         approvalRequestDAL,
@@ -1045,6 +1112,72 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
+  const $createAutoApprovedRequest = async ({
+    projectId,
+    policy,
+    requestData,
+    justification,
+    expiresAt,
+    requesterName,
+    requesterEmail,
+    machineIdentityId,
+    evidence,
+    actor
+  }: {
+    projectId: string;
+    policy: TApprovalPolicy;
+    requestData: TCreateRequestDTO["requestData"];
+    justification?: string | null;
+    expiresAt?: Date;
+    requesterName: string;
+    requesterEmail: string;
+    machineIdentityId?: string;
+    evidence: TAutoApprovalEvidence;
+    actor: TApprovalActor;
+  }) => {
+    const resource = $resource(policy.type as ApprovalPolicyType);
+
+    const approved = await approvalRequestDAL.transaction(async (tx) => {
+      const created = await createApprovalRequestWithSteps(
+        {
+          projectId,
+          organizationId: actor.orgId,
+          policyId: policy.id,
+          policyType: policy.type as ApprovalPolicyType,
+          policySteps: policy.steps,
+          requestData,
+          status: ApprovalRequestStatus.Approved,
+          justification,
+          expiresAt,
+          requesterUserId: actor.type === ActorType.IDENTITY ? undefined : actor.id,
+          machineIdentityId,
+          requesterName,
+          requesterEmail,
+          scopeType: policy.scopeType ?? null,
+          scopeId: policy.scopeId ?? null,
+          autoApprovalEvidence: evidence,
+          autoApprovedAt: new Date()
+        },
+        { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
+        tx
+      );
+
+      await resource.postApprovalTxRoutine?.(created as unknown as TApprovalRequest, tx);
+      await $emitEvent({ event: ApprovalNotificationEvent.AutoApproved, request: created }, tx);
+      return created;
+    });
+
+    await resource.postApprovalRoutine?.(approved as unknown as TApprovalRequest, actor);
+    await $notify({
+      event: ApprovalNotificationEvent.AutoApproved,
+      request: approved,
+      approvers: approved.steps.flatMap((step) => step.approvers),
+      actorId: actor.id
+    });
+
+    return approved;
+  };
+
   const createRequest = async (
     policyType: ApprovalPolicyType,
     {
@@ -1056,7 +1189,9 @@ export const approvalPolicyServiceFactory = ({
       requesterName,
       requesterEmail,
       machineIdentityId,
-      skipApproverNotification
+      skipApproverNotification,
+      autoApprovalInputs,
+      skipAutoApproval
     }: TCreateRequestDTO & {
       requesterName: string;
       requesterEmail: string;
@@ -1138,6 +1273,53 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
+    const storedAutoApproval = (await autoApprovalService.findByPolicyIds([policy.id])).get(policy.id);
+    const parsedInputs = await autoApprovalService.parseInputValues({
+      stored: storedAutoApproval,
+      values: autoApprovalInputs ?? [],
+      orgId: actor.orgId,
+      projectId
+    });
+
+    let autoApprovalEvidence: TAutoApprovalEvidence | null = null;
+    if (storedAutoApproval?.rules.length && !skipAutoApproval) {
+      const allowed =
+        (await resource.allowsAutoApproval?.({ projectId, requestData: requestData as TApprovalRequestData })) ?? true;
+
+      if (allowed) {
+        autoApprovalEvidence = await autoApprovalService.evaluate({
+          stored: storedAutoApproval,
+          parsedInputs,
+          orgId: actor.orgId,
+          projectId,
+          ctx: {
+            requester: {
+              userId: actor.type === ActorType.USER ? actor.id : null,
+              machineIdentityId: machineIdentityId ?? null,
+              email: actor.type === ActorType.USER ? requesterEmail || null : null
+            }
+          }
+        });
+      }
+    }
+
+    if (autoApprovalEvidence?.approvedByRuleId) {
+      const approved = await $createAutoApprovedRequest({
+        projectId,
+        policy,
+        requestData,
+        justification,
+        expiresAt,
+        requesterName,
+        requesterEmail,
+        machineIdentityId,
+        evidence: autoApprovalEvidence,
+        actor
+      });
+
+      return { request: await $decorateRequest(approved, actor) };
+    }
+
     const created = await createRequestFromPolicy({
       projectId,
       organizationId: actor.orgId,
@@ -1149,7 +1331,8 @@ export const approvalPolicyServiceFactory = ({
       machineIdentityId,
       requesterName,
       requesterEmail,
-      skipApproverNotification
+      skipApproverNotification,
+      autoApprovalEvidence
     });
 
     const decorated = await $decorateRequest(created.request, actor);
@@ -1937,6 +2120,20 @@ export const approvalPolicyServiceFactory = ({
     return { grant: updatedGrant, request };
   };
 
+  // The request information a requester can link for a policy, or none when the resource keeps its rules off
+  const $getAutoApprovalInputs = async (
+    policyType: ApprovalPolicyType,
+    projectId: string,
+    policyId: string,
+    data: TApprovalPolicyInputs | TApprovalRequestData
+  ) => {
+    const stored = (await autoApprovalService.findByPolicyIds([policyId])).get(policyId);
+    if (!stored?.rules.length || !stored.inputs.length) return [];
+
+    const allowed = (await resources[policyType]?.allowsAutoApproval?.({ projectId, requestData: data })) ?? true;
+    return allowed ? autoApprovalService.getInputDetails(stored) : [];
+  };
+
   const checkPolicyMatch = async (
     policyType: ApprovalPolicyType,
     { projectId, inputs }: { projectId: string; inputs: TApprovalPolicyInputs },
@@ -1970,8 +2167,62 @@ export const approvalPolicyServiceFactory = ({
     return {
       requiresApproval: !activeGrant,
       hasActiveGrant: !!activeGrant,
-      constraints
+      constraints,
+      autoApprovalInputs: await $getAutoApprovalInputs(policyType, projectId, policy.id, inputs)
     };
+  };
+
+  const getAutoApprovalCatalog = async (
+    policyType: ApprovalPolicyType,
+    scope: ApprovalPolicyScope,
+    inputScopeId: string,
+    actor: TApprovalActor
+  ) => {
+    const { projectId, scopeType, scopeId } = await $resolveScope(scope, inputScopeId, policyType);
+    await $assertCanManagePolicy(
+      projectId,
+      scopeType,
+      scopeId,
+      actor,
+      ResourcePermissionApprovalPolicyActions.Read,
+      policyType
+    );
+
+    return { ...(await autoApprovalService.getCatalog({ projectId, actor })), projectId };
+  };
+
+  const listAutoApprovalOptions = async (
+    policyType: ApprovalPolicyType,
+    {
+      scope,
+      scopeId: inputScopeId,
+      connectionId,
+      subject,
+      constraint,
+      search,
+      siblings
+    }: {
+      scope: ApprovalPolicyScope;
+      scopeId: string;
+      connectionId: string;
+      subject: string;
+      constraint: string;
+      search?: string;
+      siblings: Record<string, string[]>;
+    },
+    actor: TApprovalActor
+  ) => {
+    const { projectId, scopeType, scopeId } = await $resolveScope(scope, inputScopeId, policyType);
+    await $assertCanManagePolicy(
+      projectId,
+      scopeType,
+      scopeId,
+      actor,
+      ResourcePermissionApprovalPolicyActions.Read,
+      policyType
+    );
+
+    return autoApprovalService.listOptions({ projectId, actor, connectionId, subject, constraint, search, siblings });
   };
 
   const $actorGrantFilter = (actor: TApprovalSubjectActor) =>
@@ -2176,7 +2427,8 @@ export const approvalPolicyServiceFactory = ({
         grantExpiresAt: grant?.expiresAt ?? null,
         grantStatus: grant?.status ?? null,
         isBreakGlass: Boolean(grant?.isBreakGlass),
-        bypassReason: grant?.bypassReason ?? null
+        bypassReason: grant?.bypassReason ?? null,
+        autoApproval: toAutoApprovalOutcome(request as { autoApprovedAt?: Date | null; autoApprovalEvidence?: unknown })
       };
     });
   };
@@ -2314,7 +2566,11 @@ export const approvalPolicyServiceFactory = ({
       }));
     }
 
-    if (steps.length === 0) return { steps: [] };
+    if (steps.length === 0) return { steps: [], autoApprovalInputs: [] };
+
+    const autoApprovalInputs = policy
+      ? await $getAutoApprovalInputs(policyType, projectId, policy.id, inputs)
+      : [];
 
     const approvers = steps.flatMap((step) => step.approvers);
     const userIds = approvers.filter((a) => a.type === ApproverType.User).map((a) => a.id);
@@ -2336,6 +2592,7 @@ export const approvalPolicyServiceFactory = ({
     });
 
     return {
+      autoApprovalInputs,
       steps: steps.map((step) => ({
         requiredApprovals: step.requiredApprovals,
         approvers: step.approvers.map((a) =>
@@ -2366,9 +2623,10 @@ export const approvalPolicyServiceFactory = ({
             requiredApprovals: step.requiredApprovals,
             approvers: step.approvers
           })),
-          bypassers: policy.bypassers.map((bypasser) => ({ type: bypasser.type, id: bypasser.id }))
+          bypassers: policy.bypassers.map((bypasser) => ({ type: bypasser.type, id: bypasser.id })),
+          autoApproval: policy.autoApproval
         }
-      : { steps: [], bypassers: [] };
+      : { steps: [], bypassers: [], autoApproval: autoApprovalService.toPolicyResponse() };
   };
 
   const setScopeConfiguration = async (
@@ -2378,12 +2636,14 @@ export const approvalPolicyServiceFactory = ({
     {
       steps,
       bypassers,
+      autoApproval,
       name,
       conditions,
       constraints
     }: {
       steps: TApprovalScopeConfiguration["steps"];
       bypassers?: PolicyBypasser[];
+      autoApproval?: TAutoApprovalConfig;
       name: string;
       conditions: TApprovalPolicy["conditions"]["conditions"];
       constraints: TApprovalPolicy["constraints"]["constraints"];
@@ -2398,21 +2658,31 @@ export const approvalPolicyServiceFactory = ({
 
     const hasApprovers = steps.some((step) => step.approvers.length > 0);
     if (!hasApprovers) {
+      // A request no rule approves still needs someone who can approve it
+      if (autoApproval?.rules.length) {
+        throw new BadRequestError({ message: "Add at least one approver before adding auto-approval rules" });
+      }
       if (existing) await deleteById(existing.id, actor, policyType);
       return { policyId: existing?.id ?? null };
     }
 
     const policySteps = steps.map((step) => ({ ...step, notifyApprovers: true }));
     const bypassFields = bypassers ? { bypassers } : {};
+    const autoApprovalUpdate = autoApproval ? { autoApproval } : {};
 
     if (existing) {
-      const { policy } = await updateById(existing.id, { steps: policySteps, ...bypassFields }, actor, policyType);
+      const { policy } = await updateById(
+        existing.id,
+        { steps: policySteps, ...bypassFields, ...autoApprovalUpdate },
+        actor,
+        policyType
+      );
       return { policyId: policy.id };
     }
 
     const { policy } = await create(
       policyType,
-      { scope, scopeId, name, conditions, constraints, steps: policySteps, ...bypassFields },
+      { scope, scopeId, name, conditions, constraints, steps: policySteps, ...bypassFields, ...autoApprovalUpdate },
       actor
     );
     return { policyId: policy.id };
@@ -2466,6 +2736,8 @@ export const approvalPolicyServiceFactory = ({
     listGrants,
     getGrantById,
     revokeGrant,
-    checkPolicyMatch
+    checkPolicyMatch,
+    getAutoApprovalCatalog,
+    listAutoApprovalOptions
   };
 };

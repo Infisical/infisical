@@ -1,3 +1,9 @@
+import {
+  TAutoApprovalConfig,
+  TAutoApprovalConfigResponse,
+  TAutoApprovalInputValue,
+  TAutoApprovalOutcome
+} from "../../approvalPolicies/types";
 import { OrderByDirection } from "../../generic/types";
 import {
   PamAccessRequestDecision,
@@ -743,6 +749,8 @@ export type TPamAccessRequest = {
   grantStatus?: string | null;
   isBreakGlass?: boolean;
   bypassReason?: string | null;
+  autoApprovedAt?: string | null;
+  autoApproval?: TAutoApprovalOutcome | null;
 };
 
 export type TPamNotificationConfig = {
@@ -761,6 +769,7 @@ export type TPamApprovalConfig = {
     integrationSlug: string;
   })[];
   breakGlassUsers: { type: PamApproverType; id: string }[];
+  autoApproval: TAutoApprovalConfigResponse;
 };
 
 export type TPamAccessGrant = {
@@ -783,6 +792,7 @@ export type TCreatePamAccessRequestDTO = {
   reason?: string;
   duration: string;
   accessType?: PamAccessType;
+  autoApprovalInputs?: TAutoApprovalInputValue[];
 };
 
 export type TReviewPamAccessRequestDTO = {
@@ -807,4 +817,6 @@ export type TSetPamApprovalConfigDTO = {
   }[];
   notificationConfigs?: TPamNotificationConfig[];
   breakGlassUsers?: { type: PamApproverType; id: string }[];
+  // Omit to leave the folder's auto-approval rules unchanged
+  autoApproval?: TAutoApprovalConfig;
 };
