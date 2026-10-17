@@ -4,7 +4,6 @@ import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link } from "@tanstack/react-router";
-import { z } from "zod";
 
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { createNotification } from "@app/components/notifications";
@@ -21,6 +20,7 @@ import {
 } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
+import { isValidEmail } from "@app/helpers/email";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendVerificationEmail } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -52,7 +52,7 @@ export default function InitialSignupStep({
   const [isCaptchaReady, setIsCaptchaReady] = useState(!requiresCaptcha);
   const [isCaptchaPending, setIsCaptchaPending] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
-  const isEmailValid = z.string().email().safeParse(email).success;
+  const isEmailValid = isValidEmail(email);
 
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
@@ -63,9 +63,7 @@ export default function InitialSignupStep({
     shouldDisplaySignupMethod(LoginMethod.GITLAB);
 
   const handleEmailSignup = async () => {
-    const isValid = z.string().email().safeParse(email);
-
-    if (!isValid.success) {
+    if (!isEmailValid) {
       setEmailError(true);
       return;
     }

@@ -36,7 +36,8 @@ import {
   InfoIcon,
   LayersIcon,
   LockIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from "lucide-react";
 import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
@@ -96,7 +97,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogBody,
   DialogContent,
@@ -3607,6 +3608,7 @@ const OverviewPageContent = () => {
                 className="mr-1.5 shrink-0"
                 onClick={handleCurrentFolderAccessOpen}
               >
+                <UsersIcon />
                 Manage Access
               </Button>
             )}
@@ -4900,7 +4902,7 @@ const OverviewPageContent = () => {
           environmentName={singleEnvName}
         />
       )}
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
         title="Delete Environment"

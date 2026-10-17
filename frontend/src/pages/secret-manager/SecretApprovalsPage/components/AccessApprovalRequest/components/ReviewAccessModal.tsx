@@ -1000,7 +1000,17 @@ export const ReviewAccessRequestModal = ({
                     )}
                   </div>
                 )}
-                <div className="space-x-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    isPending={isLoading === "rejected"}
+                    isDisabled={!!isLoading || isRejectionDisabled}
+                    onClick={() => handleReview("rejected")}
+                    size="sm"
+                    variant="danger"
+                  >
+                    <BanIcon />
+                    Reject Request
+                  </Button>
                   <Button
                     isPending={isLoading === "approved"}
                     isDisabled={
@@ -1018,21 +1028,11 @@ export const ReviewAccessRequestModal = ({
                     <CheckIcon />
                     Approve Request
                   </Button>
-                  <Button
-                    isPending={isLoading === "rejected"}
-                    isDisabled={!!isLoading || isRejectionDisabled}
-                    onClick={() => handleReview("rejected")}
-                    size="sm"
-                    variant="danger"
-                  >
-                    <BanIcon />
-                    Reject Request
-                  </Button>
                 </div>
               </>
             )}
             {hasApproved && canRevokeAccess && (
-              <div>
+              <div className="flex justify-end">
                 <Button
                   isDisabled={Boolean(isLoading)}
                   onClick={() => handlePopUpOpen("revokeConfirm")}

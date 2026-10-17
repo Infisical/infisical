@@ -253,6 +253,10 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "pkiOcsp"
   },
   {
+    v2Key: "pki_aws_kms_signing",
+    v1Field: "pkiAwsKmsSigning"
+  },
+  {
     v2Key: "pki_est",
     v1Field: "pkiEst"
   },

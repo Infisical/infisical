@@ -40,9 +40,13 @@ vi.mock("@app/lib/telemetry/metrics", () => ({
 
 // Keep the real product-filter helpers (auditLogMatchesStreamFilter, resolveAuditLogProduct) so
 // the fanout filtering tests exercise actual behavior; only credential decryption is stubbed.
+const { decryptLogStreamCredentials } = vi.hoisted(() => ({
+  decryptLogStreamCredentials: vi.fn<() => Promise<unknown>>(async () => ({}))
+}));
+
 vi.mock("@app/ee/services/audit-log-stream/audit-log-stream-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/ee/services/audit-log-stream/audit-log-stream-fns")>()),
-  decryptLogStreamCredentials: async () => ({})
+  decryptLogStreamCredentials
 }));
 
 // Every provider lookup returns the same shared batchStreamLog mock so tests can
@@ -76,26 +80,46 @@ const buildRow = (overrides: Partial<TAuditLogStreamOutboxRow> = {}): TAuditLogS
   ...overrides
 });
 
+// flagStreamFailing opens a savepoint on the transaction it is given; handing back TX keeps the
+// DAL calls inside it asserting against the same object.
+const TX = { tx: true, transaction: async (cb: (savepoint: unknown) => Promise<unknown>) => cb(TX) };
+
 const createService = () => {
   const auditLogStreamOutboxDAL = {
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(TX)),
     batchInsert: vi.fn(async () => undefined),
     claimBatchForStream: vi.fn<(...args: unknown[]) => Promise<TAuditLogStreamOutboxRow[]>>(async () => []),
-    commitDeliveryResult: vi.fn<(input: unknown) => Promise<void>>(async () => undefined),
-    recoverStaleClaims: vi.fn(async () => ({ retried: 0, dropped: [] })),
+    commitDeliveryResult: vi.fn<(input: unknown, tx?: unknown) => Promise<void>>(async () => undefined),
+    markStreamFailing: vi.fn<(input: unknown, tx: unknown) => Promise<Date | null>>(async () => new Date()),
+    clearStreamFailing: vi.fn<(streamId: string, tx: unknown) => Promise<void>>(async () => undefined),
+    recoverStaleClaims: vi.fn<(...args: unknown[]) => Promise<{ retried: number; dropped: unknown[] }>>(async () => ({
+      retried: 0,
+      dropped: []
+    })),
     findStreamsWithOverdueRows: vi.fn(async () => []),
     deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
   };
 
   const auditLogStreamDAL = {
     find: vi.fn(async () => []),
-    findById: vi.fn(async () => ({
-      id: STREAM_ID,
-      provider: PROVIDER,
-      orgId: ORG_ID,
-      encryptedCredentials: Buffer.from("x"),
-      streamMode: StreamMode.Batch as StreamMode
-    }))
+    findById: vi.fn(
+      async (): Promise<{
+        id: string;
+        provider: LogProvider;
+        orgId: string;
+        encryptedCredentials: Buffer;
+        streamMode: StreamMode;
+      }> => ({
+        id: STREAM_ID,
+        provider: PROVIDER,
+        orgId: ORG_ID,
+        encryptedCredentials: Buffer.from("x"),
+        streamMode: StreamMode.Batch
+      })
+    )
   };
+
+  const eventEmitter = { emit: vi.fn<(event: unknown, tx?: unknown) => Promise<void>>(async () => undefined) };
 
   const projectDAL = {
     findProjectTypesByIds: vi.fn(async () => [])
@@ -107,10 +131,11 @@ const createService = () => {
     projectDAL: projectDAL as never,
     kmsService: {} as never,
     keyStore: {} as never,
-    queueService: {} as never
+    queueService: {} as never,
+    eventEmitter
   });
 
-  return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL };
+  return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL, eventEmitter };
 };
 
 describe("audit-log-stream-outbox-service drainStream failure handling", () => {
@@ -179,6 +204,31 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     expect(call.successIds).toEqual([1]);
     expect(call.retriable).toBeNull();
     expect(call.exhaustedIds).toEqual([]);
+  });
+
+  test("clears the failing flag after a clean batch even when the stream was read as healthy", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([buildRow()]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(auditLogStreamOutboxDAL.clearStreamFailing).toHaveBeenCalledWith(STREAM_ID, expect.anything());
+  });
+
+  test("does not clear the failing flag when any row in the batch failed", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+
+    getProviderBatchLimit.mockReturnValue({ maxLogs: 1, maxBytes: 4 * 1024 * 1024 });
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow({ id: 1, auditLogId: "log-1" }), buildRow({ id: 2, auditLogId: "log-2" })])
+      .mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(auditLogStreamOutboxDAL.clearStreamFailing).not.toHaveBeenCalled();
   });
 
   test("stops draining after the first failed batch — does not claim another batch", async () => {
@@ -354,7 +404,8 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       projectDAL: projectDAL as never,
       kmsService: {} as never,
       keyStore: keyStore as never,
-      queueService: queueService as never
+      queueService: queueService as never,
+      eventEmitter: { emit: vi.fn(async () => undefined) }
     });
 
     return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL, keyStore, queueService };
@@ -537,11 +588,46 @@ describe("audit-log-stream-outbox-service sweepStaleClaims", () => {
   });
 
   const sweepWith = async (dropped: { streamId: string; orgId: string; provider: string | null }[], retried = 0) => {
-    const { service, auditLogStreamOutboxDAL } = createService();
+    const { service, auditLogStreamOutboxDAL, eventEmitter } = createService();
     auditLogStreamOutboxDAL.recoverStaleClaims = vi.fn(async () => ({ retried, dropped })) as never;
     await service.sweepStaleClaims();
-    return auditLogStreamOutboxDAL;
+    return { auditLogStreamOutboxDAL, eventEmitter };
   };
+
+  // Every batch comes back full, as it would under a large backlog, so the sweep must still stop and
+  // never hold more than one batch of locks in a transaction.
+  test("recovers a backlog in bounded batches, each in its own transaction, up to a cap", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    const recoverStaleClaims = vi.fn(async (_thresholdMs: number, _maxAttempts: number, limit: number) => ({
+      retried: limit,
+      dropped: []
+    }));
+    auditLogStreamOutboxDAL.recoverStaleClaims = recoverStaleClaims as never;
+
+    await service.sweepStaleClaims();
+
+    expect(recoverStaleClaims.mock.calls.length).toBeGreaterThan(1);
+    expect(auditLogStreamOutboxDAL.transaction).toHaveBeenCalledTimes(recoverStaleClaims.mock.calls.length);
+  });
+
+  test("emits one alert per stream with drops, carrying that stream's own count", async () => {
+    const { eventEmitter } = await sweepWith([
+      { streamId: "stream-a", orgId: ORG_ID, provider: LogProvider.Datadog },
+      { streamId: "stream-a", orgId: ORG_ID, provider: LogProvider.Datadog },
+      { streamId: "stream-b", orgId: ORG_ID, provider: LogProvider.Splunk }
+    ]);
+
+    const payloads = eventEmitter.emit.mock.calls.map(
+      ([event]) => (event as { payload: { targetIds: string[]; droppedCount: number } }).payload
+    );
+    expect(payloads).toHaveLength(2);
+    expect(payloads).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ targetIds: ["stream-a"], droppedCount: 2 }),
+        expect.objectContaining({ targetIds: ["stream-b"], droppedCount: 1 })
+      ])
+    );
+  });
 
   test("labels a drop with the stream's provider so sum by(provider) accounts for it", async () => {
     await sweepWith([{ streamId: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Datadog }]);

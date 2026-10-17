@@ -12,7 +12,6 @@ import { twMerge } from "tailwind-merge";
 
 import { PamEnterpriseAlertingUpgradeIntent } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -22,6 +21,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -724,16 +724,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={!!requestToRevoke}
-        onChange={(open) => {
+        onOpenChange={(open) => {
           if (!open) setRequestToRevoke(null);
         }}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this user's approved access?"
-        deleteKey="revoke"
-        buttonText="Revoke"
-        onDeleteApproved={confirmRevoke}
+        description="Are you sure you want to revoke this user's approved access?"
+        confirmKey="revoke"
+        confirmLabel="Revoke"
+        onConfirm={confirmRevoke}
       />
 
       <div aria-hidden className="h-8 shrink-0" />

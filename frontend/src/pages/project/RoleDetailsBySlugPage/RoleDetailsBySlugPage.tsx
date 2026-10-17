@@ -30,7 +30,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -120,7 +120,7 @@ const Page = () => {
                 }}
               >
                 <ChevronLeftIcon aria-hidden className="size-4" />
-                {isCertManager ? "Roles" : "Project Roles"}
+                {hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}
               </Link>
             }
           >

@@ -53,7 +53,7 @@ export type DateRangeFilterResult = {
   isUtc: boolean;
 };
 
-export type DateRangeFilterAccent = "primary" | "secondary" | "av";
+export type DateRangeFilterAccent = "primary" | "secondary" | "av" | "ss";
 
 type Props = {
   defaultValue?: DateRangeFilterValue;
@@ -117,6 +117,19 @@ export const ACCENT_STYLES: Record<
       "border-product-av/25 bg-product-av/10 hover:bg-product-av/15 hover:border-product-av/30",
     calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
     activeVariant: "av"
+  },
+  ss: {
+    selectedBorderBg: "border-product-ss bg-product-ss/5",
+    selectedCard: "border-product-ss/40 bg-product-ss/5 shadow-xs",
+    selectedBadge:
+      "rounded-sm bg-product-ss/5 px-1.5 py-0.5 text-[11px] font-medium text-product-ss",
+    selectedChip: "border-product-ss/40 bg-product-ss/5 text-foreground",
+    switchChecked:
+      "data-[state=checked]:border-product-ss/25 data-[state=checked]:bg-product-ss/10 data-[state=checked]:hover:border-product-ss/30 data-[state=checked]:hover:bg-product-ss/15",
+    applyButton:
+      "border-product-ss/25 bg-product-ss/10 hover:bg-product-ss/15 hover:border-product-ss/30",
+    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
+    activeVariant: "ss"
   }
 };
 

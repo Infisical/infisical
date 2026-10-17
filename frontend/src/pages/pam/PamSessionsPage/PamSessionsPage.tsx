@@ -38,7 +38,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import { useOrganization, useProject } from "@app/context";
 import {
   getUserTablePreference,
@@ -384,7 +384,7 @@ export const PamSessionsPage = () => {
         onTerminate={requestTerminate}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={!!sessionToTerminate}
         onOpenChange={(open) => {
           if (!open) setSessionToTerminate(null);

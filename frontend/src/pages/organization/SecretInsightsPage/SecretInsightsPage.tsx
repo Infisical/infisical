@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet";
-import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { FileTextIcon, LockIcon } from "lucide-react";
+import { FileTextIcon } from "lucide-react";
 
 import {
   SecretAccessInsightsUpgradeIntent,
@@ -10,9 +9,6 @@ import {
 } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Button,
   Skeleton,
   Tooltip,
@@ -32,11 +28,6 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
   AuditReportStatus,
-  TOrgAuthMethodUsage,
-  TOrgProjectsInsights,
-  TOrgSecretAccessVolume,
-  TOrgSecretsSummary,
-  TOrgStaticSecretUsage,
   useGetOrgAuditReports,
   useGetOrgAuthMethodDistribution,
   useGetOrgSecretsAccessVolume,
@@ -50,6 +41,7 @@ import {
   AuthMethodsCard,
   DuplicatedSecretsCard,
   InsightsCard,
+  InsightsUpgradePreview,
   RequestOrgAuditReportModal,
   SecretAccessVolumeCard,
   StaticSecretPresenceCard,
@@ -58,21 +50,6 @@ import {
 
 const SENT_REPORT_STATUSES = [AuditReportStatus.Completed, AuditReportStatus.Partial];
 const IN_FLIGHT_REPORT_STATUSES = [AuditReportStatus.Pending, AuditReportStatus.Processing];
-
-// Every insights endpoint is gated on the same entitlement, so without it there is nothing to
-// fetch. The cards render from these zeroed payloads and fall back to their own empty states, so
-// the page keeps its shape behind the upgrade prompt instead of collapsing to a blank screen.
-const PLAN_LOCKED_SUMMARY: TOrgSecretsSummary = { activeLeases: 0, users: 0, identities: 0 };
-const PLAN_LOCKED_PROJECTS: TOrgProjectsInsights = {
-  projects: [],
-  totalProjects: 0,
-  projectsWithIssues: 0,
-  offset: 0,
-  limit: 0
-};
-const PLAN_LOCKED_AUTH_METHODS: TOrgAuthMethodUsage = { totalFetches: 0, methods: [] };
-const PLAN_LOCKED_STATIC_SECRETS: TOrgStaticSecretUsage = { weeks: [] };
-const PLAN_LOCKED_ACCESS_VOLUME: TOrgSecretAccessVolume = { days: [] };
 
 export const SecretInsightsPage = withPermission(
   () => {
@@ -146,26 +123,14 @@ export const SecretInsightsPage = withPermission(
       });
     }, [openUpgradeGate]);
 
-    useEffect(() => {
-      if (subscription && !subscription.secretAccessInsights) {
-        handleUpgrade();
-      }
-    }, [handleUpgrade, subscription]);
-
     const isSummaryLoading = hasInsightsPlan && isSummaryPending;
     const isProjectsLoading = hasInsightsPlan && isProjectsPending;
     const isStaticSecretsLoading = hasInsightsPlan && isStaticSecretsPending;
     const isAuthMethodsLoading = isClickhouseEnabled && hasInsightsPlan && isAuthMethodsPending;
     const isAccessVolumeLoading = isClickhouseEnabled && hasInsightsPlan && isAccessVolumePending;
 
-    const summaryData = hasInsightsPlan ? summary : PLAN_LOCKED_SUMMARY;
-    const projectsData = hasInsightsPlan ? projectsInsights : PLAN_LOCKED_PROJECTS;
-    const staticSecretData = hasInsightsPlan ? staticSecretUsage : PLAN_LOCKED_STATIC_SECRETS;
-    const authMethodData = hasInsightsPlan ? authMethodUsage : PLAN_LOCKED_AUTH_METHODS;
-    const accessVolumeData = hasInsightsPlan ? accessVolume : PLAN_LOCKED_ACCESS_VOLUME;
-
     const showAuthMethodsSlot =
-      isAuthMethodsLoading || (isClickhouseEnabled && Boolean(authMethodData));
+      isAuthMethodsLoading || (isClickhouseEnabled && Boolean(authMethodUsage));
 
     return (
       <>
@@ -173,8 +138,8 @@ export const SecretInsightsPage = withPermission(
           <title>Secret Insights | Infisical</title>
           <link rel="icon" href="/infisical.ico" />
         </Helmet>
-        <div className="h-full">
-          <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
+        <div>
+          <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
             <PageHeader
               className="mb-4 dashboard:mb-10"
               scope={ProjectType.SecretManager}
@@ -226,65 +191,48 @@ export const SecretInsightsPage = withPermission(
                 </OrgPermissionCan>
               </div>
             </PageHeader>
-            <div className="flex flex-col gap-4 pb-8">
-              {!hasInsightsPlan && (
-                <Alert variant="info">
-                  <LockIcon />
-                  <AlertTitle>Insights Is Not Included in Your Current Plan</AlertTitle>
-                  <AlertDescription>
-                    <p>
-                      Secret health, access volume, and authentication data stay empty until you
-                      upgrade. Go to{" "}
-                      <Link
-                        to="/organizations/$orgId/billing"
-                        params={{ orgId: currentOrg.id }}
-                        className="inline underline hover:opacity-80"
-                      >
-                        Billing
-                      </Link>{" "}
-                      to change your plan.
-                    </p>
-                  </AlertDescription>
-                </Alert>
-              )}
-              {isSummaryLoading && (
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Skeleton className="h-[150px]" />
-                  <Skeleton className="h-[150px]" />
-                  <Skeleton className="h-[150px]" />
-                </div>
-              )}
-              {!isSummaryLoading && summaryData && <SummaryCard summary={summaryData} />}
-              {isProjectsLoading && <Skeleton className="h-[320px]" />}
-              {!isProjectsLoading && projectsData && (
-                <InsightsCard
-                  data={projectsData}
-                  hasMore={hasMoreProjects}
-                  onLoadMore={fetchMoreProjects}
-                  isLoadingMore={isFetchingMoreProjects}
-                  isPlanRestricted={!hasInsightsPlan}
-                />
-              )}
-              <DuplicatedSecretsCard isPlanRestricted={!hasInsightsPlan} />
-              <div
-                className={
-                  showAuthMethodsSlot ? "grid gap-4 xl:grid-cols-[1fr_1.35fr]" : "grid gap-4"
-                }
-              >
-                {isAuthMethodsLoading && <Skeleton className="h-[320px]" />}
-                {!isAuthMethodsLoading && isClickhouseEnabled && authMethodData && (
-                  <AuthMethodsCard data={authMethodData} />
+            {hasInsightsPlan ? (
+              <div className="flex flex-col gap-4 pb-8">
+                {isSummaryLoading && (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Skeleton className="h-[150px]" />
+                    <Skeleton className="h-[150px]" />
+                    <Skeleton className="h-[150px]" />
+                  </div>
                 )}
-                {isStaticSecretsLoading && <Skeleton className="h-[320px]" />}
-                {!isStaticSecretsLoading && staticSecretData && (
-                  <StaticSecretPresenceCard data={staticSecretData} />
+                {!isSummaryLoading && summary && <SummaryCard summary={summary} />}
+                {isProjectsLoading && <Skeleton className="h-[320px]" />}
+                {!isProjectsLoading && projectsInsights && (
+                  <InsightsCard
+                    data={projectsInsights}
+                    hasMore={hasMoreProjects}
+                    onLoadMore={fetchMoreProjects}
+                    isLoadingMore={isFetchingMoreProjects}
+                  />
+                )}
+                <DuplicatedSecretsCard />
+                <div
+                  className={
+                    showAuthMethodsSlot ? "grid gap-4 xl:grid-cols-[1fr_1.35fr]" : "grid gap-4"
+                  }
+                >
+                  {isAuthMethodsLoading && <Skeleton className="h-[320px]" />}
+                  {!isAuthMethodsLoading && isClickhouseEnabled && authMethodUsage && (
+                    <AuthMethodsCard data={authMethodUsage} />
+                  )}
+                  {isStaticSecretsLoading && <Skeleton className="h-[320px]" />}
+                  {!isStaticSecretsLoading && staticSecretUsage && (
+                    <StaticSecretPresenceCard data={staticSecretUsage} />
+                  )}
+                </div>
+                {isAccessVolumeLoading && <Skeleton className="h-[300px]" />}
+                {!isAccessVolumeLoading && isClickhouseEnabled && accessVolume && (
+                  <SecretAccessVolumeCard data={accessVolume} />
                 )}
               </div>
-              {isAccessVolumeLoading && <Skeleton className="h-[300px]" />}
-              {!isAccessVolumeLoading && isClickhouseEnabled && accessVolumeData && (
-                <SecretAccessVolumeCard data={accessVolumeData} />
-              )}
-            </div>
+            ) : (
+              <InsightsUpgradePreview onUpgrade={handleUpgrade} />
+            )}
           </div>
         </div>
         <RequestOrgAuditReportModal
