@@ -1,3 +1,4 @@
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -19,7 +20,11 @@ export const vercelConnectionService = (getAppConnection: TGetAppConnectionFunc)
       return projects;
     } catch (error) {
       logger.error(error, "Failed to establish connection with Vercel");
-      return [];
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError({
+        error,
+        message: "Could not load Vercel projects. Try again later."
+      });
     }
   };
 
