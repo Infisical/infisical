@@ -26,7 +26,7 @@ Built for scanning hundreds of rows: an uppercase header inside the tint frame, 
 - Give long, variable text a `maxWidth` (names, paths, descriptions). Keep keys whole where there is room; never truncate a secret key without the hover title or a way to open it.
 - Row actions go in one `actions` column, last: ghost `sm` icon buttons (32px, with an `aria-label`) or one DropdownMenu trigger, two at most. Never size it with `width`; it fits its buttons, and the 15px inset past it leaves room for their focus outline. When the table scrolls sideways it stays pinned, and content passes under it behind a `line-soft` rule instead of the edge fade.
 - Virtual tables: give variable columns a `width` or `maxWidth` so tracks hold still as rows mount.
-- `loadMore` is for batches the person asks for. Say how many are loaded ("Showing 1,000 of 12,408") and drop `loadMore` once everything is in. To show more at once as well, grow `height` with each press up to a ceiling, as the preview does (360px, then five rows more per press, up to 840px).
+- `loadMore` is for batches the person asks for. Say how many are loaded ("Showing 1,000 of 12,408") and drop `loadMore` once everything is in. To show more at once as well, grow `height` with each press up to a ceiling (for example 360px, then five rows more per press, up to 840px).
 - A selected row takes the `select` ground and its text steps up to `ink`. No edge bar, border or shadow on rows.
 - When rows are selected, swap the toolbar for bulk actions and a count ("2 selected").
 - Put Pagination under a paged table and say how many there are.
