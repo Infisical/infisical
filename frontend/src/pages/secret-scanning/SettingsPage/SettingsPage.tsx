@@ -16,7 +16,7 @@ import { ProjectScanningConfigTab } from "./components/ProjectScanningConfigTab"
 export const SettingsPage = () => {
   const { t } = useTranslation();
   const { selectedTab } = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/settings"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/settings"
   });
 
   const { currentOrg } = useOrganization();
@@ -35,12 +35,12 @@ export const SettingsPage = () => {
   return (
     <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
       <Helmet>
-        <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
+        <title>{t("common.head-title", { title: "Secret Scanning Settings" })}</title>
       </Helmet>
       <div className="w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.SecretScanning}
-          title="Project Settings"
+          title="Settings"
           description="Configure your Secret Scanning product's configurations."
         >
           <LookingForOrgPageLink page="settings" />

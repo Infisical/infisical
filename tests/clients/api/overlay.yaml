@@ -1,0 +1,12 @@
+overlay: 1.0.0
+info:
+  title: Generated client spec fixes
+  version: 1.0.0
+actions:
+  - target: $.paths['/api/v2/workspace/{projectId}/roles'].post.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v2/workspace/{projectId}/roles'].post.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true

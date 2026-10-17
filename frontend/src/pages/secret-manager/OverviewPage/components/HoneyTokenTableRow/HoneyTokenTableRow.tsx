@@ -91,7 +91,7 @@ export const HoneyTokenTableRow = ({
   onViewDetails
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
-  const [, isNameCopied, setIsNameCopied] = useTimedReset({ initialState: false });
+  const [, isNameCopied, setIsNameCopied] = useTimedReset<boolean>({ initialState: false });
 
   const isSingleEnvView = environments.length === 1;
   // The action bar only exists in the single-environment view, where the row itself holds

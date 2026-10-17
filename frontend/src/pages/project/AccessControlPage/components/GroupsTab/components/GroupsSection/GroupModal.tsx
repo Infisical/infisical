@@ -26,14 +26,14 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { useDebounce } from "@app/hooks";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
+import { useDebounce, useScopeVariant } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
   useGetProjectRoles,
   useListWorkspaceGroups,
   useSearchOrganizationGroups
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -53,10 +53,10 @@ type Props = {
 // TODO: update backend to support adding multiple roles at once
 
 const Content = ({ onClose }: { onClose: () => void }) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
 
   const orgId = currentOrg?.id || "";
 
@@ -147,7 +147,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="project" type="button" isPending isDisabled>
+          <Button variant={scopeVariant} type="button" isPending isDisabled>
             Add
           </Button>
         </DialogFooter>
@@ -257,7 +257,12 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         <Button variant="ghost" type="button" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          variant={scopeVariant}
+          type="submit"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Add
         </Button>
       </DialogFooter>
@@ -266,7 +271,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     <div className="flex flex-col gap-4">
       <p className="text-sm">
         {totalOrgGroups === 0
-          ? `Your organization has no groups yet. Create one at the organization level to add it to ${isCertManager ? productLabel : "this project"}.`
+          ? `Your organization has no groups yet. Create one at the organization level to add it to ${hidesProjects(currentProject?.type) ? productLabel : "this project"}.`
           : "Every group in your organization is already added. To add another group, create one at the organization level first."}
       </p>
       <DialogFooter>
@@ -286,8 +291,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
 
   return (
     <Dialog

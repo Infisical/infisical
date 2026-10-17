@@ -9,7 +9,7 @@ import {
   Button,
   Card,
   CardContent,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -212,7 +212,7 @@ export const GroupsTab = () => {
         subject={groupToEdit?.name ?? ""}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(groupToRemove)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setGroupToRemove(null);

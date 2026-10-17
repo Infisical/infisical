@@ -9,14 +9,13 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import { PageHeader } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -165,12 +164,13 @@ export const PkiCollectionPage = () => {
         </div>
       )}
       <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiCollection.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to delete the PKI collection ${data?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeletePkiCollectionSubmit(
             (popUp.deletePkiCollection.data as { collectionId: string })?.collectionId
           )

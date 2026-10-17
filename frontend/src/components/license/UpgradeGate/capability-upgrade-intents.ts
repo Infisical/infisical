@@ -31,6 +31,13 @@ export type CapabilityUpgradeIntent = {
   isEnterpriseFeature: boolean;
 };
 
+export type CapabilityUpgradeAlternative = {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onSelect: () => void;
+};
+
 export const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
 export const getCapabilityUpgradeUrl = (

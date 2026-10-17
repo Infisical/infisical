@@ -46,7 +46,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -1132,11 +1132,24 @@ export const SecretEditTableRow = ({
   const shouldStayExpanded =
     isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
 
-  const [isHoveringActionZone, setIsHoveringActionZone] = useState(false);
-  const showMenuWhileFocused = isHoveringActionZone || shouldStayExpanded;
-  // Hover is not the only thing that opens the bar, so keep it mounted whenever a popover, the
-  // dropdown or the focused-field affordance is holding it open.
-  const shouldMountActionBar = shouldRenderHoverActions || showMenuWhileFocused;
+  const [actionBarWidth, setActionBarWidth] = useState(0);
+  const actionBarResizeObserverRef = useRef<ResizeObserver | null>(null);
+  const actionBarRef = useCallback((node: HTMLDivElement | null) => {
+    actionBarResizeObserverRef.current?.disconnect();
+    actionBarResizeObserverRef.current = null;
+    if (!node) {
+      setActionBarWidth(0);
+      return;
+    }
+    const observer = new ResizeObserver(() => setActionBarWidth(node.offsetWidth));
+    observer.observe(node);
+    actionBarResizeObserverRef.current = observer;
+  }, []);
+
+  // Hover is not the only thing that opens the bar, so keep it mounted whenever a popover or the
+  // dropdown is holding it open. main has since removed the focused-field hover-zone affordance
+  // that used to feed this hold as well, so shouldStayExpanded is now the whole of it.
+  const shouldMountActionBar = shouldRenderHoverActions || shouldStayExpanded;
 
   const getTooltipContentForSecretSharing = () => {
     if (!currentProject.secretSharing) {
@@ -1162,7 +1175,7 @@ export const SecretEditTableRow = ({
         <Tooltip
           delayDuration={1000}
           skipDelayDuration={0}
-          open={isFieldFocused ? false : undefined}
+          open={isFieldFocused || !field.value ? false : undefined}
         >
           <TooltipTrigger asChild>
             <Input
@@ -1170,12 +1183,12 @@ export const SecretEditTableRow = ({
               readOnly={
                 isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue
               }
-              placeholder={error?.message || "Secret name"}
+              placeholder="Secret name"
               isError={Boolean(error)}
               {...field}
               value={field.value ?? ""}
               className={twMerge(
-                "field-sizing-content h-auto w-auto max-w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
+                "field-sizing-content h-auto w-auto max-w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none focus-visible:border-transparent focus-visible:ring-0",
                 isPendingDelete && "text-danger/75 line-through"
               )}
               onChange={(event) => {
@@ -1186,7 +1199,11 @@ export const SecretEditTableRow = ({
               }}
               onFocus={() => setIsFieldFocused.on()}
               onKeyDown={handleEditShortcut}
+              onScroll={(e) => {
+                if (document.activeElement !== e.currentTarget) e.currentTarget.scrollLeft = 0;
+              }}
               onBlur={(e) => {
+                e.currentTarget.scrollLeft = 0;
                 field.onBlur();
                 if (!isBatchMode && field.onChange) field.onChange(e);
                 setIsFieldFocused.off();
@@ -1235,7 +1252,7 @@ export const SecretEditTableRow = ({
 
   const valueContent = (
     <>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         title={`Are you sure you want to delete ${secretName}?`}
@@ -1264,6 +1281,7 @@ export const SecretEditTableRow = ({
             isFieldActive && !isBatchMode && "pr-16",
             isFieldActive && isBatchMode && "pr-6"
           )}
+          style={isFieldActive && actionBarWidth ? { paddingRight: actionBarWidth } : undefined}
         >
           {isFieldActive && !secretValueHidden && !isCreatable && secretHasReference && (
             <ResolvedSecretValuePopover
@@ -1408,38 +1426,15 @@ export const SecretEditTableRow = ({
           )}
         </ProjectPermissionCan>
       )}
-      {isFieldActive &&
-        !(
-          isDirty &&
-          (dirtyFields.key || dirtyFields.value) &&
-          !isImportedSecret &&
-          !isBatchMode
-        ) && (
-          <div
-            className={twMerge(
-              "absolute top-0 bottom-0 z-10 flex w-8 cursor-pointer items-start justify-center",
-              isSingleEnvView ? "right-0 pt-[11px] pr-[6px]" : "-right-3 pt-[8px] pr-[12px]"
-            )}
-            onMouseEnter={() => setIsHoveringActionZone(true)}
-            onMouseLeave={() => setIsHoveringActionZone(false)}
-          >
-            <EllipsisIcon className="animate-fade-in text-muted-foreground/40 size-4" />
-          </div>
-        )}
       {shouldMountActionBar && !isDirtyState && (
         <div
+          ref={actionBarRef}
           data-table-row-filter-positioner
-          onMouseEnter={() => setIsHoveringActionZone(true)}
-          onMouseLeave={() => setIsHoveringActionZone(false)}
           className={twMerge(
             "absolute z-20",
             "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
             TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
             shouldStayExpanded && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
-            isFieldActive &&
-              !showMenuWhileFocused &&
-              "[@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0",
-            isFieldActive && showMenuWhileFocused && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
@@ -2247,9 +2242,14 @@ export const SecretEditTableRow = ({
         <TableCell
           isTruncatable
           className={twMerge(
-            "border-r",
+            "cursor-text border-r",
             isOverride && "border-l border-b-border/50 border-l-override"
           )}
+          onClick={(event) => {
+            const target = event.target as HTMLElement;
+            if (!event.currentTarget.contains(target) || target.closest("input, button")) return;
+            event.currentTarget.querySelector("input")?.focus();
+          }}
         >
           <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
             <div className="flex items-center gap-1.5">

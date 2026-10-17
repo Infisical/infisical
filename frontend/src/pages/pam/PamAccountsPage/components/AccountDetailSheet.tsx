@@ -47,7 +47,7 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
-import { useListAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
@@ -585,6 +585,9 @@ const SettingsTab = ({
   const hasRecordingOverride =
     Boolean(recordingConnId) || Boolean(recordingBucket) || Boolean(recordingRegion);
   const isRecordingOverriding = hasRecordingOverride || showRecordingPicker;
+  const isS3CompatibleRecording =
+    appConnections.find((c) => c.id === (recordingConnId ?? template?.recordingConnectionId))
+      ?.app === AppConnection.S3Compatible;
 
   const resolveGatewayLabel = (gwId?: string | null, poolId?: string | null) => {
     if (poolId) return gatewayPools?.find((p) => p.id === poolId)?.name ?? "Gateway pool";
@@ -595,7 +598,7 @@ const SettingsTab = ({
 
   const resolveConnectionName = (connId?: string | null) => {
     if (!connId) return "None";
-    return appConnections.find((c) => c.id === connId)?.name ?? "AWS connection";
+    return appConnections.find((c) => c.id === connId)?.name ?? "Connection";
   };
   const inheritedRecordingLabel = resolveConnectionName(template?.recordingConnectionId);
 
@@ -632,7 +635,7 @@ const SettingsTab = ({
       ? {
           recordingS3Config: {
             bucket,
-            region,
+            ...(region && !isS3CompatibleRecording ? { region } : {}),
             ...(keyPrefix ? { keyPrefix } : {})
           }
         }
@@ -799,7 +802,7 @@ const SettingsTab = ({
                     </AlertDescription>
                   </Alert>
                   <div>
-                    <p className="mb-1 text-sm text-muted">AWS Connection</p>
+                    <p className="mb-1 text-sm text-muted">Connection</p>
                     <RecordingConnectionPicker
                       value={recordingConnId}
                       onChange={(v) => setValue("recordingConnectionId", v, { shouldDirty: true })}
@@ -807,14 +810,16 @@ const SettingsTab = ({
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
+                    <div className={isS3CompatibleRecording ? "col-span-2" : undefined}>
                       <p className="mb-1 text-sm text-muted">S3 Bucket</p>
                       <Input placeholder="my-recordings-bucket" {...register("recordingBucket")} />
                     </div>
-                    <div>
-                      <p className="mb-1 text-sm text-muted">Region</p>
-                      <Input placeholder="us-east-1" {...register("recordingRegion")} />
-                    </div>
+                    {!isS3CompatibleRecording && (
+                      <div>
+                        <p className="mb-1 text-sm text-muted">Region</p>
+                        <Input placeholder="us-east-1" {...register("recordingRegion")} />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="mb-1 text-sm text-muted">

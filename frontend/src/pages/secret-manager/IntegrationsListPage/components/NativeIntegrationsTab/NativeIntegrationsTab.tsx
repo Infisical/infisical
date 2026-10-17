@@ -2,7 +2,7 @@ import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, Field, FieldLabel, Spinner } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
@@ -83,7 +83,7 @@ export const NativeIntegrationsTab = () => {
         isOpen={popUp.creationBlocked.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("creationBlocked", isOpen)}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure you want to remove ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
@@ -130,8 +130,8 @@ export const NativeIntegrationsTab = () => {
             </FieldLabel>
           </Field>
         )}
-      </DeleteConfirmDialog>
-      <DeleteConfirmDialog
+      </ConfirmationAlertDialog>
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteSecretsConfirmation.isOpen}
         title={`Are you sure you also want to delete secrets on ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration

@@ -24,6 +24,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -53,6 +54,7 @@ type ContentProps = {
 };
 
 const Content = ({ role, onClose }: ContentProps) => {
+  const scopeVariant = useScopeVariant();
   const {
     control,
     handleSubmit,
@@ -188,13 +190,13 @@ const Content = ({ role, onClose }: ContentProps) => {
             />
           </FieldGroup>
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
           <SheetClose asChild>
             <Button variant="ghost" isDisabled={isSubmitting}>
               Cancel
             </Button>
           </SheetClose>
-          <Button type="submit" variant="project" isPending={isSubmitting}>
+          <Button type="submit" variant={scopeVariant} isPending={isSubmitting}>
             Duplicate Role
           </Button>
         </SheetFooter>
@@ -247,7 +249,7 @@ export const DuplicateProjectRoleModal = ({ isOpen, onOpenChange, roleSlug }: Pr
             <p className="p-4 text-sm text-danger">
               Could not find a role with the slug &quot;{roleSlug}&quot;.
             </p>
-            <SheetFooter className="border-t">
+            <SheetFooter className="justify-end border-t">
               <SheetClose asChild>
                 <Button variant="ghost">Close</Button>
               </SheetClose>

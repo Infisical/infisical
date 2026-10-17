@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import { Field, FieldContent, FieldDescription, FieldLabel, Toggle } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { useDeleteSecretRotationV2 } from "@app/hooks/api/secretRotationsV2/mutations";
@@ -57,7 +57,7 @@ export const DeleteSecretRotationV2Modal = ({
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       title={`Are you sure you want to delete ${name}?`}
@@ -95,6 +95,6 @@ export const DeleteSecretRotationV2Modal = ({
           onCheckedChange={setDeleteSecrets}
         />
       </Field>
-    </DeleteConfirmDialog>
+    </ConfirmationAlertDialog>
   );
 };
