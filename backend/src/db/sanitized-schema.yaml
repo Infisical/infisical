@@ -1343,3 +1343,16 @@ tables:
       - orgId
       - projectId
       - projectName
+
+  - name: audit_log_streams
+    source: public.audit_log_streams
+    columns:
+      - id
+      - orgId
+      - createdAt
+      - updatedAt
+      - provider
+      - streamMode
+      - filters
+      - failingSince
+      - lastDeliveryError
