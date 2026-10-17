@@ -41,6 +41,10 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
       - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
       - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
       - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+      - **Variable type**: How Cloudflare stores each synced secret
+        - **Secret**: Encrypted, so you can't read the value in the Cloudflare dashboard
+        - **Text**: Plain text that you can read in the Cloudflare dashboard
+        - **JSON**: A JSON value that your Worker receives already parsed (each secret value must be valid JSON)
 
     6. Configure the **Details** of your Cloudflare Workers Sync, then click **Next**.
     ![Configure Details](/images/secret-syncs/cloudflare-workers/cloudflare-workers-sync-details.png)

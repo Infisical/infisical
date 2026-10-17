@@ -40,6 +40,7 @@ import { InitialSyncAlerts } from "../SecretSyncInitialSyncBehaviorFields";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
 import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptionsFields";
 import { AzureKeyVaultSyncOptionsFields } from "./AzureKeyVaultSyncOptionsFields";
+import { CloudflarePagesSyncOptionsFields } from "./CloudflarePagesSyncOptionsFields";
 import { CloudflareWorkersSyncOptionsFields } from "./CloudflareWorkersSyncOptionsFields";
 import { FlyioSyncOptionsFields } from "./FlyioSyncOptionsFields";
 import { QoverySyncOptionsFields } from "./QoverySyncOptionsFields";
@@ -131,6 +132,8 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
       AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsFields />;
       break;
     case SecretSync.CloudflarePages:
+      AdditionalSyncOptionsFieldsComponent = <CloudflarePagesSyncOptionsFields />;
+      break;
     case SecretSync.CloudflareSecretsStore:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
