@@ -166,7 +166,10 @@ to `pending_dispatch`. A user resends a `failed_dispatch` request with
 `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The product's bridge checks who may
 retry, and `delegatedApprovalService.retryDispatch` checks the request can be retried and only re-enqueues the
 fixed-id dispatch job: the worker stays the only writer of the status, so a retry cannot run beside an attempt
-BullMQ already has scheduled, and a retry that loses that race leaves the row retryable. Every provider implements `TDelegatedApprovalProvider` against the same
+BullMQ already has scheduled, and a retry that loses that race leaves the row retryable. A delegated request has
+no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel` is the only way to close
+one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
+policy blocked by pending requests is freed for editing. Every provider implements `TDelegatedApprovalProvider` against the same
 `TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`
 (`dispatch/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
 builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The worker

@@ -381,6 +381,53 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
+    url: "/:requestId/cancel",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "cancelAccessApprovalRequest",
+      description:
+        "Cancel a pending access request that an external approval system is reviewing. The requester can cancel their own request, and users who can edit the project's approval policies can cancel any of them.",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          request: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.accessApprovalRequest.cancelAccessRequest({
+        requestId: req.params.requestId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_CANCEL,
+          metadata: {
+            requestId: result.request.id,
+            requestedByUserId: result.request.requestedByUserId,
+            policyId: result.request.policyId
+          }
+        }
+      });
+
+      return { request: result.request };
+    }
+  });
+
+  server.route({
     url: "/:requestId",
     method: "PATCH",
     schema: {

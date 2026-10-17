@@ -43,6 +43,10 @@ export type TRetryDelegatedApprovalDispatchDTO = {
   requestId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TCancelAccessRequestDTO = {
+  requestId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateAccessApprovalRequestDTO = {
   requestId: string;
   temporaryRange: string;
@@ -239,6 +243,23 @@ export interface TAccessApprovalRequestServiceFactory {
     };
     projectId: string;
     delegatedApprovalType: DelegatedApprovalPolicyType;
+  }>;
+  cancelAccessRequest: (arg: TCancelAccessRequestDTO) => Promise<{
+    request: {
+      status: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      policyId: string;
+      isTemporary: boolean;
+      requestedByUserId: string;
+      privilegeId?: string | null | undefined;
+      temporaryRange?: string | null | undefined;
+      permissions?: unknown;
+      note?: string | null | undefined;
+      expiresAt?: Date | null | undefined;
+    };
+    projectId: string;
   }>;
   revokeAccessRequest: (arg: TRevokeAccessRequestDTO) => Promise<{
     request: {

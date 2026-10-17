@@ -6,6 +6,7 @@ import { verifyRequestedPermissions } from "@app/ee/services/access-approval-req
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
 import {
+  ProjectPermissionActions,
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
@@ -48,6 +49,7 @@ import {
   toSecretAccessRequestListItem
 } from "./secret-access-approval-global-request-bridge-fns";
 import {
+  TCancelSecretAccessApprovalGlobalRequestDTO,
   TCountSecretAccessApprovalGlobalRequestsDTO,
   TCreateSecretAccessApprovalGlobalRequestDTO,
   TListSecretAccessApprovalGlobalRequestsDTO,
@@ -869,6 +871,55 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     };
   };
 
+  const cancelAccessApprovalRequest = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TCancelSecretAccessApprovalGlobalRequestDTO) => {
+    const request = await $findRequestById(requestId);
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: request.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    if (request.requesterId !== actorId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        ProjectPermissionSub.SecretApproval
+      );
+    }
+
+    const delegatedRequest = await delegatedApprovalService.getRequestByRequestId(request.id);
+    if (!delegatedRequest) {
+      throw new BadRequestError({
+        message: `Access request with ID '${requestId}' is not reviewed in an external approval system. Reject it instead.`
+      });
+    }
+
+    const policyId = await approvalRequestDAL.transaction(async (tx) => {
+      const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
+      if (!locked || locked.status !== ApprovalRequestStatus.Pending || !locked.policyId) {
+        throw new BadRequestError({ message: "Only pending requests can be cancelled" });
+      }
+      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Cancelled }, tx);
+      return locked.policyId;
+    });
+
+    const cancelled = await $findRequestByIdFromPrimary(requestId);
+
+    return {
+      request: { ...toLegacyAccessApprovalRequest(cancelled), policyId },
+      projectId: request.projectId
+    };
+  };
+
   return {
     isGlobalAccessApprovalRequest,
     listAccessApprovalRequests,
@@ -876,6 +927,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     createAccessApprovalRequest,
     reviewAccessApprovalRequest,
     revokeAccessApprovalRequest,
-    retryDelegatedApprovalDispatch
+    retryDelegatedApprovalDispatch,
+    cancelAccessApprovalRequest
   };
 };

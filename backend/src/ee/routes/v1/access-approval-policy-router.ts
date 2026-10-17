@@ -139,7 +139,10 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .optional(),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-          allowedSelfApprovals: z.boolean().default(true),
+          allowedSelfApprovals: z
+            .boolean()
+            .optional()
+            .describe("Defaults to true, or to false when delegatedApproval is set."),
           maxTimePeriod: maxTimePeriodSchema,
           requestExpirationTime: requestExpirationTimeSchema,
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
@@ -330,7 +333,10 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional(),
         approvals: z.number().min(1).optional(),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        allowedSelfApprovals: z.boolean().default(true),
+        allowedSelfApprovals: z
+          .boolean()
+          .optional()
+          .describe("Defaults to true, or to false when the policy is handled by a delegated approval system."),
         environments: z.array(z.string()).optional(),
         approvalsRequired: z
           .object({

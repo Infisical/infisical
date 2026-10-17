@@ -437,7 +437,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     environment,
     environments,
     enforcementLevel,
-    allowedSelfApprovals,
+    allowedSelfApprovals: allowedSelfApprovalsInput,
     approvalsRequired,
     maxTimePeriod,
     requestExpirationTime,
@@ -458,6 +458,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
+
+    const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApproval;
 
     const mergedEnvs = (environment ? [environment] : environments) || [];
     if (mergedEnvs.length === 0) {
@@ -558,7 +560,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     actorAuthMethod,
     approvals,
     enforcementLevel,
-    allowedSelfApprovals,
+    allowedSelfApprovals: allowedSelfApprovalsInput,
     approvalsRequired,
     environments,
     maxTimePeriod,
@@ -601,6 +603,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     const delegatedApprovalAfterUpdate =
       delegatedApproval === undefined ? existingDelegatedApproval : delegatedApproval;
     const involvesDelegatedApproval = Boolean(existingDelegatedApproval || delegatedApprovalAfterUpdate);
+    const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApprovalAfterUpdate;
 
     const reviewers = await $resolveReviewers(
       {

@@ -265,7 +265,7 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath,
           name,
           enforcementLevel,
-          allowedSelfApprovals,
+          allowedSelfApprovals: allowedSelfApprovals ?? true,
           maxTimePeriod,
           requestExpirationTime
         },
@@ -541,7 +541,7 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath,
           name,
           enforcementLevel,
-          allowedSelfApprovals,
+          allowedSelfApprovals: allowedSelfApprovals ?? true,
           maxTimePeriod,
           requestExpirationTime
         },

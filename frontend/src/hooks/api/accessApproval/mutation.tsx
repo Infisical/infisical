@@ -217,6 +217,33 @@ export const useRetryDelegatedApprovalDispatch = () => {
   });
 };
 
+export const useCancelAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    object,
+    object,
+    {
+      requestId: string;
+      projectSlug: string;
+    }
+  >({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/access-approvals/requests/${requestId}/cancel`
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
+    }
+  });
+};
+
 export const useReviewAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<

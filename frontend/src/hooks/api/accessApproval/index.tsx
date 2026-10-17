@@ -1,4 +1,5 @@
 export {
+  useCancelAccessRequest,
   useCreateAccessApprovalPolicy,
   useCreateAccessRequest,
   useDeleteAccessApprovalPolicy,

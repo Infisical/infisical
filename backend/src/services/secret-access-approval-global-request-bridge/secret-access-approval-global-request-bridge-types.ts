@@ -1,4 +1,5 @@
 import {
+  TCancelAccessRequestDTO,
   TRetryDelegatedApprovalDispatchDTO,
   TReviewAccessRequestDTO,
   TRevokeAccessRequestDTO
@@ -64,7 +65,7 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
   >;
   delegatedApprovalService: Pick<
     TDelegatedApprovalServiceFactory,
-    "getPolicyByPolicyId" | "createRequest" | "getRequestsByRequestIds" | "retryDispatch"
+    "getPolicyByPolicyId" | "createRequest" | "getRequestByRequestId" | "getRequestsByRequestIds" | "retryDispatch"
   >;
   delegatedApprovalDispatchQueue: Pick<TDelegatedApprovalDispatchQueueFactory, "queueDispatch">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -105,3 +106,4 @@ export type TReviewSecretAccessApprovalGlobalRequestDTO = TReviewAccessRequestDT
 export type TRevokeSecretAccessApprovalGlobalRequestDTO = TRevokeAccessRequestDTO;
 
 export type TRetrySecretAccessApprovalGlobalRequestDispatchDTO = TRetryDelegatedApprovalDispatchDTO;
+export type TCancelSecretAccessApprovalGlobalRequestDTO = TCancelAccessRequestDTO;

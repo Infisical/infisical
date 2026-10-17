@@ -70,6 +70,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
@@ -82,6 +83,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
+  useCancelAccessRequest,
   useListWorkspaceGroups,
   useRetryDelegatedApprovalDispatch,
   useReviewAccessRequest,
@@ -369,6 +371,7 @@ export const ReviewAccessRequestModal = ({
   const reviewAccessRequest = useReviewAccessRequest();
   const revokeAccessRequest = useRevokeAccessRequest();
   const retryDelegatedApprovalDispatch = useRetryDelegatedApprovalDispatch();
+  const cancelAccessRequest = useCancelAccessRequest();
 
   const handleRetryDispatch = useCallback(async () => {
     try {
@@ -388,6 +391,19 @@ export const ReviewAccessRequestModal = ({
     delegatedApprovalName,
     onOpenChange
   ]);
+
+  const handleCancelRequest = useCallback(async () => {
+    try {
+      await cancelAccessRequest.mutateAsync({ requestId: request.id, projectSlug });
+    } catch {
+      return;
+    }
+    createNotification({
+      text: "Request cancelled",
+      type: "success"
+    });
+    onOpenChange(false);
+  }, [cancelAccessRequest, request.id, projectSlug, onOpenChange]);
 
   const handleReview = useCallback(
     async (status: "approved" | "rejected") => {
@@ -536,6 +552,11 @@ export const ReviewAccessRequestModal = ({
         ProjectPermissionSub.ApprovalRequests
       ));
 
+  const canCancelDelegatedRequest =
+    isDelegatedPending &&
+    (request.isRequestedByCurrentUser ||
+      permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval));
+
   const shouldBlockRequestActions =
     isDelegatedRequest ||
     hasRejected ||
@@ -625,8 +646,10 @@ export const ReviewAccessRequestModal = ({
       : null;
 
   // The status banner moved to the top of the sheet, so the footer only renders when there
-  // are actions to take: Approve/Reject when unblocked, or Revoke on an approved request.
-  const showFooter = !shouldBlockRequestActions || (hasApproved && canRevokeAccess);
+  // are actions to take: Approve/Reject when unblocked, Cancel on a pending delegated request,
+  // or Revoke on an approved request.
+  const showFooter =
+    !shouldBlockRequestActions || canCancelDelegatedRequest || (hasApproved && canRevokeAccess);
 
   type ApproverChain = NonNullable<typeof approverSequence.approvers>[number];
 
@@ -1024,7 +1047,7 @@ export const ReviewAccessRequestModal = ({
                       <InfoIcon />
                       <AlertTitle>This request is reviewed in {delegatedApprovalName}.</AlertTitle>
                       <AlertDescription>
-                        It cannot be approved or rejected in Infisical. Infisical grants access once{" "}
+                        It cannot be approved in Infisical. Infisical grants access once{" "}
                         {delegatedApprovalName} approves it.
                       </AlertDescription>
                     </Alert>
@@ -1202,6 +1225,20 @@ export const ReviewAccessRequestModal = ({
                   </Button>
                 </div>
               </>
+            )}
+            {canCancelDelegatedRequest && (
+              <div>
+                <Button
+                  isPending={cancelAccessRequest.isPending}
+                  isDisabled={cancelAccessRequest.isPending}
+                  onClick={handleCancelRequest}
+                  size="sm"
+                  variant="danger"
+                >
+                  <BanIcon />
+                  Cancel Request
+                </Button>
+              </div>
             )}
             {hasApproved && canRevokeAccess && (
               <div>

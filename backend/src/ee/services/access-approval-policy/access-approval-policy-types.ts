@@ -42,7 +42,7 @@ export type TCreateAccessApprovalPolicy = {
   projectSlug: string;
   name: string;
   enforcementLevel: EnforcementLevel;
-  allowedSelfApprovals: boolean;
+  allowedSelfApprovals?: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
@@ -64,7 +64,7 @@ export type TUpdateAccessApprovalPolicy = {
   secretPath?: string;
   name?: string;
   enforcementLevel?: EnforcementLevel;
-  allowedSelfApprovals: boolean;
+  allowedSelfApprovals?: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   environments?: string[];
   maxTimePeriod?: string | null;
