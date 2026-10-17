@@ -18,7 +18,7 @@ import {
   Field,
   FieldLabel
 } from "@app/components/v3";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -150,7 +150,7 @@ export const IntegrationDetailsByIDPage = () => {
         )}
       </div>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure you want to remove ${integration?.integration || " "} integration for ${
           integration?.app || "this project"
@@ -190,8 +190,8 @@ export const IntegrationDetailsByIDPage = () => {
             </FieldLabel>
           </Field>
         )}
-      </DeleteConfirmDialog>
-      <DeleteConfirmDialog
+      </ConfirmationAlertDialog>
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteSecretsConfirmation.isOpen}
         title={`Are you sure you also want to delete secrets on ${integration?.integration}?`}
         description="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."

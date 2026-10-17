@@ -26,7 +26,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -462,7 +462,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
           />
         </SheetContent>
       </Sheet>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePrivilege.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("deletePrivilege", isOpen);
@@ -482,7 +482,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
         isPending={deletePrivilegeMutation.isPending}
         onConfirm={handlePrivilegeDelete}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.revokeAccess.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("revokeAccess", isOpen);

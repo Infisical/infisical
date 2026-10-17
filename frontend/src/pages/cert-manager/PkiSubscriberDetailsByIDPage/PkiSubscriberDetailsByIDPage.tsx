@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3";
 import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -143,7 +143,7 @@ const Page = () => {
         </div>
       )}
       <PkiSubscriberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiSubscriber.isOpen}
         description="This action is irreversible."
         title={`Are you sure you want to remove the PKI subscriber: ${

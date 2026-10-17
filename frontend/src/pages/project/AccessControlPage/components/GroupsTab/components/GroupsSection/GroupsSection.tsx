@@ -11,7 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -107,7 +107,7 @@ export const GroupsSection = () => {
           <GroupTable handlePopUpOpen={handlePopUpOpen} />
         </CardContent>
       </Card>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteGroup.isOpen}
         onOpenChange={(isOpen) => {
           if (!isRemovingGroup) handlePopUpToggle("deleteGroup", isOpen);

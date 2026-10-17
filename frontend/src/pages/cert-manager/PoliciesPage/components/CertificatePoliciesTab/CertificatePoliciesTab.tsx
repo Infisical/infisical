@@ -11,7 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -109,7 +109,7 @@ export const CertificatePoliciesTab = () => {
             mode="edit"
           />
 
-          <DeleteConfirmDialog
+          <ConfirmationAlertDialog
             isOpen={isDeleteModalOpen}
             description="This action is irreversible."
             title={`Delete Certificate Policy ${selectedPolicy.name}?`}

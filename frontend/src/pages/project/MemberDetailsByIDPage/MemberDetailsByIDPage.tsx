@@ -22,7 +22,7 @@ import {
   AlertTitle,
   Badge,
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -318,7 +318,7 @@ export const Page = () => {
               )}
             </div>
           </div>
-          <DeleteConfirmDialog
+          <ConfirmationAlertDialog
             isOpen={popUp.removeMember.isOpen}
             onOpenChange={(isOpen) => {
               handlePopUpToggle("removeMember", isOpen);
