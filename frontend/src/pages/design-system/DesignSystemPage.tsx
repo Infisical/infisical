@@ -42,7 +42,7 @@ export const DesignSystemPage = () => {
         <Link to="/design-system" className="text-sm font-medium text-foreground">
           Infisical
         </Link>
-        <nav className="text-muted-foreground hidden items-center gap-4 text-sm md:flex">
+        <nav className="hidden items-center gap-4 text-sm text-v4-muted md:flex">
           <a href="#introduction" className="text-foreground">
             Docs
           </a>
@@ -85,7 +85,7 @@ export const DesignSystemPage = () => {
               </li>
             ))}
           </ul>
-          <p className="text-muted-foreground mt-6 px-2 text-[0.8rem] font-medium">Components</p>
+          <p className="mt-6 px-2 text-[0.8rem] font-medium text-v4-muted">Components</p>
           <ul className="mt-1 flex flex-col">
             {primitives.map((name) => (
               <li key={name}>
@@ -104,13 +104,13 @@ export const DesignSystemPage = () => {
             <h1 id="introduction" className="text-3xl font-semibold tracking-tight">
               Introduction
             </h1>
-            <p className="text-muted-foreground mt-2 md:max-w-[80%]">
+            <p className="mt-2 text-v4-muted md:max-w-[80%]">
               Infisical 2.0 components. The page chrome follows the shadcn docs layout. Color, type,
               and corners come from the Infisical tokens.
             </p>
             <section id="components" className="mt-10">
               <h2 className="text-2xl font-semibold tracking-tight">Button</h2>
-              <p className="text-muted-foreground mt-2 text-sm">
+              <p className="mt-2 text-sm text-v4-muted">
                 Radix button, ink primary, 36px default height.
               </p>
               <div
@@ -168,7 +168,7 @@ export const DesignSystemPage = () => {
                     <TabsTrigger value="code">Code</TabsTrigger>
                   </TabsList>
                   <TabsContent value="preview">
-                    <p className="text-muted-foreground pt-4 text-sm">
+                    <p className="pt-4 text-sm text-v4-muted">
                       Preview and code sit in the same frame as the shadcn component page.
                     </p>
                   </TabsContent>
@@ -182,7 +182,7 @@ export const DesignSystemPage = () => {
             </section>
             <section id="theming">
               <h2 className="text-2xl font-semibold tracking-tight">Installed primitives</h2>
-              <p className="text-muted-foreground mt-2 text-sm">
+              <p className="mt-2 text-sm text-v4-muted">
                 {primitives.length} Radix primitives. Components that require React 19 are not in
                 this slice.
               </p>

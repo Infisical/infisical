@@ -1,5 +1,6 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
+
+import { cn } from "@app/components/v4/lib/utils";
 
 function Empty({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -69,7 +70,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
     <div
       data-slot="empty-description"
       className={cn(
-        "text-muted-foreground text-sm/relaxed [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+        "text-sm/relaxed text-v4-muted [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
         className
       )}
       {...props}
