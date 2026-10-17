@@ -16,7 +16,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TPkiCertificateInstallationCertDALFactory } from "./pki-certificate-installation-cert-dal";
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
@@ -25,12 +24,23 @@ import { computeLocationFingerprint, resolveDomain, resolveTargets, scanEndpoint
 import { TPkiDiscoveryInstallationDALFactory } from "./pki-discovery-installation-dal";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import {
+  DB_SHORT_VARCHAR_LIMIT,
+  DB_VARCHAR_LIMIT,
+  discardScanRunIfDeleted,
+  failScanRun,
+  finishScanRun,
+  sendScanCompletedTelemetry,
+  startScanRun,
+  truncateString
+} from "./pki-discovery-scan-run-fns";
+import {
   CertificateSource,
   PkiDiscoveryScanStatus,
+  PkiDiscoveryType,
   PkiInstallationLocationType,
   PkiInstallationType,
   ScanEndpointFailureReason,
-  TPkiDiscoveryTargetConfig,
+  TNetworkTargetConfig,
   TScanCertificateResult,
   TScanEndpointResult
 } from "./pki-discovery-types";
@@ -38,20 +48,6 @@ import {
 const SCAN_CONCURRENCY = 20;
 const DEFAULT_SCAN_TIMEOUT = 10000;
 const GATEWAY_CONSECUTIVE_FAILURE_LIMIT = 10;
-
-const DB_VARCHAR_LIMIT = 4096;
-const DB_SHORT_VARCHAR_LIMIT = 255;
-
-const truncateString = (value: string | null | undefined, maxLength: number): string | null => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  if (value.length <= maxLength) {
-    return value;
-  }
-  const truncationSuffix = "... (truncated)";
-  return value.substring(0, maxLength - truncationSuffix.length) + truncationSuffix;
-};
 
 type TExecuteScanDeps = {
   pkiDiscoveryConfigDAL: TPkiDiscoveryConfigDALFactory;
@@ -70,15 +66,8 @@ type TExecuteScanDeps = {
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
-  const {
-    pkiDiscoveryConfigDAL,
-    pkiDiscoveryScanHistoryDAL,
-    projectDAL,
-    kmsService,
-    gatewayV2Service,
-    gatewayPoolService,
-    telemetryService
-  } = deps;
+  const { pkiDiscoveryConfigDAL, projectDAL, kmsService, gatewayV2Service, gatewayPoolService, telemetryService } =
+    deps;
 
   const startedAt = new Date();
   let scanHistoryId: string | undefined;
@@ -105,31 +94,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
       kmsId: certificateKmsKeyId
     });
 
-    const scanHistory = await pkiDiscoveryConfigDAL.transaction(async (tx) => {
-      const history = await pkiDiscoveryScanHistoryDAL.create(
-        {
-          discoveryConfigId: discoveryId,
-          startedAt,
-          status: PkiDiscoveryScanStatus.Running,
-          targetsScannedCount: 0,
-          certificatesFoundCount: 0,
-          installationsFoundCount: 0
-        },
-        tx
-      );
-
-      await pkiDiscoveryConfigDAL.updateById(
-        discoveryId,
-        {
-          lastScanStatus: PkiDiscoveryScanStatus.Running,
-          lastScanJobId: history.id
-        },
-        tx
-      );
-
-      return history;
-    });
-    scanHistoryId = scanHistory.id;
+    scanHistoryId = await startScanRun(discoveryId, startedAt, deps);
 
     const effectiveGatewayId = gatewayPoolService
       ? await gatewayPoolService.resolveEffectiveGatewayId({
@@ -144,7 +109,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
       gatewayName = gw?.name;
     }
 
-    const targetConfig = discoveryConfig.targetConfig as TPkiDiscoveryTargetConfig;
+    const targetConfig = discoveryConfig.targetConfig as TNetworkTargetConfig;
     const hasGateway = !!effectiveGatewayId;
     const targets = await resolveTargets(targetConfig, hasGateway);
 
@@ -254,32 +219,19 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
         const lastError = lastFailedResult?.error ? ` Last error: ${lastFailedResult.error}` : "";
         const cbErrorMessage = `Gateway connection failed to reach target network. Check that the gateway is online and can reach the target network.${lastError}`;
 
-        await pkiDiscoveryConfigDAL.transaction(async (tx) => {
-          if (scanHistoryId) {
-            await pkiDiscoveryScanHistoryDAL.updateById(
-              scanHistoryId,
-              {
-                status: PkiDiscoveryScanStatus.Failed,
-                completedAt,
-                targetsScannedCount: results.length,
-                certificatesFoundCount: 0,
-                installationsFoundCount: 0,
-                errorMessage: cbErrorMessage
-              },
-              tx
-            );
-          }
-
-          await pkiDiscoveryConfigDAL.updateById(
+        await finishScanRun(
+          {
             discoveryId,
-            {
-              lastScanStatus: PkiDiscoveryScanStatus.Failed,
-              lastScannedAt: completedAt,
-              lastScanMessage: truncateString(cbErrorMessage, DB_SHORT_VARCHAR_LIMIT)
-            },
-            tx
-          );
-        });
+            scanHistoryId,
+            status: PkiDiscoveryScanStatus.Failed,
+            completedAt,
+            targetsScannedCount: results.length,
+            certificatesFoundCount: 0,
+            installationsFoundCount: 0,
+            errorMessage: cbErrorMessage
+          },
+          deps
+        );
 
         return;
       }
@@ -299,14 +251,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
 
     logger.info({ discoveryId, scannedCount: results.length }, "TLS scans completed, processing results");
 
-    const configStillExists = await pkiDiscoveryConfigDAL.findById(discoveryId);
-    if (!configStillExists) {
-      logger.warn({ discoveryId }, "Discovery config was deleted during scan, aborting result processing");
-      if (scanHistoryId) {
-        await pkiDiscoveryScanHistoryDAL.deleteById(scanHistoryId);
-      }
-      return;
-    }
+    if (await discardScanRunIfDeleted(discoveryId, scanHistoryId, deps)) return;
 
     const uniqueCertificateIds = new Set<string>();
     const uniqueInstallationIds = new Set<string>();
@@ -448,58 +393,37 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
       errorMessage = `${certParseErrors} certificate(s) could not be parsed: ${scanErrors.join("; ")}`;
     }
 
-    await pkiDiscoveryConfigDAL.transaction(async (tx) => {
-      if (scanHistoryId) {
-        await pkiDiscoveryScanHistoryDAL.updateById(
-          scanHistoryId,
-          {
-            status: finalStatus,
-            completedAt,
-            targetsScannedCount: targets.length,
-            certificatesFoundCount: uniqueCertificateIds.size,
-            installationsFoundCount: uniqueInstallationIds.size,
-            errorMessage
-          },
-          tx
-        );
-      }
-
-      await pkiDiscoveryConfigDAL.updateById(
+    await finishScanRun(
+      {
         discoveryId,
-        {
-          lastScanStatus: finalStatus,
-          lastScannedAt: completedAt,
-          lastScanMessage: truncateString(errorMessage, DB_SHORT_VARCHAR_LIMIT)
-        },
-        tx
-      );
-    });
+        scanHistoryId,
+        status: finalStatus,
+        completedAt,
+        targetsScannedCount: targets.length,
+        certificatesFoundCount: uniqueCertificateIds.size,
+        installationsFoundCount: uniqueInstallationIds.size,
+        errorMessage
+      },
+      deps
+    );
 
     const durationMs = completedAt.getTime() - startedAt.getTime();
     const durationSec = (durationMs / 1000).toFixed(1);
 
-    if (telemetryService) {
-      // the scan already committed as completed, so reporting must not be able to mark it failed
-      try {
-        const project = await projectDAL.findOne({ id: discoveryConfig.projectId });
-        if (project) {
-          await telemetryService.sendPostHogEvents({
-            event: PostHogEventTypes.PkiDiscoveryScanCompleted,
-            distinctId: `platform/${discoveryConfig.projectId}`,
-            organizationId: project.orgId,
-            properties: {
-              orgId: project.orgId,
-              projectId: discoveryConfig.projectId,
-              status: finalStatus,
-              certificatesFound: uniqueCertificateIds.size,
-              installationsFound: uniqueInstallationIds.size,
-              durationMs
-            }
-          });
-        }
-      } catch (telemetryError) {
-        logger.error(telemetryError, `Failed to send PKI discovery scan telemetry for discovery ${discoveryId}`);
-      }
+    const project = telemetryService
+      ? await projectDAL.findOne({ id: discoveryConfig.projectId }).catch(() => undefined)
+      : undefined;
+    if (project) {
+      await sendScanCompletedTelemetry(telemetryService, {
+        discoveryId,
+        discoveryType: PkiDiscoveryType.Network,
+        projectId: discoveryConfig.projectId,
+        orgId: project.orgId,
+        status: finalStatus,
+        certificatesFound: uniqueCertificateIds.size,
+        installationsFound: uniqueInstallationIds.size,
+        durationMs
+      });
     }
 
     logger.info(
@@ -529,37 +453,12 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
       `PKI discovery scan failed after ${durationSec}s`
     );
 
-    const rawErrorMessage = error instanceof Error ? error.message : "Unknown error";
-    const truncatedCatchErrorMessage = truncateString(rawErrorMessage, DB_SHORT_VARCHAR_LIMIT);
-
-    await pkiDiscoveryConfigDAL.transaction(async (tx) => {
-      if (scanHistoryId) {
-        await pkiDiscoveryScanHistoryDAL.updateById(
-          scanHistoryId,
-          {
-            status: PkiDiscoveryScanStatus.Failed,
-            completedAt: new Date(),
-            errorMessage: truncatedCatchErrorMessage
-          },
-          tx
-        );
-      }
-
-      await pkiDiscoveryConfigDAL.updateById(
-        discoveryId,
-        {
-          lastScanStatus: PkiDiscoveryScanStatus.Failed,
-          lastScanMessage: truncatedCatchErrorMessage
-        },
-        tx
-      );
-    });
-
+    await failScanRun(discoveryId, scanHistoryId, error, deps);
     throw error;
   }
 };
 
-type TKmsEncryptor = (data: { plainText: Buffer }) => Promise<{ cipherTextBlob: Buffer }>;
+export type TKmsEncryptor = (data: { plainText: Buffer }) => Promise<{ cipherTextBlob: Buffer }>;
 
 const processEndpointResult = async (
   result: TScanEndpointResult,
@@ -677,10 +576,10 @@ const processEndpointResult = async (
 type TProcessDiscoveredCertDeps = {
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
-  kmsEncryptor: (data: { plainText: Buffer }) => Promise<{ cipherTextBlob: Buffer }>;
+  kmsEncryptor: TKmsEncryptor;
 };
 
-const processDiscoveredCertificate = async (
+export const processDiscoveredCertificate = async (
   certResult: TScanCertificateResult,
   projectId: string,
   deps: TProcessDiscoveredCertDeps,
