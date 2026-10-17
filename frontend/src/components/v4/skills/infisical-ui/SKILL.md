@@ -10,6 +10,8 @@ v4 is the Infisical 2.0 component source of truth. It is incubating. Product cod
 - Add a primitive with `npx shadcn@latest add <name> -y` from `frontend/`. `components.json` already points at `src/components/v4` and the Radix Nova style. Do not run `shadcn init`.
 - Restyle with `tokens.json` and `v4.css`. Do not hard-code hex, palette classes, or a fixed radius. Square corners are the default (`--corners: 0`).
 - The docs chrome is `/design-system`. Match its layout (56/64px header, 288px sidebar, 640px article, preview frame). Brand tokens override shadcn type, color, and radius.
-- Orgs have no avatar.
+- Orgs have no avatar or icon anywhere.
+- Read [`DESIGN.md`](../../DESIGN.md) for the brand book and [`docs/`](../../docs/README.md) for each component's guidelines and v4 status. Guidelines marked not yet implemented describe the target; build them on the shadcn primitives, not as a separate bundle.
+- Icons are path data in `assets/icons/icons.json`; the mark and wordmark are in `assets/logos`.
 - After UI edits, run `npm run lint` in `frontend/` and fix errors in files you touched.
 - The official shadcn MCP server reads this registry once `registry.json` is built and hosted. Do not fork the MCP server.
