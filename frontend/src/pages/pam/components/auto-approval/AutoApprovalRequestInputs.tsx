@@ -1,7 +1,7 @@
 import { Field, FieldContent, FieldDescription, FieldLabel, Input } from "@app/components/v3";
 import {
-  TAutoApprovalInputValue,
-  TAutoApprovalInputDetails
+  TAutoApprovalInputDetails,
+  TAutoApprovalInputValue
 } from "@app/hooks/api/approvalPolicies";
 
 export const getInputKey = (input: { connectionId: string; subject: string }) =>

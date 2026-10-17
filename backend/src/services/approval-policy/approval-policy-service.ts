@@ -2568,9 +2568,7 @@ export const approvalPolicyServiceFactory = ({
 
     if (steps.length === 0) return { steps: [], autoApprovalInputs: [] };
 
-    const autoApprovalInputs = policy
-      ? await $getAutoApprovalInputs(policyType, projectId, policy.id, inputs)
-      : [];
+    const autoApprovalInputs = policy ? await $getAutoApprovalInputs(policyType, projectId, policy.id, inputs) : [];
 
     const approvers = steps.flatMap((step) => step.approvers);
     const userIds = approvers.filter((a) => a.type === ApproverType.User).map((a) => a.id);

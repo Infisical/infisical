@@ -275,7 +275,9 @@ export const RequestAccessSheet = ({
               passed: rule.conditions.filter((condition) => condition.passed).length
             }))
             .sort((a, b) => a.failed - b.failed || b.passed - a.passed)[0]?.rule;
-          const firstFailure = closestRule?.conditions.find((condition) => !condition.passed)?.reason;
+          const firstFailure = closestRule?.conditions.find(
+            (condition) => !condition.passed
+          )?.reason;
 
           let text = isCredentialRequest
             ? "Credential access request submitted"

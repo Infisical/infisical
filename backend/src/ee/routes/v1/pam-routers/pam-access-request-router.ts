@@ -12,9 +12,9 @@ import {
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
 import {
+  AutoApprovalInputDetailsSchema,
   AutoApprovalInputValuesSchema,
-  AutoApprovalOutcomeSchema,
-  AutoApprovalInputDetailsSchema
+  AutoApprovalOutcomeSchema
 } from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import { parsePamAccessDuration } from "@app/services/approval-policy/pam-access/pam-access-policy-fns";
 import { AuthMode } from "@app/services/auth/auth-type";

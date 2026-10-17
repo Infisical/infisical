@@ -574,6 +574,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
   [AppConnection.Daytona]: TDaytonaConnectionOption;
-  [AppConnection.S3Compatible]: TS3CompatibleConnectionOption
+  [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
   [AppConnection.Jira]: TJiraConnectionOption;
 };

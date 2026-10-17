@@ -13,9 +13,9 @@ import { ApprovalPolicyScope, ApproverType, EnforcementLevel } from "./approval-
 import {
   AutoApprovalConfigResponseSchema,
   AutoApprovalConfigSchema,
+  AutoApprovalInputDetailsSchema,
   AutoApprovalInputValuesSchema,
-  AutoApprovalOutcomeSchema,
-  AutoApprovalInputDetailsSchema
+  AutoApprovalOutcomeSchema
 } from "./auto-approval/auto-approval-schemas";
 
 const ApprovalPolicyStepSchema = z.object({
