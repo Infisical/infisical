@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "resizable",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@infisical/infisical-base"
+  ],
+  "dependencies": [
+    "cn@^0.4.0",
+    "react-resizable-panels@^4.14.3"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/resizable.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/resizable.tsx",
+      "content": "import * as ResizablePrimitive from \"react-resizable-panels\";\nimport { cn } from \"cn\";\n\nimport styles from \"./resizable.module.css\";\n\nfunction ResizablePanelGroup({ className, ...props }: ResizablePrimitive.GroupProps) {\n  return (\n    <ResizablePrimitive.Group\n      data-slot=\"resizable-panel-group\"\n      data-orientation={props.orientation ?? \"horizontal\"}\n      className={cn(\n        styles.group,\n        \"flex h-full w-full aria-[orientation=vertical]:flex-col\",\n        className\n      )}\n      {...props}\n    />\n  );\n}\n\nfunction ResizablePanel({ ...props }: ResizablePrimitive.PanelProps) {\n  return (\n    <ResizablePrimitive.Panel data-slot=\"resizable-panel\" className={styles.panel} {...props} />\n  );\n}\n\nfunction ResizableHandle({\n  withHandle,\n  className,\n  ...props\n}: ResizablePrimitive.SeparatorProps & {\n  withHandle?: boolean;\n}) {\n  return (\n    <ResizablePrimitive.Separator\n      data-slot=\"resizable-handle\"\n      className={cn(\n        styles.handle,\n        \"w-px aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:w-full\",\n        className\n      )}\n      {...props}\n    >\n      {withHandle && <div className={styles.grip} />}\n    </ResizablePrimitive.Separator>\n  );\n}\n\nexport { ResizableHandle, ResizablePanel, ResizablePanelGroup };\n"
+    },
+    {
+      "path": "src/components/v4/ui/resizable.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/resizable.module.css",
+      "content": ".group {\n  overflow: hidden;\n  background: var(--v4-pop);\n  border: var(--v4-size-control-border) solid var(--v4-line);\n  border-radius: calc(var(--v4-radius-panel) * var(--corners));\n}\n.panel {\n  background: var(--v4-pop);\n}\n.handle {\n  position: relative;\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  background: var(--v4-line);\n  outline: none;\n}\n.handle:is(:hover, [data-separator=\"hover\"], [data-separator=\"active\"]) {\n  background: var(--v4-faint);\n}\n.handle:focus-visible {\n  outline: var(--v4-size-focus-ring) solid var(--v4-ink);\n  outline-offset: calc(-1 * var(--v4-size-focus-ring));\n}\n.grip {\n  z-index: 1;\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  gap: var(--v4-space-2);\n  width: var(--v4-space-12);\n  height: var(--v4-space-24);\n  background: var(--v4-pop);\n  border: var(--v4-size-control-border) solid var(--v4-line);\n  border-radius: calc(var(--v4-radius-control) * var(--corners));\n  color: var(--v4-faint);\n}\n.grip::before,\n.grip::after {\n  content: \"\";\n  width: var(--v4-space-2);\n  height: var(--v4-space-8);\n  border-radius: var(--v4-space-2);\n  background: currentColor;\n}\n.handle[aria-orientation=\"horizontal\"] .grip {\n  width: var(--v4-space-24);\n  height: var(--v4-space-12);\n  flex-direction: column;\n}\n.handle[aria-orientation=\"horizontal\"] .grip::before,\n.handle[aria-orientation=\"horizontal\"] .grip::after {\n  width: var(--v4-space-8);\n  height: var(--v4-space-2);\n}\n"
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+.material {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  color: var(--v4-on-accent);
+  background-color: var(--v4-accent);
+  background-clip: border-box;
+  background-origin: border-box;
+  background-repeat: no-repeat;
+  background-image: linear-gradient(180deg, var(--v4-button-face-start), var(--v4-button-face-end));
+  box-shadow:
+    inset 0 -1.5px 2px 0 var(--v4-button-bloom),
+    inset 0 0 10px 0 var(--v4-button-glow),
+    inset 0 0 8px 0 var(--v4-button-glow);
+  translate: none;
+  transition: box-shadow var(--v4-duration-moderate) var(--v4-ease-fade);
+}
+@media (hover: hover) {
+  .material:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-image: linear-gradient(
+      180deg,
+      var(--v4-button-hover-start),
+      var(--v4-button-hover-end)
+    );
+    box-shadow:
+      inset 0 -0.5px 1px 0 var(--v4-button-hover-bloom),
+      inset 0 -1px 3px 0 var(--v4-button-hover-bloom),
+      inset 0 -1.5px 5px 0 var(--v4-button-hover-bloom-soft),
+      inset 0 0 12px 0 var(--v4-button-hover-glow),
+      inset 0 0 10px 0 var(--v4-button-hover-glow);
+  }
+}
+.material:active:not(:disabled):not([aria-disabled="true"]) {
+  background-image: linear-gradient(
+    180deg,
+    var(--v4-button-press-start),
+    var(--v4-button-press-end)
+  );
+  box-shadow:
+    inset 0 -1.5px 2px 0 var(--v4-button-bloom),
+    inset 0 0 10px 0 var(--v4-button-glow),
+    inset 0 0 8px 0 var(--v4-button-glow);
+  transition-duration: 0ms;
+}
+.material:focus-visible {
+  outline: 2px solid var(--v4-ink);
+  outline-offset: 2px;
+}
+.material:disabled,
+.material[aria-disabled="true"]:not([aria-busy="true"]) {
+  background-color: var(--v4-tint);
+  background-image: none;
+  box-shadow: none;
+  transition-duration: 0ms;
+  color: var(--v4-muted);
+  opacity: 1;
+}
+.pending[data-v4-button] {
+  cursor: progress;
+}
+.pendable {
+  position: relative;
+}
+.labelGroup {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  min-width: 0;
+}
+.progress {
+  flex-shrink: 0;
+  visibility: hidden;
+}
+[data-v4-button] .progress[data-slot="button-progress"][aria-hidden="true"] {
+  width: var(--v4-space-12);
+  height: var(--v4-space-6);
+}
+.pendable > .progress {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+}
+.pendable[data-leading-icon] > .progress {
+  left: calc(var(--v4-action-inset) + var(--v4-action-icon-size) / 2);
+}
+.pending.pendable:not([data-leading-icon]) > .labelGroup,
+.pending.pendable[data-leading-icon] > .labelGroup > [data-button-icon] {
+  opacity: 0;
+}
+.progress[data-active] {
+  visibility: visible;
+}
+.progress:not([data-active]) rect {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .material {
+    transition-duration: 0ms;
+  }
+}
+@media (forced-colors: active) {
+  .material:hover:not(:disabled):not([aria-disabled="true"]),
+  .material:active:not(:disabled):not([aria-disabled="true"]),
+  .material {
+    background: ButtonFace;
+    box-shadow: none;
+    transition-duration: 0ms;
+    color: ButtonText;
+    border: 1px solid ButtonText;
+    forced-color-adjust: auto;
+  }
+  .material:disabled,
+  .material[aria-disabled="true"]:not([aria-busy="true"]) {
+    background: ButtonFace;
+    color: GrayText;
+    border-color: GrayText;
+  }
+  .material:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+.neutralSelection.neutralSelection:is(
+    [aria-pressed="true"],
+    [data-state="on"],
+    [aria-current="page"]
+  ),
+.neutralSelection.neutralSelection:is(
+    [aria-pressed="true"],
+    [data-state="on"],
+    [aria-current="page"]
+  ):hover {
+  background-color: var(--v4-selected-surface);
+  color: var(--v4-selected-ink);
+  border-color: var(--v4-selected-border);
+}
+.paintTransition {
+  transition-property: background-color, color, border-color, text-decoration-color;
+  transition-duration: var(--v4-duration-fast);
+  transition-timing-function: var(--v4-ease-standard);
+}
+.link {
+  color: var(--v4-link);
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+@media (hover: hover) {
+  .link:hover:not(:disabled, [aria-disabled="true"]) {
+    text-decoration-color: currentColor;
+  }
+}
+.link:focus-visible {
+  text-decoration-color: currentColor;
+}

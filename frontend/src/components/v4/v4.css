@@ -1,0 +1,545 @@
+@import "./tokens.generated.css";
+@reference "tailwindcss";
+@reference "tw-animate-css";
+@source "./ui";
+@source "../../pages/design-system";
+
+.v4 {
+  @tailwind utilities source(none);
+}
+
+/* Register utility names without changing the existing product theme values. */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+@font-face {
+  font-family: Archivo;
+  src: url("./fonts/Archivo-Latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Archivo;
+  src: url("./fonts/Archivo-Italic-Latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./fonts/GeistMono-Latin.woff2") format("woff2");
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+.v4 {
+  --default-transition-duration: var(--v4-duration-fast);
+  --default-transition-timing-function: var(--v4-ease-fade);
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --card: var(--color-card);
+  --card-foreground: var(--color-card-foreground);
+  --popover: var(--color-popover);
+  --popover-foreground: var(--color-popover-foreground);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-secondary);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-foreground);
+  --destructive: var(--color-destructive);
+  --destructive-foreground: var(--color-destructive-foreground);
+  --border: var(--color-border);
+  --input: var(--color-input);
+  --ring: var(--color-ring);
+  --sidebar: var(--color-sidebar);
+  --sidebar-foreground: var(--color-sidebar-foreground);
+  --sidebar-primary: var(--color-sidebar-primary);
+  --sidebar-primary-foreground: var(--color-sidebar-primary-foreground);
+  --sidebar-accent: var(--color-sidebar-accent);
+  --sidebar-accent-foreground: var(--color-sidebar-accent-foreground);
+  --sidebar-border: var(--color-sidebar-border);
+  --sidebar-ring: var(--color-sidebar-ring);
+  --chart-1: var(--color-chart-1);
+  --chart-2: var(--color-chart-2);
+  --chart-3: var(--color-chart-3);
+  --chart-4: var(--color-chart-4);
+  --chart-5: var(--color-chart-5);
+  --radius: var(--radius-lg);
+  --corners: var(--v4-corners);
+  --radius-xs: calc(var(--v4-radius-xs) * var(--corners));
+  --radius-sm: calc(var(--v4-radius-sm) * var(--corners));
+  --radius-md: calc(var(--v4-radius-control) * var(--corners));
+  --radius-lg: calc(var(--v4-radius-control) * var(--corners));
+  --radius-xl: calc(var(--v4-radius-card) * var(--corners));
+  --radius-2xl: calc(var(--v4-radius-card) * var(--corners));
+  --radius-3xl: calc(var(--v4-radius-card) * var(--corners));
+  --radius-4xl: calc(var(--v4-radius-card) * var(--corners));
+  --color-background: #fbfbf9;
+  --color-foreground: #010101;
+  --color-card: #fbfbf9;
+  --color-card-foreground: #010101;
+  --color-popover: var(--v4-pop);
+  --color-popover-foreground: #010101;
+  --color-primary: #010101;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f0ea;
+  --color-secondary-foreground: #010101;
+  --color-muted: #f1f0ea;
+  --color-muted-foreground: #565654;
+  --color-accent: #eeede6;
+  --color-accent-foreground: #010101;
+  --color-destructive: #c0231b;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #d8d8d4;
+  --color-input: #b0b0a9;
+  --color-ring: #010101;
+  --color-sidebar: #f1f0ea;
+  --color-sidebar-foreground: #010101;
+  --color-sidebar-primary: #010101;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #e6e5e0;
+  --color-sidebar-accent-foreground: #010101;
+  --color-sidebar-border: #d8d8d4;
+  --color-sidebar-ring: #010101;
+  --color-chart-1: #010101;
+  --color-chart-2: #565654;
+  --color-chart-3: #e3ef59;
+  --color-chart-4: #2b5945;
+  --color-chart-5: #c0231b;
+  --v4-accent: #e3ef59;
+  --v4-accent-2: #d3de42;
+  --v4-on-accent: #010101;
+  --v4-accent-wash: #f7facc;
+  --v4-accent-fg: #010101;
+  --v4-frame: #010101;
+  --v4-paper: #f4f3ee;
+  --v4-faint: #8e9291;
+  --v4-text2: #2f3234;
+  --v4-ok: #2b5945;
+  --v4-warn: #7a5300;
+  --v4-bad: #c0231b;
+  --v4-info: #1f4e79;
+  --v4-scrim: rgba(1, 1, 1, 0.38);
+  --v4-sidebar-current: #d9d8d3;
+  color-scheme: light;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  font-family: var(--v4-font-sans);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+}
+
+.v4[data-theme="dark"] {
+  color-scheme: dark;
+  --corners: var(--v4-corners);
+  --radius-xs: calc(var(--v4-radius-xs) * var(--corners));
+  --radius-sm: calc(var(--v4-radius-sm) * var(--corners));
+  --radius-md: calc(var(--v4-radius-control) * var(--corners));
+  --radius-lg: calc(var(--v4-radius-control) * var(--corners));
+  --radius-xl: calc(var(--v4-radius-card) * var(--corners));
+  --radius-2xl: calc(var(--v4-radius-card) * var(--corners));
+  --radius-3xl: calc(var(--v4-radius-card) * var(--corners));
+  --radius-4xl: calc(var(--v4-radius-card) * var(--corners));
+  --color-background: #0b0b0b;
+  --color-foreground: #f1f0ea;
+  --color-card: #0b0b0b;
+  --color-card-foreground: #f1f0ea;
+  --color-popover: var(--v4-pop);
+  --color-popover-foreground: #f1f0ea;
+  --color-primary: #f1f0ea;
+  --color-primary-foreground: #010101;
+  --color-secondary: #1c1c1c;
+  --color-secondary-foreground: #f1f0ea;
+  --color-muted: #1c1c1c;
+  --color-muted-foreground: #b0b0a9;
+  --color-accent: #262626;
+  --color-accent-foreground: #f1f0ea;
+  --color-destructive: #ff5a4f;
+  --color-destructive-foreground: #010101;
+  --color-border: #2f3234;
+  --color-input: #3f4245;
+  --color-ring: #f1f0ea;
+  --color-sidebar: #010101;
+  --color-sidebar-foreground: #f1f0ea;
+  --color-sidebar-primary: #f1f0ea;
+  --color-sidebar-primary-foreground: #010101;
+  --color-sidebar-accent: #1c1c1c;
+  --color-sidebar-accent-foreground: #f1f0ea;
+  --color-sidebar-border: #1e2022;
+  --color-sidebar-ring: #f1f0ea;
+  --color-chart-1: #f1f0ea;
+  --color-chart-2: #b0b0a9;
+  --color-chart-3: #e7f256;
+  --color-chart-4: #8fc7a4;
+  --color-chart-5: #ff5a4f;
+  --v4-accent: #e7f256;
+  --v4-accent-2: #d5e03a;
+  --v4-on-accent: #010101;
+  --v4-accent-wash: #1c1e10;
+  --v4-accent-fg: #e7f256;
+  --v4-frame: #010101;
+  --v4-paper: #121212;
+  --v4-faint: #8e9291;
+  --v4-text2: #d8d8d4;
+  --v4-ok: #8fc7a4;
+  --v4-warn: #e8c26a;
+  --v4-bad: #ff5a4f;
+  --v4-info: #8fb4de;
+  --v4-scrim: rgba(0, 0, 0, 0.62);
+  --v4-sidebar-current: #2c2c2b;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  font-family: var(--v4-font-sans);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+}
+
+.v4 :where(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit;
+}
+
+.v4 :where(code, kbd, pre, .font-mono) {
+  font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+
+/* Every element declares its own colour, so a hovered ancestor does not light up the scrollers inside it. */
+:where(.v4),
+:where(.v4) :where(*) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--v4-scroll-thumb) transparent;
+}
+:where(.v4) :where(*):hover {
+  scrollbar-color: var(--v4-scroll-thumb-hover) transparent;
+}
+/* Chrome 121+ ignores ::-webkit-scrollbar once scrollbar-color is set, so only older Safari reads this. */
+@supports not (scrollbar-color: red red) {
+  :where(.v4) ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background: transparent;
+  }
+  :where(.v4) ::-webkit-scrollbar-thumb {
+    background: var(--v4-scroll-thumb);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 4px;
+  }
+  :where(.v4) ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--v4-scroll-thumb-hover);
+  }
+}
+
+/* Zero-specificity focus fallback: any rule a component or example writes wins over it. */
+:where(.v4)
+  :where(
+    :focus-visible:not(
+        [tabindex="-1"],
+        [role="dialog"],
+        [role="alertdialog"],
+        [role="menu"],
+        [role="menubar"],
+        [role="listbox"],
+        [data-slot$="-content"]
+      )
+  ) {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
+}
+:where(.v4)
+  :where(
+    [role="region"],
+    [role="tabpanel"],
+    [role="application"],
+    [role="tree"],
+    [role="grid"],
+    pre
+  ):where(:focus-visible) {
+  outline-color: var(--v4-focus-ring);
+  outline-offset: calc(-1 * var(--v4-size-focus-ring));
+}
+
+.v4 [data-v4-button][data-variant="destructive"] {
+  background: var(--v4-bad);
+  color: var(--color-destructive-foreground);
+}
+
+.v4 [data-v4-button][data-variant="destructive"]:hover:not(:disabled, [aria-disabled="true"]) {
+  background: var(--v4-bad-hover);
+}
+
+.v4 .v4-switcher-header,
+.v4 .v4-switcher-footer {
+  padding: var(--v4-space-12);
+}
+.v4 .v4-switcher-header {
+  border-bottom: 1px solid var(--v4-line);
+}
+.v4 .v4-switcher-footer {
+  border-top: 1px solid var(--v4-line);
+}
+.v4 .v4-switcher-description {
+  display: block;
+  color: var(--v4-muted);
+  font-size: var(--v4-type-small-font-size);
+}
+
+.v4 :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  padding: var(--v4-space-overlay-inset);
+  gap: var(--v4-space-content-group);
+}
+.v4
+  :is(
+    [data-slot="dialog-title"],
+    [data-slot="alert-dialog-title"],
+    [data-slot="sheet-title"],
+    [data-slot="drawer-title"]
+  ) {
+  font-family: var(--v4-type-title-font-family);
+  font-size: var(--v4-type-title-font-size);
+  line-height: var(--v4-type-title-line-height);
+  font-weight: var(--v4-type-title-font-weight);
+  letter-spacing: var(--v4-type-title-letter-spacing);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.v4
+  :is(
+    [data-slot="dialog-description"],
+    [data-slot="alert-dialog-description"],
+    [data-slot="sheet-description"],
+    [data-slot="drawer-description"],
+    [data-slot="popover-description"]
+  ) {
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+  color: var(--v4-muted);
+  overflow-wrap: anywhere;
+}
+.v4 :is([data-slot="dialog-header"], [data-slot="alert-dialog-header"]) {
+  gap: var(--v4-space-6);
+}
+.v4
+  :is(
+    [data-slot="dialog-header"]:has(~ [data-slot="dialog-close"]),
+    [data-slot="sheet-header"]:has(~ [data-slot="sheet-close"])
+  ) {
+  padding-inline-end: calc(var(--v4-space-overlay-inset) + var(--v4-size-nested-md));
+}
+.v4 :is([data-slot="dialog-footer"], [data-slot="alert-dialog-footer"]) {
+  margin: 0 calc(-1 * var(--v4-space-overlay-inset)) calc(-1 * var(--v4-space-overlay-inset));
+  padding: var(--v4-space-12) var(--v4-space-overlay-inset);
+  gap: var(--v4-space-8);
+  border-radius: 0 0 calc(var(--v4-radius-panel) * var(--corners))
+    calc(var(--v4-radius-panel) * var(--corners));
+}
+.v4 :is([data-slot="sheet-content"], [data-slot="drawer-content"]) {
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+  max-height: 100dvh;
+  overflow-y: auto;
+  gap: var(--v4-space-content-group);
+}
+.v4
+  :is(
+    [data-slot="sheet-header"],
+    [data-slot="sheet-footer"],
+    [data-slot="drawer-header"],
+    [data-slot="drawer-footer"]
+  ) {
+  padding: var(--v4-space-overlay-inset);
+  gap: var(--v4-space-6);
+}
+.v4 :is([data-slot="sheet-footer"], [data-slot="drawer-footer"]) {
+  gap: var(--v4-space-8);
+}
+.v4 [data-slot="sheet-content"] {
+  border-radius: 0;
+}
+.v4 :is([data-slot="popover-title"]) {
+  font-family: var(--v4-type-title-sm-font-family);
+  font-size: var(--v4-type-title-sm-font-size);
+  line-height: var(--v4-type-title-sm-line-height);
+  font-weight: var(--v4-type-title-sm-font-weight);
+  letter-spacing: var(--v4-type-title-sm-letter-spacing);
+}
+.v4 :is([data-slot="command"]) {
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+}
+.v4 :is([data-slot="navigation-menu-list"]) {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--v4-space-4);
+}
+.v4 :is([data-slot="chart"], [data-slot="chart-tooltip"], [data-slot="chart-legend"]) {
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+  font-weight: var(--v4-type-caption-font-weight);
+  letter-spacing: var(--v4-type-caption-letter-spacing);
+}
+
+.v4 [data-command-dialog] {
+  padding: 0;
+}
+.v4 [data-slot="chart-tooltip"] {
+  border-radius: calc(var(--v4-radius-pop) * var(--corners));
+}
+
+.v4 [data-slot="drawer-content"][data-vaul-drawer-direction="bottom"] {
+  max-height: 80vh;
+  border-radius: calc(var(--v4-radius-panel) * var(--corners))
+    calc(var(--v4-radius-panel) * var(--corners)) 0 0;
+}
+.v4 [data-slot="drawer-content"][data-vaul-drawer-direction="top"] {
+  max-height: 80vh;
+  border-radius: 0 0 calc(var(--v4-radius-panel) * var(--corners))
+    calc(var(--v4-radius-panel) * var(--corners));
+}
+.v4 [data-slot="drawer-content"][data-vaul-drawer-direction="left"] {
+  border-radius: 0 calc(var(--v4-radius-panel) * var(--corners))
+    calc(var(--v4-radius-panel) * var(--corners)) 0;
+}
+.v4 [data-slot="drawer-content"][data-vaul-drawer-direction="right"] {
+  border-radius: calc(var(--v4-radius-panel) * var(--corners)) 0 0
+    calc(var(--v4-radius-panel) * var(--corners));
+}
+
+.v4 :is([data-slot="sheet-body"], [data-slot="drawer-body"]) {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0 var(--v4-space-overlay-inset);
+}
+.v4
+  :is(
+    [data-slot="sheet-header"],
+    [data-slot="sheet-footer"],
+    [data-slot="drawer-header"],
+    [data-slot="drawer-footer"]
+  ) {
+  flex-shrink: 0;
+}
+
+.v4
+  :is(
+    [data-slot="sheet-content"]:has(> [data-slot="sheet-body"]),
+    [data-slot="drawer-content"]:has(> [data-slot="drawer-body"])
+  ) {
+  overflow: hidden;
+  gap: 0;
+}
+.v4
+  :is([data-slot="sheet-body"], [data-slot="drawer-body"]):not(
+    :has(
+      ~ :is(
+          [data-slot="sheet-body"],
+          [data-slot="drawer-body"],
+          [data-slot="sheet-footer"],
+          [data-slot="drawer-footer"]
+        )
+    )
+  ) {
+  padding-bottom: var(--v4-space-overlay-inset);
+}
+
+.v4 [data-slot="menubar"] {
+  height: auto;
+  min-height: var(--v4-size-control-default);
+  padding: var(--v4-space-control-slot-inset);
+  gap: var(--v4-space-control-slot-gap);
+}
+.v4 [data-slot="menubar-trigger"] {
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-type-label-font-size);
+  line-height: var(--v4-type-label-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+  letter-spacing: var(--v4-type-label-letter-spacing);
+  min-height: var(--v4-size-nested-default);
+  padding: var(--v4-space-2) var(--v4-space-8);
+  border-radius: calc(var(--v4-radius-control) * var(--corners));
+}
+
+.v4 [data-slot="chart-tooltip"] .font-mono {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v4 [data-slot="navigation-menu-content"][data-motion] {
+    animation: none;
+  }
+}
+
+/* tw-animate otherwise falls back to its own timing. Base layer, so an explicit duration-* or ease-* utility still wins. */
+@layer base {
+  .v4 [class*="animate-in"],
+  .v4 [class*="animate-out"] {
+    --tw-duration: var(--v4-duration-fast);
+    --tw-ease: var(--v4-ease-spring);
+  }
+}

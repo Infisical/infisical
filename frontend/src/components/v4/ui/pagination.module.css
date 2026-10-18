@@ -1,0 +1,90 @@
+.root {
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v4-space-8) var(--v4-space-16);
+  flex-wrap: wrap;
+  color: var(--v4-ink);
+}
+.range {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+  color: var(--v4-muted);
+  white-space: nowrap;
+}
+.controls {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-8) var(--v4-space-16);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.pageSize {
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+  display: flex;
+  gap: var(--v4-space-8);
+  align-items: center;
+  color: var(--v4-muted);
+}
+.content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--v4-space-4);
+  min-width: 0;
+  max-width: 100%;
+}
+.pageOf {
+  padding-inline: var(--v4-space-8);
+  color: var(--v4-muted);
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  white-space: nowrap;
+}
+.ellipsis {
+  display: flex;
+  width: var(--v4-size-control-sm);
+  height: var(--v4-size-control-sm);
+  align-items: center;
+  justify-content: center;
+  color: var(--v4-muted);
+}
+.ellipsis svg {
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+}
+@container (max-width: 479.98px) {
+  .step {
+    width: var(--v4-action-height);
+    padding-inline: 0;
+  }
+  .stepLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.unavailable {
+  color: var(--v4-faint);
+  cursor: not-allowed;
+}

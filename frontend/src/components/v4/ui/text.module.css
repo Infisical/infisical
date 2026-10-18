@@ -1,0 +1,148 @@
+.truncate {
+  display: inline-block;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.mono {
+  font-family: var(--v4-font-mono, monospace);
+}
+.measure {
+  position: absolute;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+  inset-inline-start: 0;
+}
+.collapse {
+  display: block;
+}
+.collapse[hidden] {
+  display: none;
+}
+.collapseInner {
+  min-height: 0;
+}
+.text {
+  margin: 0;
+  color: var(--v4-ink, var(--foreground));
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+}
+.small {
+  margin: 0;
+  color: var(--v4-text2, var(--muted-foreground));
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+}
+.muted {
+  color: var(--v4-muted, var(--muted-foreground));
+}
+.measurePage {
+  width: 100%;
+  max-width: var(--v4-size-measure-page);
+  margin-inline: auto;
+  padding: var(--v4-space-content-section) var(--v4-space-40);
+}
+.measureForm {
+  width: 100%;
+  max-width: var(--v4-size-measure-form);
+}
+@media (max-width: 640px) {
+  .measurePage {
+    padding: var(--v4-space-20) var(--v4-space-16);
+  }
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.inline {
+  display: flex;
+  min-width: 0;
+}
+.grid {
+  display: grid;
+  min-width: 0;
+}
+.stack > *,
+.inline > *,
+.grid > * {
+  min-width: 0;
+}
+.container {
+  width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  max-width: var(--v4-size-measure-page);
+}
+.measureProse {
+  width: 100%;
+  min-width: 0;
+  max-width: var(--v4-size-measure-prose);
+}
+.heading {
+  margin: 0;
+  color: var(--v4-ink, var(--foreground));
+  font-family: var(--v4-heading-family);
+  font-size: var(--v4-heading-size);
+  line-height: var(--v4-heading-line);
+  font-weight: var(--v4-heading-weight);
+  letter-spacing: var(--v4-heading-tracking);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.heading[data-size="page"] {
+  --v4-heading-family: var(--v4-type-title-lg-font-family);
+  --v4-heading-size: var(--v4-type-title-lg-font-size);
+  --v4-heading-line: var(--v4-type-title-lg-line-height);
+  --v4-heading-weight: var(--v4-type-title-lg-font-weight);
+  --v4-heading-tracking: var(--v4-type-title-lg-letter-spacing);
+}
+.heading[data-size="display"] {
+  --v4-heading-family: var(--v4-type-display-font-family);
+  --v4-heading-size: var(--v4-type-display-font-size);
+  --v4-heading-line: var(--v4-type-display-line-height);
+  --v4-heading-weight: var(--v4-type-display-font-weight);
+  --v4-heading-tracking: var(--v4-type-display-letter-spacing);
+}
+.heading[data-size="section"] {
+  --v4-heading-family: var(--v4-type-title-font-family);
+  --v4-heading-size: var(--v4-type-title-font-size);
+  --v4-heading-line: var(--v4-type-title-line-height);
+  --v4-heading-weight: var(--v4-type-title-font-weight);
+  --v4-heading-tracking: var(--v4-type-title-letter-spacing);
+}
+.heading[data-size="subsection"] {
+  --v4-heading-family: var(--v4-type-title-sm-font-family);
+  --v4-heading-size: var(--v4-type-title-sm-font-size);
+  --v4-heading-line: var(--v4-type-title-sm-line-height);
+  --v4-heading-weight: var(--v4-type-title-sm-font-weight);
+  --v4-heading-tracking: var(--v4-type-title-sm-letter-spacing);
+}
+.meta {
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+  font-weight: var(--v4-type-caption-font-weight);
+  letter-spacing: var(--v4-type-caption-letter-spacing);
+  font-variant-numeric: tabular-nums;
+  color: var(--v4-muted, var(--muted-foreground));
+}
+.meta.mono {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+}

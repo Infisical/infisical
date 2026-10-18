@@ -1,0 +1,919 @@
+{
+  "scope": "Authored v4 interfaces, documentation and examples. Product migration is outside this foundation.",
+  "verificationNote": "Each rule's detect field names who catches a break. lint rules are enforced by npm run ui:lint, which only lets its baseline shrink. test rules name the test that exercises them. review rules depend on a person or agent reading the change.",
+  "protectedContent": "Preserve code, commands, identifiers, protocol payloads, legal and license text, quoted material and user-entered values exactly. Prose rules do not rewrite their contents. Scope an exception to the exact element or data field; do not exempt its ordinary UI siblings. Never put real secrets in examples, diagnostics or captures.",
+  "rules": [
+    {
+      "id": "identity",
+      "title": "Preserve the Infisical identity",
+      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and the canonical soft corner scale. Use the shared lime Button finish for its default, primary and accent variants. Keep the global primary role ink and selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
+      "good": "One shared lime Button for the task's main action, with neutral alternatives and selection.",
+      "avoid": "A locally painted gradient, third font or pill-shaped control introduced by an example.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "Infisical tokens",
+        "url": "#colors"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "token-colors",
+      "title": "Paint with color tokens",
+      "instruction": "Take every color from a v4 token: the --v4-* custom properties or the Tailwind roles mapped onto them. A literal hex, rgb or hsl value, or a Tailwind palette class, bypasses both themes and the contrast pairs.",
+      "good": "bg-background text-muted-foreground, or var(--v4-scrim) for an overlay.",
+      "avoid": "bg-black/10 on a dialog overlay, or color: #fbfbf9 in a component stylesheet.",
+      "detect": {
+        "by": "lint",
+        "check": "raw-color"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "line-colored-borders",
+      "title": "Give every border a line color",
+      "instruction": "A border width utility (border, border-t, border-x and the rest) names its color in the same class string, usually a line token: border-[color:var(--v4-line)] or var(--v4-line-soft) for hairlines between rows. A bare border falls back to the global gray, which reads as a bright stripe in dark mode.",
+      "good": "border-t border-[color:var(--v4-line)] on a dialog footer.",
+      "avoid": "border-t alone on a footer, or border on a menubar with no color.",
+      "detect": {
+        "by": "lint",
+        "check": "bare-border"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "button-material",
+      "title": "Use the shared Button material",
+      "instruction": "For default, primary and accent Buttons, use the shared bright light neon lime face and its owned colored inset illumination in both themes. Keep the entire face light, all glow inside the control, paint below the label, the control stationary and keyboard focus separate. Do not add dark upper shading, narrow hard light rims, noise, patterns, outside or drop shadows, lift, scale or whole-button filters. Other component fills and neutral selection retain their own roles.",
+      "good": "A shared lime Save changes Button beside outline and ghost alternatives, with the same label while saving.",
+      "avoid": "A dark upper Button face, hard edge-light band, glow outside the control, local material replicas or lime paint on every selected row.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "Button material and states",
+        "url": "#button"
+      },
+      "category": "Visual",
+      "exceptions": "The canonical default, primary and accent Button material owns its colored inset glow. This exception does not authorize shadows on other primitives or caller-created material."
+    },
+    {
+      "id": "semantic-pairs",
+      "title": "Choose the role and its foreground",
+      "instruction": "Use semantic color pairs in both themes. Brand --v4-accent is distinct from the neutral shadcn bg-accent role.",
+      "good": "bg-primary with text-primary-foreground.",
+      "avoid": "A white label chosen by eye or a border token borrowed for body text.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "shadcn theming",
+        "url": "https://ui.shadcn.com/docs/theming"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "action-hierarchy",
+      "title": "Make the main action clear",
+      "instruction": "Give one action the strongest emphasis within an active task region. A dialog can have its own primary action. Use lower emphasis for alternatives and destructive treatment for a destructive consequence.",
+      "good": "Save with an outlined Cancel in the same form footer.",
+      "avoid": "Create, import, cancel and delete all competing at the strongest emphasis.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Interaction"
+    },
+    {
+      "id": "plain-task-copy",
+      "title": "Name the action and consequence",
+      "instruction": "In authored labels and operational feedback, name the action, object and result in sentence case with straight quotes, so people can predict the change. Keep the operation's name through the action, its confirmation and its result. Cut em dashes, promotional adjectives, three-beat slogans, setup-then-correct phrasing, decorative emoji and celebratory filler because they replace task information.",
+      "good": "Revoke token, then Token revoked. Clients using it can no longer authenticate.",
+      "avoid": "Submit or Get started, a Remove token action that reports Credential disconnected, or a celebration that only repeats the heading.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Copy",
+      "exceptions": "Preserve exact code, commands, identifiers, legal text, quotations, user-entered values and platform-owned terminology. The exception applies to those contents, not surrounding authored prose. Continue and Next may name step navigation."
+    },
+    {
+      "id": "data-states",
+      "title": "Distinguish empty, filtered and failed",
+      "instruction": "Distinguish first use, no matches, missing permission and request failure. Name the actual condition and offer its applicable recovery. A request failure must not become an empty collection.",
+      "good": "No secrets match these filters, with Clear filters.",
+      "avoid": "Create your first secret after a filtered request failed or a search returned no matches.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Copy",
+      "exceptions": "A purely decorative example explicitly labeled as such."
+    },
+    {
+      "id": "fields",
+      "title": "Keep the label visible",
+      "instruction": "Name each field with a short, persistent label in sentence case. Use the placeholder only for an example value, never as the label or as hidden instructions. Put instructions and constraints in associated helper text, put the correction beside the invalid field and pair invalid styling with that readable explanation.",
+      "good": "Project name above the input, with payments-api as the placeholder and helper text below.",
+      "avoid": "A placeholder as the only label, an uppercase PLEASE ENTER YOUR TOKEN NAME:, or a red border as the only error message.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Interaction",
+      "exceptions": "Proper nouns, abbreviations and exact identifiers such as JWT or CLIENT_ID."
+    },
+    {
+      "id": "overlays",
+      "title": "Keep the theme across portals",
+      "instruction": "Wrap the workbench in V4Scope. Let its portal container carry fonts, colors and corners outside the scroller.",
+      "good": "A dialog rendered through V4Scope's portal container keeps the workbench fonts, colors and corners.",
+      "avoid": "Adding v4 theme classes to document.body.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Interaction"
+    },
+    {
+      "id": "honest-contracts",
+      "title": "Prove the API and installation contract",
+      "instruction": "Read actual exports before copying an example. Report a missing capability instead of inventing a prop or duplicating a component. An installed primitive, a documented preview and a verified registry install are different claims.",
+      "good": "A real import, supported props, named limitations and a clean-consumer build.",
+      "avoid": "A ready badge inferred from a generated JSON file or a working-looking import for an unavailable component.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "shadcn registry items",
+        "url": "https://ui.shadcn.com/docs/registry/registry-item-json"
+      },
+      "category": "Agent docs"
+    },
+    {
+      "id": "structural-containers",
+      "title": "Do not turn every section into a card",
+      "category": "Visual",
+      "instruction": "Group a distinct task or resource when a container helps people identify it. Let headings, alignment and spacing separate ordinary subsections. Repeated identical boxes and nested cards around unrelated content hide which information belongs together.",
+      "good": "One settings group containing related fields, or aligned rows for comparable resources.",
+      "avoid": "A bordered box around every label/help pair or identical card layouts for unrelated tasks.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Repeated cards that represent actual distinct resources."
+    },
+    {
+      "id": "informative-decoration",
+      "title": "Decoration must carry information",
+      "category": "Visual",
+      "instruction": "Use numbering for a real sequence and icons for recognizable meaning. Remove section markers, icons and arrows that do not identify content or an available action. The same visual device on unrelated sections makes differences harder to see.",
+      "good": "Numbered steps in a setup wizard.",
+      "avoid": "01, 02, 03 on unrelated settings groups.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Explicit teaching diagrams and ordered procedures. Functional pagination, breadcrumb, hierarchy, disclosure and external-link arrows stay."
+    },
+    {
+      "id": "type-roles",
+      "title": "Use the declared type roles",
+      "category": "Visual",
+      "instruction": "For component chrome and app examples, use Archivo and Geist Mono according to the declared type roles. Use mono for literal machine text or an owned metadata role; whole explanatory paragraphs in mono flatten the reading hierarchy. Distinguish headings with the supported scale rather than arbitrary sizes, weight patches, gradient text or italic accent words.",
+      "good": "Archivo prose with a Geist Mono key, or the supported Meta mono role.",
+      "avoid": "A mono help paragraph, gradient-filled heading or uppercase micro-label added to manufacture hierarchy.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Preserve exact identifiers, source code, supported metadata roles and typography specimens demonstrating a token."
+    },
+    {
+      "id": "optical-alignment",
+      "title": "Align what the eye sees",
+      "category": "Visual",
+      "instruction": "Compare adjacent control boxes, text baselines and icon-to-label spacing in the actual rendered cluster. Equal CSS heights are the starting measurement, not proof of equal visual weight. Fix the owned recipe when peer controls drift; do not compensate with caller padding or transforms.",
+      "good": "One centrally owned icon alignment correction.",
+      "avoid": "A caller adding a different top: 1px patch on each screen.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Approved asymmetric artwork, not ordinary action icons."
+    },
+    {
+      "id": "purposeful-motion",
+      "title": "Motion must have a named purpose",
+      "category": "Visual",
+      "instruction": "When pointer hover identifies a row or card, keep its target stationary. Animate explicit properties only to show a named state change or origin. Moving targets impede pointer use; avoid hover lift, scale, added shadows, transition: all and delayed row entrances in a dense workbench.",
+      "good": "A stable row hover fill or the existing overlay transition tied to opening.",
+      "avoid": "A card lifting under the pointer or every table row sliding in on refresh.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Preserve canonical control states, reduced-motion-aware loaders and purposeful motion or data-visualization specimens. Document the local purpose."
+    },
+    {
+      "id": "named-transitions",
+      "title": "Name what transitions",
+      "instruction": "List the properties a transition animates. transition-all also animates layout, size and color changes that were never meant to move.",
+      "good": "transition-colors on a hover fill, or transition: transform on an indicator.",
+      "avoid": "transition-all on a Button, which animates its width when the label changes.",
+      "detect": {
+        "by": "lint",
+        "check": "transition-all"
+      },
+      "category": "Interaction"
+    },
+    {
+      "id": "motion-tokens",
+      "title": "Time motion with tokens",
+      "instruction": "Take every transition and animation duration and easing from the motion tokens. Pick the duration by the size of what moves and the easing by whether it moves or only fades. A literal 150ms or ease-out drifts from its neighbours and cannot be tuned in one place.",
+      "good": "duration-(--v4-duration-fast) on a menu opening, or transition: width var(--v4-duration-moderate) var(--v4-ease-standard) on the sidebar.",
+      "avoid": "duration-200 ease-in-out on a sheet, or transition: height 180ms cubic-bezier(0.3, 0, 0, 1) on a disclosure.",
+      "detect": {
+        "by": "lint",
+        "check": "motion-literal"
+      },
+      "exceptions": "A reduced-motion snap to 0ms. Looping loaders keep their own timing and mark each line with v4-check-ignore.",
+      "category": "Interaction"
+    },
+    {
+      "id": "example-isolation",
+      "title": "Docs must show the actual component",
+      "category": "Visual",
+      "instruction": "Render each example using only the shipped component styles and its explicit layout wrappers. It must keep the same component appearance when rendered alone and inside the workbench. Hidden documentation selectors must not supply a missing component design.",
+      "good": "Docs prose styles scoped outside example frames.",
+      "avoid": ".docs button { border-radius: 8px }.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Named frame/layout constraints surrounding the example, never styling its internal controls."
+    },
+    {
+      "id": "actionable-error",
+      "title": "Errors name the failed task and recovery",
+      "category": "Copy",
+      "instruction": "State what did not complete and the next available action beside the failed task. Preserve the draft or loaded records. Name a cause only when the host actually established it.",
+      "good": "Secret was not saved. Try again.",
+      "avoid": "Oops! Something went wrong.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Exact remote error details in a separate protected diagnostic area."
+    },
+    {
+      "id": "no-copy-echo",
+      "title": "Supporting text must add information",
+      "category": "Copy",
+      "instruction": "For notifications and helper text, add the consequence or next step instead of repeating the title. When completion is already visible in the active task, prefer one accessible in-place confirmation. Repeating the same result through a toast, banner and inline live region interrupts the next task.",
+      "good": "One Token revoked confirmation with Clients using it can no longer authenticate.",
+      "avoid": "Token revoked followed by Your token has been revoked, then a toast announcing it again.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Keep the only accessible status announcement. Toasts may report useful off-screen completion or feedback without an inline home; retain durable retry or undo where needed."
+    },
+    {
+      "id": "verbatim-values",
+      "title": "Protect exact values from editorial cleanup",
+      "category": "Copy",
+      "instruction": "Keep commands, identifiers, keys and payloads exact through copying, formatting and translation. Prose edits must not change their case, quotes, punctuation or whitespace.",
+      "good": "Copying API_KEY=demo_value unchanged.",
+      "avoid": "Sentence-casing the key or curling shell quotes.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "No secret-value rewrite; display masking is a separate presentation behavior."
+    },
+    {
+      "id": "pending-action",
+      "title": "Pending preserves context",
+      "category": "Interaction",
+      "instruction": "When asynchronous work begins, show a named pending state where its result will appear. Keep the idle action label and outer box, expose busy state and block repeated activation while focus stays put. Reserve the known content shape, and keep useful rows and drafts visible so the person can see what is still outstanding.",
+      "good": "Save stays visible with an internal spinner while the retained rows show a named pending cue.",
+      "avoid": "A blank result area, or a Save button replaced by Processing your request... that shrinks the control.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Progress copy outside the control and a dedicated cancelable long-running task view. Do not impose a universal delay threshold or minimum loading duration."
+    },
+    {
+      "id": "truthful-success",
+      "title": "Announce completion only after completion",
+      "category": "Interaction",
+      "instruction": "Wait for the actual request or clipboard promise to fulfill before claiming success. A click, dialog dismissal or entered code is not a confirmed result. On rejection, keep the draft and offer a real recovery.",
+      "good": "Show Copied after writeText resolves.",
+      "avoid": "Showing Copied before the promise settles.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Explicitly modeled optimistic UI with rollback and a pending indicator, not a false success notification.",
+      "source": {
+        "title": "MDN Clipboard.writeText",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText"
+      }
+    },
+    {
+      "id": "form-recovery",
+      "title": "Failed forms preserve recoverable work",
+      "category": "Interaction",
+      "instruction": "Keep entered values after a rejected submission. Identify the field or task that failed and associate its repair instruction with the actual control. The person should not need to reconstruct a valid draft.",
+      "good": "A failed save keeps the draft and associates the error.",
+      "avoid": "Closing and clearing the form on any response.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Sensitive inputs that an established security policy explicitly requires clearing, documented per field.",
+      "source": {
+        "title": "WCAG error identification",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/error-identification.html"
+      }
+    },
+    {
+      "id": "typed-round-trip",
+      "title": "Do not normalize identifiers or lose precision",
+      "category": "Interaction",
+      "instruction": "For adapters that display or edit numbers and identifiers, preserve the declared value type and units through edit and display. JavaScript numbers cannot represent every large integer exactly.",
+      "good": "An ID remains the string 000123.",
+      "avoid": "Number(id) producing 123.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Explicit format-only presentation with an unchanged underlying value.",
+      "source": {
+        "title": "MDN safe integers",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER"
+      }
+    },
+    {
+      "id": "destructive-confirmation",
+      "title": "Destructive actions expose the consequence",
+      "category": "Interaction",
+      "instruction": "For irreversible changes, provide reversal, checking or confirmation that fits the risk, and name the object affected. Do not add confirmation to every harmless save.",
+      "good": "Revoke production token with the access consequence.",
+      "avoid": "A generic Are you sure? that hides scope.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Reversible operations with a real tested undo path.",
+      "source": {
+        "title": "WCAG error prevention",
+        "url": "https://www.w3.org/WAI/WCAG21/Understanding/error-prevention-legal-financial-data"
+      }
+    },
+    {
+      "id": "picker-commit",
+      "title": "Navigation and selection are separate events",
+      "category": "Interaction",
+      "instruction": "Keep highlight, selected value and persisted result separate. State which supported event commits a choice and let the host own any subsequent write. Query changes and keyboard highlight must not silently save a value.",
+      "good": "Arrow keys move focus according to the chosen pattern without an unrelated network write.",
+      "avoid": "Opening a picker silently commits its first option.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Documented selection-follows-focus patterns where that behavior is intentional; network writes still require a deliberate contract.",
+      "source": {
+        "title": "APG combobox",
+        "url": "https://www.w3.org/WAI/ARIA/apg/patterns/combobox/"
+      }
+    },
+    {
+      "id": "semantic-control",
+      "title": "Preserve native semantics through composition",
+      "category": "Interaction",
+      "instruction": "Use a real button for an action and a real link for navigation. Custom asChild wrappers must spread required props and forward the DOM ref so focus, disabled state and event composition survive. Read each primitive's emitted attributes before changing its selectors, because not every active state uses data-state.",
+      "good": "asChild resolves to one actual link or button.",
+      "avoid": "An anchor wrapping a second interactive button, or a clickable div.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "A documented composite widget using its APG pattern.",
+      "source": {
+        "title": "Radix composition",
+        "url": "https://www.radix-ui.com/primitives/docs/guides/composition"
+      }
+    },
+    {
+      "id": "event-contract",
+      "title": "Callbacks fire for the documented change",
+      "category": "Interaction",
+      "instruction": "For controlled inputs and compound controls, state whether reselecting the current value emits a callback and whether programmatic updates do. Test that contract instead of letting wrappers duplicate effects.",
+      "good": "One user commit yields the one documented event.",
+      "avoid": "Trigger and item handlers both saving the same selection.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Deliberately distinct preview and commit events with separate names and examples."
+    },
+    {
+      "id": "inert-examples",
+      "title": "Examples are inert and contain no live secrets",
+      "category": "Interaction",
+      "instruction": "Use synthetic values and local state in examples and trial tasks. Label a simulated operation where needed. Never put credentials into logs, diagnostics or captures, and never imply a local mutation reached a server.",
+      "good": "A fake secret and a local simulated rejection.",
+      "avoid": "A demo wired to the current organization's delete endpoint.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "No live-write exemption in the workbench; separately authorized product tests belong elsewhere.",
+      "source": {
+        "title": "OWASP logging exclusions",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html"
+      }
+    },
+    {
+      "id": "label-in-name",
+      "title": "The visible label is part of the accessible name",
+      "category": "Accessibility",
+      "instruction": "For every control, make the spoken name contain the visible label text, and name icon-only actions by their purpose.",
+      "good": "Visible Save with the accessible name Save changes.",
+      "avoid": "Visible Save with aria-label=\"Confirm\".",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Symbolic labels whose meaning needs translation into words, documented in the component.",
+      "source": {
+        "title": "WCAG label in name",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html"
+      }
+    },
+    {
+      "id": "keyboard-path",
+      "title": "Every supported action has a keyboard path",
+      "category": "Accessibility",
+      "instruction": "For controls and composites, preserve the documented Radix and APG key behavior and test the whole task, including its escape paths.",
+      "good": "A row action reached by keyboard, or Tabs that select and focus the next trigger with the expected arrow key.",
+      "avoid": "A hover-only delete affordance.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Path-dependent drawing gestures with an equivalent keyboard operation; ordinary selection and deletion are never pointer-only exceptions.",
+      "source": {
+        "title": "Radix accessibility",
+        "url": "https://www.radix-ui.com/primitives/docs/overview/accessibility"
+      }
+    },
+    {
+      "id": "visible-focus",
+      "title": "Focus remains visible and unobscured",
+      "category": "Accessibility",
+      "instruction": "For every focusable example, keep a visible focus indicator and do not let sticky chrome completely cover the focused control. The Infisical target is fully visible focus where practical.",
+      "good": "Keyboard focus scrolls above the sticky footer.",
+      "avoid": "Setting outline: none with no replacement.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "None for removing focus indication; WCAG's minimum coverage criterion is weaker than the proposed product target.",
+      "source": {
+        "title": "WCAG focus not obscured",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html"
+      }
+    },
+    {
+      "id": "overlay-focus",
+      "title": "Dialog focus follows the workflow",
+      "category": "Accessibility",
+      "instruction": "For modal dialogs, move focus in, contain Tab navigation, close with Escape and restore focus to the opener or a logical successor.",
+      "good": "Deleting a row returns focus to the next row action.",
+      "avoid": "Focus falling to the document body.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "A documented next-step workflow that intentionally moves focus elsewhere.",
+      "source": {
+        "title": "APG modal dialog",
+        "url": "https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/"
+      }
+    },
+    {
+      "id": "rendered-contrast",
+      "title": "Measure rendered contrast",
+      "category": "Accessibility",
+      "instruction": "For text, meaningful control boundaries and icons, check the actual foreground and background combination in both themes, including opacity and portals. Use WCAG's applicable text thresholds and its 3:1 non-text threshold.",
+      "good": "A measured label over its composited surface.",
+      "avoid": "Declaring success from two uncomposited token values.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Criteria-defined exceptions such as inactive controls, not unlabelled low-emphasis active actions.",
+      "source": {
+        "title": "WCAG text contrast and non-text contrast",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html"
+      }
+    },
+    {
+      "id": "noncolor-state",
+      "title": "Color never carries the only state cue",
+      "category": "Accessibility",
+      "instruction": "For status, errors and selection, add a label, icon or structural cue so the information survives without its hue.",
+      "good": "An error icon plus associated error text.",
+      "avoid": "A red border as the only error cue.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Color samples whose purpose is to demonstrate color, with labels naming each sample.",
+      "source": {
+        "title": "WCAG use of color",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html"
+      }
+    },
+    {
+      "id": "reflow",
+      "title": "Reflow without losing operations",
+      "category": "Accessibility",
+      "instruction": "For layouts and examples, keep text and actions reachable at 320 CSS px and at 200% text zoom. Let inherently two-dimensional tables and code scroll locally instead of clipping the whole page.",
+      "good": "Form actions wrap, and table actions stay inside the table's scroller.",
+      "avoid": "Hiding the only action at a breakpoint.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Criterion-defined two-dimensional content, never the surrounding page shell.",
+      "source": {
+        "title": "WCAG reflow and resize text",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/reflow.html"
+      }
+    },
+    {
+      "id": "target-size",
+      "title": "Dense controls still have usable hit areas",
+      "category": "Accessibility",
+      "instruction": "For pointer targets, meet WCAG's 24 by 24 CSS pixel target or its spacing provisions. Prefer a 44px hit area for coarse-pointer actions without forcing 44px desktop rows.",
+      "good": "A compact icon with a larger clickable box that overlaps nothing.",
+      "avoid": "Adjacent 12px targets.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "WCAG's inline, equivalent, user-agent and essential cases; record which applies. The 44px preference is product guidance, not this AA criterion.",
+      "source": {
+        "title": "WCAG target size",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html"
+      }
+    },
+    {
+      "id": "reduced-motion",
+      "title": "Reduced motion keeps meaning",
+      "category": "Accessibility",
+      "instruction": "For animation and loaders, remove nonessential movement when the person asks for reduced motion, and keep the state and completion cues.",
+      "good": "A stable busy label or a restrained opacity cue.",
+      "avoid": "Disabling the only loading cue, or keeping a large slide because it is CSS-only.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Essential motion under the criterion; identify the mechanism. This criterion is AAA, while the product can adopt it voluntarily.",
+      "source": {
+        "title": "WCAG animation from interactions",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html"
+      }
+    },
+    {
+      "id": "authentication-assistance",
+      "title": "Let authentication tools do their job",
+      "category": "Accessibility",
+      "instruction": "For password, token and one-time code entry, allow paste and the applicable autocomplete, and keep the exact value. Do not force manual transcription as a styling or validation shortcut.",
+      "good": "Pasting a whole OTP fills its complete value.",
+      "avoid": "A split input that accepts only the first pasted digit.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Criteria-defined alternative mechanisms, explicitly documented. Do not infer that every arbitrary secret field should autofill credentials.",
+      "source": {
+        "title": "WCAG accessible authentication",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum"
+      }
+    },
+    {
+      "id": "catalog-identity",
+      "title": "Give each component one identity",
+      "category": "Agent docs",
+      "instruction": "For the registry and docs, keep item names unique and resolve docs and example metadata from the existing registry and catalog instead of a parallel handwritten list.",
+      "good": "One item generates navigation and the agent index.",
+      "avoid": "Three lists with different component counts.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Noninstallable foundation pages explicitly typed as documentation.",
+      "source": {
+        "title": "shadcn registry schema",
+        "url": "https://ui.shadcn.com/docs/registry/registry-json"
+      }
+    },
+    {
+      "id": "install-contract",
+      "title": "Declare the whole install contract",
+      "category": "Agent docs",
+      "instruction": "For local registry output, include the required npm dependencies, registry dependencies, targets, styles and support files, then test installation into a clean consumer.",
+      "good": "A local install includes its helper and preserves consumer instructions.",
+      "avoid": "Registry JSON that builds but imports a missing package.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Explicitly required host peers listed and checked before install, not hidden assumptions.",
+      "source": {
+        "title": "shadcn item schema",
+        "url": "https://ui.shadcn.com/docs/registry/registry-item-json"
+      }
+    },
+    {
+      "id": "docs-status-first",
+      "title": "State support before the first example",
+      "category": "Agent docs",
+      "instruction": "On agent component pages, put the actual import, runtime compatibility, support status and known limits before long examples, so an agent does not treat a planned component as usable.",
+      "good": "Planned; requires React 19; unavailable in this React 18 foundation.",
+      "avoid": "A working-looking import for the same item.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Conceptual pages with no import, explicitly typed as conceptual.",
+      "source": {
+        "title": "shadcn item metadata",
+        "url": "https://ui.shadcn.com/docs/registry/registry-item-json#meta"
+      }
+    },
+    {
+      "id": "progressive-docs",
+      "title": "Keep the agent entry point short",
+      "category": "Agent docs",
+      "instruction": "In the Infisical UI skill, give task triggers, reading order, component lookup and the real checks, then link to detail. Do not repeat every component rule inside it.",
+      "good": "An entry point linking to the affected component pages.",
+      "avoid": "A giant skill that loads every page on every task.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "No arbitrary universal line limit; set the local budget from observed usefulness.",
+      "source": {
+        "title": "Agent Skills specification",
+        "url": "https://agentskills.io/specification"
+      }
+    },
+    {
+      "id": "executable-examples",
+      "title": "Examples prove supported APIs",
+      "category": "Agent docs",
+      "instruction": "In docs, compile, render and display the same example module against current exports. Do not keep a parallel snippet that drops required imports, invents props or changes fixture behavior. An attractive snippet is not evidence that the API exists.",
+      "good": "One imported example module rendered and shown as its raw source.",
+      "avoid": "A separate handwritten code block with an unsupported prop, or a visual textarea presented as a complete editor.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Explicitly labeled pseudocode outside copyable usage examples."
+    },
+    {
+      "id": "no-local-system-patches",
+      "title": "Fix repeated gaps in the foundation",
+      "category": "Agent docs",
+      "instruction": "When an agent using v4 in its allowed workbench finds a required style or state missing, record the gap and improve the component or token once. Do not hide the gap with caller restyling or another local wrapper.",
+      "good": "Add and document a justified reusable variant.",
+      "avoid": "Two examples independently overriding padding, color and focus rings.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Layout wrappers, not visual overrides; one-off specimen experiments explicitly marked noncanonical."
+    },
+    {
+      "id": "truthful-metrics",
+      "title": "Do not fabricate operational metrics",
+      "category": "Data",
+      "instruction": "Show measured operational values immediately with their real period, or label synthetic fixtures as example data. Count-up figures and tickers show invented intermediate values that people can misread. Do not invent customer counts, percentage lifts or trend arrows to populate a page.",
+      "good": "12 synchronized versions from the actual result on first paint, or a chart labelled Example data.",
+      "avoid": "A number animating through false values, made-up uptime or a trend with no measured comparison.",
+      "detect": {
+        "by": "review"
+      }
+    },
+    {
+      "id": "truthful-activity",
+      "title": "Do not invent activity or urgency",
+      "category": "Data",
+      "instruction": "Show an activity row only when a real event or explicitly synthetic fixture produced it. Explain an empty feed instead of filling it with fabricated recent actions or urgency.",
+      "good": "No activity yet, with the action that creates the first event.",
+      "avoid": "Fake people approving requests moments ago or an invented last-sync timestamp.",
+      "detect": {
+        "by": "review"
+      }
+    },
+    {
+      "id": "operational-layout",
+      "title": "Start with the current task",
+      "category": "Visual",
+      "instruction": "When the task compares resources, lead with the resources, relevant action and shared reading edge. Change the layout when content or interaction changes. Centered welcomes, large metric tiles and repeated icon-title-copy-action blocks can push the actual work below the first viewport.",
+      "good": "A connection list with aligned fields, a filter and Add connection visible before scrolling.",
+      "avoid": "A centered promotional hero followed by equal big-number tiles above the connection list.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Empty states, authentication and deliberate brand or layout specimens may center. There is no universal card-count limit or required layout variation."
+    },
+    {
+      "id": "ornamental-status",
+      "title": "Status must describe a real state",
+      "category": "Visual",
+      "instruction": "When status affects a task, place the meaningful exception with its subject using the owned badge slot. Its value must come from a defined state with a consequence. Keep routine dates, owners and descriptive metadata quiet so equal chips do not hide the exception.",
+      "good": "Expired beside a credential that no longer authenticates.",
+      "avoid": "A decorative New badge above a title or badge strips for every owner, date and category.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Keep useful Count, supported status dots and independent statuses the task needs. There is no universal one-badge limit."
+    },
+    {
+      "id": "icon-restraint",
+      "title": "Give an icon a job",
+      "category": "Visual",
+      "instruction": "Use icons to identify a recognizable action, object or status. Name every icon-only action. When an actor or review state matters to relying on generated content, state it truthfully in words; a sparkle or wand cannot establish who produced or checked it.",
+      "good": "A named Copy value action, or a truthful review state beside content when the task requires it.",
+      "avoid": "Repeated icon-per-heading decoration or a sparkle used as the only review-state cue.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Owned Media and Tile exports and explicit icon specimens keep their semantic role; do not ban canonical APIs."
+    },
+    {
+      "id": "one-icon-set",
+      "title": "Draw every icon from the v4 set",
+      "instruction": "Render icons with the v4 Icon component and its named shapes. When a shape is missing, add it to the icon data once rather than importing another icon library into a component.",
+      "good": "<Icon name=\"chev-down\" /> inside a Select trigger, sized by --v4-size-icon.",
+      "avoid": "An import { ChevronDownIcon } from \"lucide-react\" in a v4 component, which brings its own stroke width and size.",
+      "detect": {
+        "by": "lint",
+        "check": "icon-source"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "working-affordances",
+      "title": "Every control must perform its advertised action",
+      "category": "Interaction",
+      "instruction": "Every enabled control must perform its named operation, change the demonstrated model or navigate to a real destination. A notification alone cannot stand in for Save, Test connection, Undo or Download. Keep unavailable controls disabled with an accessible reason.",
+      "good": "A preview Save changes action updates a local fixture and announces its result.",
+      "avoid": "A search field that never filters, href=\"#\" links that jump to the top, or a decorative kebab menu.",
+      "detect": {
+        "by": "review"
+      }
+    },
+    {
+      "id": "recoverable-identifiers",
+      "title": "Truncate presentation, preserve the value",
+      "category": "Data",
+      "instruction": "Keep stored and copied identifiers byte-for-byte intact. A truncated display needs a keyboard-accessible route to the full value, such as a Copy action or details view. A native hover title alone is insufficient. Use middle truncation when both ends identify the object.",
+      "good": "A labeled Copy full path action beside the shortened path, preserving the original value.",
+      "avoid": "An ellipsis copied as part of a token, or a shortened value that keyboard users cannot recover.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "Implementation guidance",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html"
+      }
+    },
+    {
+      "id": "restrained-effects",
+      "title": "Avoid ambient effects in task interfaces",
+      "category": "Visual",
+      "instruction": "When grouping a task or distinguishing status, use the owned surface, text and supported state treatment. Keep opaque content surfaces readable. Avoid caller-created colored side rails, gradient headings, glass backdrops, ambient glows, decorative pulses and staggered entrances because they compete with the task and change contrast. Preserve soft corners and the canonical shared lime Button material; do not add shadows or local material replicas.",
+      "good": "An opaque scoped menu and a short disclosure transition tied to opening.",
+      "avoid": "A glowing settings card, glass panel or colored rail added only for decoration.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "The approved shared Button material and deliberate material or motion specimens retain their documented treatment."
+    },
+    {
+      "id": "no-added-depth",
+      "title": "Depth comes from two shadow tokens",
+      "instruction": "Give an overlay shadow-pop and an inset surface shadow-raised. Do not add other Tailwind shadows, arbitrary shadows or backdrop blur; focus, selection and errors use borders, outlines and color.",
+      "good": "A menu panel with shadow-pop on an opaque popover surface.",
+      "avoid": "shadow-md on one menu, shadow-lg on another and backdrop-blur-xs behind a dialog.",
+      "detect": {
+        "by": "lint",
+        "check": "decorative-effect"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "research-and-brief",
+      "title": "Apply research to the actual task",
+      "category": "Agent docs",
+      "instruction": "Read the current component decision and the pinned product brief before importing an external recommendation. Distinguish design opinion from usability guidance and accessibility criteria. Preserve the approved identity. Explain a missing capability with source evidence instead of adding a fashionable replacement.",
+      "good": "A compact table with scoped selection because the task compares resources, retaining the existing fonts and shared Button.",
+      "avoid": "Banning a font or accent because an article calls it an AI tell, or applying marketing-page entrance effects to every operational row.",
+      "detect": {
+        "by": "review"
+      }
+    },
+    {
+      "id": "evidence-and-checks",
+      "title": "Separate a check from its result",
+      "category": "Agent docs",
+      "instruction": "Describe each rule with a real condition, a supported construction, a concrete misuse, its consequence and how it is assessed. Treat each verification criterion as work to perform. Record the actual command or browser scenario, its result and the remaining limits before calling the criterion executed. Source links, rule counts, authored good and bad pairs and generated coverage show traceability, not usability, accessibility or runtime success.",
+      "good": "Report that a rejected save retained its draft in the named runtime test, while mobile browser verification remains unrun.",
+      "avoid": "A Verified label inferred from a source citation or generated Markdown, or a regex presented as a hierarchy checker.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Review-only rules still need a concrete counterexample; they need no pretend linter."
+    },
+    {
+      "id": "specimen-content",
+      "title": "Show the interface inside the specimen",
+      "category": "Copy",
+      "instruction": "Keep preview content to the demonstrated interface, meaningful helper text, synthetic-data or security disclosures and actual state feedback. Put inspection coaching in the guide. Use meaningful synthetic media when it teaches the task; unrelated stock images, mascots and arbitrary image-icon blocks add no useful information.",
+      "good": "A labeled field and truthful local save result, with synthetic data disclosed. A media specimen has useful alt text and a fallback.",
+      "avoid": "Try clicking Save to see what happens, slogans above obvious actions or a decorative image used only to fill space.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "Explicit media and aspect-ratio specimens may use safe placeholders to demonstrate the supported shape. Never use private documents, real customers or secrets."
+    },
+    {
+      "id": "essential-content",
+      "title": "Keep required decisions visible",
+      "category": "Interaction",
+      "instruction": "Disclose supplementary information on demand. Keep a warning, blocking error, required input and the consequence of a destructive action visible before the decision that depends on it. Do not move essential content into a tooltip or collapsed help region merely to make a page look cleaner.",
+      "good": "A visible revoke consequence before confirmation and an optional details disclosure for the request metadata.",
+      "avoid": "Hiding a save failure or required constraint inside an unopened accordion.",
+      "detect": {
+        "by": "review"
+      }
+    },
+    {
+      "id": "measured-progress",
+      "title": "Show progress the host can establish",
+      "category": "Data",
+      "instruction": "Use determinate progress only when the host knows completed work and a meaningful total, and expose the actual value and range with an accessible name. Otherwise show an indeterminate pending state and the operation name. Announce a meaningful completion or failure without inventing elapsed time, percentages or remaining duration.",
+      "good": "18 of 30 resources checked, or Checking resources when the total is unknown.",
+      "avoid": "A timer that increments to 95 percent while the host reports no measurable progress.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "WCAG status messages",
+        "url": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html"
+      },
+      "exceptions": "A static illustration explicitly presented as non-status content."
+    },
+    {
+      "id": "no-dot-separators",
+      "title": "Separate labels without decorative dots",
+      "category": "Copy",
+      "instruction": "In authored UI labels and prose, use clear wording or separate text and layout instead of middle-dot or bullet separators. Decorative dots add punctuation without explaining how the details relate.",
+      "good": "Primary, alias of default. Put an owner and date in separate labeled fields when their relationship needs context.",
+      "avoid": "Primary · alias of default, or dot · synthetic requests used as display labels.",
+      "detect": {
+        "by": "lint",
+        "check": "dot-separator"
+      },
+      "exceptions": "Preserve exact payloads, filenames, versions, paths, quotations and user-entered values. Semantic list markers, supported status dots and Chart dot indicator APIs are not decorative separators."
+    },
+    {
+      "id": "shared-component-geometry",
+      "title": "Use complete component recipes",
+      "instruction": "Choose the owned type, control, row or container recipe as a unit. Size includes border-inclusive height, text role, icon box, gap, insets and nested action space. Use layout wrappers for relationships between components. A missing shared relationship is a component issue, not permission for a caller font, padding or radius patch.",
+      "good": "A field and its supporting action consume their supported sizes and align without caller overrides.",
+      "avoid": "A succession of local text-size, padding and translate corrections to make one specimen resemble its neighbor.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "Component sizes and relationships",
+        "url": "#button"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "token-geometry",
+      "title": "Size with tokens, not arbitrary values",
+      "instruction": "Use the component's size recipe or a v4 size, space and radius token. An arbitrary Tailwind value such as max-w-[440px] or ring-[3px] creates a one-off measurement no other component shares.",
+      "good": "max-w-md on a dialog, or the focus ring width from the shared control recipe.",
+      "avoid": "max-w-[440px], rounded-[2px] or ring-[3px] written into a component.",
+      "detect": {
+        "by": "lint",
+        "check": "arbitrary-geometry"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "nested-action-slots",
+      "title": "Fit actions inside their host",
+      "instruction": "A copy, reveal, clear or menu action nested in a control consumes the host action slot. Keep its target reachable without forcing the host to adopt a standalone Button height. Supported host sizes must remain distinct, and adding an optional capability must not change one-line density accidentally.",
+      "good": "Small and medium snippets stay distinct with Copy present, and revealing a secret does not enlarge its one-line field.",
+      "avoid": "A default standalone action plus vertical padding that makes every advertised host size the same height.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "Nested command actions",
+        "url": "#snippet"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "surface-heading-rank",
+      "title": "Keep title rank across container treatments",
+      "instruction": "A plain section, framed Card and settings task keep the same title role when they express the same hierarchy. Border, tint and framing do not select a new font size, uppercase treatment or semantic level. Align named header, body and footer content edges through the owning component.",
+      "good": "The same section title keeps its type role when its frame changes.",
+      "avoid": "A framed Card silently converts a section title into tiny uppercase metadata while a plain variant uses a heading.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "Container title and content slots",
+        "url": "#card"
+      },
+      "category": "Visual"
+    }
+  ]
+}
