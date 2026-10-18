@@ -132,9 +132,13 @@ export const DesignSystemPage = () => {
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState<number>();
   const { resolvedTheme: theme, setTheme } = useTheme();
-  const [corners, setCorners] = useState<"square" | "soft">(() =>
-    window.localStorage.getItem("v4-corners") === "soft" ? "soft" : "square"
-  );
+  const [corners, setCorners] = useState<"square" | "soft">(() => {
+    try {
+      return window.localStorage.getItem("v4-corners") === "soft" ? "soft" : "square";
+    } catch {
+      return "square";
+    }
+  });
   const nextCorners = corners === "soft" ? "square" : "soft";
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
@@ -270,7 +274,11 @@ export const DesignSystemPage = () => {
             className={dockStyles.segment}
             aria-label={`Corners: ${corners}. Switch to ${nextCorners}`}
             onClick={() => {
-              window.localStorage.setItem("v4-corners", nextCorners);
+              try {
+                window.localStorage.setItem("v4-corners", nextCorners);
+              } catch {
+                // Storage is unavailable; keep the choice for this session only.
+              }
               setCorners(nextCorners);
             }}
           >
