@@ -1,13 +1,13 @@
 {
-  "requiredCapabilities": 64,
-  "componentFamilies": 64,
-  "patterns": 0,
-  "catalogEntries": 66,
+  "requiredCapabilities": 67,
+  "componentFamilies": 66,
+  "patterns": 1,
+  "catalogEntries": 69,
   "supplementalGuides": [
     "layout",
     "text"
   ],
-  "examples": 145,
+  "examples": 148,
   "missingCapabilities": [],
   "unmappedExports": [],
   "assessment": "Inventory and recipe coverage only. Behavior parity, browser checks and installation require executed evidence.",
@@ -989,6 +989,29 @@
       ]
     },
     {
+      "id": "page-header",
+      "kind": "pattern",
+      "exports": [
+        "PageHeader"
+      ],
+      "name": "PageHeader",
+      "variants": [
+        "lg",
+        "md",
+        "breadcrumb",
+        "badges",
+        "actions",
+        "tabs",
+        "media"
+      ],
+      "behavior": "Page-level trail of ancestors above one h1; lede, actions beside the title that wrap under it, tabs below",
+      "acceptance": [
+        "One h1",
+        "No crumb repeats the title",
+        "Actions wrap instead of clipping"
+      ]
+    },
+    {
       "id": "pagination",
       "kind": "component",
       "exports": [
@@ -1207,6 +1230,30 @@
         "Escape/backdrop owner policy",
         "Focus safe on row removal",
         "Narrow viewport no horizontal clip"
+      ]
+    },
+    {
+      "id": "sidebar",
+      "kind": "composite",
+      "exports": [
+        "Sidebar"
+      ],
+      "name": "Sidebar",
+      "variants": [
+        "expanded",
+        "rail",
+        "sections",
+        "children",
+        "counts",
+        "footer rows",
+        "account popover"
+      ],
+      "behavior": "Tools row, labeled sections with rules, one level of children, accent counts for waiting items, account button with the person's avatar and the organization's name, rail with tooltips and dots",
+      "acceptance": [
+        "No organization avatar",
+        "Current row neutral",
+        "Arrow keys move between rows",
+        "Rail keeps accessible names"
       ]
     },
     {
@@ -1478,6 +1525,29 @@
         "No duplicate accessible name",
         "Tooltip never sole essential copy",
         "Shortcut names readable"
+      ]
+    },
+    {
+      "id": "top-bar",
+      "kind": "composite",
+      "exports": [
+        "TopBar",
+        "AppShell",
+        "AppInset",
+        "PageGutter"
+      ],
+      "name": "TopBar",
+      "variants": [
+        "beside sidebar",
+        "standalone",
+        "switcher crumbs",
+        "tools"
+      ],
+      "behavior": "Product-level trail of switcher crumbs rooted at the organization name; shared page gutter so the root crumb aligns with the content edge; chevron is the only highlighted element",
+      "acceptance": [
+        "Root crumb text on the content edge at every width",
+        "Segment click opens the switcher",
+        "One tab stop per crumb"
       ]
     }
   ]

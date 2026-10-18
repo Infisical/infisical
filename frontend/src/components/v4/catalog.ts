@@ -13,11 +13,14 @@ import { layoutDefinition } from "./contracts/layout";
 import { listDefinition } from "./contracts/list";
 import { middleTruncateDefinition } from "./contracts/middle-truncate";
 import { multiSelectDefinition } from "./contracts/multi-select";
+import { pageHeaderDefinition } from "./contracts/page-header";
 import { paginationDefinition } from "./contracts/pagination";
 import { sensitiveEditorDefinition } from "./contracts/sensitive-editor";
+import { sidebarDefinition } from "./contracts/sidebar";
 import { snippetDefinition } from "./contracts/snippet";
 import { tableDefinition } from "./contracts/table";
 import { textDefinition } from "./contracts/text";
+import { topBarDefinition } from "./contracts/top-bar";
 import type { ComponentDefinition } from "./contracts/types";
 
 export const componentCatalog: readonly ComponentDefinition[] = [
@@ -35,9 +38,12 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   listDefinition,
   middleTruncateDefinition,
   multiSelectDefinition,
+  pageHeaderDefinition,
   paginationDefinition,
   sensitiveEditorDefinition,
+  sidebarDefinition,
   snippetDefinition,
   tableDefinition,
-  textDefinition
+  textDefinition,
+  topBarDefinition
 ];

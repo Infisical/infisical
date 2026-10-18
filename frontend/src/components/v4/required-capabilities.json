@@ -978,6 +978,29 @@
       ]
     },
     {
+      "id": "page-header",
+      "name": "PageHeader",
+      "kind": "pattern",
+      "exports": [
+        "PageHeader"
+      ],
+      "variants": [
+        "lg",
+        "md",
+        "breadcrumb",
+        "badges",
+        "actions",
+        "tabs",
+        "media"
+      ],
+      "behavior": "Page-level trail of ancestors above one h1; lede, actions beside the title that wrap under it, tabs below",
+      "acceptance": [
+        "One h1",
+        "No crumb repeats the title",
+        "Actions wrap instead of clipping"
+      ]
+    },
+    {
       "id": "pagination",
       "name": "Pagination",
       "kind": "component",
@@ -1196,6 +1219,30 @@
         "Escape/backdrop owner policy",
         "Focus safe on row removal",
         "Narrow viewport no horizontal clip"
+      ]
+    },
+    {
+      "id": "sidebar",
+      "name": "Sidebar",
+      "kind": "composite",
+      "exports": [
+        "Sidebar"
+      ],
+      "variants": [
+        "expanded",
+        "rail",
+        "sections",
+        "children",
+        "counts",
+        "footer rows",
+        "account popover"
+      ],
+      "behavior": "Tools row, labeled sections with rules, one level of children, accent counts for waiting items, account button with the person's avatar and the organization's name, rail with tooltips and dots",
+      "acceptance": [
+        "No organization avatar",
+        "Current row neutral",
+        "Arrow keys move between rows",
+        "Rail keeps accessible names"
       ]
     },
     {
@@ -1467,6 +1514,29 @@
         "No duplicate accessible name",
         "Tooltip never sole essential copy",
         "Shortcut names readable"
+      ]
+    },
+    {
+      "id": "top-bar",
+      "name": "TopBar",
+      "kind": "composite",
+      "exports": [
+        "TopBar",
+        "AppShell",
+        "AppInset",
+        "PageGutter"
+      ],
+      "variants": [
+        "beside sidebar",
+        "standalone",
+        "switcher crumbs",
+        "tools"
+      ],
+      "behavior": "Product-level trail of switcher crumbs rooted at the organization name; shared page gutter so the root crumb aligns with the content edge; chevron is the only highlighted element",
+      "acceptance": [
+        "Root crumb text on the content edge at every width",
+        "Segment click opens the switcher",
+        "One tab stop per crumb"
       ]
     }
   ],

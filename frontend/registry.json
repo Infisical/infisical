@@ -257,6 +257,11 @@
           "target": "src/components/v4/docs/navigation-menu.md"
         },
         {
+          "path": "src/components/v4/docs/page-header.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/page-header.md"
+        },
+        {
           "path": "src/components/v4/docs/pagination.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/pagination.md"
@@ -305,6 +310,11 @@
           "path": "src/components/v4/docs/sheet.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/sheet.md"
+        },
+        {
+          "path": "src/components/v4/docs/sidebar.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/sidebar.md"
         },
         {
           "path": "src/components/v4/docs/skeleton.md",
@@ -370,6 +380,11 @@
           "path": "src/components/v4/docs/tooltip.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/tooltip.md"
+        },
+        {
+          "path": "src/components/v4/docs/top-bar.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/top-bar.md"
         },
         {
           "path": "src/components/v4/fonts/Archivo-OFL.txt",
@@ -637,6 +652,7 @@
       "name": "breadcrumb",
       "type": "registry:ui",
       "registryDependencies": [
+        "@infisical/icon",
         "@infisical/infisical-base",
         "@infisical/switcher"
       ],
@@ -1634,6 +1650,29 @@
       ]
     },
     {
+      "name": "page-header",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/breadcrumb",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/page-header.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/page-header.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/page-header.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/page-header.module.css"
+        }
+      ]
+    },
+    {
       "name": "pagination",
       "type": "registry:ui",
       "registryDependencies": [
@@ -1875,6 +1914,36 @@
           "path": "src/components/v4/ui/overlay.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/overlay.module.css"
+        }
+      ]
+    },
+    {
+      "name": "sidebar",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/avatar",
+        "@infisical/badge",
+        "@infisical/button",
+        "@infisical/dropdown-menu",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/switcher",
+        "@infisical/toggle-group",
+        "@infisical/tooltip"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/sidebar.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/sidebar.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/sidebar.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/sidebar.module.css"
         }
       ]
     },
@@ -2231,6 +2300,29 @@
           "path": "src/components/v4/ui/menu.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "top-bar",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/breadcrumb",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/top-bar.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/top-bar.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/top-bar.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/top-bar.module.css"
         }
       ]
     }

@@ -52,7 +52,7 @@ export const ExampleStage = ({
   height = "auto"
 }: {
   children: ReactNode;
-  height?: "auto" | "compact" | "medium" | "shell" | "data";
+  height?: "auto" | "compact" | "medium" | "shell" | "app" | "data";
 }) => (
   <div className={styles.stage} data-height={height}>
     {children}
