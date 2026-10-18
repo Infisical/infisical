@@ -116,6 +116,7 @@ tables:
     source: public.agent_vault_variables
     columns:
       - id
+      - projectId
       - accessBundleId
       - createdAt
       - updatedAt
@@ -954,20 +955,6 @@ tables:
       - defaultProduct
       - secretDetectionIgnoreValues
 
-  - name: rate_limit
-    source: public.rate_limit
-    columns:
-      - id
-      - readRateLimit
-      - writeRateLimit
-      - secretsRateLimit
-      - authRateLimit
-      - inviteUserRateLimit
-      - mfaRateLimit
-      - publicEndpointLimit
-      - createdAt
-      - updatedAt
-
   - name: relays
     source: public.relays
     columns:
@@ -1134,6 +1121,9 @@ tables:
       - createdAt
       - updatedAt
       - isDisconnected
+      - isHistoricalScanEnabled
+      - isScanNewCommitsEnabled
+      - isDiscoveryEnabled
 
   - name: secret_scanning_findings
     source: public.secret_scanning_findings
@@ -1354,3 +1344,16 @@ tables:
       - orgId
       - projectId
       - projectName
+
+  - name: audit_log_streams
+    source: public.audit_log_streams
+    columns:
+      - id
+      - orgId
+      - createdAt
+      - updatedAt
+      - provider
+      - streamMode
+      - filters
+      - failingSince
+      - lastDeliveryError

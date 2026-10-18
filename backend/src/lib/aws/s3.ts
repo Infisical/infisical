@@ -1,3 +1,5 @@
+import type { Agent } from "node:https";
+
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -17,6 +19,42 @@ export type TS3Check = { ok: true } | { ok: false; error: unknown };
 
 export type TS3Bucket = ReturnType<typeof createS3Bucket>;
 
+// Without credentials, the SDK runs as the server's own AWS identity. createS3Client takes a customer's connection, so
+// it requires them; only default storage leaves them out, through createS3Bucket.
+const buildS3Client = ({
+  region,
+  credentials,
+  endpoint,
+  httpsAgent
+}: {
+  region: string;
+  credentials?: TS3Credentials;
+  endpoint?: string;
+  httpsAgent?: Agent;
+}) =>
+  new S3Client({
+    region,
+    sha256: CustomAWSHasher,
+    credentials,
+    requestHandler: { ...AWS_REQUEST_TIMEOUTS, ...(httpsAgent && { httpsAgent }) },
+    ...(endpoint
+      ? {
+          endpoint,
+          forcePathStyle: true,
+          // not every S3-compatible provider accepts the SDK's default flexible checksums
+          requestChecksumCalculation: "WHEN_REQUIRED",
+          responseChecksumValidation: "WHEN_REQUIRED"
+        }
+      : { useFipsEndpoint: crypto.isFipsModeEnabled() })
+  });
+
+export const createS3Client = (args: {
+  region: string;
+  credentials: TS3Credentials;
+  endpoint?: string;
+  httpsAgent?: Agent;
+}) => buildS3Client(args);
+
 export const createS3Bucket = ({
   region,
   bucket,
@@ -27,13 +65,7 @@ export const createS3Bucket = ({
   // Without credentials, the SDK finds them itself: from the environment, the shared config file, or the pod's role.
   credentials?: TS3Credentials;
 }) => {
-  const client = new S3Client({
-    region,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    sha256: CustomAWSHasher,
-    credentials,
-    requestHandler: AWS_REQUEST_TIMEOUTS
-  });
+  const client = buildS3Client({ region, credentials });
   // The request timeout stops once the headers arrive, so a reply that stalls after them needs an overall limit.
   const sendOptions = () => ({ abortSignal: AbortSignal.timeout(S3_CALL_TIMEOUT_MS) });
 

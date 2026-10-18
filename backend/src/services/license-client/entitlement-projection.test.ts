@@ -27,6 +27,14 @@ describe("projectV2ToFeatureSet", () => {
     expect(plan.rateLimits.readLimit).toBe(500);
   });
 
+  test("turns a feature on through a legacy registry key the current key leaves off", () => {
+    const plan = projectV2ToFeatureSet(
+      makeBase({ pamEnterpriseAlerting: false }),
+      makeEntitlements({ pam_enterprise_alerting: { value: false }, pam_slack_notifications: { value: true } })
+    );
+    expect(plan.pamEnterpriseAlerting).toBe(true);
+  });
+
   test("does not mutate the passed base", () => {
     const base = makeBase({ rbac: false });
     projectV2ToFeatureSet(base, makeEntitlements({ rbac: { value: true } }));

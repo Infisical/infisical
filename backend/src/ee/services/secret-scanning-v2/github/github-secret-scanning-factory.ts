@@ -21,6 +21,7 @@ import {
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryPostInitialization,
+  TSecretScanningFactorySetupWebhook,
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
@@ -68,6 +69,9 @@ export const GitHubSecretScanningFactory = () => {
     // no teardown required
   };
 
+  // Push events arrive through the GitHub App installation, so there is no webhook to create.
+  const setupWebhook: TSecretScanningFactorySetupWebhook<TGitHubDataSourceWithConnection> = async () => undefined;
+
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<
     TGitHubDataSourceInput["config"],
     TGitHubDataSourceWithConnection
@@ -78,21 +82,9 @@ export const GitHubSecretScanningFactory = () => {
   const listRawResources: TSecretScanningFactoryListRawResources<TGitHubDataSourceWithConnection> = async (
     dataSource
   ) => {
-    const {
-      connection,
-      config: { includeRepos }
-    } = dataSource;
+    const repos = await listGitHubRadarRepositories(dataSource.connection);
 
-    const repos = await listGitHubRadarRepositories(connection);
-
-    const filteredRepos: typeof repos = [];
-    if (includeRepos.includes("*")) {
-      filteredRepos.push(...repos);
-    } else {
-      filteredRepos.push(...repos.filter((repo) => includeRepos.includes(repo.full_name)));
-    }
-
-    return filteredRepos.map(({ id, full_name }) => ({
+    return repos.map(({ id, full_name }) => ({
       name: full_name,
       externalId: id.toString()
     }));
@@ -250,6 +242,7 @@ export const GitHubSecretScanningFactory = () => {
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
     teardown,
+    setupWebhook,
     validateConfigUpdate
   };
 };

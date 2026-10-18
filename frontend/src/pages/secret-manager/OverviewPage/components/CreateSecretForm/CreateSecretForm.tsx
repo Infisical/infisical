@@ -60,6 +60,11 @@ import {
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
+import {
+  overviewCountBucket,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
 import { didAllSecretCreationsSucceed } from "./createSecretFormState";
 
 const formSchema = (enforceEncryptedMetadata: boolean) =>
@@ -167,6 +172,16 @@ export const CreateSecretForm = ({
   onSecretCreated,
   onUploadSecrets
 }: Props) => {
+  const overviewTelemetry = useOverviewTelemetry();
+  const formOwner = useRef({ telemetry: overviewTelemetry, invocation: {} });
+  if (formOwner.current.telemetry !== overviewTelemetry)
+    formOwner.current = { telemetry: overviewTelemetry, invocation: {} };
+  useEffect(
+    () => () => {
+      formOwner.current.invocation = {};
+    },
+    []
+  );
   const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -294,6 +309,7 @@ export const CreateSecretForm = ({
   }, [hasEditChanges, onEditDirtyChange]);
 
   const handleFormSubmit = async ({ environments: selectedEnv, secrets }: TFormSchema) => {
+    const { invocation } = formOwner.current;
     if (editSecret) {
       if (isEditReadOnly || !hasEditChanges) return;
       const secret = secrets[0];
@@ -314,6 +330,14 @@ export const CreateSecretForm = ({
       });
       return;
     }
+    const telemetry = overviewTelemetry;
+    const flow = {
+      action: "create" as const,
+      resourceType: "secret" as const,
+      source: "form" as const,
+      countBucket: overviewCountBucket(secrets.length * selectedEnv.length)
+    };
+    const attempt = telemetry.startFlow(flow);
     if (isBatchMode && onBatchSecretCreate) {
       secrets.forEach((secret) => {
         const filteredMetadata = secret.metadata
@@ -331,6 +355,7 @@ export const CreateSecretForm = ({
           });
         });
       });
+      attempt.flow({ ...flow, phase: "staged" });
       onClose();
       reset();
       return;
@@ -360,7 +385,10 @@ export const CreateSecretForm = ({
           }
         }
       })
-    );
+    ).catch((error) => {
+      attempt.flow({ ...flow, phase: "failed" });
+      throw error;
+    });
 
     const promises = selectedEnv.flatMap((env) =>
       secrets.map(async (secret) => {
@@ -411,6 +439,20 @@ export const CreateSecretForm = ({
           .filter(Boolean) as string[]
       )
     ];
+    const responseCount = results.filter(
+      (result) => result.status === "fulfilled" && !("approval" in result.value)
+    ).length;
+    const approvalCount = results.filter(
+      (result) => result.status === "fulfilled" && "approval" in result.value
+    ).length;
+    const failureCount = results.filter((result) => result.status === "rejected").length;
+    attempt.flow({
+      ...flow,
+      phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
+      responseCountBucket: overviewCountBucket(responseCount),
+      approvalCountBucket: overviewCountBucket(approvalCount),
+      failureCountBucket: overviewCountBucket(failureCount)
+    });
 
     if (forApprovalEnvs.length) {
       createNotification({
@@ -438,7 +480,11 @@ export const CreateSecretForm = ({
       console.warn("failed to create secrets");
     }
 
-    if (allRequestsSucceeded) {
+    if (
+      allRequestsSucceeded &&
+      attempt.isCurrent() &&
+      formOwner.current.invocation === invocation
+    ) {
       onClose();
       reset();
     }
@@ -1032,7 +1078,21 @@ export const CreateSecretForm = ({
           </Button>
         )}
         <div className="ml-auto flex gap-2">
-          <Button onClick={onClose} variant="ghost" type="button">
+          <Button
+            onClick={() => {
+              formOwner.current.invocation = {};
+              if (!editSecret)
+                overviewTelemetry.flow({
+                  action: "create",
+                  resourceType: "secret",
+                  source: "form",
+                  phase: "canceled"
+                });
+              onClose();
+            }}
+            variant="ghost"
+            type="button"
+          >
             Cancel
           </Button>
           <Button

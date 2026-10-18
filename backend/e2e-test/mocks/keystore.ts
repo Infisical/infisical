@@ -109,6 +109,14 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       store[chosen] = String(current + 1);
       return bestIdx;
     },
+    decrementIfExists: async (key) => {
+      if (typeof store[key] !== "string") {
+        return null;
+      }
+      const next = parseInt(store[key] as string, 10) - 1;
+      store[key] = String(next);
+      return next;
+    },
     decrementByOrDelete: async (key) => {
       const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
       const next = current - 1;

@@ -139,6 +139,16 @@ export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "o
   orderBy?: "name" | "serviceCount" | "createdAt";
 };
 
+export type TListAgentVaultVariablesDTO = {
+  search?: string;
+  /** Exact keys. A key that doesn't exist is left out of the response. */
+  keys?: string[];
+  orderBy?: "key" | "serviceCount";
+  orderDirection?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+};
+
 export type TListAgentVaultMembersDTO = {
   actorType?: AgentVaultMemberType;
   search?: string;
@@ -417,27 +427,30 @@ export type TAgentVaultDecryptedSessionLogPage<
   decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };
 
+export type TAgentVaultVariableUsedByService = {
+  id: string;
+  name: string;
+  hostPattern: string;
+  accessBundleId: string;
+  accessBundleName: string;
+};
+
 export type TAgentVaultVariable = {
   id: string;
-  accessBundleId: string;
   key: string;
-  serviceIds: string[];
+  // Every service that references the variable, across all access bundles.
+  usedByServices: TAgentVaultVariableUsedByService[];
   createdAt: string;
   updatedAt: string;
 };
 
-export type TAgentVaultVariableRef = {
-  accessBundleId: string;
-  variableId: string;
-};
-
 export type TCreateAgentVaultVariableDTO = {
-  accessBundleId: string;
   key: string;
   value: string;
 };
 
-export type TUpdateAgentVaultVariableDTO = TAgentVaultVariableRef & {
+export type TUpdateAgentVaultVariableDTO = {
+  variableId: string;
   key?: string;
   value?: string;
 };

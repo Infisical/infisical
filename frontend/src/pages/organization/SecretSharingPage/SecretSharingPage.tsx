@@ -20,8 +20,8 @@ export const SecretSharingPage = () => {
           content="Share sensitive information through secure, expiring links."
         />
       </Helmet>
-      <div className="h-full">
-        <div className="mx-auto flex h-full w-full max-w-8xl flex-col bg-page text-foreground-inverse">
+      <div>
+        <div className="mx-auto flex w-full max-w-8xl flex-col bg-page text-foreground-inverse">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Secret Sharing"

@@ -30,7 +30,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogClose,
   DialogContent,
@@ -496,7 +496,7 @@ export const OrgSubOrgsTab = () => {
         </DialogContent>
       </Dialog>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteSubOrg.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSubOrg", isOpen)}
         title="Are you sure you want to delete this sub-organization?"

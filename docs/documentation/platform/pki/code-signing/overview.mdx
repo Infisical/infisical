@@ -4,12 +4,25 @@ sidebarTitle: "Overview"
 description: "Sign software artifacts with managed code-signing certificates, central approval, and a full audit trail."
 ---
 
-Code Signing is where teams digitally sign software (JARs, container images, Windows installers, Android APKs, Linux packages, scripts). Within Code Signing, you can:
+Code Signing is where teams digitally sign software, such as JARs, container images, Windows installers, Android APKs, Linux packages, and scripts. Teams sign through any tool that supports PKCS#11, with Windows `signtool`, or with the [Sign API](/api-reference/endpoints/code-signing/signers/sign), and Infisical records every signing operation in an audit trail.
 
-- **Sign artifacts** through any tool that supports PKCS#11, with native Windows `signtool`, or directly via the [Sign API](/api-reference/endpoints/code-signing/signers/sign)
-- **Require approvals** before signatures are produced, with per-approval limits on count and time
-- **Manage who can sign** with per-Signer roles for users, machine identities, and groups
-- **Track every signing operation** in a full audit trail
+<CardGroup cols={2}>
+  <Card title="Signers" icon="pen-tool" href="/documentation/platform/pki/code-signing/signers">
+    Create signing identities and choose who can sign with each one.
+  </Card>
+  <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/code-signing/approvals">
+    Require approval before someone can sign, with limits on how many signatures and for how long.
+  </Card>
+  <Card title="Signing tools" icon="wrench" href="/documentation/platform/pki/guides/code-signing/jarsigner">
+    Sign with jarsigner, apksigner, osslsigncode, cosign, OpenSSL, or GPG.
+  </Card>
+  <Card title="PKCS#11 module" icon="cpu" href="/documentation/platform/pki/code-signing/pkcs11-module">
+    Connect standard signing tools to your signers.
+  </Card>
+  <Card title="Windows KSP" icon="windows" iconType="brands" href="/documentation/platform/pki/code-signing/windows-ksp">
+    Sign Windows executables, DLLs, and MSIs with signtool.
+  </Card>
+</CardGroup>
 
 Each **Signer** represents a single signing identity, like `mobile-app-prod`, `firmware-release`, or `ci-staging-builds`. Product Admins create Signers, attach a code-signing certificate, and assign team members. Teams then operate independently within their assigned Signers.
 

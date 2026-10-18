@@ -3,7 +3,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { Button } from "@app/components/v2";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import {
   ProjectPermissionPkiSubscriberActions,
@@ -100,26 +101,27 @@ export const PkiSubscriberSection = () => {
         isOpen={popUp.creationBlocked.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("creationBlocked", isOpen)}
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.pkiSubscriberStatus.isOpen}
         title={`Are you sure you want to ${isEnabling ? "enable" : "disable"} the subscriber ${subscriberName}?`}
-        subTitle={
+        description={
           isEnabling
             ? "This action will allow issuing certificates for this subscriber again."
             : "This action will prevent issuing certificates for this subscriber."
         }
-        onChange={(isOpen) => handlePopUpToggle("pkiSubscriberStatus", isOpen)}
-        deleteKey="confirm"
-        buttonColorSchema={isEnabling ? "primary" : "danger"}
-        buttonText={isEnabling ? "Enable" : "Disable"}
-        onDeleteApproved={() => onUpdatePkiSubscriberStatus(subscriberStatusData)}
+        onOpenChange={(isOpen) => handlePopUpToggle("pkiSubscriberStatus", isOpen)}
+        confirmKey="confirm"
+        confirmVariant={isEnabling ? "project" : "danger"}
+        confirmLabel={isEnabling ? "Enable" : "Disable"}
+        onConfirm={() => onUpdatePkiSubscriberStatus(subscriberStatusData)}
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiSubscriber.isOpen}
+        description="This action is irreversible."
         title="Are you sure you want to remove the PKI subscriber?"
-        onChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemovePkiSubscriberSubmit(
             (popUp?.deletePkiSubscriber?.data as { subscriberName: string })?.subscriberName
           )

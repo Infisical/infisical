@@ -33,8 +33,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   CopyButton,
-  DeleteConfirmDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -478,7 +478,7 @@ export const AgentVaultProxiesPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(proxyToRevoke)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setProxyToRevoke(null);
@@ -491,7 +491,7 @@ export const AgentVaultProxiesPage = () => {
         onConfirm={handleRevoke}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(proxyToDelete)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setProxyToDelete(null);

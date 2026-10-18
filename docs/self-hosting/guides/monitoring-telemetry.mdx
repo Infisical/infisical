@@ -811,7 +811,7 @@ These metrics give per-queue visibility into BullMQ worker health: throughput, l
 
 ### Local refresh metrics (InfisicalCore)
 
-Every Infisical instance runs a few background tasks on a timer to refresh settings it keeps in memory, such as the license, rate limits, and SSO configuration. Each instance runs its own copy, so a failing refresh means that instance is serving stale settings while the others may be fine. These metrics are labelled by task, and each instance reports its own values.
+Every Infisical instance runs a few background tasks on a timer to refresh settings it keeps in memory, such as the license and SSO configuration. Each instance runs its own copy, so a failing refresh means that instance is serving stale settings while the others may be fine. These metrics are labelled by task, and each instance reports its own values.
 
 <AccordionGroup>
   <Accordion title="Local Refresh Run Count">

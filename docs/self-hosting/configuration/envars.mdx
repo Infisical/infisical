@@ -86,8 +86,9 @@ Example values:
   For reaching private resources, prefer the [Gateway](/documentation/platform/gateways/overview),
   which tunnels traffic through an agent inside your network and doesn't require
   opening any internal IP range on the Infisical instance. Use this flag (or the
-  more targeted `DYNAMIC_SECRET_ALLOW_INTERNAL_IP` / `AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP`
-  flags) only for the features that egress directly, without a Gateway.
+  more targeted `DYNAMIC_SECRET_ALLOW_INTERNAL_IP` / `AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP` /
+  `S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP` flags) only for the features that egress directly,
+  without a Gateway.
 
   <Warning>
     Relaxes the SSRF protection. In addition to allowing private IPs, enabling
@@ -373,6 +374,14 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
 
   <Warning>
     Relaxes the SSRF protection. Only enable it if you trust the users who can configure streams.
+  </Warning>
+</ParamField>
+
+<ParamField query="S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP" type="bool" default="false" optional>
+  Determines whether S3-Compatible Storage connections can reach an [allowed storage hostname](/documentation/platform/admin-panel/server-admin#allowed-storage-hostnames) that resolves to an internal/private IP address, such as a MinIO server on your network.
+
+  <Warning>
+    Relaxes the SSRF protection for these connections and turns off their DNS-rebinding pin protection. Only enable it if you trust the users who can configure app connections.
   </Warning>
 </ParamField>
 

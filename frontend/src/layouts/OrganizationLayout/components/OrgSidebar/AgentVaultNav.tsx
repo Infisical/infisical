@@ -1,4 +1,4 @@
-import { FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
+import { Braces, FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
 import {
@@ -29,7 +29,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
-    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" }
+    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
+    { label: "Variables", icon: Braces, pathSuffix: "variables", hidden: !isAdmin }
   ];
 
   const infrastructureItems: NavItem[] = [

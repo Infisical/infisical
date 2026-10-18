@@ -710,6 +710,8 @@ export enum EventType {
   SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN = "secret-scanning-data-source-trigger-scan",
   SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
   SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
+  SECRET_SCANNING_RESOURCE_ADD = "secret-scanning-resource-add",
+  SECRET_SCANNING_RESOURCE_REMOVE = "secret-scanning-resource-remove",
   SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
   SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
   SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update",
@@ -3014,14 +3016,22 @@ interface RemoveGroupFromProjectEvent {
   };
 }
 
+type TCaKeySourceAuditMetadata = {
+  keySource?: string;
+  hsmConnectorId?: string;
+  hsmConnectorName?: string;
+  appConnectionId?: string;
+  appConnectionName?: string;
+  externalKeyId?: string;
+  region?: string;
+};
+
 interface CreateCa {
   type: EventType.CREATE_CA;
-  metadata: {
+  metadata: TCaKeySourceAuditMetadata & {
     caId: string;
     name: string;
     dn?: string;
-    keySource?: string;
-    hsmConnectorId?: string;
     isOcspEnabled?: boolean;
   };
 }
@@ -3055,7 +3065,7 @@ interface UpdateCa {
 
 interface DeleteCa {
   type: EventType.DELETE_CA;
-  metadata: {
+  metadata: TCaKeySourceAuditMetadata & {
     caId: string;
     name: string;
     dn?: string;
@@ -5754,6 +5764,27 @@ interface SecretScanningResourceListEvent {
   };
 }
 
+interface SecretScanningResourceAddEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_ADD;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    dataSourceName: string;
+    resources: { resourceId: string; resourceName: string }[];
+  };
+}
+
+interface SecretScanningResourceRemoveEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_REMOVE;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    dataSourceName: string;
+    resourceId: string;
+    resourceName: string;
+  };
+}
+
 interface SecretScanningScanListEvent {
   type: EventType.SECRET_SCANNING_SCAN_LIST;
   metadata: {
@@ -6526,12 +6557,13 @@ interface AgentVaultServiceDeleteEvent {
   };
 }
 
-// Keys only. A variable's value never reaches an audit row.
+// Keys only. A variable's value never reaches an audit row. Variables belonged to an access bundle until they moved to
+// Agent Vault as a whole, so accessBundleId and accessBundleName are present only on events recorded before that.
 interface AgentVaultVariableCreateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_CREATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };
@@ -6540,8 +6572,8 @@ interface AgentVaultVariableCreateEvent {
 interface AgentVaultVariableUpdateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_UPDATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
     // Present only when the update changed the key.
@@ -6553,8 +6585,8 @@ interface AgentVaultVariableUpdateEvent {
 interface AgentVaultVariableDeleteEvent {
   type: EventType.AGENT_VAULT_VARIABLE_DELETE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };
@@ -6563,8 +6595,8 @@ interface AgentVaultVariableDeleteEvent {
 interface AgentVaultVariableValueViewEvent {
   type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };
@@ -8483,6 +8515,8 @@ export type Event =
   | SecretScanningDataSourceTriggerScanEvent
   | SecretScanningDataSourceScanEvent
   | SecretScanningResourceListEvent
+  | SecretScanningResourceAddEvent
+  | SecretScanningResourceRemoveEvent
   | SecretScanningScanListEvent
   | SecretScanningFindingListEvent
   | SecretScanningFindingUpdateEvent

@@ -12,6 +12,7 @@ import { TAgentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-
 import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { TAgentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { TAgentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
+import { TAgentVaultVariableServiceFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -63,7 +64,6 @@ import { TProjectEventsService } from "@app/ee/services/project-events/project-e
 import { TProjectEventsSSEService } from "@app/ee/services/project-events/project-events-sse-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { TProxiedServiceServiceFactory } from "@app/ee/services/proxied-service/proxied-service-service";
-import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-types";
@@ -79,6 +79,7 @@ import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scannin
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
+import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
@@ -385,6 +386,7 @@ declare module "fastify" {
       secretScanningV2ProjectResolver: TSecretScanningV2ProjectResolverFactory;
       agentVaultProjectResolver: TAgentVaultProjectResolverFactory;
       agentVaultAccessBundle: TAgentVaultAccessBundleServiceFactory;
+      agentVaultVariable: TAgentVaultVariableServiceFactory;
       agentVaultProxy: TAgentVaultProxyServiceFactory;
       agentVaultSession: TAgentVaultSessionServiceFactory;
       agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
@@ -416,7 +418,6 @@ declare module "fastify" {
       dynamicSecretLease: TDynamicSecretLeaseServiceFactory;
       emailDomain: TEmailDomainServiceFactory;
       secretSharing: TSecretSharingServiceFactory;
-      rateLimit: TRateLimitServiceFactory;
       userActivation: TUserActivationServiceFactory;
       userEngagement: TUserEngagementServiceFactory;
       externalKms: TExternalKmsServiceFactory;

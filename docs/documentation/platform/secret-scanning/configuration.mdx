@@ -1,0 +1,86 @@
+---
+title: "Configure repository scans"
+sidebarTitle: "Configuration"
+description: "Add your own detection rules and skip secrets you've decided are safe."
+---
+
+import ExtendFields from "/snippets/documentation/platform/secret-scanning/extend-fields.mdx";
+import RuleFields from "/snippets/documentation/platform/secret-scanning/rule-fields.mdx";
+import IgnoreOneLine from "/snippets/documentation/platform/secret-scanning/ignore-one-line.mdx";
+import AllowlistFields from "/snippets/documentation/platform/secret-scanning/allowlist-fields.mdx";
+
+The scanning configuration sets the rules Infisical uses when it scans your [data sources](/documentation/platform/secret-scanning/scan-repositories). Without a configuration, Infisical uses the scanner's built-in rules, which cover the credential formats of hundreds of services. The configuration uses the same format as the configuration file for [local scans](/documentation/platform/secret-scanning/local-configuration).
+
+<Note>
+For repository scans, Infisical doesn't use the files that [local scans](/documentation/platform/secret-scanning/scan-locally) read, such as `.infisical-scan.toml`, `.infisicalignore`, or a [baseline report](/documentation/platform/secret-scanning/ignore-findings#ignore-existing-findings), even if they're in your repository.
+
+Enter your rules and allowlists in the [scanning configuration](#edit-the-scanning-configuration) instead.
+</Note>
+
+## Edit the scanning configuration
+
+<Steps>
+  <Step>
+    Go to **Secret Scanning** > **Settings** > **Scanning Settings**.
+  </Step>
+  <Step>
+    Enter your configuration in the text box, up to 5,000 characters.
+  </Step>
+  <Step>
+    Select **Save**.
+  </Step>
+</Steps>
+
+Infisical uses the new configuration from the next scan onward. To apply it to commits that were already scanned, [trigger a historical scan](/documentation/platform/secret-scanning/scan-repositories#run-a-historical-scan).
+
+![config](/images/platform/secret-scanning/secret-scanning-config.png)
+
+## Configuration format
+
+A configuration replaces the scanner's built-in rules unless it extends them.
+
+### Keep the built-in rules
+
+To keep the built-in rules and add yours to them, set `useDefault = true` in the `[extend]` table:
+
+```toml
+[extend]
+useDefault = true
+disabledRules = ["generic-api-key"]
+```
+
+<ExtendFields />
+
+Infisical can only read the configuration you enter, so don't use `path` in the `[extend]` table to extend another configuration file.
+
+### Add a rule
+
+Add a `[[rules]]` table for each kind of secret you want to detect:
+
+```toml
+[[rules]]
+id = "internal-api-token"
+description = "Internal API token"
+regex = '''itk_[a-z0-9]{32}'''
+keywords = ["itk_"]
+```
+
+<RuleFields />
+
+These are the fields most rules need. The scanner also accepts advanced fields, such as the ones that detect secrets made of several parts.
+
+<IgnoreOneLine />
+
+## Allowlists
+
+To ignore secrets in specific files or commits, or secrets that match a pattern, add an `[[allowlists]]` table to the configuration:
+
+```toml
+[[allowlists]]
+description = "Test fixtures and a rotated key"
+paths = ['''(^|/)testdata/''']
+commits = ["bea0ff6e05a4de73a5db625d4ae181a015b50855"]
+stopwords = ["example"]
+```
+
+<AllowlistFields />

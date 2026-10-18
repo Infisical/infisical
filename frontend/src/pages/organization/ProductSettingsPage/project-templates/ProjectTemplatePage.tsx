@@ -3,7 +3,7 @@ import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteConfirmDialog } from "@app/components/v3";
+import { Button, ConfirmationAlertDialog } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
@@ -58,8 +58,8 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
         <title>Project Template | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
+      <div>
+        <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
           <Button
             variant="ghost"
             type="button"
@@ -132,7 +132,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
             onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
             projectTemplate={matchingProjectTemplate}
           />
-          <DeleteConfirmDialog
+          <ConfirmationAlertDialog
             isOpen={popUp.removeTemplate.isOpen}
             title={`Are you sure you want to delete ${matchingProjectTemplate.name}?`}
             confirmKey="confirm"

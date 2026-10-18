@@ -1,20 +1,36 @@
+import { validateHeaderValue } from "node:http";
+
+import { safeRequest } from "@app/lib/validator";
+
 import {
   AlertChannelType,
   DIRECTED_ALERT_CHANNEL_TYPES,
   SlackChannelConfigSchema,
-  TAlertPayload
+  TAlertPayload,
+  WEBHOOK_MAX_HEADERS_LENGTH,
+  WebhookAuthType,
+  WebhookChannelConfigSchema
 } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { buildPagerDutyEvent } from "./alert-channel-pagerduty-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./alert-channel-registry";
 import { buildSlackPayload } from "./alert-channel-slack-fns";
-import { buildWebhookPayload } from "./alert-channel-webhook-fns";
+import {
+  assertWebhookUrlUnchangedForKeptCredentials,
+  buildWebhookPayload,
+  sendWebhookNotification
+} from "./alert-channel-webhook-fns";
 
 // logger is `export let logger` assigned by initLogger(), which unit tests don't run, so the
 // delivery-failure path (which logs) would otherwise dereference undefined. Mock it per-file.
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
+}));
+
+vi.mock("@app/lib/validator", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/validator")>()),
+  safeRequest: { post: vi.fn(async () => ({ status: 200, data: {} })) }
 }));
 
 const samplePayload = (): TAlertPayload => ({
@@ -205,6 +221,214 @@ describe("buildPagerDutyEvent", () => {
 
     expect(pd.payload.summary).toBe("2 certificates expiring within 30d — api.prod.example.com");
     expect(pd.payload.severity).toBe("warning");
+  });
+});
+
+describe("WebhookChannelConfigSchema headers", () => {
+  const withHeaders = (headers: unknown) =>
+    WebhookChannelConfigSchema.safeParse({ url: "https://example.com/hook", headers });
+
+  test("rejects the headers Infisical sets itself", () => {
+    const result = withHeaders([{ key: "Content-Type", value: "text/plain" }]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Header 'Content-Type' is set by Infisical and cannot be overridden");
+    ["X-Infisical-Signature", "Content-Length", "Transfer-Encoding", "Connection", "Host"].forEach((key) => {
+      expect(withHeaders([{ key, value: "x" }]).success).toBe(false);
+    });
+  });
+
+  test("sends people to Authentication for the Authorization header", () => {
+    const result = withHeaders([{ key: "authorization", value: "Bearer abc" }]);
+    expect(result.error?.issues[0].message).toBe("Use Authentication to set the 'Authorization' header");
+  });
+
+  test("rejects duplicate names regardless of case", () => {
+    const result = withHeaders([
+      { key: "X-Env", value: "a" },
+      { key: "x-env", value: "b" }
+    ]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Header names must be unique");
+  });
+
+  test("rejects names that are not HTTP tokens", () => {
+    expect(withHeaders([{ key: "X Bad", value: "a" }]).success).toBe(false);
+  });
+
+  test("accepts exactly the header values Node can send", () => {
+    const values = [
+      "Bearer abc123",
+      "a\tb",
+      "café",
+      "a\u00a0b",
+      "a\r\nX-Injected: b",
+      "a\u0000b",
+      "a\u001bb",
+      "a\u007fb",
+      "10€",
+      "привет",
+      "ok👍",
+      "abc\u200bdef"
+    ];
+    values.forEach((value) => {
+      let sendable = true;
+      try {
+        validateHeaderValue("X-Test", value);
+      } catch {
+        sendable = false;
+      }
+      expect(withHeaders([{ key: "X-Test", value }]).success).toBe(sendable);
+    });
+  });
+
+  test("names the header whose value can't be sent", () => {
+    const result = withHeaders([{ key: "X-Env", value: "prod\u200b" }]);
+    expect(result.error?.issues[0].message).toBe(
+      "The value for header 'X-Env' has a character that can't be sent in an HTTP header, such as an emoji, a control character, or an invisible space. Re-enter the value"
+    );
+  });
+});
+
+describe("WebhookChannelConfigSchema authentication", () => {
+  const parse = (config: Record<string, unknown>) =>
+    WebhookChannelConfigSchema.safeParse({ url: "https://example.com/hook", ...config });
+
+  test("requires the fields of the chosen type", () => {
+    expect(parse({ authType: WebhookAuthType.BEARER }).error?.issues[0].message).toBe(
+      "Enter a token for bearer authentication"
+    );
+    expect(parse({ authType: WebhookAuthType.BASIC, basicUsername: "ops" }).error?.issues[0].message).toBe(
+      "Enter a password for basic authentication"
+    );
+    expect(parse({ authType: WebhookAuthType.HEADER, authHeaderValue: "k" }).error?.issues[0].message).toBe(
+      "Enter a header name for API key authentication"
+    );
+  });
+
+  test("drops the fields of authentication types that are not in use", () => {
+    const result = parse({
+      authType: WebhookAuthType.BASIC,
+      basicUsername: "ops",
+      basicPassword: "pw",
+      authCredentials: "stale-token"
+    });
+    expect(result.data).toEqual({
+      url: "https://example.com/hook",
+      authType: WebhookAuthType.BASIC,
+      basicUsername: "ops",
+      basicPassword: "pw"
+    });
+    expect(parse({ authCredentials: "stale-token" }).data).toEqual({ url: "https://example.com/hook" });
+  });
+
+  test("rejects a basic auth username with a colon", () => {
+    expect(
+      parse({ authType: WebhookAuthType.BASIC, basicUsername: "a:b", basicPassword: "pw" }).error?.issues[0].message
+    ).toBe("The username cannot contain ':'");
+  });
+
+  test("rejects a custom header that repeats the API key header", () => {
+    const result = parse({
+      authType: WebhookAuthType.HEADER,
+      authHeaderName: "X-API-Key",
+      authHeaderValue: "k",
+      headers: [{ key: "x-api-key", value: "other" }]
+    });
+    expect(result.error?.issues[0].message).toBe("Header 'X-API-Key' is already set by Authentication");
+  });
+
+  test("counts authentication toward the combined header length", () => {
+    const authCredentials = "a".repeat(WEBHOOK_MAX_HEADERS_LENGTH - "X-Env".length - "prod".length);
+    expect(
+      parse({ authType: WebhookAuthType.BEARER, authCredentials, headers: [{ key: "X-Env", value: "prod" }] }).success
+    ).toBe(true);
+
+    const result = parse({
+      authType: WebhookAuthType.BEARER,
+      authCredentials: `${authCredentials}a`,
+      headers: [{ key: "X-Env", value: "prod" }]
+    });
+    expect(result.error?.issues[0].message).toBe(
+      `Authentication and custom headers can add up to at most ${WEBHOOK_MAX_HEADERS_LENGTH} characters`
+    );
+  });
+});
+
+describe("assertWebhookUrlUnchangedForKeptCredentials", () => {
+  const stored = {
+    url: "https://api.example.com/sources/abc",
+    authType: WebhookAuthType.BEARER,
+    authCredentials: "abc"
+  };
+
+  test("refuses to keep saved credentials when the URL changed, even on the same host", () => {
+    expect(() =>
+      assertWebhookUrlUnchangedForKeptCredentials(
+        { url: "https://api.example.com/sources/attacker", authType: WebhookAuthType.BEARER },
+        stored
+      )
+    ).toThrow(
+      "Enter the authentication credentials again because the webhook URL changed. Saved credentials are only sent to the URL they were saved with"
+    );
+  });
+
+  test("allows a changed URL when the credentials are entered again", () => {
+    expect(() =>
+      assertWebhookUrlUnchangedForKeptCredentials(
+        { url: "https://other.example.com/hook", authType: WebhookAuthType.BEARER, authCredentials: "new" },
+        stored
+      )
+    ).not.toThrow();
+  });
+
+  test("keeps saved credentials when only the host case differs", () => {
+    expect(() =>
+      assertWebhookUrlUnchangedForKeptCredentials(
+        { url: "https://API.example.com/sources/abc", authType: WebhookAuthType.BEARER },
+        stored
+      )
+    ).not.toThrow();
+  });
+
+  test("keeps the signing secret on a URL change, since it is never sent", () => {
+    expect(() =>
+      assertWebhookUrlUnchangedForKeptCredentials(
+        { url: "https://other.example.com/hook" },
+        { url: "https://example.com/hook", signingSecret: "s3cr3t" }
+      )
+    ).not.toThrow();
+  });
+});
+
+describe("sendWebhookNotification", () => {
+  const send = async (config: Record<string, unknown>) => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+    await sendWebhookNotification({ ...baseCtx(), config: { url: "https://example.com/hook", ...config } });
+    expect(post).toHaveBeenCalledTimes(1);
+    return post.mock.calls[0];
+  };
+
+  test("sends the custom headers next to the ones Infisical sets", async () => {
+    const [url, , options] = await send({ signingSecret: "s3cr3t", headers: [{ key: "X-Env", value: "prod" }] });
+    expect(url).toBe("https://example.com/hook");
+    expect(options?.headers).toMatchObject({ "X-Env": "prod", "Content-Type": "application/json" });
+    expect(options?.headers?.["x-infisical-signature"]).toMatch(/^t=\d+,v1=[0-9a-f]{64}$/);
+  });
+
+  test("sends each authentication type", async () => {
+    const [, , bearer] = await send({ authType: WebhookAuthType.BEARER, authCredentials: "abc" });
+    expect(bearer?.headers).toMatchObject({ Authorization: "Bearer abc" });
+
+    const [, , basic] = await send({ authType: WebhookAuthType.BASIC, basicUsername: "ops", basicPassword: "pw" });
+    expect(basic?.headers).toMatchObject({ Authorization: `Basic ${Buffer.from("ops:pw").toString("base64")}` });
+
+    const [, , header] = await send({
+      authType: WebhookAuthType.HEADER,
+      authHeaderName: "X-API-Key",
+      authHeaderValue: "k"
+    });
+    expect(header?.headers).toMatchObject({ "X-API-Key": "k" });
   });
 });
 

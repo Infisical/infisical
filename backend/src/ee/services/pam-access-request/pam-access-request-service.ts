@@ -1,7 +1,6 @@
 import { Knex } from "knex";
 
 import { TApprovalRequestGrants } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApprovalPolicyActions,
@@ -67,7 +66,6 @@ type TPamAccessRequestServiceFactoryDep = {
     "findByFolderIdWithIntegration" | "delete" | "insertMany" | "transaction"
   >;
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "find">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   approvalPolicyService: Pick<
     TApprovalPolicyServiceFactory,
     | "create"
@@ -96,6 +94,17 @@ type TPamAccessRequestServiceFactoryDep = {
 
 export type TPamAccessRequestServiceFactory = ReturnType<typeof pamAccessRequestServiceFactory>;
 
+const toNotificationConfigKey = (config: {
+  workflowIntegrationId: string;
+  channels: { id: string }[];
+  events: string[];
+}) =>
+  JSON.stringify([
+    config.workflowIntegrationId,
+    config.channels.map((channel) => channel.id).sort(),
+    [...config.events].sort()
+  ]);
+
 export const pamAccessRequestServiceFactory = ({
   approvalPolicyDAL,
   approvalRequestDAL,
@@ -106,7 +115,6 @@ export const pamAccessRequestServiceFactory = ({
   identityDAL,
   pamFolderNotificationConfigDAL,
   workflowIntegrationDAL,
-  licenseService,
   approvalPolicyService,
   pamAccessApprovalResource
 }: TPamAccessRequestServiceFactoryDep) => {
@@ -219,16 +227,9 @@ export const pamAccessRequestServiceFactory = ({
       bypassers: dedupedBreakGlassUsers
     });
 
+    let removedNotificationConfigIds: string[] = [];
     if (notificationConfigs !== undefined) {
       if (notificationConfigs.length > 0) {
-        const plan = await licenseService.getPlan(ctx.actorOrgId);
-        if (!plan.pamSlackNotifications) {
-          throw new BadRequestError({
-            message:
-              "Failed to save notification configuration due to plan restriction. Upgrade plan to configure Slack notifications for PAM approvals."
-          });
-        }
-
         const integrationIds = [...new Set(notificationConfigs.map((c) => c.workflowIntegrationId))];
         const integrations = await workflowIntegrationDAL.find({ $in: { id: integrationIds } });
         const integrationById = new Map(integrations.map((i) => [i.id, i]));
@@ -246,21 +247,29 @@ export const pamAccessRequestServiceFactory = ({
         }
       }
 
-      await pamFolderNotificationConfigDAL.transaction(async (tx) => {
-        await pamFolderNotificationConfigDAL.delete({ folderId }, tx);
-        if (notificationConfigs.length > 0) {
-          await pamFolderNotificationConfigDAL.insertMany(
-            notificationConfigs.map((config) => ({
-              folderId,
-              workflowIntegrationId: config.workflowIntegrationId,
-              // arrays must be pre-serialized or knex binds them as PG arrays instead of jsonb
-              channels: JSON.stringify(config.channels),
-              events: JSON.stringify(config.events)
-            })),
-            tx
-          );
+      // Legacy Slack configs can only be removed, so every config sent back must match a stored one.
+      const unmatchedKeyById = new Map<string, string>(
+        (await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId)).map((row) => [
+          row.id,
+          toNotificationConfigKey({
+            workflowIntegrationId: row.workflowIntegrationId,
+            channels: parseNotificationChannels(row.channels),
+            events: parseNotificationEvents(row.events)
+          })
+        ])
+      );
+      for (const config of notificationConfigs) {
+        const key = toNotificationConfigKey(config);
+        const matchedId = [...unmatchedKeyById.keys()].find((id) => unmatchedKeyById.get(id) === key);
+        if (!matchedId) {
+          throw new BadRequestError({
+            message:
+              "Slack notifications on PAM folders can no longer be added or edited, only removed. Create an alert on the folder instead."
+          });
         }
-      });
+        unmatchedKeyById.delete(matchedId);
+      }
+      removedNotificationConfigIds = [...unmatchedKeyById.keys()];
     }
 
     const { policyId } = await approvalPolicyService.setScopeConfiguration(
@@ -276,6 +285,11 @@ export const pamAccessRequestServiceFactory = ({
       },
       toApprovalActor(ctx)
     );
+
+    // Removed only once the policy saves, so a failed save keeps the Slack configs.
+    if (removedNotificationConfigIds.length > 0) {
+      await pamFolderNotificationConfigDAL.delete({ $in: { id: removedNotificationConfigIds } });
+    }
 
     return {
       policyId,

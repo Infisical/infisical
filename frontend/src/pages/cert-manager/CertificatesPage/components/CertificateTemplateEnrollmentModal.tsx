@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
@@ -6,15 +6,24 @@ import z from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
+  SelectContent,
   SelectItem,
-  Switch,
-  TextArea
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  TextArea,
+  Toggle
+} from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 import { useCreateEstConfig, useGetEstConfig, useUpdateEstConfig } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -42,6 +51,7 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const inputId = useId();
   const popUpData = popUp?.enrollmentOptions?.data as {
     id: string;
   };
@@ -74,6 +84,8 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
   }, [disableBootstrapCertValidation]);
 
   useEffect(() => {
+    if (!popUp.enrollmentOptions.isOpen) return;
+
     if (data) {
       reset({
         method: EnrollmentMethod.EST,
@@ -83,12 +95,13 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
       });
     } else {
       reset({
+        method: EnrollmentMethod.EST,
         caChain: "",
         isEnabled: false,
         disableBootstrapCertValidation: false
       });
     }
-  }, [data]);
+  }, [data, popUp.enrollmentOptions.isOpen]);
 
   const onFormSubmit = async ({ caChain, passphrase, isEnabled }: FormData) => {
     try {
@@ -129,138 +142,155 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
   };
 
   return (
-    <Modal
-      isOpen={popUp?.enrollmentOptions?.isOpen}
+    <Sheet
+      open={popUp?.enrollmentOptions?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("enrollmentOptions", isOpen);
         reset();
       }}
     >
-      <ModalContent title="Manage Enrollment Options">
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
-            control={control}
-            name="method"
-            defaultValue={EnrollmentMethod.EST}
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Client Enrollment Method"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  <SelectItem value={EnrollmentMethod.EST} key={EnrollmentMethod.EST}>
-                    EST
-                  </SelectItem>
-                </Select>
-              </FormControl>
-            )}
-          />
-          {data && (
-            <FormControl label="EST Label">
-              <Input
-                value={data.certificateTemplateId}
-                isDisabled
-                className="bg-foreground-inverse/[0.07]"
-              />
-            </FormControl>
-          )}
-          <Controller
-            control={control}
-            name="disableBootstrapCertValidation"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl isError={Boolean(error)} errorText={error?.message}>
-                  <Switch
-                    id="skip-bootstrap-cert-validation"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="ml-1 w-full">Disable Bootstrap Certificate Validation</p>
-                  </Switch>
-                </FormControl>
-              );
-            }}
-          />
-          {!disableBootstrapCertValidation && (
+      <SheetContent size="form" isPending={isSubmitting}>
+        <SheetHeader>
+          <SheetTitle>Manage Enrollment Options</SheetTitle>
+        </SheetHeader>
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(onFormSubmit)}>
+          <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
             <Controller
               control={control}
-              name="caChain"
-              disabled={disableBootstrapCertValidation}
+              name="method"
+              defaultValue={EnrollmentMethod.EST}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Certificate Authority Chain"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired={!disableBootstrapCertValidation}
-                >
-                  <TextArea
-                    {...field}
-                    isDisabled={disableBootstrapCertValidation}
-                    className="min-h-60 border-none bg-surface-base text-muted-cool"
-                    reSize="none"
-                  />
-                </FormControl>
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor={`${inputId}-method`}>Client Enrollment Method</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange} name={field.name}>
+                    <SelectTrigger
+                      id={`${inputId}-method`}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      className="w-full"
+                      isError={Boolean(error)}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={EnrollmentMethod.EST} key={EnrollmentMethod.EST}>
+                        EST
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
-          )}
-          <Controller
-            control={control}
-            name="passphrase"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Passphrase" isError={Boolean(error)} errorText={error?.message}>
-                <Input
-                  {...field}
-                  type={isPassphraseFocused ? "text" : "password"}
-                  onFocus={() => setIsPassphraseFocused.on()}
-                  onBlur={() => setIsPassphraseFocused.off()}
-                />
-              </FormControl>
+            {data && (
+              <Field>
+                <FieldLabel htmlFor={`${inputId}-est-label`}>EST Label</FieldLabel>
+                <Input id={`${inputId}-est-label`} value={data.certificateTemplateId} disabled />
+              </Field>
             )}
-          />
-          <Controller
-            control={control}
-            name="isEnabled"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl isError={Boolean(error)} errorText={error?.message}>
-                  <Switch
-                    id="is-active"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="ml-1 w-full">EST Enabled</p>
-                  </Switch>
-                </FormControl>
-              );
-            }}
-          />
-
-          <div className="mt-8 flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
+            <Controller
+              control={control}
+              name="disableBootstrapCertValidation"
+              render={({ field, fieldState: { error } }) => {
+                return (
+                  <Field data-invalid={Boolean(error)}>
+                    <Field orientation="horizontal">
+                      <Toggle
+                        id={`${inputId}-skip-bootstrap-cert-validation`}
+                        ref={field.ref}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        onCheckedChange={field.onChange}
+                        checked={field.value}
+                        aria-invalid={Boolean(error)}
+                      />
+                      <FieldLabel htmlFor={`${inputId}-skip-bootstrap-cert-validation`}>
+                        Disable Bootstrap Certificate Validation
+                      </FieldLabel>
+                    </Field>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                );
+              }}
+            />
+            {!disableBootstrapCertValidation && (
+              <Controller
+                control={control}
+                name="caChain"
+                disabled={disableBootstrapCertValidation}
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor={`${inputId}-ca-chain`}>
+                      Certificate Authority Chain *
+                    </FieldLabel>
+                    <TextArea
+                      {...field}
+                      id={`${inputId}-ca-chain`}
+                      disabled={disableBootstrapCertValidation}
+                      aria-required={!disableBootstrapCertValidation}
+                      isError={Boolean(error)}
+                      className="resize-none"
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            )}
+            <Controller
+              control={control}
+              name="passphrase"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor={`${inputId}-passphrase`}>Passphrase</FieldLabel>
+                  <Input
+                    {...field}
+                    id={`${inputId}-passphrase`}
+                    isError={Boolean(error)}
+                    type={isPassphraseFocused ? "text" : "password"}
+                    onFocus={() => setIsPassphraseFocused.on()}
+                    onBlur={() => {
+                      field.onBlur();
+                      setIsPassphraseFocused.off();
+                    }}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="isEnabled"
+              render={({ field, fieldState: { error } }) => {
+                return (
+                  <Field data-invalid={Boolean(error)}>
+                    <Field orientation="horizontal">
+                      <Toggle
+                        id={`${inputId}-is-active`}
+                        ref={field.ref}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        onCheckedChange={field.onChange}
+                        checked={field.value}
+                        aria-invalid={Boolean(error)}
+                      />
+                      <FieldLabel htmlFor={`${inputId}-is-active`}>EST Enabled</FieldLabel>
+                    </Field>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                );
+              }}
+            />
+          </div>
+          <SheetFooter className="justify-end border-t">
+            <SheetClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </SheetClose>
+            <Button variant="project" size="sm" type="submit" isPending={isSubmitting}>
               Save
             </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("enrollmentOptions", false)}
-            >
-              Cancel
-            </Button>
-          </div>
+          </SheetFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 };

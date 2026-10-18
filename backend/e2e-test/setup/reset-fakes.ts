@@ -1,3 +1,4 @@
+import { auditLogStreamOutboxTuning } from "e2e-test/fakes/audit-log-stream-outbox-constants";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { fakeIamUserSecret } from "e2e-test/fakes/aws-iam-user-secret-rotation-fns";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
@@ -20,4 +21,5 @@ beforeAll(() => {
   fakeS3Bucket.reset();
   fakeDefaultStorage.reset();
   fakeIamUserSecret.reset();
+  auditLogStreamOutboxTuning.reset();
 });

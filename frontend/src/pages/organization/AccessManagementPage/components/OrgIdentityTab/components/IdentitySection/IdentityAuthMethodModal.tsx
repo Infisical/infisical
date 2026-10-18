@@ -77,7 +77,15 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
             onSubmittingChange={setIsSubmitting}
           />
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
+          <Button
+            type="button"
+            variant="ghost"
+            isDisabled={isSubmitting}
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+          >
+            Cancel
+          </Button>
           <Button
             type="submit"
             form={IDENTITY_AUTH_FORM_ID}
@@ -86,14 +94,6 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
             isDisabled={isSubmitting || !selectedAuthMethod}
           >
             {isSelectedAuthAlreadyConfigured ? "Update" : "Add"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            isDisabled={isSubmitting}
-            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-          >
-            Cancel
           </Button>
         </SheetFooter>
       </SheetContent>

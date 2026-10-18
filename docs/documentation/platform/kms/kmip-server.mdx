@@ -1,0 +1,114 @@
+---
+title: "Deploy a KMIP server"
+description: "Run the KMIP server that your KMIP clients connect to."
+---
+
+A [KMIP](/documentation/platform/kms/kmip) server accepts connections from your KMIP clients and passes their requests on to Infisical. You create the KMIP server in Infisical once for your organization, then run it with the Infisical CLI on a machine that your clients can reach.
+
+## Prerequisites
+
+- An organization on Infisical's [Enterprise](https://infisical.com/pricing) plan
+- A Linux machine, VM, or container that your KMIP clients can reach, with the [Infisical CLI](/cli/overview) installed
+- A firewall that allows the following traffic:
+
+| Direction | Port | Purpose |
+| --- | --- | --- |
+| Inbound | TCP 5696 | KMIP clients connecting to the KMIP server |
+| Outbound | TCP 443 | The KMIP server connecting to Infisical |
+
+## Step 1: Create the KMIP server in Infisical
+
+<Steps>
+  <Step>
+    In your organization, go to **KMS** > **KMIP Servers**, then select **Create KMIP Server**.
+  </Step>
+  <Step>
+    Fill in the fields, then select **Create KMIP Server**:
+
+    - **Name**: A name for the KMIP server
+    - **Hostnames or IPs**: A comma-separated list of the hostnames or IP addresses that clients use to reach the KMIP server, such as `kmip.example.com` (Infisical adds them to the server's TLS certificate, so clients can't connect through any other address)
+    - **Key algorithm**: The algorithm of the key that signs the server's TLS certificate
+  </Step>
+  <Step>
+    Optionally, change how the KMIP server authenticates to Infisical. On the KMIP server's page, select the edit icon next to **Authentication**, and pick a **Method**:
+
+    - **Token Auth** (default): The KMIP server enrolls with a one-time token that expires after 1 hour
+    - **AWS Auth**: The KMIP server authenticates with the AWS credentials on its machine, such as an instance role. Enter the **Allowed Principal ARNs** or **Allowed Account IDs** of your machines
+  </Step>
+</Steps>
+
+The server's TLS certificate is valid for one year, and the KMIP server renews it automatically. To set a different validity period, create the KMIP server with [the create KMIP server endpoint](/api-reference/endpoints/kmip-servers/create) and set `ttl`.
+
+## Step 2: Run the KMIP server
+
+<Steps>
+  <Step>
+    On the KMIP server's page, go to the **Deployment** section. If the KMIP server uses **Token Auth**, select **Generate Deploy Command**.
+  </Step>
+  <Step>
+    Pick a tab, and copy the command:
+
+    - **System Service**: Installs the KMIP server as a systemd service that starts with the machine (use this in production)
+    - **CLI**: Runs the KMIP server in your terminal
+  </Step>
+  <Step>
+    By default, the KMIP server listens only on `localhost:5696`, so only clients on the same machine can connect. If your clients run on other machines, add `--listen-address` to the command with an address they can reach:
+
+    - **One network interface**: The machine's IP address on the network your clients use, such as `--listen-address="10.0.1.50:5696"`
+    - **Every network interface**: `--listen-address="0.0.0.0:5696"`, which exposes the KMIP server on every network the machine is on
+  </Step>
+  <Step>
+    Run the command on your machine. For example, a systemd install with **Token Auth** that listens on one network interface looks like this:
+
+    ```bash
+    sudo infisical kmip systemd install <server-name> \
+      --enroll-method=token \
+      --token=<enrollment-token> \
+      --listen-address="10.0.1.50:5696" \
+      --domain=https://app.infisical.com
+    sudo systemctl start infisical-kmip
+    ```
+
+    With **AWS Auth**, the command uses `--enroll-method=aws` and `--kmip-server-id=<kmip-server-id>` instead of a token.
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, `--domain` is `https://eu.infisical.com` or the address of your instance. The command you copied already sets it.
+    </Note>
+  </Step>
+  <Step>
+    Check the KMIP server's logs for a `Listening on` line and a `Next certificate renewal scheduled in` line. For a systemd install, run:
+
+    ```bash
+    sudo journalctl -u infisical-kmip -f
+    ```
+  </Step>
+</Steps>
+
+To restart the KMIP server, run the same command again. With **Token Auth**, the KMIP server reuses the access token from its first enrollment, so the expired enrollment token doesn't matter.
+
+Next, [connect your KMIP clients](/documentation/platform/kms/kmip-clients).
+
+## Manage a KMIP server
+
+On the KMIP server's page:
+
+- **Change the TLS certificate**: Select the edit icon next to **Certificate Configuration** to change the hostnames, IP addresses, or key algorithm. The KMIP server uses the new settings when it next renews its certificate, or when you restart it
+- **Get a new enrollment token**: In **Deployment**, select **Regenerate Command**. A running KMIP server stays connected
+- **Disconnect the KMIP server**: Select **Options** > **Revoke Access**. The KMIP server can't reach Infisical until it enrolls again
+- **Delete the KMIP server**: Select **Options** > **Delete KMIP Server**
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The logs show 'Certificate renewal failed'">
+    If Infisical was briefly unreachable, you don't need to do anything. The KMIP server keeps using its current certificate, and tries again more often as the certificate gets closer to expiring.
+
+    If the error is about authentication, such as after you revoked the KMIP server's access:
+
+    - **AWS Auth**: The KMIP server authenticates again on its own
+    - **Token Auth**: Select **Regenerate Command**, and run the new command on the machine
+  </Accordion>
+  <Accordion title="The enrollment token expired before I ran the command">
+    Enrollment tokens expire after 1 hour, and work only once. Select **Regenerate Command** to get a new one.
+  </Accordion>
+</AccordionGroup>

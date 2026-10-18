@@ -5,10 +5,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
-import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
-import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -21,6 +18,7 @@ import {
 } from "../pam-account-template/pam-account-template-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
+import { resolveS3RecordingAccess } from "./aws-s3/aws-s3-provider-factory";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
 import { PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
@@ -80,17 +78,12 @@ export const pamSessionChunkServiceFactory = ({
       }
 
       const appConnection = await decryptAppConnection(raw, kmsService);
-      const awsConfig = await getAwsConnectionConfig(
-        appConnection as unknown as TAwsConnectionConfig,
-        (s3Config.region as AWSRegion) ?? AWSRegion.US_EAST_1
-      );
 
       return {
         backend: PamRecordingStorageBackend.AwsS3,
         bucket: s3Config.bucket,
-        region: s3Config.region as AWSRegion,
         keyPrefix: s3Config.keyPrefix ?? null,
-        awsCredentials: awsConfig.credentials
+        ...(await resolveS3RecordingAccess(appConnection, s3Config.region))
       };
     }
 

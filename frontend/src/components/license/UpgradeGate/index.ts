@@ -53,7 +53,7 @@ export {
   getSafeUpgradeReturnPath,
   HoneyTokensUpgradeIntent,
   PamAccountLimitUpgradeIntent,
-  PamSlackNotificationsUpgradeIntent,
+  PamEnterpriseAlertingUpgradeIntent,
   PamUpgradeIntent,
   PointInTimeRecoveryUpgradeIntent,
   PostQuantumCertificatesUpgradeIntent,

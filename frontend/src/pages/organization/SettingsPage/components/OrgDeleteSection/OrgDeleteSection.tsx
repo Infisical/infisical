@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { TriangleAlert } from "lucide-react";
+import { Trash2Icon, TriangleAlert } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -15,14 +15,10 @@ import {
   AlertDialogTitle,
   Button,
   Card,
-  CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldTitle,
   Input,
   Label
 } from "@app/components/v3";
@@ -63,33 +59,25 @@ export const OrgDeleteSection = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <TriangleAlert className="size-4 text-danger" />
-          Danger Zone
-        </CardTitle>
-        <CardDescription>Irreversible and destructive actions.</CardDescription>
+    <Card className="gap-0 overflow-hidden border-danger/25 p-0">
+      <CardHeader className="p-6">
+        <CardTitle>Danger Zone</CardTitle>
+        <CardDescription>
+          Permanently delete this organization and all of its data. This action cannot be undone.
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Field orientation="horizontal">
-          <FieldContent>
-            <FieldTitle>Delete this organization</FieldTitle>
-            <FieldDescription>
-              Permanently remove {currentOrg?.name} and all of its data. This action cannot be
-              undone.
-            </FieldDescription>
-          </FieldContent>
-          <Button
-            variant="danger"
-            isPending={isPending}
-            isDisabled={!isAdmin}
-            onClick={() => handlePopUpOpen("deleteOrg")}
-          >
-            Delete Organization
-          </Button>
-        </Field>
-      </CardContent>
+      <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
+        <Button
+          size="sm"
+          variant="danger"
+          isPending={isPending}
+          isDisabled={!isAdmin}
+          onClick={() => handlePopUpOpen("deleteOrg")}
+        >
+          <Trash2Icon />
+          Delete Organization
+        </Button>
+      </CardFooter>
       <AlertDialog
         open={popUp.deleteOrg.isOpen}
         onOpenChange={(isOpen) => {
