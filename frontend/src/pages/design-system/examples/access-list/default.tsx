@@ -51,18 +51,26 @@ const everyone: AccessMember[] = [
 
 export default function Example() {
   const [members, setMembers] = useState(everyone);
+  const [open, setOpen] = useState("marcus");
+  const missing = everyone.find((member) => !members.some((entry) => entry.id === member.id));
   return (
     <ExampleCell label="Owner locked, multiple selection with the bulk bar" align="stretch">
       <AccessList
         project="payments-api"
         members={members}
-        current="marcus"
-        onAdd={() => setMembers(everyone)}
+        current={open}
+        onOpen={setOpen}
+        onAdd={missing ? () => setMembers((value) => [...value, missing]) : undefined}
         onRevoke={(ids) =>
           setMembers((value) => value.filter((member) => !ids.includes(member.id)))
         }
         onRestore={(ids) =>
-          setMembers((value) => [...value, ...everyone.filter((member) => ids.includes(member.id))])
+          setMembers((value) => [
+            ...value,
+            ...everyone.filter(
+              (member) => ids.includes(member.id) && !value.some((entry) => entry.id === member.id)
+            )
+          ])
         }
       />
     </ExampleCell>

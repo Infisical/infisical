@@ -4,17 +4,19 @@ import { Button } from "../ui/button";
 import { Media } from "../ui/item";
 import { List, ListRow } from "../ui/list";
 
-export interface ApprovalRequest {
+interface ApprovalRequestBase {
   id: string;
   object: string;
   title: React.ReactNode;
   description: React.ReactNode;
   age: string;
   href?: string;
-  state: "new" | "pending" | "resolved" | "failed";
-  pendingLabel?: string;
-  error?: React.ReactNode;
 }
+export type ApprovalRequest = ApprovalRequestBase &
+  (
+    | { state: "new" | "pending" | "resolved"; error?: never }
+    | { state: "failed"; error: React.ReactNode }
+  );
 
 export type ApprovalQueueProps = {
   requests: readonly ApprovalRequest[];
@@ -86,7 +88,7 @@ export const ApprovalQueue = ({
                   loading={pending}
                   onClick={() => onApprove(request.id)}
                 >
-                  {pending ? (request.pendingLabel ?? "Approving") : "Approve"}
+                  Approve
                 </Button>
               </>
             );

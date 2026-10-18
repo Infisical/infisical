@@ -26,3 +26,10 @@
   align-items: center;
   gap: var(--v4-space-8);
 }
+.failure {
+  color: var(--v4-bad);
+}
+.statusLine:focus,
+.failure:focus {
+  outline: none;
+}

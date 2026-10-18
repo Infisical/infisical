@@ -154,8 +154,13 @@ const everyone: AccessMember[] = [
 ];
 export default function Example() {
     const [members, setMembers] = useState(everyone);
+    const [open, setOpen] = useState("marcus");
+    const missing = everyone.find((member) => !members.some((entry) => entry.id === member.id));
     return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <AccessList project="payments-api" members={members} current="marcus" onAdd={() => setMembers(everyone)} onRevoke={(ids) => setMembers((value) => value.filter((member) => !ids.includes(member.id)))} onRestore={(ids) => setMembers((value) => [...value, ...everyone.filter((member) => ids.includes(member.id))])}/>
+      <AccessList project="payments-api" members={members} current={open} onOpen={setOpen} onAdd={missing ? () => setMembers((value) => [...value, missing]) : undefined} onRevoke={(ids) => setMembers((value) => value.filter((member) => !ids.includes(member.id)))} onRestore={(ids) => setMembers((value) => [
+            ...value,
+            ...everyone.filter((member) => ids.includes(member.id) && !value.some((entry) => entry.id === member.id))
+        ])}/>
     </div><figcaption className="text-muted-foreground text-xs">{"Owner locked, multiple selection with the bulk bar"}</figcaption></figure>);
 }
 ```

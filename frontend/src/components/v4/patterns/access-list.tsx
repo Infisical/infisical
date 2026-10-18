@@ -30,9 +30,10 @@ export type AccessListProps = {
   project: string;
   members: readonly AccessMember[];
   current?: string;
+  onOpen?: (id: string) => void;
   onAdd?: () => void;
-  onRevoke: (ids: string[]) => void;
-  onRestore?: (ids: string[]) => void;
+  onRevoke: (ids: string[]) => void | Promise<unknown>;
+  onRestore?: (ids: string[]) => void | Promise<unknown>;
   onChangeRole?: (id: string) => void;
 };
 
@@ -40,17 +41,40 @@ export const AccessList = ({
   project,
   members,
   current,
+  onOpen,
   onAdd,
   onRevoke,
   onRestore,
   onChangeRole
 }: AccessListProps) => {
-  const [selected, setSelected] = React.useState<string[]>([]);
+  const [picked, setPicked] = React.useState<string[]>([]);
   const [revoked, setRevoked] = React.useState<string[]>([]);
-  const revoke = (ids: string[]) => {
-    onRevoke(ids);
-    setRevoked(ids);
-    setSelected((value) => value.filter((id) => !ids.includes(id)));
+  const [failure, setFailure] = React.useState<string>();
+  const status = React.useRef<HTMLSpanElement | null>(null);
+  const selectable = new Set(members.filter((member) => !member.owner).map((member) => member.id));
+  const selected = picked.filter((id) => selectable.has(id));
+  const revoke = async (ids: string[]) => {
+    const targets = ids.filter((id) => selectable.has(id));
+    if (!targets.length) return;
+    setFailure(undefined);
+    status.current?.focus();
+    try {
+      await onRevoke(targets);
+      setRevoked((value) => [...new Set([...value, ...targets])]);
+      setPicked((value) => value.filter((id) => !targets.includes(id)));
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : "Access was not revoked. Try again.");
+    }
+  };
+  const restore = async () => {
+    if (!onRestore) return;
+    setFailure(undefined);
+    try {
+      await onRestore(revoked);
+      setRevoked([]);
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : "Access was not restored. Try again.");
+    }
   };
   return (
     <div data-slot="access-list" className={styles.pattern}>
@@ -70,26 +94,28 @@ export const AccessList = ({
           title="Members"
           selection="multiple"
           selectedIds={selected}
-          onSelectionChange={setSelected}
+          onSelectionChange={setPicked}
           empty={<EmptyState variant="compact" icon="user" title="Nobody else has access yet" />}
           footer={
-            revoked.length > 0 ? (
-              <span className={styles.statusLine}>
-                Revoked access for {revoked.length} {revoked.length === 1 ? "member" : "members"}.
-                {onRestore && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => {
-                      onRestore(revoked);
-                      setRevoked([]);
-                    }}
-                  >
-                    Undo
-                  </Button>
-                )}
-              </span>
-            ) : undefined
+            <span
+              ref={status}
+              tabIndex={-1}
+              role="status"
+              className={failure ? styles.failure : styles.statusLine}
+            >
+              {failure ??
+                (revoked.length > 0 && (
+                  <>
+                    Revoked access for {revoked.length}{" "}
+                    {revoked.length === 1 ? "member" : "members"}.
+                    {onRestore && (
+                      <Button variant="link" size="sm" onClick={restore}>
+                        Undo
+                      </Button>
+                    )}
+                  </>
+                ))}
+            </span>
           }
         >
           {members.map((member) => (
@@ -98,6 +124,7 @@ export const AccessList = ({
               value={member.id}
               label={member.name}
               href={member.href}
+              onClick={() => onOpen?.(member.id)}
               current={member.id === current}
               selectable={!member.owner}
               media={<Avatar size={32} name={member.name} kind={member.kind ?? "person"} />}
@@ -139,7 +166,7 @@ export const AccessList = ({
           placement="contained"
           label="Member actions"
           count={selected.length}
-          onClear={() => setSelected([])}
+          onClear={() => setPicked([])}
           actions={[
             { label: "Revoke access", icon: "trash", danger: true, onClick: () => revoke(selected) }
           ]}
