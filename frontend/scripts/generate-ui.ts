@@ -486,9 +486,10 @@ const ids = new Set<string>();
 const editorialRuleIds = new Set<string>();
 const sourceOwners = new Map<string, string>();
 const knownModules = new Set(
-  filesIn(`${componentRoot}/ui`).filter(
-    (file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx")
-  )
+  [`${componentRoot}/ui`, `${componentRoot}/patterns`]
+    .filter((folder) => existsSync(path.join(root, folder)))
+    .flatMap((folder) => filesIn(folder))
+    .filter((file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"))
 );
 componentCatalog.forEach((definition) => {
   if (ids.has(definition.id)) failures.push(`Duplicate component ID: ${definition.id}`);

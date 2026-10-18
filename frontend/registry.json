@@ -32,9 +32,19 @@
           "target": "src/components/v4/docs/README.md"
         },
         {
+          "path": "src/components/v4/docs/access-list.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/access-list.md"
+        },
+        {
           "path": "src/components/v4/docs/accordion.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/accordion.md"
+        },
+        {
+          "path": "src/components/v4/docs/activity-log.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/activity-log.md"
         },
         {
           "path": "src/components/v4/docs/alert-dialog.md",
@@ -55,6 +65,11 @@
           "path": "src/components/v4/docs/announcements.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/announcements.md"
+        },
+        {
+          "path": "src/components/v4/docs/approval-queue.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/approval-queue.md"
         },
         {
           "path": "src/components/v4/docs/aspect-ratio.md",
@@ -510,6 +525,67 @@
           "path": "src/components/v4/v4.css",
           "type": "registry:file",
           "target": "src/components/v4/v4.css"
+        }
+      ]
+    },
+    {
+      "name": "access-list",
+      "type": "registry:block",
+      "registryDependencies": [
+        "@infisical/avatar",
+        "@infisical/badge",
+        "@infisical/button",
+        "@infisical/dropdown-menu",
+        "@infisical/empty",
+        "@infisical/floating-action-bar",
+        "@infisical/infisical-base",
+        "@infisical/list"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/patterns/access-list.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/patterns/access-list.tsx"
+        },
+        {
+          "path": "src/components/v4/patterns/patterns.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/patterns/patterns.module.css"
+        }
+      ]
+    },
+    {
+      "name": "activity-log",
+      "type": "registry:block",
+      "registryDependencies": [
+        "@infisical/avatar",
+        "@infisical/badge",
+        "@infisical/button",
+        "@infisical/infisical-base",
+        "@infisical/list"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/patterns/activity-log.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/patterns/activity-log.tsx"
+        }
+      ]
+    },
+    {
+      "name": "approval-queue",
+      "type": "registry:block",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/infisical-base",
+        "@infisical/item",
+        "@infisical/list"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/patterns/approval-queue.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/patterns/approval-queue.tsx"
         }
       ]
     },

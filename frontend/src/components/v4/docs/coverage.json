@@ -1,17 +1,38 @@
 {
-  "requiredCapabilities": 73,
+  "requiredCapabilities": 76,
   "componentFamilies": 72,
-  "patterns": 1,
-  "catalogEntries": 75,
+  "patterns": 4,
+  "catalogEntries": 78,
   "supplementalGuides": [
     "layout",
     "text"
   ],
-  "examples": 154,
+  "examples": 157,
   "missingCapabilities": [],
   "unmappedExports": [],
   "assessment": "Inventory and recipe coverage only. Behavior parity, browser checks and installation require executed evidence.",
   "obligations": [
+    {
+      "id": "access-list",
+      "kind": "pattern",
+      "exports": [
+        "AccessList"
+      ],
+      "name": "AccessList",
+      "variants": [
+        "owner locked",
+        "multiple selection",
+        "bulk bar",
+        "revoked with undo",
+        "empty"
+      ],
+      "behavior": "Framed List of member link rows with selection; contained FloatingActionBar revokes; owner unselectable",
+      "acceptance": [
+        "Owner never selected",
+        "Undo restores",
+        "Roles in words"
+      ]
+    },
     {
       "id": "accordion",
       "kind": "component",
@@ -28,6 +49,25 @@
         "Keyboard Home/End/arrows",
         "Disabled skipped",
         "Closed content unfocusable"
+      ]
+    },
+    {
+      "id": "activity-log",
+      "kind": "pattern",
+      "exports": [
+        "ActivityLog"
+      ],
+      "name": "ActivityLog",
+      "variants": [
+        "day sections",
+        "machine and agent badges",
+        "loading more",
+        "all loaded"
+      ],
+      "behavior": "Plain small List with day sections and load more",
+      "acceptance": [
+        "Existing rows stay while loading",
+        "Footer counts events"
       ]
     },
     {
@@ -115,6 +155,26 @@
         "Focus starts on Next",
         "Position announced",
         "Media inert"
+      ]
+    },
+    {
+      "id": "approval-queue",
+      "kind": "pattern",
+      "exports": [
+        "ApprovalQueue"
+      ],
+      "name": "ApprovalQueue",
+      "variants": [
+        "new",
+        "pending",
+        "resolved",
+        "failed"
+      ],
+      "behavior": "Framed List with actions below each request; requests change state in place",
+      "acceptance": [
+        "Resolved rows stay with Undo",
+        "Failed rows say how to recover",
+        "Count drops on resolve"
       ]
     },
     {

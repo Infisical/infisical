@@ -5,6 +5,7 @@ export type ComponentGroup =
   | "Navigation"
   | "Overlays"
   | "Composites"
+  | "Patterns"
   | "Feedback"
   | "Code"
   | "Utilities";

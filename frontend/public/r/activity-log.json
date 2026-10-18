@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "activity-log",
+  "type": "registry:block",
+  "registryDependencies": [
+    "@infisical/avatar",
+    "@infisical/badge",
+    "@infisical/button",
+    "@infisical/infisical-base",
+    "@infisical/list"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/patterns/activity-log.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/patterns/activity-log.tsx",
+      "content": "import * as React from \"react\";\n\nimport { Avatar } from \"../ui/avatar\";\nimport { Badge } from \"../ui/badge\";\nimport { Button } from \"../ui/button\";\nimport { List, ListRow, ListSection } from \"../ui/list\";\n\nexport interface ActivityEvent {\n  id: string;\n  actor: string;\n  actorKind?: \"person\" | \"machine\" | \"agent\";\n  summary: React.ReactNode;\n  time: string;\n}\nexport interface ActivityDay {\n  label: string;\n  events: readonly ActivityEvent[];\n}\n\nexport type ActivityLogProps = {\n  days: readonly ActivityDay[];\n  total: number;\n  loading?: boolean;\n  onLoadMore?: () => void;\n  label?: string;\n};\n\nconst kindLabel = { person: \"\", machine: \"Machine\", agent: \"Agent\" } as const;\n\nexport const ActivityLog = ({\n  days,\n  total,\n  loading = false,\n  onLoadMore,\n  label = \"Activity\"\n}: ActivityLogProps) => {\n  const shown = days.reduce((sum, day) => sum + day.events.length, 0);\n  return (\n    <div data-slot=\"activity-log\">\n      <List\n        label={label}\n        variant=\"plain\"\n        size=\"sm\"\n        loading={loading}\n        empty=\"No activity yet\"\n        footer={\n          shown < total && onLoadMore ? (\n            <Button variant=\"outline\" size=\"sm\" loading={loading} onClick={onLoadMore}>\n              Load more\n            </Button>\n          ) : (\n            `Showing ${shown} of ${total} events`\n          )\n        }\n      >\n        {days.map((day) => (\n          <ListSection\n            key={day.label}\n            label={day.label}\n            meta={`${day.events.length} ${day.events.length === 1 ? \"event\" : \"events\"}`}\n          >\n            {day.events.map((event) => {\n              const kind = event.actorKind ?? \"person\";\n              return (\n                <ListRow\n                  key={event.id}\n                  value={event.id}\n                  label={event.actor}\n                  media={<Avatar size={24} name={event.actor} kind={kind} />}\n                  title={event.summary}\n                  badge={kind !== \"person\" ? <Badge>{kindLabel[kind]}</Badge> : undefined}\n                  meta={event.time}\n                />\n              );\n            })}\n          </ListSection>\n        ))}\n      </List>\n    </div>\n  );\n};\n"
+    }
+  ]
+}

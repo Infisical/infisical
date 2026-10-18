@@ -4,6 +4,257 @@
   "rules": "skills/infisical-ui/rules.json",
   "components": [
     {
+      "id": "access-list",
+      "title": "Access list",
+      "group": "Patterns",
+      "summary": "Who can reach a project: a member per row that opens them, multiple selection with the bulk bar and a locked owner.",
+      "sourceFiles": [
+        "src/components/v4/patterns/access-list.tsx",
+        "src/components/v4/patterns/patterns.module.css"
+      ],
+      "exports": [
+        "AccessList"
+      ],
+      "referenceNames": [
+        "AccessList"
+      ],
+      "behavior": [
+        "A toolbar above the list says how many have access and offers Add member.",
+        "Members are link rows in a framed List with selection, an Avatar, the role as a Badge, how they got access, last use and a row menu.",
+        "Selecting rows raises a contained FloatingActionBar with Revoke access. The owner cannot be selected and its menu is disabled.",
+        "After a revoke, a status line in the list footer says how many lost access and Undo restores them."
+      ],
+      "accessibility": [
+        "The List's select-all and row checkboxes are named for the member; the bulk bar is a named toolbar with a count status.",
+        "Machine and agent names are set in mono."
+      ],
+      "limitations": [
+        "The host owns the members and persists revokes and restores."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Members of a project",
+          "module": "./examples/access-list/default.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "row state",
+          "expected": [
+            "owner locked",
+            "selectable",
+            "current"
+          ],
+          "shown": [
+            {
+              "value": "owner locked",
+              "exampleId": "default",
+              "label": "Owner locked, multiple selection with the bulk bar"
+            },
+            {
+              "value": "selectable",
+              "exampleId": "default",
+              "label": "Owner locked, multiple selection with the bulk bar"
+            },
+            {
+              "value": "current",
+              "exampleId": "default",
+              "label": "Owner locked, multiple selection with the bulk bar"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use AccessList for who can reach one project or resource, with roles in words and temporary access saying when it ends."
+        ],
+        "avoid": [
+          "Color roles, or confirm every revoke with a dialog when Undo can restore it."
+        ],
+        "decision": "Choose AccessList for a membership list with bulk changes. Use a Table when people need to sort, filter or export members.",
+        "rules": [
+          {
+            "id": "access-list-roles",
+            "when": "A member has a role or temporary access.",
+            "do": "Name the role in a Badge and say when temporary access ends, such as Read, 1 hour.",
+            "avoid": "Color-code roles or hide the expiry in a tooltip.",
+            "reason": "Words survive both themes and screen readers; color alone does not.",
+            "evidence": [
+              "src/components/v4/patterns/access-list.tsx",
+              "src/pages/design-system/examples/access-list/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each row's badge and description for the role and any expiry."
+            }
+          },
+          {
+            "id": "access-list-owner",
+            "when": "A member cannot lose access, such as the owner.",
+            "do": "Make the row unselectable, disable its menu and say why in the description.",
+            "avoid": "Let the owner be selected and fail the bulk action.",
+            "reason": "A control that cannot succeed should not be offered.",
+            "evidence": [
+              "src/components/v4/patterns/access-list.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Select all and check the owner stays unselected."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "revoked",
+            "guidance": "Rows leave the list and the footer offers Undo."
+          },
+          {
+            "state": "empty",
+            "guidance": "A compact empty state says nobody else has access yet."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Say how each member got access in plain words.",
+            "avoid": "Show internal policy identifiers as the description.",
+            "reason": "People decide on access by who granted it and why."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#access-list and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "activity-log",
+      "title": "Activity log",
+      "group": "Patterns",
+      "summary": "Who did what, one line per event, grouped by day with load more.",
+      "sourceFiles": [
+        "src/components/v4/patterns/activity-log.tsx"
+      ],
+      "exports": [
+        "ActivityLog"
+      ],
+      "referenceNames": [
+        "ActivityLog"
+      ],
+      "behavior": [
+        "A plain small List with a section per day whose meta counts its events.",
+        "Each event shows the actor's Avatar, the actor and what happened, a Badge for machines and agents, and the time.",
+        "Load more adds skeleton rows under the existing rows and keeps the button busy; once everything is in, the footer says Showing 6 of 6 events."
+      ],
+      "accessibility": [
+        "The list keeps existing rows while loading and announces Loading items."
+      ],
+      "limitations": [
+        "For filtering, sorting or exporting events, use a Table such as the audit log."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Recent project activity",
+          "module": "./examples/activity-log/default.tsx",
+          "states": [
+            "default",
+            "loading"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "paging",
+          "expected": [
+            "more available",
+            "loading more",
+            "all loaded"
+          ],
+          "shown": [
+            {
+              "value": "more available",
+              "exampleId": "default",
+              "label": "Grouped by day, load more"
+            },
+            {
+              "value": "loading more",
+              "exampleId": "default",
+              "label": "Grouped by day, load more"
+            },
+            {
+              "value": "all loaded",
+              "exampleId": "default",
+              "label": "Grouped by day, load more"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use ActivityLog for a short recent history beside an object, written actor first in the past tense."
+        ],
+        "avoid": [
+          "Use it as the audit log, or write events in the passive voice."
+        ],
+        "decision": "Choose ActivityLog for a readable recent history. Use Table for the searchable audit log.",
+        "rules": [
+          {
+            "id": "activity-log-voice",
+            "when": "An event is written.",
+            "do": "Start with the actor and use the past tense, with keys and machine names in mono.",
+            "avoid": "Write passive events such as Secret was updated.",
+            "reason": "People scan the log for who did something.",
+            "evidence": [
+              "src/pages/design-system/examples/activity-log/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each title for actor first and past tense."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "loading more",
+            "guidance": "Skeleton rows appear under the rows already there."
+          },
+          {
+            "state": "all loaded",
+            "guidance": "The footer counts the events shown."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep times short and local; the section names the day.",
+            "avoid": "Repeat the full date on every row.",
+            "reason": "The day heading already carries it."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#activity-log and exercise the documented interaction."
+        }
+      ]
+    },
+    {
       "id": "animated-collapse",
       "title": "Animated collapse",
       "group": "Utilities",
@@ -253,6 +504,145 @@
         {
           "kind": "browser",
           "command": "npm run ui:dev; open /design-system#announcements and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "approval-queue",
+      "title": "Approval queue",
+      "group": "Patterns",
+      "summary": "Requests waiting on you, each moving through new, pending, then resolved or failed in place.",
+      "sourceFiles": [
+        "src/components/v4/patterns/approval-queue.tsx"
+      ],
+      "exports": [
+        "ApprovalQueue"
+      ],
+      "referenceNames": [
+        "ApprovalQueue"
+      ],
+      "behavior": [
+        "A framed List titled Needs you with the waiting count as its action and a View history footer.",
+        "Actions sit in a second row under each request's text, so the age ends every title line in the same place.",
+        "New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry."
+      ],
+      "accessibility": [
+        "Each request title links to the request and marks the open one as current. Errors are announced as alerts."
+      ],
+      "limitations": [
+        "The host owns request state and the approve, undo and retry calls."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Requests in every state",
+          "module": "./examples/approval-queue/default.tsx",
+          "states": [
+            "default",
+            "loading",
+            "success",
+            "error"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "request state",
+          "expected": [
+            "new",
+            "pending",
+            "resolved",
+            "failed"
+          ],
+          "shown": [
+            {
+              "value": "new",
+              "exampleId": "default",
+              "label": "New, pending, resolved with undo, failed with retry"
+            },
+            {
+              "value": "pending",
+              "exampleId": "default",
+              "label": "New, pending, resolved with undo, failed with retry"
+            },
+            {
+              "value": "resolved",
+              "exampleId": "default",
+              "label": "New, pending, resolved with undo, failed with retry"
+            },
+            {
+              "value": "failed",
+              "exampleId": "default",
+              "label": "New, pending, resolved with undo, failed with retry"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use ApprovalQueue for requests that need the person's decision, with two actions at most per row."
+        ],
+        "avoid": [
+          "Remove a resolved row while the page is open, or confirm an approval that Undo can take back."
+        ],
+        "decision": "Choose ApprovalQueue for decisions waiting on someone. Use ActivityLog for what already happened.",
+        "rules": [
+          {
+            "id": "approval-queue-in-place",
+            "when": "A request is resolved.",
+            "do": "Keep the row, put its title in the past tense and offer Undo; drop the header count instead.",
+            "avoid": "Remove the row as soon as it resolves.",
+            "reason": "Rows that vanish make people doubt what they just did.",
+            "evidence": [
+              "src/components/v4/patterns/approval-queue.tsx",
+              "src/pages/design-system/examples/approval-queue/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Approve a request and check the row stays with Undo and the count drops."
+            }
+          },
+          {
+            "id": "approval-queue-recovery",
+            "when": "A request fails.",
+            "do": "Say what broke and what to do in the error line and offer Retry.",
+            "avoid": "Show a generic failure with no next step.",
+            "reason": "The person can only recover if they know how.",
+            "evidence": [
+              "src/pages/design-system/examples/approval-queue/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each failed row's error for a cause and a next step."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "pending",
+            "guidance": "The pressed action is busy with a present participle; its partner is disabled."
+          },
+          {
+            "state": "failed",
+            "guidance": "A bad icon tile, the error line and Retry."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Name the object in mono and the person who asked in the description.",
+            "avoid": "Title every row Approval request.",
+            "reason": "People decide by what changes and who asked."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#approval-queue and exercise the documented interaction."
         }
       ]
     },

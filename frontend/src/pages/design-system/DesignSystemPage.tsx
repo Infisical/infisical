@@ -64,6 +64,7 @@ const componentGroupOrder: readonly ComponentGroup[] = [
   "Feedback",
   "Overlays",
   "Composites",
+  "Patterns",
   "Code",
   "Utilities"
 ];

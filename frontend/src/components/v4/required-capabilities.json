@@ -2,6 +2,27 @@
   "schemaVersion": 1,
   "components": [
     {
+      "id": "access-list",
+      "name": "AccessList",
+      "kind": "pattern",
+      "exports": [
+        "AccessList"
+      ],
+      "variants": [
+        "owner locked",
+        "multiple selection",
+        "bulk bar",
+        "revoked with undo",
+        "empty"
+      ],
+      "behavior": "Framed List of member link rows with selection; contained FloatingActionBar revokes; owner unselectable",
+      "acceptance": [
+        "Owner never selected",
+        "Undo restores",
+        "Roles in words"
+      ]
+    },
+    {
       "id": "accordion",
       "name": "Accordion",
       "kind": "component",
@@ -17,6 +38,25 @@
         "Keyboard Home/End/arrows",
         "Disabled skipped",
         "Closed content unfocusable"
+      ]
+    },
+    {
+      "id": "activity-log",
+      "name": "ActivityLog",
+      "kind": "pattern",
+      "exports": [
+        "ActivityLog"
+      ],
+      "variants": [
+        "day sections",
+        "machine and agent badges",
+        "loading more",
+        "all loaded"
+      ],
+      "behavior": "Plain small List with day sections and load more",
+      "acceptance": [
+        "Existing rows stay while loading",
+        "Footer counts events"
       ]
     },
     {
@@ -104,6 +144,26 @@
         "Focus starts on Next",
         "Position announced",
         "Media inert"
+      ]
+    },
+    {
+      "id": "approval-queue",
+      "name": "ApprovalQueue",
+      "kind": "pattern",
+      "exports": [
+        "ApprovalQueue"
+      ],
+      "variants": [
+        "new",
+        "pending",
+        "resolved",
+        "failed"
+      ],
+      "behavior": "Framed List with actions below each request; requests change state in place",
+      "acceptance": [
+        "Resolved rows stay with Undo",
+        "Failed rows say how to recover",
+        "Count drops on resolve"
       ]
     },
     {
