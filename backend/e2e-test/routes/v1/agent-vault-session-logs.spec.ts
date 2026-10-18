@@ -225,7 +225,7 @@ describe("Agent Vault session logs", async () => {
 
   describe("settings", () => {
     type TSettingsBody = {
-      settings: { enabled: boolean; isSaved: boolean; storage: Record<string, unknown> } | null;
+      settings: { enabled: boolean; storage: Record<string, unknown> } | null;
       defaultStorage: { configured: boolean };
     };
     const settingsOf = (res: { payload: string }) => JSON.parse(res.payload) as TSettingsBody;
@@ -248,7 +248,7 @@ describe("Agent Vault session logs", async () => {
       fakeDefaultStorage.set();
       const res = await inject("GET", SETTINGS_URL);
       expect(settingsOf(res)).toEqual({
-        settings: { enabled: true, isSaved: false, storage: { type: "default" } },
+        settings: { enabled: true, storage: { type: "default" } },
         defaultStorage: { configured: true }
       });
       expect(JSON.parse((await inject("GET", `${SETTINGS_URL}/cors-probe`)).payload).probe).toBeNull();
@@ -257,7 +257,7 @@ describe("Agent Vault session logs", async () => {
     test("saving external storage checks the bucket at the product folder, and the CORS probe points there", async () => {
       const res = await configure();
       expect(res.statusCode, res.payload).toBe(200);
-      expect(settingsOf(res).settings).toEqual({ enabled: true, isSaved: true, storage: externalStorage() });
+      expect(settingsOf(res).settings).toEqual({ enabled: true, storage: externalStorage() });
       expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([`${productFolder()}.check`]);
 
       const probe = await inject("GET", `${SETTINGS_URL}/cors-probe`);
@@ -282,7 +282,6 @@ describe("Agent Vault session logs", async () => {
       fakeDefaultStorage.set();
       expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toEqual({
         enabled: false,
-        isSaved: true,
         storage: { type: "default" }
       });
     });
@@ -290,10 +289,10 @@ describe("Agent Vault session logs", async () => {
     test("default storage can be turned off and on again", async () => {
       fakeDefaultStorage.set();
       const off = await saveConfig({ enabled: false });
-      expect(settingsOf(off).settings).toEqual({ enabled: false, isSaved: true, storage: { type: "default" } });
+      expect(settingsOf(off).settings).toEqual({ enabled: false, storage: { type: "default" } });
 
       const on = await saveConfig({ enabled: true, storage: { type: "default" } });
-      expect(settingsOf(on).settings).toEqual({ enabled: true, isSaved: true, storage: { type: "default" } });
+      expect(settingsOf(on).settings).toEqual({ enabled: true, storage: { type: "default" } });
     });
 
     test("switching to default storage drops the bucket and connection, and back again checks the bucket", async () => {
@@ -301,7 +300,7 @@ describe("Agent Vault session logs", async () => {
       expect((await configure()).statusCode).toBe(200);
 
       const toDefault = await saveConfig({ enabled: true, storage: { type: "default" } });
-      expect(settingsOf(toDefault).settings).toEqual({ enabled: true, isSaved: true, storage: { type: "default" } });
+      expect(settingsOf(toDefault).settings).toEqual({ enabled: true, storage: { type: "default" } });
       const row = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
       expect(row).toMatchObject({ storageType: "default", appConnectionId: null, bucket: null, region: null });
 
@@ -406,7 +405,7 @@ describe("Agent Vault session logs", async () => {
       fakeDefaultStorage.set();
       await configure();
       const off = await saveConfig({ enabled: false });
-      expect(settingsOf(off).settings).toEqual({ enabled: false, isSaved: true, storage: { type: "default" } });
+      expect(settingsOf(off).settings).toEqual({ enabled: false, storage: { type: "default" } });
     });
 
     test("turning off works while the connection can't be used, and turning back on checks it again", async () => {
@@ -436,7 +435,6 @@ describe("Agent Vault session logs", async () => {
       await addSessionLogStorageType(testDb);
       expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toEqual({
         enabled: true,
-        isSaved: true,
         storage: externalStorage()
       });
 
@@ -446,7 +444,6 @@ describe("Agent Vault session logs", async () => {
       await addSessionLogStorageType(testDb);
       expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toEqual({
         enabled: false,
-        isSaved: true,
         storage: { type: "default" }
       });
     });

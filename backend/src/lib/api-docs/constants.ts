@@ -4659,7 +4659,6 @@ export const AGENT_VAULT = {
     disabledReason:
       "Why no logs are returned: `off` when session logs are off, `not-on-plan` when the plan doesn't include the storage they use. Null when logs are returned.",
     storageType: "Where this session's logs are read from: `default` or `external`. Null when session logs are off.",
-    isSaved: "False when nothing has been saved, so the defaults apply: session logs on, in default storage.",
     storage:
       "Where session logs are stored: `default`, stored by Infisical, or `external`, an S3 bucket you own. Required when turning session logs on.",
     defaultStorageConfigured: "Whether default storage is available. Using it also needs a plan that includes it.",

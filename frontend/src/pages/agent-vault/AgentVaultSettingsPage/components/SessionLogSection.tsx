@@ -195,7 +195,7 @@ export const SessionLogSection = () => {
                     </Badge>
                   </DetailValue>
                 </Detail>
-                {(isEnabled || (settings.isSaved && settings.enabled)) && (
+                {settings.enabled && (
                   <Detail>
                     <DetailLabel>Storage</DetailLabel>
                     <DetailValue>{external ? "External storage" : "Default storage"}</DetailValue>

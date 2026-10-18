@@ -8,7 +8,7 @@ import {
   SidebarMenuItem
 } from "@app/components/v3";
 import { useProjectPermission, useSubscription } from "@app/context";
-import { isAgentVaultSessionLogPlanLapsed } from "@app/helpers/agentVaultSessionLogs";
+import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings
@@ -40,8 +40,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   let settingsAlert: NavItem["alertVariant"];
   if (sessionLogHealth?.connectionError) settingsAlert = "danger";
   else if (
-    (sessionLogSettings?.isSaved && !sessionLogSettings.enabled) ||
-    isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription)
+    (sessionLogSettings && !sessionLogSettings.enabled) ||
+    isAgentVaultSessionLogBlockedByPlan(sessionLogSettings, subscription)
   )
     settingsAlert = "warning";
 

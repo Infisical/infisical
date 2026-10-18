@@ -110,13 +110,16 @@ export const buildSessionLogSchema = (
     });
 
 // Saving a storage that isn't on the plan opens the upgrade dialog instead, but only when the save would choose,
-// change or turn on that storage: an unchanged save of a lapsed setup is still allowed.
+// change or turn on that storage: an unchanged save of a lapsed bucket is still allowed. Default storage can be on with
+// nothing saved, which the server still treats as turning it on, so it always asks.
 export const needsSessionLogUpgrade = (
   values: TSessionLogFormValues,
   saved: TAgentVaultSessionLogSettings | null,
   isOnPlan: (type: AgentVaultSessionLogStorageType) => boolean
 ) => {
   const isStorageChange = !isSameStorage(values, saved?.storage);
-  const isTurningOn = !(saved?.isSaved && saved.enabled);
-  return (isStorageChange || isTurningOn) && !isOnPlan(values.storageType);
+  const isBucketAlreadyOn = Boolean(
+    saved?.enabled && saved.storage.type === AgentVaultSessionLogStorageType.External
+  );
+  return (isStorageChange || !isBucketAlreadyOn) && !isOnPlan(values.storageType);
 };

@@ -88,7 +88,7 @@ export const buildSessionLogSettingsAuditMetadata = ({
   appConnectionName,
   previous
 }: {
-  settings: TEffectiveSessionLogConfig | null;
+  settings: Pick<TEffectiveSessionLogConfig, "enabled" | "storage"> | null;
   appConnectionName: string | null;
   previous: TPreviousSessionLogStorage | null;
 }) => {
@@ -210,7 +210,7 @@ export const isSameSessionLogStorage = (a: TSessionLogStorage, b?: TSessionLogSt
 };
 
 export const toSessionLogSettingsState = (settings: TEffectiveSessionLogConfig | null) => ({
-  settings,
+  settings: settings && { enabled: settings.enabled, storage: settings.storage },
   defaultStorage: { configured: isDefaultStorageConfigured() }
 });
 

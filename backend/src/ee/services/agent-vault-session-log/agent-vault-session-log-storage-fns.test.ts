@@ -218,7 +218,6 @@ describe("describeStorageFailure", () => {
 describe("buildSessionLogSettingsAuditMetadata", () => {
   const externalSettings = {
     enabled: true,
-    isSaved: true,
     storage: {
       type: ObjectStorageType.External as const,
       appConnectionId: "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11",

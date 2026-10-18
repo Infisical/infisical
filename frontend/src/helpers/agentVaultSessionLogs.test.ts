@@ -7,7 +7,6 @@ import {
   canTurnOnAgentVaultSessionLogs,
   getAgentVaultSessionLogRetentionDays,
   isAgentVaultSessionLogBlockedByPlan,
-  isAgentVaultSessionLogPlanLapsed,
   isAgentVaultSessionLogStorageOnPlan
 } from "./agentVaultSessionLogs";
 
@@ -23,7 +22,7 @@ const externalStorage = {
 const settings = (
   storage: TAgentVaultSessionLogSettings["storage"],
   overrides: Partial<TAgentVaultSessionLogSettings> = {}
-): TAgentVaultSessionLogSettings => ({ enabled: true, isSaved: true, storage, ...overrides });
+): TAgentVaultSessionLogSettings => ({ enabled: true, storage, ...overrides });
 
 const fullPlan = { agentVaultManagedStorage: true, agentVaultByoS3: true };
 const noPlan = { agentVaultManagedStorage: false, agentVaultByoS3: false };
@@ -53,24 +52,10 @@ describe("agent vault session log helpers", () => {
   });
 
   it.each([
-    ["saved default storage, plan lost", settings(defaultStorage), externalOnly, true],
-    ["saved external storage, plan lost", settings(externalStorage), defaultOnly, true],
-    ["saved default storage, on the plan", settings(defaultStorage), fullPlan, false],
-    ["saved but off", settings(defaultStorage, { enabled: false }), noPlan, false],
-    ["nothing saved yet", settings(defaultStorage, { isSaved: false }), noPlan, false]
-  ])("lapsed: %s", (_, value, plan, expected) => {
-    expect(isAgentVaultSessionLogPlanLapsed(value, plan)).toBe(expected);
-  });
-
-  it.each([
-    [
-      "default storage on with nothing saved, not on the plan",
-      settings(defaultStorage, { isSaved: false }),
-      externalOnly,
-      true
-    ],
+    ["default storage on, not on the plan", settings(defaultStorage), externalOnly, true],
     ["external storage on, not on the plan", settings(externalStorage), defaultOnly, true],
     ["on and on the plan", settings(externalStorage), externalOnly, false],
+    ["default storage on, on the plan", settings(defaultStorage), fullPlan, false],
     ["off", settings(defaultStorage, { enabled: false }), noPlan, false]
   ])("blocked by plan: %s", (_, value, plan, expected) => {
     expect(isAgentVaultSessionLogBlockedByPlan(value, plan)).toBe(expected);

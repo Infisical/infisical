@@ -91,7 +91,10 @@ export const AgentVaultSessionLogTailResponseSchema = z.object({
   nextCursor: z.string().describe(AGENT_VAULT.SESSION_LOGS.tailNextCursor)
 });
 
-const DefaultStorageSchema = z.object({ type: z.literal(ObjectStorageType.Default) }).strict();
+const DefaultStorageSchema = z
+  .object({ type: z.literal(ObjectStorageType.Default) })
+  .strict()
+  .describe(JSON.stringify({ title: "Default Storage" }));
 
 const ExternalStorageSchema = z
   .object({
@@ -101,7 +104,8 @@ const ExternalStorageSchema = z
     region: z.nativeEnum(AWSRegion).describe(AGENT_VAULT.SESSION_LOGS.region),
     keyPrefix: keyPrefixSchema(256).optional().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
   })
-  .strict();
+  .strict()
+  .describe(JSON.stringify({ title: "External Storage" }));
 
 const AgentVaultSessionLogStorageSchema = z
   .discriminatedUnion("type", [DefaultStorageSchema, ExternalStorageSchema])
@@ -109,20 +113,21 @@ const AgentVaultSessionLogStorageSchema = z
 
 const AgentVaultSessionLogStorageViewSchema = z
   .discriminatedUnion("type", [
-    z.object({ type: z.literal(ObjectStorageType.Default) }),
-    z.object({
-      type: z.literal(ObjectStorageType.External),
-      appConnectionId: z.string().uuid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
-      bucket: z.string().describe(AGENT_VAULT.SESSION_LOGS.bucket),
-      region: z.string().describe(AGENT_VAULT.SESSION_LOGS.region),
-      keyPrefix: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
-    })
+    z.object({ type: z.literal(ObjectStorageType.Default) }).describe(JSON.stringify({ title: "Default Storage" })),
+    z
+      .object({
+        type: z.literal(ObjectStorageType.External),
+        appConnectionId: z.string().uuid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
+        bucket: z.string().describe(AGENT_VAULT.SESSION_LOGS.bucket),
+        region: z.string().describe(AGENT_VAULT.SESSION_LOGS.region),
+        keyPrefix: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
+      })
+      .describe(JSON.stringify({ title: "External Storage" }))
   ])
   .describe(AGENT_VAULT.SESSION_LOGS.storage);
 
 export const AgentVaultSessionLogSettingsSchema = z.object({
   enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
-  isSaved: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.isSaved),
   storage: AgentVaultSessionLogStorageViewSchema
 });
 
@@ -149,11 +154,15 @@ export const AgentVaultSessionLogCorsProbeResponseSchema = z.object({
 });
 
 export const AgentVaultSessionLogSettingsUpdateSchema = z.discriminatedUnion("enabled", [
-  z.object({ enabled: z.literal(false).describe(AGENT_VAULT.SESSION_LOGS.configEnabled) }).strict(),
+  z
+    .object({ enabled: z.literal(false).describe(AGENT_VAULT.SESSION_LOGS.configEnabled) })
+    .strict()
+    .describe(JSON.stringify({ title: "Turn Off" })),
   z
     .object({
       enabled: z.literal(true).describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
       storage: AgentVaultSessionLogStorageSchema
     })
     .strict()
+    .describe(JSON.stringify({ title: "Turn On" }))
 ]);

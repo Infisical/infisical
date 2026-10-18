@@ -318,7 +318,6 @@ export type TAgentVaultSessionLogStorage =
 
 export type TAgentVaultSessionLogSettings = {
   enabled: boolean;
-  isSaved: boolean;
   storage: TAgentVaultSessionLogStorage;
 };
 

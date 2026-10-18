@@ -64,10 +64,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
-import {
-  isAgentVaultSessionLogBlockedByPlan,
-  isAgentVaultSessionLogPlanLapsed
-} from "@app/helpers/agentVaultSessionLogs";
+import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -146,16 +143,11 @@ export const AgentVaultSessionsPage = () => {
   const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const sessionLogSettings = sessionLogState?.settings ?? null;
-  const sessionLogStorageName =
-    sessionLogSettings?.storage.type === AgentVaultSessionLogStorageType.Default
-      ? "default storage"
-      : "external storage";
   // Covers a saved choice the plan dropped and the unsaved default the plan never included.
   const isSessionLogBlockedByPlan = isAgentVaultSessionLogBlockedByPlan(
     sessionLogSettings,
     subscription
   );
-  const isSessionLogPlanLapsed = isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription);
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -222,15 +214,14 @@ export const AgentVaultSessionsPage = () => {
             </Alert>
           )}
 
-        {isSessionLogPlanLapsed && (
+        {isSessionLogBlockedByPlan && (
           <Alert variant="warning">
             <TriangleAlertIcon />
             <AlertDescription>
               <p>
-                Your plan no longer includes {sessionLogStorageName}. Upgrade to see recorded logs
-                and keep recording.
-                {sessionLogSettings?.storage.type === AgentVaultSessionLogStorageType.External &&
-                  " Recorded logs stay in your bucket."}
+                {sessionLogSettings?.storage.type === AgentVaultSessionLogStorageType.External
+                  ? "Your plan no longer includes external storage. Upgrade to see recorded logs and keep recording. Recorded logs stay in your bucket."
+                  : "Your plan doesn't include default storage, so session logs aren't being recorded. Upgrade to record and view them."}
               </p>
               <AlertAction>
                 <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>
@@ -241,7 +232,7 @@ export const AgentVaultSessionsPage = () => {
           </Alert>
         )}
 
-        {sessionLogSettings?.isSaved && !sessionLogSettings.enabled && (
+        {sessionLogSettings && !sessionLogSettings.enabled && (
           <Alert variant="warning">
             <TriangleAlertIcon />
             <AlertDescription>

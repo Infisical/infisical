@@ -57,7 +57,7 @@ import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermi
 import {
   canTurnOnAgentVaultSessionLogs,
   getAgentVaultSessionLogRetentionDays,
-  isAgentVaultSessionLogPlanLapsed,
+  isAgentVaultSessionLogBlockedByPlan,
   isAgentVaultSessionLogStorageOnPlan
 } from "@app/helpers/agentVaultSessionLogs";
 import { APP_CONNECTION_MAP, AWS_REGIONS } from "@app/helpers/appConnections";
@@ -146,14 +146,14 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
     const saved = state.settings;
     const external =
       saved?.storage.type === AgentVaultSessionLogStorageType.External ? saved.storage : null;
-    // Only storage that's on was chosen: an unsaved default or an off row holds default storage without anyone picking
-    // it, so a plan without default storage starts on external storage.
+    // While on, the dialog opens on the storage in use, even one the plan leaves out, so it matches the card and the
+    // plan warning. An off row holds default storage without anyone picking it, so off starts on what the plan allows.
     const unchosenStorageType = isDefaultUsable
       ? AgentVaultSessionLogStorageType.Default
       : AgentVaultSessionLogStorageType.External;
     reset({
       enabled: saved?.enabled ?? false,
-      storageType: saved?.isSaved && saved.enabled ? saved.storage.type : unchosenStorageType,
+      storageType: saved?.enabled ? saved.storage.type : unchosenStorageType,
       appConnectionId: external?.appConnectionId ?? "",
       bucket: external?.bucket ?? "",
       region: external?.region ?? AWS_REGIONS[0].slug,
@@ -170,7 +170,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
   // The saved bucket stays visible after the plan lapses, but only turning off or switching is allowed.
   const isExternalReadOnly =
     Boolean(savedExternal) && !isOnPlan(AgentVaultSessionLogStorageType.External);
-  const isLapsed = isAgentVaultSessionLogPlanLapsed(settings, subscription);
+  const isBlockedByPlan = isAgentVaultSessionLogBlockedByPlan(settings, subscription);
   const canTurnOn = canTurnOnAgentVaultSessionLogs(isDefaultStorageConfigured, subscription);
 
   const canCreateConnection = permission.can(
@@ -268,31 +268,32 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
             <DialogDescription>Choose where to record what your agents do.</DialogDescription>
           </DialogHeader>
 
-          {isLapsed && settings?.storage.type === AgentVaultSessionLogStorageType.Default && (
-            <Alert variant="warning">
-              <TriangleAlertIcon />
-              <AlertDescription>
-                <p>
-                  Your plan no longer includes default storage. Upgrade to see recorded logs and
-                  keep recording. You can turn session logs off
-                  {isOnPlan(AgentVaultSessionLogStorageType.External)
-                    ? ", or switch to external storage."
-                    : "."}
-                </p>
-                <AlertAction>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={() => setUpgradeFor(AgentVaultSessionLogStorageType.Default)}
-                  >
-                    Upgrade
-                  </Button>
-                </AlertAction>
-              </AlertDescription>
-            </Alert>
-          )}
-          {isLapsed && savedExternal && (
+          {isBlockedByPlan &&
+            settings?.storage.type === AgentVaultSessionLogStorageType.Default && (
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertDescription>
+                  <p>
+                    Your plan doesn&apos;t include default storage, so session logs aren&apos;t
+                    being recorded. Upgrade to record and view them. You can turn session logs off
+                    {isOnPlan(AgentVaultSessionLogStorageType.External)
+                      ? ", or switch to external storage."
+                      : "."}
+                  </p>
+                  <AlertAction>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => setUpgradeFor(AgentVaultSessionLogStorageType.Default)}
+                    >
+                      Upgrade
+                    </Button>
+                  </AlertAction>
+                </AlertDescription>
+              </Alert>
+            )}
+          {isBlockedByPlan && savedExternal && (
             <Alert variant="warning">
               <TriangleAlertIcon />
               <AlertDescription>

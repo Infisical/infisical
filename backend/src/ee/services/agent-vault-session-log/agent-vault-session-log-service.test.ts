@@ -816,7 +816,7 @@ describe("getSessionLogSettings", () => {
     defaultStorage.configured = true;
     const { service } = build({ config: undefined });
     expect(await service.getSessionLogSettings({ projectId: PROJECT_ID, ctx })).toEqual({
-      settings: { enabled: true, isSaved: false, storage: { type: ObjectStorageType.Default } },
+      settings: { enabled: true, storage: { type: ObjectStorageType.Default } },
       defaultStorage: { configured: true }
     });
   });
@@ -838,7 +838,6 @@ describe("getSessionLogSettings", () => {
     const { service } = build();
     expect((await service.getSessionLogSettings({ projectId: PROJECT_ID, ctx })).settings).toEqual({
       enabled: true,
-      isSaved: true,
       storage: externalStorage()
     });
   });
@@ -867,7 +866,7 @@ describe("updateSessionLogSettings: choosing storage", () => {
     defaultStorage.configured = true;
     const { service, upsertConfig } = build({ config: undefined });
     const { settings } = await save(service, { enabled: false });
-    expect(settings).toEqual({ enabled: false, isSaved: true, storage: { type: ObjectStorageType.Default } });
+    expect(settings).toEqual({ enabled: false, storage: { type: ObjectStorageType.Default } });
     expect(upsertConfig).toHaveBeenCalledWith(
       [expect.objectContaining({ enabled: false, storageType: "default", bucket: null })],
       "projectId"
@@ -1060,7 +1059,7 @@ describe("updateSessionLogSettings: turning off", () => {
     defaultStorage.configured = true;
     const { service } = build();
     const result = await save(service, { enabled: false });
-    expect(result.settings).toEqual({ enabled: false, isSaved: true, storage: { type: ObjectStorageType.Default } });
+    expect(result.settings).toEqual({ enabled: false, storage: { type: ObjectStorageType.Default } });
   });
 
   test("turning session logs back on from off records nothing as replaced, since off holds no storage", async () => {

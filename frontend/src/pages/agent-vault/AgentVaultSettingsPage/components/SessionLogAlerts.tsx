@@ -4,7 +4,7 @@ import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import { isAgentVaultSessionLogPlanLapsed } from "@app/helpers/agentVaultSessionLogs";
+import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings
@@ -22,13 +22,14 @@ export const SessionLogAlerts = () => {
   const settings = state?.settings ?? null;
   const storageType = settings?.storage.type;
   const isDefaultStorage = storageType === AgentVaultSessionLogStorageType.Default;
-  const isLapsed = isAgentVaultSessionLogPlanLapsed(settings, subscription);
+  const isBlockedByPlan = isAgentVaultSessionLogBlockedByPlan(settings, subscription);
 
   let planMessage: string | null = null;
-  if (isLapsed && isDefaultStorage) {
+  // Default storage can be on without anyone choosing it, so its message can't say the plan "no longer" includes it.
+  if (isBlockedByPlan && isDefaultStorage) {
     planMessage =
-      "Your plan no longer includes default storage. Upgrade to see recorded logs and keep recording.";
-  } else if (isLapsed) {
+      "Your plan doesn't include default storage, so session logs aren't being recorded. Upgrade to record and view them.";
+  } else if (isBlockedByPlan) {
     planMessage =
       "Your plan no longer includes external storage. Upgrade to see recorded logs and keep recording. Recorded logs stay in your bucket.";
   }

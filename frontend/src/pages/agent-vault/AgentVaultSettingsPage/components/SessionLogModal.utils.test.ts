@@ -21,7 +21,6 @@ const external: TSessionLogFormValues = {
 
 const savedExternal: TAgentVaultSessionLogSettings = {
   enabled: true,
-  isSaved: true,
   storage: {
     type: AgentVaultSessionLogStorageType.External,
     appConnectionId: external.appConnectionId,
@@ -97,8 +96,17 @@ describe("needsSessionLogUpgrade", () => {
     );
   });
 
-  it("lets an unchanged save of a lapsed setup through", () => {
+  it("lets an unchanged save of a lapsed bucket through", () => {
     expect(needsSessionLogUpgrade(external, savedExternal, notOnPlan)).toBe(false);
+  });
+
+  it("always asks for default storage, which can be on without anyone saving it", () => {
+    const defaultValues = { ...external, storageType: AgentVaultSessionLogStorageType.Default };
+    const defaultOn: TAgentVaultSessionLogSettings = {
+      enabled: true,
+      storage: { type: AgentVaultSessionLogStorageType.Default }
+    };
+    expect(needsSessionLogUpgrade(defaultValues, defaultOn, notOnPlan)).toBe(true);
   });
 
   it("never asks when the storage is on the plan", () => {
