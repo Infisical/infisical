@@ -1,6 +1,6 @@
 {
   "arbitrary-geometry": {
-    "src/components/v4/ui/chart.tsx": 3,
+    "src/components/v4/ui/chart.tsx": 1,
     "src/components/v4/ui/input-group.tsx": 2,
     "src/components/v4/ui/menubar.tsx": 1,
     "src/components/v4/ui/navigation-menu.tsx": 1,
