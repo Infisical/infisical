@@ -20,7 +20,7 @@ export type TS3Check = { ok: true } | { ok: false; error: unknown };
 export type TS3Bucket = ReturnType<typeof createS3Bucket>;
 
 // Without credentials, the SDK runs as the server's own AWS identity. createS3Client takes a customer's connection, so
-// it requires them; only default storage leaves them out, through createS3Bucket.
+// it requires them; only default storage goes without, by passing null to createS3Bucket.
 const buildS3Client = ({
   region,
   credentials,
@@ -62,10 +62,11 @@ export const createS3Bucket = ({
 }: {
   region: string;
   bucket: string;
-  // Without credentials, the SDK finds them itself: from the environment, the shared config file, or the pod's role.
-  credentials?: TS3Credentials;
+  // Null runs as the server's own AWS identity (the environment, the shared config file, or the pod's role), so it has to
+  // be passed on purpose. Only default storage does.
+  credentials: TS3Credentials | null;
 }) => {
-  const client = buildS3Client({ region, credentials });
+  const client = buildS3Client({ region, credentials: credentials ?? undefined });
   // The request timeout stops once the headers arrive, so a reply that stalls after them needs an overall limit.
   const sendOptions = () => ({ abortSignal: AbortSignal.timeout(S3_CALL_TIMEOUT_MS) });
 

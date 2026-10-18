@@ -106,7 +106,7 @@ describe("default storage", () => {
     expect(createS3Bucket).toHaveBeenCalledWith({
       region: "us-east-1",
       bucket: "instance-bucket",
-      credentials: undefined
+      credentials: null
     });
     expect(bucketClient.presignCreateOnlyPut).toHaveBeenCalledWith({
       key,

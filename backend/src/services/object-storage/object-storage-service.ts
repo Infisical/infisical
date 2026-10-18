@@ -61,7 +61,7 @@ export const objectStorageServiceFactory = ({
     const defaultStorage = getDefaultStorage();
     if (!defaultStorage) return null;
     const { bucket, region, prefix, credentials } = defaultStorage;
-    defaultClient ??= createS3Bucket({ region, bucket, credentials });
+    defaultClient ??= createS3Bucket({ region, bucket, credentials: credentials ?? null });
     return { s3: defaultClient, bucket, region, prefix };
   };
 
