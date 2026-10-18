@@ -216,7 +216,7 @@ export const Switcher = ({
                   ))}
               </CommandGroup>
             ))}
-            {actions.length > 0 && <CommandSeparator />}
+            {actions.length > 0 && options.length > 0 && <CommandSeparator />}
             {actions.map((action, index) =>
               "type" in action ? (
                 action.type === "separator" ? (

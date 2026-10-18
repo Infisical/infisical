@@ -185,6 +185,10 @@ const SidebarGroup = ({
               data-sidebar-target=""
               data-holds-current={holdsCurrent || undefined}
               aria-label={item.label}
+              disabled={item.disabled}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") event.preventDefault();
+              }}
             >
               <RowContent item={item} count={total(children)} />
             </button>
@@ -197,6 +201,8 @@ const SidebarGroup = ({
               key={childItem.id}
               disabled={childItem.disabled}
               data-current={childItem.id === current || undefined}
+              aria-current={childItem.id === current ? "page" : undefined}
+              className={childItem.id === current ? styles.flyoutCurrent : undefined}
               onSelect={() => {
                 childItem.onClick?.();
                 onNavigate?.(childItem);
@@ -204,7 +210,13 @@ const SidebarGroup = ({
               asChild={Boolean(childItem.href)}
             >
               {childItem.href ? (
-                <a href={childItem.href}>{childItem.label}</a>
+                <a
+                  href={childItem.href}
+                  target={childItem.external ? "_blank" : undefined}
+                  rel={childItem.external ? "noreferrer" : undefined}
+                >
+                  {childItem.label}
+                </a>
               ) : (
                 <span>{childItem.label}</span>
               )}
@@ -222,6 +234,7 @@ const SidebarGroup = ({
         data-holds-current={holdsCurrent || undefined}
         aria-expanded={open}
         aria-controls={listId}
+        disabled={item.disabled}
         onClick={() => setOpen(!open)}
       >
         <RowContent
@@ -294,7 +307,12 @@ const moveFocus = (event: React.KeyboardEvent<HTMLElement>) => {
   if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
   const targets = [
     ...event.currentTarget.querySelectorAll<HTMLElement>("[data-sidebar-target]")
-  ].filter((target) => !target.closest("[hidden]") && !target.hasAttribute("disabled"));
+  ].filter(
+    (target) =>
+      !target.closest("[hidden]") &&
+      !target.hasAttribute("disabled") &&
+      target.getAttribute("aria-disabled") !== "true"
+  );
   const index = targets.indexOf(document.activeElement as HTMLElement);
   if (index === -1) return;
   event.preventDefault();
@@ -354,6 +372,7 @@ export const Sidebar = ({
       <Icon name="chev-ud" size={14} className={styles.trailing} />
     </button>
   );
+  const hasMenu = Boolean(org || user.items?.length || theme || user.href || user.onClick);
   return (
     <TooltipProvider>
       <aside
@@ -413,98 +432,109 @@ export const Sidebar = ({
             )}
           </span>
         </div>
-        <nav aria-label={label} className={styles.nav} onKeyDown={moveFocus}>
-          {sections.map((section, index) => (
-            <div key={section.label ?? index} className={styles.section}>
-              {section.label && (
-                <p className={styles.sectionLabel}>
-                  <span>{section.label}</span>
-                </p>
-              )}
+        <nav aria-label={label} className={styles.navigation} onKeyDown={moveFocus}>
+          <div className={styles.nav}>
+            {sections.map((section, index) => (
+              <div key={section.label ?? index} className={styles.section}>
+                {section.label && (
+                  <p className={styles.sectionLabel}>
+                    <span>{section.label}</span>
+                  </p>
+                )}
+                <SidebarItems
+                  items={section.items}
+                  current={current}
+                  rail={rail}
+                  onNavigate={onNavigate}
+                />
+              </div>
+            ))}
+          </div>
+          {footerItems && footerItems.length > 0 && (
+            <div className={styles.footer}>
               <SidebarItems
-                items={section.items}
+                items={footerItems}
                 current={current}
                 rail={rail}
                 onNavigate={onNavigate}
               />
             </div>
-          ))}
+          )}
         </nav>
-        {footerItems && footerItems.length > 0 && (
-          // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Roving focus among the footer's native rows.
-          <div className={styles.footer} onKeyDown={moveFocus}>
-            <SidebarItems
-              items={footerItems}
-              current={current}
-              rail={rail}
-              onNavigate={onNavigate}
-            />
-          </div>
-        )}
         <div className={styles.accountShelf}>
-          <Switcher
-            label={org ? "Switch organization" : "Account"}
-            width={264}
-            side={rail ? "right" : "top"}
-            options={(org?.options ?? []).map((option) => ({
-              value: option.value,
-              label: option.label,
-              meta: option.plan,
-              group: org?.optionsLabel ?? "Organizations"
-            }))}
-            value={org?.value}
-            onChange={(value) => org?.onChange(value)}
-            actions={[
-              ...(org?.actions ?? []),
-              ...(org?.actions?.length && user.items?.length
-                ? [{ type: "separator" } as const]
-                : []),
-              ...(user.items ?? [])
-            ]}
-            footer={({ close }) => (
-              <>
-                {theme && (
-                  <div className={styles.themeRow}>
-                    <span>{theme.label ?? "Theme"}</span>
-                    <ToggleGroup
-                      type="single"
-                      size="sm"
-                      aria-label={theme.label ?? "Theme"}
-                      value={theme.value}
-                      onValueChange={(value) => {
-                        if (value) theme.onChange(value as SidebarTheme);
-                      }}
-                    >
-                      {themeOptions.map((option) => (
-                        <Tooltip key={option.value} content={option.label}>
-                          <ToggleGroupItem value={option.value} aria-label={option.label}>
-                            <Icon name={option.icon} size={14} />
-                          </ToggleGroupItem>
-                        </Tooltip>
-                      ))}
-                    </ToggleGroup>
-                  </div>
-                )}
-                {(user.href || user.onClick) &&
-                  React.createElement(
-                    user.href ? "a" : "button",
-                    {
-                      className: styles.userRow,
-                      href: user.href,
-                      type: user.href ? undefined : "button",
-                      "aria-label": user.settingsLabel ?? "Personal settings",
-                      onClick: () => {
-                        user.onClick?.();
-                        close();
-                      }
-                    },
-                    <Identity name={user.name} description={user.email} />,
-                    <Icon name="chev-right" size={14} className={styles.trailing} />
+          {hasMenu ? (
+            <Switcher
+              label={org ? "Switch organization" : "Account"}
+              width={264}
+              side={rail ? "right" : "top"}
+              options={(org?.options ?? []).map((option) => ({
+                value: option.value,
+                label: option.label,
+                meta: option.plan,
+                group: org?.optionsLabel ?? "Organizations"
+              }))}
+              value={org?.value}
+              onChange={(value) => org?.onChange(value)}
+              actions={[
+                ...(org?.actions ?? []),
+                ...(org?.actions?.length && user.items?.length
+                  ? [{ type: "separator" } as const]
+                  : []),
+                ...(user.items ?? [])
+              ]}
+              footer={({ close }) => (
+                <>
+                  {theme && (
+                    <div className={styles.themeRow}>
+                      <span>{theme.label ?? "Theme"}</span>
+                      <ToggleGroup
+                        type="single"
+                        size="sm"
+                        aria-label={theme.label ?? "Theme"}
+                        value={theme.value}
+                        onValueChange={(value) => {
+                          if (value) theme.onChange(value as SidebarTheme);
+                        }}
+                      >
+                        {themeOptions.map((option) => (
+                          <Tooltip key={option.value} content={option.label}>
+                            <ToggleGroupItem value={option.value} aria-label={option.label}>
+                              <Icon name={option.icon} size={14} />
+                            </ToggleGroupItem>
+                          </Tooltip>
+                        ))}
+                      </ToggleGroup>
+                    </div>
                   )}
-              </>
-            )}
-            trigger={account}
-          />
+                  {(user.href || user.onClick) &&
+                    React.createElement(
+                      user.href ? "a" : "button",
+                      {
+                        className: styles.userRow,
+                        href: user.href,
+                        type: user.href ? undefined : "button",
+                        "aria-label": user.settingsLabel ?? "Personal settings",
+                        onClick: () => {
+                          user.onClick?.();
+                          close();
+                        }
+                      },
+                      <Identity name={user.name} description={user.email} />,
+                      <Icon name="chev-right" size={14} className={styles.trailing} />
+                    )}
+                </>
+              )}
+              trigger={account}
+            />
+          ) : (
+            <div className={styles.account}>
+              {userAvatar}
+              <span className={styles.accountText}>
+                <span className={styles.accountName}>{user.name}</span>
+                <span className={styles.accountMeta}>{user.email}</span>
+              </span>
+            </div>
+          )}
         </div>
       </aside>
     </TooltipProvider>

@@ -12,7 +12,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, React.ComponentPropsWit
 );
 AppShell.displayName = "AppShell";
 
-export const AppInset = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"main">>(
+export const AppInset = React.forwardRef<HTMLElement, React.ComponentPropsWithoutRef<"main">>(
   ({ className, ...props }, ref) => (
     <main ref={ref} data-slot="app-inset" className={cn(styles.inset, className)} {...props} />
   )

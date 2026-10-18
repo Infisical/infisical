@@ -69,6 +69,17 @@
   overflow-y: auto;
   scrollbar-width: none;
 }
+.navigation {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--v4-space-8);
+  min-height: 0;
+}
+.flyoutCurrent.flyoutCurrent {
+  background: var(--v4-sidebar-current);
+  font-weight: 600;
+}
 .section {
   display: flex;
   flex-direction: column;
