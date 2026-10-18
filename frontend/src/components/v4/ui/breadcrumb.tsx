@@ -44,10 +44,14 @@ const MenuCrumb = ({
           type="button"
           data-slot="breadcrumb-switcher"
           className={breadcrumbStyles.chevron}
+          aria-label={menu.label}
           aria-labelledby={`${purposeId} ${labelId}`}
         >
           <span id={purposeId} className="sr-only">
             {menu.label}
+          </span>
+          <span id={labelId} className="sr-only">
+            {crumb.label}
           </span>
           <Icon name="chev-ud" size={14} />
         </button>
@@ -70,7 +74,6 @@ const MenuCrumb = ({
             </span>
           )}
           <span
-            id={labelId}
             aria-hidden="true"
             className={cn(breadcrumbStyles.label, crumb.mono && breadcrumbStyles.mono)}
             title={typeof crumb.label === "string" ? crumb.label : undefined}
