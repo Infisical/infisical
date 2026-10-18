@@ -170,7 +170,7 @@ it.each(["#button", "#button-directions"])(
     expect(host.querySelector('[data-component="button"]')).not.toBeNull();
     expect(host.textContent).not.toContain("View code");
     expect(host.textContent).not.toContain("API source and verification recipes");
-    expect(host.querySelector('button[aria-label^="Corners:"]')).toBeNull();
+    expect(host.querySelector('button[aria-label^="Corners: square"]')).not.toBeNull();
     const agent = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
       (button) => button.textContent === "Agent"
     );

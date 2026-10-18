@@ -4,6 +4,7 @@ import { cn } from "cn";
 import { MotionConfig } from "motion/react";
 
 type Theme = "light" | "dark";
+export type V4Corners = "square" | "soft";
 const PortalContainerContext = React.createContext<HTMLElement | null | undefined>(undefined);
 const ThemeContext = React.createContext<Theme | undefined>(undefined);
 
@@ -22,8 +23,8 @@ function inheritedTheme(node: HTMLElement, fallback: Theme | undefined): Theme {
 
 export const V4Scope = React.forwardRef<
   HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div"> & { theme?: Theme }
->(({ children, className, theme, ...props }, forwardedRef) => {
+  React.ComponentPropsWithoutRef<"div"> & { theme?: Theme; corners?: V4Corners }
+>(({ children, className, theme, corners = "square", ...props }, forwardedRef) => {
   const parentTheme = useV4Theme();
   const [wrapper, setWrapper] = React.useState<HTMLDivElement | null>(null);
   const [container, setContainer] = React.useState<HTMLDivElement | null>(null);
@@ -61,7 +62,7 @@ export const V4Scope = React.forwardRef<
             {...props}
             ref={assignWrapper}
             className={cn("v4", className)}
-            data-corners="soft"
+            data-corners={corners}
             data-theme={resolvedTheme}
           >
             {children}
@@ -70,7 +71,7 @@ export const V4Scope = React.forwardRef<
             <div
               ref={setContainer}
               className="v4"
-              data-corners="soft"
+              data-corners={corners}
               data-theme={resolvedTheme}
             />,
             document.body

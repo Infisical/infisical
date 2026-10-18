@@ -201,7 +201,7 @@ describe("v4 React 18 behavior", () => {
     expect(element('[role="progressbar"]').dataset.state).toBe("indeterminate");
   });
 
-  it("keeps popovers in a body-level scope with canonical soft corners", async () => {
+  it("keeps popovers in a body-level scope with canonical square corners", async () => {
     const preview = () => (
       <V4Scope>
         <Popover defaultOpen>
@@ -215,13 +215,13 @@ describe("v4 React 18 behavior", () => {
     await render(preview());
     const scope = element('[data-slot="popover-content"]').closest(".v4");
     expect(scope?.parentElement).toBe(document.body);
-    expect(scope?.getAttribute("data-corners")).toBe("soft");
+    expect(scope?.getAttribute("data-corners")).toBe("square");
     expect(document.documentElement.classList.contains("v4")).toBe(false);
     expect(document.body.classList.contains("v4")).toBe(false);
     await render(preview());
     expect(
       element('[data-slot="popover-content"]').closest(".v4")?.getAttribute("data-corners")
-    ).toBe("soft");
+    ).toBe("square");
   });
 
   it.each([
@@ -315,7 +315,7 @@ describe("v4 React 18 behavior", () => {
     }
     const scope = content.closest(".v4");
     expect(scope?.parentElement).toBe(document.body);
-    expect(scope?.getAttribute("data-corners")).toBe("soft");
+    expect(scope?.getAttribute("data-corners")).toBe("square");
   });
 
   it("restores focus through an asChild dialog trigger after Escape", async () => {

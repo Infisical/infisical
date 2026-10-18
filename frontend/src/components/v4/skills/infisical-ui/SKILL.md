@@ -17,9 +17,9 @@ Start with [the v4 instructions](../../AGENTS.md), then query the affected task 
 
 ## Keep the identity
 
-Use warm neutrals, Archivo, Geist Mono and the shared soft corner scale. Default, primary and accent Buttons use the shared lime material defined by rule/button-material in the canonical rules. The global primary role remains ink; do not recolor other components to match the Button. The brand neon lime is `--v4-accent` with `--v4-on-accent`; shadcn's `bg-accent` is a neutral hover/selection role. Do not swap them. For brand text or icons, the source `accent-fg` role is exposed as `--v4-accent-fg`. Do not use the light neon fill as light-theme text.
+Use warm neutrals, Archivo, Geist Mono and square corners. The soft corner scale is an available mode (`V4Scope corners="soft"`); every radius goes through `var(--corners)` so both modes hold. Default, primary and accent Buttons use the shared lime material defined by rule/button-material in the canonical rules. The global primary role remains ink; do not recolor other components to match the Button. The brand neon lime is `--v4-accent` with `--v4-on-accent`; shadcn's `bg-accent` is a neutral hover/selection role. Do not swap them. For brand text or icons, the source `accent-fg` role is exposed as `--v4-accent-fg`. Do not use the light neon fill as light-theme text.
 
-Use `V4Scope` for the workbench boundary so portals inherit its colors, fonts and soft corners. Pass the host's resolved light/dark theme to `V4Scope`, or inherit the nearest host theme. Keep preference and storage in the host. The workbench uses its existing ThemeProvider; installed consumers use their own provider. Do not theme `document.body` or maintain a second preference state.
+Use `V4Scope` for the workbench boundary so portals inherit its colors, fonts and corner mode. Pass the host's resolved light/dark theme to `V4Scope`, or inherit the nearest host theme. Keep preference and storage in the host. The workbench uses its existing ThemeProvider; installed consumers use their own provider. Do not theme `document.body` or maintain a second preference state.
 
 Protect code, commands, identifiers, protocol payloads, legal and license text, quoted material and user-entered values from prose editing. Never include real secrets in examples, logs or captures. The rules file defines the narrow exemption boundary.
 

@@ -6,7 +6,7 @@
     {
       "id": "identity",
       "title": "Preserve the Infisical identity",
-      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and the canonical soft corner scale. Use the shared lime Button finish for its default, primary and accent variants. Keep the global primary role ink and selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
+      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and the canonical square corners, with the soft corner scale available as a mode. Use the shared lime Button finish for its default, primary and accent variants. Keep the global primary role ink and selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
       "good": "One shared lime Button for the task's main action, with neutral alternatives and selection.",
       "avoid": "A locally painted gradient, third font or pill-shaped control introduced by an example.",
       "detect": {
@@ -763,7 +763,7 @@
       "id": "restrained-effects",
       "title": "Avoid ambient effects in task interfaces",
       "category": "Visual",
-      "instruction": "When grouping a task or distinguishing status, use the owned surface, text and supported state treatment. Keep opaque content surfaces readable. Avoid caller-created colored side rails, gradient headings, glass backdrops, ambient glows, decorative pulses and staggered entrances because they compete with the task and change contrast. Preserve soft corners and the canonical shared lime Button material; do not add shadows or local material replicas.",
+      "instruction": "When grouping a task or distinguishing status, use the owned surface, text and supported state treatment. Keep opaque content surfaces readable. Avoid caller-created colored side rails, gradient headings, glass backdrops, ambient glows, decorative pulses and staggered entrances because they compete with the task and change contrast. Preserve the radius tokens times the corner multiplier and the canonical shared lime Button material; do not add shadows or local material replicas.",
       "good": "An opaque scoped menu and a short disclosure transition tied to opening.",
       "avoid": "A glowing settings card, glass panel or colored rail added only for decoration.",
       "detect": {

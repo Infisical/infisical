@@ -21,7 +21,7 @@ it("builds foundation and rules documents from their canonical records", async (
     shape.markdown.match(/```json\n([\s\S]*?)\n```/)?.[1] ?? "null"
   );
   expect(shapeRecords).toMatchObject({ shape: tokens.shape });
-  expect(tokens.shape.tokens.find((entry) => entry.name === "corners")?.value).toBe("1");
+  expect(tokens.shape.tokens.find((entry) => entry.name === "corners")?.value).toBe("0");
   const colors = await loadAgentDocument("colors");
   const colorRecords: unknown = JSON.parse(
     colors.markdown.match(/```json\n([\s\S]*?)\n```/)?.[1] ?? "null"

@@ -132,6 +132,10 @@ export const DesignSystemPage = () => {
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState<number>();
   const { resolvedTheme: theme, setTheme } = useTheme();
+  const [corners, setCorners] = useState<"square" | "soft">(() =>
+    window.localStorage.getItem("v4-corners") === "soft" ? "soft" : "square"
+  );
+  const nextCorners = corners === "soft" ? "square" : "soft";
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
     const follow = () => startTransition(() => setHash(window.location.hash));
@@ -151,7 +155,7 @@ export const DesignSystemPage = () => {
   const currentPage = resolveDocumentationPage(hash);
   const nextTheme = theme === "dark" ? "light" : "dark";
   return (
-    <V4Scope className="flex h-svh flex-col overflow-hidden" theme={theme}>
+    <V4Scope className="flex h-svh flex-col overflow-hidden" theme={theme} corners={corners}>
       <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
         Skip to content
       </a>
@@ -259,6 +263,19 @@ export const DesignSystemPage = () => {
             <ToggleGroupItem value="agent">Agent</ToggleGroupItem>
           </ToggleGroup>
           <span aria-hidden="true" className={dockStyles.divider} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={dockStyles.segment}
+            aria-label={`Corners: ${corners}. Switch to ${nextCorners}`}
+            onClick={() => {
+              window.localStorage.setItem("v4-corners", nextCorners);
+              setCorners(nextCorners);
+            }}
+          >
+            {corners === "soft" ? "Soft" : "Square"}
+          </Button>
           <Button
             type="button"
             variant="ghost"
