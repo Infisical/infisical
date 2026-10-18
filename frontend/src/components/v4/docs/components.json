@@ -134,6 +134,129 @@
       ]
     },
     {
+      "id": "announcements",
+      "title": "Announcements",
+      "group": "Composites",
+      "summary": "What's new, as cards that cycle in a 480px dialog with dots, Back and Next.",
+      "sourceFiles": [
+        "src/components/v4/ui/announcements.tsx",
+        "src/components/v4/ui/announcements.module.css"
+      ],
+      "exports": [
+        "Announcements"
+      ],
+      "referenceNames": [
+        "Announcements"
+      ],
+      "behavior": [
+        "Each card has inert media, an eyebrow, a title, a line or two and an optional action link.",
+        "Cards slide in the direction of travel and the dialog eases to each card's height; reduced motion jumps.",
+        "Left and Right move and wrap around unless loop is false. Dots jump to a card. Next becomes Done on the last card and Done closes.",
+        "onSeen fires as each card shows, so the host can clear its unread count."
+      ],
+      "accessibility": [
+        "The dialog is a carousel; each card is a slide named 2 of 4, and a polite live region reads the position and title on each change.",
+        "Focus starts on Next."
+      ],
+      "limitations": [
+        "Swipe on touch is not implemented; use the dots or Back and Next."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "What's new",
+          "module": "./examples/announcements/default.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "size support",
+          "expected": [
+            "no authored named size"
+          ],
+          "shown": [],
+          "omitted": [
+            {
+              "value": "no authored named size",
+              "reason": "The dialog is always 480px wide and its height follows each card."
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use Announcements from a What's new row or button with a count of unseen cards, with three to five cards newest first."
+        ],
+        "avoid": [
+          "Open it on its own over someone's work, or fill the media with illustrations or gradients."
+        ],
+        "decision": "Choose Announcements for release notes people opt into. Use Banner for a standing condition and Toast for the result of an action.",
+        "rules": [
+          {
+            "id": "announcements-titles",
+            "when": "A card describes a new feature.",
+            "do": "Title it with what people can now do, such as Share a secret with a link that expires.",
+            "avoid": "Use the feature's internal name as the title.",
+            "reason": "A capability tells people why to care.",
+            "evidence": [
+              "src/pages/design-system/examples/announcements/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each card title as an action someone can take today."
+            }
+          },
+          {
+            "id": "announcements-media",
+            "when": "A card has media.",
+            "do": "Show the real feature built from v4 components, made inert.",
+            "avoid": "Use screenshots, illustrations or gradients.",
+            "reason": "Real components stay accurate in both themes and at every corner setting.",
+            "evidence": [
+              "src/components/v4/ui/announcements.tsx",
+              "src/pages/design-system/examples/announcements/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Inspect each media area for components rather than images."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "last card",
+            "guidance": "Next reads Done and closes the dialog."
+          },
+          {
+            "state": "seen",
+            "guidance": "The host clears the unseen count from onSeen."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep the eyebrow to the area and the date.",
+            "avoid": "Add exclamation marks or New badges to every card.",
+            "reason": "The dialog already says these are new."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#announcements and exercise the documented interaction."
+        }
+      ]
+    },
+    {
       "id": "accordion",
       "title": "Accordion",
       "group": "Data display",
@@ -10292,6 +10415,106 @@
       ]
     },
     {
+      "id": "cover",
+      "title": "Cover",
+      "group": "Utilities",
+      "summary": "The brand cover: a display title and tagline beside a block composition drawn from the system's tokens.",
+      "sourceFiles": [
+        "src/components/v4/ui/cover.tsx",
+        "src/components/v4/ui/cover.module.css"
+      ],
+      "exports": [
+        "Cover"
+      ],
+      "referenceNames": [
+        "Cover"
+      ],
+      "behavior": [
+        "The cover keeps a 960 by 288 ratio and scales its type with its own width.",
+        "The art is an ink slab, an accent square and a control band with a grid of dots, all filled from color tokens and rounded with the corner tokens, so it follows theme and corner changes."
+      ],
+      "accessibility": [
+        "The art is decorative and hidden from assistive technology. The title is an h1."
+      ],
+      "limitations": [
+        "For the workbench, docs and release surfaces only; product pages use PageHeader."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Brand cover",
+          "module": "./examples/cover/default.tsx",
+          "states": [
+            "default"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "size support",
+          "expected": [
+            "no authored named size"
+          ],
+          "shown": [],
+          "omitted": [
+            {
+              "value": "no authored named size",
+              "reason": "The cover scales with its container at a fixed ratio."
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use Cover at the top of a brand or documentation surface with a short title and one-line tagline."
+        ],
+        "avoid": [
+          "Use it as a product page header or add photos or gradients to the art."
+        ],
+        "decision": "Choose Cover for brand surfaces. Use PageHeader for product pages.",
+        "rules": [
+          {
+            "id": "cover-tokens",
+            "when": "The cover art changes.",
+            "do": "Draw blocks from color, radius and space tokens so theme and corner choices carry through.",
+            "avoid": "Hard-code colors or corner radii in the SVG.",
+            "reason": "The cover is the system's own sample and must follow its settings.",
+            "evidence": [
+              "src/components/v4/ui/cover.tsx",
+              "src/components/v4/ui/cover.module.css"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Toggle the theme and check that every block follows it."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "narrow",
+            "guidance": "Type scales down with the container; the tagline keeps body size."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep the tagline to one plain sentence.",
+            "avoid": "Stack slogans or badges over the art.",
+            "reason": "The composition carries the brand by itself."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#cover and exercise the documented interaction."
+        }
+      ]
+    },
+    {
       "id": "data-grid",
       "title": "Data grid",
       "group": "Data display",
@@ -10797,6 +11020,135 @@
         {
           "kind": "browser",
           "command": "Open the executable example and verify keyboard, narrow viewport, dark theme and failure recovery."
+        }
+      ]
+    },
+    {
+      "id": "floating-action-bar",
+      "title": "Floating action bar",
+      "group": "Composites",
+      "summary": "Bulk actions for the current selection, floating over the bottom of the view while anything is selected.",
+      "sourceFiles": [
+        "src/components/v4/ui/floating-action-bar.tsx",
+        "src/components/v4/ui/floating-action-bar.module.css"
+      ],
+      "exports": [
+        "FloatingActionBar"
+      ],
+      "referenceNames": [
+        "FloatingActionBar"
+      ],
+      "behavior": [
+        "The bar shows while count is above zero and keeps the last count while it leaves. It enters and leaves on the motion springs; reduced motion jumps.",
+        "Select all appears while fewer than total are selected.",
+        "moreActions always sit in the More menu. Under 400px wide, Select all hides and the noun after the count moves to screen readers only.",
+        "fixed sits 24px above the viewport's bottom; contained sits 16px above the nearest positioned ancestor's bottom."
+      ],
+      "accessibility": [
+        "The bar is a named toolbar: Left and Right move between its buttons, Home and End jump, and Escape clears the selection.",
+        "The count is a status. When the bar leaves with focus inside it, focus returns to where it came from."
+      ],
+      "limitations": [
+        "Labeled actions do not yet move into More by measured width; keep two or three labeled actions and put the rest in moreActions."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Bulk actions over a list",
+          "module": "./examples/floating-action-bar/default.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "placement",
+          "expected": [
+            "fixed",
+            "contained"
+          ],
+          "shown": [
+            {
+              "value": "contained",
+              "exampleId": "default",
+              "label": "contained, two of five selected"
+            }
+          ],
+          "omitted": [
+            {
+              "value": "fixed",
+              "reason": "Fixed placement would float over the whole workbench; contained shows the same bar inside its stage."
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use FloatingActionBar only for actions on a multiple selection in a list or table."
+        ],
+        "avoid": [
+          "Put a page's own actions in the bar or hide the selection behind it."
+        ],
+        "decision": "Choose FloatingActionBar for bulk actions on a selection. Page actions belong in PageHeader and row actions in the row.",
+        "rules": [
+          {
+            "id": "floating-action-bar-undo",
+            "when": "A bulk action changes or removes items.",
+            "do": "Say how many it touched and offer Undo after it, unless the loss is permanent.",
+            "avoid": "Ask for confirmation before every bulk action.",
+            "reason": "Undo keeps the flow fast and still recovers mistakes.",
+            "evidence": [
+              "src/pages/design-system/examples/floating-action-bar/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Run Delete in the example and check that the result names the count."
+            }
+          },
+          {
+            "id": "floating-action-bar-order",
+            "when": "The bar has several actions.",
+            "do": "Order actions by importance with the danger action last and the rest in moreActions.",
+            "avoid": "Lead with Delete or show every action as a labeled button.",
+            "reason": "The bar has one line and never wraps.",
+            "evidence": [
+              "src/components/v4/ui/floating-action-bar.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read the actions left to right."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "busy",
+            "guidance": "A running action shows its button's loading state and the bar stays up until it finishes."
+          },
+          {
+            "state": "empty",
+            "guidance": "With no selection the bar is not rendered."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep labels to a verb, such as Move or Delete.",
+            "avoid": "Repeat the count in every action label.",
+            "reason": "The count already sits at the start of the bar."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#floating-action-bar and exercise the documented interaction."
         }
       ]
     },
@@ -11902,6 +12254,133 @@
       ]
     },
     {
+      "id": "loader",
+      "title": "Loader",
+      "group": "Feedback",
+      "summary": "Fill a region with a labeled Spinner while its first data loads, then show the content.",
+      "sourceFiles": [
+        "src/components/v4/ui/loader.tsx",
+        "src/components/v4/ui/loader.module.css"
+      ],
+      "exports": [
+        "Loader"
+      ],
+      "referenceNames": [
+        "Loader"
+      ],
+      "behavior": [
+        "Loader composes Spinner with its label, description and delay; it adds the area that centers it and marks the region busy.",
+        "With loading false it renders its children and nothing else.",
+        "The default delay of 300ms keeps fast loads from flashing."
+      ],
+      "accessibility": [
+        "Spinner's label carries one polite status announcement; the region sets aria-busy while loading."
+      ],
+      "limitations": [
+        "For an inline status beside text, use Spinner with a label directly; Loader only fills areas.",
+        "Use Progress for a known count and Skeleton for a known layout."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Base, page and loaded",
+          "module": "./examples/loader/default.tsx",
+          "states": [
+            "loading",
+            "default"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "size",
+          "expected": [
+            "base",
+            "page"
+          ],
+          "shown": [
+            {
+              "value": "base",
+              "exampleId": "default",
+              "label": "base"
+            },
+            {
+              "value": "page",
+              "exampleId": "default",
+              "label": "page"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use Loader around a card, panel, sheet or page body while its first data loads, with a label that names the object."
+        ],
+        "avoid": [
+          "Nest a Loader inside a page Loader, or put one inside a button."
+        ],
+        "decision": "Choose Loader for a region whose wait you cannot measure. Use Spinner with a label for inline status, Progress for a known count and Skeleton for a known layout.",
+        "rules": [
+          {
+            "id": "loader-label",
+            "when": "A region shows a Loader.",
+            "do": "Pass a present participle that names the object, such as Loading secrets.",
+            "avoid": "Use a bare Loading label or no label at all.",
+            "reason": "People need to know what is loading and where it will appear.",
+            "evidence": [
+              "src/components/v4/ui/loader.tsx",
+              "src/pages/design-system/examples/loader/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each Loader label and check that it names what loads."
+            }
+          },
+          {
+            "id": "loader-reconcile",
+            "when": "Text near the region already says what is happening.",
+            "do": "Use a bare Spinner or Spinner with a label instead of a Loader.",
+            "avoid": "Add a second Loader inside a region that already shows one.",
+            "reason": "One loader per region keeps a single status announcement.",
+            "evidence": [
+              "src/components/v4/ui/loader.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Search the region for nested Loader or Spinner status elements."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "loading",
+            "guidance": "The Spinner centers in the region after the delay, with its label under it."
+          },
+          {
+            "state": "loaded",
+            "guidance": "The children replace the Loader in place."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep the page loader's assembly as the one entrance flourish.",
+            "avoid": "Restart the page loader every time data refreshes.",
+            "reason": "Replaying the assembly reads as a new load."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#loader and exercise the documented interaction."
+        }
+      ]
+    },
+    {
       "id": "middle-truncate",
       "title": "Middle truncate",
       "group": "Utilities",
@@ -12381,6 +12860,146 @@
         {
           "kind": "browser",
           "command": "npm run ui:dev; open /design-system#multi-select and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "multi-step",
+      "title": "Multi step",
+      "group": "Composites",
+      "summary": "A task in steps where each step checks its fields before the next, in a dialog, a sheet or the page.",
+      "sourceFiles": [
+        "src/components/v4/ui/multi-step.tsx",
+        "src/components/v4/ui/multi-step.module.css"
+      ],
+      "exports": [
+        "MultiStep",
+        "Steps"
+      ],
+      "referenceNames": [
+        "MultiStep",
+        "Steps"
+      ],
+      "behavior": [
+        "Each step slides in from the direction of travel while its box eases to the new height; reduced motion jumps.",
+        "validate returns true or nothing to continue, false to stay and focus the first invalid field, or a message for the footer. A promise keeps Continue busy.",
+        "onComplete runs after the last step validates. A rejection shows its message in the footer.",
+        "Moving to a step focuses its first field, and Enter in a text field continues.",
+        "The page variant shows a vertical step list beside a card; under 640px the list becomes the step bar above the card."
+      ],
+      "accessibility": [
+        "The horizontal indicator is a progressbar with Step 2 of 3 as its value text; the vertical list marks the current step with aria-current.",
+        "Steps already reached are buttons that go back to them."
+      ],
+      "limitations": [
+        "The dialog opens in place; it does not grow out of its trigger.",
+        "The host owns field values, so values survive going back."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Connect an integration in three containers",
+          "module": "./examples/multi-step/default.tsx",
+          "states": [
+            "default",
+            "invalid",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "variant",
+          "expected": [
+            "dialog",
+            "sheet",
+            "page"
+          ],
+          "shown": [
+            {
+              "value": "dialog",
+              "exampleId": "default",
+              "label": "dialog"
+            },
+            {
+              "value": "sheet",
+              "exampleId": "default",
+              "label": "sheet"
+            },
+            {
+              "value": "page",
+              "exampleId": "default",
+              "label": "page"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use MultiStep for three to five ordered steps where later steps depend on earlier ones, ending with a review that names the action."
+        ],
+        "avoid": [
+          "Use it for sections people visit in any order, or for a two-step task."
+        ],
+        "decision": "Choose MultiStep for ordered, validated steps. Use Tabs for sections in any order and a Dialog with sections for two steps.",
+        "rules": [
+          {
+            "id": "multi-step-validate",
+            "when": "A step has required fields.",
+            "do": "Return false from validate after setting field errors, so focus moves to the first invalid field.",
+            "avoid": "Advance and report every error on the review step.",
+            "reason": "Errors are easiest to fix where the value was entered.",
+            "evidence": [
+              "src/components/v4/ui/multi-step.tsx",
+              "src/pages/design-system/examples/multi-step/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Press Continue with an empty team slug and check that focus lands on the field."
+            }
+          },
+          {
+            "id": "multi-step-complete-label",
+            "when": "The last step runs the task.",
+            "do": "Name the action in completeLabel, such as Connect or Import 4 secrets.",
+            "avoid": "Leave the primary as Finish or Submit.",
+            "reason": "The last button commits the task, so it should say what happens.",
+            "evidence": [
+              "src/pages/design-system/examples/multi-step/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read the primary label on the last step."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "invalid",
+            "guidance": "The step stays and focus moves to the first invalid field."
+          },
+          {
+            "state": "busy",
+            "guidance": "Continue shows its loading state while validate or onComplete runs."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Title steps with nouns, such as Team and Review.",
+            "avoid": "Write steps as sentences or number them in the title.",
+            "reason": "The indicator already numbers them."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#multi-step and exercise the documented interaction."
         }
       ]
     },
@@ -12937,6 +13556,140 @@
         {
           "kind": "browser",
           "command": "Open the executable example and verify keyboard, narrow viewport, dark theme and failure recovery."
+        }
+      ]
+    },
+    {
+      "id": "settings-card",
+      "title": "Settings card",
+      "group": "Composites",
+      "summary": "One setting, or a few that save together, with a footer that shows status and Save.",
+      "sourceFiles": [
+        "src/components/v4/ui/settings-card.tsx",
+        "src/components/v4/ui/settings-card.module.css"
+      ],
+      "exports": [
+        "SettingsCard"
+      ],
+      "referenceNames": [
+        "SettingsCard"
+      ],
+      "behavior": [
+        "The footer shows one status at a time: the hint, Unsaved changes, Saving, Saved for three seconds, the failure message, or the lock reason.",
+        "Save runs from the button or Enter in a field. A returned promise shows Saving; a rejection shows the Error's message and keeps the typed values.",
+        "Discard appears only while there are changes and calls onDiscard.",
+        "locked disables the fields, hides the buttons and shows the reason. tone danger draws the bad line and wash and shows your own actions."
+      ],
+      "accessibility": [
+        "The card is a section named by its title, and the footer status is a polite live region.",
+        "Fields stay in a native form, so Enter submits."
+      ],
+      "limitations": [
+        "The host keeps the values and passes dirty; the card does not compare values itself.",
+        "Locked fields use a disabled fieldset, so they look disabled rather than read-only."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Save, locked and danger",
+          "module": "./examples/settings-card/default.tsx",
+          "states": [
+            "default",
+            "editing",
+            "loading",
+            "success",
+            "error",
+            "read-only"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "tone",
+          "expected": [
+            "default",
+            "danger"
+          ],
+          "shown": [
+            {
+              "value": "default",
+              "exampleId": "default",
+              "label": "default"
+            },
+            {
+              "value": "danger",
+              "exampleId": "default",
+              "label": "danger"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use SettingsCard for settings someone changes and saves together, one card per decision."
+        ],
+        "avoid": [
+          "Wrap settings that apply instantly, such as a lone Switch, or several unrelated settings in one card."
+        ],
+        "decision": "Choose SettingsCard when a setting saves explicitly. Use a plain Card and a Toast for settings that apply instantly.",
+        "rules": [
+          {
+            "id": "settings-card-errors",
+            "when": "A save fails.",
+            "do": "Reject with an Error whose message says what failed and what to do, and keep what was typed.",
+            "avoid": "Clear the fields or show a generic Something went wrong.",
+            "reason": "People should be able to fix the value and save again without retyping.",
+            "evidence": [
+              "src/components/v4/ui/settings-card.tsx",
+              "src/pages/design-system/examples/settings-card/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Clear the name in the example and save; the message explains the fix and the field keeps its value."
+            }
+          },
+          {
+            "id": "settings-card-danger",
+            "when": "A setting destroys data.",
+            "do": "Use tone danger, place the card last on the page and open an AlertDialog that names the object from its action.",
+            "avoid": "Put a destructive action in an ordinary card's Save button.",
+            "reason": "Destructive settings need a distinct boundary and a confirmation that names what is lost.",
+            "evidence": [
+              "src/components/v4/ui/settings-card.tsx",
+              "src/pages/design-system/examples/settings-card/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Check that danger cards come last and that their action confirms with the object's name."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "dirty",
+            "guidance": "A 6px warn mark and Unsaved changes; Save enables and Discard appears."
+          },
+          {
+            "state": "locked",
+            "guidance": "The lock icon and the reason replace the buttons."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Name the setting with a noun and say what it affects in the description.",
+            "avoid": "Write instructions such as Use this card to change your name.",
+            "reason": "The title and fields already say what to do."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#settings-card and exercise the documented interaction."
         }
       ]
     },

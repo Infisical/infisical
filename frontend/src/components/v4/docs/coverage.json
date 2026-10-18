@@ -1,13 +1,13 @@
 {
-  "requiredCapabilities": 67,
-  "componentFamilies": 66,
+  "requiredCapabilities": 73,
+  "componentFamilies": 72,
   "patterns": 1,
-  "catalogEntries": 69,
+  "catalogEntries": 75,
   "supplementalGuides": [
     "layout",
     "text"
   ],
-  "examples": 148,
+  "examples": 154,
   "missingCapabilities": [],
   "unmappedExports": [],
   "assessment": "Inventory and recipe coverage only. Behavior parity, browser checks and installation require executed evidence.",
@@ -94,6 +94,27 @@
         "Nested collapse works",
         "Reopen retains child state",
         "Reduced motion ends immediately"
+      ]
+    },
+    {
+      "id": "announcements",
+      "kind": "composite",
+      "exports": [
+        "Announcements"
+      ],
+      "name": "Announcements",
+      "variants": [
+        "cards",
+        "media",
+        "action",
+        "dots",
+        "last card"
+      ],
+      "behavior": "480px dialog of cards that slide in the direction of travel; Left and Right wrap; Next becomes Done; onSeen per card",
+      "acceptance": [
+        "Focus starts on Next",
+        "Position announced",
+        "Media inert"
       ]
     },
     {
@@ -489,6 +510,24 @@
       ]
     },
     {
+      "id": "cover",
+      "kind": "component",
+      "exports": [
+        "Cover"
+      ],
+      "name": "Cover",
+      "variants": [
+        "light",
+        "dark",
+        "corners"
+      ],
+      "behavior": "Brand cover from color, radius and space tokens at a fixed ratio",
+      "acceptance": [
+        "Art follows theme",
+        "Art hidden from assistive technology"
+      ]
+    },
+    {
       "id": "data-grid",
       "kind": "component",
       "exports": [
@@ -660,6 +699,27 @@
         "Folder picker nested popup",
         "Full filename recoverable",
         "Reduced motion collapse"
+      ]
+    },
+    {
+      "id": "floating-action-bar",
+      "kind": "composite",
+      "exports": [
+        "FloatingActionBar"
+      ],
+      "name": "FloatingActionBar",
+      "variants": [
+        "fixed",
+        "contained",
+        "select all",
+        "more",
+        "busy action"
+      ],
+      "behavior": "Shows while count above zero; toolbar arrows; Escape clears; focus returns when it leaves",
+      "acceptance": [
+        "Count announced",
+        "Escape clears",
+        "Danger action last"
       ]
     },
     {
@@ -900,6 +960,26 @@
       ]
     },
     {
+      "id": "loader",
+      "kind": "component",
+      "exports": [
+        "Loader"
+      ],
+      "name": "Loader",
+      "variants": [
+        "base",
+        "page",
+        "delay",
+        "loaded"
+      ],
+      "behavior": "Region wrapper around a labeled Spinner; renders children when not loading",
+      "acceptance": [
+        "One status announcement",
+        "Region busy while loading",
+        "No flash under the delay"
+      ]
+    },
+    {
       "id": "menubar",
       "kind": "component",
       "exports": [],
@@ -968,6 +1048,30 @@
         "Tab closes without trap",
         "Custom trigger retains handler/ref",
         "Duplicate values rejected at boundary"
+      ]
+    },
+    {
+      "id": "multi-step",
+      "kind": "composite",
+      "exports": [
+        "MultiStep",
+        "Steps"
+      ],
+      "name": "MultiStep",
+      "variants": [
+        "dialog",
+        "sheet",
+        "page",
+        "horizontal steps",
+        "vertical steps",
+        "invalid",
+        "busy"
+      ],
+      "behavior": "Ordered steps that validate before advancing; Back keeps values; last step names the action",
+      "acceptance": [
+        "Invalid step focuses its first invalid field",
+        "Enter continues",
+        "Footer shows failures"
       ]
     },
     {
@@ -1207,6 +1311,30 @@
         "Decorative hidden",
         "Vertical orientation correct",
         "Label not announced twice"
+      ]
+    },
+    {
+      "id": "settings-card",
+      "kind": "composite",
+      "exports": [
+        "SettingsCard"
+      ],
+      "name": "SettingsCard",
+      "variants": [
+        "default",
+        "dirty",
+        "saving",
+        "saved",
+        "failed",
+        "locked",
+        "loading",
+        "danger"
+      ],
+      "behavior": "Fields in a form with a footer status and Save; rejection keeps values and shows the message",
+      "acceptance": [
+        "Save disabled until dirty",
+        "Enter saves",
+        "Locked shows the reason"
       ]
     },
     {

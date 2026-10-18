@@ -52,6 +52,11 @@
           "target": "src/components/v4/docs/animated-collapse.md"
         },
         {
+          "path": "src/components/v4/docs/announcements.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/announcements.md"
+        },
+        {
           "path": "src/components/v4/docs/aspect-ratio.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/aspect-ratio.md"
@@ -142,6 +147,11 @@
           "target": "src/components/v4/docs/context-menu.md"
         },
         {
+          "path": "src/components/v4/docs/cover.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/cover.md"
+        },
+        {
           "path": "src/components/v4/docs/coverage.json",
           "type": "registry:file",
           "target": "src/components/v4/docs/coverage.json"
@@ -180,6 +190,11 @@
           "path": "src/components/v4/docs/file-tree.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/file-tree.md"
+        },
+        {
+          "path": "src/components/v4/docs/floating-action-bar.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/floating-action-bar.md"
         },
         {
           "path": "src/components/v4/docs/hover-card.md",
@@ -237,6 +252,11 @@
           "target": "src/components/v4/docs/list.md"
         },
         {
+          "path": "src/components/v4/docs/loader.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/loader.md"
+        },
+        {
           "path": "src/components/v4/docs/menubar.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/menubar.md"
@@ -250,6 +270,11 @@
           "path": "src/components/v4/docs/multi-select.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/multi-select.md"
+        },
+        {
+          "path": "src/components/v4/docs/multi-step.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/multi-step.md"
         },
         {
           "path": "src/components/v4/docs/navigation-menu.md",
@@ -305,6 +330,11 @@
           "path": "src/components/v4/docs/separator.md",
           "type": "registry:file",
           "target": "src/components/v4/docs/separator.md"
+        },
+        {
+          "path": "src/components/v4/docs/settings-card.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/settings-card.md"
         },
         {
           "path": "src/components/v4/docs/sheet.md",
@@ -575,6 +605,30 @@
           "path": "src/components/v4/ui/text.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/text.module.css"
+        }
+      ]
+    },
+    {
+      "name": "announcements",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/dialog",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "motion@^13.2.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/announcements.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/announcements.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/announcements.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/announcements.module.css"
         }
       ]
     },
@@ -1048,6 +1102,28 @@
       ]
     },
     {
+      "name": "cover",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/cover.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/cover.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/cover.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/cover.module.css"
+        }
+      ]
+    },
+    {
       "name": "data-grid",
       "type": "registry:ui",
       "registryDependencies": [
@@ -1236,6 +1312,32 @@
           "path": "src/components/v4/ui/data.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/data.module.css"
+        }
+      ]
+    },
+    {
+      "name": "floating-action-bar",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/dropdown-menu",
+        "@infisical/icon",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "motion@^13.2.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/floating-action-bar.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/floating-action-bar.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/floating-action-bar.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/floating-action-bar.module.css"
         }
       ]
     },
@@ -1512,6 +1614,29 @@
       ]
     },
     {
+      "name": "loader",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base",
+        "@infisical/spinner"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/loader.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/loader.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/loader.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/loader.module.css"
+        }
+      ]
+    },
+    {
       "name": "menu-content",
       "type": "registry:ui",
       "registryDependencies": [
@@ -1615,6 +1740,34 @@
           "path": "src/components/v4/ui/picker.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/picker.module.css"
+        }
+      ]
+    },
+    {
+      "name": "multi-step",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/dialog",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/progress",
+        "@infisical/sheet"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "motion@^13.2.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/multi-step.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/multi-step.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/multi-step.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/multi-step.module.css"
         }
       ]
     },
@@ -1889,6 +2042,32 @@
           "path": "src/components/v4/ui/controls.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "settings-card",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/skeleton",
+        "@infisical/spinner"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/settings-card.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/settings-card.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/settings-card.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/settings-card.module.css"
         }
       ]
     },
