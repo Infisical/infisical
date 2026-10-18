@@ -7,6 +7,7 @@ type Theme = "light" | "dark";
 export type V4Corners = "square" | "soft";
 const PortalContainerContext = React.createContext<HTMLElement | null | undefined>(undefined);
 const ThemeContext = React.createContext<Theme | undefined>(undefined);
+const CornersContext = React.createContext<V4Corners | undefined>(undefined);
 
 export const useV4PortalContainer = () => React.useContext(PortalContainerContext);
 export const useV4Theme = () => React.useContext(ThemeContext);
@@ -24,8 +25,10 @@ function inheritedTheme(node: HTMLElement, fallback: Theme | undefined): Theme {
 export const V4Scope = React.forwardRef<
   HTMLDivElement,
   React.ComponentPropsWithoutRef<"div"> & { theme?: Theme; corners?: V4Corners }
->(({ children, className, theme, corners = "square", ...props }, forwardedRef) => {
+>(({ children, className, theme, corners: cornersProp, ...props }, forwardedRef) => {
   const parentTheme = useV4Theme();
+  const parentCorners = React.useContext(CornersContext);
+  const corners = cornersProp ?? parentCorners ?? "square";
   const [wrapper, setWrapper] = React.useState<HTMLDivElement | null>(null);
   const [container, setContainer] = React.useState<HTMLDivElement | null>(null);
   const [inherited, setInherited] = React.useState<Theme>();
@@ -57,26 +60,28 @@ export const V4Scope = React.forwardRef<
   return (
     <MotionConfig reducedMotion="user">
       <ThemeContext.Provider value={resolvedTheme}>
-        <PortalContainerContext.Provider value={container}>
-          <div
-            {...props}
-            ref={assignWrapper}
-            className={cn("v4", className)}
-            data-corners={corners}
-            data-theme={resolvedTheme}
-          >
-            {children}
-          </div>
-          {createPortal(
+        <CornersContext.Provider value={corners}>
+          <PortalContainerContext.Provider value={container}>
             <div
-              ref={setContainer}
-              className="v4"
+              {...props}
+              ref={assignWrapper}
+              className={cn("v4", className)}
               data-corners={corners}
               data-theme={resolvedTheme}
-            />,
-            document.body
-          )}
-        </PortalContainerContext.Provider>
+            >
+              {children}
+            </div>
+            {createPortal(
+              <div
+                ref={setContainer}
+                className="v4"
+                data-corners={corners}
+                data-theme={resolvedTheme}
+              />,
+              document.body
+            )}
+          </PortalContainerContext.Provider>
+        </CornersContext.Provider>
       </ThemeContext.Provider>
     </MotionConfig>
   );
