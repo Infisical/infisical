@@ -79,7 +79,9 @@
 }
 .actions {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  max-width: 100%;
   align-items: center;
   gap: var(--v4-space-8);
   min-height: var(--v4-type-display-line-height);

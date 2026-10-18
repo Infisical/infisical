@@ -192,7 +192,7 @@ export default function Example() {
     const [current, setCurrent] = useState("secrets");
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="relative min-w-0 w-full overflow-auto">
+        <div className="relative min-w-0 w-full overflow-auto h-[600px] isolate [transform:translateZ(0)]">
           <AppShell>
             <Sidebar sections={[
             {
