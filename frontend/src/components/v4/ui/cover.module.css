@@ -3,7 +3,6 @@
   position: relative;
   width: 100%;
   aspect-ratio: 960 / 288;
-  min-height: 200px;
   overflow: hidden;
   background: var(--v4-surface);
   color: var(--v4-ink);
@@ -39,11 +38,11 @@
 }
 .title {
   margin: 0;
-  font-family: var(--v4-font-sans);
-  font-size: 10.8cqi;
-  line-height: 0.95;
-  font-weight: 500;
-  letter-spacing: -0.03em;
+  font-family: var(--v4-type-display-font-family);
+  font-size: max(var(--v4-type-display-font-size), 10.8cqi);
+  line-height: 1;
+  font-weight: var(--v4-type-display-font-weight);
+  letter-spacing: var(--v4-type-display-letter-spacing);
 }
 .tagline {
   margin: 1.25cqi 0 0 2px;

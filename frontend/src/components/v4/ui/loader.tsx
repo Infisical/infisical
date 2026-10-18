@@ -35,7 +35,6 @@ export const Loader = React.forwardRef<HTMLDivElement, LoaderProps>(
         ref={ref}
         data-slot="loader"
         data-size={size}
-        aria-busy="true"
         className={cn(styles.loader, className)}
         {...props}
       >

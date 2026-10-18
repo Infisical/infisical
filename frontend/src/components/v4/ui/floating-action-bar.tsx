@@ -37,8 +37,10 @@ export type FloatingActionBarProps = {
 };
 
 const roving = (event: React.KeyboardEvent<HTMLDivElement>, onClear: () => void) => {
+  if (!event.currentTarget.contains(event.target as Node) || event.defaultPrevented) return;
   if (event.key === "Escape") {
     event.preventDefault();
+    event.stopPropagation();
     onClear();
     return;
   }
@@ -88,6 +90,7 @@ export const FloatingActionBar = ({
           data-slot="floating-action-bar"
           data-placement={placement}
           role="toolbar"
+          data-v4-escape-owner=""
           aria-label={label}
           className={cn(styles.bar, className)}
           initial={{ opacity: 0, y: reduced ? 0 : 16 }}
@@ -135,10 +138,10 @@ export const FloatingActionBar = ({
                     <DropdownMenuItem
                       key={action.label}
                       variant={action.danger ? "destructive" : "default"}
-                      disabled={action.disabled}
+                      disabled={action.disabled || action.loading}
                       onSelect={action.onClick}
                     >
-                      {action.label}
+                      {action.loading ? `${action.label} (running)` : action.label}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

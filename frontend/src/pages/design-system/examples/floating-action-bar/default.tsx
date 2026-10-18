@@ -29,7 +29,7 @@ export default function Example() {
         <FloatingActionBar
           placement="contained"
           count={selected.length}
-          total={412}
+          total={rows.length}
           onSelectAll={() => setSelected(rows)}
           onClear={() => setSelected([])}
           actions={[
@@ -49,7 +49,21 @@ export default function Example() {
               }
             }
           ]}
-          moreActions={[{ label: "Export as .env", onClick: () => setMessage("Export started.") }]}
+          moreActions={[
+            {
+              label: "Download names",
+              onClick: () => {
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(
+                  new Blob([`${selected.join("\n")}\n`], { type: "text/plain" })
+                );
+                link.download = "secret-names.txt";
+                link.click();
+                URL.revokeObjectURL(link.href);
+                setMessage(`Downloaded ${selected.length} names.`);
+              }
+            }
+          ]}
         />
       </ExampleStage>
     </ExampleCell>

@@ -76,6 +76,9 @@
 }
 .page {
   container-type: inline-size;
+  min-width: 0;
+}
+.pageGrid {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   gap: var(--v4-space-32);
@@ -93,7 +96,7 @@
   background: var(--v4-surface);
 }
 @container (max-width: 640px) {
-  .page {
+  .pageGrid {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--v4-space-16);
   }

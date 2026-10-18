@@ -74,7 +74,7 @@ Exports: MultiStep, Steps. Source TypeScript defines the API.
 ## Accessibility
 
 - The horizontal indicator is a progressbar with Step 2 of 3 as its value text; the vertical list marks the current step with aria-current.
-- Steps already reached are buttons that go back to them.
+- In the vertical list, earlier steps are buttons that go back to them. Moving forward always runs the step's validate, and the horizontal indicator is not interactive.
 
 ## Use cases
 
@@ -88,6 +88,7 @@ Exports: MultiStep, Steps. Source TypeScript defines the API.
 
 - The dialog opens in place; it does not grow out of its trigger.
 - The host owns field values, so values survive going back.
+- The dialog and sheet cannot be dismissed while a step is checking; closing them calls onCancel and returns to the first step.
 
 ## Declared example coverage
 

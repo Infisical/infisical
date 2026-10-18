@@ -2,7 +2,8 @@
   max-width: 480px;
   padding: 0;
   gap: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .viewport {
   overflow: hidden;
@@ -78,7 +79,7 @@
   height: 6px;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: calc(var(--v4-radius-xs) * var(--corners));
   background: var(--v4-line);
   cursor: pointer;
   transition-property: width, background-color;

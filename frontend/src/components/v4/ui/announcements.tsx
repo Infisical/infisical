@@ -65,9 +65,12 @@ export const Announcements = ({
   const next = React.useRef<HTMLButtonElement | null>(null);
   const item = items[current];
   const last = current === items.length - 1;
+  const seen = React.useRef(onSeen);
+  seen.current = onSeen;
+  const itemId = item?.id;
   React.useEffect(() => {
-    if (isOpen && item) onSeen?.(item.id);
-  }, [isOpen, item, onSeen]);
+    if (isOpen && itemId) seen.current?.(itemId);
+  }, [isOpen, itemId]);
   const go = (target: number) => {
     const wrapped = loop ? (target + items.length) % items.length : target;
     if (wrapped < 0 || wrapped >= items.length || wrapped === current) return;
