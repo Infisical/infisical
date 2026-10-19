@@ -25,11 +25,11 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { isUnboundAuthGrandfathered } from "@app/services/identity/identity-auth-trust-binding-fns";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
 } from "@app/services/identity/identity-auth-method-events";
+import { isUnboundAuthGrandfathered } from "@app/services/identity/identity-auth-trust-binding-fns";
 
 import { ActorType } from "../auth/auth-type";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";

@@ -9,8 +9,8 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -21,11 +21,11 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { isUnboundAuthGrandfathered } from "@app/services/identity/identity-auth-trust-binding-fns";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
 } from "@app/services/identity/identity-auth-method-events";
+import { isUnboundAuthGrandfathered } from "@app/services/identity/identity-auth-trust-binding-fns";
 
 import { ActorType } from "../auth/auth-type";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
