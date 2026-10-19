@@ -11,6 +11,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -468,8 +469,13 @@ export const secretReadActivityServiceFactory = ({
       if (cached) return JSON.parse(cached) as Awaited<ReturnType<typeof $computeProjectExposure>>;
 
       const result = await $computeProjectExposure(projectId, orgId);
-      // Written before the lock is released, so the next request in line finds it.
-      await keyStore.setItemWithExpiry(cacheKey, SECRET_EXPOSURE_CACHE_TTL_SECONDS, JSON.stringify(result));
+      // Written before the lock is released, so the next request in line finds it. A failed write only costs
+      // the next request a recomputation, so it never fails this one.
+      await keyStore
+        .setItemWithExpiry(cacheKey, SECRET_EXPOSURE_CACHE_TTL_SECONDS, JSON.stringify(result))
+        .catch((error) => {
+          logger.warn(error, `secret-exposure: failed to cache the project computation [projectId=${projectId}]`);
+        });
       return result;
     } finally {
       await lock?.release();
