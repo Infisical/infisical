@@ -1342,6 +1342,7 @@
                       "cli/reference/sm/agent-proxy",
                       "cli/reference/sm/dynamic-secrets",
                       "cli/reference/sm/export",
+                      "cli/reference/sm/projects",
                       "cli/reference/sm/run",
                       "cli/reference/sm/secrets"
                     ]
