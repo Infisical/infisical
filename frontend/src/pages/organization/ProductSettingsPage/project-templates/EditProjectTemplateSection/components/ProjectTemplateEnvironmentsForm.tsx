@@ -59,7 +59,8 @@ export const ProjectTemplateEnvironmentsForm = ({
     handleSubmit,
     formState: { isDirty, errors },
     reset,
-    setValue
+    setValue,
+    getFieldState
   } = useForm<TFormSchema>({
     defaultValues: {
       environments: projectTemplate.environments
@@ -183,7 +184,12 @@ export const ProjectTemplateEnvironmentsForm = ({
                                       setValue(
                                         `environments.${pos}.slug`,
                                         slugify(e.target.value, { lowercase: true }),
-                                        { shouldDirty: true }
+                                        {
+                                          shouldDirty: true,
+                                          shouldValidate: Boolean(
+                                            getFieldState(`environments.${pos}.slug`).error
+                                          )
+                                        }
                                       );
                                     }}
                                     className="h-8 px-2 text-sm"
