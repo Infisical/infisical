@@ -31,7 +31,10 @@ export const SecretReadStatusBadge = ({ status }: Props) => {
         <TooltipTrigger asChild>
           <Badge variant="warning">No Reads</Badge>
         </TooltipTrigger>
-        <TooltipContent>No reads since {format(new Date(status.since), "PP")}</TooltipContent>
+        <TooltipContent className="max-w-72">
+          No reads since {format(new Date(status.since), "PP")}, when reads of this secret started
+          being tracked. Nothing is known about reads before that.
+        </TooltipContent>
       </Tooltip>
     );
   }
