@@ -7,15 +7,26 @@ import { ExampleGrid } from "../../example-presentation";
 
 const options: MultiSelectOption[] = [
   { value: "read", label: "Read", description: "Fetch existing values", group: "Secrets" },
-  { value: "write", label: "Write", group: "Secrets" },
-  { value: "admin", label: "Admin", group: "Project", disabled: true }
+  { value: "write", label: "Write", description: "Create and edit", group: "Secrets" },
+  { value: "delete", label: "Delete", group: "Secrets" },
+  { value: "admin", label: "Admin", group: "Project", disabled: true },
+  {
+    value: "billing",
+    label: "Billing",
+    description: "Owner only",
+    group: "Project",
+    disabled: true
+  }
 ];
 export default function Example() {
   const [roles, setRoles] = useState(["read", "admin"]);
   const [single, setSingle] = useState<string | null>("read");
   return (
     <ExampleGrid>
-      <Field label="Project roles" description="Admin is required by policy.">
+      <Field
+        label="Project roles"
+        description="Admin is required by policy. Billing is owner only."
+      >
         <MultiSelect
           label="Project roles"
           allLabel="All project permissions"

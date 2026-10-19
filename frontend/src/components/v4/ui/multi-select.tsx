@@ -41,6 +41,7 @@ type Shared = {
   align?: "start" | "center" | "end";
   side?: "top" | "right" | "bottom" | "left";
   menuWidth?: React.CSSProperties["width"];
+  quickActions?: boolean;
   className?: string;
 };
 export type MultiSelectProps = Shared &
@@ -74,6 +75,7 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
     align = "start",
     side = "bottom",
     menuWidth,
+    quickActions = true,
     className
   } = props;
   const optionValues = new Set<string>();
@@ -143,6 +145,8 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
   const eligible = options.filter((option) => !option.disabled);
   const allSelected =
     eligible.length > 0 && eligible.every((option) => selected.includes(option.value));
+  const noneSelected = !eligible.some((option) => selected.includes(option.value));
+  const multiple = props.multiple !== false;
   let summary: React.ReactNode = placeholder;
   if (renderValue) summary = renderValue(chosen);
   else if (firstChosen) {
@@ -178,6 +182,8 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
         .filter((option) => !option.disabled || selected.includes(option.value))
         .map((option) => option.value)
     );
+  const none = () =>
+    apply(selected.filter((value) => !eligible.some((option) => option.value === value)));
   const toggle = (option: MultiSelectOption) => {
     if (option.disabled || disabled) return;
     if (props.multiple === false) {
@@ -198,11 +204,7 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
       props.multiple !== false
     ) {
       event.preventDefault();
-      const enabledValues = options
-        .filter((option) => !option.disabled)
-        .map((option) => option.value);
-      if (enabledValues.length && enabledValues.every((value) => selected.includes(value)))
-        apply(selected.filter((value) => !enabledValues.includes(value)));
+      if (allSelected) none();
       else all();
       return;
     }
@@ -302,6 +304,11 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
             data-side={side}
             data-align={align}
             data-size={size}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
+              changeOpen(true);
+            }}
             className={cn(
               controlStyles.field,
               controlStyles.trigger,
@@ -348,15 +355,42 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
             />
           </div>
         )}
-        <span role="status" aria-live="polite" className="sr-only">
-          {selected.length} selected
-        </span>
+        {multiple && quickActions ? (
+          <div className={styles.quickBar} data-slot="multi-select-actions">
+            <span role="status" aria-live="polite" className={styles.quickStatus}>
+              {chosen.length} of {options.length} selected
+            </span>
+            {[
+              { text: "Select all", disabled: allSelected, run: all },
+              { text: "Deselect all", disabled: noneSelected, run: none }
+            ].map((action) => (
+              <Button
+                key={action.text}
+                type="button"
+                variant="ghost"
+                size="xs"
+                disabled={disabled || action.disabled}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  action.run();
+                  list.current?.focus();
+                }}
+              >
+                {action.text}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <span role="status" aria-live="polite" className="sr-only">
+            {selected.length} selected
+          </span>
+        )}
         <div
           ref={list}
           id={listId}
           role="listbox"
           aria-label={label}
-          aria-multiselectable={props.multiple !== false || undefined}
+          aria-multiselectable={multiple || undefined}
           tabIndex={0}
           aria-activedescendant={currentActive ? optionId(currentActive.value) : undefined}
           className={cn(menu.list, menu.inset)}
@@ -375,22 +409,33 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
                     aria-selected={selected.includes(option.value)}
                     aria-disabled={option.disabled || undefined}
                     data-active={currentActive?.value === option.value || undefined}
-                    className={menu.row}
+                    className={cn(menu.row, styles.option)}
                     onPointerMove={() => {
                       if (!option.disabled) setActive(option.value);
                     }}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => toggle(option)}
                   >
-                    <span className={menu.indicator}>
-                      {selected.includes(option.value) && <Icon name="check" />}
-                    </span>
-                    <span className={menu.text}>
-                      <span className={menu.title}>{option.label}</span>
-                      {option.description && (
-                        <span className={menu.description}>{option.description}</span>
-                      )}
-                    </span>
+                    {multiple && (
+                      <span
+                        aria-hidden
+                        data-state={selected.includes(option.value) ? "checked" : "unchecked"}
+                        className={cn(controlStyles.choiceMark, styles.optionBox)}
+                      >
+                        {selected.includes(option.value) && (
+                          <Icon name="check" size={13} strokeWidth={2.6} />
+                        )}
+                      </span>
+                    )}
+                    <span className={styles.optionLabel}>{option.label}</span>
+                    {option.description && (
+                      <span className={styles.optionMeta}>{option.description}</span>
+                    )}
+                    {!multiple && (
+                      <span className={styles.optionCheck}>
+                        {selected.includes(option.value) && <Icon name="check" />}
+                      </span>
+                    )}
                   </div>
                 ))}
             </div>

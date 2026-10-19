@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { Button } from "./button";
 import {
@@ -12,6 +13,7 @@ import {
   parseGridValue,
   pasteGrid
 } from "./data-grid-model";
+import { Icon } from "./icon";
 
 import styles from "./data.module.css";
 
@@ -195,8 +197,11 @@ export function DataGrid<Row>({
     setEdit({ cell, text: text ?? previous ?? "", previous, error: null });
     setSelection({ active: cell, anchor: cell });
   };
-  React.useEffect(() => {
-    if (edit) input.current?.focus();
+  React.useLayoutEffect(() => {
+    const field = input.current;
+    if (!edit || !field) return;
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
   }, [edit?.cell.rowId, edit?.cell.columnId]);
   React.useEffect(() => {
     if (
@@ -650,6 +655,7 @@ export function DataGrid<Row>({
                 <button
                   type="button"
                   aria-label={`Sort ${column.header}`}
+                  data-active={sort?.columnId === column.id || undefined}
                   disabled={busy}
                   onClick={() =>
                     onSortChange({
@@ -659,7 +665,16 @@ export function DataGrid<Row>({
                     })
                   }
                 >
-                  ↕
+                  <Icon
+                    icon={
+                      sort?.columnId !== column.id
+                        ? ArrowUpDown
+                        : sort.direction === "asc"
+                          ? ArrowUp
+                          : ArrowDown
+                    }
+                    strokeWidth={2}
+                  />
                 </button>
               )}
               <span

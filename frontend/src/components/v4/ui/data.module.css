@@ -7,9 +7,11 @@
 .tableScroll {
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
   overflow: auto;
+  position: relative;
+}
+.gridScroll {
   background: var(--v4-surface);
   border: var(--v4-size-control-border) solid var(--v4-line);
-  position: relative;
 }
 @property --v4-fade-start {
   syntax: "<length>";
@@ -119,6 +121,13 @@
   font-size: inherit;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.gridHeader button[data-active] {
+  color: var(--v4-ink);
+}
+.gridHeader button > svg {
+  width: var(--v4-size-icon-xs);
+  height: var(--v4-size-icon-xs);
 }
 .gridHeader button {
   display: inline-flex;
@@ -472,27 +481,56 @@
   color: var(--v4-muted);
 }
 .list {
-  border-radius: calc(var(--v4-radius-panel) * var(--corners));
   list-style: none;
   padding: 0;
   margin: 0;
-  background: var(--v4-surface);
-  border: var(--v4-size-control-border) solid var(--v4-line);
 }
-.list .list {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-}
-.listShell[data-variant="plain"] > .list,
-.listShell[data-variant="bare"] > .list {
-  background: transparent;
-  border-color: transparent;
+.listShell[data-variant="framed"] > .list,
+.listShell[data-variant="plain"] > .list {
+  overflow: hidden;
 }
 .listShell[data-variant="plain"] > .list {
-  border-top-color: var(--v4-line-soft);
-  border-bottom-color: var(--v4-line-soft);
-  border-radius: 0;
+  background: var(--v4-surface);
+  border: var(--v4-size-control-border) solid var(--v4-line);
+  border-radius: calc(var(--v4-radius-card) * var(--corners));
+}
+.listShell[data-variant="framed"] > .status {
+  padding: var(--v4-space-8) var(--v4-space-12) var(--v4-space-4);
+}
+.listShell > [data-select] {
+  padding-inline-start: calc(var(--v4-space-12) + var(--v4-size-control-border));
+}
+.sectionHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--v4-space-12);
+  height: var(--v4-space-32);
+  padding: 0 var(--v4-space-16) var(--v4-space-6);
+}
+.listShell[data-size="sm"] .sectionHead {
+  padding-inline: calc(var(--v4-space-16) - var(--v4-space-2));
+}
+.sectionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--v4-muted);
+  text-transform: uppercase;
+  font-family: var(--v4-type-eyebrow-font-family);
+  font-size: var(--v4-type-eyebrow-font-size);
+  line-height: var(--v4-type-eyebrow-line-height);
+  font-weight: var(--v4-type-eyebrow-font-weight);
+  letter-spacing: var(--v4-type-eyebrow-letter-spacing);
+}
+.sectionMeta {
+  flex: none;
+  color: var(--v4-muted);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
 }
 .listShell[data-variant="bare"] .listRow {
   border-bottom-color: transparent;
@@ -526,6 +564,21 @@
 .listRow[data-selected],
 .listRow[data-current] {
   background: var(--v4-selected-surface);
+}
+.listRow[data-interactive] {
+  --v4-list-row-hover: var(--v4-opacity-hover);
+  --v4-list-row-press: var(--v4-opacity-press);
+  transition: background-color var(--v4-duration-fast) var(--v4-ease-fade);
+}
+:global(.v4[data-theme="dark"]) .listRow[data-interactive] {
+  --v4-list-row-hover: var(--v4-opacity-hover-dark);
+  --v4-list-row-press: var(--v4-opacity-press-dark);
+}
+.listRow[data-interactive]:not([data-selected], [data-current]):hover {
+  background: color-mix(in srgb, var(--v4-ink) var(--v4-list-row-hover), transparent);
+}
+.listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
+  background: color-mix(in srgb, var(--v4-ink) var(--v4-list-row-press), transparent);
 }
 .listRow[data-resolved] {
   background: var(--v4-row-done);
@@ -699,20 +752,60 @@ button.rowTitle::after {
   border-spacing: 0;
   min-width: 100%;
 }
+.tableShell > .tableScroll {
+  padding-top: 0;
+}
+.tableScroll table {
+  position: relative;
+  isolation: isolate;
+}
+.tableScroll tbody {
+  position: relative;
+}
+.tableScroll tbody::before,
+.tableScroll tbody::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--v4-frame-inner-radius);
+  pointer-events: none;
+}
+.tableScroll tbody::before {
+  z-index: -1;
+  background: var(--v4-surface);
+  box-shadow: var(--v4-shadow-raised);
+}
+.tableScroll tbody::after {
+  z-index: 3;
+  border: var(--v4-size-control-border) solid var(--v4-line);
+}
+.tableScroll tbody > tr:first-child > td:first-child {
+  border-start-start-radius: var(--v4-frame-inner-radius);
+}
+.tableScroll tbody > tr:first-child > td:last-child {
+  border-start-end-radius: var(--v4-frame-inner-radius);
+}
+.tableScroll tbody > tr:last-child > td:first-child {
+  border-end-start-radius: var(--v4-frame-inner-radius);
+}
+.tableScroll tbody > tr:last-child > td:last-child {
+  border-end-end-radius: var(--v4-frame-inner-radius);
+}
 .tableScroll thead {
   position: sticky;
   top: 0;
-  z-index: 2;
-  background: var(--v4-paper);
+  z-index: 4;
+  background: var(--v4-tint);
 }
 .tableScroll th {
-  height: var(--v4-size-control-md);
+  height: var(--v4-space-40);
   color: var(--v4-muted);
-  font-family: var(--v4-type-label-font-family);
-  font-size: var(--v4-type-label-font-size);
-  line-height: var(--v4-type-label-line-height);
-  font-weight: var(--v4-type-label-font-weight);
-  letter-spacing: var(--v4-type-label-letter-spacing);
+  text-transform: uppercase;
+  font-family: var(--v4-type-eyebrow-font-family);
+  font-size: var(--v4-type-eyebrow-font-size);
+  line-height: var(--v4-type-eyebrow-line-height);
+  font-weight: var(--v4-type-eyebrow-font-weight);
+  letter-spacing: var(--v4-type-eyebrow-letter-spacing);
   white-space: nowrap;
 }
 .tableScroll td,
@@ -721,7 +814,7 @@ button.rowTitle::after {
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .tableScroll th {
-  border-bottom-color: var(--v4-line);
+  border-bottom: 0;
 }
 .tableScroll td {
   height: var(--v4-size-control-lg);
@@ -740,6 +833,9 @@ button.rowTitle::after {
 .tableScroll [data-variant="bordered"] th:not(:last-child) {
   border-right: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
+.tableScroll [data-variant="bordered"] th:not(:last-child) {
+  border-right-color: var(--v4-line);
+}
 .tableScroll [data-state="selected"] {
   background: var(--v4-selected-surface);
 }
@@ -748,20 +844,44 @@ button.rowTitle::after {
   right: 0;
   background: var(--v4-surface);
   border-left: var(--v4-size-control-border) solid var(--v4-line-soft);
+  box-shadow: var(--v4-frame-pad) 0 0 var(--v4-tint);
+}
+.tableScroll td[data-pin="true"] {
+  box-shadow:
+    inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line),
+    var(--v4-frame-pad) 0 0 var(--v4-tint);
 }
 .tableScroll th[data-pin="true"] {
-  background: var(--v4-paper);
+  background: var(--v4-tint);
 }
 .tableScroll [data-state="selected"] > td[data-pin="true"] {
   background: var(--v4-selected-surface);
 }
 .tableSort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  padding: 0;
   font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
   color: inherit;
   background: none;
   border: 0;
   cursor: pointer;
   white-space: nowrap;
+}
+.tableSort[data-active] {
+  color: var(--v4-ink);
+}
+.tableSort > svg {
+  flex: none;
+  width: calc((var(--v4-size-icon-xs) + var(--v4-size-icon-sm)) / 2);
+  height: calc((var(--v4-size-icon-xs) + var(--v4-size-icon-sm)) / 2);
+}
+.tableSort:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
 }
 .tableActions {
   align-items: center;

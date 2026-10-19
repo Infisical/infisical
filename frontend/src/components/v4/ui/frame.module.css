@@ -1,0 +1,61 @@
+.frame {
+  --v4-frame-pad: var(--v4-space-3);
+  --v4-frame-inner-radius: calc((var(--v4-radius-panel) - var(--v4-frame-pad)) * var(--corners));
+  min-width: 0;
+  padding: var(--v4-frame-pad);
+  background: var(--v4-tint);
+  border: 0;
+  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+}
+.frame:has(> .frameHead) {
+  padding-top: 0;
+}
+.frameHead {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-12);
+  min-height: var(--v4-space-40);
+  padding: var(--v4-space-4) var(--v4-space-12);
+  min-width: 0;
+}
+.frameTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--v4-muted);
+  text-transform: uppercase;
+  font-family: var(--v4-type-eyebrow-font-family);
+  font-size: var(--v4-type-eyebrow-font-size);
+  line-height: var(--v4-type-eyebrow-line-height);
+  font-weight: var(--v4-type-eyebrow-font-weight);
+  letter-spacing: var(--v4-type-eyebrow-letter-spacing);
+}
+.frameAction {
+  flex: none;
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+  color: var(--v4-text2);
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+}
+.frameAction > a:not([data-slot]) {
+  color: inherit;
+  text-decoration: none;
+}
+.frameAction > a:not([data-slot]):hover {
+  color: var(--v4-ink);
+  text-decoration: underline;
+}
+.frameInset {
+  min-width: 0;
+  background: var(--v4-surface);
+  border: var(--v4-size-control-border) solid var(--v4-line);
+  border-radius: var(--v4-frame-inner-radius);
+  box-shadow: var(--v4-shadow-raised);
+}

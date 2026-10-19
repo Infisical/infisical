@@ -129,3 +129,85 @@
 .multiCombobox > .chip > [data-v4-button] {
   --v4-action-height: calc(var(--v4-field-nested) - 2 * var(--v4-size-control-border));
 }
+
+.option[role="option"] {
+  gap: var(--v4-space-10);
+}
+.optionLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.optionMeta {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  overflow: hidden;
+  color: var(--v4-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-caption-letter-spacing);
+}
+.optionCheck {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+}
+.optionCheck svg {
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+}
+.optionBox {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: calc(var(--v4-size-icon) + 2 * var(--v4-size-control-border));
+  height: calc(var(--v4-size-icon) + 2 * var(--v4-size-control-border));
+  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+}
+[aria-disabled="true"] > .optionBox {
+  border-color: var(--v4-line);
+  background-color: var(--v4-line-soft);
+  color: var(--v4-faint);
+}
+[aria-disabled="true"] > .optionBox[data-state="checked"] {
+  border-color: var(--v4-control);
+  background-color: var(--v4-control);
+  color: var(--v4-surface);
+}
+.quickBar {
+  box-sizing: content-box;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--v4-space-2);
+  height: var(--v4-size-control-md);
+  padding-inline: var(--v4-space-10) var(--v4-space-4);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
+.quickStatus {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-inline-end: var(--v4-space-8);
+  overflow: hidden;
+  color: var(--v4-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+  font-weight: var(--v4-type-caption-font-weight);
+  letter-spacing: var(--v4-type-caption-letter-spacing);
+}

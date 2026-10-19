@@ -32,13 +32,13 @@ Owner: select.
 
 When an option includes a long description.
 
-Do: Keep the label in the selected trigger and the associated description beside the menu option. Constrain the trigger to its field and allow long menu text to wrap.
+Do: Keep the label in the selected trigger and the associated description right-aligned on the menu option's row. Let the trigger fill its field, keep descriptions short and widen the menu with menuWidth when long metadata must stay readable.
 
 Avoid: Concatenate the description into the selected label or grow the trigger beyond the preview.
 
 Why: Supplementary context must remain readable without changing the saved identity or pushing neighboring controls away.
 
-Checked by: review only. Look for: Select the long described option at 320px with doubled root text. The trigger stays within its field, contains only the selected label, and reopening exposes the complete label and associated description. Repeat with controlled and default-valued Selects.
+Checked by: review only. Look for: Select the long described option at 320px with doubled root text. The trigger fills its field, contains only the selected label, and reopening shows the label and associated description on one row, truncated with an ellipsis when the menu is narrower than the text. Repeat with controlled and default-valued Selects.
 
 Source evidence:
 - src/components/v4/ui/select.tsx
@@ -48,7 +48,7 @@ Source evidence:
 
 - empty: Show a placeholder until a valid option is selected.
 - disabled: Explain the prerequisite outside a disabled trigger because it cannot receive focus.
-- long selected label: Keep only the option label in the trigger. The bounded trigger can truncate a long label; reopening must expose the full label and associated description in the menu.
+- long selected label: Keep only the option label in the trigger. The bounded trigger can truncate a long label; reopening shows the label and associated description in the menu, and menuWidth gives long metadata more room.
 
 ## Presentation rules
 
@@ -67,6 +67,7 @@ Why: Select supports fewer options than the lower-level parts it wraps, so a pro
 ## Import and exports
 
 - src/components/v4/ui/select.tsx
+- src/components/v4/ui/picker.module.css
 
 Exports: Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScrollDownButton, SelectScrollUpButton, SelectSeparator, SelectTrigger, SelectValue. Source TypeScript defines the API.
 
@@ -75,6 +76,8 @@ Exports: Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectScro
 - Default and sm are 32px aliases; md is 36px and lg is 40px.
 - Select accepts grouped options, disabled entries, label/placeholder, size and invalid state, or retained Radix parts. value/defaultValue and onChange/onValueChange use the selected string.
 - The selected trigger contains the option label only. Option descriptions remain readable in the menu and are associated through aria-describedby; they do not change the stored value.
+- The trigger fills its Field like an Input, and the menu opens at the trigger's width. menuWidth overrides the menu width; keep it at least the trigger's width.
+- Each option is one 32px row: the label on the left, its description muted and right-aligned on the same row, and the check for the chosen option at the end. A long label or description truncates.
 
 ## Accessibility
 
@@ -119,15 +122,15 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### state
 
-- disabled option: example `default`, visible label "Archived".
+- empty: example `states`, visible label "Placeholder".
+- invalid: example `states`, visible label "Invalid".
+- disabled: example `states`, visible label "Disabled".
+- disabled option: example `default`, visible label "pr-490".
 - controlled: example `default`, visible label "Current environment:".
-- empty: omitted. The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once.
-- invalid: omitted. The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once.
-- disabled: omitted. The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once.
 
 ### composition
 
-- long metadata: example `metadata`, visible label "Long resource identifier".
+- long metadata: example `metadata`, visible label "Menu at trigger width, metadata truncates".
 - menu width: example `metadata`, visible label "Long metadata, wide menu".
 
 ## Executable examples
@@ -136,20 +139,26 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/select/default.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/field, @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/field, @infisical/input, @infisical/select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
 import { Field } from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
 import { Select, type SelectOption } from "../../../../components/v4/ui/select";
 const options: SelectOption[] = [
-    { value: "dev", label: "Dev", description: "3 projects", group: "Active" },
-    { value: "prod", label: "Prod", description: "12 projects", group: "Active" },
-    { value: "archived", label: "Archived", disabled: true, group: "Unavailable" }
+    { value: "dev", label: "Development", description: "138 secrets", group: "Active" },
+    { value: "staging", label: "Staging", description: "96 secrets", group: "Active" },
+    { value: "prod", label: "Production", description: "212 secrets", group: "Active" },
+    { value: "pr-482", label: "pr-482", description: "Expires Oct 1", group: "Preview" },
+    { value: "pr-490", label: "pr-490", description: "Expired", disabled: true, group: "Preview" }
 ];
 export default function Example() {
     const [value, setValue] = useState("dev");
     return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+      <Field label="Secret name">
+        <Input defaultValue="DATABASE_URL"/>
+      </Field>
       <Field label="Environment">
         <Select options={options} value={value} onChange={setValue}/>
       </Field>
@@ -192,21 +201,60 @@ Registry items used: @infisical/field, @infisical/select. Additional packages: n
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
 import { Select } from "../../../../components/v4/ui/select";
+const options = [
+    { value: "west", label: "West", description: "2 projects" },
+    {
+        value: "long",
+        label: "Long resource identifier",
+        description: "environment_very_long_identifier_01234567890123456789"
+    }
+];
 export default function Example() {
-    const options = [
-        { value: "west", label: "West", description: "2 projects" },
-        {
-            value: "long",
-            label: "Long resource identifier",
-            description: "environment_very_long_identifier_01234567890123456789"
-        }
-    ];
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <Field label="Region">
-          <Select options={options} defaultValue="west" menuWidth="min(20rem, calc(100vw - 2rem))"/>
+          <Select options={options} defaultValue="west"/>
+        </Field>
+      </div><figcaption className="text-muted-foreground text-xs">{"Menu at trigger width, metadata truncates"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <Field label="Region">
+          <Select options={options} defaultValue="west" menuWidth="min(32rem, calc(100vw - 2rem))"/>
         </Field>
       </div><figcaption className="text-muted-foreground text-xs">{"Long metadata, wide menu"}</figcaption></figure>
+    </div>);
+}
+```
+
+### Placeholder, disabled and invalid
+
+Save this example at `src/pages/design-system/examples/select/states.tsx`; its relative imports are generated for that exact path. States: empty, disabled, invalid.
+
+Registry items used: @infisical/field, @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Field } from "../../../../components/v4/ui/field";
+import { Select } from "../../../../components/v4/ui/select";
+const options = [
+    { value: "dev", label: "Development" },
+    { value: "prod", label: "Production" }
+];
+export default function Example() {
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <Field label="Environment">
+          <Select options={options} placeholder="Choose an environment"/>
+        </Field>
+      </div><figcaption className="text-muted-foreground text-xs">{"Placeholder"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <Field label="Environment">
+          <Select options={options} defaultValue="prod" disabled/>
+        </Field>
+      </div><figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <Field label="Environment" error="Choose an environment.">
+          <Select options={options} placeholder="Choose an environment"/>
+        </Field>
+      </div><figcaption className="text-muted-foreground text-xs">{"Invalid"}</figcaption></figure>
     </div>);
 }
 ```

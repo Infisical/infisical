@@ -14,7 +14,7 @@ export const baselineActions = [
     exports: ["Button", "buttonVariants"],
     referenceNames: ["Button"],
     behavior: [
-      "Default, primary and accent share a bright light lime face with owned colored inset illumination in both themes; other variants retain their semantic roles. link is link-coloured text that underlines on hover. Native button and slot composition preserve interaction. loading blocks repeated activation and never changes the button's size: with a leading icon the spinner takes the icon's place and the label stays; without one the spinner covers the label, which keeps its width and accessible name.",
+      "Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the bright lime face with owned inset illumination, for approval and grant moments only, never as a second primary. Ghost hover is ink at opacity-hover (6% light, 12% dark), so it shows on raised surfaces. Other variants retain their semantic roles. link is link-coloured text that underlines on hover. Native button and slot composition preserve interaction semantics.",
       "The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target."
     ],
     accessibility: [
@@ -66,6 +66,7 @@ export const baselineActions = [
         ],
         shown: [
           { value: "default", exampleId: "default", label: "default" },
+          { value: "accent", exampleId: "default", label: "accent" },
           { value: "outline", exampleId: "default", label: "outline" },
           { value: "ghost", exampleId: "default", label: "ghost" },
           { value: "destructive", exampleId: "default", label: "destructive" },
@@ -74,11 +75,7 @@ export const baselineActions = [
         omitted: [
           {
             value: "primary",
-            reason: "Alias of default: the same lime material and data-variant behavior."
-          },
-          {
-            value: "accent",
-            reason: "Alias of default: the same lime material and data-variant behavior."
+            reason: "Default is the alias of primary: the same ink fill."
           },
           {
             value: "secondary",

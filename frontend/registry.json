@@ -894,6 +894,11 @@
           "path": "src/components/v4/ui/controls.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/frame.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/frame.module.css"
         }
       ]
     },
@@ -978,6 +983,11 @@
           "path": "src/components/v4/ui/code.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/code.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/frame.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/frame.module.css"
         }
       ]
     },
@@ -1168,7 +1178,11 @@
       "type": "registry:ui",
       "registryDependencies": [
         "@infisical/button",
+        "@infisical/icon",
         "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "lucide-react@^0.544.0"
       ],
       "files": [
         {
@@ -1194,8 +1208,12 @@
       "registryDependencies": [
         "@infisical/button",
         "@infisical/checkbox",
+        "@infisical/icon",
         "@infisical/infisical-base",
         "@infisical/table"
+      ],
+      "dependencies": [
+        "lucide-react@^0.544.0"
       ],
       "files": [
         {
@@ -1207,6 +1225,11 @@
           "path": "src/components/v4/ui/data.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/data.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/frame.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/frame.module.css"
         }
       ]
     },
@@ -1634,6 +1657,11 @@
           "path": "src/components/v4/ui/data.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/data.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/frame.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/frame.module.css"
         }
       ]
     },
@@ -1996,6 +2024,11 @@
           "path": "src/components/v4/ui/menu.module.css",
           "type": "registry:file",
           "target": "src/components/v4/ui/menu.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/picker.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/picker.module.css"
         }
       ]
     },

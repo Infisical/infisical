@@ -69,7 +69,7 @@ export const OverviewPage = () => (
         </a>
       ))}
     </div>
-    <DocSection title="Lime for the main action.">
+    <DocSection title="Ink for the main action, lime for approvals.">
       <PreviewFrame>
         <Button asChild>
           <a href="#button">Explore Button</a>
@@ -77,6 +77,7 @@ export const OverviewPage = () => (
         <Button asChild variant="outline">
           <a href="#rules">Read the rules</a>
         </Button>
+        <Button variant="accent">Grant for 1 hour</Button>
         <span
           className="px-2 py-1 text-sm font-medium"
           style={{ backgroundColor: "var(--v4-accent)", color: "var(--v4-on-accent)" }}
@@ -85,8 +86,9 @@ export const OverviewPage = () => (
         </span>
       </PreviewFrame>
       <p className="text-muted-foreground mt-4 text-sm leading-6">
-        Default, primary and accent Buttons share one lime finish with ink labels. Use less emphasis
-        for supporting actions. Menus and row selection keep their neutral interaction fills.
+        Primary (the default) is the ink fill for the one main action in a view or dialog. Accent is
+        the lime finish for approval and grant moments only, never a second primary. Use outline or
+        ghost for supporting actions. Menus and row selection keep their neutral interaction fills.
       </p>
     </DocSection>
     <DocDisclosure title="Foundation scope">
@@ -168,7 +170,7 @@ const colorRoles = [
     name: "ink",
     label: "Primary text",
     utility: "text-foreground",
-    description: "Text, icons and the global primary role. The shared Button uses brand lime."
+    description: "Text, icons, the global primary role and the primary Button fill."
   },
   {
     name: "muted",
@@ -290,8 +292,8 @@ export const ColorPage = () => (
           separate.
         </p>
         <p>
-          Button owns its shared lime material. The global <code>bg-primary</code> role stays ink;
-          changing the Button does not recolor checked controls or selected rows.
+          The primary Button is ink; only the accent Button uses the lime material, for approval and
+          grant moments. Changing the accent does not recolor checked controls or selected rows.
         </p>
       </div>
     </DocDisclosure>

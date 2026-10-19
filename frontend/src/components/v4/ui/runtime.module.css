@@ -10,7 +10,16 @@
 .page {
   color: var(--v4-mark, var(--v4-accent-fg));
 }
-.inline rect,
+.inline rect {
+  transform-box: fill-box;
+  transform-origin: center;
+  /* v4-check-ignore motion-literal -- spinner choreography, one owner */
+  animation: pixelPair 1.2s steps(1, end) infinite;
+}
+.inline rect + rect {
+  /* v4-check-ignore motion-literal -- half the pair period */
+  animation-delay: -0.6s;
+}
 .base rect {
   /* v4-check-ignore motion-literal -- spinner choreography, one owner */
   animation: pixelTrail 1.6s linear infinite;
@@ -23,7 +32,6 @@
     pixelAssemble 0.95s ease-out backwards,
     /* v4-check-ignore motion-literal -- same spinner */ pixelTrail 2.4s linear infinite;
 }
-.inline rect[data-cross],
 .base rect[data-cross] {
   animation-name: pixelCross;
 }
@@ -98,6 +106,21 @@
   /* v4-check-ignore motion-literal -- spinner choreography, one owner */
   animation: busyBand 1.2s steps(28) infinite;
 }
+@keyframes pixelPair {
+  0% {
+    transform: none;
+  }
+  33.333% {
+    transform: scale(0.6667);
+  }
+  50% {
+    transform: scale(0.3333);
+  }
+  83.333%,
+  100% {
+    transform: scale(0.6667);
+  }
+}
 @keyframes pixelTrail {
   0%,
   100% {
@@ -147,6 +170,10 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .spinner.inline rect {
+    animation: none;
+    transform: scale(0.6667);
+  }
   .spinner rect,
   .spinner rect[data-cross],
   .busy::after {

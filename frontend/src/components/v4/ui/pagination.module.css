@@ -88,3 +88,7 @@
   color: var(--v4-faint);
   cursor: not-allowed;
 }
+
+.pageSize > [data-slot="select-trigger"] {
+  width: auto;
+}

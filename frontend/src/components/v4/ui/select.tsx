@@ -9,6 +9,7 @@ import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 import menu from "./menu.module.css";
+import picker from "./picker.module.css";
 
 export type SelectOption = {
   value: string;
@@ -64,7 +65,14 @@ function Select({
           >
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
-          <SelectContent align={align} style={{ width: menuWidth }}>
+          <SelectContent
+            align={align}
+            style={
+              menuWidth
+                ? { width: menuWidth, maxWidth: "var(--radix-select-content-available-width)" }
+                : undefined
+            }
+          >
             {groups.map((group) => (
               <SelectGroup key={group}>
                 {group && <SelectLabel>{group}</SelectLabel>}
@@ -146,7 +154,7 @@ const SelectContent = React.forwardRef<
   Omit<React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>, "position">
 >(
   (
-    { className, collisionPadding = 8, children, align = "start", sideOffset = 4, ...props },
+    { className, collisionPadding = 8, children, align = "start", sideOffset = 4, style, ...props },
     ref
   ) => {
     return (
@@ -159,6 +167,7 @@ const SelectContent = React.forwardRef<
           position="popper"
           align={align}
           sideOffset={sideOffset}
+          style={{ width: "var(--radix-select-trigger-width)", ...style }}
           {...props}
         >
           <SelectScrollUpButton />
@@ -199,21 +208,21 @@ const SelectItem = React.forwardRef<
         [describedBy, description ? descriptionId : undefined].filter(Boolean).join(" ") ||
         undefined
       }
-      className={cn(menu.row, className)}
+      className={cn(menu.row, picker.option, className)}
       {...props}
     >
-      <span className={menu.indicator}>
+      <span className={picker.optionLabel}>
+        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      </span>
+      {description && (
+        <span id={descriptionId} className={picker.optionMeta}>
+          {description}
+        </span>
+      )}
+      <span className={picker.optionCheck}>
         <SelectPrimitive.ItemIndicator>
           <Icon name="check" />
         </SelectPrimitive.ItemIndicator>
-      </span>
-      <span className={menu.text}>
-        <SelectPrimitive.ItemText className={menu.title}>{children}</SelectPrimitive.ItemText>
-        {description && (
-          <span id={descriptionId} className={menu.description}>
-            {description}
-          </span>
-        )}
       </span>
     </SelectPrimitive.Item>
   );

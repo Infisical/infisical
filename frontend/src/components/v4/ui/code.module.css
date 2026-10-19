@@ -44,27 +44,32 @@
   color: var(--v4-muted, var(--muted-foreground));
   user-select: none;
 }
-.frame {
-  min-width: 0;
-  overflow: hidden;
-  border: var(--v4-size-control-border) solid var(--v4-line, var(--border));
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
-  background: var(--v4-surface, var(--background));
+.codeBlock {
+  width: 100%;
 }
-.header {
+.codeBlock > .header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--v4-space-8);
-  min-height: var(--v4-size-control-lg);
-  padding: var(--v4-space-8) var(--v4-space-surface-inset);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft, var(--border));
+  min-height: var(--v4-space-40);
+  padding: var(--v4-space-4) var(--v4-space-3) var(--v4-space-4)
+    calc(var(--v4-space-12) - var(--v4-size-control-border));
   font-family: var(--v4-type-mono-sm-font-family);
   font-size: var(--v4-type-mono-sm-font-size);
   line-height: var(--v4-type-mono-sm-line-height);
-  font-weight: var(--v4-type-mono-sm-font-weight);
+  font-weight: var(--v4-type-label-font-weight);
   letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  color: var(--v4-text2);
+}
+.codeBlock > .header :global([data-slot="icon"]) {
+  width: var(--v4-size-icon-sm);
+  height: var(--v4-size-icon-sm);
+  flex: none;
   color: var(--v4-muted);
+}
+.body {
+  overflow: hidden;
 }
 .identity {
   grid-column: 1;
@@ -86,7 +91,6 @@
 }
 .header > :global([data-slot="copy-button"]) > :global(button) {
   grid-column: -2 / -1;
-  margin-inline-end: calc((var(--v4-size-icon-sm) - var(--v4-action-height)) / 2);
 }
 .header > :global([data-slot="copy-button"]) > :global([data-copy-feedback]):not(:empty) {
   grid-column: 1 / -1;

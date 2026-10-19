@@ -1,10 +1,14 @@
 import * as React from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
+import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
+import { Icon } from "./icon";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
 
 import styles from "./data.module.css";
+import frame from "./frame.module.css";
 
 export interface DataTableColumn<Row> {
   id: string;
@@ -116,7 +120,7 @@ export function DataTable<Row>({
     <div className={styles.tableShell} data-slot="data-table" data-variant={variant}>
       <div
         ref={scroll}
-        className={styles.tableScroll}
+        className={cn(frame.frame, styles.tableScroll)}
         data-virtual={Boolean(height && virtual) || undefined}
         style={tableStyle}
         onScroll={(event) => setTop(event.currentTarget.scrollTop)}
@@ -163,6 +167,7 @@ export function DataTable<Row>({
                     <button
                       type="button"
                       className={styles.tableSort}
+                      data-active={sort?.columnId === column.id || undefined}
                       onClick={() =>
                         onSortChange({
                           columnId: column.id,
@@ -173,7 +178,17 @@ export function DataTable<Row>({
                         })
                       }
                     >
-                      {column.header} ↕
+                      {column.header}
+                      <Icon
+                        icon={
+                          sort?.columnId !== column.id
+                            ? ArrowUpDown
+                            : sort.direction === "asc"
+                              ? ArrowUp
+                              : ArrowDown
+                        }
+                        strokeWidth={2}
+                      />
                     </button>
                   ) : (
                     <span className={column.hideHeader || column.actions ? styles.sr : undefined}>

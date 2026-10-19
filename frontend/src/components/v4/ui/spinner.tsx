@@ -66,66 +66,83 @@ export const Spinner = React.forwardRef<SVGSVGElement, SpinnerProps>(
     const width = (grid[0].length - 1) * pitch + dot;
     const height = (grid.length - 1) * pitch + dot;
     if (!shown) return null;
-    const mark = (
-      <svg
-        ref={ref}
-        data-slot="spinner"
-        data-size={size}
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className={cn(styles.spinner, styles[size], label === undefined && className)}
-        aria-hidden
-        focusable="false"
-        {...(label === undefined ? props : {})}
-      >
-        {grid.flatMap((row, y) =>
-          [...row].flatMap((pixel, x) =>
-            pixel === "#"
-              ? [
-                  <rect
-                    key={`${x}-${y}`}
-                    x={x * pitch}
-                    y={y * pitch}
-                    width={dot}
-                    height={dot}
-                    data-cross={
-                      Math.abs(x + y + 1 - (grid[0].length + grid.length) / 2) <=
-                        (size === "page" ? 2 : 1) &&
-                      Math.abs(x - y - (grid[0].length - grid.length) / 2) <=
-                        (size === "page" ? 2 : 1)
-                        ? ""
-                        : undefined
-                    }
-                    style={{
-                      animationDelay: (() => {
-                        const columns = grid[0].length;
-                        const centerY = grid.length / 2;
-                        const right = x + 0.5 > columns / 2;
-                        const angle =
-                          (Math.atan2(
-                            y + 0.5 - centerY,
-                            x + 0.5 - columns * (right ? 0.7276 : 0.2724)
-                          ) *
-                            180) /
-                          Math.PI;
-                        const phase = right
-                          ? ((((angle - 180) % 360) + 360) % 360) / 720
-                          : 0.5 + (((-angle % 360) + 360) % 360) / 720;
-                        const steps = size === "page" ? 40 : 24;
-                        const snapped = Math.floor(phase * steps) / steps;
-                        return size === "page"
-                          ? `${Math.hypot(x - columns / 2, y - centerY) * 0.02}s, ${0.95 + snapped * 2.4}s`
-                          : `${-(1 - snapped) * 1.6}s`;
-                      })()
-                    }}
-                  />
-                ]
-              : []
-          )
-        )}
-      </svg>
-    );
+    const mark =
+      size === "inline" ? (
+        <svg
+          ref={ref}
+          data-slot="spinner"
+          data-size={size}
+          width={16}
+          height={8}
+          viewBox="0 0 16 8"
+          className={cn(styles.spinner, styles.inline, label === undefined && className)}
+          aria-hidden
+          focusable="false"
+          {...(label === undefined ? props : {})}
+        >
+          <rect x={1} y={1} width={6} height={6} />
+          <rect x={9} y={1} width={6} height={6} />
+        </svg>
+      ) : (
+        <svg
+          ref={ref}
+          data-slot="spinner"
+          data-size={size}
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          className={cn(styles.spinner, styles[size], label === undefined && className)}
+          aria-hidden
+          focusable="false"
+          {...(label === undefined ? props : {})}
+        >
+          {grid.flatMap((row, y) =>
+            [...row].flatMap((pixel, x) =>
+              pixel === "#"
+                ? [
+                    <rect
+                      key={`${x}-${y}`}
+                      x={x * pitch}
+                      y={y * pitch}
+                      width={dot}
+                      height={dot}
+                      data-cross={
+                        Math.abs(x + y + 1 - (grid[0].length + grid.length) / 2) <=
+                          (size === "page" ? 2 : 1) &&
+                        Math.abs(x - y - (grid[0].length - grid.length) / 2) <=
+                          (size === "page" ? 2 : 1)
+                          ? ""
+                          : undefined
+                      }
+                      style={{
+                        animationDelay: (() => {
+                          const columns = grid[0].length;
+                          const centerY = grid.length / 2;
+                          const right = x + 0.5 > columns / 2;
+                          const angle =
+                            (Math.atan2(
+                              y + 0.5 - centerY,
+                              x + 0.5 - columns * (right ? 0.7276 : 0.2724)
+                            ) *
+                              180) /
+                            Math.PI;
+                          const phase = right
+                            ? ((((angle - 180) % 360) + 360) % 360) / 720
+                            : 0.5 + (((-angle % 360) + 360) % 360) / 720;
+                          const steps = size === "page" ? 40 : 24;
+                          const snapped = Math.floor(phase * steps) / steps;
+                          return size === "page"
+                            ? `${Math.hypot(x - columns / 2, y - centerY) * 0.02}s, ${0.95 + snapped * 2.4}s`
+                            : `${-(1 - snapped) * 1.6}s`;
+                        })()
+                      }}
+                    />
+                  ]
+                : []
+            )
+          )}
+        </svg>
+      );
     if (label === undefined) return mark;
     return (
       <div

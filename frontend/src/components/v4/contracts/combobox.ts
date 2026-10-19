@@ -14,6 +14,8 @@ export const comboboxDefinition = {
   referenceNames: ["Combobox"],
   behavior: [
     "Single selection uses Radix Popover and cmdk; multiple selection composes the shared ARIA listbox with removable chips and empty-query Backspace.",
+    "ArrowDown or ArrowUp on the focused closed trigger opens the list with focus in the search field and the active option highlighted, like Enter and Space.",
+    "Multiple mode lists options with checkbox marks and no Select all bar. Removing a chip with Enter, Space, Backspace or Delete on its remove button moves focus to the next removable chip, else the previous one, else the trigger; focus never falls to the page.",
     "Controlled or local value; case-insensitive label and metadata filtering; optional awaited creation.",
     "Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.",
     "A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable."

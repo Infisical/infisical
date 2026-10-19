@@ -2025,7 +2025,7 @@
         "Button"
       ],
       "behavior": [
-        "Default, primary and accent share a bright light lime face with owned colored inset illumination in both themes; other variants retain their semantic roles. link is link-coloured text that underlines on hover. Native button and slot composition preserve interaction. loading blocks repeated activation and never changes the button's size: with a leading icon the spinner takes the icon's place and the label stays; without one the spinner covers the label, which keeps its width and accessible name.",
+        "Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the bright lime face with owned inset illumination, for approval and grant moments only, never as a second primary. Ghost hover is ink at opacity-hover (6% light, 12% dark), so it shows on raised surfaces. Other variants retain their semantic roles. link is link-coloured text that underlines on hover. Native button and slot composition preserve interaction semantics.",
         "The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target."
       ],
       "accessibility": [
@@ -2093,6 +2093,11 @@
               "label": "default"
             },
             {
+              "value": "accent",
+              "exampleId": "default",
+              "label": "accent"
+            },
+            {
               "value": "outline",
               "exampleId": "default",
               "label": "outline"
@@ -2116,11 +2121,7 @@
           "omitted": [
             {
               "value": "primary",
-              "reason": "Alias of default: the same lime material and data-variant behavior."
-            },
-            {
-              "value": "accent",
-              "reason": "Alias of default: the same lime material and data-variant behavior."
+              "reason": "Default is the alias of primary: the same ink fill."
             },
             {
               "value": "secondary",
@@ -7658,7 +7659,8 @@
       "group": "Forms",
       "summary": "Choose one value from a Radix listbox.",
       "sourceFiles": [
-        "src/components/v4/ui/select.tsx"
+        "src/components/v4/ui/select.tsx",
+        "src/components/v4/ui/picker.module.css"
       ],
       "exports": [
         "Select",
@@ -7678,7 +7680,9 @@
       "behavior": [
         "Default and sm are 32px aliases; md is 36px and lg is 40px.",
         "Select accepts grouped options, disabled entries, label/placeholder, size and invalid state, or retained Radix parts. value/defaultValue and onChange/onValueChange use the selected string.",
-        "The selected trigger contains the option label only. Option descriptions remain readable in the menu and are associated through aria-describedby; they do not change the stored value."
+        "The selected trigger contains the option label only. Option descriptions remain readable in the menu and are associated through aria-describedby; they do not change the stored value.",
+        "The trigger fills its Field like an Input, and the menu opens at the trigger's width. menuWidth overrides the menu width; keep it at least the trigger's width.",
+        "Each option is one 32px row: the label on the left, its description muted and right-aligned on the same row, and the check for the chosen option at the end. A long label or description truncates."
       ],
       "accessibility": [
         "Provide a persistent label. Connect invalid feedback with aria-describedby and preserve disabled semantics."
@@ -7711,6 +7715,16 @@
           "states": [
             "default",
             "overflow"
+          ]
+        },
+        {
+          "id": "states",
+          "title": "Placeholder, disabled and invalid",
+          "module": "./examples/select/states.tsx",
+          "states": [
+            "empty",
+            "disabled",
+            "invalid"
           ]
         }
       ],
@@ -7814,28 +7828,29 @@
           ],
           "shown": [
             {
+              "value": "empty",
+              "exampleId": "states",
+              "label": "Placeholder"
+            },
+            {
+              "value": "invalid",
+              "exampleId": "states",
+              "label": "Invalid"
+            },
+            {
+              "value": "disabled",
+              "exampleId": "states",
+              "label": "Disabled"
+            },
+            {
               "value": "disabled option",
               "exampleId": "default",
-              "label": "Archived"
+              "label": "pr-490"
             },
             {
               "value": "controlled",
               "exampleId": "default",
               "label": "Current environment:"
-            }
-          ],
-          "omitted": [
-            {
-              "value": "empty",
-              "reason": "The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once."
-            },
-            {
-              "value": "invalid",
-              "reason": "The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once."
-            },
-            {
-              "value": "disabled",
-              "reason": "The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once."
             }
           ]
         },
@@ -7849,7 +7864,7 @@
             {
               "value": "long metadata",
               "exampleId": "metadata",
-              "label": "Long resource identifier"
+              "label": "Menu at trigger width, metadata truncates"
             },
             {
               "value": "menu width",
@@ -7886,7 +7901,7 @@
           {
             "id": "select-selected-value",
             "when": "An option includes a long description.",
-            "do": "Keep the label in the selected trigger and the associated description beside the menu option. Constrain the trigger to its field and allow long menu text to wrap.",
+            "do": "Keep the label in the selected trigger and the associated description right-aligned on the menu option's row. Let the trigger fill its field, keep descriptions short and widen the menu with menuWidth when long metadata must stay readable.",
             "avoid": "Concatenate the description into the selected label or grow the trigger beyond the preview.",
             "reason": "Supplementary context must remain readable without changing the saved identity or pushing neighboring controls away.",
             "evidence": [
@@ -7895,7 +7910,7 @@
             ],
             "detect": {
               "by": "review",
-              "how": "Select the long described option at 320px with doubled root text. The trigger stays within its field, contains only the selected label, and reopening exposes the complete label and associated description. Repeat with controlled and default-valued Selects."
+              "how": "Select the long described option at 320px with doubled root text. The trigger fills its field, contains only the selected label, and reopening shows the label and associated description on one row, truncated with an ellipsis when the menu is narrower than the text. Repeat with controlled and default-valued Selects."
             }
           }
         ],
@@ -7910,7 +7925,7 @@
           },
           {
             "state": "long selected label",
-            "guidance": "Keep only the option label in the trigger. The bounded trigger can truncate a long label; reopening must expose the full label and associated description in the menu."
+            "guidance": "Keep only the option label in the trigger. The bounded trigger can truncate a long label; reopening shows the label and associated description in the menu, and menuWidth gives long metadata more room."
           }
         ],
         "antiSlop": [
@@ -10384,7 +10399,8 @@
       "summary": "Frame code or redacted JSON with a label, actions and truthful copy feedback.",
       "sourceFiles": [
         "src/components/v4/ui/code-block.tsx",
-        "src/components/v4/ui/code.module.css"
+        "src/components/v4/ui/code.module.css",
+        "src/components/v4/ui/frame.module.css"
       ],
       "exports": [
         "CodeBlock"
@@ -10393,11 +10409,13 @@
         "CodeBlock"
       ],
       "behavior": [
+        "The block uses the shared framed shell: the mono label, icon, actions and Copy sit in the tint frame header, and the code sits in the inset raised surface.",
         "Copy uses literal source, excluding displayed line numbers.",
         "A direct Json child supplies its recursively redacted copy text. Custom React children receive the owned body inset and text role; do not duplicate that padding inside the child."
       ],
       "accessibility": [
         "Copy success follows clipboard fulfillment; failures remain visible.",
+        "The block is a section named by its label, and the code region takes the same label.",
         "Content uses a focusable scroll region."
       ],
       "limitations": [
@@ -10407,7 +10425,7 @@
       "examples": [
         {
           "id": "default",
-          "title": "Filename, line numbers and copy",
+          "title": "Filename, terminal, line numbers and copy",
           "module": "./examples/code-block/default.tsx",
           "states": [
             "default"
@@ -10585,6 +10603,8 @@
       ],
       "behavior": [
         "Single selection uses Radix Popover and cmdk; multiple selection composes the shared ARIA listbox with removable chips and empty-query Backspace.",
+        "ArrowDown or ArrowUp on the focused closed trigger opens the list with focus in the search field and the active option highlighted, like Enter and Space.",
+        "Multiple mode lists options with checkbox marks and no Select all bar. Removing a chip with Enter, Space, Backspace or Delete on its remove button moves focus to the next removable chip, else the previous one, else the trigger; focus never falls to the page.",
         "Controlled or local value; case-insensitive label and metadata filtering; optional awaited creation.",
         "Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.",
         "A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable."
@@ -10933,7 +10953,8 @@
       "accessibility": [
         "The grid has a name and announces its row and column counts and the selected cell, even when that cell is scrolled out of view.",
         "Arrows, Home/End, PageUp/Down, Shift range, Enter/F2 edit, Escape cancel, Tab commit, mod+A/C/Z.",
-        "Headers expose sorting buttons and keyboard-resizable separators."
+        "Headers expose sorting buttons and keyboard-resizable separators. Sort buttons show the direction with an up, down or two-way arrow icon alongside aria-sort.",
+        "Typing a printable key on a selected editable cell opens the editor with that key and the caret after it, so fast typing keeps its order."
       ],
       "limitations": [
         "Values use exact strings or null. Named int2/smallint, int4/integer and int8/bigint codecs enforce signed 16/32/64-bit bounds without changing accepted text.",
@@ -12423,7 +12444,9 @@
         "List"
       ],
       "behavior": [
-        "Framed/plain/bare, md/sm, static/link/button rows and actions below.",
+        "Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface) or bare; md/sm, static/link/button rows and actions below.",
+        "Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.",
+        "Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.",
         "Selection skips disabled and locked rows. Current details and bulk selection remain independent.",
         "Loading appends placeholders below retained rows; sections, empty and footer compose."
       ],
@@ -12450,6 +12473,25 @@
             "default",
             "empty"
           ]
+        },
+        {
+          "id": "interactive",
+          "title": "Link and button rows",
+          "module": "./examples/list/interactive.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard",
+            "disabled"
+          ]
+        },
+        {
+          "id": "variants",
+          "title": "Framed, sections, plain and sm",
+          "module": "./examples/list/variants.tsx",
+          "states": [
+            "default"
+          ]
         }
       ],
       "coverage": [
@@ -12465,13 +12507,14 @@
               "value": "framed",
               "exampleId": "default",
               "label": "framed"
+            },
+            {
+              "value": "plain",
+              "exampleId": "variants",
+              "label": "plain"
             }
           ],
           "omitted": [
-            {
-              "value": "plain",
-              "reason": "plain drops the outer border and keeps the row rules and inset; the list fixture test renders it."
-            },
             {
               "value": "bare",
               "reason": "bare drops the border and the row rules and keeps the inset; the list fixture test renders it."
@@ -12484,15 +12527,16 @@
             "md",
             "sm"
           ],
-          "shown": [],
-          "omitted": [
+          "shown": [
             {
               "value": "md",
-              "reason": "Both lists use md; their captions name the variant and state."
+              "exampleId": "variants",
+              "label": "md"
             },
             {
               "value": "sm",
-              "reason": "sm hides descriptions and shortens rows to 40px; the list fixture test renders it."
+              "exampleId": "variants",
+              "label": "sm"
             }
           ]
         },
@@ -12543,6 +12587,16 @@
               "value": "empty",
               "exampleId": "default",
               "label": "Empty"
+            },
+            {
+              "value": "disabled",
+              "exampleId": "interactive",
+              "label": "Button rows, hover or press a row. Opened: None"
+            },
+            {
+              "value": "current row",
+              "exampleId": "interactive",
+              "label": "Link rows, hover a row, staging is current"
             }
           ],
           "omitted": [
@@ -12555,20 +12609,12 @@
               "reason": "Actions below move the row actions under the description; the list fixture test renders it."
             },
             {
-              "value": "disabled",
-              "reason": "A disabled row mutes its text and drops its link; the list fixture test renders it."
-            },
-            {
               "value": "protected",
               "reason": "A protected row keeps a disabled checkbox; the list fixture test renders it."
             },
             {
               "value": "loading",
               "reason": "Loading appends skeleton rows under retained rows; the list fixture test renders it."
-            },
-            {
-              "value": "current row",
-              "reason": "The current row takes the selected fill; the list fixture test renders it."
             }
           ]
         }
@@ -12943,12 +12989,15 @@
         "Multiple and single selection; controlled or local value and open state. Multiple callbacks follow the options order; duplicate option values are rejected at the public boundary.",
         "Default triggers are ordinary fields: the visible purpose comes from a Field label, size defaults to sm32 and explicit md is 36px. label names the trigger for assistive technology and is not drawn inside it. Multiple summaries show the first label and a remaining count, or a caller-supplied allLabel when every enabled option is selected.",
         "Grouping, and a search row that appears only when searchable is set (it is off by default). Selection happens on the options: uncheck an option to deselect it, there is no Clear action. Ctrl or Cmd+A toggles every enabled option and preserves disabled selections. Choosing the current option in single mode keeps it and closes the list.",
+        "In multiple mode the open list starts with a bar: the visible count (\"2 of 5 selected\") and Select all and Deselect all. Select all is disabled when every enabled option is on, Deselect all when no enabled option is on; both skip disabled options, which keep whatever they had, and return focus to the list. quickActions={false} hides the bar.",
+        "Each option is one 32px row with the description muted and right-aligned beside the label. Multiple mode leads every row with an 18px checkbox mark (checked, unchecked, and dimmed when disabled); single mode ends the chosen row with a check.",
+        "ArrowDown or ArrowUp on the focused closed trigger opens the list, like Enter and Space.",
         "Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.",
         "A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable."
       ],
       "accessibility": [
         "The option list announces which options are selected, arrow keys move through it, and pressing Enter while composing text with an input method never selects an option.",
-        "Selection count is announced; Mod+A toggles enabled options while preserving disabled selections."
+        "Selection count is announced politely from the bar (or a hidden status when quickActions is off); Mod+A toggles enabled options while preserving disabled selections. The checkbox marks are decorative; aria-selected carries the state."
       ],
       "limitations": [
         "Use application state for persisted permissions; selection is not an authorization decision.",
@@ -12970,6 +13019,15 @@
           "module": "./examples/multi-select/sizes.tsx",
           "states": [
             "default"
+          ]
+        },
+        {
+          "id": "environments",
+          "title": "Quick actions",
+          "module": "./examples/multi-select/environments.tsx",
+          "states": [
+            "empty",
+            "controlled"
           ]
         }
       ],
@@ -14425,7 +14483,8 @@
       "sourceFiles": [
         "src/components/v4/ui/table.tsx",
         "src/components/v4/ui/data-table.tsx",
-        "src/components/v4/ui/data.module.css"
+        "src/components/v4/ui/data.module.css",
+        "src/components/v4/ui/frame.module.css"
       ],
       "exports": [
         "DataTable",
@@ -14445,7 +14504,9 @@
       ],
       "behavior": [
         "DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.",
+        "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
         "Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.",
+        "Sortable headers show the direction with an icon: up for ascending, down for descending and a two-way arrow when the column is not sorted. The sorted header steps up to ink.",
         "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization."
       ],
       "accessibility": [
@@ -14491,6 +14552,16 @@
           "module": "./examples/table/semantic.tsx",
           "states": [
             "default"
+          ]
+        },
+        {
+          "id": "sorting",
+          "title": "Sort direction",
+          "module": "./examples/table/sorting.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard"
           ]
         },
         {

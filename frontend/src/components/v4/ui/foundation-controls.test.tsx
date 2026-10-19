@@ -147,7 +147,7 @@ describe("foundation controls", () => {
     );
     expect(
       [...document.querySelectorAll("button")].some((button) => button.textContent === "Select all")
-    ).toBe(false);
+    ).toBe(true);
     await React.act(async () => {
       element('[role="listbox"]').dispatchEvent(
         new KeyboardEvent("keydown", { key: "a", ctrlKey: true, bubbles: true })

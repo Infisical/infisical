@@ -66,7 +66,9 @@ Exports: List, ListRow, ListSection, DataList. Source TypeScript defines the API
 
 ## Behavior
 
-- Framed/plain/bare, md/sm, static/link/button rows and actions below.
+- Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface) or bare; md/sm, static/link/button rows and actions below.
+- Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.
+- Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.
 - Selection skips disabled and locked rows. Current details and bulk selection remain independent.
 - Loading appends placeholders below retained rows; sections, empty and footer compose.
 
@@ -94,14 +96,13 @@ Source declarations and review criteria only. Generation checks references and c
 ### variant
 
 - framed: example `default`, visible label "framed".
-- plain: omitted. plain drops the outer border and keeps the row rules and inset; the list fixture test renders it.
+- plain: example `variants`, visible label "plain".
 - bare: omitted. bare drops the border and the row rules and keeps the inset; the list fixture test renders it.
 
 ### size
 
-
-- md: omitted. Both lists use md; their captions name the variant and state.
-- sm: omitted. sm hides descriptions and shortens rows to 40px; the list fixture test renders it.
+- md: example `variants`, visible label "md".
+- sm: example `variants`, visible label "sm".
 
 ### DataList.variant
 
@@ -113,12 +114,12 @@ Source declarations and review criteria only. Generation checks references and c
 
 - no selection: example `default`, visible label "framed".
 - empty: example `default`, visible label "Empty".
+- disabled: example `interactive`, visible label "Button rows, hover or press a row. Opened: None".
+- current row: example `interactive`, visible label "Link rows, hover a row, staging is current".
 - multiple: omitted. Multiple selection adds a checkbox to each row and the header; the list fixture test renders it.
 - below actions: omitted. Actions below move the row actions under the description; the list fixture test renders it.
-- disabled: omitted. A disabled row mutes its text and drops its link; the list fixture test renders it.
 - protected: omitted. A protected row keeps a disabled checkbox; the list fixture test renders it.
 - loading: omitted. Loading appends skeleton rows under retained rows; the list fixture test renders it.
-- current row: omitted. The current row takes the selected fill; the list fixture test renders it.
 
 ## Executable examples
 
@@ -149,6 +150,86 @@ export default function Example() {
             ["Policies", 0]
         ]}/>
       </div><figcaption className="text-muted-foreground text-xs">{"stat"}</figcaption></figure>
+    </div>);
+}
+```
+
+### Link and button rows
+
+Save this example at `src/pages/design-system/examples/list/interactive.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard, disabled.
+
+Registry items used: @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+import { List, ListRow } from "../../../../components/v4/ui/list";
+const environments = [
+    { id: "development", title: "Development", description: "14 secrets, synced 2 minutes ago" },
+    { id: "staging", title: "Staging", description: "12 secrets, synced 1 hour ago" },
+    { id: "production", title: "Production", description: "12 secrets, approval required" }
+];
+export default function Interactive() {
+    const [current, setCurrent] = React.useState("staging");
+    const [opened, setOpened] = React.useState("None");
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <List label="Environments" title="Environments">
+          {environments.map((row) => (<ListRow key={row.id} value={row.id} label={row.title} title={row.title} description={row.description} href={`#list-${row.id}`} current={current === row.id} onClick={(event) => {
+                event.preventDefault();
+                setCurrent(row.id);
+            }}/>))}
+        </List>
+      </div><figcaption className="text-muted-foreground text-xs">{"Link rows, hover a row, staging is current"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <List label="Recent requests" title="Recent requests">
+          <ListRow value="rotate" label="Rotate database credentials" title="Rotate database credentials" meta="2m" onClick={() => setOpened("Rotate database credentials")}/>
+          <ListRow value="access" label="Grant staging access" title="Grant staging access" meta="1h" onClick={() => setOpened("Grant staging access")}/>
+          <ListRow value="expired" label="Expired request" title="Expired request" meta="3d" disabled onClick={() => setOpened("Expired request")}/>
+        </List>
+      </div><figcaption className="text-muted-foreground text-xs">{`Button rows, hover or press a row. Opened: ${opened}`}</figcaption></figure>
+    </div>);
+}
+```
+
+### Framed, sections, plain and sm
+
+Save this example at `src/pages/design-system/examples/list/variants.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { List, ListRow, ListSection } from "../../../../components/v4/ui/list";
+const rows = (prefix: string) => (<>
+    <ListRow value={`${prefix}-api`} label="API service" title="API service" description="Reads production secrets" meta="12 secrets"/>
+    <ListRow value={`${prefix}-worker`} label="Queue worker" title="Queue worker" description="Reads staging secrets" meta="4 secrets"/>
+  </>);
+export default function Variants() {
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <List label="Machine identities" title="Machine identities" action={<a href="#list">View all</a>}>
+          {rows("framed")}
+        </List>
+      </div><figcaption className="text-muted-foreground text-xs">{"md"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <List label="Grouped identities">
+          <ListSection label="Production" meta="2">
+            {rows("production")}
+          </ListSection>
+          <ListSection label="Staging" meta="1">
+            <ListRow value="staging-preview" label="Preview deploys" title="Preview deploys" description="Reads staging secrets" meta="3 secrets"/>
+          </ListSection>
+        </List>
+      </div><figcaption className="text-muted-foreground text-xs">{"framed, sections"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <List label="Plain identities" variant="plain">
+          {rows("plain")}
+        </List>
+      </div><figcaption className="text-muted-foreground text-xs">{"plain"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <List label="Small identities" size="sm" title="Identities">
+          {rows("sm")}
+        </List>
+      </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>
     </div>);
 }
 ```

@@ -61,17 +61,20 @@ Why: The frame should help inspect and copy actual source, not inflate a short s
 
 - src/components/v4/ui/code-block.tsx
 - src/components/v4/ui/code.module.css
+- src/components/v4/ui/frame.module.css
 
 Exports: CodeBlock. Source TypeScript defines the API.
 
 ## Behavior
 
+- The block uses the shared framed shell: the mono label, icon, actions and Copy sit in the tint frame header, and the code sits in the inset raised surface.
 - Copy uses literal source, excluding displayed line numbers.
 - A direct Json child supplies its recursively redacted copy text. Custom React children receive the owned body inset and text role; do not duplicate that padding inside the child.
 
 ## Accessibility
 
 - Copy success follows clipboard fulfillment; failures remain visible.
+- The block is a section named by its label, and the code region takes the same label.
 - Content uses a focusable scroll region.
 
 ## Use cases
@@ -109,7 +112,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 ## Executable examples
 
-### Filename, line numbers and copy
+### Filename, terminal, line numbers and copy
 
 Save this example at `src/pages/design-system/examples/code-block/default.tsx`; its relative imports are generated for that exact path. States: default.
 
@@ -117,18 +120,15 @@ Registry items used: @infisical/code-block. Additional packages: none. Install e
 
 ```tsx
 import { CodeBlock } from "../../../../components/v4/ui/code-block";
-
 export default function Example() {
-  return (
-    <CodeBlock
-      label="environment.env"
-      icon="file"
-      language="env"
-      lineNumbers
-      highlight={[2]}
-      code={"INFISICAL_ENV=staging\nLOG_LEVEL=info\nAPI_URL=https://example.com/api"}
-    />
-  );
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <CodeBlock label="environment.env" icon="file" language="env" lineNumbers highlight={[2]} code={"INFISICAL_ENV=staging\nLOG_LEVEL=info\nAPI_URL=https://example.com/api"}/>
+      </div><figcaption className="text-muted-foreground text-xs">{"File, framed shell"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <CodeBlock label="Terminal" icon="terminal" language="bash" wrap code="infisical run --env=staging -- npm run dev"/>
+      </div><figcaption className="text-muted-foreground text-xs">{"Terminal command"}</figcaption></figure>
+    </div>);
 }
 ```
 

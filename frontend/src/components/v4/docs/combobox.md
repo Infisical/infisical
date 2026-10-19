@@ -74,6 +74,8 @@ Exports: Combobox, ComboboxOption, ComboboxProps. Source TypeScript defines the 
 ## Behavior
 
 - Single selection uses Radix Popover and cmdk; multiple selection composes the shared ARIA listbox with removable chips and empty-query Backspace.
+- ArrowDown or ArrowUp on the focused closed trigger opens the list with focus in the search field and the active option highlighted, like Enter and Space.
+- Multiple mode lists options with checkbox marks and no Select all bar. Removing a chip with Enter, Space, Backspace or Delete on its remove button moves focus to the next removable chip, else the previous one, else the trigger; focus never falls to the page.
 - Controlled or local value; case-insensitive label and metadata filtering; optional awaited creation.
 - Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.
 - A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable.
@@ -160,12 +162,13 @@ import { useState } from "react";
 import { Combobox } from "../../../../components/v4/ui/combobox";
 import { Field } from "../../../../components/v4/ui/field";
 export default function Example() {
-    const [values, setValues] = useState(["dev", "audit"]);
+    const [values, setValues] = useState(["dev", "staging", "audit", "prod"]);
     return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
       <Field label="Visible environments" description="Audit is required by policy. Creation is unavailable.">
         <Combobox label="Visible environments" multiple options={[
-            { value: "dev", label: "Dev" },
-            { value: "prod", label: "Prod" },
+            { value: "dev", label: "Dev", meta: "3 projects" },
+            { value: "staging", label: "Staging", meta: "2 projects" },
+            { value: "prod", label: "Prod", meta: "12 projects" },
             { value: "audit", label: "Audit", disabled: true }
         ]} value={values} onChange={setValues} placeholder="Choose"/>
       </Field>

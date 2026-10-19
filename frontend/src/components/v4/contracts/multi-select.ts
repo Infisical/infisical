@@ -16,12 +16,15 @@ export const multiSelectDefinition = {
     "Multiple and single selection; controlled or local value and open state. Multiple callbacks follow the options order; duplicate option values are rejected at the public boundary.",
     "Default triggers are ordinary fields: the visible purpose comes from a Field label, size defaults to sm32 and explicit md is 36px. label names the trigger for assistive technology and is not drawn inside it. Multiple summaries show the first label and a remaining count, or a caller-supplied allLabel when every enabled option is selected.",
     "Grouping, and a search row that appears only when searchable is set (it is off by default). Selection happens on the options: uncheck an option to deselect it, there is no Clear action. Ctrl or Cmd+A toggles every enabled option and preserves disabled selections. Choosing the current option in single mode keeps it and closes the list.",
+    'In multiple mode the open list starts with a bar: the visible count ("2 of 5 selected") and Select all and Deselect all. Select all is disabled when every enabled option is on, Deselect all when no enabled option is on; both skip disabled options, which keep whatever they had, and return focus to the list. quickActions={false} hides the bar.',
+    "Each option is one 32px row with the description muted and right-aligned beside the label. Multiple mode leads every row with an 18px checkbox mark (checked, unchecked, and dimmed when disabled); single mode ends the chosen row with a check.",
+    "ArrowDown or ArrowUp on the focused closed trigger opens the list, like Enter and Space.",
     "Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.",
     "A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable."
   ],
   accessibility: [
     "The option list announces which options are selected, arrow keys move through it, and pressing Enter while composing text with an input method never selects an option.",
-    "Selection count is announced; Mod+A toggles enabled options while preserving disabled selections."
+    "Selection count is announced politely from the bar (or a hidden status when quickActions is off); Mod+A toggles enabled options while preserving disabled selections. The checkbox marks are decorative; aria-selected carries the state."
   ],
   limitations: [
     "Use application state for persisted permissions; selection is not an authorization decision.",
@@ -39,6 +42,12 @@ export const multiSelectDefinition = {
       title: "Sizes",
       module: "./examples/multi-select/sizes.tsx",
       states: ["default"]
+    },
+    {
+      id: "environments",
+      title: "Quick actions",
+      module: "./examples/multi-select/environments.tsx",
+      states: ["empty", "controlled"]
     }
   ],
   coverage: [

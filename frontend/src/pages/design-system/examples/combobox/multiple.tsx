@@ -6,7 +6,7 @@ import { Field } from "@app/components/v4/ui/field";
 import { ExampleStack } from "../../example-presentation";
 
 export default function Example() {
-  const [values, setValues] = useState(["dev", "audit"]);
+  const [values, setValues] = useState(["dev", "staging", "audit", "prod"]);
   return (
     <ExampleStack>
       <Field
@@ -17,8 +17,9 @@ export default function Example() {
           label="Visible environments"
           multiple
           options={[
-            { value: "dev", label: "Dev" },
-            { value: "prod", label: "Prod" },
+            { value: "dev", label: "Dev", meta: "3 projects" },
+            { value: "staging", label: "Staging", meta: "2 projects" },
+            { value: "prod", label: "Prod", meta: "12 projects" },
             { value: "audit", label: "Audit", disabled: true }
           ]}
           value={values}

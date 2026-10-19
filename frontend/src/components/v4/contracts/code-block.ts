@@ -5,15 +5,21 @@ export const codeBlockDefinition = {
   title: "Code block",
   group: "Code",
   summary: "Frame code or redacted JSON with a label, actions and truthful copy feedback.",
-  sourceFiles: ["src/components/v4/ui/code-block.tsx", "src/components/v4/ui/code.module.css"],
+  sourceFiles: [
+    "src/components/v4/ui/code-block.tsx",
+    "src/components/v4/ui/code.module.css",
+    "src/components/v4/ui/frame.module.css"
+  ],
   exports: ["CodeBlock"],
   referenceNames: ["CodeBlock"],
   behavior: [
+    "The block uses the shared framed shell: the mono label, icon, actions and Copy sit in the tint frame header, and the code sits in the inset raised surface.",
     "Copy uses literal source, excluding displayed line numbers.",
     "A direct Json child supplies its recursively redacted copy text. Custom React children receive the owned body inset and text role; do not duplicate that padding inside the child."
   ],
   accessibility: [
     "Copy success follows clipboard fulfillment; failures remain visible.",
+    "The block is a section named by its label, and the code region takes the same label.",
     "Content uses a focusable scroll region."
   ],
   limitations: [
@@ -23,7 +29,7 @@ export const codeBlockDefinition = {
   examples: [
     {
       id: "default",
-      title: "Filename, line numbers and copy",
+      title: "Filename, terminal, line numbers and copy",
       module: "./examples/code-block/default.tsx",
       states: ["default"]
     }

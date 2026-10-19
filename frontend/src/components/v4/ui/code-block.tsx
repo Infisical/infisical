@@ -8,6 +8,7 @@ import { MiddleTruncate } from "./middle-truncate";
 import { CopyButton } from "./sensitive-editor";
 
 import styles from "./code.module.css";
+import frame from "./frame.module.css";
 
 export type CodeBlockProps = Omit<CodeProps, "children" | "block" | "onCopy"> & {
   children?: React.ReactNode;
@@ -42,7 +43,11 @@ export const CodeBlock = ({
   const hasCopySource =
     Boolean(json) || copyValue !== undefined || code !== undefined || typeof children === "string";
   return (
-    <div data-slot="code-block" className={cn(styles.frame, className)}>
+    <section
+      data-slot="code-block"
+      aria-label={label}
+      className={cn(frame.frame, styles.codeBlock, className)}
+    >
       {(label || actions || copyable) && (
         <div className={styles.header}>
           <div className={styles.identity}>
@@ -66,12 +71,14 @@ export const CodeBlock = ({
           )}
         </div>
       )}
-      {json ??
-        (typeof children === "string" || children === undefined ? (
-          <Code block code={code ?? children} {...props} />
-        ) : (
-          <div className={styles.customContent}>{children}</div>
-        ))}
-    </div>
+      <div className={cn(frame.frameInset, styles.body)}>
+        {json ??
+          (typeof children === "string" || children === undefined ? (
+            <Code block code={code ?? children} label={label} {...props} />
+          ) : (
+            <div className={styles.customContent}>{children}</div>
+          ))}
+      </div>
+    </section>
   );
 };

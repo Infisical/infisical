@@ -212,7 +212,7 @@ describe("brand runtime", () => {
       expect(capture).not.toHaveBeenCalled();
     }
   );
-  it("returns the same material from the public variant helper for all primary aliases", async () => {
+  it("returns the ink fill for default and primary, and the lime material only for accent", async () => {
     await render(
       <>
         <Button>Save</Button>
@@ -222,7 +222,7 @@ describe("brand runtime", () => {
     );
     const buttons = [...host.querySelectorAll("button")];
     expect(buttons[0]?.className).toBe(buttons[1]?.className);
-    expect(buttons[1]?.className).toBe(buttons[2]?.className);
+    expect(buttons[1]?.className).not.toBe(buttons[2]?.className);
   });
   it("blocks pending Radix menu pointer and keyboard activation before click without swallowing Tab", async () => {
     const open = vi.fn();

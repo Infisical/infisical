@@ -9,7 +9,9 @@ export const listDefinition = {
   exports: ["List", "ListRow", "ListSection", "DataList"],
   referenceNames: ["List"],
   behavior: [
-    "Framed/plain/bare, md/sm, static/link/button rows and actions below.",
+    "Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface) or bare; md/sm, static/link/button rows and actions below.",
+    "Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.",
+    "Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.",
     "Selection skips disabled and locked rows. Current details and bulk selection remain independent.",
     "Loading appends placeholders below retained rows; sections, empty and footer compose."
   ],
@@ -31,6 +33,18 @@ export const listDefinition = {
       title: "Rows and empty list",
       module: "./examples/list/default.tsx",
       states: ["default", "empty"]
+    },
+    {
+      id: "interactive",
+      title: "Link and button rows",
+      module: "./examples/list/interactive.tsx",
+      states: ["default", "controlled", "keyboard", "disabled"]
+    },
+    {
+      id: "variants",
+      title: "Framed, sections, plain and sm",
+      module: "./examples/list/variants.tsx",
+      states: ["default"]
     }
   ],
   coverage: [
@@ -42,14 +56,14 @@ export const listDefinition = {
           value: "framed",
           exampleId: "default",
           label: "framed"
+        },
+        {
+          value: "plain",
+          exampleId: "variants",
+          label: "plain"
         }
       ],
       omitted: [
-        {
-          value: "plain",
-          reason:
-            "plain drops the outer border and keeps the row rules and inset; the list fixture test renders it."
-        },
         {
           value: "bare",
           reason:
@@ -60,16 +74,16 @@ export const listDefinition = {
     {
       axis: "size",
       expected: ["md", "sm"],
-      shown: [],
-      omitted: [
+      shown: [
         {
           value: "md",
-          reason: "Both lists use md; their captions name the variant and state."
+          exampleId: "variants",
+          label: "md"
         },
         {
           value: "sm",
-          reason:
-            "sm hides descriptions and shortens rows to 40px; the list fixture test renders it."
+          exampleId: "variants",
+          label: "sm"
         }
       ]
     },
@@ -118,6 +132,16 @@ export const listDefinition = {
           value: "empty",
           exampleId: "default",
           label: "Empty"
+        },
+        {
+          value: "disabled",
+          exampleId: "interactive",
+          label: "Button rows, hover or press a row. Opened: None"
+        },
+        {
+          value: "current row",
+          exampleId: "interactive",
+          label: "Link rows, hover a row, staging is current"
         }
       ],
       omitted: [
@@ -132,11 +156,6 @@ export const listDefinition = {
             "Actions below move the row actions under the description; the list fixture test renders it."
         },
         {
-          value: "disabled",
-          reason:
-            "A disabled row mutes its text and drops its link; the list fixture test renders it."
-        },
-        {
           value: "protected",
           reason: "A protected row keeps a disabled checkbox; the list fixture test renders it."
         },
@@ -144,10 +163,6 @@ export const listDefinition = {
           value: "loading",
           reason:
             "Loading appends skeleton rows under retained rows; the list fixture test renders it."
-        },
-        {
-          value: "current row",
-          reason: "The current row takes the selected fill; the list fixture test renders it."
         }
       ]
     }

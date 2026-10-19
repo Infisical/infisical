@@ -21,6 +21,9 @@ export default function Example() {
           Save changes
         </Button>
       </ExampleCell>
+      <ExampleCell label="accent">
+        <Button variant="accent">Grant for 1 hour</Button>
+      </ExampleCell>
       <ExampleCell label="outline">
         <Button variant="outline">Edit settings</Button>
       </ExampleCell>

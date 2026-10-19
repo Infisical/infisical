@@ -80,13 +80,16 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/table.tsx
 - src/components/v4/ui/data-table.tsx
 - src/components/v4/ui/data.module.css
+- src/components/v4/ui/frame.module.css
 
 Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, DataTableColumn, EnvMark. Source TypeScript defines the API.
 
 ## Behavior
 
 - DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.
+- DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.
 - Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.
+- Sortable headers show the direction with an icon: up for ascending, down for descending and a two-way arrow when the column is not sorted. The sorted header steps up to ink.
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
 
 ## Accessibility
@@ -287,6 +290,65 @@ export default function SemanticTable() {
       </TableFooter>
     </Table>
   );
+}
+```
+
+### Sort direction
+
+Save this example at `src/pages/design-system/examples/table/sorting.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
+
+Registry items used: @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+type Row = {
+    id: string;
+    key: string;
+    updated: string;
+};
+const all: Row[] = [
+    { id: "stripe", key: "STRIPE_API_KEY", updated: "2 days ago" },
+    { id: "database", key: "DATABASE_URL", updated: "5 hours ago" },
+    { id: "sendgrid", key: "SENDGRID_TOKEN", updated: "3 weeks ago" }
+];
+type Sort = {
+    columnId: string;
+    direction: "asc" | "desc";
+};
+const columns: DataTableColumn<Row>[] = [
+    {
+        id: "key",
+        header: "Key",
+        primary: true,
+        sortable: true,
+        text: (row) => row.key,
+        render: (row) => row.key
+    },
+    { id: "updated", header: "Updated", render: (row) => row.updated }
+];
+function SortedTable({ label, initial }: {
+    label: string;
+    initial?: Sort;
+}) {
+    const [sort, setSort] = React.useState<Sort | undefined>(initial);
+    const rows = sort
+        ? [...all].sort((a, b) => a.key.localeCompare(b.key) * (sort.direction === "asc" ? 1 : -1))
+        : all;
+    return (<DataTable label={label} rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.key} sort={sort} onSortChange={setSort}/>);
+}
+export default function Sorting() {
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <SortedTable label="Unsorted secrets"/>
+      </div><figcaption className="text-muted-foreground text-xs">{"Unsorted"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <SortedTable label="Ascending secrets" initial={{ columnId: "key", direction: "asc" }}/>
+      </div><figcaption className="text-muted-foreground text-xs">{"Ascending"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <SortedTable label="Descending secrets" initial={{ columnId: "key", direction: "desc" }}/>
+      </div><figcaption className="text-muted-foreground text-xs">{"Descending"}</figcaption></figure>
+    </div>);
 }
 ```
 

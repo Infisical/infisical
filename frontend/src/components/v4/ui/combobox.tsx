@@ -84,6 +84,32 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>((prop
   };
   const [open, setOpen] = React.useState(false);
   const fieldRef = React.useRef<HTMLDivElement>(null);
+  const refocus = React.useRef<string | null | undefined>(undefined);
+  React.useLayoutEffect(() => {
+    if (refocus.current === undefined) return;
+    const target = refocus.current;
+    refocus.current = undefined;
+    const chip = Array.from(
+      fieldRef.current?.querySelectorAll<HTMLButtonElement>("[data-slot=combobox-chip-remove]") ??
+        []
+    ).find((button) => button.dataset.value === target);
+    (
+      chip ?? fieldRef.current?.querySelector<HTMLButtonElement>("[data-slot=multi-select]")
+    )?.focus();
+  });
+  const isLocked = (value: string) =>
+    disabled || Boolean(options.find((option) => option.value === value)?.disabled);
+  const remove = (value: string) => {
+    const index = selected.indexOf(value);
+    refocus.current =
+      selected.slice(index + 1).find((item) => !isLocked(item)) ??
+      selected
+        .slice(0, index)
+        .reverse()
+        .find((item) => !isLocked(item)) ??
+      null;
+    apply(selected.filter((item) => item !== value));
+  };
   const contentId = React.useId();
   const [query, setQuery] = React.useState("");
   const creation = useOptionCreation(onCreate, () => changeOpen(false));
@@ -116,8 +142,15 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>((prop
               variant="ghost"
               size="icon-xs"
               aria-label={`Remove ${options.find((option) => option.value === value)?.label ?? value}`}
-              disabled={disabled || options.find((option) => option.value === value)?.disabled}
-              onClick={() => apply(selected.filter((item) => item !== value))}
+              data-slot="combobox-chip-remove"
+              data-value={value}
+              disabled={isLocked(value)}
+              onClick={() => remove(value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Backspace" && event.key !== "Delete") return;
+                event.preventDefault();
+                remove(value);
+              }}
             >
               <Icon name="x" size={12} />
             </Button>
@@ -135,6 +168,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>((prop
           disabled={disabled}
           invalid={invalid}
           searchable
+          quickActions={false}
           anchorRef={fieldRef}
           renderValue={selected.length ? () => null : undefined}
           onCreate={onCreate}
@@ -161,6 +195,11 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>((prop
         aria-controls={open ? contentId : undefined}
         aria-invalid={invalid || field["aria-invalid"] || undefined}
         disabled={disabled}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+          event.preventDefault();
+          changeOpen(true);
+        }}
         className={cn(controlStyles.field, controlStyles.trigger, mono && styles.mono, className)}
       >
         <span>{selectedOption?.label ?? (selected[0] || placeholder)}</span>

@@ -21,7 +21,8 @@ export const dataGridDefinition = {
   accessibility: [
     "The grid has a name and announces its row and column counts and the selected cell, even when that cell is scrolled out of view.",
     "Arrows, Home/End, PageUp/Down, Shift range, Enter/F2 edit, Escape cancel, Tab commit, mod+A/C/Z.",
-    "Headers expose sorting buttons and keyboard-resizable separators."
+    "Headers expose sorting buttons and keyboard-resizable separators. Sort buttons show the direction with an up, down or two-way arrow icon alongside aria-sort.",
+    "Typing a printable key on a selected editable cell opens the editor with that key and the caret after it, so fast typing keeps its order."
   ],
   limitations: [
     "Values use exact strings or null. Named int2/smallint, int4/integer and int8/bigint codecs enforce signed 16/32/64-bit bounds without changing accepted text.",

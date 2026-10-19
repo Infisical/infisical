@@ -1,9 +1,11 @@
 import * as React from "react";
 
+import { cn } from "../lib/utils";
 import { Checkbox } from "./checkbox";
 import { Skeleton } from "./skeleton";
 
 import styles from "./data.module.css";
+import frame from "./frame.module.css";
 
 interface ListContextValue {
   selected: readonly string[];
@@ -76,6 +78,7 @@ export function ListRow({
       data-disabled={disabled || undefined}
       data-resolved={resolved || undefined}
       data-size={context?.size}
+      data-interactive={(!disabled && (href || button)) || undefined}
     >
       {context?.multiple && (
         <span className={styles.rowCheck}>
@@ -250,9 +253,17 @@ export function List({
     <ListContext.Provider
       value={{ selected, multiple: selection === "multiple", toggle, size, actionsPlacement }}
     >
-      <div className={styles.listShell} data-slot="list" data-variant={variant} data-size={size}>
+      <div
+        className={cn(styles.listShell, variant === "framed" && frame.frame)}
+        data-slot="list"
+        data-variant={variant}
+        data-size={size}
+      >
         {(title || action) && (
-          <div className={styles.listHeader}>
+          <div
+            className={variant === "framed" ? frame.frameHead : styles.listHeader}
+            data-select={selection === "multiple" || undefined}
+          >
             {selection === "multiple" && (
               <Checkbox
                 aria-label={`Select all ${label}`}
@@ -271,13 +282,21 @@ export function List({
                 }
               />
             )}
-            {title && <div className={styles.listTitle}>{title}</div>}
-            {action && <div className={styles.listHeaderAction}>{action}</div>}
+            {title && (
+              <div className={variant === "framed" ? frame.frameTitle : styles.listTitle}>
+                {title}
+              </div>
+            )}
+            {action && (
+              <div className={variant === "framed" ? frame.frameAction : styles.listHeaderAction}>
+                {action}
+              </div>
+            )}
           </div>
         )}
         <ul
           ref={list}
-          className={styles.list}
+          className={cn(styles.list, variant === "framed" && frame.frameInset)}
           aria-label={label}
           aria-busy={loading}
           tabIndex={-1}
@@ -342,9 +361,9 @@ export function ListSection({
 }) {
   return (
     <li>
-      <div className={styles.listHeader}>
-        <div className={styles.listTitle}>{label}</div>
-        {meta && <div className={styles.listHeaderAction}>{meta}</div>}
+      <div className={styles.sectionHead}>
+        <div className={styles.sectionLabel}>{label}</div>
+        {meta && <div className={styles.sectionMeta}>{meta}</div>}
       </div>
       <ul className={styles.list}>{children}</ul>
     </li>

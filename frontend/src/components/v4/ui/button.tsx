@@ -21,10 +21,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: styles.material,
+        primary: styles.ink,
         accent: styles.material,
         "danger-ghost": "text-destructive hover:bg-destructive/10",
-        default: styles.material,
+        default: styles.ink,
         outline: [
           "border-[color:var(--v4-action-outline-border)] bg-[color:var(--v4-action-outline-surface)] hover:bg-[color:var(--v4-action-outline-hover)] hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
           styles.neutralSelection
@@ -55,7 +55,16 @@ const buttonVariants = cva(
     },
     compoundVariants: [
       {
-        variant: ["danger-ghost", "outline", "secondary", "ghost", "destructive", "link"],
+        variant: [
+          "primary",
+          "default",
+          "danger-ghost",
+          "outline",
+          "secondary",
+          "ghost",
+          "destructive",
+          "link"
+        ],
         className: [styles.paintTransition, "disabled:opacity-50"]
       }
     ],
@@ -128,7 +137,7 @@ const Button = React.forwardRef<
       props.disabled ||
       props["aria-disabled"] === true ||
       props["aria-disabled"] === "true";
-    const material = variant === "default" || variant === "primary" || variant === "accent";
+    const material = variant === "accent";
     const preventActivation = (event: React.SyntheticEvent) => {
       event.preventDefault();
       event.stopPropagation();

@@ -8,7 +8,8 @@ export const tableDefinition = {
   sourceFiles: [
     "src/components/v4/ui/table.tsx",
     "src/components/v4/ui/data-table.tsx",
-    "src/components/v4/ui/data.module.css"
+    "src/components/v4/ui/data.module.css",
+    "src/components/v4/ui/frame.module.css"
   ],
   exports: [
     "DataTable",
@@ -26,7 +27,9 @@ export const tableDefinition = {
   referenceNames: ["Table"],
   behavior: [
     "DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.",
+    "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
     "Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.",
+    "Sortable headers show the direction with an icon: up for ascending, down for descending and a two-way arrow when the column is not sorted. The sorted header steps up to ink.",
     "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization."
   ],
   accessibility: [
@@ -59,6 +62,12 @@ export const tableDefinition = {
       title: "Native semantic table",
       module: "./examples/table/semantic.tsx",
       states: ["default"]
+    },
+    {
+      id: "sorting",
+      title: "Sort direction",
+      module: "./examples/table/sorting.tsx",
+      states: ["default", "controlled", "keyboard"]
     },
     {
       id: "data-table",

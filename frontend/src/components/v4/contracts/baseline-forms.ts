@@ -1269,7 +1269,7 @@ export const baselineForms = [
     title: "Select",
     group: "Forms",
     summary: "Choose one value from a Radix listbox.",
-    sourceFiles: ["src/components/v4/ui/select.tsx"],
+    sourceFiles: ["src/components/v4/ui/select.tsx", "src/components/v4/ui/picker.module.css"],
     exports: [
       "Select",
       "SelectContent",
@@ -1286,7 +1286,9 @@ export const baselineForms = [
     behavior: [
       "Default and sm are 32px aliases; md is 36px and lg is 40px.",
       "Select accepts grouped options, disabled entries, label/placeholder, size and invalid state, or retained Radix parts. value/defaultValue and onChange/onValueChange use the selected string.",
-      "The selected trigger contains the option label only. Option descriptions remain readable in the menu and are associated through aria-describedby; they do not change the stored value."
+      "The selected trigger contains the option label only. Option descriptions remain readable in the menu and are associated through aria-describedby; they do not change the stored value.",
+      "The trigger fills its Field like an Input, and the menu opens at the trigger's width. menuWidth overrides the menu width; keep it at least the trigger's width.",
+      "Each option is one 32px row: the label on the left, its description muted and right-aligned on the same row, and the check for the chosen option at the end. A long label or description truncates."
     ],
     accessibility: [
       "Provide a persistent label. Connect invalid feedback with aria-describedby and preserve disabled semantics."
@@ -1312,6 +1314,12 @@ export const baselineForms = [
         title: "Long metadata and menu width",
         module: "./examples/select/metadata.tsx",
         states: ["default", "overflow"]
+      },
+      {
+        id: "states",
+        title: "Placeholder, disabled and invalid",
+        module: "./examples/select/states.tsx",
+        states: ["empty", "disabled", "invalid"]
       }
     ],
     coverage: [
@@ -1395,31 +1403,29 @@ export const baselineForms = [
         expected: ["empty", "invalid", "disabled", "disabled option", "controlled"],
         shown: [
           {
+            value: "empty",
+            exampleId: "states",
+            label: "Placeholder"
+          },
+          {
+            value: "invalid",
+            exampleId: "states",
+            label: "Invalid"
+          },
+          {
+            value: "disabled",
+            exampleId: "states",
+            label: "Disabled"
+          },
+          {
             value: "disabled option",
             exampleId: "default",
-            label: "Archived"
+            label: "pr-490"
           },
           {
             value: "controlled",
             exampleId: "default",
             label: "Current environment:"
-          }
-        ],
-        omitted: [
-          {
-            value: "empty",
-            reason:
-              "The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once."
-          },
-          {
-            value: "invalid",
-            reason:
-              "The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once."
-          },
-          {
-            value: "disabled",
-            reason:
-              "The placeholder, invalid and disabled states use the shared field surface, which the Input and Field examples show once."
           }
         ]
       },
@@ -1430,7 +1436,7 @@ export const baselineForms = [
           {
             value: "long metadata",
             exampleId: "metadata",
-            label: "Long resource identifier"
+            label: "Menu at trigger width, metadata truncates"
           },
           {
             value: "menu width",
@@ -1469,7 +1475,7 @@ export const baselineForms = [
         {
           id: "select-selected-value",
           when: "An option includes a long description.",
-          do: "Keep the label in the selected trigger and the associated description beside the menu option. Constrain the trigger to its field and allow long menu text to wrap.",
+          do: "Keep the label in the selected trigger and the associated description right-aligned on the menu option's row. Let the trigger fill its field, keep descriptions short and widen the menu with menuWidth when long metadata must stay readable.",
           avoid:
             "Concatenate the description into the selected label or grow the trigger beyond the preview.",
           reason:
@@ -1480,7 +1486,7 @@ export const baselineForms = [
           ],
           detect: {
             by: "review",
-            how: "Select the long described option at 320px with doubled root text. The trigger stays within its field, contains only the selected label, and reopening exposes the complete label and associated description. Repeat with controlled and default-valued Selects."
+            how: "Select the long described option at 320px with doubled root text. The trigger fills its field, contains only the selected label, and reopening shows the label and associated description on one row, truncated with an ellipsis when the menu is narrower than the text. Repeat with controlled and default-valued Selects."
           }
         }
       ],
@@ -1497,7 +1503,7 @@ export const baselineForms = [
         {
           state: "long selected label",
           guidance:
-            "Keep only the option label in the trigger. The bounded trigger can truncate a long label; reopening must expose the full label and associated description in the menu."
+            "Keep only the option label in the trigger. The bounded trigger can truncate a long label; reopening shows the label and associated description in the menu, and menuWidth gives long metadata more room."
         }
       ],
       antiSlop: [

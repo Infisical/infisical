@@ -39,8 +39,7 @@ it.each([
   await React.act(async () => root.render(<Example />));
   const sortButton = Array.from(host.querySelectorAll("button")).find(
     (button) =>
-      button.getAttribute("aria-label") === `Sort ${label}` ||
-      button.textContent?.startsWith(`${label} `)
+      button.getAttribute("aria-label") === `Sort ${label}` || button.textContent === label
   );
   if (!sortButton) throw new Error(`Missing ${label} sort`);
   await React.act(async () => sortButton.click());
