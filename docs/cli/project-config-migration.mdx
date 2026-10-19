@@ -37,7 +37,7 @@ Let the CLI create `.infisical.yaml` from `.infisical.json`, or create `.infisic
         In the directory that holds `.infisical.json`, run any `infisical` command, such as:
 
         ```bash
-        infisical secrets
+        infisical sm secrets
         ```
 
         The CLI creates `.infisical.yaml` and prints the path of the new file, followed by a warning that both files exist:
@@ -129,7 +129,7 @@ If a Dockerfile or CI script refers to `.infisical.json` by name, such as in a `
 In the directory that holds `.infisical.yaml`, run a command that reads the file, such as:
 
 ```bash
-infisical secrets
+infisical sm secrets
 ```
 
 Check that the command lists the secrets from the project and environment you expect. If it reports that the project ID is missing, compare the keys in `.infisical.yaml` with the [field mapping](#migration-steps).
