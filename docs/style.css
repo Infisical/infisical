@@ -2585,6 +2585,32 @@ a.ifx-card__title:hover .ifx-card__chevron {
   margin-top: 0.875rem;
 }
 
+/* The CLI page sits outside Mintlify's prose styles, so lists keep the reset that hides their markers. */
+.cli-cmd__description ul,
+.cli-cmd__description ol {
+  margin: 0.875rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.cli-cmd__description ul {
+  list-style: disc;
+}
+
+.cli-cmd__description ol {
+  list-style: decimal;
+}
+
+.cli-cmd__description li + li {
+  margin-top: 0.25rem;
+}
+
+.cli-cmd__description ul + [data-as="p"],
+.cli-cmd__description ul + p,
+.cli-cmd__description ol + [data-as="p"],
+.cli-cmd__description ol + p {
+  margin-top: 0.875rem;
+}
+
 .cli-cmd__table {
   margin-top: 2rem;
   scroll-margin-top: calc(var(--cli-top) + var(--cli-head) + 1rem);
