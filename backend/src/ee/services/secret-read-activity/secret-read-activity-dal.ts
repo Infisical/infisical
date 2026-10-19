@@ -136,13 +136,15 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
   };
 
   // The last time each user or identity joined the project or had a role, privilege or folder grant created,
-  // changed or expired. Which secrets a change opened up is not recorded, so any of them restarts the window; an
-  // expired restrictive folder grant can restore access. Membership updatedAt is left out because logins bump it.
+  // changed or expired, or had the rules of a custom role they hold edited. Which secrets a change opened up is
+  // not recorded, so any of them restarts the window; an expired restrictive folder grant can restore access.
+  // Membership updatedAt is left out because logins bump it.
   const findAccessChangedAt = async (projectId: string, tx?: Knex) => {
     try {
       const [roleChanges, privilegeChanges] = await Promise.all([
         (tx || db.replicaNode())(TableName.Membership)
           .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+          .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
           .select(
@@ -151,7 +153,8 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
             db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
             db.ref("createdAt").withSchema(TableName.MembershipRole),
             db.ref("updatedAt").withSchema(TableName.MembershipRole),
-            db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole)
+            db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
+            db.ref("updatedAt").withSchema(TableName.Role).as("customRoleUpdatedAt")
           ),
         (tx || db.replicaNode())(TableName.AdditionalPrivilege)
           .where({ projectId })
@@ -165,6 +168,8 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
         if (!actorId) return;
         const dates = [change.createdAt, change.updatedAt];
         if ("membershipCreatedAt" in change) dates.push(change.membershipCreatedAt as Date);
+        if ("customRoleUpdatedAt" in change && change.customRoleUpdatedAt)
+          dates.push(change.customRoleUpdatedAt as Date);
         if (change.temporaryAccessEndTime && new Date(change.temporaryAccessEndTime) <= now) {
           dates.push(change.temporaryAccessEndTime);
         }

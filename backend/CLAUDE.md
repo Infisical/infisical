@@ -1146,7 +1146,7 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   start (the later of the migration that created the table and the project's creation). So in a project tracked for
   less than 30 days the card already lists access unread since tracking began, and the response's
   `preliminaryUntil` tells the UI to label it preliminary. Which secrets a change opened up is not recorded, so any
-  access change restarts the window, and a custom role's rules being edited is not seen at all. The per-secret sheet
+  access change restarts the window, including an edit to the rules of a custom role the reader holds. The per-secret sheet
   shows the plain fact instead: a read, or "No reads". Each card row also carries three counts for its secret,
   derived from sets the computation already holds: `entitledCount` (everyone who can read the value today,
   admins included), `unreadCount` (the non-admins among them with no read in the window) and
