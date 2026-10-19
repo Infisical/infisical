@@ -178,14 +178,11 @@ export const ProjectTemplateEnvironmentsForm = ({
                                     {...field}
                                     onChange={(e) => {
                                       const currentSlug = getValues(`environments.${pos}.slug`);
-                                      const isSavedSlug = projectTemplate.environments.some(
-                                        (env) => env.slug === currentSlug
-                                      );
                                       const tracksName =
                                         !currentSlug ||
                                         currentSlug === slugify(field.value, { lowercase: true });
                                       field.onChange(e);
-                                      if (isSavedSlug || !tracksName) return;
+                                      if (slug || !tracksName) return;
                                       setValue(
                                         `environments.${pos}.slug`,
                                         slugify(e.target.value, { lowercase: true }),
