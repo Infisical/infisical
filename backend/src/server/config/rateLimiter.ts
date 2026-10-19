@@ -77,6 +77,15 @@ export const ocspLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// The delegated approval callback is unauthenticated, so the IP is all there is to key on. Each request
+// accepts at most a handful of callbacks before it is invalidated, so one instance never needs more.
+export const delegatedApprovalCallbackLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 60,
+  keyGenerator: (req) => req.realIp
+};
+
 // Gateways report load every 10s (6/min each), so 10 leaves room for tick drift and a restart
 // landing in the same window without leaving headroom for a flood. Keyed by the reporting gateway
 // rather than by IP, because the write limiter's IP key is shared: ~100 gateways behind one NAT

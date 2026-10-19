@@ -358,6 +358,7 @@ import { delegatedApprovalPolicyDALFactory } from "@app/services/delegated-appro
 import { delegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
 import { delegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { delegatedApprovalDispatchQueueFactory } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-queue";
+import { delegatedApprovalCallbackEventConsumerFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-event-consumer";
 import { delegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
 import { encryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
@@ -1214,6 +1215,7 @@ export const registerRoutes = async (
       alertProviderRegistry
     })
   );
+  eventOutboxRegistry.register(delegatedApprovalCallbackEventConsumerFactory());
   const eventOutboxService = eventOutboxServiceFactory({ eventOutboxDAL, eventOutboxRegistry });
   const eventOutboxQueue = eventOutboxQueueFactory({
     queueService,
@@ -3241,7 +3243,9 @@ export const registerRoutes = async (
 
   const delegatedApprovalCallbackService = delegatedApprovalCallbackServiceFactory({
     delegatedApprovalRequestDAL,
-    kmsService
+    approvalRequestDAL,
+    kmsService,
+    eventEmitter: eventOutboxService
   });
 
   const delegatedApprovalDispatchQueue = delegatedApprovalDispatchQueueFactory({
