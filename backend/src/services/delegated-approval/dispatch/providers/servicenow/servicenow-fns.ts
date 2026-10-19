@@ -8,6 +8,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TServiceNowConnection } from "@app/services/app-connection/servicenow";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 
 import {
   TDelegatedApprovalDispatchDetails,
@@ -47,7 +48,7 @@ const buildRequestTypeFields = (details: TDelegatedApprovalDispatchDetails) => {
   switch (details.policyType) {
     case ApprovalPolicyType.SecretAccess:
       return {
-        event: "secrets_management.access_request",
+        event: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
         request_type: ServiceNowRequestType.SecretAccess,
         environment: details.environment,
         secret_path: details.secretPath,

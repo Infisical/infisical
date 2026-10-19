@@ -174,13 +174,22 @@ policy blocked by pending requests is freed for editing. Every provider implemen
 (`dispatch/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
 builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The worker
 reads from the primary, never checks the license, and throws bullmq's `UnrecoverableError` for anything a retry
-cannot fix. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
+cannot fix. The callback contract (token issuance, the inbound route; approve / reject later) is its own
 module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
-callback branch. A request gets exactly one callback token for its whole life: it is random, issued on the first
-dispatch attempt, and stored encrypted under the org KMS key in `encryptedCallbackToken` so every retry resends
-the same value; the inbound side finds the row by the provider's record id and compares the decrypted token with
-the presented one. Never send a provider a token that differs from the one stored for the request; the provider
-keeps the first token it was given and cannot be told another, so a mismatch is unrecoverable.
+callback branch. A request gets exactly one callback token for its whole life: it is random, prefixed `inf_ext_`,
+issued on the first dispatch attempt, and stored encrypted under the org KMS key in `encryptedCallbackToken` so
+every retry resends the same value. Never send a provider a token that differs from the one stored for the
+request; the provider keeps the first token it was given and cannot be told another, so a mismatch is
+unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
+with the token in the `Infisical-Approval-Token` header and a body naming the event and the provider's record id;
+the body carries no decision, which a later worker reads back from the provider. The route finds the row by
+`providerRequestId` (404 when none), counts the callback in `callbackAttempts` before checking anything else so a
+wrong token for a known record still burns the request, and on the sixth callback sets the row `failed` with a
+readable `statusReason` and cancels the attached approval request in the same transaction, so the policy is freed
+and the UI stops offering Cancel. Every other refusal (bad or missing token, request not `waiting_approval`)
+gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event: `eventType` is the body's event,
+`idempotencyKey` is the delegated request id so a repeat is dropped, and the `delegated-approval-callback`
+consumer is a placeholder that marks the row delivered until the read-back worker replaces it.
 
 ### API Layer (Frontend)
 

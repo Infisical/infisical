@@ -4,11 +4,27 @@ vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.infisical.com" })
 }));
 
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+  initLogger: () => {}
+}));
+
+// eslint-disable-next-line import/first
+import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+// eslint-disable-next-line import/first
+import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+// eslint-disable-next-line import/first
+import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
 // eslint-disable-next-line import/first
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 // eslint-disable-next-line import/first
-import { DELEGATED_APPROVAL_CALLBACK_PATH } from "./delegated-approval-callback-constants";
+import {
+  DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS,
+  DELEGATED_APPROVAL_CALLBACK_PATH
+} from "./delegated-approval-callback-constants";
+// eslint-disable-next-line import/first
+import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-enums";
 // eslint-disable-next-line import/first
 import { delegatedApprovalCallbackServiceFactory } from "./delegated-approval-callback-service";
 
@@ -17,6 +33,8 @@ const CIPHER_PREFIX = Buffer.from("enc:");
 const encrypt = (plainText: Buffer) => Buffer.concat([CIPHER_PREFIX, plainText]);
 const decrypt = (cipherTextBlob: Buffer) => cipherTextBlob.subarray(CIPHER_PREFIX.length);
 
+const TX = { isTx: true };
+
 const makeService = ({
   stored = true,
   currentRow = null
@@ -24,7 +42,8 @@ const makeService = ({
   const delegatedApprovalRequestDAL = {
     update: vi.fn(async () => (stored ? [{ id: "delegated-1" }] : [])),
     primaryNode: vi.fn(() => ({})),
-    findById: vi.fn(async () => currentRow)
+    findById: vi.fn(async () => currentRow),
+    findByProviderRequestId: vi.fn(async (): Promise<unknown> => null)
   };
   const kmsService = {
     createCipherPairWithDataKey: vi.fn(async () => ({
@@ -32,13 +51,21 @@ const makeService = ({
       decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => decrypt(cipherTextBlob)
     }))
   };
+  const approvalRequestDAL = {
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(TX)),
+    findByIdForUpdate: vi.fn(async (): Promise<unknown> => null),
+    updateById: vi.fn(async () => null)
+  };
+  const eventEmitter = { emit: vi.fn(async () => {}) };
 
   const service = delegatedApprovalCallbackServiceFactory({
     delegatedApprovalRequestDAL: delegatedApprovalRequestDAL as never,
-    kmsService: kmsService as never
+    approvalRequestDAL: approvalRequestDAL as never,
+    kmsService: kmsService as never,
+    eventEmitter
   });
 
-  return { service, delegatedApprovalRequestDAL, kmsService };
+  return { service, delegatedApprovalRequestDAL, approvalRequestDAL, kmsService, eventEmitter };
 };
 
 describe("getCallbackUrl", () => {
@@ -104,5 +131,160 @@ describe("getOrIssueCallbackToken", () => {
     });
 
     expect(token).toBeNull();
+  });
+});
+
+describe("handleCallback", () => {
+  const TOKEN = "inf_ext_stored-token";
+  const EXTERNAL_ID = "9d41f2a7c3b24e1088f6a05e7b1d4c93";
+  const EVENT = DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest;
+
+  const makeDelegatedRequest = (overrides?: Record<string, unknown>) => ({
+    id: "delegated-1",
+    requestId: "request-1",
+    status: DelegatedApprovalRequestStatus.WaitingApproval,
+    encryptedCallbackToken: encrypt(Buffer.from(TOKEN)),
+    providerRequestId: EXTERNAL_ID,
+    callbackAttempts: 0,
+    approvalRequestOrganizationId: "org-1",
+    approvalRequestStatus: ApprovalRequestStatus.Pending,
+    ...overrides
+  });
+
+  const makeCallbackService = ({
+    delegatedRequest = makeDelegatedRequest(),
+    attemptsAfterIncrement = 1,
+    lockedApprovalRequest = { id: "request-1", status: ApprovalRequestStatus.Pending }
+  }: {
+    delegatedRequest?: ReturnType<typeof makeDelegatedRequest> | null;
+    attemptsAfterIncrement?: number;
+    lockedApprovalRequest?: { id: string; status: ApprovalRequestStatus } | null;
+  } = {}) => {
+    const built = makeService();
+    built.delegatedApprovalRequestDAL.findByProviderRequestId.mockResolvedValue(delegatedRequest);
+    built.delegatedApprovalRequestDAL.update.mockResolvedValue([
+      { ...delegatedRequest, callbackAttempts: attemptsAfterIncrement }
+    ] as never);
+    built.approvalRequestDAL.findByIdForUpdate.mockResolvedValue(lockedApprovalRequest);
+    return built;
+  };
+
+  const callback = (overrides?: Partial<{ token: string | undefined; event: typeof EVENT; externalId: string }>) => ({
+    token: TOKEN,
+    event: EVENT,
+    externalId: EXTERNAL_ID,
+    ...overrides
+  });
+
+  test("returns 404 when no request has the external ID", async () => {
+    const { service, delegatedApprovalRequestDAL, eventEmitter } = makeCallbackService({ delegatedRequest: null });
+
+    await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(NotFoundError);
+    expect(delegatedApprovalRequestDAL.findByProviderRequestId).toHaveBeenCalledWith(EXTERNAL_ID);
+    expect(delegatedApprovalRequestDAL.update).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("counts the callback before checking the token", async () => {
+    const { service, delegatedApprovalRequestDAL, eventEmitter } = makeCallbackService();
+
+    await expect(service.handleCallback(callback({ token: "inf_ext_wrong" }))).rejects.toBeInstanceOf(
+      ForbiddenRequestError
+    );
+    expect(delegatedApprovalRequestDAL.update).toHaveBeenCalledWith(
+      { id: "delegated-1" },
+      { $incr: { callbackAttempts: 1 } }
+    );
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["missing", undefined],
+    ["unprefixed", "stored-token"],
+    ["mismatched", "inf_ext_other-token"]
+  ])("rejects a %s token with 403 and no event", async (_label, token) => {
+    const { service, eventEmitter } = makeCallbackService();
+
+    await expect(service.handleCallback(callback({ token }))).rejects.toBeInstanceOf(ForbiddenRequestError);
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("rejects a request that is not awaiting a decision", async () => {
+    const { service, eventEmitter } = makeCallbackService({
+      delegatedRequest: makeDelegatedRequest({ status: DelegatedApprovalRequestStatus.Approved })
+    });
+
+    await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(ForbiddenRequestError);
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("fails the request and cancels its approval request on the callback past the limit", async () => {
+    const { service, delegatedApprovalRequestDAL, approvalRequestDAL, eventEmitter, kmsService } = makeCallbackService({
+      attemptsAfterIncrement: DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS + 1
+    });
+
+    await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(ForbiddenRequestError);
+
+    expect(approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", TX);
+    expect(approvalRequestDAL.updateById).toHaveBeenCalledWith(
+      "request-1",
+      { status: ApprovalRequestStatus.Cancelled },
+      TX
+    );
+    const [filter, patch, tx] = delegatedApprovalRequestDAL.update.mock.lastCall as unknown as [
+      unknown,
+      { status: string; statusReason: string },
+      unknown
+    ];
+    expect(filter).toEqual({ id: "delegated-1", status: DelegatedApprovalRequestStatus.WaitingApproval });
+    expect(patch.status).toBe(DelegatedApprovalRequestStatus.Failed);
+    expect(patch.statusReason).toContain(`more than ${DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS} times`);
+    expect(tx).toBe(TX);
+    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("leaves an approval request that is no longer pending alone when attempts run out", async () => {
+    const { service, delegatedApprovalRequestDAL, approvalRequestDAL } = makeCallbackService({
+      attemptsAfterIncrement: DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS + 1,
+      lockedApprovalRequest: { id: "request-1", status: ApprovalRequestStatus.Expired }
+    });
+
+    await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(ForbiddenRequestError);
+
+    expect(approvalRequestDAL.updateById).not.toHaveBeenCalled();
+    const [, patch] = delegatedApprovalRequestDAL.update.mock.lastCall as unknown as [unknown, { status: string }];
+    expect(patch.status).toBe(DelegatedApprovalRequestStatus.Failed);
+  });
+
+  test("still accepts the callback at the limit", async () => {
+    const { service, eventEmitter } = makeCallbackService({
+      attemptsAfterIncrement: DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS
+    });
+
+    await expect(service.handleCallback(callback())).resolves.toEqual({ delegatedRequestId: "delegated-1" });
+    expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+  });
+
+  test("emits an outbox event keyed on the delegated request", async () => {
+    const { service, eventEmitter, kmsService } = makeCallbackService();
+
+    await expect(service.handleCallback(callback())).resolves.toEqual({ delegatedRequestId: "delegated-1" });
+
+    expect(kmsService.createCipherPairWithDataKey).toHaveBeenCalledWith({
+      type: KmsDataKey.Organization,
+      orgId: "org-1"
+    });
+    expect(eventEmitter.emit).toHaveBeenCalledWith({
+      eventType: EVENT,
+      idempotencyKey: "delegated-1",
+      payload: {
+        delegatedRequestId: "delegated-1",
+        approvalRequestId: "request-1",
+        orgId: "org-1",
+        event: EVENT,
+        externalId: EXTERNAL_ID
+      }
+    });
   });
 });
