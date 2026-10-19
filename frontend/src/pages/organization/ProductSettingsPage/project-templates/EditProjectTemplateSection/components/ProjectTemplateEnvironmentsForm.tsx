@@ -1,5 +1,6 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { ChevronDown, ChevronUp, Plus, Save, Trash2 } from "lucide-react";
 import { z } from "zod";
 
@@ -56,7 +57,9 @@ export const ProjectTemplateEnvironmentsForm = ({
     control,
     handleSubmit,
     formState: { isDirty, errors },
-    reset
+    reset,
+    getValues,
+    setValue
   } = useForm<TFormSchema>({
     defaultValues: {
       environments: projectTemplate.environments
@@ -173,6 +176,22 @@ export const ProjectTemplateEnvironmentsForm = ({
                                   <Input
                                     disabled={!isAllowed}
                                     {...field}
+                                    onChange={(e) => {
+                                      const currentSlug = getValues(`environments.${pos}.slug`);
+                                      const isSavedSlug = projectTemplate.environments.some(
+                                        (env) => env.slug === currentSlug
+                                      );
+                                      const tracksName =
+                                        !currentSlug ||
+                                        currentSlug === slugify(field.value, { lowercase: true });
+                                      field.onChange(e);
+                                      if (isSavedSlug || !tracksName) return;
+                                      setValue(
+                                        `environments.${pos}.slug`,
+                                        slugify(e.target.value, { lowercase: true }),
+                                        { shouldDirty: true }
+                                      );
+                                    }}
                                     className="h-8 px-2 text-sm"
                                     placeholder="Name..."
                                   />

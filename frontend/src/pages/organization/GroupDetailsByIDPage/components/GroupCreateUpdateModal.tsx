@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -52,7 +53,7 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateGroup();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateGroup();
 
-  const { control, handleSubmit, reset } = useForm<TGroupFormData>({
+  const { control, handleSubmit, reset, setValue, getFieldState } = useForm<TGroupFormData>({
     resolver: zodResolver(GroupFormSchema)
   });
 
@@ -144,6 +145,14 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
                   placeholder="Engineering"
                   isError={Boolean(error)}
                   {...field}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    const slugState = getFieldState("slug");
+                    if (!isCreateMode || slugState.isDirty) return;
+                    setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                      shouldValidate: Boolean(slugState.error)
+                    });
+                  }}
                   autoComplete="off"
                   name="org-group-name"
                 />
