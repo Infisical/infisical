@@ -53,7 +53,7 @@ import {
   TSecretReaderType
 } from "./secret-read-activity-types";
 
-const SECRET_EXPOSURE_CACHE_TTL_SECONDS = 30;
+const SECRET_EXPOSURE_CACHE_TTL_SECONDS = 24 * 60 * 60;
 const REACH_YIELD_INTERVAL = 100;
 // Longer than a computation can take, so the lock is not lost mid-scan; waiters give up well before a request times out.
 const SECRET_EXPOSURE_COMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
