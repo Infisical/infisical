@@ -374,7 +374,7 @@ export const secretScanningV2ServiceFactory = ({
 
       if (existingDataSource)
         throw new BadRequestError({
-          message: `This App Connection is already in use by the Secret Scanning Data Source '${existingDataSource.name}'`
+          message: "This App Connection is already in use by another Secret Scanning Data Source"
         });
     }
 
