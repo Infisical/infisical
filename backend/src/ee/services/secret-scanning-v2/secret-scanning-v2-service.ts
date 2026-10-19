@@ -369,6 +369,13 @@ export const secretScanningV2ServiceFactory = ({
         { connectionId: payload.connectionId, projectId: payload.projectId },
         actor
       );
+
+      const existingDataSource = await secretScanningV2DAL.dataSources.findOne({ connectionId: payload.connectionId });
+
+      if (existingDataSource)
+        throw new BadRequestError({
+          message: "This App Connection is already in use by another Secret Scanning Data Source"
+        });
     }
 
     const factory = SECRET_SCANNING_FACTORY_MAP[payload.type]({
