@@ -20,8 +20,14 @@ export const ServiceNowConnectionBasicAuthCredentialsSchema = z.object({
     .url("Invalid Instance URL")
     .refine((value) => value.startsWith("https://"), "Instance URL must use HTTPS")
     .refine((value) => {
-      const { pathname, search, hash } = new URL(value);
-      return (pathname === "" || pathname === "/") && !search && !hash;
+      let url: URL;
+      try {
+        url = new URL(value);
+      } catch {
+        // zod runs refinements even after `.url()` fails, and `.url()` has already reported this value
+        return true;
+      }
+      return (url.pathname === "" || url.pathname === "/") && !url.search && !url.hash;
     }, "Instance URL must be the base URL of your ServiceNow instance, without a path or query string")
     .transform(removeTrailingSlash)
     .describe(AppConnections.CREDENTIALS.SERVICENOW.instanceUrl),

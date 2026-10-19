@@ -49,8 +49,14 @@ const formSchema = z.discriminatedUnion("method", [
         .max(512, "Instance URL cannot exceed 512 characters")
         .refine((value) => value.startsWith("https://"), "Instance URL must use HTTPS")
         .refine((value) => {
-          const { pathname, search, hash } = new URL(value);
-          return (pathname === "" || pathname === "/") && !search && !hash;
+          let url: URL;
+          try {
+            url = new URL(value);
+          } catch {
+            // zod runs refinements even after `.url()` fails, and `.url()` has already reported this value
+            return true;
+          }
+          return (url.pathname === "" || url.pathname === "/") && !url.search && !url.hash;
         }, "Enter the base URL of your instance, without a path"),
       username: z
         .string()
