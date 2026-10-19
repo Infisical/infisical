@@ -2,6 +2,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { Reminder } from "@app/hooks/api/reminders/types";
 
 import { PendingAction } from "../secretFolders/types";
+import { TSecretExposure, TSecretExposureCounts } from "../secretInsights/types";
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
@@ -162,11 +163,19 @@ export type TGetSecretAccessListDTO = {
 
 export type TGetSecretReadActivityDTO = Omit<TGetSecretAccessListDTO, "includeAllEntities">;
 
-export type TSecretReadActivity = {
+export type TSecretReadActivity = TSecretExposureCounts & {
   trackedSince: string;
   reads: {
     actorType: "user" | "identity";
     actorId: string;
+    lastReadAt: string;
+  }[];
+  exposure: TSecretExposure;
+  ghostReaders: {
+    actorType: "user" | "identity";
+    actorId: string;
+    // Null when the reader has since been deleted.
+    actorName: string | null;
     lastReadAt: string;
   }[];
 };

@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import {
+  SecretExposureCountsSchema,
+  SecretExposureSchema
+} from "@app/ee/services/secret-read-activity/secret-read-activity-schemas";
+import { SecretExposureBand } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { INSIGHTS } from "@app/lib/api-docs";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -79,11 +84,26 @@ export const UnusedSecretAccessSchema = z.object({
       secretPath: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.secretPath),
       actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorType),
       actorId: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorId),
-      actorName: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorName),
-      entitledCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.entitledCount),
-      unreadCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.unreadCount),
-      ghostReaderCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.ghostReaderCount)
+      actorName: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorName)
     })
+    .merge(SecretExposureCountsSchema)
     .array()
     .describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.unusedAccess)
+});
+
+export const SecretExposureListSchema = z.object({
+  totalCount: z.number().int().describe(INSIGHTS.GET_SECRET_EXPOSURE.totalCount),
+  bands: z.record(z.nativeEnum(SecretExposureBand), z.number().int()).describe(INSIGHTS.GET_SECRET_EXPOSURE.bands),
+  trackingStartedAt: z.date().describe(INSIGHTS.GET_SECRET_EXPOSURE.trackingStartedAt),
+  preliminaryUntil: z.date().describe(INSIGHTS.GET_SECRET_EXPOSURE.preliminaryUntil),
+  secrets: z
+    .object({
+      secretKey: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.secretKey),
+      environment: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.environment),
+      secretPath: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.secretPath),
+      exposure: SecretExposureSchema
+    })
+    .merge(SecretExposureCountsSchema)
+    .array()
+    .describe(INSIGHTS.GET_SECRET_EXPOSURE.secrets)
 });

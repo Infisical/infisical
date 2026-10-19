@@ -1,6 +1,10 @@
 import z from "zod";
 
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import {
+  SecretExposureCountsSchema,
+  SecretExposureSchema
+} from "@app/ee/services/secret-read-activity/secret-read-activity-schemas";
 import { RAW_SECRETS } from "@app/lib/api-docs";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -108,19 +112,33 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          readActivity: z.object({
-            trackedSince: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.trackedSince),
-            reads: z
-              .object({
-                actorType: z
-                  .enum([ActorType.USER, ActorType.IDENTITY])
-                  .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
-                actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
-                lastReadAt: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.lastReadAt)
-              })
-              .array()
-              .describe(RAW_SECRETS.GET_READ_ACTIVITY.reads)
-          })
+          readActivity: z
+            .object({
+              trackedSince: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.trackedSince),
+              reads: z
+                .object({
+                  actorType: z
+                    .enum([ActorType.USER, ActorType.IDENTITY])
+                    .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
+                  actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
+                  lastReadAt: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.lastReadAt)
+                })
+                .array()
+                .describe(RAW_SECRETS.GET_READ_ACTIVITY.reads),
+              exposure: SecretExposureSchema.describe(RAW_SECRETS.GET_READ_ACTIVITY.exposure),
+              ghostReaders: z
+                .object({
+                  actorType: z
+                    .enum([ActorType.USER, ActorType.IDENTITY])
+                    .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
+                  actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
+                  actorName: z.string().nullable().describe(RAW_SECRETS.GET_READ_ACTIVITY.ghostReaderName),
+                  lastReadAt: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.lastReadAt)
+                })
+                .array()
+                .describe(RAW_SECRETS.GET_READ_ACTIVITY.ghostReaders)
+            })
+            .merge(SecretExposureCountsSchema)
         })
       }
     },

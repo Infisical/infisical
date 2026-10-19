@@ -3534,6 +3534,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     secretImportDAL,
     secretV2BridgeDAL,
+    userDAL,
+    identityDAL,
     kmsService,
     keyStore
   });

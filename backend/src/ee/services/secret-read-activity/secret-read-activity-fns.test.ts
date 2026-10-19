@@ -3,13 +3,21 @@ import { describe, expect, test } from "vitest";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import {
+  calculateExposureScore,
   classifySecretReads,
   computeSecretReach,
   coversWholeWindow,
   getUtcMonthStart,
   indexSecretReads
 } from "./secret-read-activity-fns";
-import { SecretReadObjectType, TReachSecret, TSecretLastRead, TSecretReachGraph } from "./secret-read-activity-types";
+import {
+  SecretExposureBand,
+  SecretExposureDriver,
+  SecretReadObjectType,
+  TReachSecret,
+  TSecretLastRead,
+  TSecretReachGraph
+} from "./secret-read-activity-types";
 
 const dbPass: TReachSecret = { id: "db-pass", folderId: "shared", key: "DB_PASS" };
 const dbUrl: TReachSecret = { id: "db-url", folderId: "shared", key: "DB_URL" };
@@ -117,5 +125,68 @@ describe("coversWholeWindow", () => {
 
   test("is false for a reader whose access changed inside the window", () => {
     expect(coversWholeWindow(windowStart, new Date("2026-10-10T00:00:00.000Z"), windowStart)).toBe(false);
+  });
+});
+
+describe("calculateExposureScore", () => {
+  const pointsOf = (score: ReturnType<typeof calculateExposureScore>) =>
+    score.drivers.reduce((total, driver) => total + driver.points, 0);
+
+  test("is zero with nothing to drive it", () => {
+    const exposure = calculateExposureScore({ entitledCount: 0, unreadCount: 0, ghostReaderCount: 0 });
+    expect(exposure).toEqual({ score: 0, band: SecretExposureBand.Low, drivers: [] });
+  });
+
+  test("saturates each term at its weight", () => {
+    const exposure = calculateExposureScore({ entitledCount: 40, unreadCount: 40, ghostReaderCount: 4 });
+    expect(exposure.score).toBe(100);
+    expect(exposure.band).toBe(SecretExposureBand.Critical);
+    expect(exposure.drivers.map(({ kind, points }) => [kind, points])).toEqual([
+      [SecretExposureDriver.Readers, 45],
+      [SecretExposureDriver.GhostReaders, 30],
+      [SecretExposureDriver.UnusedAccess, 25]
+    ]);
+  });
+
+  test("weighs a few readers far more than a few more", () => {
+    const two = calculateExposureScore({ entitledCount: 2, unreadCount: 0, ghostReaderCount: 0 }).score;
+    const twelve = calculateExposureScore({ entitledCount: 12, unreadCount: 0, ghostReaderCount: 0 }).score;
+    const fortyTwo = calculateExposureScore({ entitledCount: 42, unreadCount: 0, ghostReaderCount: 0 }).score;
+    expect(twelve - two).toBeGreaterThan(fortyTwo - twelve);
+    expect(fortyTwo).toBe(45);
+  });
+
+  test("lists the drivers largest first, with whole points adding up to the score", () => {
+    const exposure = calculateExposureScore({ entitledCount: 3, unreadCount: 1, ghostReaderCount: 1 });
+    expect(exposure.score).toBe(Math.round(45 * (Math.log2(4) / Math.log2(41)) + 30 * 0.25 + 25 * (1 / 3)));
+    expect(exposure.band).toBe(SecretExposureBand.Elevated);
+    expect(pointsOf(exposure)).toBe(exposure.score);
+    expect(exposure.drivers.map((driver) => driver.points)).toEqual(
+      [...exposure.drivers.map((driver) => driver.points)].sort((a, b) => b - a)
+    );
+    expect(exposure.drivers.every((driver) => Number.isInteger(driver.points) && driver.points > 0)).toBe(true);
+  });
+
+  test("leaves out a term worth nothing", () => {
+    const exposure = calculateExposureScore({ entitledCount: 5, unreadCount: 0, ghostReaderCount: 0 });
+    expect(exposure.drivers.map((driver) => driver.kind)).toEqual([SecretExposureDriver.Readers]);
+    expect(pointsOf(exposure)).toBe(exposure.score);
+  });
+
+  test("puts the score in its band", () => {
+    const bandOf = (counts: Parameters<typeof calculateExposureScore>[0]) => calculateExposureScore(counts).band;
+    expect(bandOf({ entitledCount: 1, unreadCount: 0, ghostReaderCount: 0 })).toBe(SecretExposureBand.Low);
+    expect(bandOf({ entitledCount: 1, unreadCount: 1, ghostReaderCount: 0 })).toBe(SecretExposureBand.Elevated);
+    expect(bandOf({ entitledCount: 10, unreadCount: 8, ghostReaderCount: 2 })).toBe(SecretExposureBand.High);
+    expect(bandOf({ entitledCount: 30, unreadCount: 30, ghostReaderCount: 3 })).toBe(SecretExposureBand.Critical);
+  });
+
+  test("words each driver with its counts", () => {
+    const { drivers } = calculateExposureScore({ entitledCount: 1, unreadCount: 1, ghostReaderCount: 1 });
+    expect(drivers.map((driver) => driver.label)).toEqual([
+      "1 of 1 has not read it in 30 days",
+      "1 user or machine identity can read the value",
+      "1 ghost reader can no longer read it but still knows the value"
+    ]);
   });
 });

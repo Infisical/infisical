@@ -34,6 +34,7 @@ import {
   DuplicatedSecretsCard,
   InsightsSummaryCards,
   SecretAccessChart,
+  SecretExposureCard,
   UnusedSecretAccessCard
 } from "./components";
 
@@ -135,6 +136,9 @@ export const InsightsPage = withProjectPermission(
             <InsightsSummaryCards />
             <div className="mt-6">
               <AuditReportsCard />
+            </div>
+            <div className="mt-6">
+              <SecretExposureCard />
             </div>
             <div className="mt-6">
               <UnusedSecretAccessCard />

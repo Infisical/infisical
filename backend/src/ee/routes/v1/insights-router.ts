@@ -17,6 +17,7 @@ import {
 import {
   OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
+  SecretExposureListSchema,
   SecretsProjectsSchema,
   SecretsSummarySchema,
   StaticSecretsUsageSchema,
@@ -466,6 +467,47 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo
       });
       return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/exposure",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsSecretExposure",
+      description:
+        "List the secrets with the highest exposure score in a project, with how many of the project's secrets fall in each band",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_SECRET_EXPOSURE.projectId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).max(100).default(0).describe(INSIGHTS.GET_SECRET_EXPOSURE.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(10).describe(INSIGHTS.GET_SECRET_EXPOSURE.limit)
+      }),
+      response: {
+        200: SecretExposureListSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { projectId } = req.params;
+      const { secrets, totalCount, bands, trackingStartedAt, preliminaryUntil, remainingTTL, projectName } =
+        await server.services.secretReadActivity.listSecretExposure({ projectId, ...req.query }, req.permission);
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SECRET_EXPOSURE,
+          metadata: { projectId, projectName }
+        },
+        ...req.auditLogInfo
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+      return { secrets, totalCount, bands, trackingStartedAt, preliminaryUntil };
     }
   });
 

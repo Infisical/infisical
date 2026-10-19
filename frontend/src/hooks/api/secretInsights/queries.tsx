@@ -20,6 +20,8 @@ import {
   TGetSecretAccessVolumeResponse,
   TGetSecretBlindIndexStatusDTO,
   TGetSecretBlindIndexStatusResponse,
+  TGetSecretExposureDTO,
+  TGetSecretExposureResponse,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
   TGetUnusedSecretAccessDTO,
@@ -39,6 +41,8 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "access-volume", params] as const,
   unusedSecretAccess: (params: TGetUnusedSecretAccessDTO) =>
     [...secretInsightsKeys.all(), "unused-secret-access", params] as const,
+  secretExposure: (params: TGetSecretExposureDTO) =>
+    [...secretInsightsKeys.all(), "secret-exposure", params] as const,
   // accessLocations: (params: TGetSecretAccessLocationsDTO) =>
   //   [...secretInsightsKeys.all(), "access-locations", params] as const,
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
@@ -70,6 +74,10 @@ export const secretInsightsKeys = {
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+
+// Fresh until the server's cached copy expires, then refetched, so an open card picks up the recomputed list.
+const cachedInsightsRefreshMs = (data?: { remainingTtl: number }) =>
+  data && data.remainingTtl > 0 ? data.remainingTtl * 1000 : INSIGHTS_STALE_TIME;
 
 export const useGetCalendarInsights = (
   params: TGetCalendarInsightsDTO,
@@ -146,11 +154,38 @@ export const useGetUnusedSecretAccess = (
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };
     },
-    // Fresh until the server's cached copy expires, so the next fetch returns the recomputed list.
-    staleTime: (query) => {
-      const remainingTtl = query.state.data?.remainingTtl ?? -1;
-      return remainingTtl > 0 ? remainingTtl * 1000 : INSIGHTS_STALE_TIME;
+    staleTime: (query) => cachedInsightsRefreshMs(query.state.data),
+    refetchInterval: (query) => cachedInsightsRefreshMs(query.state.data),
+    placeholderData: (previousData) => previousData,
+    ...options
+  });
+};
+
+export const useGetSecretExposure = (
+  params: TGetSecretExposureDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetSecretExposureResponse,
+      unknown,
+      TGetSecretExposureResponse,
+      ReturnType<typeof secretInsightsKeys.secretExposure>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.secretExposure(params),
+    queryFn: async () => {
+      const { projectId, ...query } = params;
+      const res = await apiRequest.get<Omit<TGetSecretExposureResponse, "remainingTtl">>(
+        `/api/v1/insights/${projectId}/secrets/exposure`,
+        { params: query }
+      );
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
     },
+    staleTime: (query) => cachedInsightsRefreshMs(query.state.data),
+    refetchInterval: (query) => cachedInsightsRefreshMs(query.state.data),
     placeholderData: (previousData) => previousData,
     ...options
   });

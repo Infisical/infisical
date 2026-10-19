@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { SecretExposurePanel } from "@app/components/secrets/SecretExposureScore";
 import { SecretReadStatusBadge } from "@app/components/secrets/SecretReadStatusBadge";
 import {
   Button,
@@ -640,6 +641,9 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   return (
     <>
       <div className="flex thin-scrollbar flex-col gap-4 overflow-y-auto p-4">
+        {canReadInsights && !readActivityError && (
+          <SecretExposurePanel exposure={readActivity?.exposure} />
+        )}
         <div className="flex items-center gap-2">
           <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
             <Toggle
@@ -899,6 +903,51 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               })}
             </TableBody>
           </Table>
+        )}
+        {canReadInsights && readActivity && readActivity.ghostReaders.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <div>
+              <h3 className="text-sm font-medium">Ghost Readers</h3>
+              <p className="text-xs text-muted">
+                Read this secret since {format(new Date(readActivity.trackedSince), "PP")} but can
+                no longer access it. They still know the value.
+              </p>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-48">Type</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="w-40">Last Read</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {readActivity.ghostReaders.map((reader) => {
+                  const { icon: TypeIcon, label: typeLabel } = TYPE_CONFIG[reader.actorType];
+                  return (
+                    <TableRow key={`${reader.actorType}-${reader.actorId}`}>
+                      <TableCell>
+                        <span className="flex items-center gap-2">
+                          <TypeIcon className="size-4 text-accent" />
+                          {typeLabel}
+                        </span>
+                      </TableCell>
+                      <TableCell isTruncatable className="max-w-[180px] font-medium">
+                        {reader.actorName ?? (
+                          <span className="text-muted italic">
+                            Deleted {reader.actorType === "user" ? "user" : "machine identity"}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="w-40 whitespace-nowrap">
+                        <SecretReadStatusBadge lastReadAt={reader.lastReadAt} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 

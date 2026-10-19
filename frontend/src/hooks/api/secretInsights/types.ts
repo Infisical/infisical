@@ -67,22 +67,69 @@ export type TGetUnusedSecretAccessDTO = {
   orderDirection?: OrderByDirection;
 };
 
-export type TUnusedSecretAccess = {
+// How a secret stands: everyone who can read its value today, admins included; the non-admins among them with
+// no read in the last 30 days; and the readers who can no longer read it, so they still know the value.
+export type TSecretExposureCounts = {
+  entitledCount: number;
+  unreadCount: number;
+  ghostReaderCount: number;
+};
+
+export enum SecretExposureBand {
+  Low = "low",
+  Elevated = "elevated",
+  High = "high",
+  Critical = "critical"
+}
+
+export enum SecretExposureDriver {
+  Readers = "readers",
+  GhostReaders = "ghost-readers",
+  UnusedAccess = "unused-access"
+}
+
+export type TSecretExposure = {
+  score: number;
+  band: SecretExposureBand;
+  // Whole points that add up to the score, largest first.
+  drivers: { kind: SecretExposureDriver; points: number; label: string }[];
+};
+
+export type TUnusedSecretAccess = TSecretExposureCounts & {
   secretKey: string;
   environment: string;
   secretPath: string;
   actorType: "user" | "identity";
   actorId: string;
   actorName: string;
-  entitledCount: number;
-  unreadCount: number;
-  ghostReaderCount: number;
 };
 
 export type TGetUnusedSecretAccessResponse = {
   unusedAccess: TUnusedSecretAccess[];
   totalCount: number;
   unlistedCount: number;
+  trackingStartedAt: string;
+  preliminaryUntil: string;
+  remainingTtl: number;
+};
+
+export type TGetSecretExposureDTO = {
+  projectId: string;
+  offset: number;
+  limit: number;
+};
+
+export type TExposedSecret = TSecretExposureCounts & {
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+  exposure: TSecretExposure;
+};
+
+export type TGetSecretExposureResponse = {
+  secrets: TExposedSecret[];
+  totalCount: number;
+  bands: Record<SecretExposureBand, number>;
   trackingStartedAt: string;
   preliminaryUntil: string;
   remainingTtl: number;

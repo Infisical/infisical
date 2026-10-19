@@ -968,11 +968,21 @@ export const INSIGHTS = {
     secretPath: "The path of the folder the secret is in.",
     actorType: "Whether the entry is a user or a machine identity.",
     actorId: "The ID of the user or machine identity.",
-    actorName: "The username of the user, or the name of the machine identity.",
-    entitledCount: "How many users and machine identities, admins included, can read this secret's value today.",
-    unreadCount: "How many of those, admins excluded, have not read it in the window. This row is one of them.",
-    ghostReaderCount:
-      "How many users and machine identities read this secret in the window but can no longer read it today, for example after leaving the project. They still know the value."
+    actorName: "The username of the user, or the name of the machine identity."
+  },
+  GET_SECRET_EXPOSURE: {
+    projectId: "The ID of the project to list secret exposure for.",
+    offset: "The number of secrets to skip before returning results.",
+    limit: "The maximum number of secrets to return per page.",
+    secrets:
+      "The secrets with the highest exposure score, highest first: those of the top 100 in the project that the caller can see. Secrets scoring 0 are not listed.",
+    totalCount: "The number of secrets the caller can page through.",
+    bands:
+      "How many of the project's secrets fall in each band, counted across the whole project before the caller's permissions are applied.",
+    trackingStartedAt:
+      "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
+    preliminaryUntil:
+      "When the scores first cover the full 30 days. Until then they are preliminary: unused access covers only the reads since tracking started, and the access that existed when it started."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
@@ -1399,6 +1409,21 @@ export const SECRETS = {
   }
 } as const;
 
+export const SECRET_EXPOSURE = {
+  score:
+    "The exposure score, from 0 to 100, built from how many can read the value, how many who can no longer read it still know it, and how many who can read it never do.",
+  band: "The band the score falls in: low (0 to 29), elevated (30 to 59), high (60 to 84) or critical (85 to 100).",
+  drivers: "What makes up the score, largest first. The points add up to the score.",
+  driverKind:
+    "Which term the driver is: readers (up to 45 points), ghost-readers (up to 30 points) or unused-access (up to 25 points).",
+  driverPoints: "The whole points this term contributed to the score.",
+  driverLabel: "The term in words, with its counts.",
+  entitledCount: "How many users and machine identities, admins included, can read this secret's value today.",
+  unreadCount: "How many of those, admins excluded, have not read it in the last 30 days.",
+  ghostReaderCount:
+    "How many users and machine identities read this secret in the last 30 days but can no longer read it today, for example after leaving the project. They still know the value."
+};
+
 export const RAW_SECRETS = {
   LIST: {
     expand: "Whether or not to expand secret references.",
@@ -1494,7 +1519,12 @@ export const RAW_SECRETS = {
       "One entry for each user or machine identity that read the secret, or an import or reference of it, since trackedSince. Only the first read of each day is recorded.",
     actorType: "Whether the reader is a user or a machine identity.",
     actorId: "The ID of the user or machine identity.",
-    lastReadAt: "When the reader last read the secret, as the first read of that day."
+    lastReadAt: "When the reader last read the secret, as the first read of that day.",
+    exposure: "The secret's exposure score, computed from the counts in this response.",
+    ghostReaders:
+      "The users and machine identities that read the secret since trackedSince but can no longer read it today, for example after leaving the project. They still know the value.",
+    ghostReaderName:
+      "The username of the user, or the name of the machine identity. Null when the reader has since been deleted."
   },
   DUPLICATE_SECRET: {
     projectId: "The ID of the project containing the secret.",

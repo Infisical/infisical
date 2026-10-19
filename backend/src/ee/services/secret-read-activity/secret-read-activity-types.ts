@@ -93,17 +93,60 @@ export type TReadActivityScope = {
   secret?: Omit<TGetSecretReadActivityDTO, "projectId">;
 };
 
-export type TUnusedSecretAccess = {
+// How a secret stands: everyone who can read its value today, admins included; the non-admins among them with
+// no read in the window; and the readers in the window who can no longer read it, so they still know the value.
+export type TSecretExposureCounts = {
+  entitledCount: number;
+  unreadCount: number;
+  ghostReaderCount: number;
+};
+
+export enum SecretExposureBand {
+  Low = "low",
+  Elevated = "elevated",
+  High = "high",
+  Critical = "critical"
+}
+
+export enum SecretExposureDriver {
+  Readers = "readers",
+  GhostReaders = "ghost-readers",
+  UnusedAccess = "unused-access"
+}
+
+export type TSecretExposureDriver = {
+  kind: SecretExposureDriver;
+  // Whole points, adding up to the score, so the arithmetic shown beside the number is exact.
+  points: number;
+  label: string;
+};
+
+export type TSecretExposure = {
+  score: number;
+  band: SecretExposureBand;
+  drivers: TSecretExposureDriver[];
+};
+
+export type TUnusedSecretAccess = TSecretExposureCounts & {
   secretKey: string;
   environment: string;
   secretPath: string;
   actorType: TSecretReaderType;
   actorId: string;
   actorName: string;
-  // How the secret as a whole stands, repeated on each of its rows so a row can be read on its own.
-  entitledCount: number;
-  unreadCount: number;
-  ghostReaderCount: number;
+};
+
+export type TExposedSecret = TSecretExposureCounts & {
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+  exposure: TSecretExposure;
+};
+
+export type TListSecretExposureDTO = {
+  projectId: string;
+  offset: number;
+  limit: number;
 };
 
 // Each value is the row field it sorts by.

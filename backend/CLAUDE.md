@@ -1151,6 +1151,16 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   derived from sets the computation already holds: `entitledCount` (everyone who can read the value today,
   admins included), `unreadCount` (the non-admins among them with no read in the window) and
   `ghostReaderCount` (readers in the window who can no longer read it, so they still know the value).
+- **Exposure score.** `calculateExposureScore` (`secret-read-activity-fns.ts`) turns those three counts into a 0
+  to 100 score with Low, Elevated, High and Critical bands and whole-point drivers that add up to it (readers up
+  to 45 on a log scale saturating at 40, ghost readers up to 30 saturating at 4, unused access up to 25 by
+  share). It is the blast radius prototype's three read-activity terms rescaled; the terms that would need new
+  queries (syncs, rotation age, cross-project destinations) are deliberately left out. `$loadSecretSummarizer`
+  is the one place the counts and the score are derived, used by the card computation and the per-secret
+  endpoint, so the sheet and the cards agree. The cached project computation also keeps the 100 highest-scoring
+  secrets and a per-band tally, served by `GET /insights/:projectId/secrets/exposure` through the same cache
+  and the same per-caller DescribeSecret recheck as the unused access card. The per-secret endpoint names each
+  ghost reader from the project's members, else from the user or identity row, else null for a deleted reader.
 
 ### Audit Log Event Classes and Settings
 
