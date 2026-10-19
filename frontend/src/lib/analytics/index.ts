@@ -2,6 +2,7 @@ import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 
 import {
   AnalyticsEvent,
+  OnboardingResourceClickedProperties,
   OrganizationAnalyticsEvent,
   OrganizationAnalyticsEventMap,
   SignupFlowCompletedProperties,
@@ -16,6 +17,10 @@ export const analytics = {
   captureSignupFlowCompleted(properties: SignupFlowCompletedProperties) {
     const telemetry = new Telemetry().getInstance();
     telemetry.capture(AnalyticsEvent.SignupFlowCompleted, properties);
+  },
+  captureOnboardingResourceClicked(properties: OnboardingResourceClickedProperties) {
+    const telemetry = new Telemetry().getInstance();
+    telemetry.capture(AnalyticsEvent.OnboardingResourceClicked, properties);
   },
   captureForOrganization<Event extends OrganizationAnalyticsEvent>(
     event: Event,
@@ -35,6 +40,7 @@ export { AnalyticsEvent };
 export type {
   BillingCancellationAction,
   FolderAccessGrantSheetSource,
+  OnboardingResource,
   SecretsAddResourceAction,
   SecretsAddResourceMenuLevel,
   SecretsAddResourceMenuSource

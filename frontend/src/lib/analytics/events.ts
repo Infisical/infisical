@@ -15,7 +15,8 @@ export const AnalyticsEvent = {
   SecretsAddResourceActionSelected: "Secrets Add Resource Action Selected",
   ThemePreferenceChanged: "Theme Preference Changed",
   SignupFlowCompleted: "Signup Flow Completed",
-  BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted"
+  BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted",
+  OnboardingResourceClicked: "Onboarding Resource Clicked"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -186,6 +187,12 @@ type BillingCancellationReasonSubmittedProperties = {
   comment?: string;
 };
 
+export type OnboardingResource = "github" | "discussions" | "youtube" | "docs";
+
+export type OnboardingResourceClickedProperties = {
+  resource: OnboardingResource;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsActivationModalViewed]: SecretsActivationProperties;
   [AnalyticsEvent.SecretsActivationModalMembersInvited]: SecretsActivationProperties & {
@@ -208,6 +215,7 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsAddResourceMenuOpened]: SecretsAddResourceMenuOpenedProperties;
   [AnalyticsEvent.SecretsAddResourceActionSelected]: SecretsAddResourceActionSelectedProperties;
   [AnalyticsEvent.BillingCancellationReasonSubmitted]: BillingCancellationReasonSubmittedProperties;
+  [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
