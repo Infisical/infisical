@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import RE2 from "re2";
 import { StringDecoder } from "string_decoder";
 
-import { getConfig } from "../../../lib/config/env";
+import { getConfig } from "@app/lib/config/env";
 
 export enum SecretScanningExecFailure {
   Timeout = "timeout",

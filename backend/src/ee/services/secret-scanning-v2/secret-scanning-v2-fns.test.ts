@@ -5,51 +5,32 @@ import { join } from "path";
 import { promisify } from "util";
 import { describe, expect, test, vi } from "vitest";
 
-// Imports that depend on config env are moved below the mock
+import {
+  SecretScanningExecError,
+  SecretScanningExecFailure,
+  SecretScanningExecPhase
+} from "@app/ee/services/secret-scanning/secret-scanning-exec";
 
+import {
+  assertClonedRepositoryWithinSizeLimit,
+  parseScanErrorMessage,
+  planCommitBatches,
+  repositoryHasCommits,
+  SecretScanningSizeLimitError
+} from "./secret-scanning-v2-fns";
 
-
-// getConfig is read lazily inside the functions under test; only the size limit matters here.
-let mockConfig = { SECRET_SCANNING_MAX_REPO_SIZE_MB: 5120, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT: 60000 };
-(global as any).__mockConfig = mockConfig;
-vi.mock('../../../lib/config/env', () => ({
-  getConfig: () => (global as any).__mockConfig,
-  SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT: (global as any).__mockConfig?.SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT,
+const { mockConfig } = vi.hoisted(() => ({
+  mockConfig: { SECRET_SCANNING_MAX_REPO_SIZE_MB: 5120, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT: 60000 }
 }));
 
-// Declare placeholders for exec error types
-let SecretScanningExecError: any;
-let SecretScanningExecFailure: any;
-let SecretScanningExecPhase: any;
-
-beforeAll(async () => {
-  const execMod = await import('../secret-scanning/secret-scanning-exec');
-  SecretScanningExecError = execMod.SecretScanningExecError;
-  SecretScanningExecFailure = execMod.SecretScanningExecFailure;
-  SecretScanningExecPhase = execMod.SecretScanningExecPhase;
-});
-// The functions are imported dynamically after mocking env to ensure the mock is applied.
-let assertClonedRepositoryWithinSizeLimit: any;
-let parseScanErrorMessage: any;
-let planCommitBatches: any;
-let SecretScanningSizeLimitError: any;
-
-beforeAll(async () => {
-  const fnMod = await import('./secret-scanning-v2-fns');
-  assertClonedRepositoryWithinSizeLimit = fnMod.assertClonedRepositoryWithinSizeLimit;
-  parseScanErrorMessage = fnMod.parseScanErrorMessage;
-  planCommitBatches = fnMod.planCommitBatches;
-  SecretScanningSizeLimitError = fnMod.SecretScanningSizeLimitError;
-});
-// Imported dynamically in beforeAll to avoid import-time env mock issues
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/config/env")>()),
+  getConfig: () => mockConfig,
+  SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT: mockConfig.SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT
+}));
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-}));
-
-// Mock crypto to provide nativeCrypto with real Node crypto implementation
-vi.mock("../../../lib/crypto", () => ({
-  crypto: { nativeCrypto: require('node:crypto') }
 }));
 
 describe("parseScanErrorMessage", () => {
@@ -147,71 +128,133 @@ describe("parseScanErrorMessage", () => {
     expect(message.endsWith("...")).toBe(true);
   });
 
+  test("handles null and undefined without throwing", () => {
+    expect(parseScanErrorMessage(null)).toBe("An unknown error occurred.");
+    expect(parseScanErrorMessage(undefined)).toBe("An unknown error occurred.");
+  });
+
+  test("handles non-Error rejection values", () => {
+    expect(parseScanErrorMessage("plain text failure")).toBe("plain text failure");
+    expect(parseScanErrorMessage({ some: "object" })).toBe("An unknown error occurred.");
+    expect(parseScanErrorMessage(12345)).toBe("An unknown error occurred.");
+  });
+
   test("redacts credentials embedded in a URL inside a generic error message", () => {
+    const mockSecret = "dummy-redacted-token-val";
     const message = parseScanErrorMessage(
-      new Error(
-        "Failed to clone: fatal: could not read from 'https://user:glpat-supersecrettoken123@git.gitlab.com/acme/app.git'"
-      )
+      new Error(`Failed to clone: fatal: could not read from 'https://user:${mockSecret}@git.gitlab.com/acme/app.git'`)
     );
 
-    expect(message).not.toContain("glpat-supersecrettoken123");
+    expect(message).not.toContain(mockSecret);
     expect(message).not.toContain("user:");
     expect(message).toContain("[REDACTED]@");
     expect(message).toContain("git.gitlab.com/acme/app.git");
   });
 
   test("redacts credentials when the token appears in a nested error message", () => {
+    const mockSecret = "dummy-nested-secret-tok";
     const message = parseScanErrorMessage(
-      new Error("Upstream: https://x-access-token:ghs_secret@github.com/org/repo.git returned 403")
+      new Error(`Upstream: https://x-access-token:${mockSecret}@github.com/org/repo.git returned 403`)
     );
 
-    expect(message).not.toContain("ghs_secret");
+    expect(message).not.toContain(mockSecret);
     expect(message).toContain("[REDACTED]@");
     expect(message).toContain("github.com/org/repo.git");
   });
 
   test("preserves diagnostic information after redacting credentials", () => {
+    const mockSecret = "dummy-diag-token";
     const message = parseScanErrorMessage(
-      new Error("https://oauth2:token@gitlab.example.com/group/project.git: remote: HTTP 403")
+      new Error(`https://oauth2:${mockSecret}@gitlab.example.com/group/project.git: remote: HTTP 403`)
     );
 
-    expect(message).not.toContain("oauth2:token");
+    expect(message).not.toContain(mockSecret);
     expect(message).toContain("gitlab.example.com/group/project.git");
     expect(message).toContain("HTTP 403");
   });
 
   test("redacts multiple credentialed URLs in a single error message", () => {
+    const secret1 = "dummy-secret-first";
+    const secret2 = "dummy-secret-second";
     const message = parseScanErrorMessage(
       new Error(
-        "primary: https://a:secret1@host1.com/r.git failed, fallback: https://b:secret2@host2.com/r.git also failed"
+        `primary: https://a:${secret1}@host1.com/r.git failed, fallback: https://b:${secret2}@host2.com/r.git also failed`
       )
     );
 
-    expect(message).not.toContain("secret1");
-    expect(message).not.toContain("secret2");
+    expect(message).not.toContain(secret1);
+    expect(message).not.toContain(secret2);
     expect(message).toContain("host1.com/r.git");
     expect(message).toContain("host2.com/r.git");
   });
 
   test("leaves URLs without credentials unchanged", () => {
-    const message = parseScanErrorMessage(
-      new Error("Could not reach https://gitlab.example.com/group/project.git")
-    );
+    const message = parseScanErrorMessage(new Error("Could not reach https://gitlab.example.com/group/project.git"));
 
     expect(message).toBe("Could not reach https://gitlab.example.com/group/project.git");
   });
 
-  test("redacts credentials in AxiosError response data", () => {
+  test("redacts credentials in AxiosError response data and preserves status code", () => {
+    const mockSecret = "dummy-axios-secret-tok";
     const axiosError = {
       isAxiosError: true,
+      message: "Request failed with status code 400",
       response: {
-        data: "Failed to fetch https://user:TEST_TOKEN_123@git.example.com/repo.git"
+        status: 400,
+        data: `Failed to fetch https://user:${mockSecret}@git.example.com/repo.git`
       }
-    } as any;
+    };
     const message = parseScanErrorMessage(axiosError);
-    expect(message).not.toContain("TEST_TOKEN_123");
+    expect(message).not.toContain(mockSecret);
     expect(message).toContain("git.example.com/repo.git");
     expect(message).toContain("[REDACTED]@");
+    expect(message).toContain("400");
+  });
+
+  test("extracts structured error messages from AxiosError response data without leaking full object", () => {
+    const axiosErrorWithMessage = {
+      isAxiosError: true,
+      response: {
+        status: 403,
+        data: { message: "Project access denied" }
+      }
+    };
+    expect(parseScanErrorMessage(axiosErrorWithMessage)).toBe(
+      "Request failed with status code 403: Project access denied"
+    );
+
+    const axiosErrorWithErrorField = {
+      isAxiosError: true,
+      response: {
+        status: 401,
+        data: { error: "invalid_token" }
+      }
+    };
+    expect(parseScanErrorMessage(axiosErrorWithErrorField)).toBe("Request failed with status code 401: invalid_token");
+
+    const axiosErrorWithOpaqueObject = {
+      isAxiosError: true,
+      message: "Request failed with status code 500",
+      response: {
+        status: 500,
+        data: { sensitiveDbDump: "should-not-be-serialized" }
+      }
+    };
+    const msg = parseScanErrorMessage(axiosErrorWithOpaqueObject);
+    expect(msg).toBe("Request failed with status code 500");
+    expect(msg).not.toContain("sensitiveDbDump");
+  });
+
+  test("handles AxiosError without response object", () => {
+    const mockSecret = "dummy-net-secret";
+    const networkError = {
+      isAxiosError: true,
+      message: `connect ECONNREFUSED https://${mockSecret}@api.example.com`
+    };
+    const message = parseScanErrorMessage(networkError);
+    expect(message).toContain("connect ECONNREFUSED");
+    expect(message).toContain("[REDACTED]@");
+    expect(message).not.toContain(mockSecret);
   });
 
   test("does not alter the SecretScanningExecError message path", () => {
@@ -293,6 +336,20 @@ describe("planCommitBatches", () => {
       await rm(repoPath, { recursive: true, force: true });
     }
   };
+
+  test("reports an empty repository as having no commits", async () => {
+    await withRepo(async (repoPath) => {
+      expect(await repositoryHasCommits(repoPath)).toBe(false);
+    });
+  });
+
+  test("reports a repository with a commit as having commits", async () => {
+    await withRepo(async (repoPath) => {
+      await commit(repoPath, "a", "2020-01-01T00:00:00Z");
+
+      expect(await repositoryHasCommits(repoPath)).toBe(true);
+    });
+  });
 
   test("resumes past the commits it already scanned", async () => {
     await withRepo(async (repoPath) => {
@@ -387,4 +444,4 @@ describe("planCommitBatches", () => {
       expect(plan.batches).toHaveLength(2);
     });
   });
-});
+}, 30_000);

@@ -1,0 +1,91 @@
+---
+title: "Microsoft SQL Server discovery"
+sidebarTitle: "Microsoft SQL Server"
+description: "Scan Microsoft SQL Server instances for SQL logins and import them into PAM."
+---
+
+Microsoft SQL Server discovery scans a set of SQL Server instances, lists the SQL logins on each one, stages them for review, and lets you import them into PAM as [MS SQL accounts](/documentation/platform/pam/accounts/mssql). You list the instances to scan and the MS SQL accounts to scan with.
+
+All scan traffic is tunneled through an Infisical [Gateway](/documentation/platform/gateways/overview).
+
+<Accordion title="How it works">
+  A SQL Server scan connects entirely through the Gateway:
+
+  1. Each target you list is one instance to scan. The gateway resolves hostnames in the target network.
+  2. Discovery probes each target on the ports of your credential accounts and skips unreachable targets.
+  3. For each reachable target, discovery tries the credential account whose host and port match the target first, then the other accounts in turn.
+  4. Discovery stages each login it finds as an MS SQL account scoped to that instance, so a login named `sa` on two instances becomes two accounts.
+
+  The run reports any instance that no credential account can scan, and the rest of the scan still completes.
+</Accordion>
+
+## Prerequisites
+
+Before creating a Microsoft SQL Server discovery source, make sure you have:
+
+- A [Gateway](/documentation/platform/gateways/overview) (or Gateway pool) with network access to the instances you want to scan
+- One or more [MS SQL accounts](/documentation/platform/pam/accounts/mssql) that use SQL Server authentication, to use as credential accounts (discovery reuses each account's port, database, and TLS settings)
+- The `VIEW ANY DEFINITION` or `ALTER ANY LOGIN` server permission for each credential account's login, so it can see every login on the instance (members of `sysadmin` and `securityadmin` already have it)
+- The [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership) role on your PAM project
+
+## Step 1: Create a source
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Manager > Discovery** and select **Add Source**.
+  </Step>
+  <Step>
+    Select **Microsoft SQL Server**, then select **Next**.
+  </Step>
+  <Step>
+    Configure the source:
+
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A descriptive name (for example, `prod-sql-servers`) |
+    | **Credential Accounts** | One or more [MS SQL accounts](/documentation/platform/pam/accounts/mssql) used to connect and scan |
+    | **Gateway** | The [Gateway](/documentation/platform/gateways/overview) or Gateway pool that scan traffic tunnels through |
+    | **Scan Schedule** | How often to scan automatically: **Manual**, **Daily**, or **Weekly** |
+    | **Targets** | IP addresses or hostnames of the instances to scan, one per line or comma-separated |
+  </Step>
+  <Step>
+    Select **Add Source**. The source appears in the **Discovery Sources** table.
+  </Step>
+</Steps>
+
+<Note>
+Discovery only stages enabled SQL logins, and skips Windows logins and SQL Server's internal logins.
+</Note>
+
+## Step 2: Run a scan
+
+To start a scan manually, select **Scan Now** from the source's row menu or its detail panel. Scans run in the background, one at a time per source, and sources on a **Daily** or **Weekly** schedule also scan automatically.
+
+## Step 3: Import accounts
+
+<Steps>
+  <Step>
+    In the **Discovery Sources** table, select the source to open its detail panel.
+  </Step>
+  <Step>
+    From the source's **Staged Accounts** tab, select the accounts you want and select **Import Accounts**.
+  </Step>
+  <Step>
+    Choose a **Destination Folder** and a **Microsoft SQL Server Template**, then select **Import**.
+  </Step>
+</Steps>
+
+<Warning>
+Imported accounts don't include passwords, because discovery doesn't read passwords from SQL Server. Open each imported account and add the password for its login before you use it to connect.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Discovery overview" icon="radar" href="/documentation/platform/pam/discovery/overview">
+    Understand staging, importing, and schedules.
+  </Card>
+  <Card title="MS SQL accounts" icon="database" href="/documentation/platform/pam/accounts/mssql">
+    Learn about the account type used to authenticate scans.
+  </Card>
+</CardGroup>

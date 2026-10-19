@@ -2,12 +2,12 @@ import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
+import { pollUntil } from "e2e-test/testUtils/poll";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
-import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-variable-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import {
   AGENT_VAULT_MAX_PROXIES_PER_ORG,
@@ -16,12 +16,13 @@ import {
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
+import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger, logger } from "@app/lib/logger";
@@ -170,6 +171,27 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
   };
 };
 
+// The caller can never name itself in a demotion or a removal, so while it holds an admin row of its own
+// no batch can reach the last-admin guard. Holding admin only through a group leaves every admin row
+// nameable, because the self check covers users and identities, not groups.
+const makeCallerAdminOnlyThroughGroup = async (projectId: string) => {
+  const own = await testDb("memberships")
+    .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
+    .first();
+  await testDb("membership_roles").where({ membershipId: own.id }).update({ role: ProjectMembershipRole.Member });
+  const group = await createProjectGroup(projectId, "av-caller-admins", ProjectMembershipRole.Admin);
+  await testDb("user_group_membership").insert({ groupId: group.id, userId: seedData1.id });
+
+  return {
+    groupId: group.id,
+    restore: async () => {
+      await testDb("membership_roles").where({ membershipId: own.id }).update({ role: ProjectMembershipRole.Admin });
+      await testDb("user_group_membership").where({ groupId: group.id }).delete();
+      await group.cleanup();
+    }
+  };
+};
+
 const getProjectId = async () =>
   (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
 
@@ -305,13 +327,13 @@ describe("Agent Vault V1 Router", async () => {
 
       const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`);
       const { members, totalCount } = JSON.parse(res.payload) as {
-        members: { actor: { type: string; id: string } }[];
+        members: { type: string; id: string }[];
         totalCount: number;
       };
 
       expect(totalCount).toBe(1);
       expect(members).toHaveLength(1);
-      expect(members[0].actor).toMatchObject({ type: "user", id: seedData1.id });
+      expect(members[0]).toMatchObject({ type: "user", id: seedData1.id });
 
       // The detail response no longer carries a members array, so there is one source for the list.
       const detail = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
@@ -758,8 +780,20 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("variables", async () => {
-    const variablesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/variables`;
+    const variablesUrl = "/api/v1/agent-vault/variables";
     const servicesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`;
+
+    // Keys are unique across the org's Agent Vault, and every test here shares it. A variable still referenced can't
+    // be deleted through the API, so the rows go straight from the database.
+    beforeEach(async () => {
+      const project = await testDb("projects")
+        .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
+        .first();
+      if (!project) return;
+      const variableIds = testDb("agent_vault_variables").where({ projectId: project.id }).select("id");
+      await testDb("agent_vault_service_variable_references").whereIn("variableId", variableIds).del();
+      await testDb("agent_vault_variables").where({ projectId: project.id }).del();
+    });
 
     type TReference = {
       variableId: string;
@@ -769,8 +803,8 @@ describe("Agent Vault V1 Router", async () => {
       substitutionId?: string;
     };
 
-    const createVariable = async (accessBundleId: string, body: { key: string; value: string; isSecret?: boolean }) => {
-      const res = await inject("POST", variablesUrl(accessBundleId), body);
+    const createVariable = async (body: { key: string; value: string }) => {
+      const res = await inject("POST", variablesUrl, body);
       expect(res.statusCode).toBe(200);
       return (JSON.parse(res.payload) as { variable: { id: string; key: string } }).variable;
     };
@@ -781,7 +815,7 @@ describe("Agent Vault V1 Router", async () => {
     // Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
     const createProxyCaPem = async () => {
       const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
-      const keys = await crypto.webcrypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
       const certificate = await x509.X509CertificateGenerator.createSelfSigned({
         name: "CN=Agent Vault Variables Test CA",
         serialNumber: "01",
@@ -876,13 +910,16 @@ describe("Agent Vault V1 Router", async () => {
     const STORED_REFERENCE = /\{\{([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}\}/g;
 
     // What the delete refusal rests on: every field's rows name exactly the ids in its sealed text that resolve
-    // expands, which are those of the bundle's own variables. Read off the sealed text, not through the service.
+    // expands, which are those of the project's variables. Read off the sealed text, not through the service.
     const expectReferencesMatchSealedText = async (accessBundleId: string) => {
       const { decryptor } = await cipherFor(accessBundleId);
       const open = (sealed: Buffer) =>
         JSON.parse(decryptor({ cipherTextBlob: sealed }).toString("utf-8")) as Record<string, string>;
+      const { projectId } = (await testDb("agent_vault_access_bundles").where({ id: accessBundleId }).first()) as {
+        projectId: string;
+      };
       const variableIds = new Set(
-        ((await testDb("agent_vault_variables").where({ accessBundleId }).select("id")) as { id: string }[]).map(
+        ((await testDb("agent_vault_variables").where({ projectId }).select("id")) as { id: string }[]).map(
           (row) => row.id
         )
       );
@@ -952,8 +989,8 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a service uses a variable by key, and resolve puts the value in its place", async () => {
       const bundle = await createAccessBundle("variables-resolve");
-      const token = await createVariable(bundle.id, { key: "GITHUB_TOKEN", value: "ghp_from_variable" });
-      const org = await createVariable(bundle.id, { key: "ORG_ID", value: "org-42", isSecret: false });
+      const token = await createVariable({ key: "GITHUB_TOKEN", value: "ghp_from_variable" });
+      const org = await createVariable({ key: "ORG_ID", value: "org-42" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "github",
@@ -1007,7 +1044,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a field at the reference limit reaches the host whole with its variables at their longest, from either save", async () => {
       const bundle = await createAccessBundle("variables-longest");
-      const long = await createVariable(bundle.id, { key: "LONG", value: "x" });
+      const long = await createVariable({ key: "LONG", value: "x" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "longest",
@@ -1017,7 +1054,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(created.statusCode).toBe(200);
 
       // Nothing measures a field filled in, so a value change can't be refused on a service's behalf.
-      const grown = await inject("PATCH", `${variablesUrl(bundle.id)}/${long.id}`, { value: "y".repeat(8192) });
+      const grown = await inject("PATCH", `${variablesUrl}/${long.id}`, { value: "y".repeat(8192) });
       expect(grown.statusCode).toBe(200);
 
       const resolve = await resolverFor(bundle, "variables-longest");
@@ -1026,7 +1063,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a username a variable fills in is trimmed like a typed one, and the password keeps its spaces", async () => {
       const bundle = await createAccessBundle("variables-username-trim");
-      await createVariable(bundle.id, { key: "PADDED", value: " padded " });
+      await createVariable({ key: "PADDED", value: " padded " });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "padded",
         hostPattern: "padded.example.com",
@@ -1044,7 +1081,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a stored id with no variable behind it is sent as stored, and its service keeps its restrictions", async () => {
       const bundle = await createAccessBundle("variables-missing");
-      const gone = await createVariable(bundle.id, { key: "GONE", value: "x" });
+      const gone = await createVariable({ key: "GONE", value: "x" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "missing",
         hostPattern: "api.example.com",
@@ -1067,7 +1104,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("renaming a variable keeps its services working, and a new value reaches the next resolve", async () => {
       const bundle = await createAccessBundle("variables-rename");
-      const variable = await createVariable(bundle.id, { key: "OLD_NAME", value: "first" });
+      const variable = await createVariable({ key: "OLD_NAME", value: "first" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "echo",
         hostPattern: "echo.example.com",
@@ -1077,12 +1114,11 @@ describe("Agent Vault V1 Router", async () => {
       const serviceId = (JSON.parse(created.payload) as { service: { id: string } }).service.id;
       const resolve = await resolverFor(bundle, "variables-rename");
 
-      const renamed = await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { key: "NEW_NAME" });
+      const renamed = await inject("PATCH", `${variablesUrl}/${variable.id}`, { key: "NEW_NAME" });
       expect(renamed.statusCode).toBe(200);
       expect(JSON.parse(renamed.payload).variable).toMatchObject({
         key: "NEW_NAME",
-        value: null,
-        serviceIds: [serviceId]
+        usedByServices: [{ id: serviceId, name: "echo", accessBundleId: bundle.id, accessBundleName: bundle.name }]
       });
 
       const detail = JSON.parse((await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload) as {
@@ -1094,9 +1130,7 @@ describe("Agent Vault V1 Router", async () => {
       await expectReferencesMatchSealedText(bundle.id);
       expect((await resolve()).services[0].credential).toMatchObject({ value: "first" });
 
-      expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { value: "second" })).statusCode).toBe(
-        200
-      );
+      expect((await inject("PATCH", `${variablesUrl}/${variable.id}`, { value: "second" })).statusCode).toBe(200);
       expect((await resolve()).services[0].credential).toMatchObject({ value: "second" });
 
       const stale = await inject("POST", servicesUrl(bundle.id), {
@@ -1110,7 +1144,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a variable a service uses can't be deleted, and the refusal names the service", async () => {
       const bundle = await createAccessBundle("variables-in-use");
-      const variable = await createVariable(bundle.id, { key: "API_KEY", value: "key_value" });
+      const variable = await createVariable({ key: "API_KEY", value: "key_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "datadog",
         hostPattern: "api.datadoghq.com",
@@ -1119,9 +1153,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(created.statusCode).toBe(200);
       const { service } = JSON.parse(created.payload) as { service: { id: string } };
 
-      const refused = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
+      const refused = await inject("DELETE", `${variablesUrl}/${variable.id}`);
       expect(refused.statusCode).toBe(409);
-      expect(JSON.parse(refused.payload).message).toContain("'datadog'");
+      expect(JSON.parse(refused.payload).message).toContain(`'datadog' (access bundle '${bundle.name}')`);
 
       const detached = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
         credential: { type: "bearer", value: "literal_value" }
@@ -1130,9 +1164,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(detached.payload).service.variableReferences).toEqual([]);
       await expectReferencesMatchSealedText(bundle.id);
 
-      const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
+      const removed = await inject("DELETE", `${variablesUrl}/${variable.id}`);
       expect(removed.statusCode).toBe(200);
-      expect(JSON.parse(removed.payload).variable).toMatchObject({ id: variable.id, key: "API_KEY", value: null });
+      expect(JSON.parse(removed.payload).variable).toMatchObject({ id: variable.id, key: "API_KEY" });
     });
 
     test("an unknown key fails the save by name, and a malformed reference fails validation unquoted", async () => {
@@ -1183,7 +1217,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a value takes three variable references, a repeat counted each time, and a fourth fails validation", async () => {
       const bundle = await createAccessBundle("variables-reference-limit");
-      await createVariable(bundle.id, { key: "TOKEN", value: "t" });
+      await createVariable({ key: "TOKEN", value: "t" });
 
       const atLimit = await inject("POST", servicesUrl(bundle.id), {
         name: "at-limit",
@@ -1206,63 +1240,264 @@ describe("Agent Vault V1 Router", async () => {
       expect(services.map((service) => service.name)).toEqual(["at-limit"]);
     });
 
-    test("the list carries only values that are not secret, and the value route returns either uncached", async () => {
-      const bundle = await createAccessBundle("variables-visibility");
-      const hidden = await createVariable(bundle.id, { key: "HIDDEN", value: "hidden_value" });
-      await createVariable(bundle.id, { key: "SHOWN", value: "shown_value", isSecret: false });
+    test("no response but the value route carries a value, and that route returns it uncached", async () => {
+      // A client from before every value was secret may still send isSecret: false. It is stripped, not honoured.
+      const createdRes = await inject("POST", variablesUrl, {
+        key: "HIDDEN",
+        value: "hidden_value",
+        isSecret: false
+      });
+      expect(createdRes.statusCode).toBe(200);
+      expect(createdRes.payload).not.toContain("hidden_value");
+      const hidden = (JSON.parse(createdRes.payload) as { variable: { id: string } }).variable;
 
-      const listed = await inject("GET", variablesUrl(bundle.id));
+      const listed = await inject("GET", variablesUrl);
       expect(listed.statusCode).toBe(200);
       expect(listed.payload).not.toContain("hidden_value");
-      expect(JSON.parse(listed.payload).variables).toEqual([
-        expect.objectContaining({ key: "HIDDEN", isSecret: true, value: null, serviceIds: [] }),
-        expect.objectContaining({ key: "SHOWN", isSecret: false, value: "shown_value", serviceIds: [] })
-      ]);
+      const [listedVariable] = JSON.parse(listed.payload).variables;
+      expect(listedVariable).toMatchObject({ key: "HIDDEN", usedByServices: [] });
+      expect(listedVariable).not.toHaveProperty("accessBundleId");
+      expect(listedVariable).not.toHaveProperty("value");
+      expect(listedVariable).not.toHaveProperty("isSecret");
 
-      const revealed = await inject("GET", `${variablesUrl(bundle.id)}/${hidden.id}/value`);
+      const updated = await inject("PATCH", `${variablesUrl}/${hidden.id}`, { value: "new_hidden_value" });
+      expect(updated.statusCode).toBe(200);
+      expect(updated.payload).not.toContain("new_hidden_value");
+
+      const revealed = await inject("GET", `${variablesUrl}/${hidden.id}/value`);
       expect(revealed.statusCode).toBe(200);
-      expect(JSON.parse(revealed.payload)).toEqual({ value: "hidden_value" });
+      expect(JSON.parse(revealed.payload)).toEqual({ value: "new_hidden_value" });
       expect(revealed.headers["cache-control"]).toContain("no-store");
 
-      const flipped = await inject("PATCH", `${variablesUrl(bundle.id)}/${hidden.id}`, { isSecret: false });
-      expect(flipped.statusCode).toBe(200);
-      expect(JSON.parse(flipped.payload).variable).toMatchObject({ isSecret: false, value: "hidden_value" });
-
       const row = await testDb("agent_vault_variables").where({ id: hidden.id }).first();
-      expect(row.encryptedValue.toString("utf-8")).not.toContain("hidden_value");
+      expect(row.encryptedValue.toString("utf-8")).not.toContain("new_hidden_value");
+
+      const removed = await inject("DELETE", `${variablesUrl}/${hidden.id}`);
+      expect(removed.statusCode).toBe(200);
+      expect(removed.payload).not.toContain("new_hidden_value");
     });
 
     test("a value can't be only spaces, and one with spaces around it is kept as typed", async () => {
-      const bundle = await createAccessBundle("variables-blank-value");
-      const blank = await inject("POST", variablesUrl(bundle.id), { key: "BLANK", value: "   " });
+      const blank = await inject("POST", variablesUrl, { key: "BLANK", value: "   " });
       expect(blank.statusCode).toBe(422);
       expect(blank.payload).toContain("A value can't be only spaces.");
 
-      const padded = await createVariable(bundle.id, { key: "PADDED", value: " kept ", isSecret: false });
-      expect(JSON.parse((await inject("GET", variablesUrl(bundle.id))).payload).variables).toEqual([
-        expect.objectContaining({ key: "PADDED", value: " kept " })
-      ]);
-      expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${padded.id}`, { value: " " })).statusCode).toBe(422);
+      const padded = await createVariable({ key: "PADDED", value: " kept " });
+      const revealed = await inject("GET", `${variablesUrl}/${padded.id}/value`);
+      expect(JSON.parse(revealed.payload)).toEqual({ value: " kept " });
+      expect((await inject("PATCH", `${variablesUrl}/${padded.id}`, { value: " " })).statusCode).toBe(422);
     });
 
-    test("a key is unique in its bundle and has to be upper snake case", async () => {
-      const bundle = await createAccessBundle("variables-keys");
-      await createVariable(bundle.id, { key: "TOKEN", value: "one" });
+    test("a key is unique across Agent Vault and has to be upper snake case", async () => {
+      const first = await createVariable({ key: "TOKEN", value: "one" });
 
-      const duplicate = await inject("POST", variablesUrl(bundle.id), { key: "TOKEN", value: "two" });
+      const duplicate = await inject("POST", variablesUrl, { key: "TOKEN", value: "two" });
       expect(duplicate.statusCode).toBe(400);
-      expect(JSON.parse(duplicate.payload).message).toContain("'TOKEN'");
-      expect((await inject("POST", variablesUrl(bundle.id), { key: "lower_case", value: "x" })).statusCode).toBe(422);
+      expect(JSON.parse(duplicate.payload).message).toBe("A variable named 'TOKEN' already exists.");
+      expect((await inject("POST", variablesUrl, { key: "lower_case", value: "x" })).statusCode).toBe(422);
 
-      const other = await createAccessBundle("variables-keys-other");
-      expect((await inject("POST", variablesUrl(other.id), { key: "TOKEN", value: "three" })).statusCode).toBe(200);
+      const second = await createVariable({ key: "OTHER", value: "three" });
+      const renamedOnto = await inject("PATCH", `${variablesUrl}/${second.id}`, { key: "TOKEN" });
+      expect(renamedOnto.statusCode).toBe(400);
+      expect(JSON.parse(renamedOnto.payload).message).toBe("A variable named 'TOKEN' already exists.");
+
+      // Renaming a variable to its own key is no clash.
+      expect((await inject("PATCH", `${variablesUrl}/${first.id}`, { key: "TOKEN" })).statusCode).toBe(200);
+    });
+
+    test("the list pages, searches, and sorts by how many services use each variable", async () => {
+      const bundle = await createAccessBundle("variables-list");
+      await createVariable({ key: "ALPHA_TOKEN", value: "a" });
+      await createVariable({ key: "BETA_TOKEN", value: "b" });
+      await createVariable({ key: "GAMMA_KEY", value: "g" });
+      const createService = async (body: Record<string, unknown>) =>
+        expect((await inject("POST", servicesUrl(bundle.id), body)).statusCode).toBe(200);
+      // Two fields of one service count as one service.
+      await createService({
+        name: "both-fields",
+        hostPattern: "both-fields.example.com",
+        credential: { type: "bearer", value: "{{GAMMA_KEY}}" },
+        customHeaders: [{ name: "X-Gamma", value: "{{GAMMA_KEY}}" }]
+      });
+      await createService({
+        name: "gamma-and-beta",
+        hostPattern: "gamma-and-beta.example.com",
+        credential: { type: "basic", username: "{{BETA_TOKEN}}", password: "{{GAMMA_KEY}}" }
+      });
+
+      const list = async (query: string) => {
+        const res = await inject("GET", `${variablesUrl}?${query}`);
+        expect(res.statusCode).toBe(200);
+        const body = JSON.parse(res.payload) as { variables: { key: string }[]; totalCount: number };
+        return { keys: body.variables.map((variable) => variable.key), totalCount: body.totalCount };
+      };
+
+      expect(await list("limit=2")).toEqual({ keys: ["ALPHA_TOKEN", "BETA_TOKEN"], totalCount: 3 });
+      expect(await list("limit=2&offset=2")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 3 });
+      expect(await list("search=token")).toEqual({ keys: ["ALPHA_TOKEN", "BETA_TOKEN"], totalCount: 2 });
+      expect(await list("search=%25")).toEqual({ keys: [], totalCount: 0 });
+      expect(await list("orderBy=serviceCount&orderDirection=desc")).toEqual({
+        keys: ["GAMMA_KEY", "BETA_TOKEN", "ALPHA_TOKEN"],
+        totalCount: 3
+      });
+      expect((await inject("GET", `${variablesUrl}?limit=101`)).statusCode).toBe(422);
+
+      // Exact keys, so a lookup can tell a key that exists from one that only contains the text.
+      expect(await list("keys=GAMMA_KEY,MISSING_KEY,ALPHA_TOKEN")).toEqual({
+        keys: ["ALPHA_TOKEN", "GAMMA_KEY"],
+        totalCount: 2
+      });
+      expect(await list("keys=TOKEN")).toEqual({ keys: [], totalCount: 0 });
+      expect((await inject("GET", `${variablesUrl}?keys=lower_case`)).statusCode).toBe(422);
+      // A trailing comma's empty entry is dropped rather than refused.
+      expect(await list("keys=GAMMA_KEY,")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 1 });
+    });
+
+    test("a lookup by keys returns every key that exists, past the default page size", async () => {
+      const keys = Array.from({ length: 25 }, (_, index) => `LOOKUP_KEY_${String(index).padStart(2, "0")}`);
+      await Promise.all(keys.map((key) => createVariable({ key, value: "v" })));
+
+      const res = await inject("GET", `${variablesUrl}?keys=${keys.join(",")}`);
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload) as { variables: { key: string }[]; totalCount: number };
+      expect(body.totalCount).toBe(25);
+      expect(body.variables.map((variable) => variable.key)).toEqual(keys);
+
+      // An explicit limit still caps it.
+      const capped = JSON.parse((await inject("GET", `${variablesUrl}?keys=${keys.join(",")}&limit=5`)).payload) as {
+        variables: unknown[];
+        totalCount: number;
+      };
+      expect(capped).toMatchObject({ totalCount: 25 });
+      expect(capped.variables).toHaveLength(5);
+    });
+
+    test("services in different bundles share a variable, and each resolves it", async () => {
+      const first = await createAccessBundle("variables-shared-first");
+      const second = await createAccessBundle("variables-shared-second");
+      const variable = await createVariable({ key: "SHARED_TOKEN", value: "shared_value" });
+
+      const createdIn = async (bundle: { id: string }, name: string) => {
+        const res = await inject("POST", servicesUrl(bundle.id), {
+          name,
+          hostPattern: `${name}.example.com`,
+          credential: { type: "bearer", value: "{{SHARED_TOKEN}}" }
+        });
+        expect(res.statusCode).toBe(200);
+        return (JSON.parse(res.payload) as { service: { id: string } }).service;
+      };
+      const firstService = await createdIn(first, "shared-one");
+      const secondService = await createdIn(second, "shared-two");
+      await expectReferencesMatchSealedText(first.id);
+      await expectReferencesMatchSealedText(second.id);
+
+      const listed = JSON.parse((await inject("GET", variablesUrl)).payload) as {
+        variables: { id: string; usedByServices: Record<string, string>[] }[];
+      };
+      expect(listed.variables.find((entry) => entry.id === variable.id)?.usedByServices).toEqual([
+        {
+          id: firstService.id,
+          name: "shared-one",
+          hostPattern: "shared-one.example.com",
+          accessBundleId: first.id,
+          accessBundleName: first.name
+        },
+        {
+          id: secondService.id,
+          name: "shared-two",
+          hostPattern: "shared-two.example.com",
+          accessBundleId: second.id,
+          accessBundleName: second.name
+        }
+      ]);
+
+      const refused = await inject("DELETE", `${variablesUrl}/${variable.id}`);
+      expect(refused.statusCode).toBe(409);
+      expect(JSON.parse(refused.payload).message).toBe(
+        `The variable 'SHARED_TOKEN' is used by the services 'shared-one' (access bundle '${first.name}'), 'shared-two' (access bundle '${second.name}'). Remove it from those services before deleting it.`
+      );
+
+      const resolveFirst = await resolverFor(first, "variables-shared-first");
+      expect((await resolveFirst()).services[0].credential).toMatchObject({ value: "shared_value" });
+      const resolveSecond = await resolverFor(second, "variables-shared-second");
+      expect((await resolveSecond()).services[0].credential).toMatchObject({ value: "shared_value" });
+    });
+
+    test("a delete waits for a service save that is adding a reference, and then refuses", async () => {
+      const bundle = await createAccessBundle("variables-delete-race");
+      const variable = await createVariable({ key: "RACED", value: "raced_value" });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "raced",
+        hostPattern: "raced.example.com",
+        credential: { type: "passthrough" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+
+      // What a save does once it holds the bundle: take the variable FOR SHARE, then add its reference row.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_variables").where({ id: variable.id }).forShare().first();
+
+        const pending = inject("DELETE", `${variablesUrl}/${variable.id}`);
+        await waitUntilBlockedBy(rows[0].pid);
+
+        await trx("agent_vault_service_variable_references").insert({
+          serviceId: service.id,
+          variableId: variable.id,
+          field: "credential-value"
+        });
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(409);
+        expect(JSON.parse(refused.payload).message).toContain("'raced'");
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      }
+      expect(await testDb("agent_vault_variables").where({ id: variable.id })).toHaveLength(1);
+    });
+
+    test("a service save waiting on a variable that is then deleted fails without leaving a reference", async () => {
+      const bundle = await createAccessBundle("variables-save-race");
+      const variable = await createVariable({ key: "DOOMED", value: "doomed_value" });
+
+      // What a delete does: lock the variable, find no references, delete it. The save looks the key up first and
+      // then queues behind the lock. Its share lock and the deferred foreign key each give this answer on their own.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_variables").where({ id: variable.id }).forUpdate().first();
+
+        const pending = inject("POST", servicesUrl(bundle.id), {
+          name: "doomed",
+          hostPattern: "doomed.example.com",
+          credential: { type: "bearer", value: "{{DOOMED}}" }
+        });
+        await waitUntilBlockedBy(rows[0].pid);
+
+        await trx("agent_vault_variables").where({ id: variable.id }).del();
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(400);
+        expect(JSON.parse(refused.payload).message).toBe(
+          "A variable this service uses was deleted while it was being saved. Check its variable references and save again."
+        );
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      }
+      expect(await testDb("agent_vault_services").where({ accessBundleId: bundle.id })).toHaveLength(0);
     });
 
     test("an update rebuilds the references of only the values it wrote", async () => {
       const bundle = await createAccessBundle("variables-partial");
-      await createVariable(bundle.id, { key: "USER", value: "the-user" });
-      await createVariable(bundle.id, { key: "PASS", value: "the-pass" });
-      await createVariable(bundle.id, { key: "HEADER", value: "the-header" });
+      await createVariable({ key: "USER", value: "the-user" });
+      await createVariable({ key: "PASS", value: "the-pass" });
+      await createVariable({ key: "HEADER", value: "the-header" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "basic",
@@ -1306,8 +1541,8 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a basic credential's kept half is stored text, so one saved before variables existed stays as it was", async () => {
       const bundle = await createAccessBundle("variables-legacy-half");
-      await createVariable(bundle.id, { key: "FOO", value: "foo-value" });
-      await createVariable(bundle.id, { key: "USER", value: "the-user" });
+      await createVariable({ key: "FOO", value: "foo-value" });
+      await createVariable({ key: "USER", value: "the-user" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "legacy",
@@ -1348,9 +1583,9 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a partial basic update refuses to write over a credential another save changed while it waited", async () => {
       const bundle = await createAccessBundle("variables-stale-half");
-      await createVariable(bundle.id, { key: "FIRST_USER", value: "first-user" });
-      await createVariable(bundle.id, { key: "SECOND_USER", value: "second-user" });
-      await createVariable(bundle.id, { key: "PASS", value: "the-pass" });
+      await createVariable({ key: "FIRST_USER", value: "first-user" });
+      await createVariable({ key: "SECOND_USER", value: "second-user" });
+      await createVariable({ key: "PASS", value: "the-pass" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "stale",
@@ -1450,9 +1685,9 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("deleting a bundle takes its variables and every reference to them", async () => {
+    test("deleting a bundle keeps the variables its services used, and drops their references", async () => {
       const bundle = await createAccessBundle("variables-bundle-delete");
-      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "t" });
+      const variable = await createVariable({ key: "TOKEN", value: "t" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "one",
         hostPattern: "one.example.com",
@@ -1463,15 +1698,22 @@ describe("Agent Vault V1 Router", async () => {
 
       const removed = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
       expect(removed.statusCode).toBe(200);
-      expect(await testDb("agent_vault_variables").where({ id: variable.id })).toHaveLength(0);
       expect(await testDb("agent_vault_service_variable_references").where({ variableId: variable.id })).toHaveLength(
         0
       );
+
+      const listed = JSON.parse((await inject("GET", variablesUrl)).payload) as {
+        variables: { id: string; usedByServices: unknown[] }[];
+      };
+      expect(listed.variables).toEqual([
+        expect.objectContaining({ id: variable.id, key: "TOKEN", usedByServices: [] })
+      ]);
+      expect((await inject("DELETE", `${variablesUrl}/${variable.id}`)).statusCode).toBe(200);
     });
 
     test("variables are admin only, reads included", async () => {
       const bundle = await createAccessBundle("variables-admin-only");
-      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "admin_only_value", isSecret: false });
+      const variable = await createVariable({ key: "TOKEN", value: "admin_only_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "uses-token",
         hostPattern: "api.example.com",
@@ -1513,16 +1755,12 @@ describe("Agent Vault V1 Router", async () => {
           { variableId: variable.id, key: "TOKEN", field: "credential-value" }
         ]);
 
-        const listed = await member.asIdentity("GET", variablesUrl(bundle.id));
+        const listed = await member.asIdentity("GET", variablesUrl);
         expect(listed.statusCode).toBe(403);
-        expect(JSON.parse(listed.payload).message).toBe("Only Agent Vault admins can view or change variables");
         expect(listed.payload).not.toContain("admin_only_value");
-        expect((await member.asIdentity("GET", `${variablesUrl(bundle.id)}/${variable.id}/value`)).statusCode).toBe(
-          403
-        );
-        expect((await member.asIdentity("POST", variablesUrl(bundle.id), { key: "MINE", value: "x" })).statusCode).toBe(
-          403
-        );
+        expect(listed.payload).not.toContain("TOKEN");
+        expect((await member.asIdentity("GET", `${variablesUrl}/${variable.id}/value`)).statusCode).toBe(403);
+        expect((await member.asIdentity("POST", variablesUrl, { key: "MINE", value: "x" })).statusCode).toBe(403);
       } finally {
         await deleteUaIdentity(member.id);
       }
@@ -1532,13 +1770,15 @@ describe("Agent Vault V1 Router", async () => {
   describe("product membership", async () => {
     const membersUrl = "/api/v1/agent-vault/members";
 
-    type TListedMember = {
+    type TListedMember = Record<string, unknown> & {
+      type: string;
       id: string;
       role: string;
       isActive: boolean;
-      createdAt: string;
-      actor: Record<string, unknown> & { type: string; id: string };
+      addedAt: string;
     };
+
+    const keyOf = (member: TListedMember) => `${member.type}:${member.id}`;
 
     const listMembers = async (query = "") => {
       const res = await inject("GET", `${membersUrl}${query ? `?${query}` : ""}`);
@@ -1561,22 +1801,26 @@ describe("Agent Vault V1 Router", async () => {
         const { members, totalCount } = await listMembers();
         expect(totalCount).toBe(members.length);
 
-        const byType = Object.fromEntries(members.map((member) => [member.actor.type, member]));
+        const byType = Object.fromEntries(members.map((member) => [member.type, member]));
         expect(Object.keys(byType).sort()).toEqual(["group", "machineIdentity", "user"]);
 
-        expect(byType.user.actor).toMatchObject({ id: seedData1.id, username: expect.any(String) });
-        expect(byType.user.actor.isOrgMembershipPending).toBe(false);
+        expect(byType.user).toMatchObject({ id: seedData1.id, username: expect.any(String) });
+        expect(byType.user.isOrgMembershipPending).toBe(false);
         expect(byType.user.role).toBe("admin");
         expect(byType.user.isActive).toBe(true);
 
-        expect(byType.group.actor).toMatchObject({ id: group.id, name: "av-merged-list-group" });
+        expect(byType.group).toMatchObject({ id: group.id, name: "av-merged-list-group" });
 
         // An organization-owned identity can be detached; one Agent Vault created can only be deleted,
         // and the table needs to know which before it offers a button.
-        expect(byType.machineIdentity.actor).toMatchObject({ id: identity.id, isManagedByAgentVault: false });
-        expect(byType.machineIdentity.actor.orgId).toBe(seedData1.organization.id);
+        expect(byType.machineIdentity).toMatchObject({ id: identity.id, isManagedByAgentVault: false });
+        expect(byType.machineIdentity.orgId).toBe(seedData1.organization.id);
 
+        // The actor's id is the only id on a member, since it is the one every write takes.
         members.forEach((member) => {
+          expect(member.addedAt).toEqual(expect.any(String));
+          expect(member).not.toHaveProperty("actor");
+          expect(member).not.toHaveProperty("createdAt");
           expect(member).not.toHaveProperty("membershipId");
           expect(member).not.toHaveProperty("userId");
           expect(member).not.toHaveProperty("identityId");
@@ -1604,7 +1848,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(all.totalCount).toBeGreaterThanOrEqual(3);
 
         const identities = await listMembers("actorType=machineIdentity");
-        expect(identities.members.every((member) => member.actor.type === "machineIdentity")).toBe(true);
+        expect(identities.members.every((member) => member.type === "machineIdentity")).toBe(true);
         expect(identities.totalCount).toBe(identities.members.length);
         expect(identities.totalCount).toBeLessThan(all.totalCount);
 
@@ -1612,11 +1856,11 @@ describe("Agent Vault V1 Router", async () => {
         // not serve.
         const searched = await listMembers("search=av-paging-group");
         expect(searched.totalCount).toBe(1);
-        expect(searched.members[0].actor.id).toBe(group.id);
+        expect(searched.members[0].id).toBe(group.id);
 
         // A user matches on their full name even though no column holds it.
         const byFullName = await listMembers(`search=${encodeURIComponent(seedData1.email)}`);
-        expect(byFullName.members.some((member) => member.actor.id === seedData1.id)).toBe(true);
+        expect(byFullName.members.some((member) => member.id === seedData1.id)).toBe(true);
 
         // Walking the pages one row at a time reaches every member exactly once, which is what the
         // membership-id tiebreak buys on rows that share a name or a createdAt.
@@ -1626,10 +1870,10 @@ describe("Agent Vault V1 Router", async () => {
           const page = await listMembers(`limit=1&offset=${offset}`);
           expect(page.members).toHaveLength(1);
           expect(page.totalCount).toBe(all.totalCount);
-          walked.push(page.members[0].id);
+          walked.push(keyOf(page.members[0]));
         }
         expect(new Set(walked).size).toBe(all.totalCount);
-        expect(walked.sort()).toEqual(all.members.map((member) => member.id).sort());
+        expect(walked.sort()).toEqual(all.members.map(keyOf).sort());
 
         expect((await inject("GET", `${membersUrl}?limit=0`)).statusCode).toBe(422);
         expect((await inject("GET", `${membersUrl}?limit=101`)).statusCode).toBe(422);
@@ -1646,38 +1890,51 @@ describe("Agent Vault V1 Router", async () => {
 
       const added = await inject("POST", membersUrl, { machineIdentityIds: [identity.id], role: "member" });
       expect(added.statusCode).toBe(200);
-      expect(JSON.parse(added.payload).members[0].actor).toMatchObject({
+      expect(JSON.parse(added.payload).members[0]).toMatchObject({
         type: "machineIdentity",
-        id: identity.id
+        id: identity.id,
+        role: "member",
+        addedAt: expect.any(String)
       });
 
       const listed = await listMembers("actorType=machineIdentity");
-      const row = listed.members.find((member) => member.actor.id === identity.id);
+      const row = listed.members.find((member) => member.id === identity.id);
       expect(row?.role).toBe("member");
-      expect(row?.actor.name).toBeTruthy();
+      expect(row?.name).toBeTruthy();
 
-      const promoted = await inject("PATCH", `${membersUrl}/machine-identities/${identity.id}`, { role: "admin" });
+      const promoted = await inject("PATCH", membersUrl, { machineIdentityIds: [identity.id], role: "admin" });
       expect(promoted.statusCode).toBe(200);
-      expect(JSON.parse(promoted.payload).member.role).toBe("admin");
+      expect(JSON.parse(promoted.payload)).toMatchObject({
+        members: [{ type: "machineIdentity", id: identity.id, role: "admin" }],
+        skipped: []
+      });
 
-      const removed = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+      // Asking for the role a member already holds changes nothing, so it is reported as skipped.
+      const unchanged = await inject("PATCH", membersUrl, { machineIdentityIds: [identity.id], role: "admin" });
+      expect(unchanged.statusCode).toBe(200);
+      expect(JSON.parse(unchanged.payload)).toMatchObject({
+        members: [],
+        skipped: [{ type: "machineIdentity", id: identity.id }]
+      });
+
+      const removed = await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
       expect(removed.statusCode).toBe(200);
-      expect(JSON.parse(removed.payload)).toMatchObject({
-        members: [{ actor: { type: "machineIdentity", id: identity.id } }],
+      expect(JSON.parse(removed.payload)).toEqual({
+        members: [{ type: "machineIdentity", id: identity.id }],
         skipped: []
       });
 
       // A second revoke has nothing to remove, so it reports the actor as skipped rather than failing:
       // that is what makes the call safe to retry.
-      const again = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+      const again = await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
       expect(again.statusCode).toBe(200);
-      expect(JSON.parse(again.payload)).toMatchObject({
+      expect(JSON.parse(again.payload)).toEqual({
         members: [],
-        skipped: [{ type: "machineIdentity", id: identity.id, identifier: identity.id }]
+        skipped: [{ type: "machineIdentity", id: identity.id }]
       });
 
       const after = await listMembers("actorType=machineIdentity");
-      expect(after.members.some((member) => member.actor.id === identity.id)).toBe(false);
+      expect(after.members.some((member) => member.id === identity.id)).toBe(false);
 
       await deleteOrgIdentity(identity.id);
     });
@@ -1748,9 +2005,7 @@ describe("Agent Vault V1 Router", async () => {
 
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(1);
 
-      expect((await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] })).statusCode).toBe(
-        200
-      );
+      expect((await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] })).statusCode).toBe(200);
 
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(0);
 
@@ -1842,24 +2097,22 @@ describe("Agent Vault V1 Router", async () => {
               .select("membership_roles.id")) as unknown[]
           ).length;
 
-        const before = await adminCount();
-        expect(before).toBe(3);
+        const callerGroup = await makeCallerAdminOnlyThroughGroup(projectId);
+        try {
+          expect(await adminCount()).toBe(3);
 
-        // Revoking each of these on its own would pass the guard, because the other two are still
-        // standing. Naming all three in one call is what the batch check exists for.
-        const refused = await inject("POST", `${membersUrl}/revoke`, {
-          userIds: [seedData1.id],
-          machineIdentityIds: [one.id, two.id]
-        });
-        expect(refused.statusCode).toBe(403);
-
-        // It refuses on the self check before it reaches the admin count, so take the caller out and the
-        // batch still cannot go through.
-        const withoutSelf = await inject("POST", `${membersUrl}/revoke`, {
-          machineIdentityIds: [one.id, two.id]
-        });
-        expect(withoutSelf.statusCode).toBe(200);
-        expect(await adminCount()).toBe(1);
+          // Revoking any one of these on its own would pass the guard, because the other two are still
+          // standing. Naming all three in one call is what the batch check exists for.
+          const refused = await inject("DELETE", membersUrl, {
+            groupIds: [callerGroup.groupId],
+            machineIdentityIds: [one.id, two.id]
+          });
+          expect(refused.statusCode).toBe(400);
+          expect(JSON.parse(refused.payload).message).toContain("must keep at least one admin");
+          expect(await adminCount()).toBe(3);
+        } finally {
+          await callerGroup.restore();
+        }
       } finally {
         await deleteOrgIdentity(one.id);
         await deleteOrgIdentity(two.id);
@@ -1874,7 +2127,7 @@ describe("Agent Vault V1 Router", async () => {
           (await inject("POST", membersUrl, { machineIdentityIds: [identity.id], role: "member" })).statusCode
         ).toBe(200);
 
-        const refused = await inject("POST", `${membersUrl}/revoke`, {
+        const refused = await inject("DELETE", membersUrl, {
           userIds: [seedData1.id],
           machineIdentityIds: [identity.id]
         });
@@ -1883,10 +2136,57 @@ describe("Agent Vault V1 Router", async () => {
 
         // The other actor named in the same call still has access.
         const listed = await listMembers("actorType=machineIdentity");
-        expect(listed.members.some((member) => member.actor.id === identity.id)).toBe(true);
+        expect(listed.members.some((member) => member.id === identity.id)).toBe(true);
       } finally {
-        await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+        await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
         await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("a role change applies to the members it can and reports the rest as skipped", async () => {
+      const projectId = await getProjectId();
+      const toChange = await createOrgIdentity(`av-role-change-${Date.now()}`);
+      const alreadyAdmin = await createOrgIdentity(`av-role-same-${Date.now()}`);
+      const notMember = await createOrgIdentity(`av-role-none-${Date.now()}`);
+      const group = await createProjectGroup(projectId, "av-role-group", ProjectMembershipRole.Member);
+
+      try {
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [toChange.id], role: "member" })).statusCode
+        ).toBe(200);
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [alreadyAdmin.id], role: "admin" })).statusCode
+        ).toBe(200);
+
+        const res = await inject("PATCH", membersUrl, {
+          machineIdentityIds: [toChange.id, alreadyAdmin.id, notMember.id],
+          groupIds: [group.id],
+          role: "admin"
+        });
+        expect(res.statusCode).toBe(200);
+        const { members, skipped } = JSON.parse(res.payload) as {
+          members: { type: string; id: string; role: string }[];
+          skipped: { type: string; id: string }[];
+        };
+        expect(members.map((member) => `${member.type}:${member.id}:${member.role}`).sort()).toEqual(
+          [`group:${group.id}:admin`, `machineIdentity:${toChange.id}:admin`].sort()
+        );
+        expect(skipped.map((actor) => `${actor.type}:${actor.id}`).sort()).toEqual(
+          [`machineIdentity:${alreadyAdmin.id}`, `machineIdentity:${notMember.id}`].sort()
+        );
+
+        const roleOf = async (actorType: string, id: string) =>
+          (await listMembers(`actorType=${actorType}`)).members.find((member) => member.id === id)?.role;
+        expect(await roleOf("machineIdentity", toChange.id)).toBe("admin");
+        expect(await roleOf("machineIdentity", alreadyAdmin.id)).toBe("admin");
+        expect(await roleOf("group", group.id)).toBe("admin");
+        expect(await roleOf("machineIdentity", notMember.id)).toBeUndefined();
+      } finally {
+        await inject("DELETE", membersUrl, { machineIdentityIds: [toChange.id, alreadyAdmin.id] });
+        await group.cleanup();
+        await deleteOrgIdentity(toChange.id);
+        await deleteOrgIdentity(alreadyAdmin.id);
+        await deleteOrgIdentity(notMember.id);
       }
     });
 
@@ -1923,9 +2223,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(afterAdd.totalCount).toBe(before.totalCount - 1);
 
         // Revoking puts it back, so the list tracks membership rather than caching it.
-        expect((await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] })).statusCode).toBe(
-          200
-        );
+        expect((await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] })).statusCode).toBe(200);
         const afterRevoke = await listAvailable("limit=100");
         expect(idsOf(afterRevoke.actors)).toContain(identity.id);
         expect(afterRevoke.totalCount).toBe(before.totalCount);
@@ -1943,7 +2241,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(firstPage.actors).toHaveLength(1);
         expect(firstPage.totalCount).toBe(before.totalCount);
       } finally {
-        await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+        await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
         await group.cleanup();
         await deleteOrgIdentity(identity.id);
       }
@@ -1973,12 +2271,12 @@ describe("Agent Vault V1 Router", async () => {
         expect(added.statusCode).toBe(200);
 
         const { members, skipped } = JSON.parse(added.payload) as {
-          members: { actor: { type: string; id: string } }[];
+          members: { type: string; id: string }[];
           skipped: { type: string; id: string }[];
         };
 
         expect(members).toHaveLength(1);
-        expect(members[0].actor).toMatchObject({ type: "machineIdentity", id: identity.id });
+        expect(members[0]).toMatchObject({ type: "machineIdentity", id: identity.id });
         expect(skipped.map((el) => el.id).sort()).toEqual([group.id, seedData1.id].sort());
       } finally {
         await group.cleanup();
@@ -1987,7 +2285,7 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("the guards that keep the product administrable hold", async () => {
-      const self = await inject("POST", `${membersUrl}/revoke`, { userIds: [seedData1.id] });
+      const self = await inject("DELETE", membersUrl, { userIds: [seedData1.id] });
       expect(self.statusCode).toBe(403);
 
       const unknown = await inject("POST", membersUrl, {
@@ -2004,13 +2302,35 @@ describe("Agent Vault V1 Router", async () => {
         skipped: [{ type: "user", id: seedData1.id }]
       });
 
-      const badRole = await inject("PATCH", `${membersUrl}/users/${seedData1.id}`, { role: "viewer" });
+      const badRole = await inject("PATCH", membersUrl, { userIds: [seedData1.id], role: "viewer" });
       expect(badRole.statusCode).toBe(422);
 
-      const badSegment = await inject("PATCH", `${membersUrl}/identities/${seedData1.id}`, { role: "member" });
-      expect(badSegment.statusCode).toBe(422);
+      const noActors = await inject("PATCH", membersUrl, { role: "member" });
+      expect(noActors.statusCode).toBe(422);
 
-      const notAnId = await inject("POST", `${membersUrl}/revoke`, { userIds: ["not-a-uuid"] });
+      const bystander = await createOrgIdentity(`av-role-self-${Date.now()}`);
+      try {
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [bystander.id], role: "member" })).statusCode
+        ).toBe(200);
+
+        const selfInBatch = await inject("PATCH", membersUrl, {
+          userIds: [seedData1.id],
+          machineIdentityIds: [bystander.id],
+          role: "admin"
+        });
+        expect(selfInBatch.statusCode).toBe(403);
+        expect(JSON.parse(selfInBatch.payload).message).toContain("your own role");
+
+        // The other actor named in the same call keeps its role.
+        const listed = await listMembers("actorType=machineIdentity");
+        expect(listed.members.find((member) => member.id === bystander.id)?.role).toBe("member");
+      } finally {
+        await inject("DELETE", membersUrl, { machineIdentityIds: [bystander.id] });
+        await deleteOrgIdentity(bystander.id);
+      }
+
+      const notAnId = await inject("DELETE", membersUrl, { userIds: ["not-a-uuid"] });
       expect(notAnId.statusCode).toBe(422);
     });
   });
@@ -2055,7 +2375,7 @@ describe("Agent Vault V1 Router", async () => {
         ],
         // The bundle is the path resource, so a missing one is still 404 even though a missing actor in
         // the body is reported as skipped.
-        ["POST", `/api/v1/agent-vault/access-bundles/${unknown}/members/revoke`, { userIds: [seedData1.id] }]
+        ["DELETE", `/api/v1/agent-vault/access-bundles/${unknown}/members`, { userIds: [seedData1.id] }]
       ];
 
       for await (const [method, url, body] of routes) {
@@ -3329,22 +3649,22 @@ describe("Agent Vault V1 Router", async () => {
         const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`);
         expect(res.statusCode).toBe(200);
         const { members } = JSON.parse(res.payload) as {
-          members: {
-            id: string;
-            actor: { type: string; id: string; name?: string; username?: string };
-          }[];
+          members: { type: string; id: string; name?: string; username?: string; grantedAt: string }[];
         };
 
         // The creator's own grant is already there, so all three arms are on one response.
-        const byType = Object.fromEntries(members.map((member) => [member.actor.type, member]));
+        const byType = Object.fromEntries(members.map((member) => [member.type, member]));
         expect(Object.keys(byType).sort()).toEqual(["group", "machineIdentity", "user"]);
 
-        expect(byType.group.actor).toMatchObject({ type: "group", id: group.id });
-        expect(byType.machineIdentity.actor).toMatchObject({ type: "machineIdentity", id: identity.id });
-        expect(byType.user.actor).toMatchObject({ type: "user", id: seedData1.id });
-        expect(byType.user.actor.username).toBeTruthy();
+        expect(byType.group).toMatchObject({ type: "group", id: group.id, name: "av-arms-group" });
+        expect(byType.machineIdentity).toMatchObject({ type: "machineIdentity", id: identity.id });
+        expect(byType.user).toMatchObject({ type: "user", id: seedData1.id });
+        expect(byType.user.username).toBeTruthy();
 
         members.forEach((member) => {
+          expect(member.grantedAt).toEqual(expect.any(String));
+          expect(member).not.toHaveProperty("actor");
+          expect(member).not.toHaveProperty("createdAt");
           expect(member).not.toHaveProperty("accessBundleId");
           expect(member).not.toHaveProperty("userId");
           expect(member).not.toHaveProperty("identityId");
@@ -3392,12 +3712,11 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("two admins demoted at once cannot both slip past the last-admin guard", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+    test("two overlapping demotions cannot both slip past the last-admin guard", async () => {
+      const projectId = await getProjectId();
       const one = await createUaIdentity(`av-race-a-${Date.now()}`);
       const two = await createUaIdentity(`av-race-b-${Date.now()}`);
+      let callerGroup: Awaited<ReturnType<typeof makeCallerAdminOnlyThroughGroup>> | undefined;
 
       try {
         for await (const identity of [one, two]) {
@@ -3407,35 +3726,76 @@ describe("Agent Vault V1 Router", async () => {
           });
           expect(added.statusCode).toBe(200);
         }
+        callerGroup = await makeCallerAdminOnlyThroughGroup(projectId);
+        const { groupId } = callerGroup;
 
-        // Demote everyone at once. Whatever interleaving wins, an admin has to be left standing.
-        const admins = (await testDb("memberships")
-          .where({ scope: AccessScope.Project, scopeProjectId: projectId })
-          .select("id")) as { id: string }[];
+        // Holding the lock until both requests queue behind it means both have passed their permission
+        // checks first. Otherwise the second can rebuild them after the first demotes the caller's group,
+        // and is refused with a 403 before it ever reaches the guard.
+        let lockHeld!: () => void;
+        let releaseLock!: () => void;
+        const held = new Promise<void>((resolve) => {
+          lockHeld = resolve;
+        });
+        const released = new Promise<void>((resolve) => {
+          releaseLock = resolve;
+        });
+        const holder = testDb.transaction(async (trx) => {
+          await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+          lockHeld();
+          await released;
+        });
+        await held;
 
-        await Promise.all(
+        // Either batch alone leaves an admin standing. Together they would leave none, so one has to be
+        // refused whichever commits first.
+        const pending = Promise.all(
           [one, two].map((identity) =>
-            inject("PATCH", `/api/v1/agent-vault/members/machine-identities/${identity.id}`, {
+            inject("PATCH", "/api/v1/agent-vault/members", {
+              groupIds: [groupId],
+              machineIdentityIds: [identity.id],
               role: ProjectMembershipRole.Member
             })
           )
         );
+        // Released in finally: a poll that times out would otherwise leave the lock held and the queued
+        // requests blocked, hanging the run instead of failing the test.
+        try {
+          await pollUntil({
+            describe: "both demotions to wait on the last-admin lock",
+            read: async () =>
+              Number(
+                (
+                  (await testDb.raw(
+                    "SELECT count(*) AS waiting FROM pg_locks WHERE locktype = 'advisory' AND NOT granted"
+                  )) as { rows: { waiting: string }[] }
+                ).rows[0].waiting
+              ),
+            done: (waiting) => waiting >= 2
+          });
+        } finally {
+          releaseLock();
+          await holder;
+          await Promise.allSettled([pending]);
+        }
+        const results = await pending;
+        expect(results.map((res) => res.statusCode).sort()).toEqual([200, 400]);
+        const refused = results.find((res) => res.statusCode === 400)!;
+        expect(JSON.parse(refused.payload).message).toContain("must keep at least one admin");
 
         const remainingAdmins = (await testDb("membership_roles")
-          .whereIn(
-            "membershipId",
-            admins.map((row) => row.id)
-          )
-          .where({ role: ProjectMembershipRole.Admin })) as unknown[];
-        expect(remainingAdmins.length).toBeGreaterThan(0);
+          .join("memberships", "memberships.id", "membership_roles.membershipId")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, role: ProjectMembershipRole.Admin })
+          .select("memberships.id")) as unknown[];
+        expect(remainingAdmins).toHaveLength(1);
       } finally {
+        await callerGroup?.restore();
         await deleteUaIdentity(one.id);
         await deleteUaIdentity(two.id);
       }
     });
 
     test("an actor from outside the organization is refused, and an unknown id does not 500", async () => {
-      // Users join through the bulk route; only groups and identities are named in the URL.
       const stranger = await inject("POST", "/api/v1/agent-vault/members", {
         userIds: ["99999999-8888-7777-6666-555555555555"],
         emails: [],
@@ -3471,6 +3831,73 @@ describe("Agent Vault V1 Router", async () => {
         expect(JSON.parse(res.payload).message).toContain("is deactivated in this organization");
       } finally {
         await testDb("memberships").where({ id: orgMembership.id }).update({ isActive: true });
+      }
+    });
+
+    test("a deactivated admin can be demoted, but a deactivated member cannot be promoted", async () => {
+      const identity = await createOrgIdentity(`av-deactivated-role-${Date.now()}`);
+
+      try {
+        expect(
+          (
+            await inject("POST", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: ProjectMembershipRole.Admin
+            })
+          ).statusCode
+        ).toBe(200);
+        await testDb("memberships")
+          .where({ scope: AccessScope.Organization, actorIdentityId: identity.id })
+          .update({ isActive: false });
+
+        const demoted = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Member
+        });
+        expect(demoted.statusCode).toBe(200);
+        expect(JSON.parse(demoted.payload).members).toMatchObject([{ id: identity.id, role: "member" }]);
+
+        const promoted = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Admin
+        });
+        expect(promoted.statusCode).toBe(400);
+        expect(JSON.parse(promoted.payload).message).toContain("is deactivated in this organization");
+      } finally {
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("simultaneous role changes leave a member with exactly one role", async () => {
+      const projectId = await getProjectId();
+      const identity = await createOrgIdentity(`av-role-race-${Date.now()}`);
+
+      try {
+        expect(
+          (
+            await inject("POST", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: ProjectMembershipRole.Member
+            })
+          ).statusCode
+        ).toBe(200);
+
+        const results = await Promise.all(
+          Array.from({ length: 10 }, (_, i) =>
+            inject("PATCH", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: i % 2 ? ProjectMembershipRole.Member : ProjectMembershipRole.Admin
+            })
+          )
+        );
+        expect(results.every((res) => res.statusCode === 200)).toBe(true);
+
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
+          .first();
+        expect(await testDb("membership_roles").where({ membershipId: membership.id })).toHaveLength(1);
+      } finally {
+        await deleteOrgIdentity(identity.id);
       }
     });
 
@@ -3549,7 +3976,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect(
           (
-            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+            await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
               groupIds: [group.id]
             })
           ).statusCode
@@ -3714,13 +4141,13 @@ describe("Agent Vault V1 Router", async () => {
         const res = await inject("GET", `${availableUrl}${query ? `?${query}` : ""}`);
         expect(res.statusCode).toBe(200);
         return JSON.parse(res.payload) as {
-          members: { actor: { type: string; id: string } }[];
+          members: { type: string; id: string }[];
           totalCount: number;
         };
       };
 
       try {
-        const idsOf = (members: { actor: { id: string } }[]) => members.map((member) => member.actor.id);
+        const idsOf = (members: { id: string }[]) => members.map((member) => member.id);
 
         // Candidates are the product's own members, and the bundle is new, so nobody holds it yet.
         const before = await listAvailable("limit=100");
@@ -3741,15 +4168,11 @@ describe("Agent Vault V1 Router", async () => {
           `/api/v1/agent-vault/access-bundles/${other.id}/members/available?limit=100`
         );
         expect(otherRes.statusCode).toBe(200);
-        expect(
-          (JSON.parse(otherRes.payload) as { members: { actor: { id: string } }[] }).members.map(
-            (member) => member.actor.id
-          )
-        ).toContain(group.id);
+        expect(idsOf((JSON.parse(otherRes.payload) as { members: { id: string }[] }).members)).toContain(group.id);
 
         expect(
           (
-            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+            await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
               groupIds: [group.id]
             })
           ).statusCode
@@ -3795,14 +4218,18 @@ describe("Agent Vault V1 Router", async () => {
       const group = await createProjectGroup(projectId, "av-revoke-group", ProjectMembershipRole.Member);
 
       try {
-        expect(
-          (await inject("POST", `/api/v1/agent-vault/access-bundles/${held.id}/members`, { groupIds: [group.id] }))
-            .statusCode
-        ).toBe(200);
+        const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${held.id}/members`, {
+          groupIds: [group.id]
+        });
+        expect(granted.statusCode).toBe(200);
+        expect(JSON.parse(granted.payload)).toEqual({
+          members: [{ type: "group", id: group.id, grantedAt: expect.any(String) }],
+          skipped: []
+        });
 
         const stillGranted = async () => (await grantRows(held.id, { actorGroupId: group.id })).length;
         const revoke = (accessBundleId: string, body: Record<string, unknown>) =>
-          inject("POST", `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`, body);
+          inject("DELETE", `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, body);
 
         // Every miss below is a 200 with the actor reported in skipped, not a 404: a batch cannot fail
         // wholesale on one absent id and stay useful, and the grant it does not name has to survive.
@@ -3829,8 +4256,8 @@ describe("Agent Vault V1 Router", async () => {
 
         const correct = await revoke(held.id, { groupIds: [group.id] });
         expect(correct.statusCode).toBe(200);
-        expect(JSON.parse(correct.payload)).toMatchObject({
-          members: [{ actor: { type: "group", id: group.id } }],
+        expect(JSON.parse(correct.payload)).toEqual({
+          members: [{ type: "group", id: group.id }],
           skipped: []
         });
         expect(await stillGranted()).toBe(0);
@@ -3861,7 +4288,7 @@ describe("Agent Vault V1 Router", async () => {
       // The actor holds a project membership but no grant on this bundle, so the revoke reports it as
       // skipped and, crucially, leaves the project membership alone. That is the property this test
       // defends: the two scopes share one table, so a revoke that lost its scope filter would take it.
-      const refused = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+      const refused = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
         machineIdentityIds: [identity.id]
       });
       expect(refused.statusCode).toBe(200);

@@ -35,12 +35,10 @@ export type TAgentVaultProductActor =
     }
   | { type: AgentVaultMemberType.Group; id: string; name: string };
 
-export type TAgentVaultProductMember = {
-  id: string;
+export type TAgentVaultProductMember = TAgentVaultProductActor & {
   role: string;
   isActive: boolean;
-  createdAt: Date;
-  actor: TAgentVaultProductActor;
+  addedAt: Date;
 };
 
 const ACTOR_COLUMN: Record<AgentVaultMemberType, "actorUserId" | "actorIdentityId" | "actorGroupId"> = {
@@ -169,7 +167,6 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
       const rows = (await applyFilters(conn(TableName.Membership))
         .select(
-          db.ref("id").withSchema(TableName.Membership),
           db.ref("createdAt").withSchema(TableName.Membership),
           db.ref("isActive").withSchema(TableName.Membership),
           db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
@@ -202,7 +199,6 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         .orderBy(`${TableName.Membership}.id`, "asc")
         .limit(limit)
         .offset(offset)) as {
-        id: string;
         createdAt: Date;
         isActive: boolean;
         userId: string | null;
@@ -222,11 +218,10 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
       return {
         members: rows.map((row) => ({
-          id: row.id,
+          ...actorOf(row, projectId),
           role: row.role ?? ProjectMembershipRole.Member,
           isActive: row.isActive,
-          createdAt: row.createdAt,
-          actor: actorOf(row, projectId)
+          addedAt: row.createdAt
         })),
         totalCount
       };

@@ -19,6 +19,9 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
+import { getAuditLogEventClass, isAlwaysRecordedEventClass } from "./audit-log-event-classes";
+import { getAuditLogExpiresAt, hasAuditLogRetention } from "./audit-log-retention-fns";
+import { isAuditLogEventEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
 import { TAuditLogStreamEntry, TCreateAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogQueueServiceFactoryDep = {
@@ -27,12 +30,14 @@ type TAuditLogQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   clickhouseClient: ClickHouseClient | null;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
 };
 
 export type TAuditLogQueueServiceFactory = {
   pushToLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  pushToLogOrThrow: (data: TCreateAuditLogDTO) => Promise<void>;
 };
 
 const normalizeJsonPayload = (payload: unknown) => {
@@ -60,7 +65,6 @@ export const AUDIT_LOG_STREAM_TIMEOUT = 5 * 1000;
 // batch deliveries can carry up to AUDIT_LOG_STREAM_BATCH_SIZE events to remote intakes;
 // give them more headroom than the single-event ping timeout above.
 export const AUDIT_LOG_STREAM_BATCH_TIMEOUT = 30 * 1000;
-const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
 const AUDIT_LOG_STREAM_KEY = "audit-log-stream";
 const AUDIT_LOG_STREAM_BATCH_SIZE = 10_000;
@@ -72,6 +76,7 @@ export const auditLogQueueServiceFactory = async ({
   queueService,
   projectDAL,
   licenseService,
+  auditLogSettingsService,
   auditLogStreamOutboxService,
   clickhouseClient,
   keyStore
@@ -103,14 +108,15 @@ export const auditLogQueueServiceFactory = async ({
     const orgId = data.orgId ?? project?.orgId;
     if (!orgId) return null;
 
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan?.auditLogsRetentionDays) return null;
+    if (!isAlwaysRecordedEventClass(getAuditLogEventClass(data.event.type))) {
+      const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId, projectId), () =>
+        auditLogSettingsService.getEffectiveSettings(orgId, projectId)
+      );
+      if (!isAuditLogEventEnabled(settings, data.event.type, projectId)) return null;
+    }
 
-    const ttlInDays =
-      project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
-        ? project.auditLogsRetentionDays
-        : plan.auditLogsRetentionDays;
-    const ttl = ttlInDays * MS_IN_DAY;
+    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
+    if (!plan || !hasAuditLogRetention(plan)) return null;
 
     const createdAt = new Date();
     const id = isClickHouseBatchEnabled ? uuidv7({ msecs: createdAt.getTime() }) : randomUUID();
@@ -120,7 +126,7 @@ export const auditLogQueueServiceFactory = async ({
       id,
       orgId,
       createdAt: createdAt.toISOString(),
-      expiresAt: new Date(createdAt.getTime() + ttl).toISOString(),
+      expiresAt: getAuditLogExpiresAt(createdAt, plan, project?.auditLogsRetentionDays).toISOString(),
       projectName: project?.name
     };
   };
@@ -346,6 +352,7 @@ export const auditLogQueueServiceFactory = async ({
   }
 
   return {
-    pushToLog
+    pushToLog,
+    pushToLogOrThrow: appendToIngestStream
   };
 };

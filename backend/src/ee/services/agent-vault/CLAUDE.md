@@ -17,7 +17,8 @@ never in anything the agent holds.
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
-agent-vault-access-bundle/   bundles, services, variables, credential encryption, grants
+agent-vault-access-bundle/   bundles, services, credential encryption, grants
+agent-vault-variable/        product-wide variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
@@ -55,9 +56,15 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   on project removal, org removal, SCIM and every FK cascade. Do not add an Agent Vault reaper.
 - `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the bundle row first and then the grants in one
   transaction, and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Keep that order.
-- Granting is batch: one POST carries `{ userIds, identityIds, groupIds }`. That lock is what makes
+- Granting is batch: one POST carries `{ userIds, machineIdentityIds, groupIds }`. That lock is what makes
   the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
   `skipped` rather than erroring; the unique index is only the backstop.
+- Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
+  its profile) plus what the membership adds (`role`, `addedAt`, `grantedAt`). There is no membership id:
+  every write names a member by its actor, so the id a client reads is the one it sends back.
+- Audit events name actors through `agent-vault-actor-name-fns.ts`. Resolve names before the write, so a
+  failed lookup can't leave a committed change unaudited, and attach a name only to an actor already proven
+  to be in the org: the lookup isn't org-scoped.
 - Reachability has one implementation, `findReachableAccessBundleIds` over the platform's
   `findResourceMembershipsForActor`, and mint, member-facing reads and resolve all call it. A group's grants
   count only while the group confers a live role (`liveGroupIdsFrom`). Write no group-expansion SQL here.
@@ -162,25 +169,27 @@ header" is the name in every layer; unqualified "header" means the credential's 
 
 ## Variables
 
-A variable is a key and a sealed value on one bundle. A service uses one as `{{KEY}}` in its token, username,
-password, a custom header value or a substitution value. Nothing else takes one: a host pattern, method or
+A variable is a key and a sealed value on the Agent Vault project, so every bundle's services share one set and keys
+are unique per project. A service uses one as `{{KEY}}` in its token, username, password, a custom header value or a
+substitution value. Nothing else takes one: a host pattern, method or
 path decides what a service can reach, so it stays literal.
 
 - **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
   boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
   primary, since a variable created a moment earlier may not be on a replica yet. So a rename is one row.
-- The variable list and its Used By rows read the primary too. The service sheet refetches the list the moment
-  it creates a variable, and a replica that has not caught up would drop the new key and fail the reference
-  to it.
+- The variable list and its Used By rows read the primary too.
 - `agent_vault_service_variable_references` holds a row per field per variable. It drives Used By, the delete
   refusal, and the keys the service sheet lists under a stored value. **Resolve does not read it**: it pulls
   the ids out of the decrypted fields, so a service saved mid-poll can never leave the two describing
   different versions of a field.
 - **The rows are read off the stored text, never off the request**: `findStoredVariableIds`, kept to the
-  bundle's own variables, which is exactly what resolve expands. Nothing in the database can compare the
+  project's own variables, which is exactly what resolve expands. Nothing in the database can compare the
   rows with sealed text, and an id with no row is a variable the delete refusal lets go while a service still
-  sends it. Any new path that seals a service field derives its rows the same way, and moving a service to
-  another bundle would have to remap its ids, since resolve expands only its own bundle's.
+  sends it. Any new path that seals a service field derives its rows the same way. Resolve expands only the
+  session project's variables.
+- **A variable delete and a service save meet on the variable row**: the delete locks it `FOR UPDATE`, a save
+  locks what it references `FOR SHARE` (`insertReferenceRows`). Create serialises on a per-project advisory lock;
+  the `(projectId, key)` unique index is the backstop.
 - A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
   field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
   reference back in its field made it the one stored field that shows, and left a field mixing text with a
@@ -195,10 +204,12 @@ path decides what a service can reach, so it stays literal.
   and returns a 409 if the type changed, or, for a partial basic update, the sealed secret did. Otherwise the
   half left out is written back stale, and its rows describe text that is no longer sealed. That first read is
   on the primary (`findByIdInAccessBundle`): a replica still behind the previous save would 409 the next one.
-- The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A bundle delete cascades to its services and its
-  variables in one statement, and an immediate check can fire before the service cascade has removed the
-  rows, depending on which constraint was created first. The refusal that matters is the check under the
-  bundle lock (a 409 naming the services); the deferred key is the backstop and only raises at commit.
+- The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A project delete cascades to its bundles' services and
+  to its variables in one statement, and an immediate check can fire before the service cascade has removed the
+  rows, depending on which constraint was created first. The refusal that matters is the one under the variable
+  row lock; the deferred key is the backstop and only raises at commit. Deleting a bundle keeps its variables.
+- `accessBundleId` on `agent_vault_variables` is a dead column kept for one release; nothing reads or writes it.
+  Older variable audit events still carry `accessBundleId` and `accessBundleName`.
 - Every `{{...}}` in a value must be an existing, well-formed key, or the save fails. A malformed one is
   refused without quoting it, because the text was cut from a secret. Placeholders and header prefixes (the
   bearer prefix and custom header prefixes) can't contain double braces, which would read as a reference the
@@ -217,11 +228,10 @@ path decides what a service can reach, so it stays literal.
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
+- Admin only, reads included: every `/agent-vault/variables` route checks `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
-  an empty list would claim they use none). Every value is sealed;
-  `isSecret` only decides whether the list returns it. The value route is a GET with no-store headers and
-  one audit event per read.
+  an empty list would claim they use none). Every value is sealed and no response but the value route returns
+  one. That route is a GET with no-store headers and one audit event per read.
 
 ## Credentials at rest
 
@@ -239,11 +249,11 @@ path decides what a service can reach, so it stays literal.
 ## Session logs
 
 Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
-hostile input: nothing it sends may erase or hide its own records, so a refused chunk counts as dropped, never
-lost silently.
+hostile input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
 
-- **Bytes go proxy to the customer's bucket to the browser.** Infisical keeps one index row per chunk and never
-  seals or opens one. There is no Postgres payload path; AWS only.
+- **Bytes go proxy to the customer's bucket to the browser, and S3 is the index.** Infisical stores nothing per
+  chunk and never seals or opens one. A chunk is `{prefix}/{projectId}/{sessionId}/{rev}_{chunkId}.{proxyId}.json.enc`
+  holding `IV ‖ ciphertext ‖ tag`; `rev` counts the chunk id's time down, because S3 lists names ascending only.
 - **PAM session recording is a separate product.** The overlap with `pam-session-recording` is deliberate; don't
   share code with it.
 - **Keys.** Mint wraps a per-session log key with the project data key, even while session logs are off, and
@@ -252,23 +262,30 @@ lost silently.
   that session on resolve: session logs must never break brokering.
 - **The AAD is `sha256("{sessionId}|{chunkId}|v1")`**, pinned by one vector in the CLI's
   `session_log_crypto_test.go` and `sessionLogDecrypt.test.ts`. Chunk ids are lowercase UUIDv7s because the
-  browser rebuilds the AAD from Postgres's string. A change here is a change in all three places.
-- **Write order is insert, commit, presign.** Row first so a failed upload is a visible gap, presign after commit
-  so no network call holds the config row lock. The PUT is create-only (`If-None-Match: *`, the proxy reads 412
-  as uploaded) with the length and `x-amz-checksum-sha256` signed, so S3 refuses any other body.
-- **A chunk row records its bucket and full key**, and reads presign only chunks in the current bucket, so
-  switching back makes old history readable. A re-send moves the row only through `moveToDestinationIfCurrent`,
-  whose one UPDATE checks the settings. No row locks.
-- **`chunks.proxyId` has no FK**: the browser checks each record's `proxyId` against it, and `SET NULL` would make
-  a deleted proxy's chunks unreadable.
+  browser rebuilds the AAD from the id in the object name. A change here is a change in all three places.
+- **Infisical builds the name and signs it into a create-only PUT** (`If-None-Match: *`, the proxy reads 412 as
+  uploaded) with the length and `x-amz-checksum-sha256` signed, so S3 refuses any other body. The `proxyId` in the
+  name comes from the proxy's login, and the browser checks every record's `proxyId` against it.
+- **A chunk id carries the time of the chunk's last request**, and the proxy never puts requests more than 10
+  minutes apart in one chunk, so a date range lists from 11 minutes past its end and stops at the first chunk whose
+  last request is before its start. The upload link is refused when the id's time is more than a second off
+  `endedAt`, and when the body still carries `iv` (CLIs from before the IV moved into the object).
+- **Reads list only the current bucket and prefix**, so changing either hides older logs until it is switched
+  back. One LIST per request, never a loop, so a folder full of other files can't make a request walk the bucket.
+- **A read that can't reach the bucket fails with `AgentVaultSessionLogStorageUnavailable`**: 400 when the
+  settings or AWS side need fixing, 500 when S3 isn't responding. Never a 200 with no chunks, which callers read
+  as "no logs". Only admins see the cause.
 - **Chunks are accepted for 24 hours after a session ends**, including when its owner is deleted (read from
   `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
-- **History (`/logs`) pages on `chunkId`, the tail (`/logs/tail`) on our `createdAt`**, re-reading
-  `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS` and deduping by chunk id. A late chunk has an old id and a new
-  `createdAt`, so the tail can't page on the id.
-- **The org chunk limit is a lifetime counter** and internal: no env var, not documented, surfaced only as
-  `isStorageFull`. Kept as abuse prevention until usage and plans are decided. At the limit writes are refused,
-  never drop-oldest, which would let flooding evict evidence.
+- **History (`/logs`) is one LIST paged by size; the tail (`/logs/tail`) never LISTs.** Registering a chunk adds
+  its name to a Redis stream per session (last 10, 2-minute TTL), not awaited, since the Redis client queues
+  rather than fails while Redis is down. A tail with no cursor reads the stream from its start, so a chunk still
+  uploading when the page opened arrives; the browser dedupes on `(chunkId, proxyId)` and refetches tail 404s
+  while they may still be uploading. When a poll comes late or returns a full feed, the panel also merges in the
+  newest history page, at most once a minute, since the feed may have dropped names it never saw. If that
+  page doesn't reach the rows already shown, the panel says some requests may be missing and offers Reload.
+- **There's no per-org chunk limit.** Infisical stores nothing per chunk, and the customer's bucket is theirs; the
+  upload-link rate limit and the proxy cap per org bound the work a proxy can cause.
 - **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.
 - **Session logs are a paid feature (`agentVaultByoS3`).** Without it, nothing new is recorded, but saved logs
   stay readable. That breaks the License Checks rule in `CODE_QUALITY.md` on purpose. Turning session logs off

@@ -1,6 +1,7 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 import { describe, expect, test, vi } from "vitest";
 
+import { ProjectType } from "@app/db/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 
@@ -14,6 +15,10 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 }));
 vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
   getAwsConnectionConfig: vi.fn()
+}));
+vi.mock("@app/lib/aws/s3", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/aws/s3")>()),
+  createS3Bucket: vi.fn(() => ({}))
 }));
 
 describe("buildSessionLogStorage", () => {
@@ -39,6 +44,46 @@ describe("buildSessionLogStorage", () => {
       message:
         "Couldn't use the AWS connection 'prod-logs' for session logs: User is not authorized to perform: sts:AssumeRole"
     });
+  });
+
+  test.each([
+    {
+      why: "AWS throttles the call",
+      error: new STSServiceException({
+        name: "Throttling",
+        $fault: "client",
+        $metadata: { httpStatusCode: 400 },
+        message: "Rate exceeded"
+      })
+    },
+    { why: "the network drops it", error: Object.assign(new Error("connect ETIMEDOUT"), { code: "ETIMEDOUT" }) }
+  ])("is a 500 to try again when $why", async ({ error }) => {
+    vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(error);
+    await expect(buildSessionLogStorage(config, "org-1", deps)).rejects.toMatchObject({
+      name: "InternalServerError",
+      message: "Couldn't reach AWS to use the connection 'prod-logs' for session logs. Try again in a bit."
+    });
+  });
+
+  test("assumes the role with Agent Vault's External ID and timeouts, for its own connections too", async () => {
+    vi.mocked(getAwsConnectionConfig).mockClear();
+    vi.mocked(getAwsConnectionConfig).mockResolvedValueOnce({
+      region: AWSRegion.US_EAST_1,
+      credentials: { accessKeyId: "access-key", secretAccessKey: "secret-key", sessionToken: undefined }
+    });
+    vi.mocked(deps.appConnectionDAL.findById).mockResolvedValueOnce({
+      id: "conn-1",
+      name: "av-logs",
+      orgId: "org-1",
+      projectId: "av-proj",
+      app: AppConnection.AWS
+    } as never);
+    await buildSessionLogStorage(config, "org-1", deps);
+    expect(getAwsConnectionConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ projectType: ProjectType.AgentVault }),
+      config.region,
+      { stsRequestHandler: { connectionTimeout: 5_000, requestTimeout: 15_000, throwOnRequestTimeout: true } }
+    );
   });
 
   test("keeps anything that is not from AWS out of the message", async () => {

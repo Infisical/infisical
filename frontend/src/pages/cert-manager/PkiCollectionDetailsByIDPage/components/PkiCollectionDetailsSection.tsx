@@ -1,8 +1,7 @@
-import { faCheck, faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckIcon, CopyIcon, PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { IconButton, Tooltip } from "@app/components/v2";
+import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetPkiCollectionById } from "@app/hooks/api";
@@ -30,20 +29,25 @@ export const PkiCollectionDetailsSection = ({ collectionId, handlePopUpOpen }: P
         >
           {(isAllowed) => {
             return (
-              <Tooltip content="Edit Identity">
-                <IconButton
-                  isDisabled={!isAllowed}
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative"
-                  onClick={() =>
-                    handlePopUpOpen("pkiCollection", {
-                      collectionId
-                    })
-                  }
-                >
-                  <FontAwesomeIcon icon={faPencil} />
-                </IconButton>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <IconButton
+                      isDisabled={!isAllowed}
+                      aria-label="Edit collection"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() =>
+                        handlePopUpOpen("pkiCollection", {
+                          collectionId
+                        })
+                      }
+                    >
+                      <PencilIcon />
+                    </IconButton>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Edit Collection</TooltipContent>
               </Tooltip>
             );
           }}
@@ -55,18 +59,22 @@ export const PkiCollectionDetailsSection = ({ collectionId, handlePopUpOpen }: P
           <div className="group flex align-top">
             <p className="text-sm text-label">{pkiCollection.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <Tooltip content={copyTextId}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative ml-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(pkiCollection.id);
-                    setCopyTextId("Copied");
-                  }}
-                >
-                  <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
-                </IconButton>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label="Copy ID to clipboard"
+                    variant="ghost"
+                    size="xs"
+                    className="ml-2"
+                    onClick={() => {
+                      navigator.clipboard.writeText(pkiCollection.id);
+                      setCopyTextId("Copied");
+                    }}
+                  >
+                    {isCopyingId ? <CheckIcon /> : <CopyIcon />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{copyTextId}</TooltipContent>
               </Tooltip>
             </div>
           </div>

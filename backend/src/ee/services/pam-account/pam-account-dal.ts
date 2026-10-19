@@ -125,6 +125,8 @@ export type TPamAccountDetail = TPamAccounts &
     isStale: boolean;
   };
 
+const effectiveGatewayIdSql = `coalesce("${TableName.PamAccount}"."gatewayId", "${TableName.PamAccountTemplate}"."gatewayId")`;
+
 export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
 
 export const pamAccountDALFactory = (db: TDbClient) => {
@@ -501,8 +503,35 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .whereRaw(`${effectiveGatewayIdSql} = ?`, [gatewayId])
+      .select(
+        `${TableName.PamAccount}.id`,
+        `${TableName.PamAccount}.name`,
+        `${TableName.PamAccountTemplate}.type as accountType`,
+        `${TableName.PamFolder}.name as folderName`
+      );
+
+    return docs as { id: string; name: string; accountType: string; folderName: string | null }[];
+  };
+
+  const countByGatewayIds = async (gatewayIds: string[], tx?: Knex) =>
+    (await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .whereRaw(`${effectiveGatewayIdSql} = ANY(?::uuid[])`, [gatewayIds])
+      .groupByRaw(effectiveGatewayIdSql)
+      .select(db.raw(`${effectiveGatewayIdSql} as id`), db.raw("count(*)::int as count"))) as {
+      id: string;
+      count: number;
+    }[];
+
   return {
     ...orm,
+    findByGatewayId,
+    countByGatewayIds,
     findAccessible,
     findByIdWithDetails,
     findByIdsWithDetails,

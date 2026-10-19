@@ -172,7 +172,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
       operationId: "listPkiDiscoveries",
-      description: "List PKI discovery configurations for a project",
+      description: "List PKI discovery configurations",
       querystring: z.object({
         projectId: z.string().optional().describe(openApiHidden()),
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),

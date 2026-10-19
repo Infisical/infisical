@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowLeftRight, Info, MoreHorizontal, Pencil } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { OidcSsoUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -269,12 +269,14 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.org-oidc.section"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to OIDC SSO. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...OidcSsoUpgradeIntent,
+          isEnterpriseFeature: true
+        }}
       />
     </>
   );

@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { Event as TAuditEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { TGenericPermission } from "@app/lib/types";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
@@ -9,7 +8,9 @@ import { TAlertPayload } from "./alert-channel-types";
 export enum AlertPrincipalType {
   USER = "user",
   GROUP = "group",
-  EMAIL = "email"
+  EMAIL = "email",
+  // Everyone in the channel's project at send time. principalId is the project id.
+  PROJECT_MEMBERS = "project-members"
 }
 
 export enum AlertTriggerType {
@@ -17,10 +18,13 @@ export enum AlertTriggerType {
   Event = "event"
 }
 
+export type TAlertEventRef = { resourceType: string; eventKey: string };
+
 export type TAlertEventDefinition = {
   key: string;
   triggerType: AlertTriggerType;
   conditionSchema: z.ZodTypeAny;
+  sourceEvent?: TAlertEventRef;
 };
 
 export enum AlertRunStatus {
@@ -97,6 +101,12 @@ export type TFindEventTargetsInput = {
   payload: Record<string, unknown>;
 };
 
+export type TAlreadyAlertedFilter = {
+  alertId: string;
+  channelIds: string[];
+  since: Date;
+};
+
 export type TFindScheduledTargetsInput = {
   orgId: string;
   projectId?: string | null;
@@ -104,7 +114,7 @@ export type TFindScheduledTargetsInput = {
   eventType: string;
   condition: unknown;
   asOf: Date;
-  alreadyAlerted?: { alertId: string; channelIds: string[]; since: Date };
+  alreadyAlerted?: TAlreadyAlertedFilter;
 };
 
 // Lets a provider factory declare which discovery method it guarantees.
@@ -113,6 +123,10 @@ export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<
 
 export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
   Required<Pick<IResourceAlertProvider<TTarget>, "findEventTargets">>;
+
+export type TAlertFilterValue = { id: string; name: string | null };
+
+export type TAlertFilters = Record<string, TAlertFilterValue[]>;
 
 export enum AlertAuditAction {
   Create = "create",
@@ -133,11 +147,8 @@ type TAlertAuditAlert = {
 type TAlertChannelTestAudit = {
   resourceType: string;
   resourceId?: string | null;
-  resourceName?: string | null;
-  alertId?: string;
-  alertName?: string | null;
+  resourceName: string | null;
   channelId?: string;
-  channelName?: string | null;
   channelType: string;
   success: boolean;
   deliveredTo?: number;
@@ -207,6 +218,15 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // existing permissions (e.g. PKI reuses the `pki-alerts` subject, project- or application-scoped).
   assertPermission(input: TAlertPermissionInput): Promise<void>;
 
+  supportsScopeWideAlerts?: boolean;
+
+  assertConditionInScope?(input: {
+    projectId?: string | null;
+    resourceId?: string | null;
+    condition: unknown;
+    previousCondition?: unknown;
+  }): Promise<void>;
+
   assertChannelTypesAllowed?(input: { orgId: string; channelTypes: string[] }): Promise<void>;
 
   recipientPolicy?: TAlertRecipientPolicy;
@@ -215,11 +235,15 @@ export interface IResourceAlertProvider<TTarget = unknown> {
 
   getWebhookSource?: (input: { alertId: string; resourceId?: string | null }) => string | undefined;
 
-  getAuditEvent?(input: TAlertAuditInput): TAuditEvent;
-
   getResourceNames?(input: { orgId: string; resourceIds: string[] }): Promise<Map<string, string>>;
 
-  resolveProjectId?(input: { orgId: string; resourceId: string }): Promise<string>;
+  getFilters?(input: {
+    orgId: string;
+    projectId: string | null;
+    alerts: { id: string; condition: unknown }[];
+  }): Promise<Map<string, TAlertFilters>>;
+
+  resolveProjectId?(input: { orgId: string; resourceId?: string | null }): Promise<string>;
 
   getTelemetryEvent?(input: TAlertTelemetryInput): TAlertTelemetryEvent | undefined;
 

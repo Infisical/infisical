@@ -12,7 +12,10 @@ import {
   UsersIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  InstanceUserManagementUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -259,7 +262,7 @@ const UserPanelTable = ({
                                       handlePopUpOpen("upgradePlan", {
                                         username,
                                         id,
-                                        text: "Your current plan does not allow setting additional server admins. To unlock this feature, please upgrade to Infisical Pro plan."
+                                        text: "Your current plan does not allow setting additional server admins. Contact our team to update your instance license."
                                       });
                                       return;
                                     }
@@ -281,7 +284,7 @@ const UserPanelTable = ({
                                       handlePopUpOpen("upgradePlan", {
                                         username,
                                         id,
-                                        text: "Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
+                                        text: "Your current plan does not allow removing server admins. Contact our team to update your instance license."
                                       });
                                       return;
                                     }
@@ -493,11 +496,13 @@ export const UserIdentitiesTable = () => {
           onConfirm={handleRemoveServerAdminAccess}
           confirmLabel="Remove Access"
         />
-        <UpgradePlanModal
+        <UpgradeGate
+          intent={{
+            ...InstanceUserManagementUpgradeIntent
+          }}
           paywallKey="admin.user-identities"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={popUp.upgradePlan.data?.text}
         />
         <ConfirmActionDialog
           isOpen={popUp.removeUsers.isOpen}

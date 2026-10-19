@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { SecretScanningDataSourcesSchema, SecretScanningFindingsSchema } from "@app/db/schemas";
+import {
+  SecretScanningDataSourcesSchema,
+  SecretScanningFindingsSchema,
+  SecretScanningResourcesSchema,
+  SecretScanningScansSchema
+} from "@app/db/schemas";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { SecretScanningDataSources } from "@app/lib/api-docs";
@@ -19,7 +24,9 @@ export const BaseSecretScanningDataSourceSchema = ({
     // unique to provider
     type: true,
     connectionId: true,
-    config: true
+    config: true,
+    // internal
+    encryptedCredentials: true
   }).extend({
     type: z.literal(type),
     connectionId: isConnectionRequired ? z.string().uuid() : z.null(),
@@ -42,6 +49,7 @@ export const BaseCreateSecretScanningDataSourceSchema = ({
       .string()
       .trim()
       .min(1, "Project ID required")
+      .optional()
       .describe(SecretScanningDataSources.CREATE(type).projectId),
     description: z
       .string()
@@ -52,11 +60,16 @@ export const BaseCreateSecretScanningDataSourceSchema = ({
     connectionId: isConnectionRequired
       ? z.string().uuid().describe(SecretScanningDataSources.CREATE(type).connectionId)
       : z.undefined(),
-    isAutoScanEnabled: z
+    isAutoScanEnabled: z.boolean().optional().describe(SecretScanningDataSources.CREATE(type).isAutoScanEnabled),
+    isHistoricalScanEnabled: z
       .boolean()
       .optional()
-      .default(true)
-      .describe(SecretScanningDataSources.CREATE(type).isAutoScanEnabled)
+      .describe(SecretScanningDataSources.CREATE(type).isHistoricalScanEnabled),
+    isScanNewCommitsEnabled: z
+      .boolean()
+      .optional()
+      .describe(SecretScanningDataSources.CREATE(type).isScanNewCommitsEnabled),
+    isDiscoveryEnabled: z.boolean().optional().describe(SecretScanningDataSources.CREATE(type).isDiscoveryEnabled)
   });
 
 export const BaseUpdateSecretScanningDataSourceSchema = (type: SecretScanningDataSource) =>
@@ -68,7 +81,16 @@ export const BaseUpdateSecretScanningDataSourceSchema = (type: SecretScanningDat
       .max(256, "Description cannot exceed 256 characters")
       .nullish()
       .describe(SecretScanningDataSources.UPDATE(type).description),
-    isAutoScanEnabled: z.boolean().optional().describe(SecretScanningDataSources.UPDATE(type).isAutoScanEnabled)
+    isAutoScanEnabled: z.boolean().optional().describe(SecretScanningDataSources.UPDATE(type).isAutoScanEnabled),
+    isHistoricalScanEnabled: z
+      .boolean()
+      .optional()
+      .describe(SecretScanningDataSources.UPDATE(type).isHistoricalScanEnabled),
+    isScanNewCommitsEnabled: z
+      .boolean()
+      .optional()
+      .describe(SecretScanningDataSources.UPDATE(type).isScanNewCommitsEnabled),
+    isDiscoveryEnabled: z.boolean().optional().describe(SecretScanningDataSources.UPDATE(type).isDiscoveryEnabled)
   });
 
 export const GitRepositoryScanFindingDetailsSchema = z.object({
@@ -92,7 +114,18 @@ export const GitRepositoryScanFindingDetailsSchema = z.object({
 });
 
 export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit({
-  dataSourceType: true,
-  resourceType: true,
   details: true
+}).extend({
+  projectId: z.string(),
+  dataSourceId: z.string().uuid(),
+  dataSourceName: z.string(),
+  resourceName: z.string()
+});
+
+export const SecretScanningResourceSchema = SecretScanningResourcesSchema;
+
+export const SecretScanningScanSchema = SecretScanningScansSchema.omit({
+  lastScannedCommit: true,
+  lastScannedCommitDigest: true,
+  progressUpdatedAt: true
 });

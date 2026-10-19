@@ -18,3 +18,4 @@ export * from "./SecretRotationTableRow";
 export * from "./SecretSyncStatusBadgeOverview";
 export * from "./SecretTableRow";
 export * from "./TableEmptyRow";
+export * from "./TableFilteredEmptyRow";

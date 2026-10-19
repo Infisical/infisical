@@ -12,7 +12,7 @@ const policyDetailsSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-policies/$policyId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificate-policies/$policyId"
 )({
   component: CertificatePolicyDetailsByIDPage,
   validateSearch: zodValidator(policyDetailsSearchSchema),
@@ -23,10 +23,9 @@ export const Route = createFileRoute(
         {
           label: "Certificate Policies",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies",
+            to: "/organizations/$orgId/cert-manager/certificate-policies",
             params: {
-              orgId: params.orgId,
-              projectId: params.projectId
+              orgId: params.orgId
             }
           })
         }

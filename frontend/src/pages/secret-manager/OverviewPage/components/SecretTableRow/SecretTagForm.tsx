@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, CreatableSelect } from "@app/components/v3";
+import { Button, Combobox } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -142,11 +142,13 @@ export const SecretTagForm = ({
           name="tags"
           control={control}
           render={({ field }) => (
-            <CreatableSelect
-              menuPlacement="top"
-              isMulti
-              noOptionsMessage={({ inputValue }) =>
-                inputValue && !slugSchema().safeParse(inputValue)
+            <Combobox
+              multiple
+              searchAriaLabel="Search tags"
+              getOptionValue={(option) => option.value}
+              getOptionLabel={(option) => option.label}
+              emptyMessage={(inputValue) =>
+                inputValue && !slugSchema().safeParse(inputValue).success
                   ? "Tag must be slug-friendly"
                   : "No tags match search"
               }
@@ -155,14 +157,13 @@ export const SecretTagForm = ({
               placeholder="Select or create tags..."
               options={projectTags?.map((tag) => ({ label: tag.slug, value: tag.id }))}
               value={field.value}
-              onChange={(newValue) => field.onChange(newValue)}
-              onCreateOption={handleCreateTag}
-              isValidNewOption={(inputValue) =>
-                !canAddTags
-                  ? false
-                  : slugSchema().safeParse(inputValue).success &&
-                    !projectTags?.map((tag) => tag.slug).includes(inputValue)
-              }
+              onValueChange={field.onChange}
+              creation={{
+                onCreate: handleCreateTag,
+                isDisabled: !canAddTags,
+                isValid: (inputValue) => slugSchema().safeParse(inputValue).success,
+                isDuplicate: (inputValue, option) => option.label === inputValue
+              }}
             />
           )}
         />
@@ -187,11 +188,13 @@ export const SecretTagForm = ({
         name="tags"
         control={control}
         render={({ field }) => (
-          <CreatableSelect
-            menuPlacement="top"
-            isMulti
-            noOptionsMessage={({ inputValue }) =>
-              inputValue && !slugSchema().safeParse(inputValue)
+          <Combobox
+            multiple
+            searchAriaLabel="Search tags"
+            getOptionValue={(option) => option.value}
+            getOptionLabel={(option) => option.label}
+            emptyMessage={(inputValue) =>
+              inputValue && !slugSchema().safeParse(inputValue).success
                 ? "Tag must be slug-friendly"
                 : "No tags match search"
             }
@@ -200,14 +203,13 @@ export const SecretTagForm = ({
             placeholder="Select or create tags..."
             options={projectTags?.map((tag) => ({ label: tag.slug, value: tag.id }))}
             value={field.value}
-            onChange={(newValue) => field.onChange(newValue)}
-            onCreateOption={handleCreateTag}
-            isValidNewOption={(inputValue) =>
-              !canAddTags
-                ? false
-                : slugSchema().safeParse(inputValue).success &&
-                  !projectTags?.map((tag) => tag.slug).includes(inputValue)
-            }
+            onValueChange={field.onChange}
+            creation={{
+              onCreate: handleCreateTag,
+              isDisabled: !canAddTags,
+              isValid: (inputValue) => slugSchema().safeParse(inputValue).success,
+              isDuplicate: (inputValue, option) => option.label === inputValue
+            }}
           />
         )}
       />

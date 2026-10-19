@@ -36,7 +36,8 @@ const toggleVariants = cva(
         danger:
           "data-[state=checked]:border-danger/10 data-[state=checked]:bg-danger/25 data-[state=checked]:hover:border-danger/15 data-[state=checked]:hover:bg-danger/30",
         pam: "data-[state=checked]:border-product-pam/10 data-[state=checked]:bg-product-pam/25 data-[state=checked]:hover:border-product-pam/15 data-[state=checked]:hover:bg-product-pam/30",
-        av: "data-[state=checked]:border-product-av/10 data-[state=checked]:bg-product-av/25 data-[state=checked]:hover:border-product-av/15 data-[state=checked]:hover:bg-product-av/30"
+        av: "data-[state=checked]:border-product-av/10 data-[state=checked]:bg-product-av/25 data-[state=checked]:hover:border-product-av/15 data-[state=checked]:hover:bg-product-av/30",
+        ss: "data-[state=checked]:border-product-ss/10 data-[state=checked]:bg-product-ss/25 data-[state=checked]:hover:border-product-ss/15 data-[state=checked]:hover:bg-product-ss/30"
       }
     },
     defaultVariants: {
@@ -60,25 +61,30 @@ const toggleThumbVariants = cva(
   )
 );
 
-type ToggleProps = React.ComponentProps<typeof SwitchPrimitive.Root> &
+type ToggleProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> &
   VariantProps<typeof toggleVariants> & {
     size?: "sm" | "default";
   };
 
-function Toggle({ className, variant, size = "default", ...props }: ToggleProps) {
-  return (
-    <SwitchPrimitive.Root
-      data-slot="toggle"
-      data-size={size}
-      className={cn(toggleVariants({ variant }), className)}
-      {...props}
-    >
-      <SwitchPrimitive.Thumb
-        data-slot="toggle-thumb"
-        className={cn(toggleThumbVariants(), "border")}
-      />
-    </SwitchPrimitive.Root>
-  );
-}
+const Toggle = React.forwardRef<React.ElementRef<typeof SwitchPrimitive.Root>, ToggleProps>(
+  ({ className, variant, size = "default", ...props }, ref) => {
+    return (
+      <SwitchPrimitive.Root
+        ref={ref}
+        data-slot="toggle"
+        data-size={size}
+        className={cn(toggleVariants({ variant }), className)}
+        {...props}
+      >
+        <SwitchPrimitive.Thumb
+          data-slot="toggle-thumb"
+          className={cn(toggleThumbVariants(), "border")}
+        />
+      </SwitchPrimitive.Root>
+    );
+  }
+);
+
+Toggle.displayName = "Toggle";
 
 export { Toggle };

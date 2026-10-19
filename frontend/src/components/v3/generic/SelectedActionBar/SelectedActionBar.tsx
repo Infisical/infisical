@@ -35,7 +35,7 @@ function SelectedActionBar({
   children,
   selectionLabel,
   clearLabel = "Unselect All",
-  iconOnlyClear = false,
+  iconOnlyClear = true,
   portalContainer,
   positionerClassName,
   className,

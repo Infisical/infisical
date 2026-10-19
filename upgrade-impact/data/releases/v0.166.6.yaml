@@ -1,0 +1,131 @@
+version: v0.166.6
+releasedAt: 2026-10-14T02:27:51+04:00
+sourceTag: v0.166.6
+previousTag: v0.166.5
+impactLevel: medium
+summary: Agent Vault member and variable APIs change shape, and startup drops the
+  Agent Vault isSecret column. Org identity credential operations and auth
+  template edits now require the specific identity permission.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault member revoke endpoints
+    description: Revoking Agent Vault members moved from POST /revoke routes to
+      DELETE. POST /api/v1/agent-vault/members/revoke and POST
+      /api/v1/agent-vault/access-bundles/{accessBundleId}/members/revoke no
+      longer exist and return 404.
+    action: Send revoke requests to DELETE /api/v1/agent-vault/members and DELETE
+      /api/v1/agent-vault/access-bundles/{accessBundleId}/members, with the
+      same JSON body as before.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#8547"
+        url: https://github.com/Infisical/infisical/pull/8547
+        description: Moves member revoke to DELETE
+      - type: file
+        ref: docs/api-reference/endpoints/agent-vault-members/revoke.mdx
+        path: docs/api-reference/endpoints/agent-vault-members/revoke.mdx
+        description: Member revoke API docs changed
+      - type: file
+        ref: docs/api-reference/endpoints/agent-vault-access-bundle-members/revoke.mdx
+        path: docs/api-reference/endpoints/agent-vault-access-bundle-members/revoke.mdx
+        description: Access bundle revoke docs changed
+  - title: Agent Vault member role updates
+    description: PATCH /api/v1/agent-vault/members/{actorType}/{actorId} no longer
+      exists. Role changes now go to PATCH /api/v1/agent-vault/members and can
+      change several members at once. The response returns members and skipped
+      arrays instead of a single member object.
+    action: Call PATCH /api/v1/agent-vault/members with the new role and the IDs in
+      userIds, machineIdentityIds or groupIds. Read the members array for the
+      updated members and the skipped array for members that had no Agent
+      Vault access or already had the role.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#8547"
+        url: https://github.com/Infisical/infisical/pull/8547
+        description: Replaces per-actor role update with bulk PATCH
+      - type: file
+        ref: docs/api-reference/endpoints/agent-vault-members/update-role.mdx
+        path: docs/api-reference/endpoints/agent-vault-members/update-role.mdx
+        description: Role update API docs changed
+  - title: Agent Vault variable API
+    description: Every Agent Vault variable is now secret. Variable responses no
+      longer include isSecret or value. Requests that send isSecret have it
+      ignored, so a variable created with isSecret false is still secret, and
+      an update that sends only isSecret returns 400.
+    action: Remove isSecret from Agent Vault variable requests. To read a variable's
+      value, call GET
+      /api/v1/agent-vault/access-bundles/{accessBundleId}/variables/{variableId}/value
+      instead of reading it from the variable list.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#8550"
+        url: https://github.com/Infisical/infisical/pull/8550
+        description: Removes isSecret and listed values
+      - type: file
+        ref: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-schemas.ts
+        path: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-schemas.ts
+        description: Variable schema drops isSecret and value
+  - title: Org identity credential permissions
+    description: Revoking auth and creating, reading or deleting tokens and client
+      secrets on org identities now checks only the specific identity action.
+      In orgs on the legacy privilege system, roles without that action,
+      including the built-in Member role, now get 403. Editing an identity auth
+      template's fields now requires edit-auth on every identity linked to the
+      template. LDAP auth template URLs on private IPs are now rejected on
+      create and update, matching the existing check on OIDC discovery URLs
+      and on LDAP auth attached directly to an identity.
+    action: Before upgrading, give users and machine identities that manage org
+      identity credentials a role with the edit-auth, revoke-auth,
+      create-token, get-token and delete-token identity actions they need. If
+      an LDAP auth template points at a host on a private network, set
+      ALLOW_INTERNAL_IP_CONNECTIONS=true. This setting allows private hosts
+      for every URL Infisical validates, not only auth templates.
+    confidence: medium
+    evidence:
+      - type: pr
+        ref: "#8509"
+        url: https://github.com/Infisical/infisical/pull/8509
+        description: Lists the permission behavior changes
+      - type: file
+        ref: backend/src/ee/services/identity-auth-template/identity-auth-template-service.ts
+        path: backend/src/ee/services/identity-auth-template/identity-auth-template-service.ts
+        description: Checks edit-auth and private IPs on template edits
+dbSchemaChanges:
+  - title: Agent Vault isSecret column
+    description: Startup drops the isSecret column from agent_vault_variables, and
+      drops the analytics view that selects it first.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261009145434_drop-agent-vault-variable-is-secret.ts
+        path: backend/src/db/migrations/20261009145434_drop-agent-vault-variable-is-secret.ts
+        description: Drops analytics view and isSecret column
+configChanges: []
+deploymentNotes:
+  - title: Agent Vault variable rollback path
+    description: The previous image reads and writes isSecret, so after the
+      migration its Agent Vault variable requests fail until the column exists
+      again. This also affects older pods during a rolling deploy. The
+      migration's down() restores the column with every variable marked secret,
+      so variables that were not secret before the upgrade stay secret.
+    action: Roll out all Infisical pods together. Before rolling back, run this
+      migration's down() from the newer image.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261009145434_drop-agent-vault-variable-is-secret.ts
+        path: backend/src/db/migrations/20261009145434_drop-agent-vault-variable-is-secret.ts
+        description: down() restores isSecret as true for all rows
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-13T23:09:51.650Z
+  sourceRange:
+    from: v0.166.5
+    to: v0.166.6

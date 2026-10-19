@@ -34,6 +34,7 @@ const buildProvider = (opts?: {
   resolvedProjectId?: string;
   blockedChannelTypes?: string[];
   webhookSource?: boolean;
+  getResourceNames?: IResourceAlertProvider["getResourceNames"];
 }) => {
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
@@ -70,7 +71,8 @@ const buildProvider = (opts?: {
     ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {}),
     ...(opts?.webhookSource
       ? { getWebhookSource: ({ alertId, resourceId }) => `/resources/${resourceId}/alerts/${alertId}` }
-      : {})
+      : {}),
+    ...(opts?.getResourceNames ? { getResourceNames: opts.getResourceNames } : {})
   };
 
   const registry = alertProviderRegistryFactory();
@@ -139,7 +141,10 @@ const buildDeps = (overrides?: {
   };
 };
 
-const stubSend = (channelType: "slack" | "email", impl: (ctx: TAlertChannelSendContext) => Promise<TChannelResult>) => {
+const stubSend = (
+  channelType: "slack" | "email" | "webhook",
+  impl: (ctx: TAlertChannelSendContext) => Promise<TChannelResult>
+) => {
   const definition = ALERT_CHANNEL_REGISTRY[channelType];
   const original = definition.send;
   definition.send = impl;
@@ -184,6 +189,62 @@ describe("alertChannelTestService", () => {
     }
   });
 
+  const boundSlackTest = {
+    ...actor,
+    resourceType: RESOURCE_TYPE,
+    resourceId: "resource-1",
+    channelType: "slack" as never,
+    config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
+  };
+
+  test("returns the name of the resource the test was sent for", async () => {
+    const lookups: { orgId: string; resourceIds: string[] }[] = [];
+    const restore = stubSend("slack", async () => ({ success: true }));
+
+    try {
+      const { deps } = buildDeps({
+        registry: buildProvider({
+          getResourceNames: async (input) => {
+            lookups.push(input);
+            return new Map([["resource-1", "Payments API"]]);
+          }
+        })
+      });
+      const service = alertChannelTestServiceFactory(deps);
+
+      const result = await service.testChannel(boundSlackTest);
+
+      expect(lookups).toEqual([{ orgId: ORG_ID, resourceIds: ["resource-1"] }]);
+      expect(result.resourceName).toBe("Payments API");
+    } finally {
+      restore();
+    }
+  });
+
+  test("sends nothing when the resource name lookup fails", async () => {
+    const sent: TAlertChannelSendContext[] = [];
+    const restore = stubSend("slack", async (ctx) => {
+      sent.push(ctx);
+      return { success: true };
+    });
+
+    try {
+      const { deps } = buildDeps({
+        registry: buildProvider({
+          getResourceNames: async () => {
+            throw new Error("lookup failed");
+          }
+        })
+      });
+      const service = alertChannelTestServiceFactory(deps);
+
+      await expect(service.testChannel(boundSlackTest)).rejects.toThrow("lookup failed");
+      expect(sent).toHaveLength(0);
+    } finally {
+      restore();
+    }
+  });
+
   test("sends a test through an undirected channel with the supplied config", async () => {
     const sent: TAlertChannelSendContext[] = [];
     const restore = stubSend("slack", async (ctx) => {
@@ -206,9 +267,7 @@ describe("alertChannelTestService", () => {
         success: true,
         deliveredTo: 1,
         projectId: null,
-        resourceName: null,
-        alertName: null,
-        channelName: null
+        resourceName: null
       });
       expect(sent).toHaveLength(1);
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/x" });
@@ -302,6 +361,49 @@ describe("alertChannelTestService", () => {
 
       expect(result.success).toBe(true);
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/stored" });
+    } finally {
+      restore();
+    }
+  });
+
+  test("does not send saved webhook credentials to a different URL", async () => {
+    const sent: TAlertChannelSendContext[] = [];
+    const restore = stubSend("webhook", async (ctx) => {
+      sent.push(ctx);
+      return { success: true };
+    });
+
+    try {
+      const { deps } = buildDeps({
+        channel: {
+          id: "channel-1",
+          orgId: ORG_ID,
+          projectId: null,
+          channelType: "webhook",
+          encryptedConfig: Buffer.from(
+            JSON.stringify({
+              url: "https://example.com/hook",
+              authType: "bearer",
+              authCredentials: "abc"
+            })
+          )
+        }
+      });
+      const service = alertChannelTestServiceFactory(deps);
+
+      await expect(
+        service.testChannel({
+          ...actor,
+          resourceType: RESOURCE_TYPE,
+          channelId: "channel-1",
+          channelType: "webhook" as never,
+          config: {
+            url: "https://attacker.example.net/hook",
+            authType: "bearer"
+          }
+        })
+      ).rejects.toThrow("Enter the authentication credentials again because the webhook URL changed");
+      expect(sent).toHaveLength(0);
     } finally {
       restore();
     }
@@ -469,9 +571,7 @@ describe("alertChannelTestService", () => {
         success: true,
         deliveredTo: 1,
         projectId: null,
-        resourceName: null,
-        alertName: null,
-        channelName: null
+        resourceName: null
       });
       await expect(service.testChannel(dto)).rejects.toThrow(/Try again in 60s/);
     } finally {
@@ -506,9 +606,7 @@ describe("alertChannelTestService", () => {
         success: true,
         deliveredTo: 1,
         projectId: null,
-        resourceName: null,
-        alertName: null,
-        channelName: null
+        resourceName: null
       });
     } finally {
       restoreSlack();
@@ -536,9 +634,7 @@ describe("alertChannelTestService", () => {
         success: false,
         error: "connect ECONNREFUSED",
         projectId: null,
-        resourceName: null,
-        alertName: null,
-        channelName: null
+        resourceName: null
       });
     } finally {
       restore();

@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { FormatOptionLabelMeta, MultiValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import axios from "axios";
 import {
   CircleAlertIcon,
@@ -206,6 +207,7 @@ const Form = ({
     resetField,
     setError,
     setValue,
+    trigger,
     formState: { isDirty, isSubmitting, errors }
   } = useForm<TApprovalPolicyFormSchema>({
     resolver: zodResolver(approvalPolicyFormSchema),
@@ -245,7 +247,23 @@ const Form = ({
   const formUserBypassers = watch("userBypassers");
   const formGroupBypassers = watch("groupBypassers");
   const formEnvironments = watch("environments");
+  const formPolicyType = watch("policyType");
+  const formSecretPath = watch("secretPath");
+  const suggestedName =
+    isEditMode || !formPolicyType || !formEnvironments?.length
+      ? ""
+      : slugify(
+          [
+            policyDetails[formPolicyType].name,
+            ...formEnvironments.map((env) => env.slug),
+            formSecretPath ?? ""
+          ].join(" "),
+          { lowercase: true, decamelize: false }
+        )
+          .slice(0, 255)
+          .replace(/-+$/, "");
   const bypasserCount = (formUserBypassers || []).length + (formGroupBypassers || []).length;
+  const allowedSelfApprovals = watch("allowedSelfApprovals");
 
   const handleCreatePolicy = async ({
     environments,
@@ -498,11 +516,9 @@ const Form = ({
   ].map(resolveApproverOption);
   const updatePolicyApprovers = (newValue: readonly ApproverOptionData[]) => {
     const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
-    setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
-    setValue("groupApprovers", selectedGroups, {
-      shouldDirty: true,
-      shouldValidate: true
-    });
+    setValue("userApprovers", users, { shouldDirty: true });
+    setValue("groupApprovers", selectedGroups, { shouldDirty: true });
+    trigger(["userApprovers", "groupApprovers"]);
   };
 
   const selectedPolicyBypassers: ApproverOptionData[] = [
@@ -511,11 +527,9 @@ const Form = ({
   ].map(resolveApproverOption);
   const updatePolicyBypassers = (newValue: readonly ApproverOptionData[]) => {
     const { users, groups: selectedGroups } = splitSelectedBypassers(newValue);
-    setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
-    setValue("groupBypassers", selectedGroups, {
-      shouldDirty: true,
-      shouldValidate: true
-    });
+    setValue("userBypassers", users, { shouldDirty: true });
+    setValue("groupBypassers", selectedGroups, { shouldDirty: true });
+    trigger(["userBypassers", "groupBypassers"]);
   };
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
@@ -570,10 +584,8 @@ const Form = ({
         shouldDirty: true,
         shouldValidate: true
       });
-      setValue(`sequenceApprovers.${index}.group`, selectedGroups, {
-        shouldDirty: true,
-        shouldValidate: true
-      });
+      setValue(`sequenceApprovers.${index}.group`, selectedGroups, { shouldDirty: true });
+      trigger([`sequenceApprovers.${index}.user`, `sequenceApprovers.${index}.group`]);
     };
 
     return (
@@ -640,7 +652,7 @@ const Form = ({
       onSubmit={handleSubmit(handleFormSubmit)}
       className="flex flex-1 flex-col overflow-hidden"
     >
-      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+      <div className="relative flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
         {hasApproverOptionsError && (
           <Alert variant="danger">
             <CircleAlertIcon />
@@ -715,6 +727,7 @@ const Form = ({
                   {...field}
                   value={field.value || ""}
                   placeholder="e.g. Production Approvals"
+                  suggestedValue={suggestedName}
                   isError={Boolean(error)}
                   autoComplete="off"
                   name="policy-name"
@@ -1130,19 +1143,21 @@ const Form = ({
               <Alert variant="warning">
                 <TriangleAlertIcon />
                 <AlertDescription>
-                  Not selecting specific users or groups will allow anyone to bypass this policy.
+                  {isAccessPolicyType && allowedSelfApprovals === false
+                    ? "Self approvals are off, so nobody can bypass this policy until you select bypassers."
+                    : "Not selecting specific users or groups will allow anyone to bypass this policy."}
                 </AlertDescription>
               </Alert>
             )}
           </>
         )}
       </div>
-      <SheetFooter className="border-t">
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
-          {isEditMode ? "Update Policy" : "Add Policy"}
-        </Button>
+      <SheetFooter className="justify-end border-t">
         <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
           Close
+        </Button>
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {isEditMode ? "Update Policy" : "Add Policy"}
         </Button>
       </SheetFooter>
     </form>

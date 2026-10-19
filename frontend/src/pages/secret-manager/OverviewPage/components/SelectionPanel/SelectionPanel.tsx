@@ -55,6 +55,12 @@ import {
   MoveSecretsModal
 } from "@app/pages/secret-manager/OverviewPage/components/SelectionPanel/components";
 
+import {
+  overviewCountBucket,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
+
 export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret",
@@ -88,6 +94,7 @@ export const SelectionPanel = ({
   isImportedSecretPresentInEnv,
   onCopySecrets
 }: Props) => {
+  const telemetry = useOverviewTelemetry();
   const { permission } = useProjectPermission();
   const [isCopying, setIsCopying] = useState(false);
   const { subscription } = useSubscription();
@@ -179,6 +186,17 @@ export const SelectionPanel = ({
   };
 
   const handleBulkDelete = async () => {
+    const flow = {
+      action: "delete" as const,
+      resourceType: "mixed" as const,
+      source: "bulk" as const
+    };
+    const attempt = telemetry.startFlow({
+      ...flow,
+      countBucket: overviewCountBucket(selectedFolderCount + selectedKeysCount)
+    });
+    let responseCount = 0;
+    let approvalCount = 0;
     let processedEntries = 0;
     let hasApprovalRequest = false;
     let hasDirectDelete = false;
@@ -219,6 +237,7 @@ export const SelectionPanel = ({
             },
             message: `Deleted ${folderDeletes.length} folder${folderDeletes.length === 1 ? "" : "s"}`
           });
+          responseCount += folderDeletes.length;
         }
       }
 
@@ -260,8 +279,10 @@ export const SelectionPanel = ({
         });
 
         if (result && "approval" in result) {
+          approvalCount += secretsToDelete.length;
           hasApprovalRequest = true;
         } else {
+          responseCount += secretsToDelete.length;
           hasDirectDelete = true;
         }
       }
@@ -274,6 +295,14 @@ export const SelectionPanel = ({
     const results = await Promise.allSettled(promises);
     const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");
     const areSomeEntriesDeleted = results.some((result) => result.status === "fulfilled");
+    const failureCount = results.filter((result) => result.status === "rejected").length;
+    attempt.flow({
+      ...flow,
+      phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
+      responseCountBucket: overviewCountBucket(responseCount),
+      approvalCountBucket: overviewCountBucket(approvalCount),
+      failureCountBucket: overviewCountBucket(failureCount)
+    });
 
     let resourceLabel = "secrets";
     if (hasFolders && hasSecrets) {
@@ -451,6 +480,14 @@ export const SelectionPanel = ({
       return;
     }
     setIsCopying(true);
+    const flow = {
+      action: "copy" as const,
+      resourceType: "secret" as const,
+      source: "bulk" as const,
+      destination: "clipboard" as const,
+      countBucket: overviewCountBucket(selectedSecretEntries.length)
+    };
+    const attempt = telemetry.startFlow(flow);
     try {
       const groups = selectedSecretEntries.reduce<
         Record<string, { environment: string; path: string; secrets: SecretV3RawSanitized[] }>
@@ -492,8 +529,10 @@ export const SelectionPanel = ({
         })
       );
       await navigator.clipboard.writeText(lines.join("\n"));
+      attempt.flow({ ...flow, phase: "clipboard-written", provenance: "committed" });
       createNotification({ type: "success", text: "Selected secrets copied to clipboard" });
     } catch {
+      attempt.flow({ ...flow, phase: "failed" });
       createNotification({ type: "error", text: "Failed to copy selected secrets to clipboard" });
     } finally {
       setIsCopying(false);
@@ -513,7 +552,15 @@ export const SelectionPanel = ({
               <Button
                 isDisabled={isTagActionDisabled}
                 variant="project"
-                onClick={() => handlePopUpOpen("bulkTagSecrets")}
+                onClick={() => {
+                  telemetry.interaction({
+                    action: "bulk-tags",
+                    source: "bulk",
+                    resourceType: "secret",
+                    countBucket: overviewCountBucket(selectedKeysCount)
+                  });
+                  handlePopUpOpen("bulkTagSecrets");
+                }}
                 size="xs"
               >
                 <TagsIcon />
@@ -529,7 +576,15 @@ export const SelectionPanel = ({
               <Button
                 isDisabled={isMoveDisabled}
                 variant="project"
-                onClick={() => handlePopUpOpen("bulkMoveSecrets")}
+                onClick={() => {
+                  telemetry.interaction({
+                    action: "bulk-move",
+                    source: "bulk",
+                    resourceType: "mixed",
+                    countBucket: overviewCountBucket(selectedFolderCount + selectedKeysCount)
+                  });
+                  handlePopUpOpen("bulkMoveSecrets");
+                }}
                 size="xs"
               >
                 <FolderInputIcon />
@@ -588,7 +643,15 @@ export const SelectionPanel = ({
               <Button
                 isDisabled={isDeleteDisabled}
                 variant="danger"
-                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                onClick={() => {
+                  telemetry.flow({
+                    action: "delete",
+                    resourceType: "mixed",
+                    source: "bulk",
+                    phase: "opened"
+                  });
+                  handlePopUpOpen("bulkDeleteEntries");
+                }}
                 size="xs"
               >
                 <TrashIcon />
@@ -625,7 +688,16 @@ export const SelectionPanel = ({
       />
       <BulkDeleteDialog
         isOpen={popUp.bulkDeleteEntries.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen)
+            telemetry.flow({
+              action: "delete",
+              resourceType: "mixed",
+              source: "bulk",
+              phase: "canceled"
+            });
+          handlePopUpToggle("bulkDeleteEntries", isOpen);
+        }}
         title={getDeleteModalTitle()}
         description={getDeleteModalDescription()}
         subTitle={getDeleteModalSubTitle()}

@@ -1,0 +1,149 @@
+---
+title: "Migrate to .infisical.yaml"
+description: "The Infisical CLI now reads project settings from `.infisical.yaml` instead of `.infisical.json`. Learn how to convert your project's configuration file."
+---
+
+## What changed
+
+The CLI is moving away from `.infisical.json`. It now reads [project settings](/cli/project-config) from `.infisical.yaml`. The CLI still reads `.infisical.json` for now, but a future release will stop reading it.
+
+## Who is affected
+
+You're affected if you use an `.infisical.json` file anywhere, including:
+
+- Repositories with a committed `.infisical.json`
+- Container images that copy `.infisical.json` into the image
+
+## Prerequisites
+
+- Infisical CLI 0.43.145 or later on every machine that reads the file, including developer machines, CI pipelines, and container images ([upgrade the CLI](/cli/upgrade))
+
+Older versions of the CLI don't read `.infisical.yaml`, so after you delete `.infisical.json`, those versions can't find the project linked to the directory.
+
+## Migration steps
+
+Convert the file with the `infisical migrate-config` command, or edit it by hand.
+
+<Tabs>
+  <Tab title="Run migrate-config">
+    <Steps>
+      <Step>
+        In the directory that holds `.infisical.json`, run:
+
+        ```bash
+        infisical migrate-config
+        ```
+
+        The command copies every setting from `.infisical.json` into a new `.infisical.yaml` in the same directory, deletes `.infisical.json`, and prints the paths of both files:
+
+        ```
+        Migrated /home/user/my-app/.infisical.json to /home/user/my-app/.infisical.yaml.
+        If this project is under version control, commit the new .infisical.yaml and the removal of .infisical.json.
+        ```
+      </Step>
+      <Step>
+        Commit the new file and the deletion of the old one:
+
+        ```bash
+        git add .infisical.yaml .infisical.json
+        git commit -m "Migrate Infisical CLI config to .infisical.yaml"
+        ```
+      </Step>
+    </Steps>
+
+    The command converts one file. If your repository has more than one `.infisical.json`, such as one per package in a monorepo, run the command in each directory that holds one.
+
+  </Tab>
+  <Tab title="Edit the file by hand">
+    <Steps>
+      <Step>
+        In the directory that holds `.infisical.json`, create a file named `.infisical.yaml`. The CLI doesn't read a file named `.infisical.yml`.
+      </Step>
+      <Step>
+        Copy each field from `.infisical.json` to its key in `.infisical.yaml`:
+
+        | `.infisical.json` field | `.infisical.yaml` key |
+        | --- | --- |
+        | `workspaceId` | `secrets-management.project-id` |
+        | `defaultEnvironment` | `secrets-management.default-environment` |
+        | `gitBranchToEnvironmentMapping` | `secrets-management.mappings.git-branch-to-environment` |
+        | `defaultSecretPath` | `secrets-management.default-secret-path` |
+        | `domain` | `general.domain` |
+
+        <Note>
+          `workspaceId` is the old name for the project ID, so copy its value into `project-id` as is.
+        </Note>
+
+
+        For example, this `.infisical.json`:
+
+        ```json .infisical.json
+        {
+            "workspaceId": "<project-id>",
+            "defaultEnvironment": "dev",
+            "gitBranchToEnvironmentMapping": {
+                "main": "prod",
+                "staging": "staging"
+            },
+            "defaultSecretPath": "/backend",
+            "domain": "https://eu.infisical.com"
+        }
+        ```
+
+        becomes this `.infisical.yaml`:
+
+        ```yaml .infisical.yaml
+        general:
+            domain: https://eu.infisical.com
+        secrets-management:
+            project-id: <project-id>
+            default-environment: dev
+            default-secret-path: /backend
+            mappings:
+                git-branch-to-environment:
+                    main: prod
+                    staging: staging
+        ```
+
+        The CLI ignores keys it doesn't recognize, so if you misspell a key, the CLI drops that setting without reporting an error.
+      </Step>
+      <Step>
+        Delete `.infisical.json`, then commit both changes.
+      </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>
+
+If a Dockerfile or CI script refers to `.infisical.json` by name, such as in a `COPY` instruction, change it to `.infisical.yaml`.
+
+## Verify the migration
+
+In the directory that holds `.infisical.yaml`, run a command that reads the file, such as:
+
+```bash
+infisical secrets
+```
+
+Check that the command lists the secrets from the project and environment you expect. If it reports that the project ID is missing, compare the keys in `.infisical.yaml` with the [field mapping](#migration-steps).
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What if .infisical.json and .infisical.yaml are in the same directory?">
+    The CLI can read both `.infisical.yaml` and `.infisical.json`. But
+    `.infisical.yaml` takes precedence
+  </Accordion>
+  <Accordion title="Can I run infisical init instead of migrate-config?">
+    `infisical init` writes a new `.infisical.yaml` that holds only the project
+    ID, so you lose the environment, branch mapping, folder, and instance
+    settings from `.infisical.json`. To keep those settings, run `infisical
+    migrate-config`.
+  </Accordion>
+  <Accordion title="How do I hide the deprecation notice?">
+    Set the `INFISICAL_DISABLE_WORKSPACE_CONFIG_MIGRATION_NOTICE` environment
+    variable to any value, such as `true`. The CLI prints the notice at most
+    once a day and writes it to standard error, so the notice doesn't change the
+    output of commands like `infisical export`.
+  </Accordion>
+</AccordionGroup>

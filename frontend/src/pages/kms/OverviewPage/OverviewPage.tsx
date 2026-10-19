@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 

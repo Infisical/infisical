@@ -1,11 +1,12 @@
 import { Helmet } from "react-helmet";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
@@ -25,8 +26,10 @@ export const AppConnectionsPage = withProjectPermission(
             <PageHeader
               scope={currentProject.type}
               className="w-full"
-              title="Project App Connections"
-              description="Manage project App Connections"
+              title={
+                hidesProjects(currentProject.type) ? "App Connections" : "Project App Connections"
+              }
+              description={`Manage ${getProjectLabel(currentProject.type)} App Connections`}
             />
 
             <AppConnectionsTable projectId={currentProject.id} projectType={currentProject.type} />

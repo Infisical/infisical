@@ -2,6 +2,19 @@ import { randomUUID } from "node:crypto";
 
 import { selectOrg } from "./auth";
 
+// Creates a project in whichever org `authToken` is scoped to, and returns its id. Cleanup comes
+// with the org: deleting it cascades to every project underneath.
+export const createProject = async (authToken: string, projectName: string) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/projects",
+    headers: { authorization: `Bearer ${authToken}` },
+    body: { projectName }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json().project.id as string;
+};
+
 // Full isolation per test: a fresh org and project rather than a fresh project inside the shared
 // seeded org. Org-scoped state (roles, membership) can't leak between tests either this way, not
 // just project-scoped state. Cheaper alternatives exist (see secret-sync.spec.ts's beforeEach,
@@ -26,14 +39,7 @@ export const createIsolatedOrgAndProject = async (namePrefix: string) => {
   expect(selectOrgRes.statusCode).toBe(200);
   const authToken = selectOrgRes.payload.token as string;
 
-  const projectRes = await testServer.inject({
-    method: "POST",
-    url: "/api/v1/projects",
-    headers: { authorization: `Bearer ${authToken}` },
-    body: { projectName: name }
-  });
-  expect(projectRes.statusCode).toBe(200);
-  const projectId = projectRes.json().project.id as string;
+  const projectId = await createProject(authToken, name);
 
   // Hard-deletes the org row; every project/environment/secret/webhook underneath it is reaped by
   // FK cascade (org-service.ts:deleteOrganizationById), so there's nothing else to tear down.

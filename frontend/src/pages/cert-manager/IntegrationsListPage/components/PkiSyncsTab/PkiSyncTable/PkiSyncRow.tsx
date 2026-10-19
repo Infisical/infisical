@@ -77,7 +77,6 @@ export const PkiSyncRow = ({
     description,
     syncStatus,
     isAutoSyncEnabled,
-    projectId,
     applicationId
   } = pkiSync;
 
@@ -120,7 +119,6 @@ export const PkiSyncRow = ({
           to: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.path,
           params: {
             syncId: id,
-            projectId,
             orgId: currentOrg.id
           },
           search: applicationName ? { applicationName } : undefined

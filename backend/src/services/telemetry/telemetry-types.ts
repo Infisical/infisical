@@ -1627,12 +1627,18 @@ export type TPkiSyncExecutedEvent = {
   };
 };
 
+export enum PkiAlertScope {
+  CertificateManager = "certificate-manager",
+  Application = "application"
+}
+
 export type TPkiAlertCreatedEvent = {
   event: PostHogEventTypes.PkiAlertCreated;
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
     alertType?: string;
   };
 };
@@ -1642,7 +1648,8 @@ export type TPkiAlertUpdatedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 
@@ -1651,7 +1658,8 @@ export type TPkiAlertDeletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 
@@ -2472,15 +2480,13 @@ export type TAgentVaultServiceDeletedEvent = {
 
 export type TAgentVaultVariableCreatedEvent = {
   event: PostHogEventTypes.AgentVaultVariableCreated;
-  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string; isSecret: boolean };
+  properties: TAgentVaultEventBase & { variableId: string };
 };
 
 export type TAgentVaultVariableUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultVariableUpdated;
   properties: TAgentVaultEventBase & {
-    accessBundleId: string;
     variableId: string;
-    isSecret: boolean;
     keyChanged: boolean;
     valueReplaced: boolean;
     usedByServiceCount: number;
@@ -2489,7 +2495,7 @@ export type TAgentVaultVariableUpdatedEvent = {
 
 export type TAgentVaultVariableDeletedEvent = {
   event: PostHogEventTypes.AgentVaultVariableDeleted;
-  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string };
+  properties: TAgentVaultEventBase & { variableId: string };
 };
 
 export type TAgentVaultAccessBundleMemberAddedEvent = {

@@ -4,6 +4,9 @@ sidebarTitle: "Overview"
 description: "Learn how to set up automated secret rotation in Infisical."
 ---
 
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { secretRotations, secretRotationCategories, secretRotationBadges } from "/snippets/catalogs/secret-rotations.jsx";
+
 ## Introduction
 
 Secret rotation is a security best practice that involves systematically updating credentials and access tokens at regular intervals to minimize the risk of compromise. By proactively replacing existing secrets with new ones, organizations reduce the potential impact of credential theft or leakage.
@@ -12,6 +15,16 @@ Examples of rotated secrets include:
 
 - API keys and authentication tokens for cloud services and third-party integrations
 - Database credentials across production, staging, and development environments
+
+## Supported providers
+
+<CatalogBrowser
+  id="secret-rotations"
+  items={secretRotations}
+  categories={secretRotationCategories}
+  noun="secret rotation"
+  badges={secretRotationBadges}
+/>
 
 ## How rotation works
 

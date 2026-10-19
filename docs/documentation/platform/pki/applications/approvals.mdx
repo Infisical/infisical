@@ -100,7 +100,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
   </Step>
 </Steps>
 
-Once all required approvals are obtained, the certificate is automatically issued.
+Once all required approvals are obtained, the certificate is automatically issued. If issuance fails at that point, for example because the CA is disabled, the certificate request moves to **Failed** and Infisical records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) with the reason.
 
 ### Reject a request
 

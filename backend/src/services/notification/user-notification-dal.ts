@@ -125,5 +125,18 @@ export const userNotificationDALFactory = (db: TDbClient) => {
       .update({ isRead: true });
   };
 
-  return { ...notificationOrm, pruneNotifications, find, markAllNotificationsAsRead };
+  const deleteAllNotifications = async (userId: string, orgId: string) => {
+    try {
+      await db(TableName.UserNotifications)
+        .where({ userId, isRead: true })
+        .andWhere((qb) => {
+          void qb.where({ orgId }).orWhereNull("orgId");
+        })
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error });
+    }
+  };
+
+  return { ...notificationOrm, pruneNotifications, find, markAllNotificationsAsRead, deleteAllNotifications };
 };

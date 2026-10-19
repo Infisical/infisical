@@ -119,7 +119,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     if (isS3Backend && (!recordingConnectionId || !resolvedS3Config)) {
       throw new BadRequestError({
-        message: "S3 storage backend requires an AWS connection and valid S3 bucket configuration"
+        message:
+          "S3 storage backend requires an AWS or S3-Compatible Storage connection and valid S3 bucket configuration"
       });
     }
 
@@ -215,13 +216,16 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     ...ctx
   }: TUpdatePamAccountTemplateDTO & TActorContext) => {
     await verifyProductAdmin(projectId, ctx);
-    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
-    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const existing = await pamAccountTemplateDAL.findById(templateId);
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
+
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, {
+      previousGatewayId: existing.gatewayId
+    });
+    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const validatedPolicies = validateTemplatePolicies(existing.type, policies);
     validateTemplateRotationConfig(existing.type, settings);

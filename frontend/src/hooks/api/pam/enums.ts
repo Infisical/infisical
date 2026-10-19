@@ -19,7 +19,8 @@ export enum PamAccountType {
 export enum PamDiscoveryType {
   ActiveDirectory = "active-directory",
   Unix = "unix",
-  Postgres = "postgres"
+  Postgres = "postgres",
+  MsSQL = "mssql"
 }
 
 export enum PamDiscoverySchedule {
@@ -196,4 +197,10 @@ export enum PamNotificationEvent {
   AccessRequestApproved = "access-request-approved",
   AccessRequestDenied = "access-request-denied",
   AccessRequestBypassed = "access-request-bypassed"
+}
+
+export enum PamFolderCallerAccess {
+  Admin = "admin",
+  Member = "member",
+  None = "none"
 }

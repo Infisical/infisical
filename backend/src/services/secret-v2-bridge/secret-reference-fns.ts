@@ -14,8 +14,11 @@ import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-f
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
-// Supports standard refs like ${ENV.path.KEY} and cross-project refs like ${@project-slug.ENV.path.KEY}
-const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.@]+)}`;
+// Supports standard refs like ${ENV.path.KEY} and cross-project refs like ${@project-slug.ENV.path.KEY}.
+// Secret names may contain spaces, but environment slugs and folder names cannot, so spaces are only
+// accepted inside the final segment. Leading and trailing spaces are not, so `${ KEY }` stays literal as it
+// always has rather than starting to resolve once trimmed.
+const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.@]+(?: +[a-zA-Z0-9-_@]+)*)}`;
 const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
 export const containsSecretReference = (value: string) => INTERPOLATION_TEST_REGEX.test(value);

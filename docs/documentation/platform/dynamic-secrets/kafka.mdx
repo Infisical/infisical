@@ -1,0 +1,191 @@
+---
+title: "Kafka"
+description: "Learn how to generate short-lived Kafka users with ACLs that limit what each user can do."
+---
+
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
+The Kafka dynamic secret creates a Kafka user with a username and password for each lease, and gives the user the ACLs you configure, such as read and write access to one topic. Use it when an application or a person needs short-lived access to a self-managed Kafka cluster, and you don't want to share a long-lived password.
+
+Lease users log in with SCRAM-SHA-256 or SCRAM-SHA-512. To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+
+## Prerequisites
+
+- A self-managed Kafka cluster running Kafka 2.7 or later with ZooKeeper, or Kafka 3.5 or later with KRaft (Confluent Platform 6.1 or later with ZooKeeper, or 7.5 or later with KRaft)
+- A broker listener that accepts SCRAM-SHA-256 or SCRAM-SHA-512 logins, which lease users connect to
+- An authorizer enabled on every broker, so that Kafka enforces the ACLs
+- An admin user that can create SCRAM users and ACLs, such as a user listed in the brokers' `super.users` setting, and the admin user's password
+- Network access from Infisical to your brokers, because Kafka dynamic secrets don't support [gateways](/documentation/platform/gateways/overview)
+- If you self-host Infisical and your brokers have private IP addresses, [`DYNAMIC_SECRET_ALLOW_INTERNAL_IP`](/self-hosting/configuration/envars) set to `true`
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
+
+## Step 1: Create the dynamic secret
+
+<Steps>
+  <Step>
+    In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
+  </Step>
+  <Step>
+    Select **Kafka**.
+  </Step>
+  <Step>
+    Fill in the form:
+
+    <ParamField path="Secret Name" type="string" required>
+      The name you use to refer to the dynamic secret.
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      How long a lease lasts if the person creating it doesn't choose a TTL (for example, `1h`).
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      The longest TTL anyone can request for a lease (for example, `24h`).
+    </ParamField>
+
+    <ParamField path="Bootstrap Servers" type="list" required>
+      The brokers Infisical connects to, each with a **Host** and **Port** (for example, `kafka-1.example.com` and `9092`). Select **Add Server** to add another broker. Infisical tries the brokers in order and uses the first one that accepts the connection.
+    </ParamField>
+
+    <ParamField path="SASL Mechanism" type="string" required>
+      How Infisical logs in as the admin user: **PLAIN**, **SCRAM-SHA-256**, or **SCRAM-SHA-512**. This setting doesn't affect lease users, who can log in with either SCRAM mechanism.
+    </ParamField>
+
+    <ParamField path="Username" type="string" required>
+      The admin user that Infisical logs in as to create and delete lease users.
+    </ParamField>
+
+    <ParamField path="Password" type="string" required>
+      The admin user's password.
+    </ParamField>
+
+    <ParamField path="ACLs" type="list" required>
+      The permissions each lease user gets. Kafka denies anything these ACLs don't allow. For each ACL, set:
+
+      - **Resource Type**: **Topic**, **Group** (a consumer group), **Cluster**, or **Transactional ID**
+      - **Pattern**: **Literal** to match the exact **Resource Name**, or **Prefixed** to match every resource whose name starts with it
+      - **Resource Name**: the name or prefix, or `*` for every resource of that type (a **Cluster** ACL must use `kafka-cluster`)
+      - **Operation**: what the lease user can do with the resource, such as **Read** or **Write** (see [Kafka's list of operations](https://kafka.apache.org/43/security/authorization-and-acls/#operations-in-kafka))
+      - **Permission**: **Allow** or **Deny** (a **Deny** ACL overrides any **Allow** ACL for the same resource)
+
+      Select **Add ACL** to add another. For ACLs that common clients need, see [ACL examples](#acl-examples).
+    </ParamField>
+
+    Under **Advanced**, you can also set:
+
+    <DynamicSecretUsernameTemplateParamField />
+
+    <Note>
+      Infisical adds a hyphen and 8 random characters to every username the template generates, so each lease gets a new Kafka user. For example, `{{identity.name}}` generates a username such as `jane-x7Kp2QmA`.
+    </Note>
+
+    <ParamField path="Enable SSL" type="boolean" default="false">
+      Connect to the brokers over TLS. Turn this on if the listener uses `SASL_SSL`.
+    </ParamField>
+
+    <ParamField path="CA Certificate" type="string">
+      The PEM-encoded certificate of the CA that signed your brokers' certificates. You only need it if your brokers use a private CA. Appears when **Enable SSL** is on.
+    </ParamField>
+
+    <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+      If on, Infisical checks each broker's certificate against the CA and the broker's hostname. Turn this off only to test with a self-signed certificate. Appears when **Enable SSL** is on.
+    </ParamField>
+  </Step>
+  <Step>
+    Select **Submit**.
+
+    Before Infisical saves the dynamic secret, it logs in as the admin user. Then it checks that your Kafka version supports managing SCRAM users and that the brokers have an authorizer enabled. If a check fails, Infisical shows an error and doesn't save the dynamic secret. To fix the most common errors, see [Troubleshooting](#troubleshooting).
+  </Step>
+</Steps>
+
+## Step 2: Create a lease
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Generate Lease**.
+  </Step>
+  <Step>
+    Enter a **Default TTL** for the lease, then select **Provision Lease**.
+  </Step>
+  <Step>
+    Copy the **Username** and **Password**.
+
+    <Warning>
+      Infisical shows the credentials only once. Copy them before you close the dialog.
+    </Warning>
+  </Step>
+  <Step>
+    Configure your Kafka client to log in with the credentials. For example, in a Java client's properties file:
+
+    ```properties
+    security.protocol=SASL_SSL
+    sasl.mechanism=SCRAM-SHA-512
+    sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="<username>" password="<password>";
+    ```
+
+    If your listener doesn't use TLS, set `security.protocol` to `SASL_PLAINTEXT`. If it only accepts SCRAM-SHA-256, set `sasl.mechanism` to `SCRAM-SHA-256`.
+  </Step>
+</Steps>
+
+## Renew or revoke a lease
+
+In the row for the dynamic secret, select **View Leases**. Next to a lease, you can:
+
+- Select **Renew lease** to extend the lease, up to the **Max TTL**
+- Select **Revoke lease** to delete the lease user before the lease expires
+
+When you revoke a lease or it expires, Infisical deletes the user's ACLs, then the user's credentials. If a client is already connected as that user, it stays connected but can't read or write anything, because Kafka checks the ACLs on every request.
+
+## ACL examples
+
+These examples show the ACLs to add in [Step 1](#step-1-create-the-dynamic-secret) for common clients, using a topic named `orders`.
+
+<AccordionGroup>
+  <Accordion title="Produce to a topic">
+    | Resource Type | Pattern | Resource Name | Operation | Permission |
+    | --- | --- | --- | --- | --- |
+    | Topic | Literal | `orders` | Write | Allow |
+  </Accordion>
+  <Accordion title="Consume from a topic">
+    The second ACL lets the lease user join any consumer group whose name starts with `orders-`, such as `orders-billing`.
+
+    | Resource Type | Pattern | Resource Name | Operation | Permission |
+    | --- | --- | --- | --- | --- |
+    | Topic | Literal | `orders` | Read | Allow |
+    | Group | Prefixed | `orders-` | Read | Allow |
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot find a suitable SASL mechanism. Connection closed">
+    The broker closed the connection while Infisical was logging in. This usually means **Enable SSL** doesn't match the listener on that port:
+
+    - If the listener uses `SASL_SSL`, turn **Enable SSL** on
+    - If the listener uses `SASL_PLAINTEXT`, turn **Enable SSL** off
+
+    Changing the **SASL Mechanism** doesn't fix this error.
+  </Accordion>
+  <Accordion title="ACLs are not enabled on this Kafka cluster">
+    The brokers have no authorizer, so Kafka would ignore every ACL that Infisical creates. Set `authorizer.class.name` on every broker, then save the dynamic secret again:
+
+    - With KRaft: `org.apache.kafka.metadata.authorizer.StandardAuthorizer`
+    - With ZooKeeper: `kafka.security.authorizer.AclAuthorizer`
+  </Accordion>
+  <Accordion title="Kafka dynamic secrets require Kafka 2.7 or later with ZooKeeper, or 3.5 or later with KRaft">
+    Your cluster runs a Kafka version that can't manage SCRAM users through the Kafka protocol. Upgrade the cluster to a supported version.
+  </Accordion>
+  <Accordion title="Self-signed certificate in certificate chain">
+    A private CA signed the brokers' certificates, and Infisical doesn't trust that CA. Paste the CA's certificate into **CA Certificate**.
+  </Accordion>
+  <Accordion title="Invalid credentials with SASL mechanism">
+    The broker rejected the admin user's login. Check the **Password**, and check that the admin user has a credential for the **SASL Mechanism** you selected. For example, a user defined only in the brokers' JAAS configuration for PLAIN has no SCRAM credential.
+  </Accordion>
+  <Accordion title="On a ZooKeeper cluster, Infisical can't connect to a broker you didn't add">
+    With ZooKeeper, only the controller broker accepts changes to SCRAM users, so Infisical connects to the controller at the address the controller advertises. Any broker can become the controller, so make sure Infisical can reach every broker's advertised address.
+  </Accordion>
+  <Accordion title="Lease users can do more than their ACLs allow">
+    If a broker sets `allow.everyone.if.no.acl.found` to `true`, any user can access a resource that has no ACLs. Infisical can't detect this setting, so set it to `false` on every broker.
+  </Accordion>
+</AccordionGroup>

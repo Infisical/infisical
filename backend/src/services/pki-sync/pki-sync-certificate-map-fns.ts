@@ -209,6 +209,7 @@ export const buildCertificateMap = async (
             cert: certificatePem,
             privateKey: certPrivateKey || "",
             certificateChain: processedCertificateChain,
+            fullCertificateChain: certificateChain,
             caCertificate,
             alternativeNames,
             certificateId: certificate.id,

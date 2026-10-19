@@ -6,7 +6,7 @@ import { randomUUID } from "crypto";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { highCardinalityMeter } from "@app/lib/telemetry/metrics";
@@ -37,6 +37,7 @@ import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
 import { withPkiSyncFilterLock } from "./pki-sync-filter-reconcile-fns";
 import {
   getPkiSyncProviderCapabilities,
+  isPkiSyncSerialisedPerConnection,
   parsePkiSyncErrorMessage,
   PkiSyncFns,
   truncateSyncMessage
@@ -105,6 +106,7 @@ type PkiSyncActionJob = Job<
 
 const JITTER_MS = 10 * 1000;
 const HOST_SERIALISATION_LOCK_TTL_MS = 5 * 60 * 1000;
+const PKI_SYNC_LOCK_TTL_MS = 5 * 60 * 1000;
 
 const REQUEUE_MS = 30 * 1000;
 const REQUEUE_LIMIT = 30;
@@ -618,7 +620,7 @@ export const pkiSyncQueueFactory = ({
 
   const $handleRemoveCertificatesJob = async (job: TPkiSyncRemoveCertificatesDTO, pkiSync: TPkiSyncRaw) => {
     const {
-      data: { syncId, auditLogInfo, deleteSyncOnComplete, certificateIds: certificateIdsToRemove }
+      data: { syncId, auditLogInfo, deleteSyncOnComplete, certificateIds: certificateIdsToRemove, removalOptions }
     } = job;
 
     await pkiSyncDAL.updateById(syncId, {
@@ -656,6 +658,7 @@ export const pkiSyncQueueFactory = ({
         certificateSyncDAL,
         certificateDAL,
         certificateMap,
+        removalOptions,
         gatewayV2Service,
         gatewayPoolService,
         keyStore
@@ -723,6 +726,25 @@ export const pkiSyncQueueFactory = ({
         }
       }
     }
+  };
+
+  const $keepLocksAlive = (syncId: string, locks: Array<TKeyStoreLock | null>) => {
+    let held = locks.filter((lock): lock is TKeyStoreLock => Boolean(lock));
+    const timer = setInterval(() => {
+      void Promise.all(
+        held.map((current) =>
+          current.extend
+            ? current.extend(PKI_SYNC_LOCK_TTL_MS).catch((error: unknown) => {
+                logger.warn(error, `Failed to extend PKI sync lock [syncId=${syncId}]`);
+                return current;
+              })
+            : Promise.resolve(current)
+        )
+      ).then((extended) => {
+        held = extended;
+      });
+    }, PKI_SYNC_LOCK_TTL_MS / 4);
+    return { stop: () => clearInterval(timer) };
   };
 
   const $handleAcquireLockFailure = async (job: PkiSyncActionJob) => {
@@ -833,7 +855,8 @@ export const pkiSyncQueueFactory = ({
     const needsConnectionSlot = job.name === QueueJobs.PkiSyncSyncCertificates;
 
     const needsHostSerialisation =
-      needsConnectionSlot && getPkiSyncProviderCapabilities(pkiSync.destination).canRunHealthCheckCommand;
+      (needsConnectionSlot && getPkiSyncProviderCapabilities(pkiSync.destination).canRunHealthCheckCommand) ||
+      isPkiSyncSerialisedPerConnection(pkiSync.destination);
 
     const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
 
@@ -867,7 +890,7 @@ export const pkiSyncQueueFactory = ({
       lock = await keyStore.acquireLock(
         [KeyStorePrefixes.PkiSyncLock(syncId)],
         // PKI syncs can take excessive amounts of time so we need to keep it locked
-        5 * 60 * 1000
+        PKI_SYNC_LOCK_TTL_MS
       );
     } catch (e) {
       if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId, targetHost);
@@ -876,6 +899,10 @@ export const pkiSyncQueueFactory = ({
 
       return;
     }
+
+    const keepAlive = isPkiSyncSerialisedPerConnection(pkiSync.destination)
+      ? $keepLocksAlive(syncId, [lock, connectionLock])
+      : undefined;
 
     try {
       switch (job.name) {
@@ -893,6 +920,7 @@ export const pkiSyncQueueFactory = ({
           throw new Error(`Unhandled PKI Sync Job ${String(job.name)}`);
       }
     } finally {
+      keepAlive?.stop();
       if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId, targetHost);
 
       await Promise.allSettled([lock.release(), connectionLock?.release()]);

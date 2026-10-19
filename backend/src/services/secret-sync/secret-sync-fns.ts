@@ -4,7 +4,8 @@ import handlebars from "handlebars";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { CHEF_SYNC_LIST_OPTION, ChefSyncFns } from "@app/ee/services/secret-sync/chef";
+import { CHEF_SYNC_LIST_OPTION } from "@app/ee/services/secret-sync/chef";
+import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "@app/ee/services/secret-sync/chef/chef-sync-fns";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import { BadRequestError } from "@app/lib/errors";
 import {
@@ -53,6 +54,7 @@ import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
 import { CLOUD66_SYNC_LIST_OPTION, Cloud66SyncFns } from "./cloud66";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
+import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
@@ -71,12 +73,14 @@ import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { KEEPER_SYNC_LIST_OPTION, KeeperSyncFns } from "./keeper";
 import { LARAVEL_FORGE_SYNC_LIST_OPTION, LaravelForgeSyncFns } from "./laravel-forge";
 import { NETLIFY_SYNC_LIST_OPTION, NetlifySyncFns } from "./netlify";
 import { NORTHFLANK_SYNC_LIST_OPTION, NorthflankSyncFns } from "./northflank";
 import { OCTOPUS_DEPLOY_SYNC_LIST_OPTION, OctopusDeploySyncFns } from "./octopus-deploy";
 import { ONA_SYNC_LIST_OPTION, OnaSyncFns } from "./ona";
 import { OVH_SYNC_LIST_OPTION, OvhSyncFns } from "./ovh";
+import { PORTAINER_SYNC_LIST_OPTION, PortainerSyncFns } from "./portainer";
 import { QOVERY_SYNC_LIST_OPTION, QoverySyncFns } from "./qovery";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
@@ -120,8 +124,10 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
+  [SecretSync.CloudflareSecretsStore]: CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION,
   [SecretSync.Supabase]: SUPABASE_SYNC_LIST_OPTION,
   [SecretSync.Rundeck]: RUNDECK_SYNC_LIST_OPTION,
+  [SecretSync.Portainer]: PORTAINER_SYNC_LIST_OPTION,
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
   [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
   [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION,
@@ -144,7 +150,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Qovery]: QOVERY_SYNC_LIST_OPTION,
   [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION,
   [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION,
-  [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION
+  [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION,
+  [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -157,6 +164,7 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
   [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
+  [SecretSync.Chef]: chefPreSaveTransformDestinationConfig,
   [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig
 };
 
@@ -347,6 +355,8 @@ export const SecretSyncFns = {
         return CloudflarePagesSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
         return CloudflareWorkersSyncFns.syncSecrets(secretSync, payload);
+      case SecretSync.CloudflareSecretsStore:
+        return CloudflareSecretsStoreSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Railway:
@@ -359,6 +369,8 @@ export const SecretSyncFns = {
         return SupabaseSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Rundeck:
         return RundeckSyncFns.syncSecrets(secretSync, payload);
+      case SecretSync.Portainer:
+        return PortainerSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -397,6 +409,8 @@ export const SecretSyncFns = {
         return SpaceliftSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Daytona:
         return DaytonaSyncFns.syncSecrets(secretSync, payload);
+      case SecretSync.Keeper:
+        return KeeperSyncFns.syncSecrets(secretSync, payload);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -500,6 +514,9 @@ export const SecretSyncFns = {
       case SecretSync.CloudflareWorkers:
         secretMap = await CloudflareWorkersSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.CloudflareSecretsStore:
+        secretMap = await CloudflareSecretsStoreSyncFns.getSecrets();
+        break;
       case SecretSync.Zabbix:
         secretMap = await ZabbixSyncFns.getSecrets(secretSync);
         break;
@@ -517,6 +534,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Rundeck:
         secretMap = await RundeckSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Portainer:
+        secretMap = await PortainerSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService);
         break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
@@ -574,6 +594,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Daytona:
         secretMap = await DaytonaSyncFns.getSecrets();
+        break;
+      case SecretSync.Keeper:
+        secretMap = await KeeperSyncFns.getSecrets(secretSync);
         break;
       default:
         throw new Error(
@@ -659,6 +682,8 @@ export const SecretSyncFns = {
         return CloudflarePagesSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
         return CloudflareWorkersSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.CloudflareSecretsStore:
+        return CloudflareSecretsStoreSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Railway:
@@ -671,6 +696,8 @@ export const SecretSyncFns = {
         return SupabaseSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Rundeck:
         return RundeckSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.Portainer:
+        return PortainerSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -709,6 +736,8 @@ export const SecretSyncFns = {
         return SpaceliftSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Daytona:
         return DaytonaSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.Keeper:
+        return KeeperSyncFns.removeSecrets(secretSync, payload);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

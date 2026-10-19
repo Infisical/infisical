@@ -132,6 +132,16 @@ describe("safe-request SSRF helpers", () => {
       expect(lookupMock).not.toHaveBeenCalled();
     });
 
+    it("allows literal local hostnames when ALLOW_INTERNAL_IP_CONNECTIONS is set", async () => {
+      configState.ALLOW_INTERNAL_IP_CONNECTIONS = true;
+      setLookup([{ address: LOOPBACK_IP_V4, family: 4 }]);
+
+      await expect(validateAndPinUrl("http://localhost:8080")).resolves.toEqual({
+        hostname: "localhost",
+        entries: [{ address: LOOPBACK_IP_V4, family: 4 }]
+      });
+    });
+
     it("rejects RFC1918 / loopback IPs by default", async () => {
       setLookup([{ address: PRIVATE_IP_V4, family: 4 }]);
       await expect(validateAndPinUrl("https://example.com")).rejects.toThrow(/Local IPs not allowed/i);

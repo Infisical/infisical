@@ -23,13 +23,13 @@ infisical init
 <CodeGroup>
 
 ```bash infisical-run.sh
-infisical run -- npm start
+infisical sm run -- npm start
 ```
 
 ```js infisical-run.js
 const spawn = require("child_process").spawn;
 
-const infisical = spawn("infisical", ["run", "--", "npm", "start"]);
+const infisical = spawn("infisical", ["sm", "run", "--", "npm", "start"]);
 
 infisical.stdout.on("data", (data) => console.log(`${data}`));
 infisical.stderr.on("data", (data) => console.error(`${data}`));

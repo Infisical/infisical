@@ -7,11 +7,20 @@ import { useToggle } from "@app/hooks";
 type Props = {
   text: ReactNode;
   link?: string;
+  action?: ReactNode;
   role?: "status" | "alert";
+  isDismissible?: boolean;
   onDismiss?: () => void;
 };
 
-export const OrgAlertBanner = ({ text, link, role = "status", onDismiss }: Props) => {
+export const OrgAlertBanner = ({
+  text,
+  link,
+  action,
+  role = "status",
+  isDismissible = true,
+  onDismiss
+}: Props) => {
   const [isDismissed, setIsDismissed] = useToggle(false);
 
   if (isDismissed) return null;
@@ -36,15 +45,18 @@ export const OrgAlertBanner = ({ text, link, role = "status", onDismiss }: Props
           </a>
         )}
       </p>
-      <IconButton
-        className="-my-1 -mr-1"
-        aria-label="Dismiss warning"
-        variant="ghost-muted"
-        size="xs"
-        onClick={onDismiss ?? setIsDismissed.on}
-      >
-        <XIcon />
-      </IconButton>
+      {action && <div className="-my-1 shrink-0">{action}</div>}
+      {isDismissible && (
+        <IconButton
+          className="-my-1 -mr-1"
+          aria-label="Dismiss warning"
+          variant="ghost-muted"
+          size="xs"
+          onClick={onDismiss ?? setIsDismissed.on}
+        >
+          <XIcon />
+        </IconButton>
+      )}
     </div>
   );
 };

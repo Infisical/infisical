@@ -4,6 +4,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { CloudflareSecretsStoreScope } from "@app/hooks/api/secretSyncs/types/cloudflare-secrets-store-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
@@ -156,6 +157,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "HOSTING",
     description: "Secrets bound to Cloudflare Workers."
   },
+  [SecretSync.CloudflareSecretsStore]: {
+    name: "Cloudflare Secrets Store",
+    image: "Cloudflare.png",
+    category: "SECRETS",
+    description: "Account-level secrets for Cloudflare Workers and AI Gateway."
+  },
   [SecretSync.Zabbix]: {
     name: "Zabbix",
     image: "Zabbix.png",
@@ -185,6 +192,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Rundeck.svg",
     category: "CI/CD",
     description: "Job and project secrets for Rundeck Key Storage."
+  },
+  [SecretSync.Portainer]: {
+    name: "Portainer",
+    image: "Portainer.png",
+    category: "INFRASTRUCTURE",
+    description: "Stack environment variables for Portainer."
   },
   [SecretSync.DigitalOceanAppPlatform]: {
     name: "Digital Ocean App Platform",
@@ -312,6 +325,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Daytona.png",
     category: "PLATFORM",
     description: "Organization secrets for Daytona sandboxes."
+  },
+  [SecretSync.Keeper]: {
+    name: "Keeper Password Manager",
+    image: "Keeper.png",
+    category: "PASSWORD MANAGER",
+    description: "Login records in a Keeper Password Manager shared folder."
   }
 };
 
@@ -346,8 +365,10 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
+  [SecretSync.CloudflareSecretsStore]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Rundeck]: AppConnection.Rundeck,
+  [SecretSync.Portainer]: AppConnection.Portainer,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
@@ -371,7 +392,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66,
   [SecretSync.Spacelift]: AppConnection.Spacelift,
-  [SecretSync.Daytona]: AppConnection.Daytona
+  [SecretSync.Daytona]: AppConnection.Daytona,
+  [SecretSync.Keeper]: AppConnection.Keeper
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
@@ -454,4 +476,10 @@ export const RENDER_SYNC_SCOPES: Record<RenderSyncScope, { name: string; descrip
     name: "EnvironmentGroup",
     description: "Infisical will sync secrets to the specified Render environment group."
   }
+};
+
+export const CLOUDFLARE_SECRETS_STORE_SCOPE_LABELS: Record<CloudflareSecretsStoreScope, string> = {
+  [CloudflareSecretsStoreScope.Workers]: "Workers",
+  [CloudflareSecretsStoreScope.AiGateway]: "AI Gateway",
+  [CloudflareSecretsStoreScope.Containers]: "Containers"
 };

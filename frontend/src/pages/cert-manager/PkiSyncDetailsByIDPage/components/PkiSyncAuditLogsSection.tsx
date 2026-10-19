@@ -33,7 +33,10 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
+  const auditLogsRetentionDays =
+    subscription?.auditLogsRetentionDays === null
+      ? Infinity
+      : (subscription?.auditLogsRetentionDays ?? 30);
 
   return (
     <Card className="max-h-full min-w-0">

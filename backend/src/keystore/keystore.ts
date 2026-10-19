@@ -31,6 +31,7 @@ export const PgSqlLock = {
   CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
   CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
+  CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
@@ -43,7 +44,8 @@ export const PgSqlLock = {
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
   ExternalGroupOrgRoleMappingUpdate: (orgId: string) =>
-    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`)
+    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`),
+  AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -75,6 +77,8 @@ export const KeyStorePrefixes = {
   StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
+  SecretScanningDataSourceLock: (dataSourceId: string) =>
+    `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
@@ -165,8 +169,11 @@ export const KeyStorePrefixes = {
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
+  // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
+  AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
+  OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
@@ -199,6 +206,12 @@ export const KeyStorePrefixes = {
   // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
   LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
   LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
+  AuditLogOrgSettings: (orgId: string) => `audit-log-settings-org-${orgId}` as const,
+  AuditLogProjectSettings: (orgId: string, projectId: string) =>
+    `audit-log-settings-project-${orgId}-${projectId}` as const,
+  AuditLogCollapseWindow: (key: string) => `audit-log-collapse-window-${key}` as const,
+  AuditLogCollapseCount: (key: string, windowStart: string) =>
+    `audit-log-collapse-count-${key}-${windowStart}` as const,
   // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
   LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
   // Single-flight guard so only one background revalidation runs per org per lock window.
@@ -260,7 +273,7 @@ export const KeyStoreTtls = {
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
   EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
   InsightsCacheInSeconds: 300, // 5 minutes
-  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
+  InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,
@@ -269,8 +282,10 @@ export const KeyStoreTtls = {
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 900, // 15 minutes
   LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
+  AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
   AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
+  OrgSecretScanningFindingsCountInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes
   // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
@@ -343,6 +358,7 @@ export type TKeyStoreFactory = {
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
+  decrementIfExists: (key: string) => Promise<number | null>;
   claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
   incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
   probeDistinctMember: (key: string, member: string, expiryInSeconds: number) => Promise<boolean>;
@@ -359,7 +375,8 @@ export type TKeyStoreFactory = {
     id: string,
     fieldValue: Record<string, string>,
     maxLen?: number,
-    expiryInSeconds?: number
+    expiryInSeconds?: number,
+    isExactTrim?: boolean
   ) => Promise<string | null>;
   streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
   streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
@@ -389,12 +406,13 @@ export type TKeyStoreFactory = {
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
   // locks
-  acquireLock(
-    resources: string[],
-    duration: number,
-    settings?: Partial<Settings>
-  ): Promise<{ release: () => Promise<ExecutionResult> }>;
+  acquireLock(resources: string[], duration: number, settings?: Partial<Settings>): Promise<TKeyStoreLock>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
+};
+
+export type TKeyStoreLock = {
+  release: () => Promise<ExecutionResult>;
+  extend?: (duration: number) => Promise<TKeyStoreLock>;
 };
 
 const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {
@@ -529,6 +547,14 @@ export const keyStoreFactory = (
     return redis.call("DECR", KEYS[1])
   `;
 
+  // A plain DECR on a missing key creates it at -1 with no TTL, which then lives forever.
+  const DECREMENT_IF_EXISTS_SCRIPT = `
+    if redis.call("EXISTS", KEYS[1]) == 0 then
+      return false
+    end
+    return redis.call("DECR", KEYS[1])
+  `;
+
   const incrementByAndRefreshExpiryIfUnderLimit = async (
     key: string,
     limit: number,
@@ -547,6 +573,12 @@ export const keyStoreFactory = (
   const decrementByOrDelete = async (key: string): Promise<number> => {
     const result = await primaryRedis.eval(DECREMENT_OR_DELETE_SCRIPT, 1, key);
     return Number(result);
+  };
+
+  // Returns null when the key does not exist, leaving it absent.
+  const decrementIfExists = async (key: string): Promise<number | null> => {
+    const result = await primaryRedis.eval(DECREMENT_IF_EXISTS_SCRIPT, 1, key);
+    return result === null ? null : Number(result);
   };
 
   // Choosing and claiming has to be one round trip. Done as separate read and write calls, every
@@ -767,7 +799,10 @@ export const keyStoreFactory = (
     id: string,
     fieldValue: Record<string, string>,
     maxLen = 1_000_000,
-    expiryInSeconds?: number
+    expiryInSeconds?: number,
+    // With "~", Redis only trims whole internal blocks of about 100 entries, so a cap of 10 could still hold around
+    // 100. Small caps need exact trimming.
+    isExactTrim = false
   ) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
@@ -775,14 +810,15 @@ export const keyStoreFactory = (
     }
 
     if (!expiryInSeconds) {
-      return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+      return isExactTrim
+        ? primaryRedis.xadd(key, "MAXLEN", maxLen, id, ...args)
+        : primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
     }
 
-    const results = await primaryRedis
-      .multi()
-      .xadd(key, "MAXLEN", "~", maxLen, id, ...args)
-      .expire(key, expiryInSeconds)
-      .exec();
+    const pipeline = primaryRedis.multi();
+    if (isExactTrim) pipeline.xadd(key, "MAXLEN", maxLen, id, ...args);
+    else pipeline.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+    const results = await pipeline.expire(key, expiryInSeconds).exec();
 
     const [addError, entryId] = results?.[0] ?? [null, null];
     if (addError) throw addError;
@@ -865,6 +901,7 @@ export const keyStoreFactory = (
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
+    decrementIfExists,
     claimLeastLoaded,
     incrementByWithExpiry,
     probeDistinctMember,

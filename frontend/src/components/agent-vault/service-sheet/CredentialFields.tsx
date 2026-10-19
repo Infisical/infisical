@@ -123,6 +123,7 @@ export const SecretInput = <TName extends SecretName>({
   });
 
   const lowerLabel = label.toLowerCase();
+  const isClearable = canBeCleared && hasStoredSecret;
 
   return (
     <>
@@ -185,29 +186,33 @@ export const SecretInput = <TName extends SecretName>({
               isError={isError}
             />
           </div>
-          <InputGroupAddon align="inline-end">
-            {canBeCleared && hasStoredSecret && (
-              <InputGroupButton
-                isDisabled={isCleared}
-                aria-label={`Clear ${lowerLabel}`}
-                onClick={() => {
-                  setIsCleared(true);
-                  field.onChange("");
-                  setFocus(field.name);
-                }}
-              >
-                <XIcon />
-              </InputGroupButton>
-            )}
-            <InputGroupButton
-              // A stored credential is never returned, so until it is replaced there is nothing to reveal.
-              isDisabled={isUntouched || !field.value || isReferenceOnly}
-              aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
-              onClick={() => setIsVisible((prev) => !prev)}
-            >
-              {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-            </InputGroupButton>
-          </InputGroupAddon>
+          {(isClearable || !isUntouched) && (
+            <InputGroupAddon align="inline-end">
+              {isClearable && (
+                <InputGroupButton
+                  isDisabled={isCleared}
+                  aria-label={`Clear ${lowerLabel}`}
+                  onClick={() => {
+                    setIsCleared(true);
+                    field.onChange("");
+                    setFocus(field.name);
+                  }}
+                >
+                  <XIcon />
+                </InputGroupButton>
+              )}
+              {/* A stored credential is never returned, so until it is replaced there is nothing to reveal. */}
+              {!isUntouched && (
+                <InputGroupButton
+                  isDisabled={!field.value || isReferenceOnly}
+                  aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
+                  onClick={() => setIsVisible((prev) => !prev)}
+                >
+                  {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+                </InputGroupButton>
+              )}
+            </InputGroupAddon>
+          )}
         </InputGroup>
       </VariableSuggestions>
       {hasStoredKeys && (

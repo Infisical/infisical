@@ -8,6 +8,8 @@ import {
   TChannelResult
 } from "../alert-channel-types";
 
+const MAX_ITEMS_DISPLAYED = 50;
+
 const buildSubstitutions = (payload: TAlertPayload) => ({
   alertName: payload.alert.name,
   eventLabel: payload.eventLabel,
@@ -16,12 +18,13 @@ const buildSubstitutions = (payload: TAlertPayload) => ({
   summary: payload.summary,
   severity: payload.severity,
   viewUrl: payload.alert.viewUrl,
-  items: payload.items.map((item) => ({
+  items: payload.items.slice(0, MAX_ITEMS_DISPLAYED).map((item) => ({
     id: item.id,
     title: item.title,
     identifier: item.identifier,
     fields: item.fields ?? []
-  }))
+  })),
+  remainingCount: Math.max(payload.items.length - MAX_ITEMS_DISPLAYED, 0)
 });
 
 const sendEmail = async (

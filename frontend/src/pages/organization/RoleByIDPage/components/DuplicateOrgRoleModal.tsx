@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -22,6 +22,7 @@ import {
   PageLoader
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateOrgRole, useGetOrgRole } from "@app/hooks/api";
 import { TOrgRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -49,6 +50,7 @@ type ContentProps = {
 };
 
 const Content = ({ role, onClose }: ContentProps) => {
+  const scopeVariant = useScopeVariant();
   const {
     control,
     handleSubmit,
@@ -157,16 +159,24 @@ const Content = ({ role, onClose }: ContentProps) => {
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" variant="org" isPending={isSubmitting} isDisabled={isSubmitting}>
+          <Button
+            type="submit"
+            variant={scopeVariant}
+            isPending={isSubmitting}
+            isDisabled={isSubmitting}
+          >
             Duplicate Role
           </Button>
         </DialogFooter>
       </form>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.duplicate-org-role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan."
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );

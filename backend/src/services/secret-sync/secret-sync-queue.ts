@@ -283,7 +283,7 @@ export const secretSyncQueueFactory = ({
     });
     const actorOrgId = secretSync.connection.orgId;
 
-    const decryptSecretValue = (value?: Buffer | undefined | null) =>
+    const decryptSecretValue = (value?: Buffer | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
 
     const { expandSecretReferences } = expandSecretReferencesFactory({
@@ -1068,6 +1068,7 @@ export const secretSyncQueueFactory = ({
     // A sync on the path itself always matches, whether or not it includes subfolders. A sync on an
     // ancestor folder only matches when it includes them, so a sync rooted above this path that does
     // not is never triggered by a change it was never configured to cover.
+    // The move and copy warnings in frontend/src/helpers/secretSyncCoverage.ts mirror this rule.
     const secretSyncs = candidateSyncs.filter(
       (sync) =>
         (folder && sync.folderId === folder.id) ||

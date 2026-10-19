@@ -15,7 +15,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
+import { getProjectBaseURL, getProjectTitle, pinProjectForNavigation } from "@app/helpers/project";
 import { useGetUserProjects } from "@app/hooks/api";
 import { TGroupProject } from "@app/hooks/api/groups/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -49,6 +49,10 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
       key={`group-project-${project.id}`}
       onClick={() => {
         if (isAccessible) {
+          pinProjectForNavigation(currentOrg?.id || "", {
+            id: project.id,
+            type: project.type as ProjectType
+          });
           navigate({
             to: `${getProjectBaseURL(project.type as ProjectType)}/access-management` as const,
             params: {
@@ -83,6 +87,10 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
               isDisabled={!isAccessible}
               onClick={(e) => {
                 e.stopPropagation();
+                pinProjectForNavigation(currentOrg?.id || "", {
+                  id: project.id,
+                  type: project.type as ProjectType
+                });
                 navigate({
                   to: `${getProjectBaseURL(project.type as ProjectType)}/access-management` as const,
                   params: {

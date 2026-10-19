@@ -14,14 +14,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./Tooltip";
  * `Tooltip` already wraps its children in a `TooltipProvider` internally, so
  * ad-hoc tooltips don't need a provider higher in the tree. Wrap your trigger
  * with `asChild` to forward the trigger props onto a `Button`, `IconButton`,
- * or any focusable element — keep tooltip content to a single short sentence,
- * and never put interactive controls inside it.
+ * or any focusable element. Keep content brief and informational, and never
+ * put interactive controls inside it. Use `<Tooltip selectable>` only when
+ * users need to select and copy informational text, such as a failure reason.
+ * This opt-in keeps the tooltip open while the pointer moves into its content;
+ * ordinary tooltips remain nonselectable and close on leaving the trigger.
+ * Use `<Tooltip hoverable>` to preserve pointer residence for informational
+ * hints without enabling text selection. `selectable` implies hoverability.
  *
  * **Prefer `HoverCard`** when the hint needs rich content — multi-paragraph
  * descriptions, links, structured metadata about a referenced entity. Tooltip
- * content disappears the moment the cursor leaves the trigger, so any link or
- * action inside is fragile; `HoverCard` keeps the panel open as the cursor
- * moves into it. Reach for `Popover` instead when the user must click to
+ * content is not an interactive overlay, even with `selectable`; `HoverCard`
+ * keeps rich detail open as the cursor moves into it. Reach for `Popover`
+ * instead when the user must click to
  * commit an interaction (forms, pickers, action menus). Tooltip content
  * preserves an 8px viewport gutter by default.
  */
@@ -39,6 +44,18 @@ const meta = {
     defaultOpen: {
       control: "boolean"
     },
+    selectable: {
+      control: "boolean",
+      description:
+        "Allows hover transfer and text selection/copy for brief informational content only. Do not add links, buttons, or form controls.",
+      table: { defaultValue: { summary: "false" } }
+    },
+    hoverable: {
+      control: "boolean",
+      description:
+        "Allows pointer residence over informational content without enabling text selection. Selectable content is always hoverable. Do not add interactive controls.",
+      table: { defaultValue: { summary: "false" } }
+    },
     open: {
       table: {
         disable: true
@@ -55,7 +72,7 @@ const meta = {
       }
     }
   },
-  args: { delayDuration: 0, defaultOpen: false }
+  args: { delayDuration: 0, defaultOpen: false, selectable: false, hoverable: false }
 } satisfies Meta<typeof Tooltip>;
 
 export default meta;
@@ -71,8 +88,8 @@ export const Default: Story = {
       }
     }
   },
-  render: () => (
-    <Tooltip>
+  render: (args) => (
+    <Tooltip {...args}>
       <TooltipTrigger asChild>
         <Button variant="outline">Hover me</Button>
       </TooltipTrigger>
@@ -99,6 +116,52 @@ export const IconTrigger: Story = {
         </IconButton>
       </TooltipTrigger>
       <TooltipContent>View help and documentation</TooltipContent>
+    </Tooltip>
+  )
+};
+
+export const SelectableContent: Story = {
+  name: "Example: Selectable Informational Text",
+  args: { selectable: true },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set `selectable` on `Tooltip`, not `TooltipContent`, when users need to select and copy a short informational detail. This enables Radix hover grace between the trigger and content and text selection without changing focus, Escape, or portal behavior. The default remains nonselectable. Keep links, buttons, forms, and other interactive controls out of tooltips; use an appropriate overlay for those flows."
+      }
+    }
+  },
+  render: (args) => (
+    <Tooltip {...args}>
+      <TooltipTrigger asChild>
+        <Button variant="outline">Failure Reason</Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">
+        Scan stopped: example repository is unavailable.
+      </TooltipContent>
+    </Tooltip>
+  )
+};
+
+export const HoverableContent: Story = {
+  name: "Example: Hoverable Informational Text",
+  args: { hoverable: true },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set `hoverable` on `Tooltip` to let users move the pointer into a brief informational hint and keep it open without making its text selectable. Use this opt-in when preserving legacy tooltip hover residence. `selectable` also enables hoverability, even if `hoverable` is false. Ordinary tooltips keep their existing trigger-leave dismissal. Neither opt-in permits links, buttons, forms, or other interactive controls."
+      }
+    }
+  },
+  render: (args) => (
+    <Tooltip {...args}>
+      <TooltipTrigger asChild>
+        <Button variant="outline">Key Status</Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">
+        This example key is active and available for encryption.
+      </TooltipContent>
     </Tooltip>
   )
 };

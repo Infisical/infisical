@@ -17,7 +17,7 @@ their **ACME Directory URL** such as:
 - ZeroSSL: `https://acme.zerossl.com/v2/DV90`.
 - SSL.com: `https://acme.ssl.com/sslcom-dv-rsa`.
 
-When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, Azure DNS, DNS Made Easy, PowerDNS, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
+When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, Azure DNS, DNS Made Easy, Google Cloud DNS, PowerDNS, UltraDNS, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
 The ACME provider checks for the existence of this TXT record to verify domain control before issuing the certificate back to Infisical.
 
 After validation completes successfully, Infisical automatically removes the TXT record from your DNS provider.
@@ -139,6 +139,38 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
                 For detailed instructions on setting up a PowerDNS connection, see the [PowerDNS Connection](/integrations/app-connections/powerdns) documentation.
             </Tab>
+            <Tab title="UltraDNS">
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new UltraDNS connection.
+
+                2. Ensure the UltraDNS user can read zones and manage resource records in the zone you want to use for validation. Only primary zones can be used, since secondary zones can't accept record changes.
+
+                <Note>
+                  For UltraDNS the zone is identified by its fully qualified name, such as `example.com.`, rather than
+                  by an ID. The Infisical UI offers this as a picker, so this only matters if you are creating the CA
+                  through the API or Terraform.
+                </Note>
+
+                For detailed instructions on setting up an UltraDNS connection, see the [UltraDNS Connection](/integrations/app-connections/ultradns) documentation.
+            </Tab>
+            <Tab title="Google Cloud DNS">
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new GCP connection. The service account's ID must end with the first two sections of your Infisical organization ID, as described in [Configure service account for Infisical](/integrations/app-connections/gcp#configure-service-account-for-infisical).
+
+                2. On the Google Cloud project that holds your public managed zone, grant the connection's service account the **DNS Administrator** (`roles/dns.admin`) and **Service Usage Viewer** (`roles/serviceusage.serviceUsageViewer`) roles.
+
+                3. Enable the Google Cloud APIs that Infisical uses on that same project:
+
+                ```bash
+                gcloud services enable \
+                    dns.googleapis.com \
+                    cloudresourcemanager.googleapis.com \
+                    serviceusage.googleapis.com \
+                    --project=PROJECT_ID
+                ```
+
+                When you register the CA, the **GCP Project** list shows only projects with the Cloud DNS API enabled. The **Zone** list shows only public managed zones, since an ACME CA can't look up records in a private zone.
+
+                For detailed instructions on setting up a GCP connection, see the [GCP Connection](/integrations/app-connections/gcp) documentation.
+            </Tab>
         </Tabs>
     </Step>
     <Step title="Register an ACME-compatible CA">
@@ -150,7 +182,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
               - Name: A slug-friendly name for the ACME-compatible CA such as `lets-encrypt-production`.
               - DNS App Connection: The App Connection from Step 1 used for Infisical to connect to your DNS provider and create/remove DNS records as part of the DNS-01 challenge in ACME.
-              - Zone / Zone ID: Enter the Zone / Zone ID for the domain(s) you'll be requesting certificates for.
+              - Zone / Zone ID: Enter the Zone / Zone ID for the domain(s) you'll be requesting certificates for (for Google Cloud DNS, select the **GCP Project** first, then the **Zone**)
               - Directory URL: Enter the **ACME Directory URL** for your desired upstream ACME-compatible CA such as `https://acme-v02.api.letsencrypt.org/directory` for Let's Encrypt.
               - Account Email: The email address to associate with your ACME account. This email will receive important notifications about your certificates.
               - EAB Key Identifier (KID): (Optional) The Key Identifier (KID) provided by your ACME CA for External Account Binding (EAB). This is required by some ACME providers (e.g., ZeroSSL, DigiCert) to link your ACME account to an external account you've pre-registered with them.
@@ -222,7 +254,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
 <AccordionGroup>
   <Accordion title="What DNS validation methods are supported?">
-    Currently, Infisical supports DNS-01 validation through AWS Route53, Cloudflare, Azure DNS, DNS Made Easy, and PowerDNS. The DNS-01 challenge method is preferred for ACME integrations because it:
+    Currently, Infisical supports DNS-01 validation through AWS Route53, Cloudflare, Azure DNS, Google Cloud DNS, DNS Made Easy, PowerDNS, and UltraDNS. The DNS-01 challenge method is preferred for ACME integrations because it:
 
     - Works with wildcard certificates
     - Doesn't require your servers to be publicly accessible

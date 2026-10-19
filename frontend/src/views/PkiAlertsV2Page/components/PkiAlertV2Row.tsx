@@ -1,17 +1,19 @@
-import { faCircleInfo, faEllipsisH, faEye, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { EyeIcon, MoreHorizontalIcon, Trash2Icon } from "lucide-react";
 
+import { Td, Tr } from "@app/components/v2";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { PkiAlertEventTypeV2, TPkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
 
 import { formatAlertBefore, formatEventType } from "../utils/pki-alert-formatters";
@@ -29,8 +31,11 @@ export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
         <div className="flex items-center gap-2">
           <div className="font-medium text-foreground-cool">{alert.name}</div>
           {alert.description && (
-            <Tooltip content={alert.description}>
-              <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">{alert.description}</TooltipContent>
             </Tooltip>
           )}
         </div>
@@ -52,8 +57,13 @@ export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
       </Td>
       <Td>
         {alert.lastRun ? (
-          <Tooltip
-            content={
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <Badge variant={alert.lastRun.status === "success" ? "success" : "danger"}>
+                {alert.lastRun.status === "success" ? "Success" : "Failed"}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
               <div className="max-w-sm">
                 <div className="text-xs text-label">
                   {new Date(alert.lastRun.timestamp)
@@ -67,11 +77,7 @@ export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
                   </div>
                 )}
               </div>
-            }
-          >
-            <Badge variant={alert.lastRun.status === "success" ? "success" : "danger"}>
-              {alert.lastRun.status === "success" ? "Success" : "Failed"}
-            </Badge>
+            </TooltipContent>
           </Tooltip>
         ) : (
           <span className="text-surface-selected">—</span>
@@ -80,17 +86,17 @@ export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
       <Td className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton size="sm" variant="plain" ariaLabel="Alert actions">
-              <FontAwesomeIcon icon={faEllipsisH} />
+            <IconButton size="xs" variant="ghost" aria-label="Alert actions">
+              <MoreHorizontalIcon />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onView}>
-              <FontAwesomeIcon icon={faEye} className="mr-2 h-4 w-4" />
+              <EyeIcon />
               View details
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDelete} className="text-danger">
-              <FontAwesomeIcon icon={faTrash} className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onClick={onDelete} variant="danger">
+              <Trash2Icon />
               Delete alert
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -1,29 +1,29 @@
-Run your usual start command through `infisical run`, placing it after the `--` separator.
+Run your usual start command through `infisical sm run`, placing it after the `--` separator.
 
 <CodeGroup>
 
 ```bash Node.js
-infisical run --env=dev -- npm run dev
+infisical sm run --env=dev -- npm run dev
 ```
 
 ```bash Python
-infisical run --env=dev -- flask run
+infisical sm run --env=dev -- flask run
 ```
 
 ```bash Go
-infisical run --env=dev -- go run main.go
+infisical sm run --env=dev -- go run main.go
 ```
 
 ```bash Ruby
-infisical run --env=dev -- bundle exec rails server
+infisical sm run --env=dev -- bundle exec rails server
 ```
 
 ```bash Java
-infisical run --env=dev -- ./mvnw spring-boot:run
+infisical sm run --env=dev -- ./mvnw spring-boot:run
 ```
 
 ```bash .NET
-infisical run --env=dev -- dotnet run
+infisical sm run --env=dev -- dotnet run
 ```
 
 </CodeGroup>
@@ -31,15 +31,15 @@ infisical run --env=dev -- dotnet run
 The CLI fetches the secrets you have access to and passes them to your application as environment variables. Your application reads them the same way it always has, through `process.env` in Node.js or `os.environ` in Python, so you don't need to change any application code.
 
 <Note>
-  By default, `infisical run` only injects the secrets sitting at the root of the environment, so anything inside a folder is skipped. If your secrets live in [folders](/documentation/platform/folder), you can specify a folder to include using `--path`:
+  By default, `infisical sm run` only injects the secrets sitting at the root of the environment, so anything inside a folder is skipped. If your secrets live in [folders](/documentation/platform/folder), you can specify a folder to include using `--path`:
 
   ```bash
-  infisical run --env=dev --path="/backend" -- npm run dev
+  infisical sm run --env=dev --path="/backend" -- npm run dev
   ```
 
   If you also need the secrets in that folder's subfolders, add `--recursive`:
   ```bash
-  infisical run --env=dev --path="/backend" --recursive -- npm run dev
+  infisical sm run --env=dev --path="/backend" --recursive -- npm run dev
   ```
 </Note>
 
@@ -63,10 +63,10 @@ The CLI fetches the secrets you have access to and passes them to your applicati
   Source the file and call the function in a single command:
 
   ```bash
-  infisical run --env=dev --command="source custom.sh && yd"
+  infisical sm run --env=dev --command="source custom.sh && yd"
   ```
 
   The `--command` flag is also how you chain commands together, as in `--command="npm run migrate && npm run dev"`.
 </Accordion>
 
-For every available option, see the [`infisical run`](/cli/reference#run) reference.
+For every available option, see the [`infisical sm run`](/cli/reference#sm-run) reference.

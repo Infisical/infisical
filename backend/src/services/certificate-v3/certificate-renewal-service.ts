@@ -15,7 +15,7 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
-  CertificateAlertEvent,
+  CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -300,7 +300,7 @@ export const certificateRenewalServiceFactory = ({
         certificateId: newCert.id,
         projectId: originalCert.projectId,
         orgId,
-        eventType: CertificateAlertEvent.Renewal,
+        eventType: CertificateApplicationAlertEvent.Renewal,
         applicationId: originalCert.applicationId ?? null
       },
       tx

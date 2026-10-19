@@ -7,6 +7,7 @@ type AppConnectionFormContextValue = {
    */
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  layout?: "sheet" | "dialog";
 };
 
 const AppConnectionFormContext = createContext<AppConnectionFormContextValue>({

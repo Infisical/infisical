@@ -16,6 +16,7 @@ import {
   LinuxServerPkiSyncDestinationSection,
   NetScalerPkiSyncDestinationSection,
   NutanixPrismCentralPkiSyncDestinationSection,
+  PaloAltoNetworksPkiSyncDestinationSection,
   WindowsServerPkiSyncDestinationSection
 } from "./PkiSyncDestinationSection/index";
 
@@ -50,6 +51,10 @@ export const PkiSyncDestinationSection = ({ pkiSync }: Props) => {
       break;
     case PkiSync.NetScaler:
       DestinationComponents = <NetScalerPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.PaloAltoNetworks:
+    case PkiSync.PaloAltoNetworksSslTlsProfile:
+      DestinationComponents = <PaloAltoNetworksPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     case PkiSync.F5BigIp:
       DestinationComponents = <F5BigIpPkiSyncDestinationSection pkiSync={pkiSync} />;

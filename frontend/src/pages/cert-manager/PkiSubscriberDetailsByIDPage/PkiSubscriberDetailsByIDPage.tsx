@@ -9,14 +9,13 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import { PageHeader } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3";
 import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -66,10 +65,9 @@ const Page = () => {
 
     handlePopUpClose("deletePkiSubscriber");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
+      to: "/organizations/$orgId/cert-manager/subscribers",
       params: {
-        orgId: currentOrg.id,
-        projectId
+        orgId: currentOrg.id
       }
     });
   };
@@ -77,14 +75,13 @@ const Page = () => {
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
-        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             backLink={
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/subscribers"
+                to="/organizations/$orgId/cert-manager/subscribers"
                 params={{
-                  orgId: currentOrg.id,
-                  projectId
+                  orgId: currentOrg.id
                 }}
               >
                 <FontAwesomeIcon icon={faChevronLeft} />
@@ -129,29 +126,32 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
-          <div className="flex">
-            <div className="mr-4 w-96">
-              <PkiSubscriberDetailsSection
-                subscriberName={data.name}
-                handlePopUpOpen={handlePopUpOpen}
-              />
-            </div>
-            <div className="w-full">
-              <PkiSubscriberCertificatesSection subscriberName={data.name} />
+          <div className="flex flex-col gap-8">
+            <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
+            <div className="flex">
+              <div className="mr-4 w-96">
+                <PkiSubscriberDetailsSection
+                  subscriberName={data.name}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              </div>
+              <div className="w-full">
+                <PkiSubscriberCertificatesSection subscriberName={data.name} />
+              </div>
             </div>
           </div>
         </div>
       )}
       <PkiSubscriberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiSubscriber.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to remove the PKI subscriber: ${
           (popUp?.deletePkiSubscriber?.data as { name: string })?.name || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemoveSubscriberSubmit(
             (popUp?.deletePkiSubscriber?.data as { subscriberName: string })?.subscriberName
           )

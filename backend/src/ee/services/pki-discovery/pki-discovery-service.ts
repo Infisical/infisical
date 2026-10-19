@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -12,6 +13,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
@@ -54,6 +56,7 @@ type TPkiDiscoveryServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   queuePkiDiscoveryScan: (discoveryId: string) => Promise<void>;
 };
 
@@ -81,6 +84,7 @@ export const pkiDiscoveryServiceFactory = ({
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolService,
+  orgDAL,
   queuePkiDiscoveryScan
 }: TPkiDiscoveryServiceFactoryDep) => {
   const createDiscovery = async ({
@@ -156,6 +160,8 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+
+      await assertIndividualGatewayAllowed({ orgDAL, orgId: actorOrgId, gatewayId });
     } else if (gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
@@ -254,6 +260,13 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+
+      await assertIndividualGatewayAllowed({
+        orgDAL,
+        orgId: actorOrgId,
+        gatewayId,
+        previousGatewayId: discovery.gatewayId
+      });
     } else if (gatewayPoolId && gatewayPoolId !== discovery.gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,

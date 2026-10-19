@@ -149,7 +149,7 @@ export const main = async ({
     }
 
     await server.register(fastifyErrHandler);
-    await server.register(fastifySwagger);
+    await server.register(fastifySwagger, { fullSpec: appCfg.isOpenApiFullSpec });
     await server.register(fastifyFormBody);
     await server.register(websocket, {
       options: { maxPayload: 64 * 1024 } // 64 KB

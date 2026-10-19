@@ -72,15 +72,16 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findExternalIdentifiersInUse = async (
     externalIdentifiers: string[],
-    { excludePkiSyncId, destination }: { excludePkiSyncId: string; destination: string },
+    { excludePkiSyncId, destination }: { excludePkiSyncId: string; destination: string | string[] },
     tx?: Knex
   ): Promise<Set<string>> => {
     try {
       if (externalIdentifiers.length === 0) return new Set();
+      const destinations = Array.isArray(destination) ? destination : [destination];
       const docs = (await (tx || db)(TableName.CertificateSync)
         .join(TableName.PkiSync, `${TableName.PkiSync}.id`, `${TableName.CertificateSync}.pkiSyncId`)
         .whereIn(`${TableName.CertificateSync}.externalIdentifier`, externalIdentifiers)
-        .where(`${TableName.PkiSync}.destination`, destination)
+        .whereIn(`${TableName.PkiSync}.destination`, destinations)
         .whereNot(`${TableName.CertificateSync}.pkiSyncId`, excludePkiSyncId)
         .select(`${TableName.CertificateSync}.externalIdentifier`)) as Array<{ externalIdentifier: string | null }>;
       return new Set(docs.map((doc) => doc.externalIdentifier).filter((v): v is string => Boolean(v)));
@@ -231,10 +232,16 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
    * 2. Removes the flag from the JSONB object using the `-` operator
    * 3. If removing the flag results in an empty object `{}`, sets the column to NULL instead
    */
-  const clearSyncMetadataFlag = async (pkiSyncId: string, flag: string, tx?: Knex): Promise<void> => {
+  const clearSyncMetadataFlag = async (
+    pkiSyncId: string,
+    flag: string,
+    tx?: Knex,
+    certificateIds?: string[]
+  ): Promise<void> => {
     try {
-      await (tx || db)(TableName.CertificateSync)
-        .where({ pkiSyncId })
+      const query = (tx || db)(TableName.CertificateSync).where({ pkiSyncId });
+      if (certificateIds) void query.whereIn("certificateId", certificateIds);
+      await query
         .whereNotNull("syncMetadata")
         .whereRaw(`"syncMetadata" \\? ?`, [flag])
         .update({
@@ -245,6 +252,23 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
         });
     } catch (error) {
       throw new DatabaseError({ error, name: "ClearSyncMetadataFlag" });
+    }
+  };
+
+  const setSyncMetadataFlag = async (
+    pkiSyncId: string,
+    flag: string,
+    certificateIds?: string[],
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      const query = (tx || db)(TableName.CertificateSync).where({ pkiSyncId });
+      if (certificateIds) void query.whereIn("certificateId", certificateIds);
+      await query.update({
+        syncMetadata: db.raw(`COALESCE("syncMetadata", '{}'::jsonb) || jsonb_build_object(?::text, true)`, [flag])
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "SetSyncMetadataFlag" });
     }
   };
 
@@ -358,6 +382,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     bulkUpdateSyncStatus,
     updateSyncMetadata,
     clearSyncMetadataFlag,
+    setSyncMetadataFlag,
     findWithDetails
   };
 };

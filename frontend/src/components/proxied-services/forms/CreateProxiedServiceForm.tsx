@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   Button,
   DocumentationLinkBadge,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep
@@ -272,7 +273,7 @@ export const CreateProxiedServiceForm = ({
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <span className="text-xs text-muted">{formState.isDirty ? "Unsaved changes" : ""}</span>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted">
@@ -293,7 +294,7 @@ export const CreateProxiedServiceForm = ({
               {stepIndex === REVIEW ? "Create Proxied Service" : "Continue"}
             </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
 
       <AlertDialog open={confirmBackOpen} onOpenChange={setConfirmBackOpen}>

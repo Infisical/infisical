@@ -1,4 +1,4 @@
-export const CLIPage = ({ title, description, children }) => {
+export const CLIPage = ({ title, description, movedAnchors = {}, children }) => {
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -15,7 +15,22 @@ export const CLIPage = ({ title, description, children }) => {
     // fonts and sticky headings settle), which pushes the target down. Keep realigning while the
     // page resizes, until the reader scrolls on their own or the layout has had time to settle.
     let stopAligning = () => {};
-    const hash = decodeURIComponent(window.location.hash.slice(1));
+    // Links to a command's old anchor are already published, so when a command moves under
+    // another one, `movedAnchors` maps the old id prefix to the new one. The longest prefix wins,
+    // so a subcommand that moved somewhere other than its parent can have its own entry.
+    const movedHash = (hash) => {
+      if (!hash || document.getElementById(hash)) return null;
+      const movedFrom = Object.keys(movedAnchors)
+        .filter((old) => hash === old || hash.startsWith(`${old}-`))
+        .sort((a, b) => b.length - a.length)[0];
+      return movedFrom ? movedAnchors[movedFrom] + hash.slice(movedFrom.length) : null;
+    };
+    let hash = decodeURIComponent(window.location.hash.slice(1));
+    const movedOnLoad = movedHash(hash);
+    if (movedOnLoad) {
+      hash = movedOnLoad;
+      window.history.replaceState(window.history.state, "", `#${hash}`);
+    }
     const target = hash ? document.getElementById(hash) : null;
     
     let pinned = target ? target.closest("[data-cli-command]") : null;
@@ -95,12 +110,28 @@ export const CLIPage = ({ title, description, children }) => {
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
+
+    // Pasting a link into the address bar while the page is open changes only the hash, so the
+    // page doesn't mount again: an old anchor has to be rewritten here too, and the command the
+    // page was opened on would otherwise stay pinned over the new one.
+    const onHashChange = () => {
+      const hashNow = decodeURIComponent(window.location.hash.slice(1));
+      const moved = movedHash(hashNow);
+      const el = hashNow ? document.getElementById(moved || hashNow) : null;
+      if (!el) return;
+      if (moved) window.history.replaceState(window.history.state, "", `#${moved}`);
+      pinned = el.closest("[data-cli-command]");
+      unpinEvents.forEach((type) => window.addEventListener(type, unpin, { passive: true }));
+      el.scrollIntoView({ block: el.classList.contains("cli-row") ? "center" : "start" });
+    };
+    window.addEventListener("hashchange", onHashChange);
     return () => {
       stopAligning();
       unpin();
       cancelAnimationFrame(frame);
       clearTimeout(settle);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("hashchange", onHashChange);
       window.dispatchEvent(new CustomEvent("cli-reference:active", { detail: { id: null } }));
     };
   }, []);

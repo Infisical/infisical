@@ -31,6 +31,32 @@ Use the ACME enrollment method to request and renew certificates automatically u
   </Card>
 </CardGroup>
 
+## Guides
+
+<CardGroup cols={2}>
+  <Card title="Kubernetes (cert-manager)" icon="settings" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-acme">
+    Provision TLS certificates in Kubernetes with cert-manager's ACME issuer.
+  </Card>
+  <Card title="NGINX" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Issue TLS certificates for NGINX with Certbot.
+  </Card>
+  <Card title="Apache" icon="server" href="/documentation/platform/pki/guides/applications/apache-certbot">
+    Issue TLS certificates for Apache HTTP Server with Certbot.
+  </Card>
+  <Card title="Tomcat" icon="server" href="/documentation/platform/pki/guides/applications/tomcat-certbot">
+    Issue TLS certificates for Apache Tomcat with Certbot.
+  </Card>
+  <Card title="JBoss/WildFly" icon="server" href="/documentation/platform/pki/guides/applications/jboss-certbot">
+    Issue TLS certificates for JBoss or WildFly with Certbot.
+  </Card>
+  <Card title="Windows Server" icon="windows" iconType="brands" href="/documentation/platform/pki/guides/applications/windows-server-acme">
+    Issue TLS certificates for Windows Server with win-acme.
+  </Card>
+  <Card title="Gloo Mesh" icon="workflow" href="/documentation/platform/pki/guides/applications/gloo-mesh">
+    Provision Istio intermediate CA certificates for Gloo Mesh.
+  </Card>
+</CardGroup>
+
 ## Prerequisites
 
 Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your server. The client handles domain validation challenges and certificate renewal.

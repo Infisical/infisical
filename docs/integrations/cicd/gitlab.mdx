@@ -37,7 +37,7 @@ description: "How to sync secrets from Infisical to GitLab"
                 - apt update && apt install -y curl
                 - curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
                 - apt-get update && apt-get install -y infisical
-                - infisical run -- npm run build
+                - infisical sm run -- npm run build
             ```
           </Step>
         </Steps>

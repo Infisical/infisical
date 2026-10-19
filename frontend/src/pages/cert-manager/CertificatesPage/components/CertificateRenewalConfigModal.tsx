@@ -63,7 +63,7 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
   const onSubmit = async (data: FormData) => {
     if (!currentProject?.slug) {
       createNotification({
-        text: "Project not found",
+        text: "Certificate Manager could not be loaded. Please refresh and try again.",
         type: "error"
       });
       return;

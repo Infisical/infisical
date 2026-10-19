@@ -17,7 +17,7 @@ export const KmipPage = () => {
         <title>{t("common.head-title", { title: "KMS" })}</title>
       </Helmet>
       <div className="mx-auto flex flex-col bg-page text-foreground">
-        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             scope={ProjectType.KMS}
             title="KMIP"

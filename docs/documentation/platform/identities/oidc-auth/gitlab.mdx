@@ -130,7 +130,7 @@ In the following steps, we explore how to create and use identities to access th
             - curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
             - apt-get update && apt-get install -y infisical
             - export INFISICAL_TOKEN=$(infisical login --method=oidc-auth --machine-identity-id=4e807a78-1b1c-4bd6-9609-ef2b0cf4fd54 --oidc-jwt=$INFISICAL_ID_TOKEN --silent --plain)
-            - infisical run --projectId=1d0443c1-cd43-4b3a-91a3-9d5f81254a89 --env=dev -- npm run build
+            - infisical sm run --projectId=1d0443c1-cd43-4b3a-91a3-9d5f81254a89 --env=dev -- npm run build
         ```
 
         The `id_tokens` keyword is used to request an ID token for the job. In this example, an ID token named `INFISICAL_ID_TOKEN` is requested with the audience (`aud`) claim set to "infisical-aud-test". This ID token will be used to authenticate with Infisical.

@@ -135,9 +135,24 @@ export type TGatewayConnectedPkiDiscoveryConfig = {
   projectName: string;
 };
 
+export type TGatewayConnectedPamAccount = {
+  id: string;
+  name: string;
+  accountType: string;
+  folderName: string | null;
+};
+
+export type TGatewayConnectedPamAccountTemplate = {
+  id: string;
+  name: string;
+  type: string;
+};
+
 export type TGatewayConnectedResources = {
   appConnections: TGatewayConnectedAppConnection[];
   dynamicSecrets: TGatewayConnectedDynamicSecret[];
   kubernetesAuths: TGatewayConnectedKubernetesAuth[];
   pkiDiscoveryConfigs: TGatewayConnectedPkiDiscoveryConfig[];
+  pamAccounts?: TGatewayConnectedPamAccount[];
+  pamAccountTemplates?: TGatewayConnectedPamAccountTemplate[];
 };

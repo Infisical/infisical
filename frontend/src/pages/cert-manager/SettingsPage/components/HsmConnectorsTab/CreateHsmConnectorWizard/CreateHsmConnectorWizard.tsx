@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { ShieldCheckIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -9,19 +8,18 @@ import {
   Button,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useCreateHsmConnector } from "@app/hooks/api/hsmConnectors";
 
 import { AccessStep } from "./AccessStep";
 import { BasicsStep } from "./BasicsStep";
-import { HostStep, ReachedFromOption } from "./HostStep";
+import { HostStep } from "./HostStep";
 import {
   AccessForm,
   accessSchema,
@@ -42,21 +40,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
   const [state, setState] = useState<WizardState>(INITIAL_WIZARD_STATE);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: gateways = [], isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
-  const { data: pools = [], isPending: isPoolsLoading } = useListGatewayPools();
   const createMutation = useCreateHsmConnector();
-
-  const reachedFromOptions: ReachedFromOption[] = useMemo(() => {
-    const gatewayOptions: ReachedFromOption[] = gateways
-      .filter((g) => g.capabilities?.pkcs11 === true)
-      .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
-    const poolOptions: ReachedFromOption[] = pools.map((p) => ({
-      value: `pool:${p.id}`,
-      label: p.name,
-      group: "pool" as const
-    }));
-    return [...gatewayOptions, ...poolOptions];
-  }, [gateways, pools]);
 
   const basicsForm = useForm<BasicsForm>({
     resolver: zodResolver(basicsSchema),
@@ -217,13 +201,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
               </div>
 
               {step === 0 && <BasicsStep form={basicsForm} />}
-              {step === 1 && (
-                <HostStep
-                  form={hostForm}
-                  options={reachedFromOptions}
-                  isLoading={isGatewaysLoading || isPoolsLoading}
-                />
-              )}
+              {step === 1 && <HostStep form={hostForm} />}
               {step === 2 && <AccessStep form={accessForm} />}
             </div>
 
@@ -249,7 +227,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-muted">{dirty ? "Unsaved changes" : ""}</span>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
@@ -264,7 +242,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
                 {ctaLabel}
               </Button>
             </div>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>

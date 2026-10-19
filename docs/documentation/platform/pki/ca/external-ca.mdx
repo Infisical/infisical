@@ -10,63 +10,53 @@ Integrate with External Certificate Authorities (CAs) to use existing PKI infras
   This page is for product admins setting up PKI infrastructure. Teams issuing certificates should see [Applications](/documentation/platform/pki/applications/overview).
 </Info>
 
-```mermaid
-graph TD
-    A1[External Public CA<br>e.g. Let's Encrypt, DigiCert] --> Infisical
-    A2[External Private CA<br>e.g. AWS Private CA, Venafi] --> Infisical
-```
+## Public CAs
 
-## Types of external CAs
-
-| Type | Examples | Use Case |
-|------|----------|----------|
-| **External Public CAs** | Let's Encrypt, DigiCert, Sectigo | Public-facing services with browser trust |
-| **External Private CAs** | AWS Private CA, Venafi, Microsoft ADCS | Internal services, cloud-hosted or on-prem |
-
-Infisical can act as an ACME client, allowing integration with any [ACME-compatible CA](/documentation/platform/pki/ca/acme-ca).
-
-## Supported external CAs
-
-### Public CAs
+Public CAs issue certificates that browsers trust, for public-facing services:
 
 <CardGroup cols={2}>
-  <Card title="ACME CA (Generic)" icon="bot" href="/documentation/platform/pki/ca/acme-ca">
-    Connect to any ACME-compatible CA (Let's Encrypt, ZeroSSL, Buypass, etc.)
+  <Card title="ACME-compatible CA" icon="bot" href="/documentation/platform/pki/ca/acme-ca">
+    Connect to any CA that supports ACME, such as ZeroSSL or Buypass.
   </Card>
   <Card title="Let's Encrypt" icon="lock" href="/documentation/platform/pki/ca/lets-encrypt">
     Free, automated certificates for public domains.
   </Card>
-  <Card title="AWS ACM Public CA" icon="aws" iconType="brands" href="/documentation/platform/pki/ca/aws-acm-public-ca">
-    Publicly trusted certificates via AWS Certificate Manager.
+  <Card title="DigiCert (ACME)" icon="shield-check" href="/documentation/platform/pki/ca/digicert">
+    DigiCert certificates through ACME with External Account Binding.
   </Card>
-  <Card title="DigiCert" icon="shield-check" href="/documentation/platform/pki/ca/digicert">
-    Enterprise certificates via DigiCert CertCentral.
+  <Card title="DigiCert (CertCentral API)" icon="shield-half" href="/documentation/platform/pki/ca/digicert-direct">
+    DigiCert TLS and code signing certificates through the CertCentral Services API.
   </Card>
-  <Card title="DigiCert Direct" icon="shield-half" href="/documentation/platform/pki/ca/digicert-direct">
-    Direct integration with DigiCert infrastructure.
+  <Card title="GoDaddy" icon="globe" href="/documentation/platform/pki/ca/godaddy">
+    Domain Validated certificates through the GoDaddy Certificates API.
   </Card>
   <Card title="Sectigo" icon="award" href="/documentation/platform/pki/ca/sectigo">
-    Enterprise certificates via Sectigo Certificate Manager.
+    Sectigo certificates through ACME with External Account Binding.
+  </Card>
+  <Card title="AWS ACM public CA" icon="aws" iconType="brands" href="/documentation/platform/pki/ca/aws-acm-public-ca">
+    Publicly trusted certificates from AWS Certificate Manager.
   </Card>
 </CardGroup>
 
-### Private CAs
+## Private CAs
+
+Private CAs issue certificates for internal services, from PKI you already run in the cloud or on premises:
 
 <CardGroup cols={2}>
-  <Card title="AWS Private CA" icon="aws" iconType="brands" href="/documentation/platform/pki/ca/aws-pca">
-    Cloud-native private certificate management via AWS PCA.
-  </Card>
   <Card title="Microsoft ADCS" icon="microsoft" iconType="brands" href="/documentation/platform/pki/ca/adcs">
     Microsoft AD CS over MS-WCCE through an Infisical Gateway.
   </Card>
-  <Card title="Azure ADCS (Web Enrollment)" icon="microsoft" iconType="brands" href="/documentation/platform/pki/ca/azure-adcs">
+  <Card title="Azure ADCS (web enrollment)" icon="microsoft" iconType="brands" href="/documentation/platform/pki/ca/azure-adcs">
     Microsoft AD CS over HTTPS web enrollment.
+  </Card>
+  <Card title="AWS private CA" icon="aws" iconType="brands" href="/documentation/platform/pki/ca/aws-pca">
+    Private certificates from AWS Private Certificate Authority.
   </Card>
   <Card title="Venafi TLS Protect Cloud" icon="cloud" href="/documentation/platform/pki/ca/venafi">
     Venafi's cloud-based certificate management platform.
   </Card>
   <Card title="Venafi TPP" icon="server" href="/documentation/platform/pki/ca/venafi-tpp">
-    Venafi Trust Protection Platform (on-premises).
+    Venafi Trust Protection Platform, on premises.
   </Card>
 </CardGroup>
 

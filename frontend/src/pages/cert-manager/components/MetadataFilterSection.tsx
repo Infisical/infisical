@@ -1,7 +1,6 @@
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon, TrashIcon } from "lucide-react";
 
-import { IconButton, Input } from "@app/components/v2";
+import { IconButton, Input } from "@app/components/v3";
 
 export type MetadataFilterEntry = {
   id: string;
@@ -58,23 +57,17 @@ export const MetadataFilterSection = ({ entries, onChange }: Props) => {
             className="flex-1"
           />
           <IconButton
-            ariaLabel="Remove metadata filter"
-            variant="plain"
+            aria-label="Remove metadata filter"
+            variant="ghost"
             size="xs"
             onClick={() => removeEntry(idx)}
           >
-            <FontAwesomeIcon icon={faTrash} size="xs" />
+            <TrashIcon />
           </IconButton>
         </div>
       ))}
-      <IconButton
-        ariaLabel="Add metadata filter"
-        variant="outline_bg"
-        size="xs"
-        className="rounded-md"
-        onClick={addEntry}
-      >
-        <FontAwesomeIcon icon={faPlus} />
+      <IconButton aria-label="Add metadata filter" variant="outline" size="xs" onClick={addEntry}>
+        <PlusIcon />
       </IconButton>
     </div>
   );
