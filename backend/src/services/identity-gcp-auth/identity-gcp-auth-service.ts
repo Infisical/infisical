@@ -365,7 +365,7 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (!hasGcpTrustBinding({ type, allowedServiceAccounts, allowedProjects, allowedZones })) {
+    if (!hasGcpTrustBinding({ type, allowedServiceAccounts, allowedProjects })) {
       throw new BadRequestError({ message: GCP_TRUST_BINDING_REQUIRED_MESSAGE });
     }
 
@@ -475,8 +475,7 @@ export const identityGcpAuthServiceFactory = ({
       !hasGcpTrustBinding({
         type: type ?? identityGcpAuth.type,
         allowedServiceAccounts: allowedServiceAccounts ?? identityGcpAuth.allowedServiceAccounts,
-        allowedProjects: allowedProjects ?? identityGcpAuth.allowedProjects,
-        allowedZones: allowedZones ?? identityGcpAuth.allowedZones
+        allowedProjects: allowedProjects ?? identityGcpAuth.allowedProjects
       })
     ) {
       throw new BadRequestError({ message: GCP_TRUST_BINDING_REQUIRED_MESSAGE });

@@ -126,7 +126,7 @@ describe("gcpAuthService.login GCE Compute Engine detail requirement", () => {
 
   test("rejects a token with no Compute Engine details when zones are restricted", async () => {
     const { result } = login(
-      { type: "gce", allowedZones: "us-central1-a" },
+      { type: "gce", allowedProjects: "my-project", allowedZones: "us-central1-a" },
       { email: SERVICE_ACCOUNT, computeEngineDetails: undefined }
     );
 
@@ -196,7 +196,7 @@ describe("gcpAuthService.login GCE allow lists", () => {
 
   test("rejects an instance running in a zone outside the allow list", async () => {
     const { result } = login(
-      { type: "gce", allowedZones: "us-east1-b" },
+      { type: "gce", allowedProjects: "my-project", allowedZones: "us-east1-b" },
       { email: SERVICE_ACCOUNT, computeEngineDetails }
     );
 
@@ -217,6 +217,17 @@ describe("gcpAuthService.login trust binding", () => {
       detail: { reasonCode: "trust_binding_missing", identityId: IDENTITY_ID, orgId: ORG_ID }
     });
     expect(validateIdTokenIdentity).not.toHaveBeenCalled();
+    expect(issueIdentityAccessToken).not.toHaveBeenCalled();
+  });
+
+  // Zone names are shared by every GCP customer, so a zone alone must not count as a binding.
+  test("rejects a GCE identity bound only by zone", async () => {
+    const { result, issueIdentityAccessToken } = login(
+      { type: "gce", allowedZones: "us-central1-a" },
+      { email: SERVICE_ACCOUNT, computeEngineDetails }
+    );
+
+    await expect(result).rejects.toMatchObject({ detail: { reasonCode: "trust_binding_missing" } });
     expect(issueIdentityAccessToken).not.toHaveBeenCalled();
   });
 

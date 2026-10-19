@@ -7,26 +7,24 @@ import { UnauthorizedError } from "@app/lib/errors";
 
 import { TDecodedGcpIamAuthJwt, TGcpIdTokenPayload } from "./identity-gcp-auth-types";
 
-// IAM tokens only carry a service account, so that is the only binding that can restrict them. GCE tokens
-// can also be restricted by project or zone, which is what the Compute Engine checks in login read.
+// Zones are shared by every GCP customer, so a zone alone does not tie the identity to an owner. A project
+// does, because a project ID belongs to one customer. Zones can only narrow a service account or project.
 export const hasGcpTrustBinding = ({
   type,
   allowedServiceAccounts,
-  allowedProjects,
-  allowedZones
+  allowedProjects
 }: {
   type: string;
   allowedServiceAccounts?: string | null;
   allowedProjects?: string | null;
-  allowedZones?: string | null;
 }) => {
   if (allowedServiceAccounts?.trim()) return true;
   if (type === "iam") return false;
-  return Boolean(allowedProjects?.trim()) || Boolean(allowedZones?.trim());
+  return Boolean(allowedProjects?.trim());
 };
 
 export const GCP_TRUST_BINDING_REQUIRED_MESSAGE =
-  "Configure at least one allowed GCP service account, or for GCE identities a project or zone. Without one, any GCP workload that knows this identity's ID could log in as it.";
+  "Configure at least one allowed GCP service account, or for GCE identities an allowed project. A zone alone is not enough, because zones are shared by every GCP customer. Without one, any GCP workload that knows this identity's ID could log in as it.";
 
 /**
  * Validates that the identity token [jwt] sent in from a client GCE instance as part of GCP ID Token authentication
