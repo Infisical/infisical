@@ -10,9 +10,9 @@ type TOrgSsoEnforcement = {
 };
 
 const SSO_ENFORCEMENT_ERRORS = {
-  google: `This organization requires Google login. Log out, then choose "Continue with Google".`,
-  oidc: `This organization requires OIDC login. Log out, then choose "Continue with OIDC" and enter your work email.`,
-  saml: `This organization requires SAML login. Log out, then choose "Continue with SAML" and enter your work email.`
+  google: 'This organization requires Google login. Log out, then choose "Continue with Google".',
+  oidc: 'This organization requires OIDC login. Log out, then choose "Continue with OIDC" and enter your work email.',
+  saml: 'This organization requires SAML login. Log out, then choose "Continue with SAML" and enter your work email.'
 } as const;
 
 // User-facing error when the org enforces an SSO method the session token wasn't issued by,
