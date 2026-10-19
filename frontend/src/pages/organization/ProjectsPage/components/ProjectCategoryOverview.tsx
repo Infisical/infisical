@@ -617,7 +617,15 @@ export const ProjectCategoryOverview = ({ showPlanBadges = true }: Props) => {
                       {plan && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="info">{plan.shortPlanLabel}</Badge>
+                            <Badge
+                              variant="info"
+                              tabIndex={0}
+                              aria-label={`${plan.planLabel} plan${plan.isTrialing ? " (trial)" : ""}`}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
+                              {plan.shortPlanLabel}
+                            </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
                             {plan.planLabel} plan{plan.isTrialing ? " (trial)" : ""}
