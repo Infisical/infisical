@@ -3,10 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { DelegatedApprovalRequestStatus } from "../delegatedApprovals/enums";
 import { ApiErrorTypes } from "../types";
 import { accessApprovalKeys } from "./queries";
 import {
   TAccessApproval,
+  TAccessApprovalRequest,
   TCreateAccessPolicyDTO,
   TCreateAccessRequestDTO,
   TDeleteSecretPolicyDTO,
@@ -209,10 +211,22 @@ export const useRetryDelegatedApprovalDispatch = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
-      });
+    onSuccess: (_, { requestId, projectSlug }) => {
+      queryClient.setQueriesData<TAccessApprovalRequest[]>(
+        { queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug) },
+        (requests) =>
+          requests?.map((request) =>
+            request.id === requestId && request.delegatedApproval
+              ? {
+                  ...request,
+                  delegatedApproval: {
+                    status: DelegatedApprovalRequestStatus.PendingDispatch,
+                    statusReason: null
+                  }
+                }
+              : request
+          )
+      );
     }
   });
 };

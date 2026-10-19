@@ -1,4 +1,4 @@
-import { Fragment, ReactNode, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -184,46 +184,32 @@ const formatConditions = (conditions: Record<string, unknown>): FormattedConditi
 const DELEGATED_STATUS_PRESENTATION: Record<
   DelegatedApprovalRequestStatus,
   {
-    label: string;
     variant: "warning" | "danger" | "success";
-    icon: ReactNode;
     getMessage: (delegatedApprovalName: string) => string;
   }
 > = {
   [DelegatedApprovalRequestStatus.PendingDispatch]: {
-    label: "Sending",
     variant: "warning",
-    icon: <HourglassIcon />,
     getMessage: (name) => `Sending this request to ${name}.`
   },
   [DelegatedApprovalRequestStatus.WaitingApproval]: {
-    label: "Pending",
     variant: "warning",
-    icon: <HourglassIcon />,
     getMessage: (name) => `Awaiting review in ${name}.`
   },
   [DelegatedApprovalRequestStatus.FailedDispatch]: {
-    label: "Not Submitted",
     variant: "danger",
-    icon: <TriangleAlertIcon />,
     getMessage: (name) => `This request did not reach ${name}.`
   },
   [DelegatedApprovalRequestStatus.Approved]: {
-    label: "Approved",
     variant: "success",
-    icon: <CheckIcon />,
     getMessage: (name) => `Approved in ${name}.`
   },
   [DelegatedApprovalRequestStatus.Rejected]: {
-    label: "Rejected",
     variant: "danger",
-    icon: <BanIcon />,
     getMessage: (name) => `Rejected in ${name}.`
   },
   [DelegatedApprovalRequestStatus.Failed]: {
-    label: "Failed",
     variant: "danger",
-    icon: <TriangleAlertIcon />,
     getMessage: (name) => `This request could not be completed in ${name}.`
   }
 };
@@ -1047,7 +1033,7 @@ export const ReviewAccessRequestModal = ({
                       <InfoIcon />
                       <AlertTitle>This request is reviewed in {delegatedApprovalName}.</AlertTitle>
                       <AlertDescription>
-                        It cannot be approved in Infisical. Infisical grants access once{" "}
+                        It cannot be approved here. Infisical grants access once{" "}
                         {delegatedApprovalName} approves it.
                       </AlertDescription>
                     </Alert>
@@ -1063,12 +1049,6 @@ export const ReviewAccessRequestModal = ({
                       )}
                     >
                       <Item className="flex-nowrap items-start rounded-none border-0">
-                        <ItemMedia>
-                          <Badge variant={delegatedStatus.variant}>
-                            {delegatedStatus.icon}
-                            {delegatedStatus.label}
-                          </Badge>
-                        </ItemMedia>
                         <ItemContent className="min-w-0 gap-1">
                           <span className="text-sm text-foreground">
                             {delegatedStatus.getMessage(delegatedApprovalName)}

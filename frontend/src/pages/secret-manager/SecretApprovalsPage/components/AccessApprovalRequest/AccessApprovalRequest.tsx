@@ -14,6 +14,7 @@ import {
   HourglassIcon,
   LucideIcon,
   PlusIcon,
+  RefreshCwIcon,
   SearchIcon,
   ShieldBanIcon,
   TimerIcon,
@@ -411,9 +412,10 @@ export const AccessApprovalRequest = ({
 
       let displayData: {
         label: string;
-        type: "warning" | "danger" | "success";
+        type: "warning" | "danger" | "success" | "info";
         tooltipContent?: string;
         icon: LucideIcon | null;
+        isIconSpinning?: boolean;
       } = {
         label: "",
         type: "warning",
@@ -486,13 +488,21 @@ export const AccessApprovalRequest = ({
         const delegatedApprovalName = delegatedApprovalOptions?.find(
           (option) => option.type === request.policy.delegatedApproval?.type
         )?.name;
-        displayData = {
-          label: delegatedApprovalName
-            ? `Pending in ${delegatedApprovalName}`
-            : "Pending External Review",
-          type: "warning",
-          icon: HourglassIcon
-        };
+        displayData =
+          request.delegatedApproval.status === DelegatedApprovalRequestStatus.PendingDispatch
+            ? {
+                label: "Retrying",
+                type: "info",
+                icon: RefreshCwIcon,
+                isIconSpinning: true
+              }
+            : {
+                label: delegatedApprovalName
+                  ? `Pending in ${delegatedApprovalName}`
+                  : "Pending External Review",
+                type: "warning",
+                icon: HourglassIcon
+              };
       } else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
           label: "Pending Additional Reviews",
@@ -916,7 +926,15 @@ export const AccessApprovalRequest = ({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Badge variant={details.displayData.type}>
-                                  {StatusIcon && <StatusIcon />}
+                                  {StatusIcon && (
+                                    <StatusIcon
+                                      className={
+                                        details.displayData.isIconSpinning
+                                          ? "animate-spin"
+                                          : undefined
+                                      }
+                                    />
+                                  )}
                                   <span className="whitespace-nowrap">
                                     {details.displayData.label}
                                   </span>
@@ -926,7 +944,13 @@ export const AccessApprovalRequest = ({
                             </Tooltip>
                           ) : (
                             <Badge variant={details.displayData.type}>
-                              {StatusIcon && <StatusIcon />}
+                              {StatusIcon && (
+                                <StatusIcon
+                                  className={
+                                    details.displayData.isIconSpinning ? "animate-spin" : undefined
+                                  }
+                                />
+                              )}
                               <span className="whitespace-nowrap">{details.displayData.label}</span>
                             </Badge>
                           )}
