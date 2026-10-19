@@ -137,14 +137,12 @@ export const assertInsightsPlanEnabled = async (
   }
 };
 
-export const checkInsightsPermission = async (
+// Permission only, for reads of records the org already has, which a plan downgrade must not hide.
+export const checkInsightsReadPermission = async (
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
   projectId: string,
   actor: OrgServiceActor
 ) => {
-  await assertInsightsPlanEnabled(licenseService, actor.orgId);
-
   const { permission } = await permissionService.getProjectPermission({
     actor: actor.type,
     actorId: actor.id,
@@ -157,4 +155,14 @@ export const checkInsightsPermission = async (
   ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionInsightsActions.Read, ProjectPermissionSub.Insights);
 
   return { permission };
+};
+
+export const checkInsightsPermission = async (
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  projectId: string,
+  actor: OrgServiceActor
+) => {
+  await assertInsightsPlanEnabled(licenseService, actor.orgId);
+  return checkInsightsReadPermission(permissionService, projectId, actor);
 };

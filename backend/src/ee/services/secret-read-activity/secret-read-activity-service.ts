@@ -1,7 +1,6 @@
 import { SecretType, TableName } from "@app/db/schemas";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
-import { checkInsightsPermission } from "@app/ee/services/insights/insights-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { checkInsightsReadPermission } from "@app/ee/services/insights/insights-fns";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -48,6 +47,9 @@ import {
 
 const UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS = 24 * 60 * 60;
 const REACH_YIELD_INTERVAL = 100;
+// Longer than a computation can take, so the lock is not lost mid-scan; waiters give up well before a request times out.
+const UNUSED_SECRET_ACCESS_COMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
+const UNUSED_SECRET_ACCESS_COMPUTE_WAIT_SECONDS = 60;
 // A large project can have millions of unread secret and actor pairs, so only the highest-ranked entries are
 // cached and listed, about 200 KB per project.
 const UNUSED_SECRET_ACCESS_MAX_LISTED = 1000;
@@ -56,7 +58,6 @@ type TCachedUnusedSecretAccess = TUnusedSecretAccess & { secretId: string };
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
     "findLastReads" | "findTrackingStartedAt" | "findAccessChangedAt"
@@ -68,14 +69,13 @@ type TSecretReadActivityServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findSecretReferencesByProjectId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl" | "acquireLock">;
 };
 
 export type TSecretReadActivityServiceFactory = ReturnType<typeof secretReadActivityServiceFactory>;
 
 export const secretReadActivityServiceFactory = ({
   permissionService,
-  licenseService,
   secretReadActivityDAL,
   secretReadActivityQueue,
   folderDAL,
@@ -249,7 +249,7 @@ export const secretReadActivityServiceFactory = ({
     { projectId, environment, secretPath, secretName }: TGetSecretReadActivityDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
+    const { permission } = await checkInsightsReadPermission(permissionService, projectId, actor);
 
     // The secret is checked before the reach is built, which decrypts every secret that could reference it.
     const tree = await loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId);
@@ -359,16 +359,30 @@ export const secretReadActivityServiceFactory = ({
     };
   };
 
-  // Concurrent requests on a cold cache share one computation per project instead of each scanning the project.
-  const inFlightComputations = new Map<string, ReturnType<typeof $computeUnusedSecretAccess>>();
-  const $computeUnusedSecretAccessOnce = (projectId: string, orgId: string) => {
-    const inFlight = inFlightComputations.get(projectId);
-    if (inFlight) return inFlight;
-    const computation = $computeUnusedSecretAccess(projectId, orgId).finally(() => {
-      inFlightComputations.delete(projectId);
-    });
-    inFlightComputations.set(projectId, computation);
-    return computation;
+  // Requests on a cold cache, on any instance, wait for the one computing the project and read what it cached
+  // instead of each scanning the project. If the wait runs out, the request computes it itself.
+  const $computeUnusedSecretAccessShared = async (projectId: string, orgId: string, cacheKey: string) => {
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+    try {
+      lock = await keyStore.acquireLock(
+        [KeyStorePrefixes.SecretReadActivityUnusedAccessLock(projectId)],
+        UNUSED_SECRET_ACCESS_COMPUTE_LOCK_TTL_MS,
+        { retryCount: UNUSED_SECRET_ACCESS_COMPUTE_WAIT_SECONDS, retryDelay: 1000 }
+      );
+    } catch {
+      lock = undefined;
+    }
+    try {
+      const cached = lock ? await keyStore.getItem(cacheKey) : null;
+      if (cached) return JSON.parse(cached) as Awaited<ReturnType<typeof $computeUnusedSecretAccess>>;
+
+      const result = await $computeUnusedSecretAccess(projectId, orgId);
+      // Written before the lock is released, so the next request in line finds it.
+      await keyStore.setItemWithExpiry(cacheKey, UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS, JSON.stringify(result));
+      return result;
+    } finally {
+      await lock?.release();
+    }
   };
 
   // The whole project is computed once a day and cached, so paging through it is cheap.
@@ -376,14 +390,14 @@ export const secretReadActivityServiceFactory = ({
     { projectId, offset, limit, orderBy, orderDirection }: TListUnusedSecretAccessDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
+    const { permission } = await checkInsightsReadPermission(permissionService, projectId, actor);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(projectId, "unused-secret-access");
     const { rows, totalCount } = await withCache({
       keyStore,
       key: cacheKey,
       ttlSeconds: UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS,
-      fetcher: () => $computeUnusedSecretAccessOnce(projectId, actor.orgId)
+      fetcher: () => $computeUnusedSecretAccessShared(projectId, actor.orgId, cacheKey)
     });
     const [remainingTTL, instanceTrackingStartedAt, project, tree, currentSecrets] = await Promise.all([
       getCacheTtl(keyStore, cacheKey),
