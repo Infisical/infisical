@@ -9,6 +9,7 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -20,6 +21,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { isUnboundAuthGrandfathered } from "@app/services/identity/identity-auth-trust-binding-fns";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -109,16 +111,21 @@ export const identityGcpAuthServiceFactory = ({
 
     try {
       if (!hasGcpTrustBinding(identityGcpAuth)) {
-        throw new UnauthorizedError({
-          message:
-            "Access denied: this identity has no GCP service account, project, or zone configured. An admin must add one before it can authenticate.",
-          detail: {
-            reasonCode: "trust_binding_missing",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
-        });
+        if (!isUnboundAuthGrandfathered(identityGcpAuth.createdAt)) {
+          throw new UnauthorizedError({
+            message:
+              "Access denied: this identity has no GCP service account, project, or zone configured. An admin must add one before it can authenticate.",
+            detail: {
+              reasonCode: "trust_binding_missing",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
+        logger.warn(
+          `GCP Auth Login: identity has no trust binding and its auth config predates enforcement, allowing [identity-id=${identity.id}]`
+        );
       }
 
       let gcpIdentityDetails: TGcpIdentityDetails;

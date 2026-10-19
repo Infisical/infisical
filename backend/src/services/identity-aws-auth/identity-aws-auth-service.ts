@@ -25,6 +25,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { isUnboundAuthGrandfathered } from "@app/services/identity/identity-auth-trust-binding-fns";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -155,16 +156,21 @@ export const identityAwsAuthServiceFactory = ({
 
     try {
       if (!hasAwsTrustBinding(identityAwsAuth)) {
-        throw new UnauthorizedError({
-          message:
-            "Access denied: this identity has no AWS account ID or principal ARN configured. An admin must add one before it can authenticate.",
-          detail: {
-            reasonCode: "trust_binding_missing",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
-        });
+        if (!isUnboundAuthGrandfathered(identityAwsAuth.createdAt)) {
+          throw new UnauthorizedError({
+            message:
+              "Access denied: this identity has no AWS account ID or principal ARN configured. An admin must add one before it can authenticate.",
+            detail: {
+              reasonCode: "trust_binding_missing",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
+        logger.warn(
+          `AWS Auth Login: identity has no trust binding and its auth config predates enforcement, allowing [identity-id=${identity.id}]`
+        );
       }
 
       const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
