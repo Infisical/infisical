@@ -289,6 +289,7 @@ export const SecretExposureCard = () => {
                 secretKey={selectedSecret.secretKey}
                 environment={selectedSecret.environment}
                 secretPath={selectedSecret.secretPath}
+                defaultView="graph"
               />
             </>
           )}

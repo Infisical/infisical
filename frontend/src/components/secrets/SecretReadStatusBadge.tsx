@@ -7,7 +7,7 @@ type Props = {
 };
 
 // Only a reader's first read of the day is recorded, so the time of day would understate later reads.
-const formatReadDay = (lastReadAt: string) => {
+export const formatReadDay = (lastReadAt: string) => {
   const days = differenceInCalendarDays(new Date(), new Date(lastReadAt));
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";

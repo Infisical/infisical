@@ -11,8 +11,10 @@ import {
   HardDriveIcon,
   InfoIcon,
   MoreHorizontalIcon,
+  NetworkIcon,
   PlusIcon,
   SearchIcon,
+  TableIcon,
   TriangleAlertIcon,
   UserIcon,
   UserPlusIcon,
@@ -20,10 +22,12 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { SecretAccessGraph, TAccessGraphInput } from "@app/components/secrets/SecretAccessGraph";
 import { SecretExposurePanel } from "@app/components/secrets/SecretExposureScore";
 import { SecretReadStatusBadge } from "@app/components/secrets/SecretReadStatusBadge";
 import {
   Button,
+  ButtonGroup,
   Command,
   CommandEmpty,
   CommandGroup,
@@ -100,7 +104,19 @@ type Props = {
   secretKey: string;
   environment: string;
   secretPath: string;
+  defaultView?: AccessView;
 };
+
+type AccessView = "graph" | "table";
+
+const READ_ACTIVITY_WINDOW_DAYS = 30;
+
+const grantsReadValue = (actions: Iterable<string>) =>
+  [...actions].some(
+    (action) =>
+      action === ProjectPermissionSecretActions.ReadValue ||
+      action === ProjectPermissionSecretActions.DescribeAndReadValue
+  );
 
 type EditingPrivilege = {
   type: "user" | "identity";
@@ -411,7 +427,12 @@ function AddMemberPopover({
   );
 }
 
-export function SecretAccessInsights({ secretKey, environment, secretPath }: Props) {
+export function SecretAccessInsights({
+  secretKey,
+  environment,
+  secretPath,
+  defaultView = "table"
+}: Props) {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -421,6 +442,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilters, setTypeFilters] = useState<Set<AccessRowType>>(() => new Set());
   const [showAllEntities, setShowAllEntities] = useState(true);
+  const [view, setView] = useState<AccessView>(defaultView);
 
   const toggleTypeFilter = (type: AccessRowType) => {
     setTypeFilters((prev) => {
@@ -496,14 +518,77 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     readActivityDescription = `Reads by users and machine identities since ${format(new Date(readActivity.trackedSince), "PP")}, including reads through imports and references.`;
   }
 
+  // Readers connect to the secret directly, or through the groups that grant them the value; ghost readers
+  // hang below with no path to it.
+  const graphInput = useMemo<TAccessGraphInput | undefined>(() => {
+    if (!secretAccessList) return undefined;
+    const groups = secretAccessList.groups.filter((group) => grantsReadValue(group.allowedActions));
+    const toReader = (
+      entry: SecretAccessListEntry,
+      type: "user" | "identity",
+      memberField: "userIds" | "identityIds"
+    ) => {
+      const isDirect = grantsReadValue(entry.allowedActions);
+      const groupIds = groups
+        .filter((group) => group[memberField].includes(entry.id))
+        .map((group) => group.id);
+      if (!isDirect && !groupIds.length) return [];
+      return [
+        {
+          id: entry.id,
+          name: entry.name,
+          type,
+          isDirect,
+          groupIds,
+          lastReadAt: lastReads.get(`${type}:${entry.id}`)?.lastReadAt
+        }
+      ];
+    };
+    const readers = [
+      ...secretAccessList.users.flatMap((user) => toReader(user, "user", "userIds")),
+      ...secretAccessList.identities.flatMap((identity) =>
+        toReader(identity, "identity", "identityIds")
+      )
+    ];
+    const groupIdsInUse = new Set(
+      readers.flatMap((reader) => (reader.isDirect ? [] : reader.groupIds))
+    );
+    return {
+      secret: { key: secretKey, environment, secretPath, exposure: readActivity?.exposure },
+      readers,
+      groups: groups
+        .filter((group) => groupIdsInUse.has(group.id))
+        .map((group) => ({
+          id: group.id,
+          name: group.name,
+          memberCount: group.userIds.length + group.identityIds.length
+        })),
+      ghosts: (readActivity?.ghostReaders ?? []).map((ghost) => ({
+        id: ghost.actorId,
+        name: ghost.actorName,
+        type: ghost.actorType,
+        lastReadAt: ghost.lastReadAt
+      })),
+      hasReadActivity: Boolean(canReadInsights && readActivity),
+      windowDays: READ_ACTIVITY_WINDOW_DAYS
+    };
+  }, [
+    secretAccessList,
+    lastReads,
+    readActivity,
+    canReadInsights,
+    secretKey,
+    environment,
+    secretPath
+  ]);
+
   const renderLastRead = (row: AccessRow) => {
     if (row.type === "group") return null;
     // A folder read is credited to every secret in the folder, including ones this row can only describe.
-    const canReadValue = [...row.entry.allowedActions, ...(row.inheritedActions ?? [])].some(
-      (action) =>
-        action === ProjectPermissionSecretActions.ReadValue ||
-        action === ProjectPermissionSecretActions.DescribeAndReadValue
-    );
+    const canReadValue = grantsReadValue([
+      ...row.entry.allowedActions,
+      ...(row.inheritedActions ?? [])
+    ]);
     if (!canReadValue) return null;
     if (isReadActivityLoading) return <Skeleton className="h-4 w-20 rounded" />;
     if (!readActivity) return null;
@@ -645,309 +730,348 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           <SecretExposurePanel exposure={readActivity?.exposure} />
         )}
         <div className="flex items-center gap-2">
-          <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
-            <Toggle
-              size="sm"
-              variant="project"
-              checked={showAllEntities}
-              onCheckedChange={setShowAllEntities}
-            />
-            Show all members
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="size-3.5 text-muted" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-60">
-                When enabled, all project members are shown including those without any access to
-                this secret.
-              </TooltipContent>
-            </Tooltip>
-          </Label>
-          <InputGroup className="flex-1">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Search by name..."
-            />
-          </InputGroup>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                variant={isFilterActive ? "project" : "outline"}
-                aria-label="Filter by type"
-              >
-                <FilterIcon />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {ALL_TYPE_FILTERS.map((type) => {
-                const { icon: TypeIcon, label } = TYPE_CONFIG[type];
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={type}
-                    checked={typeFilters.has(type)}
-                    onCheckedChange={() => toggleTypeFilter(type)}
-                    onSelect={(e) => e.preventDefault()}
+          <ButtonGroup>
+            <Button
+              size="xs"
+              variant={view === "graph" ? "project" : "outline"}
+              aria-pressed={view === "graph"}
+              onClick={() => setView("graph")}
+            >
+              <NetworkIcon />
+              Graph
+            </Button>
+            <Button
+              size="xs"
+              variant={view === "table" ? "project" : "outline"}
+              aria-pressed={view === "table"}
+              onClick={() => setView("table")}
+            >
+              <TableIcon />
+              Table
+            </Button>
+          </ButtonGroup>
+          {view === "table" && (
+            <>
+              <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
+                <Toggle
+                  size="sm"
+                  variant="project"
+                  checked={showAllEntities}
+                  onCheckedChange={setShowAllEntities}
+                />
+                Show all members
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="size-3.5 text-muted" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-60">
+                    When enabled, all project members are shown including those without any access
+                    to this secret.
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
+              <InputGroup className="flex-1">
+                <InputGroupAddon>
+                  <SearchIcon />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  placeholder="Search by name..."
+                />
+              </InputGroup>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    variant={isFilterActive ? "project" : "outline"}
+                    aria-label="Filter by type"
                   >
-                    <TypeIcon className="size-4" />
-                    {label}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    <FilterIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {ALL_TYPE_FILTERS.map((type) => {
+                    const { icon: TypeIcon, label } = TYPE_CONFIG[type];
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={type}
+                        checked={typeFilters.has(type)}
+                        onCheckedChange={() => toggleTypeFilter(type)}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <TypeIcon className="size-4" />
+                        {label}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          {view === "graph" && <div className="flex-1" />}
           <AddMemberPopover
             secretKey={secretKey}
             environment={environment}
             secretPath={secretPath}
           />
         </div>
-        {/* eslint-disable-next-line no-nested-ternary */}
-        {isLoading ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Name</TableHead>
-                {canReadInsights && <TableHead className="w-40">Last Read</TableHead>}
-                {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
-                  <TableHead key={col.action} className="w-[100px] text-center">
-                    {col.label}
-                  </TableHead>
-                ))}
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 10 }).map((_, i) => (
-                <TableRow key={`skeleton-row-${String(i)}`}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-16 rounded" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24 rounded" />
-                  </TableCell>
-                  {canReadInsights && (
-                    <TableCell className="w-40">
-                      <Skeleton className="h-4 w-20 rounded" />
-                    </TableCell>
-                  )}
-                  {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
-                    <TableCell key={col.action} className="w-[100px] text-center">
-                      <Skeleton className="mx-auto h-4 w-4 rounded" />
-                    </TableCell>
-                  ))}
-                  <TableCell>
-                    <Skeleton className="h-4 w-6 rounded" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : filteredRows.length === 0 ? (
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyTitle>No Results Found</EmptyTitle>
-              <EmptyDescription>
-                No users, groups, or identities match your search.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <Table containerClassName="overflow-auto">
-            <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
-              <TableRow>
-                <TableHead className="w-48 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
-                  Type
-                </TableHead>
-                <TableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
-                  Name
-                </TableHead>
-                {canReadInsights && (
-                  <TableHead className="w-40 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex items-center gap-1">
-                          Last Read
-                          <InfoIcon className="size-3.5 text-muted" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>{readActivityDescription}</TooltipContent>
-                    </Tooltip>
-                  </TableHead>
-                )}
-                {visibleColumns.map((col) => (
-                  <TableHead
-                    key={col.action}
-                    className="w-[100px] border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)]"
-                  >
-                    {col.isLegacy ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex items-center gap-1">
-                            {col.label}
-                            <TriangleAlertIcon className="size-3.5 text-warning" />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          This is a legacy permission. Migrate to Describe and Read Value for
-                          finer-grained access control.
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      col.label
-                    )}
-                  </TableHead>
-                ))}
-                <TableHead className="w-10 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRows.map((row) => {
-                const { icon: TypeIcon, label: typeLabel } = TYPE_CONFIG[row.type];
-                return (
-                  <TableRow key={`${row.type}-${row.entry.id}`}>
-                    <TableCell>
-                      <span className="flex items-center gap-2">
-                        <TypeIcon className="size-4 text-accent" />
-                        {typeLabel}
-                      </span>
-                    </TableCell>
-                    <TableCell isTruncatable className="max-w-[180px] font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate">{row.entry.name}</span>
-                        {row.inheritedFromGroups && row.inheritedFromGroups.length > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-foreground/5 px-1.5 py-0.5 text-xs text-muted">
-                                <UsersIcon className="size-3" />
-                                {row.inheritedFromGroups.length}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                              Access through{" "}
-                              {row.inheritedFromGroups.length === 1
-                                ? `group: ${row.inheritedFromGroups[0]}`
-                                : `groups: ${row.inheritedFromGroups.join(", ")}`}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </TableCell>
-                    {canReadInsights && (
-                      <TableCell className="w-40 whitespace-nowrap">
-                        {renderLastRead(row)}
-                      </TableCell>
-                    )}
-                    {visibleColumns.map((col) => {
-                      const hasDirect = row.entry.allowedActions.includes(col.action);
-                      const hasInherited = row.inheritedActions?.has(col.action);
-                      return (
-                        <TableCell key={col.action} className="w-[100px] text-center">
-                          {/* eslint-disable-next-line no-nested-ternary */}
-                          {hasDirect ? (
-                            <CheckIcon className="mx-auto size-4 text-success" />
-                          ) : hasInherited ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <UsersIcon className="mx-auto size-4 text-success" />
-                              </TooltipTrigger>
-                              <TooltipContent>Inherited from group</TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            <BanIcon className="mx-auto size-4 text-muted" />
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton size="xs" variant="ghost">
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {row.onEdit && (
-                            <Tooltip open={row.canEdit ? false : undefined}>
-                              <TooltipTrigger>
-                                <DropdownMenuItem
-                                  isDisabled={!row.canEdit}
-                                  onClick={() => row.onEdit?.()}
-                                >
-                                  <PlusIcon />
-                                  Add Additional Privilege
-                                </DropdownMenuItem>
-                              </TooltipTrigger>
-                              <TooltipContent side="left">
-                                {row.isSelf
-                                  ? "You cannot modify your own privileges"
-                                  : "You do not have permission to perform this action"}
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                          <DropdownMenuItem asChild>
-                            <Link to={row.linkTo as "."} params={row.linkParams} target="_blank">
-                              <ExternalLinkIcon />
-                              {row.isSelf ? "View" : "Manage"} Access
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+        {view === "graph" &&
+          (isLoading || !graphInput ? (
+            <Skeleton className="h-[560px] w-full" />
+          ) : (
+            <SecretAccessGraph input={graphInput} />
+          ))}
+        {view === "table" && (
+          <>
+            {/* eslint-disable-next-line no-nested-ternary */}
+            {isLoading ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Name</TableHead>
+                    {canReadInsights && <TableHead className="w-40">Last Read</TableHead>}
+                    {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
+                      <TableHead key={col.action} className="w-[100px] text-center">
+                        {col.label}
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-10" />
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-        {canReadInsights && readActivity && readActivity.ghostReaders.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <div>
-              <h3 className="text-sm font-medium">Ghost Readers</h3>
-              <p className="text-xs text-muted">
-                Read this secret since {format(new Date(readActivity.trackedSince), "PP")} but can
-                no longer access it. They still know the value.
-              </p>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-48">Type</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="w-40">Last Read</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {readActivity.ghostReaders.map((reader) => {
-                  const { icon: TypeIcon, label: typeLabel } = TYPE_CONFIG[reader.actorType];
-                  return (
-                    <TableRow key={`${reader.actorType}-${reader.actorId}`}>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <TableRow key={`skeleton-row-${String(i)}`}>
                       <TableCell>
-                        <span className="flex items-center gap-2">
-                          <TypeIcon className="size-4 text-accent" />
-                          {typeLabel}
-                        </span>
+                        <Skeleton className="h-4 w-16 rounded" />
                       </TableCell>
-                      <TableCell isTruncatable className="max-w-[180px] font-medium">
-                        {reader.actorName ?? (
-                          <span className="text-muted italic">
-                            Deleted {reader.actorType === "user" ? "user" : "machine identity"}
-                          </span>
-                        )}
+                      <TableCell>
+                        <Skeleton className="h-4 w-24 rounded" />
                       </TableCell>
-                      <TableCell className="w-40 whitespace-nowrap">
-                        <SecretReadStatusBadge lastReadAt={reader.lastReadAt} />
+                      {canReadInsights && (
+                        <TableCell className="w-40">
+                          <Skeleton className="h-4 w-20 rounded" />
+                        </TableCell>
+                      )}
+                      {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
+                        <TableCell key={col.action} className="w-[100px] text-center">
+                          <Skeleton className="mx-auto h-4 w-4 rounded" />
+                        </TableCell>
+                      ))}
+                      <TableCell>
+                        <Skeleton className="h-4 w-6 rounded" />
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : filteredRows.length === 0 ? (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>No Results Found</EmptyTitle>
+                  <EmptyDescription>
+                    No users, groups, or identities match your search.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table containerClassName="overflow-auto">
+                <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
+                  <TableRow>
+                    <TableHead className="w-48 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                      Type
+                    </TableHead>
+                    <TableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                      Name
+                    </TableHead>
+                    {canReadInsights && (
+                      <TableHead className="w-40 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1">
+                              Last Read
+                              <InfoIcon className="size-3.5 text-muted" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{readActivityDescription}</TooltipContent>
+                        </Tooltip>
+                      </TableHead>
+                    )}
+                    {visibleColumns.map((col) => (
+                      <TableHead
+                        key={col.action}
+                        className="w-[100px] border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)]"
+                      >
+                        {col.isLegacy ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1">
+                                {col.label}
+                                <TriangleAlertIcon className="size-3.5 text-warning" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              This is a legacy permission. Migrate to Describe and Read Value for
+                              finer-grained access control.
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          col.label
+                        )}
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-10 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.map((row) => {
+                    const { icon: TypeIcon, label: typeLabel } = TYPE_CONFIG[row.type];
+                    return (
+                      <TableRow key={`${row.type}-${row.entry.id}`}>
+                        <TableCell>
+                          <span className="flex items-center gap-2">
+                            <TypeIcon className="size-4 text-accent" />
+                            {typeLabel}
+                          </span>
+                        </TableCell>
+                        <TableCell isTruncatable className="max-w-[180px] font-medium">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate">{row.entry.name}</span>
+                            {row.inheritedFromGroups && row.inheritedFromGroups.length > 0 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex shrink-0 items-center gap-1 rounded bg-foreground/5 px-1.5 py-0.5 text-xs text-muted">
+                                    <UsersIcon className="size-3" />
+                                    {row.inheritedFromGroups.length}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                  Access through{" "}
+                                  {row.inheritedFromGroups.length === 1
+                                    ? `group: ${row.inheritedFromGroups[0]}`
+                                    : `groups: ${row.inheritedFromGroups.join(", ")}`}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
+                        {canReadInsights && (
+                          <TableCell className="w-40 whitespace-nowrap">
+                            {renderLastRead(row)}
+                          </TableCell>
+                        )}
+                        {visibleColumns.map((col) => {
+                          const hasDirect = row.entry.allowedActions.includes(col.action);
+                          const hasInherited = row.inheritedActions?.has(col.action);
+                          return (
+                            <TableCell key={col.action} className="w-[100px] text-center">
+                              {/* eslint-disable-next-line no-nested-ternary */}
+                              {hasDirect ? (
+                                <CheckIcon className="mx-auto size-4 text-success" />
+                              ) : hasInherited ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <UsersIcon className="mx-auto size-4 text-success" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>Inherited from group</TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <BanIcon className="mx-auto size-4 text-muted" />
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton size="xs" variant="ghost">
+                                <MoreHorizontalIcon />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {row.onEdit && (
+                                <Tooltip open={row.canEdit ? false : undefined}>
+                                  <TooltipTrigger>
+                                    <DropdownMenuItem
+                                      isDisabled={!row.canEdit}
+                                      onClick={() => row.onEdit?.()}
+                                    >
+                                      <PlusIcon />
+                                      Add Additional Privilege
+                                    </DropdownMenuItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left">
+                                    {row.isSelf
+                                      ? "You cannot modify your own privileges"
+                                      : "You do not have permission to perform this action"}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  to={row.linkTo as "."}
+                                  params={row.linkParams}
+                                  target="_blank"
+                                >
+                                  <ExternalLinkIcon />
+                                  {row.isSelf ? "View" : "Manage"} Access
+                                </Link>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+            {canReadInsights && readActivity && readActivity.ghostReaders.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <div>
+                  <h3 className="text-sm font-medium">Ghost Readers</h3>
+                  <p className="text-xs text-muted">
+                    Read this secret since {format(new Date(readActivity.trackedSince), "PP")} but
+                    can no longer access it. They still know the value.
+                  </p>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-48">Type</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead className="w-40">Last Read</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {readActivity.ghostReaders.map((reader) => {
+                      const { icon: TypeIcon, label: typeLabel } = TYPE_CONFIG[reader.actorType];
+                      return (
+                        <TableRow key={`${reader.actorType}-${reader.actorId}`}>
+                          <TableCell>
+                            <span className="flex items-center gap-2">
+                              <TypeIcon className="size-4 text-accent" />
+                              {typeLabel}
+                            </span>
+                          </TableCell>
+                          <TableCell isTruncatable className="max-w-[180px] font-medium">
+                            {reader.actorName ?? (
+                              <span className="text-muted italic">
+                                Deleted {reader.actorType === "user" ? "user" : "machine identity"}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="w-40 whitespace-nowrap">
+                            <SecretReadStatusBadge lastReadAt={reader.lastReadAt} />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </>
         )}
       </div>
 
