@@ -135,41 +135,74 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The last time each user or identity joined the project or had a role, privilege or folder grant created,
-  // changed or expired, or had the rules of a custom role they hold edited. Which secrets a change opened up is
-  // not recorded, so any of them restarts the window; an expired restrictive folder grant can restore access.
-  // Membership updatedAt is left out because logins bump it.
+  type TAccessChange = {
+    actorUserId?: string | null;
+    actorIdentityId?: string | null;
+    groupMemberId?: string | null;
+    membershipCreatedAt?: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    temporaryAccessEndTime?: Date | null;
+    customRoleUpdatedAt?: Date | null;
+  };
+
+  // The last time each user or identity joined the project or a group that is in it, or had a role, privilege or
+  // folder grant created, changed or expired, or had the rules of a custom role they hold edited. Which secrets a
+  // change opened up is not recorded, so any of them restarts the window; an expired restrictive folder grant can
+  // restore access. Membership updatedAt is left out because logins bump it.
   const findAccessChangedAt = async (projectId: string, tx?: Knex) => {
     try {
-      const [roleChanges, privilegeChanges] = await Promise.all([
-        (tx || db.replicaNode())(TableName.Membership)
+      const roleChanges = (qb: Knex.QueryBuilder) =>
+        qb
           .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
           .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
-          .where(`${TableName.Membership}.scopeProjectId`, projectId)
-          .select(
-            db.ref("actorUserId").withSchema(TableName.Membership),
-            db.ref("actorIdentityId").withSchema(TableName.Membership),
-            db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
-            db.ref("createdAt").withSchema(TableName.MembershipRole),
-            db.ref("updatedAt").withSchema(TableName.MembershipRole),
-            db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
-            db.ref("updatedAt").withSchema(TableName.Role).as("customRoleUpdatedAt")
-          ),
+          .where(`${TableName.Membership}.scopeProjectId`, projectId);
+      const roleColumns = [
+        db.ref("createdAt").withSchema(TableName.MembershipRole),
+        db.ref("updatedAt").withSchema(TableName.MembershipRole),
+        db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
+        db.ref("updatedAt").withSchema(TableName.Role).as("customRoleUpdatedAt")
+      ];
+      // A group's roles reach each of its members, from the day the member joined the group.
+      const groupRoleChanges = (
+        memberTable: TableName.UserGroupMembership | TableName.IdentityGroupMembership,
+        memberColumn: "userId" | "identityId"
+      ) =>
+        roleChanges(
+          (tx || db.replicaNode())(TableName.Membership).join(
+            memberTable,
+            `${TableName.Membership}.actorGroupId`,
+            `${memberTable}.groupId`
+          )
+        ).select(
+          db.ref(memberColumn).withSchema(memberTable).as("groupMemberId"),
+          db.ref("createdAt").withSchema(memberTable).as("membershipCreatedAt"),
+          ...roleColumns
+        );
+
+      const [directChanges, userGroupChanges, identityGroupChanges, privilegeChanges] = (await Promise.all([
+        roleChanges((tx || db.replicaNode())(TableName.Membership)).select(
+          db.ref("actorUserId").withSchema(TableName.Membership),
+          db.ref("actorIdentityId").withSchema(TableName.Membership),
+          db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
+          ...roleColumns
+        ),
+        groupRoleChanges(TableName.UserGroupMembership, "userId"),
+        groupRoleChanges(TableName.IdentityGroupMembership, "identityId"),
         (tx || db.replicaNode())(TableName.AdditionalPrivilege)
           .where({ projectId })
           .select("actorUserId", "actorIdentityId", "createdAt", "updatedAt", "temporaryAccessEndTime")
-      ]);
+      ])) as TAccessChange[][];
 
       const now = new Date();
       const changedAtByActorId = new Map<string, Date>();
-      [...roleChanges, ...privilegeChanges].forEach((change) => {
-        const actorId = change.actorUserId ?? change.actorIdentityId;
+      [...directChanges, ...userGroupChanges, ...identityGroupChanges, ...privilegeChanges].forEach((change) => {
+        const actorId = change.actorUserId ?? change.actorIdentityId ?? change.groupMemberId;
         if (!actorId) return;
         const dates = [change.createdAt, change.updatedAt];
-        if ("membershipCreatedAt" in change) dates.push(change.membershipCreatedAt as Date);
-        if ("customRoleUpdatedAt" in change && change.customRoleUpdatedAt)
-          dates.push(change.customRoleUpdatedAt as Date);
+        if (change.membershipCreatedAt) dates.push(change.membershipCreatedAt);
+        if (change.customRoleUpdatedAt) dates.push(change.customRoleUpdatedAt);
         if (change.temporaryAccessEndTime && new Date(change.temporaryAccessEndTime) <= now) {
           dates.push(change.temporaryAccessEndTime);
         }

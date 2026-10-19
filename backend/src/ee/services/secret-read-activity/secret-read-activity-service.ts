@@ -1,5 +1,7 @@
 import { SecretType, TableName } from "@app/db/schemas";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsReadPermission } from "@app/ee/services/insights/insights-fns";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -80,6 +82,8 @@ type TSecretReadActivityServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findSecretReferencesByProjectId">;
   userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl" | "acquireLock">;
 };
@@ -97,6 +101,8 @@ export const secretReadActivityServiceFactory = ({
   secretV2BridgeDAL,
   userDAL,
   identityDAL,
+  userGroupMembershipDAL,
+  identityGroupMembershipDAL,
   kmsService,
   keyStore
 }: TSecretReadActivityServiceFactoryDep) => {
@@ -275,35 +281,71 @@ export const secretReadActivityServiceFactory = ({
   // computed from those counts. In a project tracked for less than the window, the window starts when tracking
   // did, so the results are preliminary.
   const $loadSecretSummarizer = async (projectId: string, orgId: string, windowStart: Date) => {
-    const [{ userPermissions, identityPermissions }, accessChangedAtByActorId, adminActorIds, { trackingStartedAt }] =
-      await Promise.all([
-        permissionService.getProjectPermissions(projectId, orgId),
-        secretReadActivityDAL.findAccessChangedAt(projectId),
-        secretReadActivityDAL.findAdminActorIds(projectId),
-        $getProjectTrackingStartedAt(projectId)
-      ]);
+    const [
+      { userPermissions, identityPermissions, groupPermissions },
+      accessChangedAtByActorId,
+      adminActorIds,
+      { trackingStartedAt }
+    ] = await Promise.all([
+      permissionService.getProjectPermissions(projectId, orgId),
+      secretReadActivityDAL.findAccessChangedAt(projectId),
+      secretReadActivityDAL.findAdminActorIds(projectId),
+      $getProjectTrackingStartedAt(projectId)
+    ]);
+    // The user and identity lists carry only direct members, so every group member is also checked with the
+    // group's permission; an actor who qualifies more than one way still counts once.
+    const groupIds = groupPermissions.map((group) => group.id);
+    const [userGroupMemberships, identityGroupMemberships] = await Promise.all([
+      groupIds.length ? userGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : [],
+      groupIds.length ? identityGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : []
+    ]);
+    const groupPermissionById = new Map(groupPermissions.map((group) => [group.id, group.permission]));
     const judgedFrom = trackingStartedAt > windowStart ? trackingStartedAt : windowStart;
     // How much of the window the reads cover, which weights the score's unused-access term and words it.
     const trackedDays = (Date.now() - judgedFrom.getTime()) / DAY_IN_MS;
-    const actors = [
+    type TActor = {
+      id: string;
+      name?: string;
+      actorType: TSecretReaderType;
+      permission: (typeof userPermissions)[number]["permission"];
+    };
+    const throughGroup = <T extends { groupId: string }>(
+      memberships: T[],
+      actorType: TSecretReaderType,
+      idOf: (membership: T) => string
+    ): TActor[] =>
+      memberships.flatMap((membership) => {
+        const permission = groupPermissionById.get(membership.groupId);
+        return permission ? [{ id: idOf(membership), actorType, permission }] : [];
+      });
+    const actors: TActor[] = [
       ...userPermissions.map((actor) => ({ ...actor, actorType: ActorType.USER as const })),
-      ...identityPermissions.map((actor) => ({ ...actor, actorType: ActorType.IDENTITY as const }))
+      ...identityPermissions.map((actor) => ({ ...actor, actorType: ActorType.IDENTITY as const })),
+      ...throughGroup(userGroupMemberships, ActorType.USER, (membership) => membership.userId),
+      ...throughGroup(identityGroupMemberships, ActorType.IDENTITY, (membership) => membership.identityId)
     ];
     // Actors with identical rules always get the same answer, so each distinct rule set is checked once.
     const actorGroups = Object.values(groupBy(actors, (actor) => JSON.stringify(actor.permission.rules)));
-    const actorNames = new Map(actors.map((actor) => [`${actor.actorType}:${actor.id}`, actor.name]));
+    const actorNames = new Map(
+      actors.flatMap((actor) => (actor.name ? [[`${actor.actorType}:${actor.id}`, actor.name] as const] : []))
+    );
 
     const summarize = ({ secret, environment, secretPath, trackedSince, reads }: TSecretActivity) => {
-      const entitled = actorGroups
-        .filter(([{ permission }]) =>
-          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment,
-            secretPath,
-            secretName: secret.key,
-            secretTags: secret.tags?.map((tag) => tag.slug)
-          })
-        )
-        .flat();
+      const entitled = [
+        ...new Map(
+          actorGroups
+            .filter(([{ permission }]) =>
+              hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+                environment,
+                secretPath,
+                secretName: secret.key,
+                secretTags: secret.tags?.map((tag) => tag.slug)
+              })
+            )
+            .flat()
+            .map((actor) => [`${actor.actorType}:${actor.id}`, actor] as const)
+        ).values()
+      ];
       const entitledKeys = new Set(entitled.map((actor) => `${actor.actorType}:${actor.id}`));
       // Admins can read everything by design, so a secret is not exposed to them: they are left out of the counts and
       // the score, though their reads still show, and a read of theirs is never a ghost's.
