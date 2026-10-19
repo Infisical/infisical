@@ -276,7 +276,7 @@ export const SecretExposureCard = () => {
                       {row.ghostReaderCount > 0 ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="warning">{row.ghostReaderCount}</Badge>
+                            <span>{row.ghostReaderCount}</span>
                           </TooltipTrigger>
                           <TooltipContent>
                             {row.ghostReaderCount} read this secret {readPeriod} but can no longer
