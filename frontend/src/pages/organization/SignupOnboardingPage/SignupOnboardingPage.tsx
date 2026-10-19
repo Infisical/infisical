@@ -195,7 +195,7 @@ export const SignupOnboardingPage = () => {
       variant={isWorkspaceSetup ? "focused" : "split"}
       contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
       bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
-      onDocumentationClick={() => analytics.captureOnboardingResourceClicked({ resource: "docs" })}
+      onDocumentationClick={analytics.captureOnboardingDocumentationClicked}
     >
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>

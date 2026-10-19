@@ -2,7 +2,6 @@ import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 
 import {
   AnalyticsEvent,
-  OnboardingResourceClickedProperties,
   OrganizationAnalyticsEvent,
   OrganizationAnalyticsEventMap,
   SignupFlowCompletedProperties,
@@ -18,9 +17,9 @@ export const analytics = {
     const telemetry = new Telemetry().getInstance();
     telemetry.capture(AnalyticsEvent.SignupFlowCompleted, properties);
   },
-  captureOnboardingResourceClicked(properties: OnboardingResourceClickedProperties) {
+  captureOnboardingDocumentationClicked() {
     const telemetry = new Telemetry().getInstance();
-    telemetry.capture(AnalyticsEvent.OnboardingResourceClicked, properties);
+    telemetry.capture(AnalyticsEvent.OnboardingDocumentationClicked);
   },
   captureForOrganization<Event extends OrganizationAnalyticsEvent>(
     event: Event,

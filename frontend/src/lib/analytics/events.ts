@@ -16,7 +16,8 @@ export const AnalyticsEvent = {
   ThemePreferenceChanged: "Theme Preference Changed",
   SignupFlowCompleted: "Signup Flow Completed",
   BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted",
-  OnboardingResourceClicked: "Onboarding Resource Clicked"
+  OnboardingResourceClicked: "Onboarding Resource Clicked",
+  OnboardingDocumentationClicked: "Onboarding Documentation Clicked"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -187,7 +188,7 @@ type BillingCancellationReasonSubmittedProperties = {
   comment?: string;
 };
 
-export type OnboardingResource = "github" | "discussions" | "youtube" | "docs";
+export type OnboardingResource = "github" | "discussions" | "youtube";
 
 export type OnboardingResourceClickedProperties = {
   resource: OnboardingResource;
