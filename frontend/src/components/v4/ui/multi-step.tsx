@@ -168,6 +168,12 @@ export const MultiStep = ({
     }
     setOpen(next);
   };
+  const refocus = React.useRef(false);
+  React.useEffect(() => {
+    if (busy || !refocus.current) return;
+    refocus.current = false;
+    activeStep()?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+  });
   const advance = async () => {
     if (busy || !entry) return;
     setError(undefined);
@@ -175,7 +181,7 @@ export const MultiStep = ({
     try {
       const result = await entry.validate?.();
       if (result === false) {
-        activeStep()?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+        refocus.current = true;
         return;
       }
       if (typeof result === "string") {

@@ -548,3 +548,10 @@
 :is(.v4, .v4-portal)[data-corners="soft"][data-theme="dark"] {
   --corners: 1;
 }
+
+/* Zero-specificity icon defaults: a component class or an explicit size wins. */
+:where(.v4) :where([data-slot="icon"]) {
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+  stroke-width: var(--v4-stroke-icon);
+}

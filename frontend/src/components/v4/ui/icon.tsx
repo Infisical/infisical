@@ -121,11 +121,10 @@ type IconProps = Omit<React.ComponentPropsWithoutRef<"svg">, "name"> & {
 };
 
 export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
-  ({ name, icon, size, strokeWidth = "var(--v4-stroke-icon)", label, style, ...props }, ref) => {
+  ({ name, icon, size, strokeWidth, label, style, ...props }, ref) => {
     const Glyph = icon ?? (name ? iconMap[name] : undefined);
     if (!Glyph) return null;
-    const dimension =
-      size === undefined ? "var(--v4-size-icon)" : typeof size === "number" ? `${size}px` : size;
+    const dimension = typeof size === "number" ? `${size}px` : size;
     return (
       <Glyph
         ref={ref}
