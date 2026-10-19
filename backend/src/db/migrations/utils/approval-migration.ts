@@ -139,9 +139,7 @@ export const readLegacyReviews = async (
 ) => {
   if (!requestIds.length) return [] as TLegacyReview[];
   const columns = ["id", "requestId", "reviewerUserId", "status", "createdAt", ...(withComment ? ["comment"] : [])];
-  return (await tx(tables.legacyReviewers)
-    .whereIn("requestId", requestIds)
-    .select(columns)) as TLegacyReview[];
+  return (await tx(tables.legacyReviewers).whereIn("requestId", requestIds).select(columns)) as TLegacyReview[];
 };
 
 export const readApproverGroupMembers = async (tx: Knex, approvers: TLegacyApprover[]) => {
