@@ -167,7 +167,9 @@ export const SecretExposureCard = () => {
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>No exposed secrets</EmptyTitle>
-              <EmptyDescription>A secret scores once someone can read its value.</EmptyDescription>
+              <EmptyDescription>
+                A secret scores once someone other than a project admin can read its value.
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
@@ -247,8 +249,8 @@ export const SecretExposureCard = () => {
                           <span>{row.entitledCount}</span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {row.entitledCount} users and machine identities, admins included, can
-                          read this secret&apos;s value
+                          {row.entitledCount} users and machine identities, project admins aside,
+                          can read this secret&apos;s value
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
@@ -261,7 +263,7 @@ export const SecretExposureCard = () => {
                         </TooltipTrigger>
                         <TooltipContent>
                           {row.unreadCount} of the {row.entitledCount} who can read this secret,
-                          project admins aside, have not read it {readPeriod}
+                          have not read it {readPeriod}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>

@@ -1402,8 +1402,9 @@ export const SECRET_EXPOSURE = {
     "Which term the driver is: readers (up to 45 points), ghost-readers (up to 30 points) or unused-access (up to 25 points).",
   driverPoints: "The whole points this term contributed to the score.",
   driverLabel: "The term in words, with its counts.",
-  entitledCount: "How many users and machine identities, admins included, can read this secret's value today.",
-  unreadCount: "How many of those, admins excluded, have not read it in the last 30 days.",
+  entitledCount:
+    "How many users and machine identities can read this secret's value today. Project admins are left out: they can read everything by design, so the secret is not exposed to them.",
+  unreadCount: "How many of those have not read it in the tracked period, up to the last 30 days.",
   ghostReaderCount:
     "How many users and machine identities read this secret in the last 30 days but can no longer read it today, for example after leaving the project. They still know the value."
 };
@@ -1502,7 +1503,7 @@ export const RAW_SECRETS = {
     judgedFrom:
       "The start of the period unused access is judged on: the later of 30 days ago and when read tracking began for the project. A reader only counts as unused access once the secret and their access both predate it.",
     entitled:
-      "One entry for each user or machine identity that can read the secret's value today, admins included, saying whether they count as unused access and, if not, why.",
+      "One entry for each user or machine identity that can read the secret's value today, project admins included so their reads can be shown, saying whether they count as unused access and, if not, why.",
     unread:
       "Whether the reader counts as unused access: no read since trackedSince, with the secret and their access both older than judgedFrom.",
     isAdmin:

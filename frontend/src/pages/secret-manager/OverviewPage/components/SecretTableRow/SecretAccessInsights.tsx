@@ -573,6 +573,8 @@ export function SecretAccessInsights({
         .filter((group) => group[memberField].includes(entry.id))
         .map((group) => group.id);
       if (!isDirect && !groupIds.length) return [];
+      // Admins can read everything by design, so the secret is not exposed to them and they stay off the graph.
+      if (entitledReaders.get(`${type}:${entry.id}`)?.isAdmin) return [];
       const status = readStatusOf(type, entry.id);
       return [
         {

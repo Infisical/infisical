@@ -305,19 +305,24 @@ export const secretReadActivityServiceFactory = ({
         )
         .flat();
       const entitledKeys = new Set(entitled.map((actor) => `${actor.actorType}:${actor.id}`));
-      const unread = entitled.filter(
+      // Admins can read everything by design, so a secret is not exposed to them: they are left out of the counts and
+      // the score, though their reads still show, and a read of theirs is never a ghost's.
+      const exposedTo = entitled.filter((actor) => !adminActorIds.has(actor.id));
+      const unread = exposedTo.filter(
         (actor) =>
-          !adminActorIds.has(actor.id) &&
           !reads.has(`${actor.actorType}:${actor.id}`) &&
           coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), judgedFrom)
       );
-      const ghostReaders = [...reads.values()].filter((read) => !entitledKeys.has(`${read.actorType}:${read.actorId}`));
+      const ghostReaders = [...reads.values()].filter(
+        (read) => !entitledKeys.has(`${read.actorType}:${read.actorId}`) && !adminActorIds.has(read.actorId)
+      );
       return {
         entitled,
+        exposedTo,
         unread,
         ghostReaders,
         exposure: calculateExposureScore(
-          { entitledCount: entitled.length, unreadCount: unread.length, ghostReaderCount: ghostReaders.length },
+          { entitledCount: exposedTo.length, unreadCount: unread.length, ghostReaderCount: ghostReaders.length },
           trackedDays
         )
       };
@@ -364,7 +369,7 @@ export const secretReadActivityServiceFactory = ({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
       });
     }
-    const { entitled, unread, ghostReaders, exposure } = summarize(activity);
+    const { entitled, exposedTo, unread, ghostReaders, exposure } = summarize(activity);
     const unreadKeys = new Set(unread.map((reader) => `${reader.actorType}:${reader.id}`));
 
     // A ghost reader may have left the project or been deleted since, so names the project's members do not
@@ -393,7 +398,7 @@ export const secretReadActivityServiceFactory = ({
           accessChangedAt: accessChangedAtByActorId.get(reader.id) ?? null
         })
       ),
-      entitledCount: entitled.length,
+      entitledCount: exposedTo.length,
       unreadCount: unread.length,
       ghostReaderCount: ghostReaders.length,
       exposure,
@@ -421,10 +426,10 @@ export const secretReadActivityServiceFactory = ({
       await new Promise<void>((resolve) => {
         setImmediate(resolve);
       });
-      const { entitled, unread, ghostReaders, exposure } = summarize(activities[activityIndex]);
+      const { exposedTo, unread, ghostReaders, exposure } = summarize(activities[activityIndex]);
       summaries.push({
         activityIndex,
-        entitledCount: entitled.length,
+        entitledCount: exposedTo.length,
         unreadCount: unread.length,
         ghostReaderCount: ghostReaders.length,
         score: exposure.score

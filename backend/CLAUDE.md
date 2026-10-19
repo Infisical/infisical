@@ -1149,7 +1149,8 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   access change restarts the window, including an edit to the rules of a custom role the reader holds. The per-secret sheet
   shows the plain fact instead: a read, or "No reads". Each card row also carries three counts for its secret,
   derived from sets the computation already holds: `entitledCount` (everyone who can read the value today,
-  admins included), `unreadCount` (the non-admins among them with no read in the window) and
+  project admins left out, since a secret is not exposed to someone who can read everything by design),
+  `unreadCount` (those among them with no read in the window) and
   `ghostReaderCount` (readers in the window who can no longer read it, so they still know the value).
 - **Exposure score.** `calculateExposureScore` (`secret-read-activity-fns.ts`) turns those three counts into a 0
   to 100 score with Low, Elevated, High and Critical bands and whole-point drivers that add up to it (readers up
