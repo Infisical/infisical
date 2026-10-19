@@ -134,6 +134,7 @@
     "react-hook-form": "^7.56.3",
     "react-i18next": "^15.2.0",
     "react-icons": "^5.4.0",
+    "react-is": "^19.3.0",
     "react-markdown": "^10.0.1",
     "react-select": "^5.9.0",
     "recharts": "^3.8.1",
