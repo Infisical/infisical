@@ -45,7 +45,7 @@ import {
   TUnusedSecretAccess
 } from "./secret-read-activity-types";
 
-const UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS = 24 * 60 * 60;
+const UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS = 30;
 const REACH_YIELD_INTERVAL = 100;
 // Longer than a computation can take, so the lock is not lost mid-scan; waiters give up well before a request times out.
 const UNUSED_SECRET_ACCESS_COMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
@@ -316,18 +316,20 @@ export const secretReadActivityServiceFactory = ({
     ]);
     const judgedFrom = trackingStartedAt > windowStart ? trackingStartedAt : windowStart;
     // Actors with identical rules always get the same answer, so each distinct rule set is checked once.
-    const actorGroups = Object.values(
+    const allActorGroups = Object.values(
       groupBy(
         [
           ...userPermissions.map((actor) => ({ ...actor, actorType: ActorType.USER as const })),
           ...identityPermissions.map((actor) => ({ ...actor, actorType: ActorType.IDENTITY as const }))
-        ].filter((actor) => !adminActorIds.has(actor.id)),
+        ],
         (actor) => JSON.stringify(actor.permission.rules)
       )
     );
 
-    const unreadActorsOf = ({ secret, environment, secretPath, trackedSince, reads }: (typeof activities)[number]) =>
-      actorGroups
+    // Everyone who can read the value today, admins included. Unused access is judged on the non-admins among them;
+    // ghost readers are readers in the window who are not among them at all, so their access was since removed.
+    const entitledActorsOf = ({ secret, environment, secretPath }: (typeof activities)[number]) =>
+      allActorGroups
         .filter(([{ permission }]) =>
           hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
             environment,
@@ -336,12 +338,24 @@ export const secretReadActivityServiceFactory = ({
             secretTags: secret.tags?.map((tag) => tag.slug)
           })
         )
-        .flat()
-        .filter(
-          (actor) =>
-            !reads.has(`${actor.actorType}:${actor.id}`) &&
-            coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), judgedFrom)
-        );
+        .flat();
+
+    const summarizeSecret = (activity: (typeof activities)[number]) => {
+      const { trackedSince, reads } = activity;
+      const entitled = entitledActorsOf(activity);
+      const entitledKeys = new Set(entitled.map((actor) => `${actor.actorType}:${actor.id}`));
+      const unread = entitled.filter(
+        (actor) =>
+          !adminActorIds.has(actor.id) &&
+          !reads.has(`${actor.actorType}:${actor.id}`) &&
+          coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), judgedFrom)
+      );
+      let ghostReaderCount = 0;
+      reads.forEach((_, key) => {
+        if (!entitledKeys.has(key)) ghostReaderCount += 1;
+      });
+      return { entitledCount: entitled.length, unread, ghostReaderCount };
+    };
 
     // Only counts are kept for every secret: a large project can have millions of unread pairs, and only the
     // highest-ranked ones are listed, so their rows are built in a second pass.
@@ -352,7 +366,7 @@ export const secretReadActivityServiceFactory = ({
       await new Promise<void>((resolve) => {
         setImmediate(resolve);
       });
-      unreadCounts.push({ activityIndex, count: unreadActorsOf(activities[activityIndex]).length });
+      unreadCounts.push({ activityIndex, count: summarizeSecret(activities[activityIndex]).unread.length });
     }
     unreadCounts.sort((a, b) => b.count - a.count);
 
@@ -360,7 +374,8 @@ export const secretReadActivityServiceFactory = ({
     for (const { activityIndex, count } of unreadCounts) {
       if (rows.length >= UNUSED_SECRET_ACCESS_MAX_LISTED || count === 0) break;
       const activity = activities[activityIndex];
-      unreadActorsOf(activity).forEach((actor) =>
+      const { entitledCount, unread, ghostReaderCount } = summarizeSecret(activity);
+      unread.forEach((actor) =>
         rows.push({
           secretId: activity.secret.id,
           secretKey: activity.secret.key,
@@ -368,7 +383,10 @@ export const secretReadActivityServiceFactory = ({
           secretPath: activity.secretPath,
           actorType: actor.actorType,
           actorId: actor.id,
-          actorName: actor.name
+          actorName: actor.name,
+          entitledCount,
+          unreadCount: unread.length,
+          ghostReaderCount
         })
       );
     }

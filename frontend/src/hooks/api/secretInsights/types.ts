@@ -74,6 +74,9 @@ export type TUnusedSecretAccess = {
   actorType: "user" | "identity";
   actorId: string;
   actorName: string;
+  entitledCount: number;
+  unreadCount: number;
+  ghostReaderCount: number;
 };
 
 export type TGetUnusedSecretAccessResponse = {

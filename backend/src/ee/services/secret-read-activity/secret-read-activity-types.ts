@@ -100,6 +100,10 @@ export type TUnusedSecretAccess = {
   actorType: TSecretReaderType;
   actorId: string;
   actorName: string;
+  // How the secret as a whole stands, repeated on each of its rows so a row can be read on its own.
+  entitledCount: number;
+  unreadCount: number;
+  ghostReaderCount: number;
 };
 
 // Each value is the row field it sorts by.

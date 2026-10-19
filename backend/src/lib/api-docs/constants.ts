@@ -968,7 +968,11 @@ export const INSIGHTS = {
     secretPath: "The path of the folder the secret is in.",
     actorType: "Whether the entry is a user or a machine identity.",
     actorId: "The ID of the user or machine identity.",
-    actorName: "The username of the user, or the name of the machine identity."
+    actorName: "The username of the user, or the name of the machine identity.",
+    entitledCount: "How many users and machine identities, admins included, can read this secret's value today.",
+    unreadCount: "How many of those, admins excluded, have not read it in the window. This row is one of them.",
+    ghostReaderCount:
+      "How many users and machine identities read this secret in the window but can no longer read it today, for example after leaving the project. They still know the value."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",

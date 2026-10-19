@@ -1147,7 +1147,10 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   less than 30 days the card already lists access unread since tracking began, and the response's
   `preliminaryUntil` tells the UI to label it preliminary. Which secrets a change opened up is not recorded, so any
   access change restarts the window, and a custom role's rules being edited is not seen at all. The per-secret sheet
-  shows the plain fact instead: a read, or "No reads".
+  shows the plain fact instead: a read, or "No reads". Each card row also carries three counts for its secret,
+  derived from sets the computation already holds: `entitledCount` (everyone who can read the value today,
+  admins included), `unreadCount` (the non-admins among them with no read in the window) and
+  `ghostReaderCount` (readers in the window who can no longer read it, so they still know the value).
 
 ### Audit Log Event Classes and Settings
 

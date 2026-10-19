@@ -33,7 +33,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  type TableSortDirection
+  type TableSortDirection,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { useProject, useSubscription } from "@app/context";
@@ -176,6 +179,8 @@ export const UnusedSecretAccessCard = () => {
                   />
                 </TableHead>
               ))}
+              <TableHead className="whitespace-nowrap">No Reads</TableHead>
+              <TableHead className="whitespace-nowrap">Ghost Readers</TableHead>
               <TableHead variant="action" />
             </TableRow>
           </TableHeader>
@@ -209,6 +214,34 @@ export const UnusedSecretAccessCard = () => {
                       <ActorIcon className="size-4 shrink-0 text-accent" />
                       <span className="truncate">{row.actorName}</span>
                     </div>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          {row.unreadCount} of {row.entitledCount}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {row.unreadCount} of the {row.entitledCount} who can read this secret have
+                        not read it in the last 30 days
+                      </TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {row.ghostReaderCount > 0 ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="warning">{row.ghostReaderCount}</Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {row.ghostReaderCount} read this secret in the last 30 days but can no
+                          longer access it. They still know the value.
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-muted">0</span>
+                    )}
                   </TableCell>
                   <TableCell variant="action">
                     <GoToSecretButton

@@ -79,7 +79,10 @@ export const UnusedSecretAccessSchema = z.object({
       secretPath: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.secretPath),
       actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorType),
       actorId: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorId),
-      actorName: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorName)
+      actorName: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorName),
+      entitledCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.entitledCount),
+      unreadCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.unreadCount),
+      ghostReaderCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.ghostReaderCount)
     })
     .array()
     .describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.unusedAccess)
