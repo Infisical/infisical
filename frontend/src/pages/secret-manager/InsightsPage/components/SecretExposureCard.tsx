@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import axios from "axios";
 import { format } from "date-fns";
@@ -22,6 +23,12 @@ import {
   EmptyHeader,
   EmptyTitle,
   Pagination,
+  Separator,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Skeleton,
   Table,
   TableBody,
@@ -36,7 +43,8 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { useProject, useSubscription } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetSecretExposure } from "@app/hooks/api/secretInsights";
+import { TExposedSecret, useGetSecretExposure } from "@app/hooks/api/secretInsights";
+import { SecretAccessInsights } from "@app/pages/secret-manager/OverviewPage/components/SecretTableRow/SecretAccessInsights";
 
 export const SecretExposureCard = () => {
   const { currentProject, projectId } = useProject();
@@ -45,6 +53,7 @@ export const SecretExposureCard = () => {
   const { page, setPage, perPage, setPerPage, offset, limit } = usePagination("", {
     initPerPage: 10
   });
+  const [selectedSecret, setSelectedSecret] = useState<TExposedSecret | null>(null);
 
   const { data, isPending, error } = useGetSecretExposure(
     { projectId, offset, limit },
@@ -125,7 +134,8 @@ export const SecretExposureCard = () => {
                 {data.secrets.map((row) => (
                   <TableRow
                     key={`${row.environment}-${row.secretPath}-${row.secretKey}`}
-                    className="group/row"
+                    className="group/row cursor-pointer"
+                    onClick={() => setSelectedSecret(row)}
                   >
                     <TableCell isTruncatable className="max-w-60">
                       <div className="flex items-center gap-2">
@@ -202,7 +212,7 @@ export const SecretExposureCard = () => {
                         <span className="text-muted">0</span>
                       )}
                     </TableCell>
-                    <TableCell variant="action">
+                    <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
                       <GoToSecretButton
                         orgId={orgId as string}
                         projectId={projectId}
@@ -230,15 +240,60 @@ export const SecretExposureCard = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Secret Exposure</CardTitle>
-        <CardDescription>
-          The secrets with the highest exposure score, from how many can read the value, who can no
-          longer read it but still knows it, and who never reads it
-        </CardDescription>
-      </CardHeader>
-      <CardContent>{renderBody()}</CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Secret Exposure</CardTitle>
+          <CardDescription>
+            The secrets with the highest exposure score, from how many can read the value, who can
+            no longer read it but still knows it, and who never reads it. Select a secret to see why
+            it scores what it does.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>{renderBody()}</CardContent>
+      </Card>
+      <Sheet
+        open={selectedSecret !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSelectedSecret(null);
+        }}
+      >
+        <SheetContent
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          className="gap-y-0 sm:max-w-6xl"
+          side="right"
+        >
+          <SheetHeader>
+            <SheetTitle>Secret Exposure</SheetTitle>
+            <SheetDescription>
+              Why this secret scores what it does, who can read it, and who still knows its value
+            </SheetDescription>
+          </SheetHeader>
+          {selectedSecret && (
+            <>
+              <div className="bg-container p-4 text-foreground">
+                <p className="truncate font-mono">{selectedSecret.secretKey}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <Badge variant="neutral">
+                    {environmentNames.get(selectedSecret.environment) ?? selectedSecret.environment}
+                  </Badge>
+                  <span className="flex items-center gap-1 text-xs text-muted">
+                    <FolderIcon className="size-3.5 text-folder" />
+                    {selectedSecret.secretPath}
+                  </span>
+                </div>
+              </div>
+              <Separator />
+              <SecretAccessInsights
+                key={`${selectedSecret.environment}-${selectedSecret.secretPath}-${selectedSecret.secretKey}`}
+                secretKey={selectedSecret.secretKey}
+                environment={selectedSecret.environment}
+                secretPath={selectedSecret.secretPath}
+              />
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 };
