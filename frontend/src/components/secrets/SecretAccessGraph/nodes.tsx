@@ -1,4 +1,5 @@
 import { Handle, NodeProps, Position } from "@xyflow/react";
+import { format } from "date-fns";
 
 import { SecretExposureBadge } from "@app/components/secrets/SecretExposureScore";
 import { formatReadDay } from "@app/components/secrets/SecretReadStatusBadge";
@@ -21,14 +22,25 @@ const TYPE_LABEL: Record<TAccessGraphActorType, string> = {
 const hiddenHandle = "!opacity-0";
 
 export const ReaderNode = ({ data }: NodeProps & { data: TReaderNodeData }) => {
-  const { reader, groupNames, hasReadActivity, windowDays } = data;
+  const { reader, groupNames, hasReadActivity } = data;
   const hasReads = Boolean(reader.lastReadAt);
 
-  let status: string | undefined;
+  // Three states once read activity is known: read, unused access, or too new to judge.
+  let status: { text: string; tone: string } | undefined;
   if (hasReadActivity) {
-    status = reader.lastReadAt
-      ? `Read ${formatReadDay(reader.lastReadAt).toLowerCase()}`
-      : `No reads in ${windowDays} days`;
+    if (reader.lastReadAt) {
+      status = {
+        text: `Read ${formatReadDay(reader.lastReadAt).toLowerCase()}`,
+        tone: "text-accent"
+      };
+    } else if (reader.unreadSince) {
+      status = {
+        text: `No reads since ${format(new Date(reader.unreadSince), "MMM d")}`,
+        tone: "text-warning"
+      };
+    } else {
+      status = { text: "No reads yet, too new to judge", tone: "text-muted" };
+    }
   }
 
   return (
@@ -51,11 +63,7 @@ export const ReaderNode = ({ data }: NodeProps & { data: TReaderNodeData }) => {
         </p>
         <span className="shrink-0 text-xs text-muted">{TYPE_LABEL[reader.type]}</span>
       </div>
-      {status && (
-        <span className={cn("truncate text-xs", hasReads ? "text-accent" : "text-warning")}>
-          {status}
-        </span>
-      )}
+      {status && <span className={cn("truncate text-xs", status.tone)}>{status.text}</span>}
       <span className="mt-auto truncate text-xs text-muted">
         {groupNames.length ? `Via ${groupNames.join(", ")}` : "Direct access"}
       </span>

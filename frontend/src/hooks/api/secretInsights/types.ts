@@ -52,21 +52,6 @@ export type TGetSecretAccessVolumeDTO = {
   projectId: string;
 };
 
-export enum UnusedSecretAccessOrderBy {
-  SecretKey = "secretKey",
-  Environment = "environment",
-  SecretPath = "secretPath",
-  Actor = "actorName"
-}
-
-export type TGetUnusedSecretAccessDTO = {
-  projectId: string;
-  offset: number;
-  limit: number;
-  orderBy?: UnusedSecretAccessOrderBy;
-  orderDirection?: OrderByDirection;
-};
-
 // How a secret stands: everyone who can read its value today, admins included; the non-admins among them with
 // no read in the last 30 days; and the readers who can no longer read it, so they still know the value.
 export type TSecretExposureCounts = {
@@ -95,28 +80,18 @@ export type TSecretExposure = {
   drivers: { kind: SecretExposureDriver; points: number; label: string }[];
 };
 
-export type TUnusedSecretAccess = TSecretExposureCounts & {
-  secretKey: string;
-  environment: string;
-  secretPath: string;
-  actorType: "user" | "identity";
-  actorId: string;
-  actorName: string;
-};
-
-export type TGetUnusedSecretAccessResponse = {
-  unusedAccess: TUnusedSecretAccess[];
-  totalCount: number;
-  unlistedCount: number;
-  trackingStartedAt: string;
-  preliminaryUntil: string;
-  remainingTtl: number;
-};
+export enum SecretExposureOrderBy {
+  SecretKey = "secretKey",
+  Environment = "environment",
+  SecretPath = "secretPath"
+}
 
 export type TGetSecretExposureDTO = {
   projectId: string;
   offset: number;
   limit: number;
+  orderBy?: SecretExposureOrderBy;
+  orderDirection?: OrderByDirection;
 };
 
 export type TExposedSecret = TSecretExposureCounts & {
@@ -129,6 +104,7 @@ export type TExposedSecret = TSecretExposureCounts & {
 export type TGetSecretExposureResponse = {
   secrets: TExposedSecret[];
   totalCount: number;
+  unlistedCount: number;
   bands: Record<SecretExposureBand, number>;
   trackingStartedAt: string;
   preliminaryUntil: string;

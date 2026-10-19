@@ -1155,12 +1155,17 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   to 100 score with Low, Elevated, High and Critical bands and whole-point drivers that add up to it (readers up
   to 45 on a log scale saturating at 40, ghost readers up to 30 saturating at 4, unused access up to 25 by
   share). It is the blast radius prototype's three read-activity terms rescaled; the terms that would need new
-  queries (syncs, rotation age, cross-project destinations) are deliberately left out. `$loadSecretSummarizer`
-  is the one place the counts and the score are derived, used by the card computation and the per-secret
-  endpoint, so the sheet and the cards agree. The cached project computation also keeps the 100 highest-scoring
-  secrets and a per-band tally, served by `GET /insights/:projectId/secrets/exposure` through the same cache
-  and the same per-caller DescribeSecret recheck as the unused access card. The per-secret endpoint names each
-  ghost reader from the project's members, else from the user or identity row, else null for a deleted reader.
+  queries (syncs, rotation age, cross-project destinations) are deliberately left out. The unused-access term is
+  weighted by how much of the 30-day window the reads cover (`trackedDays`, from the project's `judgedFrom`), and
+  its label names that period, so a project tracked for three days neither claims "30 days" nor scores three
+  days of silence like thirty. `$loadSecretSummarizer` is the one place the counts and the score are derived,
+  used by the project computation and the per-secret endpoint, so the sheet and the card agree. The project
+  computation is cached per project (`insights-cache:<projectId>:secret-exposure`, under a per-project lock on a
+  cold cache) and keeps the 500 highest-scoring secrets plus a per-band tally, served by
+  `GET /insights/:projectId/secrets/exposure` with a per-caller DescribeSecret recheck of every listed secret. The
+  per-secret endpoint returns, for every reader who can read the value, whether they count as unused access and
+  why not (`isAdmin`, `accessChangedAt` after `judgedFrom`, or a secret newer than it), and names each ghost
+  reader from the project's members, else from the user or identity row, else null for a deleted reader.
 
 ### Audit Log Event Classes and Settings
 

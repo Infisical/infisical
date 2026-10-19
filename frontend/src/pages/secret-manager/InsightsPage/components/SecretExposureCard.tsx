@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import axios from "axios";
 import { format } from "date-fns";
-import { FolderIcon, InfoIcon, KeyIcon } from "lucide-react";
+import { ChevronDownIcon, FolderIcon, InfoIcon, KeyIcon } from "lucide-react";
 
 import { GoToSecretButton } from "@app/components/secrets/GoToSecretButton";
 import {
@@ -12,6 +12,9 @@ import {
   SecretExposureBadge
 } from "@app/components/secrets/SecretExposureScore";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Card,
   CardContent,
@@ -36,6 +39,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  type TableSortDirection,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -43,26 +47,79 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { useProject, useSubscription } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { TExposedSecret, useGetSecretExposure } from "@app/hooks/api/secretInsights";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import {
+  SecretExposureOrderBy,
+  TExposedSecret,
+  useGetSecretExposure
+} from "@app/hooks/api/secretInsights";
 import { SecretAccessInsights } from "@app/pages/secret-manager/OverviewPage/components/SecretTableRow/SecretAccessInsights";
+
+const formatRemainingTtl = (seconds: number) => {
+  if (seconds < 60) {
+    const remainingSeconds = Math.max(1, seconds);
+    return `${remainingSeconds} ${remainingSeconds === 1 ? "second" : "seconds"}`;
+  }
+  if (seconds < 60 * 60) {
+    const minutes = Math.ceil(seconds / 60);
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  }
+  const hours = Math.ceil(seconds / (60 * 60));
+  return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+};
+
+// The period the counts are judged on: the full window once tracking is that old, else since it began.
+const describeReadPeriod = (trackingStartedAt: string, isPreliminary: boolean) =>
+  isPreliminary ? `since ${format(new Date(trackingStartedAt), "PP")}` : "in the last 30 days";
 
 export const SecretExposureCard = () => {
   const { currentProject, projectId } = useProject();
   const { orgId } = useParams({ strict: false });
   const { subscription } = useSubscription();
-  const { page, setPage, perPage, setPerPage, offset, limit } = usePagination("", {
-    initPerPage: 10
-  });
+  // An empty orderBy keeps the default ranking: the most exposed secrets first.
+  const {
+    page,
+    setPage,
+    perPage,
+    setPerPage,
+    offset,
+    limit,
+    orderBy,
+    setOrderBy,
+    orderDirection,
+    setOrderDirection
+  } = usePagination<SecretExposureOrderBy | "">("", { initPerPage: 10 });
   const [selectedSecret, setSelectedSecret] = useState<TExposedSecret | null>(null);
 
   const { data, isPending, error } = useGetSecretExposure(
-    { projectId, offset, limit },
+    { projectId, offset, limit, orderBy: orderBy || undefined, orderDirection },
     { enabled: Boolean(subscription?.secretAccessInsights) }
   );
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset, setPage });
 
+  const updatesIn =
+    data?.remainingTtl != null && data.remainingTtl >= 0
+      ? formatRemainingTtl(data.remainingTtl)
+      : null;
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
+
+  const getSortDirection = (column: SecretExposureOrderBy): TableSortDirection => {
+    if (orderBy !== column) return "none";
+    return orderDirection === OrderByDirection.DESC ? "descending" : "ascending";
+  };
+
+  const handleSort = (column: SecretExposureOrderBy, direction: TableSortDirection) => {
+    setPage(1);
+    setOrderBy(direction === "none" ? "" : column);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
+  };
+
+  const sortableColumns = [
+    { column: SecretExposureOrderBy.SecretKey, label: "Secret Key" },
+    { column: SecretExposureOrderBy.Environment, label: "Environment" },
+    { column: SecretExposureOrderBy.SecretPath, label: "Path" }
+  ];
 
   const renderBody = () => {
     if (isPending) return <Skeleton className="h-[200px] w-full" />;
@@ -83,6 +140,7 @@ export const SecretExposureCard = () => {
     }
 
     const isPreliminary = new Date(data.preliminaryUntil) > new Date();
+    const readPeriod = describeReadPeriod(data.trackingStartedAt, isPreliminary);
     // Descending, so the band that needs attention first reads first.
     const bandSummary = [...EXPOSURE_BANDS].reverse();
 
@@ -101,12 +159,16 @@ export const SecretExposureCard = () => {
           ))}
         </div>
         {isPreliminary && (
-          <p className="mb-4 flex items-center gap-1.5 text-xs text-muted">
-            <InfoIcon className="size-3.5 shrink-0" />
-            Preliminary: unused access only covers reads since{" "}
-            {format(new Date(data.trackingStartedAt), "PP")}. Scores are complete on{" "}
-            {format(new Date(data.preliminaryUntil), "PP")}.
-          </p>
+          <Alert variant="info" className="mb-4">
+            <InfoIcon />
+            <AlertTitle>Preliminary Results</AlertTitle>
+            <AlertDescription>
+              Unused access is judged over 30 days of reads. Tracking for this project began on{" "}
+              {format(new Date(data.trackingStartedAt), "PP")}, so for now it covers only the reads
+              since then and weighs less in the score. Results are complete on{" "}
+              {format(new Date(data.preliminaryUntil), "PP")}.
+            </AlertDescription>
+          </Alert>
         )}
         {totalCount === 0 ? (
           <Empty className="border">
@@ -120,9 +182,22 @@ export const SecretExposureCard = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Secret Key</TableHead>
-                  <TableHead>Environment</TableHead>
-                  <TableHead>Path</TableHead>
+                  {sortableColumns.map(({ column, label }) => (
+                    <TableHead
+                      key={column}
+                      sortDirection={getSortDirection(column)}
+                      onSortChange={(direction) => handleSort(column, direction)}
+                    >
+                      {label}
+                      <ChevronDownIcon
+                        className={cn(
+                          "transition-transform",
+                          getSortDirection(column) === "descending" && "rotate-180",
+                          getSortDirection(column) === "none" && "opacity-30"
+                        )}
+                      />
+                    </TableHead>
+                  ))}
                   <TableHead className="whitespace-nowrap">Exposure</TableHead>
                   <TableHead className="whitespace-nowrap">Readers</TableHead>
                   <TableHead className="whitespace-nowrap">No Reads</TableHead>
@@ -192,8 +267,8 @@ export const SecretExposureCard = () => {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {row.unreadCount} of the {row.entitledCount} who can read this secret have
-                          not read it in the last 30 days
+                          {row.unreadCount} of the {row.entitledCount} who can read this secret,
+                          project admins aside, have not read it {readPeriod}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
@@ -204,8 +279,8 @@ export const SecretExposureCard = () => {
                             <Badge variant="warning">{row.ghostReaderCount}</Badge>
                           </TooltipTrigger>
                           <TooltipContent>
-                            {row.ghostReaderCount} read this secret in the last 30 days but can no
-                            longer access it. They still know the value.
+                            {row.ghostReaderCount} read this secret {readPeriod} but can no longer
+                            access it. They still know the value.
                           </TooltipContent>
                         </Tooltip>
                       ) : (
@@ -233,6 +308,12 @@ export const SecretExposureCard = () => {
               onChangePage={setPage}
               onChangePerPage={setPerPage}
             />
+            {data.unlistedCount > 0 && (
+              <p className="mt-2 text-xs text-muted">
+                Showing the {totalCount.toLocaleString()} most exposed secrets.{" "}
+                {data.unlistedCount.toLocaleString()} more are not listed.
+              </p>
+            )}
           </>
         )}
       </>
@@ -243,11 +324,18 @@ export const SecretExposureCard = () => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Secret Exposure</CardTitle>
+          <CardTitle>
+            Secret Exposure
+            {updatesIn && (
+              <Badge variant="neutral" className="ml-2 font-normal">
+                Updates in {updatesIn}
+              </Badge>
+            )}
+          </CardTitle>
           <CardDescription>
-            The secrets with the highest exposure score, from how many can read the value, who can
-            no longer read it but still knows it, and who never reads it. Select a secret to see why
-            it scores what it does.
+            Which secrets are most exposed, from how many can read the value, who can no longer read
+            it but still knows it, and who can read it but never does. Select a secret to see why it
+            scores what it does and who is behind each count.
           </CardDescription>
         </CardHeader>
         <CardContent>{renderBody()}</CardContent>

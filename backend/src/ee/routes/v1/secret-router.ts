@@ -115,6 +115,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           readActivity: z
             .object({
               trackedSince: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.trackedSince),
+              judgedFrom: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.judgedFrom),
               reads: z
                 .object({
                   actorType: z
@@ -125,6 +126,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 })
                 .array()
                 .describe(RAW_SECRETS.GET_READ_ACTIVITY.reads),
+              entitled: z
+                .object({
+                  actorType: z
+                    .enum([ActorType.USER, ActorType.IDENTITY])
+                    .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
+                  actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
+                  unread: z.boolean().describe(RAW_SECRETS.GET_READ_ACTIVITY.unread),
+                  isAdmin: z.boolean().describe(RAW_SECRETS.GET_READ_ACTIVITY.isAdmin),
+                  accessChangedAt: z.date().nullable().describe(RAW_SECRETS.GET_READ_ACTIVITY.accessChangedAt)
+                })
+                .array()
+                .describe(RAW_SECRETS.GET_READ_ACTIVITY.entitled),
               exposure: SecretExposureSchema.describe(RAW_SECRETS.GET_READ_ACTIVITY.exposure),
               ghostReaders: z
                 .object({

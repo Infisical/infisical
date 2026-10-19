@@ -24,7 +24,10 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { SecretAccessGraph, TAccessGraphInput } from "@app/components/secrets/SecretAccessGraph";
 import { SecretExposurePanel } from "@app/components/secrets/SecretExposureScore";
-import { SecretReadStatusBadge } from "@app/components/secrets/SecretReadStatusBadge";
+import {
+  SecretReadStatusBadge,
+  TReaderReadStatus
+} from "@app/components/secrets/SecretReadStatusBadge";
 import {
   Button,
   ButtonGroup,
@@ -108,8 +111,6 @@ type Props = {
 };
 
 type AccessView = "graph" | "table";
-
-const READ_ACTIVITY_WINDOW_DAYS = 30;
 
 const grantsReadValue = (actions: Iterable<string>) =>
   [...actions].some(
@@ -507,6 +508,45 @@ export function SecretAccessInsights({
     () => new Map(readActivity?.reads.map((read) => [`${read.actorType}:${read.actorId}`, read])),
     [readActivity]
   );
+  const entitledReaders = useMemo(
+    () =>
+      new Map(
+        readActivity?.entitled.map((reader) => [`${reader.actorType}:${reader.actorId}`, reader])
+      ),
+    [readActivity]
+  );
+
+  // What a reader's row and node say about their reads. "No reads" is only claimed once the secret and the
+  // reader's access have both existed for the whole judged period; before that the reason is spelled out.
+  const readStatusOf = (type: "user" | "identity", id: string): TReaderReadStatus | undefined => {
+    if (!readActivity) return undefined;
+    const key = `${type}:${id}`;
+    const lastReadAt = lastReads.get(key)?.lastReadAt;
+    if (lastReadAt) return { kind: "read", lastReadAt };
+    const reader = entitledReaders.get(key);
+    if (reader?.unread) return { kind: "unread", since: readActivity.trackedSince };
+    if (reader?.isAdmin) {
+      return {
+        kind: "pending",
+        reason:
+          "Project admins can read everything by design, so they are not counted as unused access."
+      };
+    }
+    const judgedFrom = new Date(readActivity.judgedFrom);
+    if (reader?.accessChangedAt && new Date(reader.accessChangedAt) > judgedFrom) {
+      return {
+        kind: "pending",
+        reason: `Their access changed on ${format(new Date(reader.accessChangedAt), "PP")}, so they have not had the whole tracked period to read it.`
+      };
+    }
+    if (new Date(readActivity.trackedSince) > judgedFrom) {
+      return {
+        kind: "pending",
+        reason: `The secret has only been tracked since ${format(new Date(readActivity.trackedSince), "PP")}, so nobody has had the whole period to read it.`
+      };
+    }
+    return { kind: "pending", reason: "Not counted as unused access." };
+  };
 
   let readActivityDescription = "Loading read activity...";
   if (readActivityError) {
@@ -533,6 +573,7 @@ export function SecretAccessInsights({
         .filter((group) => group[memberField].includes(entry.id))
         .map((group) => group.id);
       if (!isDirect && !groupIds.length) return [];
+      const status = readStatusOf(type, entry.id);
       return [
         {
           id: entry.id,
@@ -540,7 +581,8 @@ export function SecretAccessInsights({
           type,
           isDirect,
           groupIds,
-          lastReadAt: lastReads.get(`${type}:${entry.id}`)?.lastReadAt
+          lastReadAt: status?.kind === "read" ? status.lastReadAt : undefined,
+          unreadSince: status?.kind === "unread" ? status.since : undefined
         }
       ];
     };
@@ -570,11 +612,14 @@ export function SecretAccessInsights({
         lastReadAt: ghost.lastReadAt
       })),
       hasReadActivity: Boolean(canReadInsights && readActivity),
-      windowDays: READ_ACTIVITY_WINDOW_DAYS
+      trackedSince: readActivity?.trackedSince
     };
+    // readStatusOf only reads readActivity, lastReads and entitledReaders, which are all listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     secretAccessList,
     lastReads,
+    entitledReaders,
     readActivity,
     canReadInsights,
     secretKey,
@@ -591,13 +636,10 @@ export function SecretAccessInsights({
     ]);
     if (!canReadValue) return null;
     if (isReadActivityLoading) return <Skeleton className="h-4 w-20 rounded" />;
-    if (!readActivity) return null;
+    const status = readStatusOf(row.type, row.entry.id);
+    if (!status) return null;
 
-    return (
-      <SecretReadStatusBadge
-        lastReadAt={lastReads.get(`${row.type}:${row.entry.id}`)?.lastReadAt}
-      />
-    );
+    return <SecretReadStatusBadge status={status} />;
   };
 
   const flatRows = useMemo<AccessRow[]>(() => {
@@ -1062,7 +1104,9 @@ export function SecretAccessInsights({
                             )}
                           </TableCell>
                           <TableCell className="w-40 whitespace-nowrap">
-                            <SecretReadStatusBadge lastReadAt={reader.lastReadAt} />
+                            <SecretReadStatusBadge
+                              status={{ kind: "read", lastReadAt: reader.lastReadAt }}
+                            />
                           </TableCell>
                         </TableRow>
                       );

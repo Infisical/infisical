@@ -34,8 +34,7 @@ import {
   DuplicatedSecretsCard,
   InsightsSummaryCards,
   SecretAccessChart,
-  SecretExposureCard,
-  UnusedSecretAccessCard
+  SecretExposureCard
 } from "./components";
 
 export const InsightsPage = withProjectPermission(
@@ -139,9 +138,6 @@ export const InsightsPage = withProjectPermission(
             </div>
             <div className="mt-6">
               <SecretExposureCard />
-            </div>
-            <div className="mt-6">
-              <UnusedSecretAccessCard />
             </div>
             <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.3fr_1fr]">
               <div className="flex flex-col gap-6">

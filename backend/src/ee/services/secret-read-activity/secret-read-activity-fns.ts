@@ -141,12 +141,23 @@ const pluralize = (count: number, singular: string, plural: string) => `${count}
 
 // A score from 0 to 100 built from the three facts read activity gives: how many can read the value, how many
 // who no longer can still know it, and how many of those who can never do. The weights follow the blast radius
-// prototype's proportions for the same three terms, rescaled to add up to 100.
-export const calculateExposureScore = ({
-  entitledCount,
-  unreadCount,
-  ghostReaderCount
-}: TSecretExposureCounts): TSecretExposure => {
+// prototype's proportions for the same three terms, rescaled to add up to 100. `trackedDays` is how much of
+// the window the reads cover: the unused-access term is weighted by it, since three days without a read is
+// weak evidence next to thirty, and its label says which period it is judged on.
+export const calculateExposureScore = (
+  { entitledCount, unreadCount, ghostReaderCount }: TSecretExposureCounts,
+  trackedDays = SECRET_READ_ACTIVITY_WINDOW_DAYS
+): TSecretExposure => {
+  const coverage = clamp01(trackedDays / SECRET_READ_ACTIVITY_WINDOW_DAYS);
+  const trackedWholeDays = Math.floor(Math.min(trackedDays, SECRET_READ_ACTIVITY_WINDOW_DAYS));
+  let period = `in ${SECRET_READ_ACTIVITY_WINDOW_DAYS} days`;
+  if (coverage < 1) {
+    period =
+      trackedWholeDays < 1
+        ? "since tracking began today"
+        : `in the ${pluralize(trackedWholeDays, "day", "days")} tracked`;
+  }
+
   const terms = [
     {
       kind: SecretExposureDriver.Readers,
@@ -162,8 +173,8 @@ export const calculateExposureScore = ({
     },
     {
       kind: SecretExposureDriver.UnusedAccess,
-      points: 25 * (entitledCount ? unreadCount / entitledCount : 0),
-      label: `${unreadCount} of ${entitledCount} ${unreadCount === 1 ? "has" : "have"} not read it in ${SECRET_READ_ACTIVITY_WINDOW_DAYS} days`
+      points: 25 * coverage * (entitledCount ? unreadCount / entitledCount : 0),
+      label: `${unreadCount} of ${entitledCount} ${unreadCount === 1 ? "has" : "have"} not read it ${period}`
     }
   ];
   const score = Math.round(terms.reduce((total, term) => total + term.points, 0));

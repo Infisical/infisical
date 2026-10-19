@@ -947,42 +947,26 @@ export const INSIGHTS = {
     totalProjects: "The total number of secret management projects in the organization.",
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
   },
-  GET_UNUSED_SECRET_ACCESS: {
-    projectId: "The ID of the project to list unused secret access for.",
-    offset: "The number of entries to skip before returning results.",
-    limit: "The maximum number of entries to return per page.",
-    orderBy: "The field to sort by. Without it, the secrets with the most unused access come first.",
-    orderDirection: "The direction to sort in.",
-    totalCount:
-      "The number of entries the caller can page through: those of the top 1,000 in secrets the caller can see.",
-    unlistedCount:
-      "The number of further entries with less unused access that are not listed, counted across the whole project before the caller's permissions are applied. Zero unless the project has more than 1,000.",
-    trackingStartedAt:
-      "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
-    preliminaryUntil:
-      "When the results first cover the full 30 days. Until then they are preliminary: they cover only the reads since tracking started, and the access that existed when it started.",
-    unusedAccess:
-      "One entry for each secret and user or machine identity, other than project admins, that can read the secret's value but has not read it, or an import or reference of it, in the last 30 days. Secrets and access newer than 30 days are left out.",
-    secretKey: "The key of the secret.",
-    environment: "The slug of the environment the secret is in.",
-    secretPath: "The path of the folder the secret is in.",
-    actorType: "Whether the entry is a user or a machine identity.",
-    actorId: "The ID of the user or machine identity.",
-    actorName: "The username of the user, or the name of the machine identity."
-  },
   GET_SECRET_EXPOSURE: {
     projectId: "The ID of the project to list secret exposure for.",
     offset: "The number of secrets to skip before returning results.",
     limit: "The maximum number of secrets to return per page.",
+    orderBy: "The field to sort by. Without it, the most exposed secrets come first.",
+    orderDirection: "The direction to sort in.",
     secrets:
-      "The secrets with the highest exposure score, highest first: those of the top 100 in the project that the caller can see. Secrets scoring 0 are not listed.",
+      "The secrets with the highest exposure score: those of the top 500 in the project that the caller can see. Secrets scoring 0, which nobody can read, are not listed.",
+    secretKey: "The key of the secret.",
+    environment: "The slug of the environment the secret is in.",
+    secretPath: "The path of the folder the secret is in.",
     totalCount: "The number of secrets the caller can page through.",
+    unlistedCount:
+      "The number of further scored secrets that are not listed, counted across the whole project before the caller's permissions are applied. Zero unless the project has more than 500.",
     bands:
       "How many of the project's secrets fall in each band, counted across the whole project before the caller's permissions are applied.",
     trackingStartedAt:
       "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
     preliminaryUntil:
-      "When the scores first cover the full 30 days. Until then they are preliminary: unused access covers only the reads since tracking started, and the access that existed when it started."
+      "When the scores first cover the full 30 days. Until then they are preliminary: unused access covers only the reads since tracking started and the access that existed then, and weighs less in the score the shorter that period is."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
@@ -1515,6 +1499,16 @@ export const RAW_SECRETS = {
     secretPath: "The folder path where the secret is located.",
     trackedSince:
       "The start of the period reads are reported for: the later of 30 days ago, when read tracking began, and when the secret and its folder were created.",
+    judgedFrom:
+      "The start of the period unused access is judged on: the later of 30 days ago and when read tracking began for the project. A reader only counts as unused access once the secret and their access both predate it.",
+    entitled:
+      "One entry for each user or machine identity that can read the secret's value today, admins included, saying whether they count as unused access and, if not, why.",
+    unread:
+      "Whether the reader counts as unused access: no read since trackedSince, with the secret and their access both older than judgedFrom.",
+    isAdmin:
+      "Whether the reader is a project admin. Admins can read everything by design, so they never count as unused access.",
+    accessChangedAt:
+      "When the reader's access to the project last changed: the latest membership, role or privilege creation, edit or expiry. Null when it has never changed since the membership was created, or is unknown.",
     reads:
       "One entry for each user or machine identity that read the secret, or an import or reference of it, since trackedSince. Only the first read of each day is recorded.",
     actorType: "Whether the reader is a user or a machine identity.",

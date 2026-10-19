@@ -12,6 +12,7 @@ import {
   useNodesState,
   useReactFlow
 } from "@xyflow/react";
+import { format } from "date-fns";
 import { MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
 
 import { IconButton } from "@app/components/v3";
@@ -179,7 +180,7 @@ export const SecretAccessGraph = ({ input }: Props) => (
     </div>
     <p className="text-xs text-muted">
       {input.hasReadActivity
-        ? `Solid lines are reads in the last ${input.windowDays} days, dashed lines are access with no reads. Select a reader or group to follow its path.`
+        ? `Solid lines are reads since ${input.trackedSince ? format(new Date(input.trackedSince), "PP") : "tracking began"}, dashed lines are access with no reads yet. Select a reader or group to follow its path.`
         : "Read activity is not visible for your role, so the lines only show who can read the value. Select a reader or group to follow its path."}
     </p>
   </ReactFlowProvider>

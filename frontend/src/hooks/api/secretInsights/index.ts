@@ -15,8 +15,7 @@ export {
   useGetSecretAccessVolume,
   useGetSecretBlindIndexStatus,
   useGetSecretExposure,
-  useGetSecretsDuplication,
-  useGetUnusedSecretAccess
+  useGetSecretsDuplication
 } from "./queries";
 export type {
   TAccessLocation,
@@ -41,8 +40,6 @@ export type {
   TGetSecretExposureResponse,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
-  TGetUnusedSecretAccessDTO,
-  TGetUnusedSecretAccessResponse,
   TOrgAuthMethodUsage,
   TOrgDuplicatedSecretEntry,
   TOrgDuplicatedSecretGroup,
@@ -57,7 +54,6 @@ export type {
   TSecretAccessVolumeDay,
   TSecretExposure,
   TSecretExposureCounts,
-  TSecretValueMatch,
-  TUnusedSecretAccess
+  TSecretValueMatch
 } from "./types";
-export { SecretExposureBand, SecretExposureDriver, UnusedSecretAccessOrderBy } from "./types";
+export { SecretExposureBand, SecretExposureDriver, SecretExposureOrderBy } from "./types";

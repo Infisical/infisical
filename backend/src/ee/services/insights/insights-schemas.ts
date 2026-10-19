@@ -7,7 +7,6 @@ import {
 } from "@app/ee/services/secret-read-activity/secret-read-activity-schemas";
 import { SecretExposureBand } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { INSIGHTS } from "@app/lib/api-docs";
-import { ActorType } from "@app/services/auth/auth-type";
 
 export const SecretsSummarySchema = z.object({
   activeLeases: z.number().int().describe(INSIGHTS.GET_SECRETS_SUMMARY.activeLeases),
@@ -72,35 +71,17 @@ export const SecretsProjectsSchema = z.object({
   limit: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.limit)
 });
 
-export const UnusedSecretAccessSchema = z.object({
-  totalCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.totalCount),
-  unlistedCount: z.number().int().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.unlistedCount),
-  trackingStartedAt: z.date().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.trackingStartedAt),
-  preliminaryUntil: z.date().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.preliminaryUntil),
-  unusedAccess: z
-    .object({
-      secretKey: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.secretKey),
-      environment: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.environment),
-      secretPath: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.secretPath),
-      actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorType),
-      actorId: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorId),
-      actorName: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.actorName)
-    })
-    .merge(SecretExposureCountsSchema)
-    .array()
-    .describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.unusedAccess)
-});
-
 export const SecretExposureListSchema = z.object({
   totalCount: z.number().int().describe(INSIGHTS.GET_SECRET_EXPOSURE.totalCount),
+  unlistedCount: z.number().int().describe(INSIGHTS.GET_SECRET_EXPOSURE.unlistedCount),
   bands: z.record(z.nativeEnum(SecretExposureBand), z.number().int()).describe(INSIGHTS.GET_SECRET_EXPOSURE.bands),
   trackingStartedAt: z.date().describe(INSIGHTS.GET_SECRET_EXPOSURE.trackingStartedAt),
   preliminaryUntil: z.date().describe(INSIGHTS.GET_SECRET_EXPOSURE.preliminaryUntil),
   secrets: z
     .object({
-      secretKey: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.secretKey),
-      environment: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.environment),
-      secretPath: z.string().describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.secretPath),
+      secretKey: z.string().describe(INSIGHTS.GET_SECRET_EXPOSURE.secretKey),
+      environment: z.string().describe(INSIGHTS.GET_SECRET_EXPOSURE.environment),
+      secretPath: z.string().describe(INSIGHTS.GET_SECRET_EXPOSURE.secretPath),
       exposure: SecretExposureSchema
     })
     .merge(SecretExposureCountsSchema)

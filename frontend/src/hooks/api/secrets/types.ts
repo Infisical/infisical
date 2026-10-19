@@ -165,10 +165,20 @@ export type TGetSecretReadActivityDTO = Omit<TGetSecretAccessListDTO, "includeAl
 
 export type TSecretReadActivity = TSecretExposureCounts & {
   trackedSince: string;
+  // The start of the period unused access is judged on; a reader counts only once the secret and their
+  // access both predate it.
+  judgedFrom: string;
   reads: {
     actorType: "user" | "identity";
     actorId: string;
     lastReadAt: string;
+  }[];
+  entitled: {
+    actorType: "user" | "identity";
+    actorId: string;
+    unread: boolean;
+    isAdmin: boolean;
+    accessChangedAt: string | null;
   }[];
   exposure: TSecretExposure;
   ghostReaders: {

@@ -127,15 +127,6 @@ export type TSecretExposure = {
   drivers: TSecretExposureDriver[];
 };
 
-export type TUnusedSecretAccess = TSecretExposureCounts & {
-  secretKey: string;
-  environment: string;
-  secretPath: string;
-  actorType: TSecretReaderType;
-  actorId: string;
-  actorName: string;
-};
-
 export type TExposedSecret = TSecretExposureCounts & {
   secretKey: string;
   environment: string;
@@ -143,24 +134,27 @@ export type TExposedSecret = TSecretExposureCounts & {
   exposure: TSecretExposure;
 };
 
+// A reader who can read the value today, and whether they count as unused access: no read, with the secret and
+// their access both older than the judged period. When they do not, the other fields say why.
+export type TEntitledReader = {
+  actorType: TSecretReaderType;
+  actorId: string;
+  unread: boolean;
+  isAdmin: boolean;
+  accessChangedAt: Date | null;
+};
+
+// Each value is the row field it sorts by.
+export enum SecretExposureOrderBy {
+  SecretKey = "secretKey",
+  Environment = "environment",
+  SecretPath = "secretPath"
+}
+
 export type TListSecretExposureDTO = {
   projectId: string;
   offset: number;
   limit: number;
-};
-
-// Each value is the row field it sorts by.
-export enum UnusedSecretAccessOrderBy {
-  SecretKey = "secretKey",
-  Environment = "environment",
-  SecretPath = "secretPath",
-  Actor = "actorName"
-}
-
-export type TListUnusedSecretAccessDTO = {
-  projectId: string;
-  offset: number;
-  limit: number;
-  orderBy?: UnusedSecretAccessOrderBy;
+  orderBy?: SecretExposureOrderBy;
   orderDirection: OrderByDirection;
 };

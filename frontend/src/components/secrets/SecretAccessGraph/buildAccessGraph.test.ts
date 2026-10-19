@@ -19,7 +19,15 @@ const input: TAccessGraphInput = {
       groupIds: [],
       lastReadAt: "2026-10-18T00:00:00.000Z"
     },
-    { id: "ci", name: "ci", type: "identity", isDirect: false, groupIds: ["devs"] },
+    {
+      id: "ci",
+      name: "ci",
+      type: "identity",
+      isDirect: false,
+      groupIds: ["devs"],
+      unreadSince: "2026-09-19T00:00:00.000Z"
+    },
+    { id: "newcomer", name: "newcomer", type: "identity", isDirect: true, groupIds: [] },
     {
       id: "bob",
       name: "bob@example.com",
@@ -32,7 +40,7 @@ const input: TAccessGraphInput = {
   groups: [{ id: "devs", name: "devs", memberCount: 2 }],
   ghosts: [{ id: "gone", name: null, type: "identity", lastReadAt: "2026-10-10T00:00:00.000Z" }],
   hasReadActivity: true,
-  windowDays: 30
+  trackedSince: "2026-09-19T00:00:00.000Z"
 };
 
 describe("buildAccessGraph", () => {
@@ -53,13 +61,13 @@ describe("buildAccessGraph", () => {
     );
   });
 
-  test("puts the readers with no reads first", () => {
+  test("puts unused access first, then readers too new to judge, then the ones who have read", () => {
     const readerYs = input.readers.map((entry) => [
       entry.id,
       nodeById.get(readerNodeId(entry))!.position.y
     ]);
     const sorted = [...readerYs].sort((a, b) => Number(a[1]) - Number(b[1])).map(([id]) => id);
-    expect(sorted).toEqual(["ci", "alice", "bob"]);
+    expect(sorted).toEqual(["ci", "newcomer", "alice", "bob"]);
   });
 
   test("connects direct readers to the secret and group-only readers through their group", () => {

@@ -12,6 +12,9 @@ export type TAccessGraphReader = {
   isDirect: boolean;
   groupIds: string[];
   lastReadAt?: string;
+  // Set when the reader counts as unused access: no read since this date, with the secret and their access
+  // both older than the judged period. A reader with neither this nor a read is too new to judge.
+  unreadSince?: string;
 };
 
 export type TAccessGraphGroup = {
@@ -42,14 +45,14 @@ export type TAccessGraphInput = {
   ghosts: TAccessGraphGhost[];
   // False when the viewer cannot see read activity, so no edge claims a read or its absence.
   hasReadActivity: boolean;
-  windowDays: number;
+  trackedSince?: string;
 };
 
 export type TReaderNodeData = {
   reader: TAccessGraphReader;
   groupNames: string[];
   hasReadActivity: boolean;
-  windowDays: number;
+  trackedSince?: string;
 };
 
 export type TGroupNodeData = { group: TAccessGraphGroup };
@@ -117,18 +120,21 @@ export const buildAccessGraph = ({
   groups,
   ghosts,
   hasReadActivity,
-  windowDays
+  trackedSince
 }: TAccessGraphInput) => {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  // The ones with no reads come first: they are what the viewer is here to find.
-  const orderedReaders = [...readers].sort((a, b) => {
-    if (hasReadActivity && Boolean(a.lastReadAt) !== Boolean(b.lastReadAt)) {
-      return a.lastReadAt ? 1 : -1;
-    }
-    return a.name.localeCompare(b.name);
-  });
+  // Unused access first, then readers too new to judge, then the ones who have read: the first group is what
+  // the viewer is here to find.
+  const rankOf = (reader: TAccessGraphReader) => {
+    if (!hasReadActivity) return 0;
+    if (reader.lastReadAt) return 2;
+    return reader.unreadSince ? 0 : 1;
+  };
+  const orderedReaders = [...readers].sort(
+    (a, b) => rankOf(a) - rankOf(b) || a.name.localeCompare(b.name)
+  );
   const groupById = new Map(groups.map((group) => [group.id, group]));
 
   const secretColumnX = MARGIN + (NODE_WIDTH + COLUMN_GAP) * (groups.length ? 2 : 1);
@@ -179,7 +185,7 @@ export const buildAccessGraph = ({
         reader,
         groupNames: viaGroups.map((group) => group.name),
         hasReadActivity,
-        windowDays
+        trackedSince
       } satisfies TReaderNodeData
     });
 
