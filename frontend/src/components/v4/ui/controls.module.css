@@ -298,9 +298,14 @@
 .cardPlain {
   background: var(--v4-surface);
 }
+.card[data-variant="framed"] > .cardHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--v4-space-4) var(--v4-space-12);
+}
 .card[data-variant="framed"] > .cardHeader .cardTitleGroup {
-  flex: 1;
   align-items: center;
+  grid-row: 1;
 }
 .card[data-variant="framed"] > .cardHeader + .cardBody {
   padding-top: var(--v4-card-body-inset);

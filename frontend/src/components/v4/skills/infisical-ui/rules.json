@@ -6,8 +6,8 @@
     {
       "id": "identity",
       "title": "Preserve the Infisical identity",
-      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and the canonical square corners, with the soft corner scale available as a mode. Use the shared lime Button finish for its default, primary and accent variants. Keep the global primary role ink and selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
-      "good": "One shared lime Button for the task's main action, with neutral alternatives and selection.",
+      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and the canonical square corners, with the soft corner scale available as a mode. Primary (and default) Buttons are the ink fill for the one main action; accent Buttons use the shared lime finish for approval and grant moments only. Keep selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
+      "good": "One ink primary Button for the task's main action, an accent Button only for an approval or grant, and neutral alternatives and selection.",
       "avoid": "A locally painted gradient, third font or pill-shaped control introduced by an example.",
       "detect": {
         "by": "review"
@@ -45,8 +45,8 @@
     {
       "id": "button-material",
       "title": "Use the shared Button material",
-      "instruction": "For default, primary and accent Buttons, use the shared bright light neon lime face and its owned colored inset illumination in both themes. Keep the entire face light, all glow inside the control, paint below the label, the control stationary and keyboard focus separate. Do not add dark upper shading, narrow hard light rims, noise, patterns, outside or drop shadows, lift, scale or whole-button filters. Other component fills and neutral selection retain their own roles.",
-      "good": "A shared lime Save changes Button beside outline and ghost alternatives, with the same label while saving.",
+      "instruction": "For accent Buttons, use the shared bright light neon lime face and its owned colored inset illumination in both themes. Keep the entire face light, all glow inside the control, paint below the label, the control stationary and keyboard focus separate. Do not add dark upper shading, narrow hard light rims, noise, patterns, outside or drop shadows, lift, scale or whole-button filters. Primary and default Buttons are the flat ink fill; other component fills and neutral selection retain their own roles.",
+      "good": "A shared lime Grant for 1 hour Button beside an ink primary and outline and ghost alternatives, with the same label while saving.",
       "avoid": "A dark upper Button face, hard edge-light band, glow outside the control, local material replicas or lime paint on every selected row.",
       "detect": {
         "by": "review"
@@ -56,7 +56,7 @@
         "url": "#button"
       },
       "category": "Visual",
-      "exceptions": "The canonical default, primary and accent Button material owns its colored inset glow. This exception does not authorize shadows on other primitives or caller-created material."
+      "exceptions": "The canonical accent Button material owns its colored inset glow. This exception does not authorize shadows on other primitives or caller-created material."
     },
     {
       "id": "semantic-pairs",
