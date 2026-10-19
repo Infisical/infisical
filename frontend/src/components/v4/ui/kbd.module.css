@@ -1,0 +1,47 @@
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-2);
+  white-space: nowrap;
+}
+.cap {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--v4-space-20);
+  height: var(--v4-space-20);
+  padding: 0 var(--v4-space-4);
+  background: var(--v4-tint);
+  color: var(--v4-muted);
+  border: 1px solid var(--v4-line);
+  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.then {
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+  color: var(--v4-muted);
+  margin: 0 var(--v4-space-2);
+}
+:global([data-slot="tooltip-content"]) .cap {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  color: var(--v4-on-ink);
+  background: transparent;
+  border-color: currentColor;
+  height: var(--v4-space-16);
+  min-width: var(--v4-space-16);
+}

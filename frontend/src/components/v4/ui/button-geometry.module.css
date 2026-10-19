@@ -1,0 +1,88 @@
+.button {
+  --v4-action-requested-height: var(--v4-size-control-default);
+  --v4-action-height: var(--v4-action-requested-height);
+  --v4-action-font-size: var(--v4-type-label-font-size);
+  --v4-action-line-height: var(--v4-type-label-line-height);
+  --v4-action-inset: var(--v4-space-control-inline);
+  --v4-action-icon-size: var(--v4-size-icon);
+  box-sizing: border-box;
+  min-height: var(--v4-action-height);
+  gap: var(--v4-space-control-gap);
+  padding-block: calc(
+    (var(--v4-action-height) - var(--v4-action-line-height)) / 2 - var(--v4-size-control-border)
+  );
+  padding-inline: var(--v4-action-inset);
+  border-width: var(--v4-size-control-border);
+  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-action-font-size);
+  line-height: var(--v4-action-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+  letter-spacing: var(--v4-type-label-letter-spacing);
+}
+.default {
+  --v4-action-icon-size: var(--v4-size-icon-sm);
+  --v4-action-requested-height: var(--v4-size-control-default);
+  --v4-action-inset: var(--v4-space-control-inline-sm);
+}
+.regular {
+  --v4-action-requested-height: var(--v4-size-control-md);
+}
+.large {
+  --v4-action-requested-height: var(--v4-size-control-lg);
+  --v4-action-inset: var(--v4-space-16);
+}
+.extraSmall,
+.iconExtraSmall {
+  --v4-action-requested-height: var(--v4-size-control-xs);
+  --v4-action-icon-size: var(--v4-size-icon-xs);
+  --v4-action-font-size: var(--v4-type-caption-font-size);
+  --v4-action-line-height: var(--v4-type-caption-line-height);
+  --v4-action-inset: var(--v4-space-6);
+}
+.icon {
+  --v4-action-requested-height: var(--v4-size-nested-lg);
+}
+.iconSmall {
+  --v4-action-requested-height: var(--v4-size-nested-md);
+}
+.iconLarge {
+  --v4-action-requested-height: var(--v4-size-control-lg);
+}
+.icon,
+.iconExtraSmall,
+.iconSmall,
+.iconLarge,
+.iconOnly {
+  width: var(--v4-action-height);
+  min-width: var(--v4-action-height);
+  padding-inline: 0;
+}
+.button svg:not([class*="size-"]) {
+  width: var(--v4-action-icon-size);
+  height: var(--v4-action-icon-size);
+}
+.inputGroup {
+  --v4-nested-action-height: var(--v4-size-nested-default);
+}
+.inputGroup[data-size="sm"] {
+  --v4-nested-action-height: var(--v4-size-nested-sm);
+}
+.inputGroup[data-size="md"] {
+  --v4-nested-action-height: var(--v4-size-nested-md);
+}
+.inputGroup[data-size="lg"] {
+  --v4-nested-action-height: var(--v4-size-nested-lg);
+}
+.nestedAction {
+  --v4-action-height: min(
+    var(--v4-action-requested-height),
+    var(--v4-nested-action-height, var(--v4-action-requested-height))
+  );
+}
+.inputGroup > [data-slot="input-group-addon"][data-align="inline-start"]:has([data-v4-button]) {
+  padding-inline-start: var(--v4-space-control-slot-inset);
+}
+.inputGroup > [data-slot="input-group-addon"][data-align="inline-end"]:has([data-v4-button]) {
+  padding-inline-end: var(--v4-space-control-slot-inset);
+}

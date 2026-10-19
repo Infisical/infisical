@@ -1,0 +1,131 @@
+.mono {
+  font-family: var(--v4-font-mono, monospace);
+}
+.error {
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+  color: var(--v4-bad, var(--destructive));
+  padding: var(--v4-space-8) var(--v4-space-12);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v4-space-4);
+}
+.commandSearch {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  padding-inline-end: var(--v4-space-menu-inset);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
+.commandSearch:focus-within {
+  border-bottom-color: var(--v4-control);
+}
+.commandSearch > [data-slot="command-input-wrapper"] {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+.commandSearch > [data-v4-button] + [data-slot="command-input-wrapper"] {
+  padding-inline-start: 0;
+}
+.commandSearch > [data-v4-button]:first-child {
+  margin-inline-start: var(--v4-space-menu-inset);
+}
+.multiCombobox > [data-slot="multi-select"] {
+  flex: 1 1 120px;
+  width: auto;
+}
+.multiCombobox
+  > [data-slot="multi-select"]:is(*, :focus-visible, [aria-expanded], [aria-invalid])[data-slot] {
+  min-height: var(--v4-field-nested);
+  padding-block: 0;
+  padding-inline-start: calc(var(--v4-field-inline) - var(--v4-space-control-slot-inset));
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.match {
+  background: var(--v4-accent);
+  color: var(--v4-on-accent);
+}
+
+.triggerValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.triggerValue[data-placeholder] {
+  color: var(--v4-muted);
+}
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-6);
+  min-width: 0;
+}
+.summary > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.more {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  flex: 0 0 auto;
+  color: var(--v4-muted);
+}
+
+.chip {
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+  font-weight: var(--v4-type-caption-font-weight);
+  letter-spacing: var(--v4-type-caption-letter-spacing);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  border: 1px solid var(--v4-line-soft, var(--border));
+  padding: 2px 6px;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: calc(var(--v4-radius-control) * var(--corners));
+}
+.chip > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.chip > [data-v4-button] {
+  flex-shrink: 0;
+}
+.multiCombobox[data-size] {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--v4-space-control-slot-gap);
+  padding-block: var(--v4-space-control-slot-inset);
+  padding-inline: var(--v4-space-control-slot-inset) 0;
+}
+.multiCombobox > .chip {
+  box-sizing: border-box;
+  height: var(--v4-field-nested);
+  padding-block: 0;
+  padding-inline: calc(
+      var(--v4-field-inline) - var(--v4-space-control-slot-inset) - var(--v4-size-control-border)
+    )
+    0;
+}
+.multiCombobox > .chip > [data-v4-button] {
+  --v4-action-height: calc(var(--v4-field-nested) - 2 * var(--v4-size-control-border));
+}
