@@ -1,0 +1,2243 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "infisical",
+  "homepage": "https://infisical.com",
+  "items": [
+    {
+      "name": "infisical-base",
+      "type": "registry:base",
+      "description": "Infisical tokens, fonts, scoped portal support and contributor guidance.",
+      "dependencies": [
+        "clsx@^2.1.1",
+        "cn@^0.4.0",
+        "motion@^13.2.0",
+        "tailwind-merge@^2.5.5",
+        "tailwindcss@^4.1.14",
+        "tw-animate-css@^1.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/AGENTS.md",
+          "type": "registry:file",
+          "target": "src/components/v4/AGENTS.md"
+        },
+        {
+          "path": "src/components/v4/assets/mark.svg",
+          "type": "registry:file",
+          "target": "src/components/v4/assets/mark.svg"
+        },
+        {
+          "path": "src/components/v4/docs/README.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/README.md"
+        },
+        {
+          "path": "src/components/v4/docs/accordion.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/accordion.md"
+        },
+        {
+          "path": "src/components/v4/docs/alert-dialog.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/alert-dialog.md"
+        },
+        {
+          "path": "src/components/v4/docs/alert.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/alert.md"
+        },
+        {
+          "path": "src/components/v4/docs/animated-collapse.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/animated-collapse.md"
+        },
+        {
+          "path": "src/components/v4/docs/aspect-ratio.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/aspect-ratio.md"
+        },
+        {
+          "path": "src/components/v4/docs/avatar.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/avatar.md"
+        },
+        {
+          "path": "src/components/v4/docs/badge.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/badge.md"
+        },
+        {
+          "path": "src/components/v4/docs/breadcrumb.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/breadcrumb.md"
+        },
+        {
+          "path": "src/components/v4/docs/button-group.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/button-group.md"
+        },
+        {
+          "path": "src/components/v4/docs/button.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/button.md"
+        },
+        {
+          "path": "src/components/v4/docs/calendar.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/calendar.md"
+        },
+        {
+          "path": "src/components/v4/docs/card.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/card.md"
+        },
+        {
+          "path": "src/components/v4/docs/carousel.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/carousel.md"
+        },
+        {
+          "path": "src/components/v4/docs/chart.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/chart.md"
+        },
+        {
+          "path": "src/components/v4/docs/checkbox.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/checkbox.md"
+        },
+        {
+          "path": "src/components/v4/docs/code-block.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/code-block.md"
+        },
+        {
+          "path": "src/components/v4/docs/code.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/code.md"
+        },
+        {
+          "path": "src/components/v4/docs/collapsible.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/collapsible.md"
+        },
+        {
+          "path": "src/components/v4/docs/combobox.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/combobox.md"
+        },
+        {
+          "path": "src/components/v4/docs/command-menu.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/command-menu.md"
+        },
+        {
+          "path": "src/components/v4/docs/components.json",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/components.json"
+        },
+        {
+          "path": "src/components/v4/docs/context-menu.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/context-menu.md"
+        },
+        {
+          "path": "src/components/v4/docs/coverage.json",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/coverage.json"
+        },
+        {
+          "path": "src/components/v4/docs/data-grid.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/data-grid.md"
+        },
+        {
+          "path": "src/components/v4/docs/dialog.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/dialog.md"
+        },
+        {
+          "path": "src/components/v4/docs/drawer.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/drawer.md"
+        },
+        {
+          "path": "src/components/v4/docs/dropdown-menu.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/dropdown-menu.md"
+        },
+        {
+          "path": "src/components/v4/docs/empty-state.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/empty-state.md"
+        },
+        {
+          "path": "src/components/v4/docs/field.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/field.md"
+        },
+        {
+          "path": "src/components/v4/docs/file-tree.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/file-tree.md"
+        },
+        {
+          "path": "src/components/v4/docs/hover-card.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/hover-card.md"
+        },
+        {
+          "path": "src/components/v4/docs/icon.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/icon.md"
+        },
+        {
+          "path": "src/components/v4/docs/input-group.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/input-group.md"
+        },
+        {
+          "path": "src/components/v4/docs/input-otp.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/input-otp.md"
+        },
+        {
+          "path": "src/components/v4/docs/input.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/input.md"
+        },
+        {
+          "path": "src/components/v4/docs/item.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/item.md"
+        },
+        {
+          "path": "src/components/v4/docs/json.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/json.md"
+        },
+        {
+          "path": "src/components/v4/docs/kbd.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/kbd.md"
+        },
+        {
+          "path": "src/components/v4/docs/label.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/label.md"
+        },
+        {
+          "path": "src/components/v4/docs/layout.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/layout.md"
+        },
+        {
+          "path": "src/components/v4/docs/list.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/list.md"
+        },
+        {
+          "path": "src/components/v4/docs/menubar.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/menubar.md"
+        },
+        {
+          "path": "src/components/v4/docs/middle-truncate.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/middle-truncate.md"
+        },
+        {
+          "path": "src/components/v4/docs/multi-select.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/multi-select.md"
+        },
+        {
+          "path": "src/components/v4/docs/navigation-menu.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/navigation-menu.md"
+        },
+        {
+          "path": "src/components/v4/docs/pagination.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/pagination.md"
+        },
+        {
+          "path": "src/components/v4/docs/popover.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/popover.md"
+        },
+        {
+          "path": "src/components/v4/docs/progress.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/progress.md"
+        },
+        {
+          "path": "src/components/v4/docs/radio-group.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/radio-group.md"
+        },
+        {
+          "path": "src/components/v4/docs/resizable.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/resizable.md"
+        },
+        {
+          "path": "src/components/v4/docs/scroll-area.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/scroll-area.md"
+        },
+        {
+          "path": "src/components/v4/docs/select.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/select.md"
+        },
+        {
+          "path": "src/components/v4/docs/sensitive-editor.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/sensitive-editor.md"
+        },
+        {
+          "path": "src/components/v4/docs/separator.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/separator.md"
+        },
+        {
+          "path": "src/components/v4/docs/sheet.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/sheet.md"
+        },
+        {
+          "path": "src/components/v4/docs/skeleton.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/skeleton.md"
+        },
+        {
+          "path": "src/components/v4/docs/slider.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/slider.md"
+        },
+        {
+          "path": "src/components/v4/docs/snippet.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/snippet.md"
+        },
+        {
+          "path": "src/components/v4/docs/spinner.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/spinner.md"
+        },
+        {
+          "path": "src/components/v4/docs/switch.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/switch.md"
+        },
+        {
+          "path": "src/components/v4/docs/table.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/table.md"
+        },
+        {
+          "path": "src/components/v4/docs/tabs.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/tabs.md"
+        },
+        {
+          "path": "src/components/v4/docs/text.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/text.md"
+        },
+        {
+          "path": "src/components/v4/docs/textarea.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/textarea.md"
+        },
+        {
+          "path": "src/components/v4/docs/toast.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/toast.md"
+        },
+        {
+          "path": "src/components/v4/docs/toggle-group.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/toggle-group.md"
+        },
+        {
+          "path": "src/components/v4/docs/toggle.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/toggle.md"
+        },
+        {
+          "path": "src/components/v4/docs/tooltip.md",
+          "type": "registry:file",
+          "target": "src/components/v4/docs/tooltip.md"
+        },
+        {
+          "path": "src/components/v4/fonts/Archivo-OFL.txt",
+          "type": "registry:file",
+          "target": "src/components/v4/fonts/Archivo-OFL.txt"
+        },
+        {
+          "path": "src/components/v4/fonts/GeistMono-OFL.txt",
+          "type": "registry:file",
+          "target": "src/components/v4/fonts/GeistMono-OFL.txt"
+        },
+        {
+          "path": "src/components/v4/hooks/use-mobile.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/hooks/use-mobile.ts"
+        },
+        {
+          "path": "src/components/v4/lib/field-context.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/field-context.ts"
+        },
+        {
+          "path": "src/components/v4/lib/motion.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/motion.ts"
+        },
+        {
+          "path": "src/components/v4/lib/sliding-indicator.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/sliding-indicator.tsx"
+        },
+        {
+          "path": "src/components/v4/lib/use-controllable-state.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/use-controllable-state.ts"
+        },
+        {
+          "path": "src/components/v4/lib/use-flow-transition.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/use-flow-transition.ts"
+        },
+        {
+          "path": "src/components/v4/lib/use-measured-indicator.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/use-measured-indicator.ts"
+        },
+        {
+          "path": "src/components/v4/lib/use-option-creation.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/use-option-creation.ts"
+        },
+        {
+          "path": "src/components/v4/lib/use-owned-escape.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/use-owned-escape.ts"
+        },
+        {
+          "path": "src/components/v4/lib/utils.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/utils.ts"
+        },
+        {
+          "path": "src/components/v4/required-capabilities.json",
+          "type": "registry:file",
+          "target": "src/components/v4/required-capabilities.json"
+        },
+        {
+          "path": "src/components/v4/scope.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/scope.tsx"
+        },
+        {
+          "path": "src/components/v4/skills/infisical-ui/SKILL.md",
+          "type": "registry:file",
+          "target": "src/components/v4/skills/infisical-ui/SKILL.md"
+        },
+        {
+          "path": "src/components/v4/skills/infisical-ui/rules.json",
+          "type": "registry:file",
+          "target": "src/components/v4/skills/infisical-ui/rules.json"
+        },
+        {
+          "path": "src/components/v4/tokens.generated.css",
+          "type": "registry:file",
+          "target": "src/components/v4/tokens.generated.css"
+        },
+        {
+          "path": "src/components/v4/tokens.json",
+          "type": "registry:file",
+          "target": "src/components/v4/tokens.json"
+        },
+        {
+          "path": "src/components/v4/v4.css",
+          "type": "registry:file",
+          "target": "src/components/v4/v4.css"
+        }
+      ]
+    },
+    {
+      "name": "accordion",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "lucide-react@^0.544.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/accordion.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/accordion.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "alert-dialog",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/alert-dialog.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/alert-dialog.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/overlay.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/overlay.module.css"
+        }
+      ]
+    },
+    {
+      "name": "alert",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/icon",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/alert.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/alert.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/helpers.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/helpers.module.css"
+        }
+      ]
+    },
+    {
+      "name": "animated-collapse",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "motion@^13.2.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/animated-collapse.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/animated-collapse.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/text.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/text.module.css"
+        }
+      ]
+    },
+    {
+      "name": "aspect-ratio",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/aspect-ratio.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/aspect-ratio.tsx"
+        }
+      ]
+    },
+    {
+      "name": "avatar",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/avatar.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/avatar.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/helpers.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/helpers.module.css"
+        }
+      ]
+    },
+    {
+      "name": "badge",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/badge.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/badge.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/helpers.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/helpers.module.css"
+        }
+      ]
+    },
+    {
+      "name": "breadcrumb",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base",
+        "@infisical/switcher"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "lucide-react@^0.544.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/breadcrumb.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/breadcrumb.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/breadcrumb.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/breadcrumb.module.css"
+        }
+      ]
+    },
+    {
+      "name": "button-group",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base",
+        "@infisical/separator"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/button-group.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/button-group.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/spinner"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0",
+        "motion@^13.2.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/button.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/button.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/button-geometry.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/button-geometry.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/button-material.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/button-material.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "calendar",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "lucide-react@^0.544.0",
+        "react-day-picker@^9.13.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/calendar.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/calendar.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "card",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/card.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/card.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "carousel",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "embla-carousel-react@^8.6.0",
+        "lucide-react@^0.544.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/carousel.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/carousel.tsx"
+        }
+      ]
+    },
+    {
+      "name": "chart",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "recharts@^3.8.1"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/chart.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/chart.tsx"
+        }
+      ]
+    },
+    {
+      "name": "checkbox",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "lucide-react@^0.544.0",
+        "motion@^13.2.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/checkbox.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/checkbox.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "code-block",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/code",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/json",
+        "@infisical/middle-truncate",
+        "@infisical/sensitive-editor"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/code-block.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/code-block.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/code.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/code.module.css"
+        }
+      ]
+    },
+    {
+      "name": "code",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/code.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/code.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/code-tokenizer.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/code-tokenizer.ts"
+        },
+        {
+          "path": "src/components/v4/ui/code.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/code.module.css"
+        }
+      ]
+    },
+    {
+      "name": "collapsible",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/collapsible.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/collapsible.tsx"
+        }
+      ]
+    },
+    {
+      "name": "combobox",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/command",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/multi-select",
+        "@infisical/popover"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/combobox.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/combobox.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/picker.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/picker.module.css"
+        }
+      ]
+    },
+    {
+      "name": "command-menu",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/command",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/kbd",
+        "@infisical/spinner"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/command-menu.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/command-menu.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/picker.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/picker.module.css"
+        }
+      ]
+    },
+    {
+      "name": "command",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/dialog",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/menu-content"
+      ],
+      "dependencies": [
+        "cmdk@^1.1.1",
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/command.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/command.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/overlay.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/overlay.module.css"
+        }
+      ]
+    },
+    {
+      "name": "context-menu",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/menu-content"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/context-menu.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/context-menu.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "data-grid",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/infisical-base"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/data-grid.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data-grid.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/data-grid-model.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data-grid-model.ts"
+        },
+        {
+          "path": "src/components/v4/ui/data.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data.module.css"
+        }
+      ]
+    },
+    {
+      "name": "data-table",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/checkbox",
+        "@infisical/infisical-base",
+        "@infisical/table"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/data-table.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data-table.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/data.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data.module.css"
+        }
+      ]
+    },
+    {
+      "name": "dialog",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/icon",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/dialog.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/dialog.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/overlay.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/overlay.module.css"
+        }
+      ]
+    },
+    {
+      "name": "drawer",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "vaul@^1.1.2"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/drawer.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/drawer.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/overlay.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/overlay.module.css"
+        }
+      ]
+    },
+    {
+      "name": "dropdown-menu",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/menu-content"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/dropdown-menu.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/dropdown-menu.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "empty",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/empty.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/empty.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "field",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/label",
+        "@infisical/separator"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/field.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/field.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/helpers.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/helpers.module.css"
+        }
+      ]
+    },
+    {
+      "name": "file-tree",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/animated-collapse",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/middle-truncate"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/file-tree.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/file-tree.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/data.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data.module.css"
+        }
+      ]
+    },
+    {
+      "name": "hover-card",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/hover-card.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/hover-card.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "icon",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/icon.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/icon.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/icon-data.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/icon-data.ts"
+        }
+      ]
+    },
+    {
+      "name": "input-group",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/input-group.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/input-group.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/button-geometry.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/button-geometry.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "input-otp",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "input-otp@^1.5.0",
+        "lucide-react@^0.544.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/input-otp.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/input-otp.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "input",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/kbd"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/input.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/input.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "item",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/separator"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/item.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/item.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/helpers.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/helpers.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/item.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/item.module.css"
+        }
+      ]
+    },
+    {
+      "name": "json",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/animated-collapse",
+        "@infisical/code",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/json.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/json.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/code.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/code.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/json-model.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/json-model.ts"
+        }
+      ]
+    },
+    {
+      "name": "kbd",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/kbd.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/kbd.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/kbd.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/kbd.module.css"
+        }
+      ]
+    },
+    {
+      "name": "label",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/label.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/label.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "layout",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/layout.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/layout.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/text.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/text.module.css"
+        }
+      ]
+    },
+    {
+      "name": "list",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/checkbox",
+        "@infisical/infisical-base",
+        "@infisical/skeleton"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/list.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/list.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/data.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data.module.css"
+        }
+      ]
+    },
+    {
+      "name": "menu-content",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base",
+        "@infisical/kbd"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/menu-content.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu-content.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "menubar",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/menu-content"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/menubar.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menubar.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "middle-truncate",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/middle-truncate.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/middle-truncate.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/text.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/text.module.css"
+        }
+      ]
+    },
+    {
+      "name": "multi-select",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/popover"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/multi-select.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/multi-select.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/picker.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/picker.module.css"
+        }
+      ]
+    },
+    {
+      "name": "navigation-menu",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "@radix-ui/react-presence@1.1.10",
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/navigation-menu.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/navigation-menu.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "pagination",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/select",
+        "@infisical/spinner"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "lucide-react@^0.544.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/pagination.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/pagination.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/pagination.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/pagination.module.css"
+        }
+      ]
+    },
+    {
+      "name": "popover",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/popover.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/popover.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "progress",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/progress.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/progress.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/helpers.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/helpers.module.css"
+        }
+      ]
+    },
+    {
+      "name": "radio-group",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "motion@^13.2.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/radio-group.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/radio-group.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "resizable",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "react-resizable-panels@^4.14.3"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/resizable.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/resizable.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/resizable.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/resizable.module.css"
+        }
+      ]
+    },
+    {
+      "name": "scroll-area",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/scroll-area.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/scroll-area.tsx"
+        }
+      ]
+    },
+    {
+      "name": "select",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/icon",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/select.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/select.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    },
+    {
+      "name": "sensitive-editor",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/infisical-base"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/sensitive-editor.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/sensitive-editor.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/button-geometry.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/button-geometry.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/data.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data.module.css"
+        }
+      ]
+    },
+    {
+      "name": "separator",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/separator.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/separator.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "sheet",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/icon",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/sheet.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/sheet.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/overlay.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/overlay.module.css"
+        }
+      ]
+    },
+    {
+      "name": "skeleton",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/skeleton.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/skeleton.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "slider",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/slider.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/slider.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "snippet",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base",
+        "@infisical/sensitive-editor"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/snippet.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/snippet.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/code.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/code.module.css"
+        }
+      ]
+    },
+    {
+      "name": "sonner",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base",
+        "@infisical/spinner",
+        "@infisical/toast-stack"
+      ],
+      "dependencies": [
+        "lucide-react@^0.544.0",
+        "sonner@^2.0.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/sonner.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/sonner.tsx"
+        }
+      ]
+    },
+    {
+      "name": "spinner",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/spinner.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/spinner.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/runtime.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/runtime.module.css"
+        }
+      ]
+    },
+    {
+      "name": "switch",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "motion@^13.2.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/switch.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/switch.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "switcher",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/command",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/kbd",
+        "@infisical/popover"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/switcher.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/switcher.tsx"
+        }
+      ]
+    },
+    {
+      "name": "table",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/table.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/table.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/data.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/data.module.css"
+        }
+      ]
+    },
+    {
+      "name": "tabs",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/badge",
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/tabs.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/tabs.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/navigation.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/navigation.module.css"
+        }
+      ]
+    },
+    {
+      "name": "text",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/text.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/text.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/text.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/text.module.css"
+        }
+      ]
+    },
+    {
+      "name": "textarea",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/textarea.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/textarea.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "toast-stack",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/button",
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/spinner"
+      ],
+      "dependencies": [
+        "cn@^0.4.0"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/toast-stack.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/toast-stack.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/helpers.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/helpers.module.css"
+        }
+      ]
+    },
+    {
+      "name": "toggle-group",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base",
+        "@infisical/toggle"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/toggle-group.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/toggle-group.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "toggle",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base"
+      ],
+      "dependencies": [
+        "class-variance-authority@^0.7.1",
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/toggle.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/toggle.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/button-geometry.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/button-geometry.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/button-material.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/button-material.module.css"
+        },
+        {
+          "path": "src/components/v4/ui/controls.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/controls.module.css"
+        }
+      ]
+    },
+    {
+      "name": "tooltip",
+      "type": "registry:ui",
+      "registryDependencies": [
+        "@infisical/infisical-base",
+        "@infisical/kbd"
+      ],
+      "dependencies": [
+        "cn@^0.4.0",
+        "radix-ui@^1.6.7"
+      ],
+      "files": [
+        {
+          "path": "src/components/v4/ui/tooltip.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/tooltip.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/menu.module.css",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/menu.module.css"
+        }
+      ]
+    }
+  ]
+}

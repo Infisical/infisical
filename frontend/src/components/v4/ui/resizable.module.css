@@ -1,0 +1,57 @@
+.group {
+  overflow: hidden;
+  background: var(--v4-pop);
+  border: var(--v4-size-control-border) solid var(--v4-line);
+  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+}
+.panel {
+  background: var(--v4-pop);
+}
+.handle {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--v4-line);
+  outline: none;
+}
+.handle:is(:hover, [data-separator="hover"], [data-separator="active"]) {
+  background: var(--v4-faint);
+}
+.handle:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: calc(-1 * var(--v4-size-focus-ring));
+}
+.grip {
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v4-space-2);
+  width: var(--v4-space-12);
+  height: var(--v4-space-24);
+  background: var(--v4-pop);
+  border: var(--v4-size-control-border) solid var(--v4-line);
+  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  color: var(--v4-faint);
+}
+.grip::before,
+.grip::after {
+  content: "";
+  width: var(--v4-space-2);
+  height: var(--v4-space-8);
+  border-radius: var(--v4-space-2);
+  background: currentColor;
+}
+.handle[aria-orientation="horizontal"] .grip {
+  width: var(--v4-space-24);
+  height: var(--v4-space-12);
+  flex-direction: column;
+}
+.handle[aria-orientation="horizontal"] .grip::before,
+.handle[aria-orientation="horizontal"] .grip::after {
+  width: var(--v4-space-8);
+  height: var(--v4-space-2);
+}

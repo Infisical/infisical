@@ -31,6 +31,12 @@ The 2026-10-04 source audit found no external consumers of `Blur`, `CreatableSel
 | `ReactSelect/FilterableSelect` | Deprecated | Use `Combobox`; keep compatibility available while consumers migrate. |
 | `ReactSelect/CreatableSelect`  | Deprecated | Use `Combobox` with inline `creation` for values needing no metadata, or dialog `creation` for caller-owned forms and persistence. Keep compatibility for react-select-specific component overrides; migrate consumers separately. |
 
+## V4
+
+| Components | Status | Direction |
+| --- | --- | --- |
+| `v4` | Incubating | Infisical 2.0 source of truth, fenced from product code. Radix primitives live in `v4/ui` and are restyled by `v4.css`. The docs chrome is the public `/design-system` route. Do not import `@app/components/v4` from product pages. |
+
 ## Updating the ledger
 
 - Add `@deprecated` to the exported API with a supported replacement and any migration limits.

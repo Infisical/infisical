@@ -16,6 +16,7 @@ import { Route as rootRoute } from './pages/root'
 import { Route as publicShareSecretPageLegacyRouteImport } from './pages/public/ShareSecretPage/legacy-route'
 import { Route as middlewaresRestrictLoginSignupImport } from './pages/middlewares/restrict-login-signup'
 import { Route as middlewaresAuthenticateImport } from './pages/middlewares/authenticate'
+import { Route as designSystemRouteImport } from './pages/design-system/route'
 import { Route as authCliRedirectPageRouteImport } from './pages/auth/CliRedirectPage/route'
 import { Route as indexImport } from './pages/index'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
@@ -439,6 +440,12 @@ const middlewaresRestrictLoginSignupRoute =
 
 const middlewaresAuthenticateRoute = middlewaresAuthenticateImport.update({
   id: '/_authenticate',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const designSystemRouteRoute = designSystemRouteImport.update({
+  id: '/design-system',
+  path: '/design-system',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -2754,6 +2761,13 @@ declare module '@tanstack/react-router' {
       path: '/cli-redirect'
       fullPath: '/cli-redirect'
       preLoaderRoute: typeof authCliRedirectPageRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/design-system': {
+      id: '/design-system'
+      path: '/design-system'
+      fullPath: '/design-system'
+      preLoaderRoute: typeof designSystemRouteImport
       parentRoute: typeof rootRoute
     }
     '/_authenticate': {
@@ -6255,6 +6269,7 @@ const middlewaresRestrictLoginSignupRouteWithChildren =
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
+  '/design-system': typeof designSystemRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
   '/password-setup': typeof authPasswordSetupPageRouteRoute
@@ -6552,6 +6567,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
+  '/design-system': typeof designSystemRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
   '/password-setup': typeof authPasswordSetupPageRouteRoute
@@ -6821,6 +6837,7 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
+  '/design-system': typeof designSystemRouteRoute
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
@@ -7131,6 +7148,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cli-redirect'
+    | '/design-system'
     | ''
     | '/share-secret'
     | '/password-setup'
@@ -7427,6 +7445,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/cli-redirect'
+    | '/design-system'
     | ''
     | '/share-secret'
     | '/password-setup'
@@ -7694,6 +7713,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/cli-redirect'
+    | '/design-system'
     | '/_authenticate'
     | '/_restrict-login-signup'
     | '/share-secret'
@@ -8003,6 +8023,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   indexRoute: typeof indexRoute
   authCliRedirectPageRouteRoute: typeof authCliRedirectPageRouteRoute
+  designSystemRouteRoute: typeof designSystemRouteRoute
   middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
   middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
   publicShareSecretPageLegacyRouteRoute: typeof publicShareSecretPageLegacyRouteRoute
@@ -8014,6 +8035,7 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
   authCliRedirectPageRouteRoute: authCliRedirectPageRouteRoute,
+  designSystemRouteRoute: designSystemRouteRoute,
   middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
   middlewaresRestrictLoginSignupRoute:
     middlewaresRestrictLoginSignupRouteWithChildren,
@@ -8037,6 +8059,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/cli-redirect",
+        "/design-system",
         "/_authenticate",
         "/_restrict-login-signup",
         "/share-secret",
@@ -8050,6 +8073,9 @@ export const routeTree = rootRoute
     },
     "/cli-redirect": {
       "filePath": "auth/CliRedirectPage/route.tsx"
+    },
+    "/design-system": {
+      "filePath": "design-system/route.tsx"
     },
     "/_authenticate": {
       "filePath": "middlewares/authenticate.tsx",

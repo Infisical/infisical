@@ -1,0 +1,1531 @@
+{
+  "schemaVersion": 1,
+  "components": [
+    {
+      "id": "accordion",
+      "name": "Accordion",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "single/multiple",
+        "collapsible",
+        "disabled",
+        "open/closed"
+      ],
+      "behavior": "Radix accordion semantics, oriented arrow navigation, trigger/content relationships, reduced motion height, preserve optional mounted form state",
+      "acceptance": [
+        "Keyboard Home/End/arrows",
+        "Disabled skipped",
+        "Closed content unfocusable"
+      ]
+    },
+    {
+      "id": "alert",
+      "name": "Alert",
+      "kind": "component",
+      "exports": [
+        "Alert",
+        "Banner"
+      ],
+      "variants": [
+        "info",
+        "ok",
+        "warn",
+        "bad",
+        "Banner"
+      ],
+      "behavior": "Dismissible or persistent inline concern; error uses alert and other status uses polite announcement; Banner is standing condition",
+      "acceptance": [
+        "Tone includes words and icon",
+        "Dismiss button named",
+        "Banner link remains readable in both themes"
+      ]
+    },
+    {
+      "id": "alert-dialog",
+      "name": "AlertDialog",
+      "kind": "component",
+      "exports": [
+        "AlertDialog"
+      ],
+      "variants": [
+        "destructive",
+        "neutral",
+        "typed confirmation",
+        "open",
+        "closed"
+      ],
+      "behavior": "Safe initial focus; exact confirmText gates destructive action; Escape and Cancel close; backdrop does not close; async pending/failure must preserve safe focus",
+      "acceptance": [
+        "Typing mismatch blocks confirm",
+        "Escape restores trigger",
+        "Failure retains dialog and input",
+        "No duplicate confirm"
+      ]
+    },
+    {
+      "id": "animated-collapse",
+      "name": "AnimatedCollapse",
+      "kind": "component",
+      "exports": [
+        "AnimatedCollapse"
+      ],
+      "variants": [
+        "open",
+        "closed",
+        "lazy",
+        "initially open",
+        "reduced motion"
+      ],
+      "behavior": "200ms grid-row height/fade after user choice; no first-paint animation; lazy mounts once; closed content leaves keyboard and accessibility tree; open overflow never clips portals",
+      "acceptance": [
+        "Closed child cannot receive focus",
+        "Nested collapse works",
+        "Reopen retains child state",
+        "Reduced motion ends immediately"
+      ]
+    },
+    {
+      "id": "aspect-ratio",
+      "name": "AspectRatio",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "ratio default/custom",
+        "responsive"
+      ],
+      "behavior": "Reserve media ratio without intrinsic sizing shift; child overflow policy explicit",
+      "acceptance": [
+        "Ratio holds at320/desktop",
+        "No content clipping that conceals focus"
+      ]
+    },
+    {
+      "id": "avatar",
+      "name": "Avatar",
+      "kind": "component",
+      "exports": [
+        "Avatar",
+        "AvatarGroup",
+        "Identity"
+      ],
+      "variants": [
+        "person",
+        "org",
+        "machine",
+        "agent",
+        "fallback",
+        "more",
+        "presence ok/warn/off",
+        "group overflow"
+      ],
+      "behavior": "Initials or identity glyphs, no photos; 20/24/32/40 px common sizes; AvatarGroup +N overflow and Identity layout; org kind exists in reference but active repo policy forbids org avatars",
+      "acceptance": [
+        "Fallback has accessible name",
+        "Presence paired with text when meaningful",
+        "Group overflow names remaining count",
+        "Machine/agent labels remain mono"
+      ]
+    },
+    {
+      "id": "badge",
+      "name": "Badge",
+      "kind": "component",
+      "exports": [
+        "Badge",
+        "Count"
+      ],
+      "variants": [
+        "outline",
+        "soft",
+        "solid",
+        "accent",
+        "info",
+        "ok",
+        "warn",
+        "bad",
+        "sm/md",
+        "dot",
+        "mono",
+        "Count accent/ink"
+      ],
+      "behavior": "Badges are labels, never buttons; live state includes word and dot; Count is attention chip with on-accent text; status cannot rely on hue",
+      "acceptance": [
+        "Status words remain with color removed",
+        "Count numeric text contrast",
+        "Long label does not overlap nearby title"
+      ]
+    },
+    {
+      "id": "breadcrumb",
+      "name": "Breadcrumb",
+      "kind": "component",
+      "exports": [
+        "Breadcrumb"
+      ],
+      "variants": [
+        "default",
+        "eyebrow",
+        "product",
+        "slash/chevron",
+        "collapsed",
+        "switching crumb",
+        "current/non-current"
+      ],
+      "behavior": "Ancestors link, last crumb marks current unless title follows; middle collapse expands in place; product crumbs host Switcher; long labels truncate without wrapping product bar",
+      "acceptance": [
+        "Current crumb not duplicate link",
+        "Collapsed button named and operable",
+        "Switcher returns focus",
+        "Full machine text recoverable"
+      ]
+    },
+    {
+      "id": "button",
+      "name": "Button",
+      "kind": "component",
+      "exports": [
+        "Button"
+      ],
+      "variants": [
+        "primary",
+        "secondary",
+        "ghost",
+        "accent",
+        "destructive",
+        "danger-ghost",
+        "link",
+        "sm/md/lg",
+        "icon-only",
+        "loading",
+        "disabled",
+        "selected",
+        "link target"
+      ],
+      "behavior": "One strongly emphasized lime Button per task region; default/primary/accent share the authored face, clipped lower-edge light and inward bloom without texture, shadows or lift; stable-width pending feedback; icon-only requires accessible name and tooltip; native semantics for button versus anchor. Default/sm32 aliases, explicit md36/lg40 and xs24; text controls use 14px labels.",
+      "acceptance": [
+        "Busy action cannot double-submit",
+        "Icon-only label",
+        "Button/anchor ref types correct",
+        "Focus visible both themes",
+        "Reduced motion static busy mark"
+      ]
+    },
+    {
+      "id": "button-group",
+      "name": "ButtonGroup",
+      "kind": "component",
+      "exports": [
+        "ButtonGroup",
+        "ToggleGroup"
+      ],
+      "variants": [
+        "attached",
+        "spaced",
+        "toolbar",
+        "split"
+      ],
+      "behavior": "Related action geometry; toolbar accessible label; split primary and dropdown; safe action before primary in footer; segmented choice belongs Tabs",
+      "acceptance": [
+        "Attached borders do not double",
+        "Split menu keyboard works",
+        "Toolbar label and focus order",
+        "Footer wraps without overlap"
+      ]
+    },
+    {
+      "id": "calendar",
+      "name": "Calendar",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "single/multiple/range",
+        "outside days",
+        "disabled dates",
+        "navigation",
+        "month/year dropdown"
+      ],
+      "behavior": "React DayPicker selection semantics, locale date names and native Date precision, keyboard dates and safe unavailable state",
+      "acceptance": [
+        "Keyboard month crossing",
+        "Range endpoints",
+        "Disabled dates cannot select",
+        "Accessible full date"
+      ]
+    },
+    {
+      "id": "card",
+      "name": "Card",
+      "kind": "component",
+      "exports": [
+        "Card",
+        "Tile",
+        "Media",
+        "DataList"
+      ],
+      "variants": [
+        "framed",
+        "plain",
+        "flush",
+        "Tile selected/disabled",
+        "DataList stat/meta/props"
+      ],
+      "behavior": "Tint shell with inset surface; plain object header composed Item; Tile is selectable card button; shared Media; min text 160px and tile floor 208px; footer wraps",
+      "acceptance": [
+        "320px no overlap",
+        "Title wraps around metadata",
+        "Tile selected and focus distinct",
+        "Long property value recoverable"
+      ]
+    },
+    {
+      "id": "carousel",
+      "name": "Carousel",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "horizontal/vertical",
+        "previous/next",
+        "disabled edges",
+        "Embla API"
+      ],
+      "behavior": "Embla-backed carousel, named region/slide position and keyboard arrows; no autoplay requirement",
+      "acceptance": [
+        "Arrow direction",
+        "Prev/Next disabled edges",
+        "Slide count",
+        "Reduced motion"
+      ]
+    },
+    {
+      "id": "chart",
+      "name": "Chart",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "container",
+        "tooltip/legend",
+        "indicator dot/line/dashed",
+        "config colors",
+        "empty"
+      ],
+      "behavior": "Typed chart config and accessible textual data alternative; scoped tokens; zero/missing values distinct",
+      "acceptance": [
+        "Zero/missing handling",
+        "Tooltip payload validated",
+        "Legend label visible",
+        "Keyboard/text alternative"
+      ]
+    },
+    {
+      "id": "checkbox",
+      "name": "Checkbox",
+      "kind": "component",
+      "exports": [
+        "Checkbox"
+      ],
+      "variants": [
+        "off",
+        "on",
+        "mixed",
+        "disabled",
+        "label/description"
+      ],
+      "behavior": "Controlled or default checked; mixed parent click selects all; native/Radix checkbox semantics and form label wiring",
+      "acceptance": [
+        "Space toggles",
+        "Mixed announced",
+        "Disabled never changes",
+        "Parent excludes disabled child policy"
+      ]
+    },
+    {
+      "id": "code",
+      "name": "Code",
+      "kind": "component",
+      "exports": [
+        "Code"
+      ],
+      "variants": [
+        "inline",
+        "block",
+        "numbered",
+        "highlighted",
+        "wrap/scroll",
+        "height limited",
+        "syntax/plain"
+      ],
+      "behavior": "Neutral tokenized machine text; shell/env/json/yaml/js-ts/python/hcl aliases; line numbers never copied; highlight accent-wash; long unbroken tokens scroll; safe text rendering",
+      "acceptance": [
+        "Copy excludes counters",
+        "Unknown language plain text",
+        "No HTML evaluation",
+        "Keyboard scroll focus",
+        "Highlight line numbers one-based"
+      ]
+    },
+    {
+      "id": "code-block",
+      "name": "CodeBlock",
+      "kind": "component",
+      "exports": [
+        "CodeBlock"
+      ],
+      "variants": [
+        "command wrap",
+        "file scroll",
+        "custom Json body",
+        "extra actions",
+        "copy/no copy",
+        "height limited"
+      ],
+      "behavior": "Framed mono label middle-truncates keeping suffix; Copy last; source copy excludes prompts/numbers; Json child copy must use same recursively redacted model as display",
+      "acceptance": [
+        "Clipboard reject never reports success",
+        "JSON string and object redact equally",
+        "Whole object redaction hides descendants",
+        "Long label/actions no overlap"
+      ]
+    },
+    {
+      "id": "collapsible",
+      "name": "Collapsible",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "controlled/default",
+        "open/closed",
+        "disabled"
+      ],
+      "behavior": "Radix disclosure trigger/content semantics; complement AnimatedCollapse visual utility without duplicate ownership",
+      "acceptance": [
+        "Enter/Space",
+        "Expanded controls id",
+        "Closed child unfocusable"
+      ]
+    },
+    {
+      "id": "combobox",
+      "name": "Combobox",
+      "kind": "component",
+      "exports": [
+        "Combobox"
+      ],
+      "variants": [
+        "single",
+        "multiple",
+        "create",
+        "empty",
+        "loading/error extension",
+        "disabled",
+        "invalid"
+      ],
+      "behavior": "Case-insensitive anywhere-label search; accent highlight; create named query last; removable multi chips; Backspace empty removes last chip; typed mode-specific value/callback",
+      "acceptance": [
+        "IME composition does not select",
+        "Arrow/Enter/Escape focus",
+        "Single callback cannot receive array",
+        "Chip remove button named",
+        "Async stale results ignored"
+      ]
+    },
+    {
+      "id": "command-menu",
+      "name": "CommandMenu",
+      "kind": "composite",
+      "exports": [
+        "CommandMenu"
+      ],
+      "variants": [
+        "dialog",
+        "inline",
+        "recent",
+        "search results",
+        "loading",
+        "empty",
+        "nested page",
+        "disabled/danger"
+      ],
+      "behavior": "mod+K toggle; grouped label-first ranking and keywords; server search callback/page id; grouped limits/searchOnly; Up/Down or CtrlN/P wrap; modEnter new-tab link; nested Escape returns then closes",
+      "acceptance": [
+        "Hotkey does not duplicate handlers",
+        "Page query/back stack",
+        "Stale search cannot replace new results",
+        "Disabled skipped",
+        "Focus trap/restore",
+        "Inline never traps page"
+      ]
+    },
+    {
+      "id": "context-menu",
+      "name": "ContextMenu",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "right-click",
+        "keyboard trigger",
+        "submenu",
+        "checkbox/radio",
+        "danger",
+        "disabled"
+      ],
+      "behavior": "Radix context menu, keyboard ContextMenu/ShiftF10 where host exposes it; focus return and nested dismissal",
+      "acceptance": [
+        "Keyboard open/select",
+        "Checkbox remains open",
+        "Submenu arrows",
+        "Clipping-safe scoped portal"
+      ]
+    },
+    {
+      "id": "data-grid",
+      "name": "DataGrid",
+      "kind": "component",
+      "exports": [
+        "DataGrid"
+      ],
+      "variants": [
+        "editable table",
+        "read-only result",
+        "active cell/range",
+        "typed edit",
+        "invalid",
+        "dirty",
+        "resizing",
+        "sorting",
+        "virtual rows",
+        "empty",
+        "async commit/cancel/failure extension"
+      ],
+      "behavior": "ARIA grid separate from Table; typed column headers/gutter; pointer and keyboard ranges; Enter/F2/type edit, Escape cancels, Enter/Tab commit/move; atomic cell change batches; null versus empty exact; TSV copy/paste, resize/fit; id-based state and bounded virtual rendering. rowHeight defaults to a requested32 minimum; one observed content floor drives the uniform effective cell/virtual/navigation metric.",
+      "acceptance": [
+        "No numeric precision loss",
+        "Literal NULL preserved",
+        "Tabs/newlines clipboard round-trip",
+        "Invalid paste reported atomically",
+        "Sort/filter retain identity",
+        "Virtual active cell exists",
+        "Keyboard resize",
+        "Async reject retains draft",
+        "Copy excludes sensitive values unless explicit permission"
+      ]
+    },
+    {
+      "id": "dialog",
+      "name": "Dialog",
+      "kind": "component",
+      "exports": [
+        "Dialog"
+      ],
+      "variants": [
+        "open",
+        "closed",
+        "dismissible/non-dismissible",
+        "long scroll",
+        "pending/failure"
+      ],
+      "behavior": "Named focused task on scrim; first field initial focus; trap and restore focus; normal Escape/backdrop close; explicit pending dismissal policy; 440px default",
+      "acceptance": [
+        "Title/description wired",
+        "Nested popup stays in scope",
+        "Tab cannot escape",
+        "Removed trigger safe restore",
+        "Long content body scroll"
+      ]
+    },
+    {
+      "id": "drawer",
+      "name": "Drawer",
+      "kind": "component",
+      "exports": [
+        "DrawerBody"
+      ],
+      "variants": [
+        "top/right/bottom/left",
+        "open/closed",
+        "modal",
+        "dismissible",
+        "touch gesture"
+      ],
+      "behavior": "Vaul gesture drawer within React18 stack; named modal, focus and scroll restoration; direction token geometry. DrawerBody forwards native div props/ref and owns the shared inset and bounded scroll region; arbitrary Content children remain supported.",
+      "acceptance": [
+        "Pointer close threshold",
+        "Keyboard safe close",
+        "No background focus",
+        "Reduced motion"
+      ]
+    },
+    {
+      "id": "dropdown-menu",
+      "name": "DropdownMenu",
+      "kind": "component",
+      "exports": [
+        "DropdownMenu"
+      ],
+      "variants": [
+        "action",
+        "label/separator",
+        "checkbox",
+        "radio",
+        "submenu",
+        "danger",
+        "disabled",
+        "align/side",
+        "portal"
+      ],
+      "behavior": "Arrow keys navigate; Enter action; checkbox/radio remain open; Escape restores trigger; submenu direction; foreground-tint hover; float outside clipping container",
+      "acceptance": [
+        "Nested submenu keyboard",
+        "Checkbox checked announced",
+        "Disabled skipped",
+        "Escape closes only top layer",
+        "No raw menu copied with custom trap"
+      ]
+    },
+    {
+      "id": "empty-state",
+      "name": "EmptyState",
+      "kind": "component",
+      "exports": [
+        "EmptyState"
+      ],
+      "variants": [
+        "default first use",
+        "compact no results"
+      ],
+      "behavior": "Title names missing object/place; fastest next step; compact clear-filter recovery; neutral icon tile and text; no generic No data",
+      "acceptance": [
+        "Action operable and named",
+        "Long text wraps",
+        "No-results clear restores items"
+      ]
+    },
+    {
+      "id": "field",
+      "name": "Field",
+      "kind": "component",
+      "exports": [
+        "Field"
+      ],
+      "variants": [
+        "vertical",
+        "horizontal",
+        "group",
+        "description",
+        "error",
+        "optional"
+      ],
+      "behavior": "One control with id/label/description/error wiring; group uses semantic legend; error replaces help and marks invalid; validate blur or submit",
+      "acceptance": [
+        "Unique stable ids",
+        "Error described by actual control",
+        "Group name announced",
+        "Custom control ref/focus forwarding",
+        "Horizontal 320px reflow"
+      ]
+    },
+    {
+      "id": "file-tree",
+      "name": "FileTree",
+      "kind": "component",
+      "exports": [
+        "FileTree"
+      ],
+      "variants": [
+        "files/folders/all/none selection",
+        "foldersOnly",
+        "sm/md",
+        "expanded",
+        "selected",
+        "disabled",
+        "empty",
+        "scroll"
+      ],
+      "behavior": "ARIA tree one tab stop; visible Up/Down, Right open/enter, Left close/parent, Home/End/typeahead; disabled folder visible/focusable with reason; selected ancestors open; 16px indent",
+      "acceptance": [
+        "Collapsed nodes absent from navigation",
+        "Disabled cannot select",
+        "Focus survives item removal",
+        "Folder picker nested popup",
+        "Full filename recoverable",
+        "Reduced motion collapse"
+      ]
+    },
+    {
+      "id": "hover-card",
+      "name": "HoverCard",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "open/closed",
+        "side/align",
+        "delay"
+      ],
+      "behavior": "Supplementary linked preview, keyboard/focus accessibility; no essential controls available only on hover",
+      "acceptance": [
+        "Focus-trigger preview",
+        "Escape close",
+        "Pointer can cross gap",
+        "Viewport collision"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "kind": "component",
+      "exports": [
+        "Icon"
+      ],
+      "variants": [
+        "named line icon",
+        "decorative",
+        "semantic",
+        "size/stroke"
+      ],
+      "behavior": "51 source path icons at 24 grid, 1.7 stroke, currentColor; controls16/navigation18/small14; semantic label only when standalone; checks2.6",
+      "acceptance": [
+        "All 51 names resolve",
+        "Decorative hidden",
+        "Labelled SVG has name",
+        "Status word accompanies colored icon"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "kind": "component",
+      "exports": [
+        "Input",
+        "SecretInput",
+        "CopyButton"
+      ],
+      "variants": [
+        "sm/md/lg",
+        "plain/mono",
+        "empty/filled",
+        "icon",
+        "read-only",
+        "disabled",
+        "invalid",
+        "kbd/trailing",
+        "multiline companion"
+      ],
+      "behavior": "Native text input forwarding; focus border ink+nudge; read-only lock; trailing slots 24/28/32 with 4 gap; plaintext never receives secret; SecretInput masked reveal/copy companion. Default/sm32, md36, lg40; numeric native size remains a width hint.",
+      "acceptance": [
+        "Native attrs/ref and Field wiring",
+        "Read-only selectable",
+        "Disabled inert",
+        "Copy rejection announced",
+        "Reveal absent plaintext DOM until requested",
+        "Textarea ref typed separately"
+      ]
+    },
+    {
+      "id": "input-group",
+      "name": "InputGroup",
+      "kind": "component",
+      "exports": [
+        "InputGroup"
+      ],
+      "variants": [
+        "prefix",
+        "suffix",
+        "icon",
+        "kbd",
+        "copy",
+        "joined action",
+        "invalid",
+        "sm/md/lg"
+      ],
+      "behavior": "One addon per side; trailing unit and hints not instructions; joined action acts on current value; copy-only field uses Snippet; shared control geometry. Defaultsm32, md36 and lg40 hosts with 24/28/32 nested action slots.",
+      "acceptance": [
+        "Native attrs/ref",
+        "Prefix excluded from copied value",
+        "Joined action keyboard",
+        "Long addon cannot cover input",
+        "No nested interactive button"
+      ]
+    },
+    {
+      "id": "input-otp",
+      "name": "InputOtp",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "slots",
+        "groups/separators",
+        "focused caret",
+        "disabled",
+        "invalid",
+        "paste"
+      ],
+      "behavior": "input-otp one-time-code input with actual input semantics, paste/autofill, safe char filtering",
+      "acceptance": [
+        "Paste entire value",
+        "IME/autofill",
+        "Arrow/backspace",
+        "Field error linkage"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "kind": "component",
+      "exports": [
+        "Item"
+      ],
+      "variants": [
+        "md",
+        "sm",
+        "lead/media",
+        "badge/meta",
+        "description/error/body",
+        "unread",
+        "resolved",
+        "actions end/below",
+        "truncate/wrap"
+      ],
+      "behavior": "Box-free object layout; title truncates before metadata; main text floor160px; actions move below or remain below across states; List owns current/selected and row behavior",
+      "acceptance": [
+        "320px slots no overlap",
+        "Badge/meta stay first line",
+        "sm one line",
+        "Unread announced",
+        "Current differs selection",
+        "Actions click independent"
+      ]
+    },
+    {
+      "id": "json",
+      "name": "Json",
+      "kind": "component",
+      "exports": [
+        "Json"
+      ],
+      "variants": [
+        "bare",
+        "CodeBlock",
+        "depth2/default",
+        "expanded/collapsed",
+        "wrap/scroll",
+        "invalid string fallback",
+        "redacted"
+      ],
+      "behavior": "Pretty JSON expandable nodes with counts, guide16px and AnimatedCollapse; recursively redact matched scalar/object/array before rendering or copy; invalid JSON plain code may not bypass requested redaction",
+      "acceptance": [
+        "Object/array/string redaction",
+        "Malformed input with redact fails closed",
+        "Keyboard toggles expanded state",
+        "No raw value in title/a11y/copy",
+        "Large/deep payload bounded"
+      ]
+    },
+    {
+      "id": "kbd",
+      "name": "Kbd",
+      "kind": "component",
+      "exports": [
+        "Kbd"
+      ],
+      "variants": [
+        "sm/md",
+        "platform auto/mac/other",
+        "single/combo",
+        "sequence",
+        "on-ink tooltip"
+      ],
+      "behavior": "mod glyph follows platform; one cap per key; sequences named then; screen readers hear key names; actual app bindings only",
+      "acceptance": [
+        "Mac/nonMac rendering",
+        "Symbols not read as noise",
+        "Sequence order",
+        "No empty caps for plus key"
+      ]
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "native label",
+        "disabled sibling"
+      ],
+      "behavior": "Radix label associates exact native control id; Field remains preferred composed contract",
+      "acceptance": [
+        "Click label focuses control",
+        "Unique ids",
+        "Accessible name exact"
+      ]
+    },
+    {
+      "id": "list",
+      "name": "List",
+      "kind": "component",
+      "exports": [
+        "List",
+        "ListSection",
+        "ItemGroup"
+      ],
+      "variants": [
+        "framed/plain/bare",
+        "md/sm",
+        "static/link/button rows",
+        "multiple selection",
+        "current",
+        "disabled/unselectable",
+        "resolved",
+        "sections",
+        "loading/empty/footer"
+      ],
+      "behavior": "List owns row behavior; title stretched target excludes controls; link click opens and checkbox selects; static selected row toggles; select all excludes ineligible; arrows/Home/End skip disabled while Tab reaches actions",
+      "acceptance": [
+        "Selection/current independent",
+        "No nested interactive elements",
+        "Loading retains existing rows",
+        "Empty only no rows",
+        "Locked selection skip",
+        "Keyboard targets survive updates"
+      ]
+    },
+    {
+      "id": "menubar",
+      "name": "Menubar",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "menu",
+        "submenu",
+        "checkbox/radio",
+        "shortcut",
+        "disabled/danger"
+      ],
+      "behavior": "Radix desktop application menubar navigation and focus transfer; no global shortcut binding implied",
+      "acceptance": [
+        "Left/right switches menus",
+        "Up/down navigates",
+        "Escape return",
+        "Checks announced"
+      ]
+    },
+    {
+      "id": "middle-truncate",
+      "name": "MiddleTruncate",
+      "kind": "component",
+      "exports": [
+        "MiddleTruncate"
+      ],
+      "variants": [
+        "balanced",
+        "keepEnd",
+        "mono",
+        "title/no title",
+        "resizing",
+        "font load"
+      ],
+      "behavior": "Binary-fit text preserving suffix; remeasure on width/font change; full text for screen reader and copy; no secret values",
+      "acceptance": [
+        "Resize/font refit",
+        "Copy exact full text",
+        "No tooltip while uncut",
+        "Narrow floor still preserves meaningful ends",
+        "SSR/hydration stable"
+      ]
+    },
+    {
+      "id": "multi-select",
+      "name": "MultiSelect",
+      "kind": "component",
+      "exports": [
+        "MultiSelect"
+      ],
+      "variants": [
+        "multiple/single",
+        "default/custom/renderValue trigger",
+        "quick all/none",
+        "searchable",
+        "sm/md",
+        "invalid/disabled",
+        "open controlled"
+      ],
+      "behavior": "Button listbox, immediate picks; single closes; multi remains open; UpDown/HomeEnd/typeahead and SpaceEnter; modA toggles all eligible; disabled options unchanged; stable option order and polite count. Defaults to sm32, with explicit md36.",
+      "acceptance": [
+        "Value type matches mode",
+        "Disabled selected survives all/none",
+        "Escape restores trigger",
+        "Tab closes without trap",
+        "Custom trigger retains handler/ref",
+        "Duplicate values rejected at boundary"
+      ]
+    },
+    {
+      "id": "navigation-menu",
+      "name": "NavigationMenu",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "with/without viewport",
+        "trigger/content/link",
+        "active"
+      ],
+      "behavior": "Radix navigation landmark and menu/link distinction; pointer/focus panels; no application route migration",
+      "acceptance": [
+        "Keyboard panel navigation",
+        "Current link announced",
+        "Open panel collision",
+        "No hover-only destination"
+      ]
+    },
+    {
+      "id": "pagination",
+      "name": "Pagination",
+      "kind": "component",
+      "exports": [
+        "Pagination"
+      ],
+      "variants": [
+        "numbered",
+        "compact",
+        "more",
+        "page-size"
+      ],
+      "behavior": "Total/range left, controls right; numbered gaps, ink current square; compact PageNofM; load-more live count; controlled/default page",
+      "acceptance": [
+        "0/1 page boundaries",
+        "Last page range",
+        "Page-size resets/clamps per owner policy",
+        "Current aria-current",
+        "Disabled nav inert"
+      ]
+    },
+    {
+      "id": "popover",
+      "name": "Popover",
+      "kind": "component",
+      "exports": [
+        "Popover"
+      ],
+      "variants": [
+        "controlled/uncontrolled",
+        "top/bottom",
+        "align",
+        "open/closed",
+        "render-child-close"
+      ],
+      "behavior": "Small task with own Save; Escape/outside closes without save; focus restored; collision-aware and scoped portal; discard semantics owner-controlled",
+      "acceptance": [
+        "Close does not submit",
+        "Nested popup click stays open",
+        "Escape closes top layer",
+        "Constrained viewport placement",
+        "Dirty draft policy documented"
+      ]
+    },
+    {
+      "id": "progress",
+      "name": "Progress",
+      "kind": "component",
+      "exports": [
+        "Progress",
+        "ProgressSteps"
+      ],
+      "variants": [
+        "determinate",
+        "indeterminate",
+        "ink/warn/bad/auto",
+        "ProgressSteps"
+      ],
+      "behavior": "Real counts preferred;6px track; auto warn80%,bad100%; over-limit text; known current sequence uses hatched steps",
+      "acceptance": [
+        "0/max/over bounds",
+        "ARIA now/max only when known",
+        "Threshold text accompanies color",
+        "Reduced motion determinate-static"
+      ]
+    },
+    {
+      "id": "radio-group",
+      "name": "RadioGroup",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "controlled/default",
+        "orientation",
+        "disabled",
+        "invalid"
+      ],
+      "behavior": "Radix mutually exclusive selection and native form semantics",
+      "acceptance": [
+        "Arrows select by orientation",
+        "One tab stop",
+        "Required submit",
+        "Disabled skipped"
+      ]
+    },
+    {
+      "id": "resizable",
+      "name": "Resizable",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "horizontal/vertical",
+        "withHandle",
+        "collapsed/min/max panels"
+      ],
+      "behavior": "react-resizable-panels typed v4Group/Panel/Separator API; pointer/keyboard resize and bounds",
+      "acceptance": [
+        "Arrow resize",
+        "Min/max and collapse",
+        "Focus visible",
+        "aria-valuenow",
+        "min",
+        "max"
+      ]
+    },
+    {
+      "id": "scroll-area",
+      "name": "ScrollArea",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "vertical/horizontal",
+        "scrollbar/thumb/corner"
+      ],
+      "behavior": "Radix scrolling content without concealing keyboard focus; no duplicated scroll containers",
+      "acceptance": [
+        "Keyboard scroll",
+        "Scrollbar drag",
+        "Nested wheel releases at edge",
+        "Focus not clipped"
+      ]
+    },
+    {
+      "id": "select",
+      "name": "Select",
+      "kind": "component",
+      "exports": [
+        "Select"
+      ],
+      "variants": [
+        "placeholder",
+        "chosen",
+        "grouped/disabled options",
+        "sm/default/md/lg",
+        "invalid/disabled",
+        "open"
+      ],
+      "behavior": "Short one-value list; keyboard listbox and chosen check; updown trigger; group headings; options retain separate label/description/check lanes; default/sm32 aliases, md36 and lg40",
+      "acceptance": [
+        "Controlled/default value",
+        "Disabled option skipped",
+        "Typeahead",
+        "Escape restore",
+        "Field label error wiring",
+        "Open inside scrolling modal"
+      ]
+    },
+    {
+      "id": "sensitive-editor",
+      "name": "SensitiveEditor",
+      "kind": "specialist-component",
+      "exports": [],
+      "variants": [
+        "masked",
+        "revealed",
+        "read-only",
+        "editing single/multiline",
+        "pending fetch/reveal/copy",
+        "denied/error",
+        "invalid",
+        "pending save",
+        "save failed",
+        "cancelled/unmounted"
+      ],
+      "behavior": "SensitiveEditor defers value retrieval; SecretInput displays plaintext already held by the host. Owner controls permission, fetch and persistence; foundation owns explicit reveal/copy intent, scoped plaintext lifetime, editing/focus and status. No plaintext in DOM, title, aria, diagnostics, fixture files or generic grid clipboard before explicit permitted reveal. Preserve bytes including whitespace/newlines; Escape cancels; async failure retains draft only under current authorized editor lifetime. No authorization claims from masking. CopyButton supports size sm/md/lg host32/36/40 to action24/28/32, defaultsm, and iconOnly defaultfalse with a retained accessible label.",
+      "acceptance": [
+        "Initial masked DOM/a11y/title contains no plaintext",
+        "Reveal only after explicit authorized owner success",
+        "Copy denied/rejected gives no success",
+        "Remask on close/replacement/permission loss/unmount",
+        "Race result cannot reveal a different secret",
+        "Cancel restores exact original",
+        "Multiline whitespace and large value preserved",
+        "Grid selection/copy cannot bypass sensitive-cell policy",
+        "Only fabricated fixture values"
+      ]
+    },
+    {
+      "id": "separator",
+      "name": "Separator",
+      "kind": "component",
+      "exports": [
+        "Separator"
+      ],
+      "variants": [
+        "horizontal/vertical",
+        "soft",
+        "label start/center"
+      ],
+      "behavior": "1px rule or labelled time break; semantic orientation unless decorative; do not double header border",
+      "acceptance": [
+        "Decorative hidden",
+        "Vertical orientation correct",
+        "Label not announced twice"
+      ]
+    },
+    {
+      "id": "sheet",
+      "name": "Sheet",
+      "kind": "component",
+      "exports": [
+        "Sheet",
+        "SheetBody"
+      ],
+      "variants": [
+        "open/closed",
+        "mono title",
+        "meta/actions",
+        "long body/footer"
+      ],
+      "behavior": "440px right detail/edit overlay; list remains visible; own scrolling body; danger entry left/safe+save right; trap/restore and named dialog. SheetBody forwards native div props/ref and owns the shared inset and bounded scroll region; arbitrary Content children remain supported.",
+      "acceptance": [
+        "Footer visible long body",
+        "Nested popup scope",
+        "Escape/backdrop owner policy",
+        "Focus safe on row removal",
+        "Narrow viewport no horizontal clip"
+      ]
+    },
+    {
+      "id": "skeleton",
+      "name": "Skeleton",
+      "kind": "component",
+      "exports": [
+        "Skeleton"
+      ],
+      "variants": [
+        "block",
+        "lines",
+        "item/table composition",
+        "reduced motion"
+      ],
+      "behavior": "Reserve known layout with soft pulse; hide skeleton itself, label busy region; delay about300ms",
+      "acceptance": [
+        "Dimensions match real layout",
+        "aria-hidden skeleton",
+        "Busy region announced once",
+        "Reduced motion no pulse"
+      ]
+    },
+    {
+      "id": "slider",
+      "name": "Slider",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "single/range thumbs",
+        "horizontal/vertical",
+        "disabled",
+        "step/min/max"
+      ],
+      "behavior": "Radix slider with labelled individual thumbs, value constraints, keyboard increment and page/HomeEnd",
+      "acceptance": [
+        "Two thumbs cannot cross",
+        "Step precision",
+        "Arrow/HomeEnd",
+        "Value names"
+      ]
+    },
+    {
+      "id": "snippet",
+      "name": "Snippet",
+      "kind": "component",
+      "exports": [
+        "Snippet"
+      ],
+      "variants": [
+        "prompt/no prompt",
+        "sm/md",
+        "copy/no copy",
+        "long value",
+        "Field-labelled"
+      ],
+      "behavior": "Read-only one-line mono field; prompt excluded copy; ellipsis unfocused, caret scroll focused; clipboard success only after resolved write; no secret values. Defaultsm32 and explicit md36 with 24/28 nested copy actions.",
+      "acceptance": [
+        "Exact copy excluding prompt",
+        "Clipboard deny error",
+        "Native readonly caret/ref",
+        "Long value focus scroll",
+        "Field id/describedby"
+      ]
+    },
+    {
+      "id": "spinner",
+      "name": "Spinner",
+      "kind": "component",
+      "exports": [
+        "Spinner"
+      ],
+      "variants": [
+        "inline16x8",
+        "base47x23",
+        "page159x79",
+        "label/no label",
+        "delay",
+        "reduced motion"
+      ],
+      "behavior": "Infinity pixel mark, currentColor inline and mark base/page; two pixels1.2s,mark1.6/2.4s; page assembles once; label adds visible text in one polite status; page may add a description; delay holds the indicator back",
+      "acceptance": [
+        "One status announcement, none from a decorative mark",
+        "Reduced motion full mark/two equal pixels",
+        "No restart assembly on re-render",
+        "No status hue override",
+        "Delay cancels on unmount"
+      ]
+    },
+    {
+      "id": "switch",
+      "name": "Switch",
+      "kind": "component",
+      "exports": [
+        "Switch"
+      ],
+      "variants": [
+        "off/on",
+        "sm/md",
+        "inline/row",
+        "description",
+        "disabled"
+      ],
+      "behavior": "Instant setting, not submit checkbox; on ink track/lime knob light, lime track/black knob dark; native/Radix switch semantics; no Save with instant switch",
+      "acceptance": [
+        "Space toggles",
+        "Label/checked announced",
+        "Disabled inert",
+        "Async owner pending/failure recovery retains state"
+      ]
+    },
+    {
+      "id": "table",
+      "name": "Table",
+      "kind": "component",
+      "exports": [
+        "Table",
+        "EnvMark"
+      ],
+      "variants": [
+        "basic/striped/bordered",
+        "sizing/overflow",
+        "sorting",
+        "row selection",
+        "empty",
+        "pinned actions",
+        "fixed viewport",
+        "virtual",
+        "load more"
+      ],
+      "behavior": "Semantic table of objects, not grid; fit columns min64, capped values recoverable; one growing track;48px rows; actions last32px pinned; stable row ids; controlled sorting/selection; virtual fixed columns; append loading and counts. rowHeight defaults to a requested48 minimum; observed enlarged content raises one uniform effective row/slice/spacer metric.",
+      "acceptance": [
+        "Select all scope explicit",
+        "Actions separate row target",
+        "Horizontal scroll preserves pinned actions",
+        "Sort aria and focus",
+        "Virtual count/index valid",
+        "10k rows DOM bounded",
+        "Loading preserves rows",
+        "Empty recoverable"
+      ]
+    },
+    {
+      "id": "tabs",
+      "name": "Tabs",
+      "kind": "component",
+      "exports": [
+        "Tabs"
+      ],
+      "variants": [
+        "underline/segmented",
+        "horizontal/vertical",
+        "counts",
+        "controlled/default",
+        "overflow"
+      ],
+      "behavior": "One sliding indicator200ms; reserve selected label width; firstpaint/resize/fontload/reducedmotion jump; edge fades only hiding tabs; wheel scroll releases at edge; automatic panels follow arrow focus",
+      "acceptance": [
+        "Arrow orientation/HomeEnd",
+        "Tab/panel ids",
+        "Disabled optional extension",
+        "Overflow selected fully visible",
+        "No layout shift600weight",
+        "Reduced motion immediate"
+      ]
+    },
+    {
+      "id": "textarea",
+      "name": "Textarea",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "native",
+        "disabled",
+        "invalid",
+        "readonly",
+        "resize"
+      ],
+      "behavior": "Native multiline control with Field wiring and correct textarea ref, separate from Input shortcut",
+      "acceptance": [
+        "Newline exact",
+        "Native attrs/ref",
+        "Readonly selectable",
+        "Resize cannot cover footer"
+      ]
+    },
+    {
+      "id": "toast",
+      "name": "Toast",
+      "kind": "component",
+      "exports": [
+        "Toast",
+        "ToastStack"
+      ],
+      "variants": [
+        "neutral/ok/bad",
+        "loading",
+        "Undo/Retry action",
+        "dismiss",
+        "duration",
+        "ToastStack fixed/inline"
+      ],
+      "behavior": "Bottom-right newest bottom; theme toast colors; loading no dismiss; errors persist; success about5sec; action accent-fg not yellow text light; polite/alert semantics",
+      "acceptance": [
+        "No error auto-dismiss",
+        "Pause dismissal on hover/focus",
+        "Undo keyboard",
+        "Stack announces once",
+        "Loading changes status without losing action"
+      ]
+    },
+    {
+      "id": "toggle",
+      "name": "Toggle",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "default/outline",
+        "sm/default/md/lg",
+        "pressed",
+        "disabled"
+      ],
+      "behavior": "Radix toggle is aria-pressed action, not Tabs or Checkbox replacement. Default/sm32 aliases, md36 and lg40.",
+      "acceptance": [
+        "Space/Enter",
+        "Controlled pressed",
+        "Native button type",
+        "Disabled inert"
+      ]
+    },
+    {
+      "id": "toggle-group",
+      "name": "ToggleGroup",
+      "kind": "component",
+      "exports": [],
+      "variants": [
+        "single/multiple",
+        "default/outline",
+        "sm/default/md/lg",
+        "orientation",
+        "disabled"
+      ],
+      "behavior": "Radix pressed-choice group semantics; use Tabs for peer panels. Shared Toggle size API supports default/sm32 aliases, md36 and lg40.",
+      "acceptance": [
+        "Single string/multiple array types",
+        "Roving arrows",
+        "Pressed announced",
+        "Disabled skipped"
+      ]
+    },
+    {
+      "id": "tooltip",
+      "name": "Tooltip",
+      "kind": "component",
+      "exports": [
+        "Tooltip"
+      ],
+      "variants": [
+        "top/bottom/left/right",
+        "wrap",
+        "shortcut",
+        "hover/focus",
+        "delay"
+      ],
+      "behavior": "Hover300ms/focus immediate; noninteractive label; portal avoids clipping and flips; one focusable child; disabled reason outside disabled trigger",
+      "acceptance": [
+        "Focus shows/Escape hides",
+        "Overflow collision",
+        "No duplicate accessible name",
+        "Tooltip never sole essential copy",
+        "Shortcut names readable"
+      ]
+    }
+  ],
+  "aliases": {
+    "command": "command-menu",
+    "empty": "empty-state",
+    "sonner": "toast"
+  },
+  "baselineRegistryItems": [
+    "infisical-base",
+    "accordion",
+    "alert",
+    "alert-dialog",
+    "aspect-ratio",
+    "avatar",
+    "badge",
+    "breadcrumb",
+    "button",
+    "button-group",
+    "calendar",
+    "card",
+    "carousel",
+    "chart",
+    "checkbox",
+    "collapsible",
+    "combobox",
+    "command",
+    "context-menu",
+    "dialog",
+    "drawer",
+    "dropdown-menu",
+    "empty",
+    "field",
+    "hover-card",
+    "input",
+    "input-group",
+    "input-otp",
+    "item",
+    "kbd",
+    "label",
+    "menubar",
+    "navigation-menu",
+    "pagination",
+    "popover",
+    "progress",
+    "radio-group",
+    "resizable",
+    "scroll-area",
+    "select",
+    "separator",
+    "sheet",
+    "skeleton",
+    "slider",
+    "sonner",
+    "spinner",
+    "switch",
+    "table",
+    "tabs",
+    "textarea",
+    "toggle",
+    "toggle-group",
+    "tooltip"
+  ]
+}

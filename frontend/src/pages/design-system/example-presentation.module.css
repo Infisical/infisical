@@ -1,0 +1,111 @@
+.frame {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v4-space-24);
+  min-width: 0;
+  border: 1px solid var(--v4-line-soft);
+  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  background: var(--v4-surface);
+  padding: var(--v4-space-24);
+}
+.grid {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  align-items: stretch;
+  justify-items: stretch;
+  gap: var(--v4-space-32) var(--v4-space-24);
+}
+.grid[data-width="compact"] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+}
+.grid[data-width="wide"] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+}
+.grid[data-width="full"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.stack {
+  align-items: flex-start;
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--v4-space-24);
+}
+.cell {
+  width: 100%;
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  flex-direction: column;
+  gap: var(--v4-space-8);
+}
+.grid > .cell {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  row-gap: var(--v4-space-8);
+}
+.specimen {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--v4-space-12);
+}
+.grid > .cell > .specimen {
+  align-self: end;
+}
+.caption {
+  flex: none;
+  color: var(--v4-muted);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+}
+.grid > .cell > .caption {
+  align-self: start;
+}
+.stage {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  overflow: auto;
+}
+.stage[data-height="shell"] {
+  height: 360px;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+.stage[data-height="data"] {
+  max-height: 400px;
+}
+@media (max-width: 639px) {
+  .frame {
+    padding: var(--v4-space-16);
+  }
+  .grid {
+    gap: var(--v4-space-24) var(--v4-space-16);
+  }
+}
+
+.grid[data-width="field"] > .cell > .specimen,
+.cell[data-align="stretch"] > .specimen {
+  align-items: stretch;
+}
+.stage[data-height="compact"],
+.stage[data-height="medium"] {
+  isolation: isolate;
+  transform: translateZ(0);
+}
+.stage[data-height="compact"] {
+  height: 160px;
+}
+.stage[data-height="medium"] {
+  height: 240px;
+}

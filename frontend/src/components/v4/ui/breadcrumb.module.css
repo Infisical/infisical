@@ -1,0 +1,114 @@
+.root {
+  container-type: inline-size;
+  width: 100%;
+  min-width: 0;
+}
+.trail {
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--v4-text2);
+}
+.entry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+  min-width: 0;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-6);
+  min-width: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  font: inherit;
+}
+.link:hover {
+  color: var(--v4-ink);
+}
+.link:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
+}
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.current {
+  color: var(--v4-ink);
+  font-weight: 600;
+}
+.mono {
+  font-family: var(--v4-font-mono);
+}
+.separator {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--v4-faint);
+}
+.static {
+  cursor: default;
+}
+.static:hover {
+  color: inherit;
+  background: transparent;
+}
+.media {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-space-20);
+  height: var(--v4-space-20);
+}
+
+.product {
+  flex-wrap: nowrap;
+}
+.product .entry {
+  flex: 0 1 auto;
+}
+.product .link {
+  min-height: var(--v4-size-control-sm);
+  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  padding-inline: var(--v4-space-6);
+}
+.product .separator {
+  margin-inline: calc(-1 * var(--v4-space-6));
+}
+.product .link:hover {
+  background: var(--v4-tint);
+}
+.product .label {
+  max-width: 240px;
+}
+.product > .entry:first-child > .link {
+  margin-inline-start: calc(-1 * var(--v4-space-6));
+}
+
+@container (max-width: 420px) {
+  .trail {
+    gap: var(--v4-space-4);
+  }
+  .entry {
+    gap: var(--v4-space-4);
+  }
+  .product .label {
+    max-width: 100px;
+  }
+}

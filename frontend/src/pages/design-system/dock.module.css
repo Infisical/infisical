@@ -1,0 +1,27 @@
+.dock {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-2);
+  padding: var(--v4-space-4);
+  background: var(--v4-tint);
+  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  box-shadow: var(--v4-shadow-pop);
+  pointer-events: auto;
+}
+.divider {
+  flex: none;
+  align-self: stretch;
+  width: var(--v4-size-control-border);
+  margin: var(--v4-space-6) var(--v4-space-2);
+  background: var(--v4-line);
+}
+.segment.segment.segment {
+  border-color: transparent;
+  background-color: transparent;
+}
+@media (hover: hover) {
+  .segment.segment.segment:hover {
+    background-color: var(--v4-segment-hover);
+    color: var(--v4-ink);
+  }
+}
