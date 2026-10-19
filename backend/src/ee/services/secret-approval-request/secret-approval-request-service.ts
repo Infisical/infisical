@@ -14,7 +14,7 @@ import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy, pick, unique } from "@app/lib/fn";
+import { groupBy, groupByUnique, pick, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -316,21 +316,9 @@ export const secretApprovalRequestServiceFactory = ({
     // Otherwise, filter to only show requests where they are committer or approver
     const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
 
-    const withFolderPaths = async <T extends { folderId: string }>(page: { approvals: T[]; totalCount: number }) => {
-      const folderIds = [...new Set(page.approvals.map(({ folderId }) => folderId))];
-      const folders = folderIds.length ? await folderDAL.findSecretPathByFolderIds(projectId, folderIds) : [];
-      const pathByFolderId = new Map(folderIds.map((folderId, i) => [folderId, folders[i]?.path ?? "/"]));
-      return {
-        ...page,
-        approvals: page.approvals.map((approval) => ({
-          ...approval,
-          secretPath: pathByFolderId.get(approval.folderId) ?? "/"
-        }))
-      };
-    };
-
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
+    let page;
     if (shouldUseSecretV2Bridge) {
       // Policies on the global approval system only exist on upgraded projects, so only this branch has
       // requests on both systems. Each is asked for the head of the list up to the requested page.
@@ -351,19 +339,15 @@ export const secretApprovalRequestServiceFactory = ({
         secretChangeGlobalRequestBridgeService.listSecretChangeRequests(headOfList)
       ]);
       type TListedRequest = (typeof legacyRequests)["approvals"][number] | TSecretChangeRequestListItem;
-      return withFolderPaths(
-        mergeSecretApprovalRequestPages<TListedRequest>({
-          pages: [legacyRequests, secretChangeRequests],
-          offset,
-          limit,
-          orderBy,
-          orderDirection
-        })
-      );
-    }
-
-    return withFolderPaths(
-      await secretApprovalRequestDAL.findByProjectId({
+      page = mergeSecretApprovalRequestPages<TListedRequest>({
+        pages: [legacyRequests, secretChangeRequests],
+        offset,
+        limit,
+        orderBy,
+        orderDirection
+      });
+    } else {
+      page = await secretApprovalRequestDAL.findByProjectId({
         projectId,
         committer,
         environment,
@@ -374,8 +358,23 @@ export const secretApprovalRequestServiceFactory = ({
         search,
         orderBy,
         orderDirection
-      })
+      });
+    }
+
+    const folderIds = unique(page.approvals.map((el) => el.folderId));
+    const folders = folderIds.length ? await folderDAL.findSecretPathByFolderIds(projectId, folderIds) : [];
+    const folderById = groupByUnique(
+      folders.filter((el) => el !== undefined),
+      (el) => el.id
     );
+
+    return {
+      ...page,
+      approvals: page.approvals.map((el) => ({
+        ...el,
+        secretPath: folderById[el.folderId]?.path ?? "/"
+      }))
+    };
   };
 
   const getSecretApprovalDetails = async (dto: TSecretApprovalDetailsDTO) => {
