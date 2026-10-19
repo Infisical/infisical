@@ -959,10 +959,10 @@ export const INSIGHTS = {
       "The number of further entries with less unused access that are not listed, counted across the whole project before the caller's permissions are applied. Zero unless the project has more than 1,000.",
     trackingStartedAt:
       "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
-    unusedAccessFrom:
-      "When access can first be listed as unused: 30 days after tracking started. Until then the list is empty.",
+    preliminaryUntil:
+      "When the results first cover the full 30 days. Until then they are preliminary: they cover only the reads since tracking started, and the access that existed when it started.",
     unusedAccess:
-      "One entry for each secret and user or machine identity that can read the secret's value but has not read it, or an import or reference of it, in the last 30 days. Secrets and access newer than 30 days are left out.",
+      "One entry for each secret and user or machine identity, other than project admins, that can read the secret's value but has not read it, or an import or reference of it, in the last 30 days. Secrets and access newer than 30 days are left out.",
     secretKey: "The key of the secret.",
     environment: "The slug of the environment the secret is in.",
     secretPath: "The path of the folder the secret is in.",

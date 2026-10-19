@@ -2,7 +2,7 @@ import { Knex } from "knex";
 import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 
@@ -178,7 +178,50 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Users and identities that hold the project Admin role now, directly or through a group. A temporary role counts
+  // until it expires.
+  const findAdminActorIds = async (projectId: string, tx?: Knex) => {
+    try {
+      const adminMemberships = (qb: Knex.QueryBuilder) =>
+        qb
+          .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeProjectId`, projectId)
+          .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+          .where((roleQb) => {
+            void roleQb
+              .where(`${TableName.MembershipRole}.isTemporary`, false)
+              .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+          });
+
+      const [directAdmins, groupAdmins] = (await Promise.all([
+        adminMemberships((tx || db.replicaNode())(TableName.Membership)).select(
+          db.ref("actorUserId").withSchema(TableName.Membership),
+          db.ref("actorIdentityId").withSchema(TableName.Membership)
+        ),
+        adminMemberships(
+          (tx || db.replicaNode())(TableName.Membership).join(
+            TableName.UserGroupMembership,
+            `${TableName.Membership}.actorGroupId`,
+            `${TableName.UserGroupMembership}.groupId`
+          )
+        ).select(db.ref("userId").withSchema(TableName.UserGroupMembership))
+      ])) as [{ actorUserId: string | null; actorIdentityId: string | null }[], { userId: string }[]];
+
+      return new Set([
+        ...directAdmins.flatMap(({ actorUserId, actorIdentityId }) => {
+          const actorId = actorUserId ?? actorIdentityId;
+          return actorId ? [actorId] : [];
+        }),
+        ...groupAdmins.map(({ userId }) => userId)
+      ]);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project admins" });
+    }
+  };
+
   return {
+    findAdminActorIds,
     upsertLastReads,
     findLastReads,
     createMonthlyPartitions,

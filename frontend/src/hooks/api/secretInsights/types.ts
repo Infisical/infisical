@@ -81,7 +81,7 @@ export type TGetUnusedSecretAccessResponse = {
   totalCount: number;
   unlistedCount: number;
   trackingStartedAt: string;
-  unusedAccessFrom: string;
+  preliminaryUntil: string;
   remainingTtl: number;
 };
 

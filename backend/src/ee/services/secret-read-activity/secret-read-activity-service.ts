@@ -60,7 +60,7 @@ type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
-    "findLastReads" | "findTrackingStartedAt" | "findAccessChangedAt"
+    "findLastReads" | "findTrackingStartedAt" | "findAccessChangedAt" | "findAdminActorIds"
   >;
   secretReadActivityQueue: Pick<TSecretReadActivityQueueServiceFactory, "recordRead" | "recordBulkRead">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
@@ -86,13 +86,13 @@ export const secretReadActivityServiceFactory = ({
   kmsService,
   keyStore
 }: TSecretReadActivityServiceFactoryDep) => {
-  let trackingStartedAt: Promise<Date | undefined> | undefined;
+  let instanceTrackingStartedAt: Promise<Date | undefined> | undefined;
   const $getTrackingStartedAt = () => {
-    trackingStartedAt ??= secretReadActivityDAL.findTrackingStartedAt().catch((error) => {
-      trackingStartedAt = undefined;
+    instanceTrackingStartedAt ??= secretReadActivityDAL.findTrackingStartedAt().catch((error) => {
+      instanceTrackingStartedAt = undefined;
       throw error;
     });
-    return trackingStartedAt;
+    return instanceTrackingStartedAt;
   };
 
   const $getReadActivity = async ({
@@ -287,22 +287,41 @@ export const secretReadActivityServiceFactory = ({
     return { trackedSince: activity.trackedSince, reads: [...activity.reads.values()] };
   };
 
-  // Everyone who can read a secret's value but has not read it in the whole window, ranked by the secrets with the
-  // most of them.
+  // Reads are known from the later of when tracking began on the instance and when the project was created.
+  const $getProjectTrackingStartedAt = async (projectId: string) => {
+    const [instanceStartedAt, project] = await Promise.all([$getTrackingStartedAt(), projectDAL.findById(projectId)]);
+    return {
+      project,
+      trackingStartedAt: new Date(Math.max(instanceStartedAt?.getTime() ?? 0, project?.createdAt.getTime() ?? 0))
+    };
+  };
+
+  // Everyone except admins who can read a secret's value but has not read it in the window, ranked by the secrets
+  // with the most of them. Admins can read everything by design, so listing them would only add noise. In a project
+  // tracked for less than the window, the window starts when tracking did, so the results are preliminary.
   const $computeUnusedSecretAccess = async (projectId: string, orgId: string) => {
     const windowStart = getReadActivityWindowStart();
-    const [activities, { userPermissions, identityPermissions }, accessChangedAtByActorId] = await Promise.all([
+    const [
+      activities,
+      { userPermissions, identityPermissions },
+      accessChangedAtByActorId,
+      adminActorIds,
+      { trackingStartedAt }
+    ] = await Promise.all([
       $getReadActivity({ projectId, windowStart }),
       permissionService.getProjectPermissions(projectId, orgId),
-      secretReadActivityDAL.findAccessChangedAt(projectId)
+      secretReadActivityDAL.findAccessChangedAt(projectId),
+      secretReadActivityDAL.findAdminActorIds(projectId),
+      $getProjectTrackingStartedAt(projectId)
     ]);
+    const judgedFrom = trackingStartedAt > windowStart ? trackingStartedAt : windowStart;
     // Actors with identical rules always get the same answer, so each distinct rule set is checked once.
     const actorGroups = Object.values(
       groupBy(
         [
           ...userPermissions.map((actor) => ({ ...actor, actorType: ActorType.USER as const })),
           ...identityPermissions.map((actor) => ({ ...actor, actorType: ActorType.IDENTITY as const }))
-        ],
+        ].filter((actor) => !adminActorIds.has(actor.id)),
         (actor) => JSON.stringify(actor.permission.rules)
       )
     );
@@ -321,7 +340,7 @@ export const secretReadActivityServiceFactory = ({
         .filter(
           (actor) =>
             !reads.has(`${actor.actorType}:${actor.id}`) &&
-            coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), windowStart)
+            coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), judgedFrom)
         );
 
     // Only counts are kept for every secret: a large project can have millions of unread pairs, and only the
@@ -399,10 +418,9 @@ export const secretReadActivityServiceFactory = ({
       ttlSeconds: UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS,
       fetcher: () => $computeUnusedSecretAccessShared(projectId, actor.orgId, cacheKey)
     });
-    const [remainingTTL, instanceTrackingStartedAt, project, tree, currentSecrets] = await Promise.all([
+    const [remainingTTL, { project, trackingStartedAt }, tree, currentSecrets] = await Promise.all([
       getCacheTtl(keyStore, cacheKey),
-      $getTrackingStartedAt(),
-      projectDAL.findById(projectId),
+      $getProjectTrackingStartedAt(projectId),
       loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId),
       rows.length
         ? secretV2BridgeDAL.find({
@@ -410,12 +428,6 @@ export const secretReadActivityServiceFactory = ({
           })
         : []
     ]);
-    // Reads are known from the later of when tracking began and when the project was created, and nothing can be
-    // called unused until a whole window has passed since then.
-    const projectTrackingStartedAt = new Date(
-      Math.max(instanceTrackingStartedAt?.getTime() ?? 0, project?.createdAt.getTime() ?? 0)
-    );
-
     // The cache is shared by everyone in the project and can be a day old, so each row is checked against the
     // secret as it is now: deleted secrets drop out, and a caller only gets the secrets they could see anyway.
     const currentSecretById = new Map(currentSecrets.map((secret) => [secret.id, secret]));
@@ -449,8 +461,8 @@ export const secretReadActivityServiceFactory = ({
       totalCount: visibleRows.length,
       unlistedCount: totalCount - rows.length,
       projectName: project?.name ?? "",
-      trackingStartedAt: projectTrackingStartedAt,
-      unusedAccessFrom: new Date(projectTrackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS),
+      trackingStartedAt,
+      preliminaryUntil: new Date(trackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS),
       remainingTTL
     };
   };

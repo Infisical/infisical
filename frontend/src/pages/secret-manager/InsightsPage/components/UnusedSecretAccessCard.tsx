@@ -1,10 +1,20 @@
 import { useParams } from "@tanstack/react-router";
 import axios from "axios";
 import { format } from "date-fns";
-import { ChevronDownIcon, FolderIcon, HardDriveIcon, KeyIcon, UserIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  FolderIcon,
+  HardDriveIcon,
+  InfoIcon,
+  KeyIcon,
+  UserIcon
+} from "lucide-react";
 
 import { GoToSecretButton } from "@app/components/secrets/GoToSecretButton";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Card,
   CardContent,
@@ -111,37 +121,42 @@ export const UnusedSecretAccessCard = () => {
       );
     }
 
-    if (new Date(data.unusedAccessFrom) > new Date()) {
-      return (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>Tracking reads</EmptyTitle>
-            <EmptyDescription>
-              Reads have been tracked since {format(new Date(data.trackingStartedAt), "PP")}. Access
-              that goes unread for 30 days shows here from{" "}
-              {format(new Date(data.unusedAccessFrom), "PP")}.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      );
-    }
+    const isPreliminary = new Date(data.preliminaryUntil) > new Date();
+    const preliminaryNotice = isPreliminary && (
+      <Alert variant="info" className="mb-4">
+        <InfoIcon />
+        <AlertTitle>Preliminary Results</AlertTitle>
+        <AlertDescription>
+          Unused access is measured over 30 days of reads. Tracking for this project began on{" "}
+          {format(new Date(data.trackingStartedAt), "PP")}, so these results cover a shorter period
+          and will be complete on {format(new Date(data.preliminaryUntil), "PP")}.
+        </AlertDescription>
+      </Alert>
+    );
 
     if (totalCount === 0) {
       return (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>No unused access</EmptyTitle>
-            <EmptyDescription>
-              Access shows here once someone has been able to read a secret for 30 days without
-              reading it.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <>
+          {preliminaryNotice}
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>
+                {isPreliminary ? "No unused access so far" : "No unused access"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {isPreliminary
+                  ? "Everyone who could read these secrets when tracking began has read them since."
+                  : "Access shows here once someone has been able to read a secret for 30 days without reading it."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </>
       );
     }
 
     return (
       <>
+        {preliminaryNotice}
         <Table>
           <TableHeader>
             <TableRow>
@@ -239,8 +254,8 @@ export const UnusedSecretAccessCard = () => {
           )}
         </CardTitle>
         <CardDescription>
-          Users and machine identities that can read a secret but have not read it in the last 30
-          days
+          Users and machine identities, other than project admins, that can read a secret but have
+          not read it in the last 30 days
         </CardDescription>
       </CardHeader>
       <CardContent>{renderBody()}</CardContent>

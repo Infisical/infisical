@@ -476,7 +476,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getInsightsUnusedSecretAccess",
       description:
-        "List the users and machine identities that can read a secret's value but have not read it in the last 30 days",
+        "List the users and machine identities, other than project admins, that can read a secret's value but have not read it in the last 30 days",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_SECRET_ACCESS.projectId)
@@ -502,7 +502,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         totalCount,
         unlistedCount,
         trackingStartedAt,
-        unusedAccessFrom,
+        preliminaryUntil,
         remainingTTL,
         projectName
       } = await server.services.secretReadActivity.listUnusedSecretAccess({ projectId, ...req.query }, req.permission);
@@ -519,7 +519,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
 
-      return { unusedAccess, totalCount, unlistedCount, trackingStartedAt, unusedAccessFrom };
+      return { unusedAccess, totalCount, unlistedCount, trackingStartedAt, preliminaryUntil };
     }
   });
 

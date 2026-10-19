@@ -1138,14 +1138,16 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   (`UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS`), grouping actors by identical rules so each rule set is checked once
   per secret. The per-secret endpoint checks the caller's access to the secret before building its reach, which
   decrypts every secret that could reference it.
-- **The card only judges a full window.** It lists a principal who has not read a secret only once both the
-  secret (`trackedSince`) and their access have existed for the whole window, and leaves them out before that;
-  there is no separate status for it. Access age is `findAccessChangedAt`: the latest membership creation, role
-  or privilege (folder grants included) creation or edit. Which secrets a change opened up is not recorded, so
-  any change restarts the window, and a custom role's rules being edited is not seen at all. The per-secret
-  sheet shows the plain fact instead: a read, or "No reads". The card response carries `trackingStartedAt` (the
-  later of the migration that created the table and the project's creation) and `unusedAccessFrom` (a window
-  after it), so the UI can say tracking is in progress instead of showing an empty list as "no unused access".
+- **The card judges a full window, or everything since tracking began.** It leaves out project admins (users and
+  identities with the Admin role, directly or through a group, from `findAdminActorIds`): they can read everything
+  by design. Their reads are still recorded, so the access sheet's Last Read stays true for them. A pair is listed
+  once the secret (`trackedSince`) and the actor's access (`findAccessChangedAt`: the latest membership creation,
+  role or privilege creation, edit or expiry) both predate the later of the window start and the project's tracking
+  start (the later of the migration that created the table and the project's creation). So in a project tracked for
+  less than 30 days the card already lists access unread since tracking began, and the response's
+  `preliminaryUntil` tells the UI to label it preliminary. Which secrets a change opened up is not recorded, so any
+  access change restarts the window, and a custom role's rules being edited is not seen at all. The per-secret sheet
+  shows the plain fact instead: a read, or "No reads".
 
 ### Audit Log Event Classes and Settings
 
