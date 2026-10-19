@@ -22,7 +22,8 @@ const buttonBadgeVariants = cva("pointer-events-none absolute z-10", {
   variants: {
     position: {
       "top-right": "-top-3 -right-4",
-      "top-left": "-top-3 -left-2"
+      "top-left": "-top-3 -left-2",
+      "top-right-inset": "-top-3 right-4"
     }
   },
   defaultVariants: {

@@ -642,7 +642,7 @@ export const ProjectCategoryOverview = ({ showPlanBadges = true }: Props) => {
                 )}
               </CardContent>
               {isPreview && (
-                <ButtonBadge variant="warning" className="right-4">
+                <ButtonBadge variant="warning" position="top-right-inset">
                   Preview
                 </ButtonBadge>
               )}
