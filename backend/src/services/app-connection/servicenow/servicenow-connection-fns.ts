@@ -16,6 +16,17 @@ export const getServiceNowConnectionListItem = () => {
   };
 };
 
+const getRedirectHost = (error: unknown, instanceUrl: string) => {
+  const location = error instanceof AxiosError ? (error.response?.headers?.location as unknown) : undefined;
+  if (typeof location !== "string") return undefined;
+
+  try {
+    return new URL(location, instanceUrl).host;
+  } catch {
+    return undefined;
+  }
+};
+
 export const validateServiceNowConnectionCredentials = async (config: TServiceNowConnectionConfig) => {
   const { instanceUrl, username, password } = config.credentials;
 
@@ -38,12 +49,20 @@ export const validateServiceNowConnectionCredentials = async (config: TServiceNo
       `Failed to validate ServiceNow connection [instanceUrl=${sanitizeUrlForLog(instanceUrl)}] [status=${status ?? "none"}]`
     );
 
-    // ServiceNow answers an unauthenticated request with a 302 to its login page, and safeRequest
-    // does not follow redirects, so a rejected credential arrives here as a 3xx rather than a 401.
-    if (status === 401 || status === 403 || (status && status >= 300 && status < 400)) {
+    if (status === 401 || status === 403) {
       throw new BadRequestError({
         message:
           "Unable to connect to ServiceNow: verify the username and password of the integration user, and that the account is active."
+      });
+    }
+
+    // safeRequest does not follow redirects, so a moved, mistyped, or hibernating instance arrives here as a 3xx.
+    if (status && status >= 300 && status < 400) {
+      const redirectHost = getRedirectHost(error, instanceUrl);
+      throw new BadRequestError({
+        message: `Unable to connect to ServiceNow: the instance URL ${
+          redirectHost ? `redirected to '${redirectHost}'` : "returned a redirect"
+        }. Verify that the instance URL is the base URL of your ServiceNow instance, and that the instance is active and not hibernating.`
       });
     }
 

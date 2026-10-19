@@ -9,14 +9,20 @@ import {
   toVariableReference,
   VARIABLE_KEY_RE
 } from "@app/helpers/agentVaultVariables";
-import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
+import { useDebounce } from "@app/hooks";
+import {
+  useAgentVaultVariableKeyStatus,
+  useListAgentVaultVariables
+} from "@app/hooks/api/agentVault";
 
 import { useServiceVariables } from "./ServiceVariablesContext";
 
 type TOpenReference = { start: number; query: string };
 
+const SUGGESTION_LIMIT = 50;
+
 type TSuggestion =
-  | { type: "variable"; variable: TAgentVaultVariable }
+  | { type: "variable"; key: string }
   | { type: "create"; key: string; isKeyValid: boolean };
 
 export const useVariableAutocomplete = ({
@@ -27,28 +33,61 @@ export const useVariableAutocomplete = ({
   /** The whole new value, and where in it the caret belongs. */
   onInsert: (value: string, caret: number) => void;
 }) => {
-  const { variables, requestVariable } = useServiceVariables();
+  const { requestVariable } = useServiceVariables();
   const [openReference, setOpenReference] = useState<TOpenReference | null>(null);
+  const query = openReference ? normalizeVariableKey(openReference.query) : "";
+  const [debouncedQuery] = useDebounce(query, 200);
+  const isOpen = Boolean(openReference);
+
+  // Searched on the server, so the list never has to hold every variable. The last page stays up while the next
+  // loads, filtered to the new text, which a longer query only narrows.
+  const { data, isPlaceholderData } = useListAgentVaultVariables(
+    { search: debouncedQuery || undefined, limit: SUGGESTION_LIMIT },
+    { enabled: isOpen }
+  );
+  // A search can show only so many, and the exact key may not be among them, so whether to offer to create it is
+  // asked of that key alone.
+  const { existing } = useAgentVaultVariableKeyStatus(
+    isOpen && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
+    { enabled: isOpen }
+  );
   const [activeIndex, setActiveIndex] = useState(0);
   // Escape closes the list for the reference being typed, not for the field: it opens again at the next {{.
   const dismissedAt = useRef<number | null>(null);
   const listId = useId();
 
   const suggestions = useMemo((): TSuggestion[] => {
-    if (!openReference || !variables) return [];
-    const key = normalizeVariableKey(openReference.query);
-    const matches = variables
-      .filter((variable) => variable.key.includes(key))
-      .sort(
-        (a, b) =>
-          Number(b.key.startsWith(key)) - Number(a.key.startsWith(key)) ||
-          a.key.localeCompare(b.key)
-      )
-      .map((variable) => ({ type: "variable" as const, variable }));
+    if (!openReference || !data) return [];
+    const key = query;
+    // The search returns the first page of keys containing the text, which may not include the key itself, so
+    // one the lookup has found is added and listed first either way.
+    const keyExists = existing.has(key) || data.variables.some((variable) => variable.key === key);
+    const rank = (candidate: string) => {
+      if (candidate === key) return 0;
+      return candidate.startsWith(key) ? 1 : 2;
+    };
+    const matches = [
+      ...new Set([
+        ...(keyExists ? [key] : []),
+        ...data.variables
+          .map((variable) => variable.key)
+          .filter((candidate) => candidate.includes(key))
+      ])
+    ]
+      .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+      .map((candidate) => ({ type: "variable" as const, key: candidate }));
 
-    if (!requestVariable || variables.some((variable) => variable.key === key)) return matches;
+    if (!key || keyExists) return matches;
     return [...matches, { type: "create", key, isKeyValid: VARIABLE_KEY_RE.test(key) }];
-  }, [openReference, variables, requestVariable]);
+  }, [openReference, query, data, existing]);
+
+  // The search returns one page, plus the exact key when it exists. When matches are still left out, the list says
+  // how many it shows and how to narrow it.
+  const shownCount = suggestions.filter((suggestion) => suggestion.type === "variable").length;
+  const truncation =
+    data && !isPlaceholderData && query === debouncedQuery && data.totalCount > shownCount
+      ? { shown: shownCount, total: data.totalCount }
+      : null;
 
   const close = () => setOpenReference(null);
 
@@ -106,13 +145,13 @@ export const useVariableAutocomplete = ({
     };
 
     if (suggestion.type === "variable") {
-      insert(suggestion.variable.key);
+      insert(suggestion.key);
       return;
     }
 
     // Settles once the dialog has closed. The field cannot change while it is open, so what surrounded
     // the reference still does, and focus comes back to where the caret was.
-    const created = await requestVariable?.(suggestion.key);
+    const created = await requestVariable(suggestion.key);
     input.focus();
     if (created) insert(created.key);
     else input.setSelectionRange(caret, caret);
@@ -139,7 +178,9 @@ export const useVariableAutocomplete = ({
   };
 
   return {
-    isOpen: Boolean(openReference),
+    isOpen,
+    isLoading: isOpen && !data,
+    truncation,
     suggestions,
     activeIndex,
     setActiveIndex,
@@ -163,17 +204,26 @@ export const VariableSuggestions = ({
   autocomplete: TAutocomplete;
   children: ReactNode;
 }) => {
-  const { variables } = useServiceVariables();
   const anchorRef = useRef<HTMLDivElement>(null);
-  const { isOpen, suggestions, activeIndex, setActiveIndex, listId, optionId, choose, dismiss } =
-    autocomplete;
+  const {
+    isOpen,
+    isLoading,
+    truncation,
+    suggestions,
+    activeIndex,
+    setActiveIndex,
+    listId,
+    optionId,
+    choose,
+    dismiss
+  } = autocomplete;
   const variableSuggestions = suggestions.filter((suggestion) => suggestion.type === "variable");
   const createSuggestion = suggestions.find((suggestion) => suggestion.type === "create");
 
   const renderOption = (suggestion: TSuggestion, index: number) => (
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
-      key={suggestion.type === "variable" ? suggestion.variable.id : "create"}
+      key={suggestion.type === "variable" ? suggestion.key : "create"}
       id={optionId(index)}
       role="option"
       tabIndex={-1}
@@ -187,7 +237,7 @@ export const VariableSuggestions = ({
       onClick={() => choose(suggestion)}
     >
       {suggestion.type === "variable" ? (
-        <span className="flex-1 truncate font-mono text-xs">{suggestion.variable.key}</span>
+        <span className="flex-1 truncate font-mono text-xs">{suggestion.key}</span>
       ) : (
         <>
           <PlusIcon className="size-3.5 shrink-0 text-muted" />
@@ -227,28 +277,39 @@ export const VariableSuggestions = ({
           }}
         >
           {suggestions.length > 0 ? (
-            <div id={listId} role="listbox" aria-label="Variables">
-              {variableSuggestions.length > 0 && (
-                <div
-                  className="max-h-60 overflow-y-auto overscroll-contain"
-                  // Rendered outside the sheet, whose scroll lock would otherwise cancel wheel events here.
-                  onWheel={(event) => event.stopPropagation()}
-                >
-                  {variableSuggestions.map(renderOption)}
-                </div>
-              )}
-              {createSuggestion && (
+            <>
+              <div id={listId} role="listbox" aria-label="Variables">
+                {variableSuggestions.length > 0 && (
+                  <div
+                    className="max-h-60 overflow-y-auto overscroll-contain"
+                    // Rendered outside the sheet, whose scroll lock would otherwise cancel wheel events here.
+                    onWheel={(event) => event.stopPropagation()}
+                  >
+                    {variableSuggestions.map(renderOption)}
+                  </div>
+                )}
+                {createSuggestion && (
+                  <>
+                    {variableSuggestions.length > 0 && (
+                      <div className="-mx-1 my-1 h-px bg-border" />
+                    )}
+                    {renderOption(createSuggestion, variableSuggestions.length)}
+                  </>
+                )}
+              </div>
+              {truncation && (
                 <>
-                  {variableSuggestions.length > 0 && <div className="-mx-1 my-1 h-px bg-border" />}
-                  {renderOption(createSuggestion, variableSuggestions.length)}
+                  <div className="-mx-1 my-1 h-px bg-border" />
+                  <p className="px-2 py-1.5 text-xs text-muted">
+                    Showing {truncation.shown} of {truncation.total} variables. Keep typing to
+                    narrow the list.
+                  </p>
                 </>
               )}
-            </div>
+            </>
           ) : (
             <p className="px-2 py-1.5 text-xs text-muted">
-              {variables?.length
-                ? "No variable in this bundle matches that name."
-                : "This bundle has no variables yet. Add one under Variables."}
+              {isLoading ? "Loading variables..." : "No variables yet. Type a key to create one."}
             </p>
           )}
         </PopoverContent>

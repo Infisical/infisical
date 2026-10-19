@@ -75,6 +75,7 @@ export enum AppConnection {
   GoDaddy = "godaddy",
   Convex = "convex",
   Rundeck = "rundeck",
+  Portainer = "portainer",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
@@ -89,7 +90,8 @@ export enum AppConnection {
   Stripe = "stripe",
   Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",
-  ServiceNow = "servicenow"
+  ServiceNow = "servicenow",
+  S3Compatible = "s3-compatible"
 }
 
 export enum AWSRegion {

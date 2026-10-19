@@ -18,6 +18,7 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { isValidEmail } from "@app/helpers/email";
 import { useDebounce } from "@app/hooks";
 import { useAdminGetUsers, useServerAdminCreateOrganization } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
@@ -130,15 +131,11 @@ const Content = ({ onClose }: ContentProps) => {
       />
       <Controller
         render={({ field, fieldState: { error } }) => {
-          const email = searchUserFilter.trim();
-          const isNewEmail =
-            z.string().email().safeParse(email).success &&
-            ![...users, ...field.value].some(
-              (user) => (user.email || user.username)?.toLowerCase() === email.toLowerCase()
-            );
-          const inviteOption: Invitee | null = isNewEmail
-            ? { id: `invite:${email.toLowerCase()}`, email }
-            : null;
+          const isKnownEmail = (email: string, user: Invitee) =>
+            (user.email || user.username)?.toLowerCase() === email.toLowerCase();
+          const isSearching = searchUserFilter !== debouncedSearchTerm || isPending;
+          // Results for an earlier query would sit above the Invite row and take Enter.
+          const isStaleForEmail = isSearching && isValidEmail(searchUserFilter.trim());
 
           return (
             <Field>
@@ -146,23 +143,31 @@ const Content = ({ onClose }: ContentProps) => {
               <Combobox<Invitee>
                 id={adminSelectId}
                 multiple
-                options={inviteOption ? [inviteOption, ...users] : users}
+                options={isStaleForEmail ? [] : users}
                 value={field.value}
                 onValueChange={field.onChange}
                 onClear={() => field.onChange([])}
                 getOptionLabel={getUserLabel}
                 getOptionValue={(user) => user.id}
-                renderOption={(user) =>
-                  user.id.startsWith("invite:") ? `Invite "${user.email}"` : getUserLabel(user)
-                }
+                creation={{
+                  isValid: (email) => isValidEmail(email),
+                  isDuplicate: isKnownEmail,
+                  formatLabel: (email) => `Invite "${email}"`,
+                  emptyLabel: "Type an email to invite",
+                  onCreate: (email) =>
+                    field.onChange([
+                      ...field.value,
+                      { id: `invite:${email.toLowerCase()}`, email: email.toLowerCase() }
+                    ])
+                }}
                 placeholder="Search users or invite by email..."
                 searchPlaceholder="Search users or enter an email..."
                 searchAriaLabel="Search users or enter an email to invite"
                 emptyMessage="No users found. Enter a valid email address to invite a new user."
-                isLoading={searchUserFilter !== debouncedSearchTerm || isPending}
+                isLoading={isSearching}
                 isError={Boolean(error)}
                 shouldFilter={false}
-                includeMissingSelectedOptions
+                includeMissingSelectedOptions={false}
                 modal
                 onInputValueChange={(value) => {
                   setSearchUserFilter(value);

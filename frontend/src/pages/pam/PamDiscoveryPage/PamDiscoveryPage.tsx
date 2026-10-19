@@ -36,7 +36,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import {
   TPamDiscoverySource,
   useDeletePamDiscoverySource,
@@ -285,7 +285,7 @@ export const PamDiscoveryPage = () => {
         }}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteSource.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSource", isOpen)}
         title={`Delete ${(popUp.deleteSource.data as TPamDiscoverySource | undefined)?.name ?? "source"}?`}

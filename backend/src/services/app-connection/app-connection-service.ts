@@ -175,6 +175,8 @@ import {
   paloAltoNetworksConnectionService,
   ValidatePaloAltoNetworksConnectionCredentialsSchema
 } from "./palo-alto-networks";
+import { ValidatePortainerConnectionCredentialsSchema } from "./portainer";
+import { portainerConnectionService } from "./portainer/portainer-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { powerDnsConnectionService, ValidatePowerDnsConnectionCredentialsSchema } from "./powerdns";
 import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
@@ -186,6 +188,7 @@ import { ValidateRenderConnectionCredentialsSchema } from "./render/render-conne
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateRundeckConnectionCredentialsSchema } from "./rundeck";
 import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
+import { ValidateS3CompatibleConnectionCredentialsSchema } from "./s3-compatible";
 import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
 import { ValidateServiceNowConnectionCredentialsSchema } from "./servicenow";
@@ -324,6 +327,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
   [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
+  [AppConnection.Portainer]: ValidatePortainerConnectionCredentialsSchema,
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
@@ -334,7 +338,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
-  [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema
+  [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
+  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1206,6 +1211,14 @@ export const appConnectionServiceFactory = ({
         err instanceof DatabaseError &&
         (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
       ) {
+        if (
+          (err.error as { constraint?: string }).constraint === "certificate_authority_secret_appconnectionid_foreign"
+        ) {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because a certificate authority signs with an AWS KMS key reached through it. Delete that certificate authority first."
+          });
+        }
         throw new BadRequestError({
           message:
             "Cannot delete App Connection with existing connections. Remove all existing connections and try again."
@@ -1488,6 +1501,7 @@ export const appConnectionServiceFactory = ({
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
     rundeck: rundeckConnectionService(connectAppConnectionById),
+    portainer: portainerConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),

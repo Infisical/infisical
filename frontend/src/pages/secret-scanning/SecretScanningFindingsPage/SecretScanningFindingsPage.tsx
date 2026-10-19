@@ -1,16 +1,22 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { SecretScanningFindingsSection } from "./components";
+import { SecretScanningFindingsTable } from "../components/findings";
 
 export const SecretScanningFindingsPage = () => {
   const { t } = useTranslation();
+  const { status, dataSourceId, resourceId } = useSearch({
+    from: ROUTE_PATHS.SecretScanning.FindingsPage.id
+  });
+
   return (
     <>
       <Helmet>
@@ -27,9 +33,16 @@ export const SecretScanningFindingsPage = () => {
               <PageHeader
                 scope={ProjectType.SecretScanning}
                 title="Findings"
-                description="View secret leaks across your data sources."
+                description="Secrets detected across every data source."
               />
-              <SecretScanningFindingsSection />
+              <SecretScanningFindingsTable
+                // filters are only read from the URL on mount, so a navigation that changes them needs a fresh table
+                key={`${status ?? ""}:${dataSourceId ?? ""}:${resourceId ?? ""}`}
+                description="Review and triage leaked secrets."
+                initialStatus={status}
+                initialDataSourceId={dataSourceId}
+                initialResourceId={resourceId}
+              />
             </div>
           </div>
         </div>

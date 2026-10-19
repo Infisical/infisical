@@ -23,10 +23,11 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 
 export const GatewayPoliciesSection = () => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { mutateAsync: updateOrg, isPending } = useUpdateOrg();
@@ -79,7 +80,7 @@ export const GatewayPoliciesSection = () => {
                 {(isAllowed) => (
                   <Toggle
                     id="require-gateway-pools"
-                    variant="org"
+                    variant={scopeVariant}
                     checked={isPoolRequired}
                     onCheckedChange={handleToggle}
                     disabled={!isAllowed || isPending}

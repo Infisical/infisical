@@ -46,6 +46,7 @@ export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScanStatus?: SecretScanningScanStatus | null;
   lastScanStatusMessage?: string | null;
   unresolvedFindings: number;
+  resourceCount: number;
 };
 
 export type TSecretScanningResourceWithDetails = TSecretScanningResources & {
@@ -106,6 +107,9 @@ export type TCreateSecretScanningDataSourceDTO = Pick<
   connectionId?: string;
   type: SecretScanningDataSource;
   isAutoScanEnabled?: boolean;
+  isHistoricalScanEnabled?: boolean;
+  isScanNewCommitsEnabled?: boolean;
+  isDiscoveryEnabled?: boolean;
   config: Partial<TSecretScanningDataSourceInput["config"]>;
 };
 
@@ -125,6 +129,23 @@ export type TTriggerSecretScanningDataSourceDTO = {
   type: SecretScanningDataSource;
   dataSourceId: string;
   resourceId?: string;
+};
+
+export type TAddSecretScanningResourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceName: string;
+};
+
+export type TAddAllSecretScanningResourcesDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+};
+
+export type TRemoveSecretScanningResourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceId: string;
 };
 
 export type TQueueSecretScanningDataSourceFullScan = {
@@ -211,12 +232,33 @@ export type TSecretScanningFactoryPostInitialization<
   P extends TSecretScanningDataSourceInput,
   T extends TSecretScanningDataSourceWithConnection["connection"] | undefined = undefined,
   C extends TSecretScanningDataSourceCredentials = undefined
-> = (params: { payload: P; connection: T; credentials: C; dataSourceId: string }) => Promise<void>;
+> = (params: { payload: P; connection: T; credentials?: C; dataSourceId: string }) => Promise<void>;
 
 export type TSecretScanningFactoryTeardown<
   T extends TSecretScanningDataSourceWithConnection,
   C extends TSecretScanningDataSourceCredentials = undefined
-> = (params: { dataSource: T; credentials: C }) => Promise<void>;
+> = (params: { dataSource: T; credentials?: C }) => Promise<void>;
+
+// Creates the push webhook for an existing data source; returns undefined when the provider or config has none.
+export type TSecretScanningFactorySetupWebhook<
+  T extends TSecretScanningDataSourceWithConnection,
+  C extends TSecretScanningDataSourceCredentials = undefined
+> = (params: { dataSource: T; resourceNames: string[] }) => Promise<C | undefined>;
+
+// Brings existing webhooks in line with the resources a data source covers, for providers that hook each resource.
+// Hooks it adds exist before the change is saved, so revert removes them if the save fails; hooks it drops are
+// only removed by finalize, after the save.
+export type TSecretScanningFactoryUpdateWebhook<
+  T extends TSecretScanningDataSourceWithConnection,
+  C extends TSecretScanningDataSourceCredentials = undefined
+> = (params: { dataSource: T; resourceNames: string[]; credentials: C }) => Promise<
+  | {
+      credentials: C;
+      finalize: () => Promise<void>;
+      revert: () => Promise<void>;
+    }
+  | undefined
+>;
 
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
@@ -234,6 +276,8 @@ export type TSecretScanningFactory<
   initialize: TSecretScanningFactoryInitialize<I, T["connection"] | undefined, C>;
   postInitialization: TSecretScanningFactoryPostInitialization<I, T["connection"] | undefined, C>;
   teardown: TSecretScanningFactoryTeardown<T, C>;
+  setupWebhook: TSecretScanningFactorySetupWebhook<T, C>;
+  updateWebhook?: TSecretScanningFactoryUpdateWebhook<T, C>;
   validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<I["config"], T>;
   getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<P>;
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;

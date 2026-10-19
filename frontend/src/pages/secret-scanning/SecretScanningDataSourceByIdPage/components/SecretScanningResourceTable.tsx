@@ -1,89 +1,63 @@
-import { useMemo, useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faBan,
-  faBullseye,
-  faCheckCircle,
-  faFilter,
-  faInfoCircle,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ChevronDownIcon, FolderGitIcon, LockIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  type TableSortDirection
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
-import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import {
+  canAddSecretScanningResources,
+  RESOURCE_DESCRIPTION_HELPER,
+  SECRET_SCANNING_DATA_SOURCE_MAP
+} from "@app/helpers/secretScanningV2";
+import { useDebounce, usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
-  SecretScanningDataSource,
-  SecretScanningScanStatus,
+  SecretScanningResourceOrderBy,
   TSecretScanningDataSource,
   useListSecretScanningResources
 } from "@app/hooks/api/secretScanningV2";
-import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
+import { AddSecretScanningResourcesButton } from "./AddSecretScanningResourcesButton";
 import { SecretScanningResourceRow } from "./SecretScanningResourceRow";
 
-enum ResourcesOrderBy {
-  Name = "name",
-  Findings = "findings",
-  LastScanned = "last-scanned"
-}
+const SKELETON_ROWS = ["first", "second", "third"];
+const SKELETON_CELLS = ["name", "status", "last-scan", "actions"];
 
 type Props = {
   dataSource: TSecretScanningDataSource;
+  onViewFindings: (resourceId: string) => void;
 };
 
-enum ResourceStatus {
-  Active = "active",
-  Inactive = "inactive"
-}
-
-type ResourceFilters = {
-  status: ResourceStatus[];
-};
-
-export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
+export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Props) => {
   const { permission } = useProjectPermission();
 
   const canReadResources = permission.can(
     ProjectPermissionSecretScanningDataSourceActions.ReadResources,
     ProjectPermissionSub.SecretScanningDataSources
-  );
-
-  const [filters, setFilters] = useState<ResourceFilters>({
-    status: [ResourceStatus.Active]
-  });
-
-  const { data: resources = [], isPending: isResourcesPending } = useListSecretScanningResources(
-    { dataSourceId: dataSource.id, type: dataSource.type },
-    {
-      refetchInterval: 30000,
-      enabled: canReadResources
-    }
   );
 
   const {
@@ -99,256 +73,209 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
     orderBy,
     setOrderDirection,
     setOrderBy
-  } = usePagination<ResourcesOrderBy>(ResourcesOrderBy.Name, { initPerPage: 10 });
+  } = usePagination<SecretScanningResourceOrderBy>(SecretScanningResourceOrderBy.Name, {
+    initPerPage: 20
+  });
 
-  const filteredResources = useMemo(
-    () =>
-      resources
-        .filter((resource) => {
-          const { name } = resource;
+  const [debouncedSearch] = useDebounce(search.trim());
 
-          let isActive: boolean;
-
-          switch (dataSource.type) {
-            case SecretScanningDataSource.Bitbucket:
-            case SecretScanningDataSource.GitHub:
-              isActive =
-                dataSource.config.includeRepos.includes("*") ||
-                dataSource.config.includeRepos.includes(name);
-              break;
-            case SecretScanningDataSource.GitLab: {
-              if (dataSource.config.scope === GitLabDataSourceScope.Project) {
-                isActive = true; // always active
-              } else {
-                isActive =
-                  dataSource.config.includeProjects.includes("*") ||
-                  dataSource.config.includeProjects.includes(name);
-              }
-              break;
-            }
-            default:
-              throw new Error("Unhandled Data Source Type: Active Filter");
-          }
-
-          if (filters.status.length === 1) {
-            if (filters.status.includes(ResourceStatus.Active) && !isActive) {
-              return false;
-            }
-            if (filters.status.includes(ResourceStatus.Inactive) && isActive) {
-              return false;
-            }
-          }
-
-          const searchValue = search.trim().toLowerCase();
-
-          return name.toLowerCase().includes(searchValue);
-        })
-        .sort((a, b) => {
-          const [resourceOne, resourceTwo] =
-            orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
-
-          switch (orderBy) {
-            case ResourcesOrderBy.Findings:
-              if (
-                resourceOne.unresolvedFindings === 0 &&
-                resourceOne.lastScanStatus === SecretScanningScanStatus.Failed
-              )
-                return 1;
-              if (
-                resourceTwo.unresolvedFindings === 0 &&
-                resourceTwo.lastScanStatus === SecretScanningScanStatus.Failed
-              )
-                return -1;
-
-              return resourceTwo.unresolvedFindings - resourceOne.unresolvedFindings;
-            case ResourcesOrderBy.LastScanned:
-              return (
-                new Date(resourceTwo.lastScannedAt).getTime() -
-                new Date(resourceOne.lastScannedAt).getTime()
-              );
-            case ResourcesOrderBy.Name:
-            default:
-              return resourceOne.name.toLowerCase().localeCompare(resourceTwo.name.toLowerCase());
-          }
-        }),
-    [resources, orderDirection, search, orderBy, filters, dataSource]
+  const { data, isPending } = useListSecretScanningResources(
+    {
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      search: debouncedSearch || undefined,
+      orderBy,
+      orderDirection,
+      offset,
+      limit: perPage
+    },
+    {
+      refetchInterval: 30000,
+      enabled: canReadResources
+    }
   );
+  const isLoading = canReadResources && isPending;
+  const resources = data?.resources ?? [];
+  const totalCount = data?.totalCount ?? 0;
 
   useResetPageHelper({
-    totalCount: filteredResources.length,
+    totalCount,
     offset,
     setPage
   });
 
-  const handleSort = (column: ResourcesOrderBy) => {
+  const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
+
+  const handleSortChange = (column: SecretScanningResourceOrderBy) => {
     if (column === orderBy) {
       toggleOrderDirection();
       return;
     }
 
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    // status ascends from what needs attention first; last scan starts at the most recent
+    setOrderDirection(
+      column === SecretScanningResourceOrderBy.LastScanned
+        ? OrderByDirection.DESC
+        : OrderByDirection.ASC
+    );
   };
 
-  const getClassName = (col: ResourcesOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getSortDirection = (column: SecretScanningResourceOrderBy): TableSortDirection => {
+    if (orderBy !== column) return "none";
+    return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  };
 
-  const getColSortIcon = (col: ResourcesOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+  const renderSortableHead = (
+    column: SecretScanningResourceOrderBy,
+    label: string,
+    className?: string
+  ) => {
+    const direction = getSortDirection(column);
+    return (
+      <TableHead
+        className={className}
+        sortDirection={direction}
+        onSortChange={() => handleSortChange(column)}
+      >
+        {label}
+        <ChevronDownIcon
+          className={twMerge(
+            "transition-transform",
+            direction === "descending" && "rotate-180",
+            direction === "none" && "opacity-30"
+          )}
+        />
+      </TableHead>
+    );
+  };
 
-  const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
+  const renderEmpty = () => {
+    if (!canReadResources) {
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <LockIcon />
+            </EmptyMedia>
+            <EmptyTitle>Access restricted</EmptyTitle>
+            <EmptyDescription>
+              You don&apos;t have permission to view this data source&apos;s{" "}
+              {resourceDetails.pluralNoun}.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      );
+    }
 
-  const isTableFiltered = Boolean(filters.status.length);
+    if (debouncedSearch) {
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SearchIcon />
+            </EmptyMedia>
+            <EmptyTitle>No {resourceDetails.pluralNoun} match your search</EmptyTitle>
+            <EmptyDescription>Try a different search term.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      );
+    }
+
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <FolderGitIcon />
+          </EmptyMedia>
+          <EmptyTitle>No {resourceDetails.pluralNoun} yet</EmptyTitle>
+          <EmptyDescription>
+            Add a {resourceDetails.singularNoun} to start scanning it for secrets.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  };
+
+  const canAddResources = canAddSecretScanningResources(dataSource);
 
   return (
-    <div>
-      <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder={`Search ${resourceDetails.pluralNoun}...`}
-          className="flex-1"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Filter data sources"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
-                isTableFiltered && "border-project/50 text-project"
-              )}
-            >
-              <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
-            <DropdownMenuLabel className="flex w-full items-center justify-between">
-              Status
-              <Tooltip
-                content={`Inactive ${resourceDetails.pluralNoun} will not be scanned due to exclusion in Data Source configuration.`}
-              >
-                <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
-              </Tooltip>
-            </DropdownMenuLabel>
-            {Object.values(ResourceStatus).map((status) => (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setFilters((prev) => ({
-                    ...prev,
-                    status: prev.status.includes(status)
-                      ? prev.status.filter((s) => s !== status)
-                      : [...prev.status, status]
-                  }));
-                }}
-                key={status}
-                icon={
-                  filters.status.includes(status) && (
-                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
-              >
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon
-                    icon={status === ResourceStatus.Active ? faBullseye : faBan}
-                    className={status === ResourceStatus.Active ? "text-project" : "text-muted"}
-                  />
-                  <span className="capitalize">{status.replace("-", " ")}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/2">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ResourcesOrderBy.Name)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.Name)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4">
-                <div className="flex items-center">
-                  Findings
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ResourcesOrderBy.Findings)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.Findings)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.Findings)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4 whitespace-nowrap">
-                <div className="flex items-center">
-                  Last Scan
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ResourcesOrderBy.LastScanned)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.LastScanned)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.LastScanned)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {canReadResources && isResourcesPending && (
-              <TableSkeleton columns={4} innerKey="resource" />
-            )}
-            {filteredResources.slice(offset, perPage * page).map((resource) => (
-              <SecretScanningResourceRow
-                key={resource.id}
-                resource={resource}
-                dataSource={dataSource}
-              />
-            ))}
-          </TBody>
-        </Table>
-        {!canReadResources && (
-          <EmptyState
-            icon={faBan}
-            title={`You do not have permission to view data source ${resourceDetails.pluralNoun}`}
-          />
+    <Card>
+      <CardHeader>
+        <CardTitle>{resourceDetails.pluralTitle}</CardTitle>
+        <CardDescription>
+          {resourceDetails.pluralTitle} in this{" "}
+          {SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type].name} data source. Select one to see its
+          findings.
+        </CardDescription>
+        {canAddResources && (
+          <CardAction>
+            <AddSecretScanningResourcesButton dataSource={dataSource} />
+          </CardAction>
         )}
-        {Boolean(filteredResources.length) && (
+        <div className="col-span-full flex gap-2">
+          <InputGroup className="flex-1">
+            <InputGroupAddon align="inline-start">
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${resourceDetails.pluralNoun}...`}
+            />
+          </InputGroup>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!isLoading && !resources.length ? (
+          renderEmpty()
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {renderSortableHead(
+                  SecretScanningResourceOrderBy.Name,
+                  resourceDetails.singularTitle,
+                  "w-1/2"
+                )}
+                {renderSortableHead(SecretScanningResourceOrderBy.Status, "Status")}
+                {renderSortableHead(SecretScanningResourceOrderBy.LastScanned, "Last Scan")}
+                <TableHead variant="action" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading &&
+                SKELETON_ROWS.map((row) => (
+                  <TableRow key={`resource-skeleton-${row}`}>
+                    {SKELETON_CELLS.map((cell) => (
+                      <TableCell key={`resource-skeleton-${row}-${cell}`}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              {!isLoading &&
+                resources.map((resource) => (
+                  <SecretScanningResourceRow
+                    key={resource.id}
+                    resource={resource}
+                    dataSource={dataSource}
+                    onViewFindings={onViewFindings}
+                  />
+                ))}
+            </TableBody>
+          </Table>
+        )}
+        {!isLoading && Boolean(totalCount) && (
           <Pagination
-            count={filteredResources.length}
+            count={totalCount}
             page={page}
             perPage={perPage}
             onChangePage={setPage}
             onChangePerPage={setPerPage}
           />
         )}
-        {!isResourcesPending && !filteredResources?.length && (
-          <EmptyState
-            title={
-              resources.length
-                ? "No resources match search..."
-                : `This data source has no ${resourceDetails.pluralNoun} associated with it.`
-            }
-            icon={resources.length ? faSearch : undefined}
-          />
-        )}
-      </TableContainer>
-    </div>
+      </CardContent>
+    </Card>
   );
 };

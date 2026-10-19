@@ -54,7 +54,7 @@ export const AuditLogsPage = () => {
   };
 
   return (
-    <div className="h-full bg-page">
+    <div className="bg-page">
       <Helmet>
         <title>Infisical | Audit Logs</title>
         <link rel="icon" href="/infisical.ico" />

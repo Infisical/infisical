@@ -12,7 +12,6 @@ import {
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -22,6 +21,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -637,12 +637,13 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         applicationId={application.id}
       />
       {upgradeGate}
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePolicy.isOpen}
-        deleteKey="delete"
+        description="This action is irreversible."
+        confirmKey="delete"
         title={`Delete approval policy ${(popUp.deletePolicy.data as TApprovalPolicy | undefined)?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
-        onDeleteApproved={handleDeletePolicy}
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
+        onConfirm={handleDeletePolicy}
       />
 
       <Dialog
@@ -685,15 +686,15 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </DialogContent>
       </Dialog>
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={Boolean(profileToDetach)}
         title={`Detach profile ${profileToDetach?.profileSlug ?? ""}?`}
-        subTitle="This application will no longer be able to issue from this Profile. Existing certificates remain."
-        deleteKey="confirm"
-        onChange={(open) => {
+        description="This application will no longer be able to issue from this Profile. Existing certificates remain."
+        confirmKey="confirm"
+        onOpenChange={(open) => {
           if (!open) setProfileToDetach(null);
         }}
-        onDeleteApproved={handleDetach}
+        onConfirm={handleDetach}
       />
 
       <CreateProfileModal
