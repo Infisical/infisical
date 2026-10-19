@@ -70,6 +70,9 @@ export const ProjectTemplateEnvironmentsForm = ({
 
   const { subscription } = useSubscription();
   const customSlugRowIds = useRef(new Set<string>());
+  const newRowIds = useRef(new Set<string>());
+  const knownRowIds = useRef(new Set<string>());
+  const isAppendingRow = useRef(false);
 
   const {
     fields: environments,
@@ -77,6 +80,13 @@ export const ProjectTemplateEnvironmentsForm = ({
     remove,
     append
   } = useFieldArray({ control, name: "environments" });
+
+  environments.forEach(({ id }) => {
+    if (knownRowIds.current.has(id)) return;
+    knownRowIds.current.add(id);
+    if (isAppendingRow.current) newRowIds.current.add(id);
+  });
+  isAppendingRow.current = false;
 
   const updateProjectTemplate = useUpdateProjectTemplate();
 
@@ -133,7 +143,10 @@ export const ProjectTemplateEnvironmentsForm = ({
               >
                 {(isAllowed) => (
                   <Button
-                    onClick={() => append({ name: "", slug: "" })}
+                    onClick={() => {
+                      isAppendingRow.current = true;
+                      append({ name: "", slug: "" });
+                    }}
                     variant="project"
                     isDisabled={!isAllowed || isEnvironmentLimitExceeded}
                   >
@@ -180,7 +193,11 @@ export const ProjectTemplateEnvironmentsForm = ({
                                     {...field}
                                     onChange={(e) => {
                                       field.onChange(e);
-                                      if (slug || customSlugRowIds.current.has(id)) return;
+                                      if (
+                                        !newRowIds.current.has(id) ||
+                                        customSlugRowIds.current.has(id)
+                                      )
+                                        return;
                                       setValue(
                                         `environments.${pos}.slug`,
                                         slugify(e.target.value, { lowercase: true }),
