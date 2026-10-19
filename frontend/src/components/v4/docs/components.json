@@ -2717,7 +2717,7 @@
         "Card"
       ],
       "behavior": [
-        "Card offers framed and plain shells, a flush body and named title/description/media/action/footer slots. Framed sits on the pop ground and plain on the page, both inside one line border. Title, description, body and footer share one text column; media hangs to its left and the action centres on the title line."
+        "Card offers framed and plain shells, a flush body and named title/description/media/action/footer slots. Framed (the default) is a tint frame with no border: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. Its radius is radius-panel minus that pad, so the corners stay concentric in soft mode and are square in square mode. Plain is a single surface with one line border and no frame. Title, description, body and footer share one text column; media hangs to its left and the action centres on the title line."
       ],
       "accessibility": [
         "Choose the heading level through the composed title; actions remain native controls with their own names."

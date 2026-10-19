@@ -1,4 +1,3 @@
-import { Button } from "@app/components/v4/ui/button";
 import {
   Card,
   CardContent,
@@ -15,18 +14,17 @@ export default function Example() {
   return (
     <ExampleGrid width="wide">
       <ExampleCell align="stretch" label="framed">
-        <Card
-          title="Staging service"
-          description="Read access to staging."
-          media={<Media icon="key" />}
-          action={
-            <Button variant="ghost" size="sm" asChild>
-              <a href="#field">Settings</a>
-            </Button>
-          }
-          footer="Expires in 7 days."
-        >
-          Scoped to the payments project.
+        <Card title="Posture" action={<a href="#card">View report</a>}>
+          412 secrets across 3 environments. 3 are missing in production and 5 rotations are due
+          this week.
+        </Card>
+      </ExampleCell>
+      <ExampleCell align="stretch" label="framed, no header, with footer">
+        <Card footer="Expires in 7 days.">
+          <div className="flex items-center gap-3">
+            <Media icon="key" />
+            <span>Read access to staging, scoped to the payments project.</span>
+          </div>
         </Card>
       </ExampleCell>
       <ExampleCell align="stretch" label="plain">

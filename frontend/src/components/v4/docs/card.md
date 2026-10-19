@@ -65,7 +65,7 @@ Exports: Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 
 ## Behavior
 
-- Card offers framed and plain shells, a flush body and named title/description/media/action/footer slots. Framed sits on the pop ground and plain on the page, both inside one line border. Title, description, body and footer share one text column; media hangs to its left and the action centres on the title line.
+- Card offers framed and plain shells, a flush body and named title/description/media/action/footer slots. Framed (the default) is a tint frame with no border: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. Its radius is radius-panel minus that pad, so the corners stay concentric in soft mode and are square in square mode. Plain is a single surface with one line border and no frame. Title, description, body and footer share one text column; media hangs to its left and the action centres on the title line.
 
 ## Accessibility
 
@@ -105,21 +105,27 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/card/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/card, @infisical/item. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/card, @infisical/item. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { Button } from "../../../../components/v4/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../../../components/v4/ui/card";
 import { Media } from "../../../../components/v4/ui/item";
 export default function Example() {
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Card title="Staging service" description="Read access to staging." media={<Media icon="key"/>} action={<Button variant="ghost" size="sm" asChild>
-              <a href="#field">Settings</a>
-            </Button>} footer="Expires in 7 days.">
-          Scoped to the payments project.
+        <Card title="Posture" action={<a href="#card">View report</a>}>
+          412 secrets across 3 environments. 3 are missing in production and 5 rotations are due
+          this week.
         </Card>
       </div><figcaption className="text-muted-foreground text-xs">{"framed"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <Card footer="Expires in 7 days.">
+          <div className="flex items-center gap-3">
+            <Media icon="key"/>
+            <span>Read access to staging, scoped to the payments project.</span>
+          </div>
+        </Card>
+      </div><figcaption className="text-muted-foreground text-xs">{"framed, no header, with footer"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <Card variant="plain">
           <CardHeader>
