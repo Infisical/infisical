@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import slugify from "@sindresorhus/slugify";
@@ -58,7 +59,6 @@ export const ProjectTemplateEnvironmentsForm = ({
     handleSubmit,
     formState: { isDirty, errors },
     reset,
-    getValues,
     setValue
   } = useForm<TFormSchema>({
     defaultValues: {
@@ -68,6 +68,7 @@ export const ProjectTemplateEnvironmentsForm = ({
   });
 
   const { subscription } = useSubscription();
+  const customSlugRowIds = useRef(new Set<string>());
 
   const {
     fields: environments,
@@ -177,12 +178,8 @@ export const ProjectTemplateEnvironmentsForm = ({
                                     disabled={!isAllowed}
                                     {...field}
                                     onChange={(e) => {
-                                      const currentSlug = getValues(`environments.${pos}.slug`);
-                                      const tracksName =
-                                        !currentSlug ||
-                                        currentSlug === slugify(field.value, { lowercase: true });
                                       field.onChange(e);
-                                      if (slug || !tracksName) return;
+                                      if (slug || customSlugRowIds.current.has(id)) return;
                                       setValue(
                                         `environments.${pos}.slug`,
                                         slugify(e.target.value, { lowercase: true }),
@@ -217,6 +214,10 @@ export const ProjectTemplateEnvironmentsForm = ({
                                   <Input
                                     disabled={!isAllowed}
                                     {...field}
+                                    onChange={(e) => {
+                                      customSlugRowIds.current.add(id);
+                                      field.onChange(e);
+                                    }}
                                     className="h-8 px-2 text-sm"
                                     placeholder="Slug..."
                                   />
