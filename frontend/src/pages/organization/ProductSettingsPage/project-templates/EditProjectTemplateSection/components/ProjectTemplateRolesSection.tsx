@@ -11,7 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Empty,
   EmptyHeader,
   EmptyTitle,
@@ -219,7 +219,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
               </Empty>
             )}
           </CardContent>
-          <DeleteConfirmDialog
+          <ConfirmationAlertDialog
             isOpen={popUp.removeRole.isOpen}
             confirmKey="remove"
             title={`Are you sure you want to remove the role ${roleToDelete?.slug}?`}

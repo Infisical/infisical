@@ -118,6 +118,7 @@ export const integrations = [
   { name: "Snowflake", path: "/integrations/secret-syncs/snowflake", description: "Learn how to sync secrets from Infisical to Snowflake.", type: "Secret Sync", tag: "Databases" },
   { name: "Trigger.dev", path: "/integrations/secret-syncs/trigger-dev", description: "Learn how to sync secrets from Infisical to Trigger.dev.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Rundeck", path: "/integrations/secret-syncs/rundeck", description: "Learn how to sync secrets from Infisical to Rundeck.", type: "Secret Sync", tag: "DevOps Tools" },
+  { name: "Portainer", path: "/integrations/secret-syncs/portainer", description: "Learn how to sync secrets from Infisical to Portainer.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Qovery", path: "/integrations/secret-syncs/qovery", description: "Learn how to sync secrets from Infisical to Qovery.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Cloud 66", path: "/integrations/secret-syncs/cloud-66", description: "Learn how to sync secrets from Infisical to Cloud66.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Hasura Cloud", path: "/integrations/secret-syncs/hasura-cloud", description: "Learn how to sync secrets from Infisical to Hasura Cloud.", type: "Secret Sync", tag: "Hosting" },

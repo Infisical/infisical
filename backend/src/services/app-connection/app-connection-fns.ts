@@ -246,6 +246,11 @@ import {
   PaloAltoNetworksConnectionMethod,
   validatePaloAltoNetworksConnectionCredentials
 } from "./palo-alto-networks";
+import {
+  getPortainerConnectionListItem,
+  PortainerConnectionMethod,
+  validatePortainerConnectionCredentials
+} from "./portainer";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
   getPowerDnsConnectionListItem,
@@ -258,6 +263,11 @@ import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnect
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckConnectionCredentials } from "./rundeck";
+import {
+  getS3CompatibleConnectionListItem,
+  S3CompatibleConnectionMethod,
+  validateS3CompatibleConnectionCredentials
+} from "./s3-compatible";
 import {
   getSalesforceConnectionListItem,
   SalesforceConnectionMethod,
@@ -485,6 +495,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getF5BigIpConnectionListItem(),
     getConvexConnectionListItem(),
     getRundeckConnectionListItem(),
+    getPortainerConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
@@ -495,7 +506,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getStripeConnectionListItem(),
     getKeeperConnectionListItem(),
     getHpeIloConnectionListItem(),
-    getServiceNowConnectionListItem()
+    getServiceNowConnectionListItem(),
+    getS3CompatibleConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -726,6 +738,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Portainer]: validatePortainerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -737,7 +750,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -767,6 +781,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Auth Token";
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
+    case S3CompatibleConnectionMethod.AccessKey:
       return "Access Key";
     case AwsConnectionMethod.AssumeRole:
       return "Assume Role";
@@ -791,6 +806,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
+    case PortainerConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
@@ -1013,6 +1029,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
+  [AppConnection.Portainer]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
@@ -1023,7 +1040,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
   [AppConnection.Keeper]: platformManagedCredentialsNotSupported,
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
-  [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported
+  [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
+  [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

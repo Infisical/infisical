@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useDeletePkiAlert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -45,14 +45,15 @@ export const PkiAlertsSection = () => {
       </div>
       <PkiAlertsTable handlePopUpOpen={handlePopUpOpen} />
       <PkiAlertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiAlert.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to remove the alert ${
           (popUp?.deletePkiAlert?.data as { name: string })?.name || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiAlert", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiAlert", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemoveAlertSubmit((popUp?.deletePkiAlert?.data as { alertId: string })?.alertId)
         }
       />

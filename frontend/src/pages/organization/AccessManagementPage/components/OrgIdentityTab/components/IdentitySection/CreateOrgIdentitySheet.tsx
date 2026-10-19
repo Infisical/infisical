@@ -27,6 +27,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateOrgIdentity, useGetOrgRoles } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -51,6 +52,7 @@ type Props = {
 };
 
 const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -172,12 +174,17 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
           )}
         />
       </div>
-      <SheetFooter className="border-t">
-        <Button type="submit" variant="org" isPending={isSubmitting} isDisabled={isSubmitting}>
-          Create
-        </Button>
+      <SheetFooter className="justify-end border-t">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant={scopeVariant}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          Create
         </Button>
       </SheetFooter>
       <UpgradeGate

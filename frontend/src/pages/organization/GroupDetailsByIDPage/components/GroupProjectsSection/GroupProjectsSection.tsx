@@ -10,7 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog
+  ConfirmationAlertDialog
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useDeleteGroupFromWorkspace as useRemoveProjectFromGroup } from "@app/hooks/api";
@@ -86,7 +86,7 @@ export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = fa
         </CardContent>
       </Card>
       <AddGroupProjectModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeProjectFromGroup.isOpen}
         title={`Are you sure you want to remove the group from ${
           (popUp?.removeProjectFromGroup?.data as { projectName: string })?.projectName || ""

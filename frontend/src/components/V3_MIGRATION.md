@@ -34,12 +34,12 @@ In the table, E is the number of external consumer files and I is the number of 
 | `Button/Button.tsx` | 141 / 4 | V3 Button; map intent, disabled/loading, type, refs, and permissions per flow. | `frontend/src/pages/middlewares/restrict-login-signup.tsx:61` |
 | `Card/Card.tsx` | 66 / 2 | V3 Card slots; preserve layout and state-bearing children. | `frontend/src/pages/secret-manager/integrations/SelectIntegrationAuthPage/SelectIntegrationAuthPage.tsx:164` |
 | `Checkbox/Checkbox.tsx` | 11 / 1 | V3 Checkbox + Field; verify controlled/indeterminate state and labels. | `frontend/src/pages/organization/AccessManagementPage/components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal.tsx:180` |
-| `ConfirmActionModal/ConfirmActionModal.tsx` | 2 / 0 | V3 `DeleteConfirmDialog` with a non-danger `confirmVariant`; follow the overlay recipe. | `frontend/src/pages/auth/AccountRecoveryResetPage/AccountRecoveryResetPage.tsx:94` |
+| `ConfirmActionModal/ConfirmActionModal.tsx` | 2 / 0 | V3 `ConfirmationAlertDialog` with a non-danger `confirmVariant`; follow the overlay recipe. | `frontend/src/pages/auth/AccountRecoveryResetPage/AccountRecoveryResetPage.tsx:94` |
 | `ContentLoader/ContentLoader.tsx` | 12 / 0 | V3 Loader/PageLoader composition; preserve pending boundaries. Visible copy maps to PageLoader `text`; wrap PageLoader in an `h-screen` container where the page needs full viewport height. | `frontend/src/pages/auth/SelectOrgPage/SelectOrgPage.tsx:446` |
 | `CopyButton/CopyButton.tsx` | 2 / 0 | V3 CopyButton; verify exact copy, failure feedback, and labels. | `frontend/src/pages/cert-manager/CertificateDetailsByIDPage/components/CertificateDetailsSection.tsx:275` |
 | `CreatableSelect/CreatableSelect.tsx` | 0 / 0 | Deleted in first wave; no consumer. | No incoming non-export edge or external symbol reference. |
 | `DatePicker/DatePicker.tsx` | 0 / 0 | Deleted in first wave; no active date contract replaced. | Only its own barrel exported it. |
-| `DeleteActionModal/DeleteActionModal.tsx` | 56 / 0 | V3 `DeleteConfirmDialog`; follow the overlay recipe for confirmation gates, mutations, cleanup, and error recovery. | `frontend/src/pages/organization/AccessManagementPage/components/OrgGroupsTab/components/OrgGroupsSection/OrgGroupsSection.tsx:121` |
+| `DeleteActionModal/DeleteActionModal.tsx` | 56 / 0 | V3 `ConfirmationAlertDialog`; follow the overlay recipe for confirmation gates, mutations, cleanup, and error recovery. | `frontend/src/pages/organization/AccessManagementPage/components/OrgGroupsTab/components/OrgGroupsSection/OrgGroupsSection.tsx:121` |
 | `Divider/Divider.tsx` | 0 / 0 | Deleted in first wave; no consumer. | Only its own/root barrels exported it. |
 | `Drawer/Drawer.tsx` | 0 / 0 | Deleted in first wave; no consumer. | Only its own/root barrels exported it. |
 | `Dropdown/Dropdown.tsx` | 23 / 2 | V3 DropdownMenu; check checkbox/radio, submenu, disabled actions, and focus. | `frontend/src/pages/secret-scanning/SecretScanningFindingsPage/components/SecretScanningFindingRow.tsx:137` |
@@ -149,12 +149,12 @@ Before each wave, record changed source paths, risk, state/security contracts, n
 
 Use this recipe for every V2 `Modal`, `DeleteActionModal`, and `ConfirmActionModal` consumer. The V3 overlays own the shared behavior, so a consumer migration maps props and structure and adds no per-callsite Escape, focus, pending, or stacking code.
 
-**What the V3 contract provides.** `DialogContent`, `SheetContent`, `AlertDialogContent`, and `DeleteConfirmDialog` provide these behaviors without consumer code:
+**What the V3 contract provides.** `DialogContent`, `SheetContent`, `AlertDialogContent`, and `ConfirmationAlertDialog` provide these behaviors without consumer code:
 
-- **Innermost layer first.** Escape or an outside click closes an open nested popup first. The next Escape or outside click reaches the overlay. Radix popups (`Select`, `DropdownMenu`, `Tooltip`, `HoverCard`, `Popover`) do this natively. `Combobox` registers its open popup with the nearest `DialogContent`, `SheetContent`, or `AlertDialogContent` (which includes `DeleteConfirmDialog`), and an event that closed the popup cannot also close the overlay. Inside an overlay, `Combobox` defaults to `modal`.
-- **Pending close.** While `isPending` is true on `DialogContent` or `SheetContent`, Escape, outside clicks, the built-in close button, and every `DialogClose` or `SheetClose` cannot dismiss the overlay. `DeleteConfirmDialog` locks itself while `onConfirm` is in flight, disables Cancel and the input, and shows the pending state on its confirm button.
+- **Innermost layer first.** Escape or an outside click closes an open nested popup first. The next Escape or outside click reaches the overlay. Radix popups (`Select`, `DropdownMenu`, `Tooltip`, `HoverCard`, `Popover`) do this natively. `Combobox` registers its open popup with the nearest `DialogContent`, `SheetContent`, or `AlertDialogContent` (which includes `ConfirmationAlertDialog`), and an event that closed the popup cannot also close the overlay. Inside an overlay, `Combobox` defaults to `modal`.
+- **Pending close.** While `isPending` is true on `DialogContent` or `SheetContent`, Escape, outside clicks, the built-in close button, and every `DialogClose` or `SheetClose` cannot dismiss the overlay. `ConfirmationAlertDialog` locks itself while `onConfirm` is in flight, disables Cancel and the input, and shows the pending state on its confirm button.
 - **Focus return.** Closing returns focus to the element that opened the overlay. When a V3 `DropdownMenuItem` opened it, focus returns to that menu's trigger. No refs or `onCloseAutoFocus` handlers are needed. If the opener no longer exists, for example a row removed by a successful delete, Radix's default applies.
-- **Typed confirmation.** `DeleteConfirmDialog` compares the typed value with `confirmKey`, resets it on every open and close, submits on Enter only when it matches, and keeps the dialog open if `onConfirm` rejects. The global mutation error toast reports the failure.
+- **Typed confirmation.** `ConfirmationAlertDialog` compares the typed value with `confirmKey`, resets it on every open and close, submits on Enter only when it matches, and keeps the dialog open if `onConfirm` rejects. The global mutation error toast reports the failure.
 
 **Choose the target.**
 
@@ -162,8 +162,8 @@ Use this recipe for every V2 `Modal`, `DeleteActionModal`, and `ConfirmActionMod
 | --- | --- |
 | `Modal` + `ModalContent` with a short form or prompt | `Dialog` + `DialogContent` |
 | `Modal` + `ModalContent` with a large or multi-step form | `Sheet` + `SheetContent` (see `DESIGN.md`) |
-| `DeleteActionModal` | `DeleteConfirmDialog` from `@app/components/v3/platform` |
-| `ConfirmActionModal` | `DeleteConfirmDialog` with a non-danger `confirmVariant` |
+| `DeleteActionModal` | `ConfirmationAlertDialog` from `@app/components/v3/platform` |
+| `ConfirmActionModal` | `ConfirmationAlertDialog` with a non-danger `confirmVariant` |
 
 **`Modal` and `ModalContent` mapping.**
 
@@ -250,7 +250,7 @@ After:
 
 **`DeleteActionModal` and `ConfirmActionModal` mapping.**
 
-| V2 | `DeleteConfirmDialog` |
+| V2 | `ConfirmationAlertDialog` |
 | --- | --- |
 | `isOpen` | `isOpen` |
 | `onChange` | `onOpenChange` |
@@ -283,7 +283,7 @@ Before:
 After:
 
 ```tsx
-<DeleteConfirmDialog
+<ConfirmationAlertDialog
   isOpen={popUp.removeMember.isOpen}
   title={`Are you sure you want to remove member with username ${username}?`}
   description="This action is irreversible."
@@ -299,9 +299,9 @@ After:
 - **No `autoFocus` inside V3 overlays.** `autoFocus` moves focus before the overlay records its opener, so focus cannot return on close. The overlay already focuses the first field.
 - **Menu triggers.** Focus returns to a menu trigger only when the menu is a V3 `DropdownMenu`. When the trigger is still a V2 `Dropdown`, migrate that menu in the same change or record that focus returns to the page.
 - **Chained confirmations.** If `onConfirm` opens a second dialog instead of closing, as `IntegrationsDetailsByIDPage` does, keep that control flow and check the second dialog's focus return.
-- **Pending state outside the form.** If the mutation runs in the parent, pass the mutation's `isPending` to `DialogContent` or `DeleteConfirmDialog`. Do not add `onOpenChange` guards.
+- **Pending state outside the form.** If the mutation runs in the parent, pass the mutation's `isPending` to `DialogContent` or `ConfirmationAlertDialog`. Do not add `onOpenChange` guards.
 - **Reset and discard.** Keep the consumer's `reset()` or state clearing on close. Radix unmounts closed content, so state inside the content subtree resets by itself. Add `useDiscardChangesGuard` only when the product asks for a dirty-form guard; V2 never had one.
-- **Existing AlertDialog compositions** with `confirmationValue` do not lock while pending. New typed confirmations use `DeleteConfirmDialog`.
+- **Existing AlertDialog compositions** with `confirmationValue` do not lock while pending. New typed confirmations use `ConfirmationAlertDialog`.
 - **Proof.** For each sweep, open each migrated overlay once in the preview: Escape with a nested popup open, Escape and an outside click while a mutation is pending, and focus after close.
 
 ## Completion acceptance

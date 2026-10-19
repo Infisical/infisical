@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { ArrowLeftIcon, Loader2Icon, Lock, type LucideIcon, Search } from "lucide-react";
 
 import {
@@ -265,6 +266,35 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const editCaId = (popUp?.ca?.data as { caId?: string })?.caId;
   const isEditMode = Boolean(editCaId);
+
+  const getSuggestedName = () => {
+    const typeName = caType ? CA_TYPE_NAME[caType] : undefined;
+    if (isEditMode || !typeName) return "";
+
+    let issuer = "";
+    if (configuration && "directoryUrl" in configuration) {
+      try {
+        const { hostname } = new URL(configuration.directoryUrl);
+        if (/[a-z]/i.test(hostname) && !hostname.includes(":")) {
+          const labels = hostname.split(".");
+          if (labels.length > 1) labels.pop();
+          if (labels.length > 1 && /^(ac|co|com|edu|gov|net|org)$/.test(labels[labels.length - 1]))
+            labels.pop();
+          issuer = labels[labels.length - 1];
+        }
+      } catch {
+        issuer = "";
+      }
+    } else if (configuration && "caName" in configuration) {
+      issuer = configuration.caName ?? "";
+    } else if (configuration && "policyDN" in configuration) {
+      issuer = configuration.policyDN.split("\\").filter(Boolean).pop() ?? "";
+    }
+
+    return slugify(`${typeName} ${issuer}`, { lowercase: true, decamelize: false })
+      .slice(0, 64)
+      .replace(/-+$/, "");
+  };
 
   const [selectedType, setSelectedType] = useState<CaType | null>(null);
   const [search, setSearch] = useState("");
@@ -1044,6 +1074,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       <Input
                         {...field}
                         placeholder="my-external-ca"
+                        suggestedValue={getSuggestedName()}
                         disabled={Boolean(ca)}
                         isError={Boolean(error)}
                         autoComplete="off"
