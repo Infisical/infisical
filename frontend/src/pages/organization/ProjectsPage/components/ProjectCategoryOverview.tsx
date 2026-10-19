@@ -2,12 +2,14 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
-import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
+import { getProductPlanSummaries } from "@app/components/license/product-plan-summary";
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import {
+  Badge,
+  ButtonBadge,
   Card,
   CardContent,
   CardHeader,
@@ -17,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useOrgPermission } from "@app/context";
+import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionProjectActions,
@@ -57,28 +59,31 @@ const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.AgentVault
 ];
 
-const PRODUCT_STYLES: Record<
-  ActiveProducts,
-  {
-    iconClassName: string;
-    containerClassName: string;
-    cardClassName: string;
-    titleUnderlineClassName: string;
-  }
-> = {
+type ProductCardDefinition = {
+  iconClassName: string;
+  containerClassName: string;
+  cardClassName: string;
+  titleUnderlineClassName: string;
+  planProductKey?: string;
+  isPreview?: boolean;
+};
+
+const PRODUCT_CARDS: Record<ActiveProducts, ProductCardDefinition> = {
   [ProjectType.SecretManager]: {
     iconClassName: "h-4.5 w-4.5 text-product-sm",
     containerClassName:
       "border-product-sm/30 bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:border-product-sm/50 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-sm/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-sm/60"
+    titleUnderlineClassName: "decoration-product-sm/60",
+    planProductKey: "secrets_manager"
   },
   [ProjectType.CertificateManager]: {
     iconClassName: "h-4.5 w-4.5 text-product-pki",
     containerClassName:
       "border-product-pki/30 bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:border-product-pki/50 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pki/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-pki/60"
+    titleUnderlineClassName: "decoration-product-pki/60",
+    planProductKey: "cert_management"
   },
   [ProjectType.KMS]: {
     iconClassName: "h-4.5 w-4.5 text-product-kms",
@@ -99,16 +104,22 @@ const PRODUCT_STYLES: Record<
     containerClassName:
       "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-pam/60"
+    titleUnderlineClassName: "decoration-product-pam/60",
+    planProductKey: "pam"
   },
   [ProjectType.AgentVault]: {
     iconClassName: "h-4.5 w-4.5 text-product-av",
     containerClassName:
       "border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:border-product-av/50 group-hover:from-product-av/25 group-hover:to-product-av/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-av/60"
+    titleUnderlineClassName: "decoration-product-av/60",
+    planProductKey: "agent_vault",
+    isPreview: true
   }
 };
+
+const PREVIEW_CARD_CLASS_NAME =
+  "relative overflow-visible outline-1 outline-offset-4 outline-warning/60 outline-solid";
 
 const formatNumber = (num: number): string => {
   return num.toLocaleString();
@@ -122,7 +133,11 @@ type ProductStat = {
 // Derived so the placeholder count cannot drift from the products again.
 const PRODUCT_TILE_COUNT = Object.keys(ProjectType).length;
 
-export const ProjectCategoryOverview = () => {
+type Props = {
+  showPlanBadges?: boolean;
+};
+
+export const ProjectCategoryOverview = ({ showPlanBadges = true }: Props) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
@@ -134,6 +149,11 @@ export const ProjectCategoryOverview = () => {
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects();
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
+  const { subscription } = useSubscription();
+  const planSummaries = useMemo(
+    () => getProductPlanSummaries(subscription.productPlans),
+    [subscription.productPlans]
+  );
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
@@ -564,8 +584,18 @@ export const ProjectCategoryOverview = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {PRODUCT_TYPES.map((type) => {
           const stats = getStatsForType(type);
-          const { iconClassName, containerClassName, cardClassName, titleUnderlineClassName } =
-            PRODUCT_STYLES[type];
+          const {
+            iconClassName,
+            containerClassName,
+            cardClassName,
+            titleUnderlineClassName,
+            planProductKey,
+            isPreview
+          } = PRODUCT_CARDS[type];
+          const plan =
+            showPlanBadges && planProductKey
+              ? planSummaries.find((summary) => summary.productKey === planProductKey)
+              : undefined;
           const Icon = getProjectLucideIcon(type);
 
           const tileBody = (
@@ -584,7 +614,16 @@ export const ProjectCategoryOverview = () => {
                       >
                         {getProjectTitle(type)}
                       </span>
-                      <PreviewBadge type={type} />
+                      {plan && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="info">{plan.shortPlanLabel}</Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {plan.planLabel} plan{plan.isTrialing ? " (trial)" : ""}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </CardTitle>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
                       {getProjectDescription(type)}
@@ -609,6 +648,7 @@ export const ProjectCategoryOverview = () => {
                   </div>
                 )}
               </CardContent>
+              {isPreview && <ButtonBadge variant="warning">Preview</ButtonBadge>}
             </>
           );
 
@@ -623,7 +663,11 @@ export const ProjectCategoryOverview = () => {
               <Tooltip key={type}>
                 <TooltipTrigger asChild>
                   <div aria-disabled className="cursor-not-allowed">
-                    <Card className="h-auto rounded-md opacity-50">{tileBody}</Card>
+                    <Card
+                      className={`h-auto rounded-md opacity-50 ${isPreview ? PREVIEW_CARD_CLASS_NAME : ""}`}
+                    >
+                      {tileBody}
+                    </Card>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -634,7 +678,7 @@ export const ProjectCategoryOverview = () => {
             );
           }
 
-          const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
+          const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName} ${isPreview ? PREVIEW_CARD_CLASS_NAME : ""}`;
 
           // These resolve their destination asynchronously (instance picker, lazy project
           // bootstrap, join-on-behalf), so they stay handler-driven.

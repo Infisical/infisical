@@ -71,7 +71,6 @@ import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { envConfig } from "@app/config/env";
 import {
-  OrgPermissionBillingActions,
   OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
@@ -105,7 +104,6 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NavbarPageBreadcrumbs } from "./NavbarPageBreadcrumbs";
 import { NotificationDropdown } from "./NotificationDropdown";
-import { OrganizationProductPlans } from "./OrganizationProductPlans";
 import { VersionBadge } from "./VersionBadge";
 
 const getFormattedSupportEmailLink = (variables: {
@@ -621,20 +619,6 @@ export const Navbar = () => {
               </NavbarSwitcher>
             </div>
             {!isProjectScope && <NavbarPageBreadcrumbs />}
-            {!isProjectScope && (
-              <OrgPermissionCan
-                I={OrgPermissionBillingActions.Read}
-                a={OrgPermissionSubjects.Billing}
-              >
-                {(isAllowed) => (
-                  <OrganizationProductPlans
-                    plans={subscription.productPlans}
-                    isSubOrganization={isSubOrganization}
-                    billingOrgId={isAllowed ? (currentOrg.rootOrgId ?? currentOrg.id) : undefined}
-                  />
-                )}
-              </OrgPermissionCan>
-            )}
             {isProjectScope && (
               <>
                 <TypeSelect />

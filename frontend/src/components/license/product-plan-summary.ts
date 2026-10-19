@@ -18,10 +18,21 @@ const PLAN_LABELS = new Map([
   ["legacy_enterprise", "Enterprise"]
 ]);
 
+const SHORT_PLAN_LABELS = new Map([
+  ["pro", "Pro"],
+  ["advanced", "Adv"],
+  ["enterprise", "Ent"],
+  ["legacy_pro_annual", "Pro"],
+  ["legacy_team", "Team"],
+  ["legacy_team_annual", "Team"],
+  ["legacy_enterprise", "Ent"]
+]);
+
 export type ProductPlanSummary = {
   productKey: string;
   productName: string;
   planLabel: string;
+  shortPlanLabel: string;
   isTrialing: boolean;
 };
 
@@ -51,6 +62,8 @@ export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"])
           )
           .join(" "),
       planLabel: PLAN_LABELS.get(planKey) ?? planKey.replace(/_/g, " "),
+      shortPlanLabel:
+        SHORT_PLAN_LABELS.get(planKey) ?? PLAN_LABELS.get(planKey) ?? planKey.replace(/_/g, " "),
       isTrialing
     });
   });
