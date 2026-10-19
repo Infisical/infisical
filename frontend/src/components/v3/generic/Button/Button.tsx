@@ -1,5 +1,5 @@
 import * as React from "react";
-import { forwardRef } from "react";
+import { forwardRef, type JSX } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 
