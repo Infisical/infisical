@@ -15,7 +15,7 @@ interface AccessPamRequestAutoApprovedTemplateProps
   accessTypeLabel: string;
   ruleName: string;
   linkedRecords?: string;
-  requestUrl: string;
+  folderUrl: string;
 }
 
 export const AccessPamRequestAutoApprovedTemplate = ({
@@ -28,7 +28,7 @@ export const AccessPamRequestAutoApprovedTemplate = ({
   accessTypeLabel,
   ruleName,
   linkedRecords,
-  requestUrl
+  folderUrl
 }: AccessPamRequestAutoApprovedTemplateProps) => {
   const target = [folderName, accountName].filter(Boolean).join(" / ");
 
@@ -54,7 +54,7 @@ export const AccessPamRequestAutoApprovedTemplate = ({
         )}
       </Section>
       <Section className="text-center">
-        <BaseButton href={requestUrl}>View Request</BaseButton>
+        <BaseButton href={folderUrl}>View Folder</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
@@ -71,6 +71,6 @@ AccessPamRequestAutoApprovedTemplate.PreviewProps = {
   accessTypeLabel: "access",
   ruleName: "Approved change ticket",
   linkedRecords: "Jira ticket PAY-123",
-  requestUrl: "https://infisical.com",
+  folderUrl: "https://infisical.com",
   siteUrl: "https://infisical.com"
 } as AccessPamRequestAutoApprovedTemplateProps;

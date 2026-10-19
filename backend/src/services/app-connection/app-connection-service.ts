@@ -1211,9 +1211,17 @@ export const appConnectionServiceFactory = ({
         err instanceof DatabaseError &&
         (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
       ) {
+        const { constraint } = err.error as { constraint?: string };
         if (
-          (err.error as { constraint?: string }).constraint === "certificate_authority_secret_appconnectionid_foreign"
+          constraint === "approval_policy_auto_approval_inputs_connectionid_foreign" ||
+          constraint === "approval_policy_auto_approval_conditions_connectionid_foreign"
         ) {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because one or more approval policies use it in their auto-approval rules. Remove it from those rules first."
+          });
+        }
+        if (constraint === "certificate_authority_secret_appconnectionid_foreign") {
           throw new BadRequestError({
             message:
               "Cannot delete this App Connection because a certificate authority signs with an AWS KMS key reached through it. Delete that certificate authority first."

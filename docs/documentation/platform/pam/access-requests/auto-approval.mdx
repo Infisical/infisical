@@ -83,7 +83,7 @@ Each condition runs one check on a linked record, and the checks available depen
 
 | Check | Passes when |
 | --- | --- |
-| **is assigned to the requester** | The ticket's assignee has the same email address in Jira as the requester has in Infisical (a request from a [machine identity](/documentation/platform/identities/machine-identities) never passes, because a machine identity has no email address) |
+| **is assigned to the requester** | The ticket's assignee has the same email address in Jira as the requester has in Infisical (it never passes if the assignee hides their email address in Jira, or for a request from a [machine identity](/documentation/platform/identities/machine-identities), which has no email address) |
 | **is approved in Jira** | The ticket is a Jira Service Management request, and its latest approval was approved |
 | **has status** | The ticket's status is one of the values |
 | **is in project** | The ticket is in one of the projects |

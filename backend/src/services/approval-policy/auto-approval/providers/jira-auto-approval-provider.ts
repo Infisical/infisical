@@ -2,10 +2,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
-  findJiraUsersByEmail,
   getJiraErrorMessage,
   getJiraIssue,
-  isJiraCloud,
   isJiraNotFoundError,
   listJiraIssueApprovals,
   listJiraIssueTypes,
@@ -13,8 +11,7 @@ import {
   listJiraStatuses,
   searchJiraLabels,
   TJiraConnection,
-  TJiraIssue,
-  TJiraUser
+  TJiraIssue
 } from "@app/services/app-connection/jira";
 
 import {
@@ -127,51 +124,20 @@ export const parseJiraTicket = (userInput: string, conn: Pick<TJiraConnection, "
   return key;
 };
 
-const isSameJiraUser = (conn: TJiraConnection, a: TJiraUser, b: TJiraUser) => {
-  if (isJiraCloud(conn)) return Boolean(a.accountId) && a.accountId === b.accountId;
-  return (Boolean(a.key) && a.key === b.key) || (Boolean(a.name) && a.name === b.name);
-};
-
-const matchAssigneeToRequester = async (
-  conn: TJiraConnection,
+// A hidden email can't be confirmed to be the requester's, so only an exact, visible email matches
+const matchAssigneeToRequester = (
   issue: TJiraIssue,
-  ctx: TAutoApprovalContext,
-  deps: TAutoApprovalProviderDeps
-): Promise<NonNullable<TJiraTicketFacts["assignee"]>> => {
-  const { key } = issue;
+  ctx: TAutoApprovalContext
+): NonNullable<TJiraTicketFacts["assignee"]> => {
   const email = ctx.requester.email?.trim().toLowerCase();
-  const assignee = issue.fields?.assignee;
-  const notAssigned = { matchesRequester: false, reason: `${key} isn't assigned to the requester` };
-
-  if (!email)
+  if (!email) {
     return { matchesRequester: false, reason: "Requests from machine identities can't match a Jira assignee" };
-  if (!assignee) return notAssigned;
-
-  if (assignee.emailAddress) {
-    return assignee.emailAddress.toLowerCase() === email ? { matchesRequester: true, reason: null } : notAssigned;
   }
 
-  // Jira hides this assignee's email, so find the requester's own Jira account by email instead
-  try {
-    const users = (await findJiraUsersByEmail(conn, email, deps)).filter((user) => user.active !== false);
-    const exactMatches = users.filter((user) => user.emailAddress?.toLowerCase() === email);
-    // A user search matches email prefixes, so a hidden email only counts when it is the only candidate
-    const candidates = exactMatches.length ? exactMatches : users.filter((user) => !user.emailAddress);
-
-    if (candidates.length === 0) {
-      return { matchesRequester: false, reason: "No Jira user has the requester's email address" };
-    }
-    if (candidates.length > 1) {
-      return { matchesRequester: false, reason: "The requester's email address matches more than one Jira user" };
-    }
-
-    return isSameJiraUser(conn, candidates[0], assignee) ? { matchesRequester: true, reason: null } : notAssigned;
-  } catch (error) {
-    return {
-      matchesRequester: false,
-      reason: `Couldn't look up the requester in Jira: ${getJiraErrorMessage(error)}`
-    };
-  }
+  const assigneeEmail = issue.fields?.assignee?.emailAddress?.trim().toLowerCase();
+  return assigneeEmail === email
+    ? { matchesRequester: true, reason: null }
+    : { matchesRequester: false, reason: `${issue.key} isn't assigned to the requester` };
 };
 
 const readLatestApproval = async (
@@ -222,7 +188,7 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
         const key = issue.key || id;
         const [assignee, approval] = await Promise.all([
           constraintIds.includes(JiraTicketConstraint.AssignedToRequester)
-            ? matchAssigneeToRequester(conn, { ...issue, key }, ctx, deps)
+            ? matchAssigneeToRequester({ ...issue, key }, ctx)
             : null,
           constraintIds.includes(JiraTicketConstraint.Approved) ? readLatestApproval(conn, key, deps) : null
         ]);

@@ -831,14 +831,14 @@ export const pamAccessApprovalResourceFactory = ({
       const summary = getAutoApprovalSummary(request.autoApprovalEvidence);
       const ruleName = summary?.ruleName ?? "an auto-approval rule";
       const linkedRecords = summary?.linkedRecords.map(({ label, value }) => `${label} ${value}`).join(", ");
-      const requestUrl = `${cfg.SITE_URL}/organizations/${orgId}/pam/approval-requests?requestId=${request.id}`;
+      const folderUrl = `${accountsUrl}/${encodeURIComponent(inputs.folderId)}`;
 
       return {
         inApp: {
           type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
           title: "Access auto-approved",
           body: `**${escapeMarkdown(requesterName)}** was granted ${accessTypeLabel} to **${escapeMarkdown(accountName)}** by the auto-approval rule "${escapeMarkdown(ruleName)}".`,
-          link: requestUrl
+          link: folderUrl
         },
         email: {
           subjectLine: "PAM Access Auto-Approved",
@@ -852,9 +852,23 @@ export const pamAccessApprovalResourceFactory = ({
             accessTypeLabel,
             ruleName,
             linkedRecords: linkedRecords || undefined,
-            requestUrl
+            folderUrl
           }
-        }
+        },
+        chat: (await $chatDeliveries(PamNotificationEvent.AccessRequestApproved, inputs.folderId)).map((target) => ({
+          ...target,
+          notification: {
+            type: TriggerFeature.PAM_ACCESS_REQUEST_APPROVED,
+            payload: {
+              requesterFullName: requesterName,
+              requesterEmail,
+              accountName,
+              folderName,
+              autoApprovalRuleName: ruleName,
+              approvalUrl: folderUrl
+            }
+          }
+        }))
       };
     }
 
