@@ -8,7 +8,11 @@ const { validateIamIdentity, validateIdTokenIdentity } = vi.hoisted(() => ({
   validateIdTokenIdentity: vi.fn()
 }));
 
-vi.mock("./identity-gcp-auth-fns", () => ({ validateIamIdentity, validateIdTokenIdentity }));
+vi.mock("./identity-gcp-auth-fns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./identity-gcp-auth-fns")>()),
+  validateIamIdentity,
+  validateIdTokenIdentity
+}));
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ OTEL_TELEMETRY_COLLECTION_ENABLED: false })
@@ -121,9 +125,12 @@ describe("gcpAuthService.login GCE Compute Engine detail requirement", () => {
   });
 
   // Nothing about the identity depends on where the token came from, so requiring GCE details
-  // here would break every unrestricted GCE configuration in the field.
-  test("allows a token with no Compute Engine details when neither projects nor zones are restricted", async () => {
-    const { result } = login({ type: "gce" }, { email: SERVICE_ACCOUNT, computeEngineDetails: undefined });
+  // here would break every service-account-restricted GCE configuration in the field.
+  test("allows a token with no Compute Engine details when only the service account is restricted", async () => {
+    const { result } = login(
+      { type: "gce", allowedServiceAccounts: SERVICE_ACCOUNT },
+      { email: SERVICE_ACCOUNT, computeEngineDetails: undefined }
+    );
 
     await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
   });
@@ -132,7 +139,12 @@ describe("gcpAuthService.login GCE Compute Engine detail requirement", () => {
   // stay scoped to the gce type even when the stale project and zone columns are populated.
   test("allows an IAM login even while project and zone columns are populated", async () => {
     const { result } = login(
-      { type: "iam", allowedProjects: "my-project", allowedZones: "us-central1-a" },
+      {
+        type: "iam",
+        allowedServiceAccounts: SERVICE_ACCOUNT,
+        allowedProjects: "my-project",
+        allowedZones: "us-central1-a"
+      },
       { email: SERVICE_ACCOUNT }
     );
 
@@ -180,5 +192,41 @@ describe("gcpAuthService.login GCE allow lists", () => {
     );
 
     await expect(result).rejects.toMatchObject({ detail: { reasonCode: "zone_not_allowed" } });
+  });
+});
+
+// An identity with no binding would otherwise accept any token that carries its UUID as audience,
+// so the login refuses it before the token is looked at.
+describe("gcpAuthService.login trust binding", () => {
+  test("rejects a GCE identity with no service account, project, or zone before verifying the token", async () => {
+    const { result, issueIdentityAccessToken } = login(
+      { type: "gce" },
+      { email: SERVICE_ACCOUNT, computeEngineDetails }
+    );
+
+    await expect(result).rejects.toMatchObject({
+      detail: { reasonCode: "trust_binding_missing", identityId: IDENTITY_ID, orgId: ORG_ID }
+    });
+    expect(validateIdTokenIdentity).not.toHaveBeenCalled();
+    expect(issueIdentityAccessToken).not.toHaveBeenCalled();
+  });
+
+  test("rejects an IAM identity that has only project and zone set", async () => {
+    const { result } = login(
+      { type: "iam", allowedProjects: "my-project", allowedZones: "us-central1-a" },
+      { email: SERVICE_ACCOUNT }
+    );
+
+    await expect(result).rejects.toMatchObject({ detail: { reasonCode: "trust_binding_missing" } });
+    expect(validateIamIdentity).not.toHaveBeenCalled();
+  });
+
+  test("treats whitespace-only lists as unset", async () => {
+    const { result } = login(
+      { type: "gce", allowedServiceAccounts: "   ", allowedProjects: " ", allowedZones: "" },
+      { email: SERVICE_ACCOUNT, computeEngineDetails }
+    );
+
+    await expect(result).rejects.toMatchObject({ detail: { reasonCode: "trust_binding_missing" } });
   });
 });

@@ -35,7 +35,12 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityGcpAuthDALFactory } from "./identity-gcp-auth-dal";
-import { validateIamIdentity, validateIdTokenIdentity } from "./identity-gcp-auth-fns";
+import {
+  GCP_TRUST_BINDING_REQUIRED_MESSAGE,
+  hasGcpTrustBinding,
+  validateIamIdentity,
+  validateIdTokenIdentity
+} from "./identity-gcp-auth-fns";
 import {
   TAttachGcpAuthDTO,
   TGcpIdentityDetails,
@@ -103,6 +108,19 @@ export const identityGcpAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
+      if (!hasGcpTrustBinding(identityGcpAuth)) {
+        throw new UnauthorizedError({
+          message:
+            "Access denied: this identity has no GCP service account, project, or zone configured. An admin must add one before it can authenticate.",
+          detail: {
+            reasonCode: "trust_binding_missing",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
+
       let gcpIdentityDetails: TGcpIdentityDetails;
       switch (identityGcpAuth.type) {
         case "gce": {
@@ -340,6 +358,10 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
+    if (!hasGcpTrustBinding({ type, allowedServiceAccounts, allowedProjects, allowedZones })) {
+      throw new BadRequestError({ message: GCP_TRUST_BINDING_REQUIRED_MESSAGE });
+    }
+
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -441,6 +463,17 @@ export const identityGcpAuthServiceFactory = ({
     }
 
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
+
+    if (
+      !hasGcpTrustBinding({
+        type: type ?? identityGcpAuth.type,
+        allowedServiceAccounts: allowedServiceAccounts ?? identityGcpAuth.allowedServiceAccounts,
+        allowedProjects: allowedProjects ?? identityGcpAuth.allowedProjects,
+        allowedZones: allowedZones ?? identityGcpAuth.allowedZones
+      })
+    ) {
+      throw new BadRequestError({ message: GCP_TRUST_BINDING_REQUIRED_MESSAGE });
+    }
 
     if (
       (accessTokenMaxTTL || identityGcpAuth.accessTokenMaxTTL) > 0 &&

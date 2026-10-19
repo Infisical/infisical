@@ -40,7 +40,12 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
-import { extractPrincipalArn, extractPrincipalArnEntity } from "./identity-aws-auth-fns";
+import {
+  AWS_TRUST_BINDING_REQUIRED_MESSAGE,
+  extractPrincipalArn,
+  extractPrincipalArnEntity,
+  hasAwsTrustBinding
+} from "./identity-aws-auth-fns";
 import {
   TAttachAwsAuthDTO,
   TAwsGetCallerIdentityHeaders,
@@ -149,6 +154,19 @@ export const identityAwsAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
+      if (!hasAwsTrustBinding(identityAwsAuth)) {
+        throw new UnauthorizedError({
+          message:
+            "Access denied: this identity has no AWS account ID or principal ARN configured. An admin must add one before it can authenticate.",
+          detail: {
+            reasonCode: "trust_binding_missing",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
+
       const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
       const body: string = Buffer.from(iamRequestBody, "base64").toString();
 
@@ -382,6 +400,10 @@ export const identityAwsAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
+    if (!hasAwsTrustBinding({ allowedAccountIds, allowedPrincipalArns })) {
+      throw new BadRequestError({ message: AWS_TRUST_BINDING_REQUIRED_MESSAGE });
+    }
+
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -482,6 +504,15 @@ export const identityAwsAuthServiceFactory = ({
     }
 
     const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
+
+    if (
+      !hasAwsTrustBinding({
+        allowedAccountIds: allowedAccountIds ?? identityAwsAuth.allowedAccountIds,
+        allowedPrincipalArns: allowedPrincipalArns ?? identityAwsAuth.allowedPrincipalArns
+      })
+    ) {
+      throw new BadRequestError({ message: AWS_TRUST_BINDING_REQUIRED_MESSAGE });
+    }
 
     if (
       (accessTokenMaxTTL || identityAwsAuth.accessTokenMaxTTL) > 0 &&

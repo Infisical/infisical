@@ -259,8 +259,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
       body: z
         .object({
           stsEndpoint: z.string().trim().min(1).optional().describe(AWS_AUTH.UPDATE.stsEndpoint),
-          allowedPrincipalArns: validatePrincipalArns.describe(AWS_AUTH.UPDATE.allowedPrincipalArns),
-          allowedAccountIds: validateAccountIds.describe(AWS_AUTH.UPDATE.allowedAccountIds),
+          allowedPrincipalArns: validatePrincipalArns.optional().describe(AWS_AUTH.UPDATE.allowedPrincipalArns),
+          allowedAccountIds: validateAccountIds.optional().describe(AWS_AUTH.UPDATE.allowedAccountIds),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
