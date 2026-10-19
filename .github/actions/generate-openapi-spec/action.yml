@@ -1,5 +1,5 @@
 name: "Generate OpenAPI spec"
-description: "Generates the public OpenAPI spec from a checkout's backend source and writes it, keys sorted, to a file."
+description: "Generates the public OpenAPI spec from a checkout's backend source and writes it to a file with the keys sorted for determinism."
 
 inputs:
   source-path:

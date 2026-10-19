@@ -20,7 +20,7 @@ export type TOpenApiDocument = {
 export type TOpenApiArtifactMeta = {
   contentType: string;
   etagBase: string;
-  identityBytes: number;
+  uncompressedBytes: number;
   brBytes: number;
   gzipBytes: number;
 };
@@ -53,19 +53,19 @@ const filterSpecByTag = (spec: TOpenApiDocument, tag: ApiDocsTags): TOpenApiDocu
   return { ...spec, paths };
 };
 
-type TRenderArtifact = (spec: TOpenApiDocument) => { body: string; contentType: string };
+type TRenderArtifact = (spec: TOpenApiDocument) => { text: string; contentType: string };
 
 const RENDER_BY_ARTIFACT = new Map<string, TRenderArtifact>([
-  [OPENAPI_JSON_ARTIFACT, (spec) => ({ body: JSON.stringify(spec), contentType: JSON_CONTENT_TYPE })],
+  [OPENAPI_JSON_ARTIFACT, (spec) => ({ text: JSON.stringify(spec), contentType: JSON_CONTENT_TYPE })],
   // Converted from the same object rather than asking @fastify/swagger for YAML, which rebuilds the
   // whole spec from the routes first.
   [
     OPENAPI_YAML_ARTIFACT,
-    (spec) => ({ body: yaml.stringify(spec, { strict: false }), contentType: YAML_CONTENT_TYPE })
+    (spec) => ({ text: yaml.stringify(spec, { strict: false }), contentType: YAML_CONTENT_TYPE })
   ],
   ...Object.entries(TAG_BY_SLUG).map(([slug, tag]): [string, TRenderArtifact] => [
     taggedArtifactName(slug),
-    (spec) => ({ body: JSON.stringify(filterSpecByTag(spec, tag)), contentType: JSON_CONTENT_TYPE })
+    (spec) => ({ text: JSON.stringify(filterSpecByTag(spec, tag)), contentType: JSON_CONTENT_TYPE })
   ])
 ]);
 
@@ -75,22 +75,22 @@ export const buildOpenApiArtifact = async (spec: TOpenApiDocument, name: string)
   const render = RENDER_BY_ARTIFACT.get(name);
   if (!render) throw new Error(`Unknown OpenAPI spec file '${name}'`);
 
-  const { body, contentType } = render(spec);
-  const identity = Buffer.from(body, "utf8");
+  const { text, contentType } = render(spec);
+  const body = Buffer.from(text, "utf8");
   const [br, gzipped] = await Promise.all([
-    brotliCompressAsync(identity, {
+    brotliCompressAsync(body, {
       params: {
         [zlibConstants.BROTLI_PARAM_QUALITY]: 5,
-        [zlibConstants.BROTLI_PARAM_SIZE_HINT]: identity.byteLength
+        [zlibConstants.BROTLI_PARAM_SIZE_HINT]: body.byteLength
       }
     }),
-    gzipAsync(identity)
+    gzipAsync(body)
   ]);
 
   return {
     contentType,
-    etagBase: createHash("sha256").update(identity).digest("base64"),
-    identityBytes: identity.byteLength,
+    etagBase: createHash("sha256").update(body).digest("base64"),
+    uncompressedBytes: body.byteLength,
     brBytes: br.byteLength,
     gzipBytes: gzipped.byteLength,
     br,

@@ -114,7 +114,7 @@ const openApiDocs = fp(async (fastify, { source }: { source: TOpenApiArtifactSou
         .header("content-encoding", encoding)
         .header("content-length", encoding === "br" ? artifact.brBytes : artifact.gzipBytes);
     } else {
-      void reply.header("content-length", artifact.identityBytes);
+      void reply.header("content-length", artifact.uncompressedBytes);
     }
 
     // Fastify's HEAD handling reads a stream body to the end before discarding it, so sending the
