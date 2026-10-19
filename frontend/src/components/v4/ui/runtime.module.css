@@ -23,6 +23,13 @@
     pixelAssemble 0.95s ease-out backwards,
     /* v4-check-ignore motion-literal -- same spinner */ pixelTrail 2.4s linear infinite;
 }
+.inline rect[data-cross],
+.base rect[data-cross] {
+  animation-name: pixelCross;
+}
+.page rect[data-cross] {
+  animation-name: pixelAssemble, pixelCross;
+}
 .status {
   display: flex;
   flex-direction: column;
@@ -106,6 +113,21 @@
     opacity: 0.4;
   }
 }
+@keyframes pixelCross {
+  0%,
+  50%,
+  100% {
+    opacity: 0.65;
+  }
+  9%,
+  59% {
+    opacity: 0.56;
+  }
+  25%,
+  75% {
+    opacity: 1;
+  }
+}
 @keyframes pixelAssemble {
   from {
     opacity: 0;
@@ -126,6 +148,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .spinner rect,
+  .spinner rect[data-cross],
   .busy::after {
     animation: none;
     opacity: 1;

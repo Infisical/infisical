@@ -1536,7 +1536,8 @@ export const baselineForms = [
     exports: ["Slider"],
     referenceNames: ["Slider"],
     behavior: [
-      "Radix value/defaultValue is a number array; onValueChange reports live adjustment and onValueCommit reports committed adjustment. Array length determines the number of thumbs."
+      "Radix value/defaultValue is a number array; onValueChange reports live adjustment and onValueCommit reports committed adjustment. Array length determines the number of thumbs.",
+      "The filled range and the thumb use the accent in both themes, and the thumb has a 2px on-accent ring. The thumb follows the corner mode: a square in square mode and a rounded square (radius-sm) in soft mode, never a circle. A disabled slider drops to faint and the disabled control surface."
     ],
     accessibility: [
       "Name each thumb with thumbLabels or aria-labelledby; with one shared label, each thumb gets that label plus its position. Each thumb announces its minimum, maximum and value, and arrow keys adjust it."
@@ -1665,7 +1666,7 @@ export const baselineForms = [
     exports: ["Switch"],
     referenceNames: ["Switch"],
     behavior: [
-      "Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is a mid grey track with a pure white knob. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio."
+      "Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is the accent track (sw-on) with an on-accent ink knob (sw-knob-on). Track and knob follow the corner mode: square in square mode, radius-control and half of it in soft mode. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio."
     ],
     accessibility: [
       "Label the switch and keep its name stable when its checked state changes. Do not stage it behind Save."

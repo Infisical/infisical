@@ -59,6 +59,8 @@ const componentGroupOrder: readonly ComponentGroup[] = [
   "Data display",
   "Feedback",
   "Overlays",
+  "Composites",
+  "Patterns",
   "Code",
   "Utilities"
 ];
@@ -126,6 +128,14 @@ export const DesignSystemPage = () => {
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState<number>();
   const { resolvedTheme: theme, setTheme } = useTheme();
+  const [corners, setCorners] = useState<"square" | "soft">(() => {
+    try {
+      return window.localStorage.getItem("v4-corners") === "soft" ? "soft" : "square";
+    } catch {
+      return "square";
+    }
+  });
+  const nextCorners = corners === "soft" ? "square" : "soft";
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
     const follow = () => startTransition(() => setHash(window.location.hash));
@@ -145,7 +155,7 @@ export const DesignSystemPage = () => {
   const currentPage = resolveDocumentationPage(hash);
   const nextTheme = theme === "dark" ? "light" : "dark";
   return (
-    <V4Scope className="flex h-svh flex-col overflow-hidden" theme={theme}>
+    <V4Scope className="flex h-svh flex-col overflow-hidden" theme={theme} corners={corners}>
       <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
         Skip to content
       </a>
@@ -253,6 +263,23 @@ export const DesignSystemPage = () => {
             <ToggleGroupItem value="agent">Agent</ToggleGroupItem>
           </ToggleGroup>
           <span aria-hidden="true" className={dockStyles.divider} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={dockStyles.segment}
+            aria-label={`Corners: ${corners}. Switch to ${nextCorners}`}
+            onClick={() => {
+              try {
+                window.localStorage.setItem("v4-corners", nextCorners);
+              } catch {
+                // Storage is unavailable; keep the choice for this session only.
+              }
+              setCorners(nextCorners);
+            }}
+          >
+            {corners === "soft" ? "Soft" : "Square"}
+          </Button>
           <Button
             type="button"
             variant="ghost"

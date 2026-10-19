@@ -469,7 +469,7 @@ export const baselineContent = [
     ],
     referenceNames: ["Avatar", "Identity"],
     behavior: [
-      "Avatar supports person, machine, agent and fallback identities, numeric size and optional status. Every kind shares one paint, a tint square with ink initials or icon and 4px corners; the initials or icon tell the kinds apart. Initials are 10, 12 and 14px at 24, 32 and 40px. The status dot is an 8px square outside the bottom corner with a 2px surface ring. AvatarGroup overlaps by 4px and exposes overflow, and Identity pairs a lead with text."
+      "Avatar supports person, machine, agent and fallback identities, numeric size and optional status. Every kind shares one paint, a tint square with ink initials or icon and radius-control corners (square by default, 4px in soft mode); the initials or icon tell the kinds apart. Initials are 10, 12 and 14px at 24, 32 and 40px. The status dot is an 8px square outside the bottom corner with a 2px surface ring. AvatarGroup overlaps by 4px and exposes overflow, and Identity pairs a lead with text."
     ],
     accessibility: [
       "Provide an identity name or accessible label. Organizations use text or a neutral icon, never an invented avatar."
@@ -627,7 +627,7 @@ export const baselineContent = [
     exports: ["Badge", "badgeVariants", "Count"],
     referenceNames: ["Badge", "Count"],
     behavior: [
-      "tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with 4px corners and one weight, and take an optional dot and mono content. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists."
+      "tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with radius-sm corners (square by default, 4px in soft mode) and one weight, and take an optional dot and mono content. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists."
     ],
     accessibility: ["Tone must accompany readable text; a dot alone does not explain status."],
     limitations: [
@@ -2882,16 +2882,19 @@ export const baselineContent = [
       "src/components/v4/ui/toast-stack.tsx",
       "src/components/v4/ui/helpers.module.css"
     ],
-    exports: ["Toaster", "ToastStack", "ToastItem"],
+    exports: ["Toaster", "toast", "V4_TOASTER_ID", "ToastStack", "ToastItem"],
     referenceNames: ["Toast", "ToastStack"],
     behavior: [
-      "Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist."
+      "Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist.",
+      "The v4 Toaster has its own toaster id (V4_TOASTER_ID), and the toast exported beside it routes every call to that id. The app's v3 Toaster only shows toasts without an id, so a v4 toast and a v3 toast never render twice, even when both Toasters are mounted on one page.",
+      "Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content."
     ],
     accessibility: [
       "ToastStack exposes status feedback and named action/dismiss buttons. Its auto-dismiss timer pauses while hovered or keyboard-focused, then resumes the remaining duration."
     ],
     limitations: [
-      "Toaster/Sonner and controlled ToastStack are alternative owners, not a shared queue. The host creates results after actual settlement and handles action effects."
+      "Toaster/Sonner and controlled ToastStack are alternative owners, not a shared queue. The host creates results after actual settlement and handles action effects.",
+      "Call toast from @infisical/sonner, not from the sonner package: a plain sonner toast has no toaster id and goes to the app's v3 Toaster instead."
     ],
     examples: [
       {

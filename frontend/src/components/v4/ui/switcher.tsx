@@ -12,7 +12,7 @@ import {
 } from "./command";
 import { Icon, type IconName } from "./icon";
 import { Kbd } from "./kbd";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./popover";
 
 export interface SwitcherOption {
   value: string;
@@ -38,6 +38,7 @@ export interface SwitcherAction {
 export type SwitcherActionDivider = { type: "separator" } | { type: "label"; label: ReactNode };
 export interface SwitcherProps {
   trigger: ReactElement;
+  anchor?: (trigger: ReactElement) => ReactElement;
   options: SwitcherOption[];
   value?: string;
   defaultValue?: string;
@@ -68,6 +69,7 @@ const syncActiveOption = (root: HTMLDivElement) => {
 
 export const Switcher = ({
   trigger,
+  anchor,
   options,
   value,
   defaultValue = "",
@@ -132,7 +134,13 @@ export const Switcher = ({
         if (!next) setQuery("");
       }}
     >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      {anchor ? (
+        <PopoverAnchor asChild>
+          {anchor(<PopoverTrigger asChild>{trigger}</PopoverTrigger>)}
+        </PopoverAnchor>
+      ) : (
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      )}
       <PopoverContent
         className={className}
         align={align}
@@ -199,12 +207,16 @@ export const Switcher = ({
                           {option.meta}
                         </span>
                       )}
-                      {option.value === selected && <Icon name="check" label="Current" />}
+                      {option.value === selected && (
+                        <span className="inline-flex">
+                          <Icon name="check" label="Current" />
+                        </span>
+                      )}
                     </CommandItem>
                   ))}
               </CommandGroup>
             ))}
-            {actions.length > 0 && <CommandSeparator />}
+            {actions.length > 0 && options.length > 0 && <CommandSeparator />}
             {actions.map((action, index) =>
               "type" in action ? (
                 action.type === "separator" ? (

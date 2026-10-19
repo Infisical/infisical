@@ -1,0 +1,71 @@
+.toaster[data-sonner-toaster] {
+  font-family: var(--v4-type-row-title-font-family);
+  color: var(--v4-toast-text);
+}
+.toast[data-sonner-toast] {
+  width: var(--width);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--v4-space-8);
+  padding: 12px;
+  border: 1px solid var(--v4-toast-line);
+  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  background: var(--v4-toast-bg);
+  color: var(--v4-toast-text);
+  box-shadow: var(--v4-shadow-pop);
+}
+.icon[data-icon] {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: var(--v4-size-icon);
+  height: var(--v4-type-row-title-line-height);
+  color: var(--v4-toast-muted);
+}
+.icon[data-icon] svg {
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+}
+[data-type="success"] > .icon[data-icon] {
+  color: var(--v4-toast-ok);
+}
+[data-type="error"] > .icon[data-icon] {
+  color: var(--v4-toast-bad);
+}
+.content[data-content] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.title[data-title] {
+  font-family: var(--v4-type-row-title-font-family);
+  font-size: var(--v4-type-row-title-font-size);
+  line-height: var(--v4-type-row-title-line-height);
+  font-weight: var(--v4-type-row-title-font-weight);
+  letter-spacing: var(--v4-type-row-title-letter-spacing);
+}
+.description[data-description] {
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+  color: var(--v4-toast-muted);
+}
+.action[data-button] {
+  flex: none;
+  margin-inline-start: auto;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--v4-accent-fg);
+  font-family: var(--v4-type-row-title-font-family);
+  font-size: var(--v4-type-row-title-font-size);
+  line-height: var(--v4-type-row-title-line-height);
+  font-weight: var(--v4-type-row-title-font-weight);
+}

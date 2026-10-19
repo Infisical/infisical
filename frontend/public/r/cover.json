@@ -1,0 +1,25 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "cover",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@infisical/infisical-base"
+  ],
+  "dependencies": [
+    "cn@^0.4.0"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/cover.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/cover.tsx",
+      "content": "import * as React from \"react\";\nimport { cn } from \"cn\";\n\nimport styles from \"./cover.module.css\";\n\nconst dots = Array.from({ length: 32 }, (_, index) => ({\n  x: 648 + (index % 8) * 16,\n  y: 136 + Math.floor(index / 8) * 16\n}));\n\nexport type CoverProps = Omit<React.ComponentPropsWithoutRef<\"div\">, \"title\"> & {\n  title: React.ReactNode;\n  tagline?: React.ReactNode;\n};\n\nexport const Cover = React.forwardRef<HTMLDivElement, CoverProps>(\n  ({ title, tagline, className, ...props }, ref) => (\n    <div ref={ref} data-slot=\"cover\" className={cn(styles.cover, className)} {...props}>\n      <svg className={styles.art} viewBox=\"480 0 480 288\" aria-hidden=\"true\" focusable=\"false\">\n        <rect className={cn(styles.slab, styles.block)} x=\"624\" y=\"-8\" width=\"344\" height=\"216\" />\n        <rect className={cn(styles.accent, styles.block)} x=\"512\" y=\"168\" width=\"96\" height=\"96\" />\n        <rect className={cn(styles.band, styles.block)} x=\"624\" y=\"224\" width=\"344\" height=\"40\" />\n        {dots.map((dot) => (\n          <rect\n            key={`${dot.x}-${dot.y}`}\n            className={styles.dot}\n            x={dot.x}\n            y={dot.y}\n            width=\"4\"\n            height=\"4\"\n          />\n        ))}\n      </svg>\n      <div className={styles.words}>\n        <h1 className={styles.title}>{title}</h1>\n        {tagline && <p className={styles.tagline}>{tagline}</p>}\n      </div>\n    </div>\n  )\n);\nCover.displayName = \"Cover\";\n"
+    },
+    {
+      "path": "src/components/v4/ui/cover.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/cover.module.css",
+      "content": ".cover {\n  container-type: inline-size;\n  position: relative;\n  width: 100%;\n  aspect-ratio: 960 / 288;\n  overflow: hidden;\n  background: var(--v4-surface);\n  color: var(--v4-ink);\n}\n.art {\n  position: absolute;\n  top: 0;\n  right: 0;\n  width: 50%;\n  height: 100%;\n}\n.slab {\n  fill: var(--v4-ink);\n}\n.accent {\n  fill: var(--v4-accent);\n}\n.band {\n  fill: var(--v4-control);\n}\n.block {\n  rx: calc(var(--v4-radius-card) * var(--corners));\n}\n.dot {\n  fill: var(--v4-on-ink);\n  rx: calc(var(--v4-radius-xs) * var(--corners));\n}\n.words {\n  position: absolute;\n  bottom: 3.33cqi;\n  left: 4.17cqi;\n  max-width: 46cqi;\n}\n.title {\n  margin: 0;\n  font-family: var(--v4-type-display-font-family);\n  font-size: max(var(--v4-type-display-font-size), 10.8cqi);\n  line-height: 1;\n  font-weight: var(--v4-type-display-font-weight);\n  letter-spacing: var(--v4-type-display-letter-spacing);\n}\n.tagline {\n  margin: 1.25cqi 0 0 2px;\n  color: var(--v4-muted);\n  font-family: var(--v4-type-body-font-family);\n  font-size: var(--v4-type-body-font-size);\n  line-height: var(--v4-type-body-line-height);\n}\n"
+    }
+  ]
+}

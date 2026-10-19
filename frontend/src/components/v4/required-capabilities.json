@@ -2,6 +2,27 @@
   "schemaVersion": 1,
   "components": [
     {
+      "id": "access-list",
+      "name": "AccessList",
+      "kind": "pattern",
+      "exports": [
+        "AccessList"
+      ],
+      "variants": [
+        "owner locked",
+        "multiple selection",
+        "bulk bar",
+        "revoked with undo",
+        "empty"
+      ],
+      "behavior": "Framed List of member link rows with selection; contained FloatingActionBar revokes; owner unselectable",
+      "acceptance": [
+        "Owner never selected",
+        "Undo restores",
+        "Roles in words"
+      ]
+    },
+    {
       "id": "accordion",
       "name": "Accordion",
       "kind": "component",
@@ -17,6 +38,25 @@
         "Keyboard Home/End/arrows",
         "Disabled skipped",
         "Closed content unfocusable"
+      ]
+    },
+    {
+      "id": "activity-log",
+      "name": "ActivityLog",
+      "kind": "pattern",
+      "exports": [
+        "ActivityLog"
+      ],
+      "variants": [
+        "day sections",
+        "machine and agent badges",
+        "loading more",
+        "all loaded"
+      ],
+      "behavior": "Plain small List with day sections and load more",
+      "acceptance": [
+        "Existing rows stay while loading",
+        "Footer counts events"
       ]
     },
     {
@@ -83,6 +123,47 @@
         "Nested collapse works",
         "Reopen retains child state",
         "Reduced motion ends immediately"
+      ]
+    },
+    {
+      "id": "announcements",
+      "name": "Announcements",
+      "kind": "composite",
+      "exports": [
+        "Announcements"
+      ],
+      "variants": [
+        "cards",
+        "media",
+        "action",
+        "dots",
+        "last card"
+      ],
+      "behavior": "480px dialog of cards that slide in the direction of travel; Left and Right wrap; Next becomes Done; onSeen per card",
+      "acceptance": [
+        "Focus starts on Next",
+        "Position announced",
+        "Media inert"
+      ]
+    },
+    {
+      "id": "approval-queue",
+      "name": "ApprovalQueue",
+      "kind": "pattern",
+      "exports": [
+        "ApprovalQueue"
+      ],
+      "variants": [
+        "new",
+        "pending",
+        "resolved",
+        "failed"
+      ],
+      "behavior": "Framed List with actions below each request; requests change state in place",
+      "acceptance": [
+        "Resolved rows stay with Undo",
+        "Failed rows say how to recover",
+        "Count drops on resolve"
       ]
     },
     {
@@ -478,6 +559,24 @@
       ]
     },
     {
+      "id": "cover",
+      "name": "Cover",
+      "kind": "component",
+      "exports": [
+        "Cover"
+      ],
+      "variants": [
+        "light",
+        "dark",
+        "corners"
+      ],
+      "behavior": "Brand cover from color, radius and space tokens at a fixed ratio",
+      "acceptance": [
+        "Art follows theme",
+        "Art hidden from assistive technology"
+      ]
+    },
+    {
       "id": "data-grid",
       "name": "DataGrid",
       "kind": "component",
@@ -649,6 +748,27 @@
         "Folder picker nested popup",
         "Full filename recoverable",
         "Reduced motion collapse"
+      ]
+    },
+    {
+      "id": "floating-action-bar",
+      "name": "FloatingActionBar",
+      "kind": "composite",
+      "exports": [
+        "FloatingActionBar"
+      ],
+      "variants": [
+        "fixed",
+        "contained",
+        "select all",
+        "more",
+        "busy action"
+      ],
+      "behavior": "Shows while count above zero; toolbar arrows; Escape clears; focus returns when it leaves",
+      "acceptance": [
+        "Count announced",
+        "Escape clears",
+        "Danger action last"
       ]
     },
     {
@@ -889,6 +1009,26 @@
       ]
     },
     {
+      "id": "loader",
+      "name": "Loader",
+      "kind": "component",
+      "exports": [
+        "Loader"
+      ],
+      "variants": [
+        "base",
+        "page",
+        "delay",
+        "loaded"
+      ],
+      "behavior": "Region wrapper around a labeled Spinner; renders children when not loading",
+      "acceptance": [
+        "One status announcement",
+        "Region busy while loading",
+        "No flash under the delay"
+      ]
+    },
+    {
       "id": "menubar",
       "name": "Menubar",
       "kind": "component",
@@ -959,6 +1099,30 @@
       ]
     },
     {
+      "id": "multi-step",
+      "name": "MultiStep",
+      "kind": "composite",
+      "exports": [
+        "MultiStep",
+        "Steps"
+      ],
+      "variants": [
+        "dialog",
+        "sheet",
+        "page",
+        "horizontal steps",
+        "vertical steps",
+        "invalid",
+        "busy"
+      ],
+      "behavior": "Ordered steps that validate before advancing; Back keeps values; last step names the action",
+      "acceptance": [
+        "Invalid step focuses its first invalid field",
+        "Enter continues",
+        "Footer shows failures"
+      ]
+    },
+    {
       "id": "navigation-menu",
       "name": "NavigationMenu",
       "kind": "component",
@@ -974,6 +1138,29 @@
         "Current link announced",
         "Open panel collision",
         "No hover-only destination"
+      ]
+    },
+    {
+      "id": "page-header",
+      "name": "PageHeader",
+      "kind": "pattern",
+      "exports": [
+        "PageHeader"
+      ],
+      "variants": [
+        "lg",
+        "md",
+        "breadcrumb",
+        "badges",
+        "actions",
+        "tabs",
+        "media"
+      ],
+      "behavior": "Page-level trail of ancestors above one h1; lede, actions beside the title that wrap under it, tabs below",
+      "acceptance": [
+        "One h1",
+        "No crumb repeats the title",
+        "Actions wrap instead of clipping"
       ]
     },
     {
@@ -1174,6 +1361,30 @@
       ]
     },
     {
+      "id": "settings-card",
+      "name": "SettingsCard",
+      "kind": "composite",
+      "exports": [
+        "SettingsCard"
+      ],
+      "variants": [
+        "default",
+        "dirty",
+        "saving",
+        "saved",
+        "failed",
+        "locked",
+        "loading",
+        "danger"
+      ],
+      "behavior": "Fields in a form with a footer status and Save; rejection keeps values and shows the message",
+      "acceptance": [
+        "Save disabled until dirty",
+        "Enter saves",
+        "Locked shows the reason"
+      ]
+    },
+    {
       "id": "sheet",
       "name": "Sheet",
       "kind": "component",
@@ -1194,6 +1405,30 @@
         "Escape/backdrop owner policy",
         "Focus safe on row removal",
         "Narrow viewport no horizontal clip"
+      ]
+    },
+    {
+      "id": "sidebar",
+      "name": "Sidebar",
+      "kind": "composite",
+      "exports": [
+        "Sidebar"
+      ],
+      "variants": [
+        "expanded",
+        "rail",
+        "sections",
+        "children",
+        "counts",
+        "footer rows",
+        "account popover"
+      ],
+      "behavior": "Tools row, labeled sections with rules, one level of children, accent counts for waiting items, account button with the person's avatar and the organization's name, rail with tooltips and dots",
+      "acceptance": [
+        "No organization avatar",
+        "Current row neutral",
+        "Arrow keys move between rows",
+        "Rail keeps accessible names"
       ]
     },
     {
@@ -1465,6 +1700,29 @@
         "No duplicate accessible name",
         "Tooltip never sole essential copy",
         "Shortcut names readable"
+      ]
+    },
+    {
+      "id": "top-bar",
+      "name": "TopBar",
+      "kind": "composite",
+      "exports": [
+        "TopBar",
+        "AppShell",
+        "AppInset",
+        "PageGutter"
+      ],
+      "variants": [
+        "beside sidebar",
+        "standalone",
+        "switcher crumbs",
+        "tools"
+      ],
+      "behavior": "Product-level trail of switcher crumbs rooted at the organization name; shared page gutter so the root crumb aligns with the content edge; chevron is the only highlighted element",
+      "acceptance": [
+        "Root crumb text on the content edge at every width",
+        "Segment click opens the switcher",
+        "One tab stop per crumb"
       ]
     }
   ],

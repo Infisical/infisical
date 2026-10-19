@@ -63,11 +63,13 @@ Why: Repeated announcements interrupt the ongoing task.
 - src/components/v4/ui/toast-stack.tsx
 - src/components/v4/ui/helpers.module.css
 
-Exports: Toaster, ToastStack, ToastItem. Source TypeScript defines the API.
+Exports: Toaster, toast, V4_TOASTER_ID, ToastStack, ToastItem. Source TypeScript defines the API.
 
 ## Behavior
 
 - Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist.
+- The v4 Toaster has its own toaster id (V4_TOASTER_ID), and the toast exported beside it routes every call to that id. The app's v3 Toaster only shows toasts without an id, so a v4 toast and a v3 toast never render twice, even when both Toasters are mounted on one page.
+- Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content.
 
 ## Accessibility
 
@@ -80,6 +82,7 @@ Exports: Toaster, ToastStack, ToastItem. Source TypeScript defines the API.
 ## Limits
 
 - Toaster/Sonner and controlled ToastStack are alternative owners, not a shared queue. The host creates results after actual settlement and handles action effects.
+- Call toast from @infisical/sonner, not from the sonner package: a plain sonner toast has no toaster id and goes to the app's v3 Toaster instead.
 
 ## Declared example coverage
 
@@ -157,12 +160,12 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/toast/parts.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/sonner. Additional packages: sonner@^2.0.7. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { toast } from "sonner";
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/sonner";
+import { toast } from "../../../../components/v4/ui/sonner";
 export default function Example() {
     return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -174,6 +177,11 @@ export default function Example() {
         </Button>
         <Button variant="outline" onClick={() => toast.error("Connection failed", { description: "Reconnect before retrying." })}>
           Show failure
+        </Button>
+        <Button variant="outline" onClick={() => toast.warning("Sync paused", {
+            description: "Vercel rejected the last three pushes. Secrets stay on the previous version until you reconnect the integration and retry the sync."
+        })}>
+          Show warning
         </Button>
       </div>
     </div>);

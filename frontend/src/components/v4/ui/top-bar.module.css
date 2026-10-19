@@ -1,0 +1,50 @@
+.shell {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  background: var(--v4-inset);
+}
+.inset {
+  --v4-page-gutter: max(
+    var(--v4-space-16),
+    min(var(--v4-space-40), 5cqi),
+    calc((100cqi - var(--v4-size-measure-page)) / 2)
+  );
+  container-type: inline-size;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--v4-inset);
+  color: var(--v4-ink);
+}
+.gutter {
+  padding: var(--v4-space-40) var(--v4-page-gutter, var(--v4-space-40));
+}
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--v4-space-16);
+  min-width: 0;
+  height: var(--v4-space-48);
+  padding-inline: var(--v4-page-gutter, var(--v4-space-40));
+  border-bottom: 1px solid var(--v4-line-soft);
+  background: var(--v4-inset);
+}
+.trail {
+  flex: 1 1 auto;
+  width: auto;
+}
+.actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--v4-space-8);
+}

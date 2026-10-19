@@ -4,6 +4,8 @@ export type ComponentGroup =
   | "Data display"
   | "Navigation"
   | "Overlays"
+  | "Composites"
+  | "Patterns"
   | "Feedback"
   | "Code"
   | "Utilities";

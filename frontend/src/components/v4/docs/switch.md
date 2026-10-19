@@ -53,7 +53,7 @@ Exports: Switch. Source TypeScript defines the API.
 
 ## Behavior
 
-- Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is a mid grey track with a pure white knob. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio.
+- Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is the accent track (sw-on) with an on-accent ink knob (sw-knob-on). Track and knob follow the corner mode: square in square mode, radius-control and half of it in soft mode. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio.
 
 ## Accessibility
 

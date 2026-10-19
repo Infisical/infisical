@@ -82,6 +82,12 @@
   isolation: isolate;
   transform: translateZ(0);
 }
+.stage[data-height="app"] {
+  height: 600px;
+  isolation: isolate;
+  transform: translateZ(0);
+  border: 1px solid var(--v4-line-soft);
+}
 .stage[data-height="data"] {
   max-height: 400px;
 }

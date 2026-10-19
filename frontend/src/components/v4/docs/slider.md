@@ -54,6 +54,7 @@ Exports: Slider. Source TypeScript defines the API.
 ## Behavior
 
 - Radix value/defaultValue is a number array; onValueChange reports live adjustment and onValueCommit reports committed adjustment. Array length determines the number of thumbs.
+- The filled range and the thumb use the accent in both themes, and the thumb has a 2px on-accent ring. The thumb follows the corner mode: a square in square mode and a rounded square (radius-sm) in soft mode, never a circle. A disabled slider drops to faint and the disabled control surface.
 
 ## Accessibility
 

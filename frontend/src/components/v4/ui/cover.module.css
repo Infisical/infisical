@@ -1,0 +1,53 @@
+.cover {
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 960 / 288;
+  overflow: hidden;
+  background: var(--v4-surface);
+  color: var(--v4-ink);
+}
+.art {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 50%;
+  height: 100%;
+}
+.slab {
+  fill: var(--v4-ink);
+}
+.accent {
+  fill: var(--v4-accent);
+}
+.band {
+  fill: var(--v4-control);
+}
+.block {
+  rx: calc(var(--v4-radius-card) * var(--corners));
+}
+.dot {
+  fill: var(--v4-on-ink);
+  rx: calc(var(--v4-radius-xs) * var(--corners));
+}
+.words {
+  position: absolute;
+  bottom: 3.33cqi;
+  left: 4.17cqi;
+  max-width: 46cqi;
+}
+.title {
+  margin: 0;
+  font-family: var(--v4-type-display-font-family);
+  font-size: max(var(--v4-type-display-font-size), 10.8cqi);
+  line-height: 1;
+  font-weight: var(--v4-type-display-font-weight);
+  letter-spacing: var(--v4-type-display-letter-spacing);
+}
+.tagline {
+  margin: 1.25cqi 0 0 2px;
+  color: var(--v4-muted);
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+}

@@ -23,10 +23,13 @@ export const baselineNavigation = [
     ],
     referenceNames: ["Breadcrumb", "Switcher"],
     behavior: [
-      "Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths."
+      "Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths.",
+      "A crumb with a menu is a switcher segment: its text and its standalone chevron button open the same Switcher, anchored to the segment's start. The segment draws no ground or padding; hover, press, open and focus states draw on the chevron.",
+      "lastIsCurrent={false} keeps every crumb an ancestor, for trails that sit above a page title."
     ],
     accessibility: [
-      "Use the breadcrumb landmark name and aria-current for the current location. Switching menus retain accessible labels when visible text collapses."
+      "Use the breadcrumb landmark name and aria-current for the current location. Switching menus retain accessible labels when visible text collapses.",
+      "The chevron is the switcher's only tab stop and carries the popup attributes. Its name joins the menu label and the crumb's text, so the visible label stays hidden from assistive technology."
     ],
     limitations: [
       "The owner supplies real destinations and switching callbacks; collapse does not implement routing."
@@ -97,6 +100,23 @@ export const baselineNavigation = [
           detect: {
             by: "review",
             how: "Activate every ancestor and confirm the displayed local context matches its label."
+          }
+        },
+        {
+          id: "breadcrumb-switcher-segment",
+          when: "A crumb switches the organization, project or environment.",
+          do: "Pass menu on the crumb so the whole segment opens the Switcher and only the chevron highlights.",
+          avoid:
+            "Pad the segment or give it a hover ground, or wrap the label in a second focusable trigger.",
+          reason:
+            "Padding moves the root text off the content edge, and a second trigger doubles the keyboard path to the same popover.",
+          evidence: [
+            "src/components/v4/ui/breadcrumb.tsx",
+            "src/components/v4/ui/breadcrumb.module.css"
+          ],
+          detect: {
+            by: "review",
+            how: "Hover and click the crumb text: only the chevron changes, and the popover opens from the segment's left edge."
           }
         },
         {

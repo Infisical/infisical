@@ -16,7 +16,6 @@
 .block {
   margin: 0;
   overflow: auto;
-  scrollbar-gutter: stable;
   padding: var(--v4-space-surface-inset);
   tab-size: 2;
   white-space: pre;

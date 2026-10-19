@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "top-bar",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@infisical/breadcrumb",
+    "@infisical/infisical-base"
+  ],
+  "dependencies": [
+    "cn@^0.4.0"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/top-bar.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/top-bar.tsx",
+      "content": "import * as React from \"react\";\nimport { cn } from \"cn\";\n\nimport { Breadcrumb, type BreadcrumbCrumb } from \"./breadcrumb\";\n\nimport styles from \"./top-bar.module.css\";\n\nexport const AppShell = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<\"div\">>(\n  ({ className, ...props }, ref) => (\n    <div ref={ref} data-slot=\"app-shell\" className={cn(styles.shell, className)} {...props} />\n  )\n);\nAppShell.displayName = \"AppShell\";\n\nexport const AppInset = React.forwardRef<HTMLElement, React.ComponentPropsWithoutRef<\"main\">>(\n  ({ className, ...props }, ref) => (\n    <main ref={ref} data-slot=\"app-inset\" className={cn(styles.inset, className)} {...props} />\n  )\n);\nAppInset.displayName = \"AppInset\";\n\nexport const PageGutter = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<\"div\">>(\n  ({ className, ...props }, ref) => (\n    <div ref={ref} data-slot=\"page-gutter\" className={cn(styles.gutter, className)} {...props} />\n  )\n);\nPageGutter.displayName = \"PageGutter\";\n\nexport type TopBarProps = Omit<React.ComponentPropsWithoutRef<\"header\">, \"children\"> & {\n  breadcrumb: readonly BreadcrumbCrumb[];\n  actions?: React.ReactNode;\n  label?: string;\n};\n\nexport const TopBar = React.forwardRef<HTMLElement, TopBarProps>(\n  ({ breadcrumb, actions, label = \"Location\", className, ...props }, ref) => (\n    <header ref={ref} data-slot=\"top-bar\" className={cn(styles.topBar, className)} {...props}>\n      <Breadcrumb\n        aria-label={label}\n        variant=\"product\"\n        items={breadcrumb}\n        className={styles.trail}\n      />\n      {actions && <div className={styles.actions}>{actions}</div>}\n    </header>\n  )\n);\nTopBar.displayName = \"TopBar\";\n"
+    },
+    {
+      "path": "src/components/v4/ui/top-bar.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/top-bar.module.css",
+      "content": ".shell {\n  display: flex;\n  min-width: 0;\n  height: 100%;\n  min-height: 0;\n  background: var(--v4-inset);\n}\n.inset {\n  --v4-page-gutter: max(\n    var(--v4-space-16),\n    min(var(--v4-space-40), 5cqi),\n    calc((100cqi - var(--v4-size-measure-page)) / 2)\n  );\n  container-type: inline-size;\n  display: flex;\n  flex: 1 1 auto;\n  flex-direction: column;\n  min-width: 0;\n  min-height: 0;\n  overflow: auto;\n  background: var(--v4-inset);\n  color: var(--v4-ink);\n}\n.gutter {\n  padding: var(--v4-space-40) var(--v4-page-gutter, var(--v4-space-40));\n}\n.topBar {\n  position: sticky;\n  top: 0;\n  z-index: 1;\n  display: flex;\n  flex: none;\n  align-items: center;\n  gap: var(--v4-space-16);\n  min-width: 0;\n  height: var(--v4-space-48);\n  padding-inline: var(--v4-page-gutter, var(--v4-space-40));\n  border-bottom: 1px solid var(--v4-line-soft);\n  background: var(--v4-inset);\n}\n.trail {\n  flex: 1 1 auto;\n  width: auto;\n}\n.actions {\n  display: flex;\n  flex: none;\n  align-items: center;\n  gap: var(--v4-space-8);\n}\n"
+    }
+  ]
+}

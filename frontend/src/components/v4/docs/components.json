@@ -4,6 +4,257 @@
   "rules": "skills/infisical-ui/rules.json",
   "components": [
     {
+      "id": "access-list",
+      "title": "Access list",
+      "group": "Patterns",
+      "summary": "Who can reach a project: a member per row that opens them, multiple selection with the bulk bar and a locked owner.",
+      "sourceFiles": [
+        "src/components/v4/patterns/access-list.tsx",
+        "src/components/v4/patterns/patterns.module.css"
+      ],
+      "exports": [
+        "AccessList"
+      ],
+      "referenceNames": [
+        "AccessList"
+      ],
+      "behavior": [
+        "A toolbar above the list says how many have access and offers Add member.",
+        "Members are link rows in a framed List with selection, an Avatar, the role as a Badge, how they got access, last use and a row menu.",
+        "Selecting rows raises a contained FloatingActionBar with Revoke access. The owner cannot be selected and its menu is disabled.",
+        "After a revoke, a status line in the list footer says how many lost access and Undo restores them."
+      ],
+      "accessibility": [
+        "The List's select-all and row checkboxes are named for the member; the bulk bar is a named toolbar with a count status.",
+        "Machine and agent names are set in mono."
+      ],
+      "limitations": [
+        "The host owns the members and persists revokes and restores."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Members of a project",
+          "module": "./examples/access-list/default.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "row state",
+          "expected": [
+            "owner locked",
+            "selectable",
+            "current"
+          ],
+          "shown": [
+            {
+              "value": "owner locked",
+              "exampleId": "default",
+              "label": "Owner locked, multiple selection with the bulk bar"
+            },
+            {
+              "value": "selectable",
+              "exampleId": "default",
+              "label": "Owner locked, multiple selection with the bulk bar"
+            },
+            {
+              "value": "current",
+              "exampleId": "default",
+              "label": "Owner locked, multiple selection with the bulk bar"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use AccessList for who can reach one project or resource, with roles in words and temporary access saying when it ends."
+        ],
+        "avoid": [
+          "Color roles, or confirm every revoke with a dialog when Undo can restore it."
+        ],
+        "decision": "Choose AccessList for a membership list with bulk changes. Use a Table when people need to sort, filter or export members.",
+        "rules": [
+          {
+            "id": "access-list-roles",
+            "when": "A member has a role or temporary access.",
+            "do": "Name the role in a Badge and say when temporary access ends, such as Read, 1 hour.",
+            "avoid": "Color-code roles or hide the expiry in a tooltip.",
+            "reason": "Words survive both themes and screen readers; color alone does not.",
+            "evidence": [
+              "src/components/v4/patterns/access-list.tsx",
+              "src/pages/design-system/examples/access-list/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each row's badge and description for the role and any expiry."
+            }
+          },
+          {
+            "id": "access-list-owner",
+            "when": "A member cannot lose access, such as the owner.",
+            "do": "Make the row unselectable, disable its menu and say why in the description.",
+            "avoid": "Let the owner be selected and fail the bulk action.",
+            "reason": "A control that cannot succeed should not be offered.",
+            "evidence": [
+              "src/components/v4/patterns/access-list.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Select all and check the owner stays unselected."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "revoked",
+            "guidance": "Rows leave the list and the footer offers Undo."
+          },
+          {
+            "state": "empty",
+            "guidance": "A compact empty state says nobody else has access yet."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Say how each member got access in plain words.",
+            "avoid": "Show internal policy identifiers as the description.",
+            "reason": "People decide on access by who granted it and why."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#access-list and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "activity-log",
+      "title": "Activity log",
+      "group": "Patterns",
+      "summary": "Who did what, one line per event, grouped by day with load more.",
+      "sourceFiles": [
+        "src/components/v4/patterns/activity-log.tsx"
+      ],
+      "exports": [
+        "ActivityLog"
+      ],
+      "referenceNames": [
+        "ActivityLog"
+      ],
+      "behavior": [
+        "A plain small List with a section per day whose meta counts its events.",
+        "Each event shows the actor's Avatar, the actor and what happened, a Badge for machines and agents, and the time.",
+        "Load more adds skeleton rows under the existing rows and keeps the button busy; once everything is in, the footer says Showing 6 of 6 events."
+      ],
+      "accessibility": [
+        "The list keeps existing rows while loading and announces Loading items."
+      ],
+      "limitations": [
+        "For filtering, sorting or exporting events, use a Table such as the audit log."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Recent project activity",
+          "module": "./examples/activity-log/default.tsx",
+          "states": [
+            "default",
+            "loading"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "paging",
+          "expected": [
+            "more available",
+            "loading more",
+            "all loaded"
+          ],
+          "shown": [
+            {
+              "value": "more available",
+              "exampleId": "default",
+              "label": "Grouped by day, load more"
+            },
+            {
+              "value": "loading more",
+              "exampleId": "default",
+              "label": "Grouped by day, load more"
+            },
+            {
+              "value": "all loaded",
+              "exampleId": "default",
+              "label": "Grouped by day, load more"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use ActivityLog for a short recent history beside an object, written actor first in the past tense."
+        ],
+        "avoid": [
+          "Use it as the audit log, or write events in the passive voice."
+        ],
+        "decision": "Choose ActivityLog for a readable recent history. Use Table for the searchable audit log.",
+        "rules": [
+          {
+            "id": "activity-log-voice",
+            "when": "An event is written.",
+            "do": "Start with the actor and use the past tense, with keys and machine names in mono.",
+            "avoid": "Write passive events such as Secret was updated.",
+            "reason": "People scan the log for who did something.",
+            "evidence": [
+              "src/pages/design-system/examples/activity-log/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each title for actor first and past tense."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "loading more",
+            "guidance": "Skeleton rows appear under the rows already there."
+          },
+          {
+            "state": "all loaded",
+            "guidance": "The footer counts the events shown."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep times short and local; the section names the day.",
+            "avoid": "Repeat the full date on every row.",
+            "reason": "The day heading already carries it."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#activity-log and exercise the documented interaction."
+        }
+      ]
+    },
+    {
       "id": "animated-collapse",
       "title": "Animated collapse",
       "group": "Utilities",
@@ -130,6 +381,268 @@
         {
           "kind": "browser",
           "command": "npm run ui:dev; open /design-system#animated-collapse and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "announcements",
+      "title": "Announcements",
+      "group": "Composites",
+      "summary": "What's new, as cards that cycle in a 480px dialog with dots, Back and Next.",
+      "sourceFiles": [
+        "src/components/v4/ui/announcements.tsx",
+        "src/components/v4/ui/announcements.module.css"
+      ],
+      "exports": [
+        "Announcements"
+      ],
+      "referenceNames": [
+        "Announcements"
+      ],
+      "behavior": [
+        "Each card has inert media, an eyebrow, a title, a line or two and an optional action link.",
+        "Cards slide in the direction of travel and the dialog eases to each card's height; reduced motion jumps.",
+        "Left and Right move and wrap around unless loop is false. Dots jump to a card. Next becomes Done on the last card and Done closes.",
+        "onSeen fires as each card shows, so the host can clear its unread count."
+      ],
+      "accessibility": [
+        "The dialog is a carousel; each card is a slide named 2 of 4, and a polite live region reads the position and title on each change.",
+        "Focus starts on Next."
+      ],
+      "limitations": [
+        "Swipe on touch is not implemented; use the dots or Back and Next."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "What's new",
+          "module": "./examples/announcements/default.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "size support",
+          "expected": [
+            "no authored named size"
+          ],
+          "shown": [],
+          "omitted": [
+            {
+              "value": "no authored named size",
+              "reason": "The dialog is always 480px wide and its height follows each card."
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use Announcements from a What's new row or button with a count of unseen cards, with three to five cards newest first."
+        ],
+        "avoid": [
+          "Open it on its own over someone's work, or fill the media with illustrations or gradients."
+        ],
+        "decision": "Choose Announcements for release notes people opt into. Use Banner for a standing condition and Toast for the result of an action.",
+        "rules": [
+          {
+            "id": "announcements-titles",
+            "when": "A card describes a new feature.",
+            "do": "Title it with what people can now do, such as Share a secret with a link that expires.",
+            "avoid": "Use the feature's internal name as the title.",
+            "reason": "A capability tells people why to care.",
+            "evidence": [
+              "src/pages/design-system/examples/announcements/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each card title as an action someone can take today."
+            }
+          },
+          {
+            "id": "announcements-media",
+            "when": "A card has media.",
+            "do": "Show the real feature built from v4 components, made inert.",
+            "avoid": "Use screenshots, illustrations or gradients.",
+            "reason": "Real components stay accurate in both themes and at every corner setting.",
+            "evidence": [
+              "src/components/v4/ui/announcements.tsx",
+              "src/pages/design-system/examples/announcements/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Inspect each media area for components rather than images."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "last card",
+            "guidance": "Next reads Done and closes the dialog."
+          },
+          {
+            "state": "seen",
+            "guidance": "The host clears the unseen count from onSeen."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep the eyebrow to the area and the date.",
+            "avoid": "Add exclamation marks or New badges to every card.",
+            "reason": "The dialog already says these are new."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#announcements and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "approval-queue",
+      "title": "Approval queue",
+      "group": "Patterns",
+      "summary": "Requests waiting on you, each moving through new, pending, then resolved or failed in place.",
+      "sourceFiles": [
+        "src/components/v4/patterns/approval-queue.tsx"
+      ],
+      "exports": [
+        "ApprovalQueue"
+      ],
+      "referenceNames": [
+        "ApprovalQueue"
+      ],
+      "behavior": [
+        "A framed List titled Needs you with the waiting count as its action and a View history footer.",
+        "Actions sit in a second row under each request's text, so the age ends every title line in the same place.",
+        "New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry."
+      ],
+      "accessibility": [
+        "Each request title links to the request and marks the open one as current. Errors are announced as alerts."
+      ],
+      "limitations": [
+        "The host owns request state and the approve, undo and retry calls."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Requests in every state",
+          "module": "./examples/approval-queue/default.tsx",
+          "states": [
+            "default",
+            "loading",
+            "success",
+            "error"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "request state",
+          "expected": [
+            "new",
+            "pending",
+            "resolved",
+            "failed"
+          ],
+          "shown": [
+            {
+              "value": "new",
+              "exampleId": "default",
+              "label": "New, pending, resolved with undo, failed with retry"
+            },
+            {
+              "value": "pending",
+              "exampleId": "default",
+              "label": "New, pending, resolved with undo, failed with retry"
+            },
+            {
+              "value": "resolved",
+              "exampleId": "default",
+              "label": "New, pending, resolved with undo, failed with retry"
+            },
+            {
+              "value": "failed",
+              "exampleId": "default",
+              "label": "New, pending, resolved with undo, failed with retry"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use ApprovalQueue for requests that need the person's decision, with two actions at most per row."
+        ],
+        "avoid": [
+          "Remove a resolved row while the page is open, or confirm an approval that Undo can take back."
+        ],
+        "decision": "Choose ApprovalQueue for decisions waiting on someone. Use ActivityLog for what already happened.",
+        "rules": [
+          {
+            "id": "approval-queue-in-place",
+            "when": "A request is resolved.",
+            "do": "Keep the row, put its title in the past tense and offer Undo; drop the header count instead.",
+            "avoid": "Remove the row as soon as it resolves.",
+            "reason": "Rows that vanish make people doubt what they just did.",
+            "evidence": [
+              "src/components/v4/patterns/approval-queue.tsx",
+              "src/pages/design-system/examples/approval-queue/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Approve a request and check the row stays with Undo and the count drops."
+            }
+          },
+          {
+            "id": "approval-queue-recovery",
+            "when": "A request fails.",
+            "do": "Say what broke and what to do in the error line and offer Retry.",
+            "avoid": "Show a generic failure with no next step.",
+            "reason": "The person can only recover if they know how.",
+            "evidence": [
+              "src/pages/design-system/examples/approval-queue/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each failed row's error for a cause and a next step."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "pending",
+            "guidance": "The pressed action is busy with a present participle; its partner is disabled."
+          },
+          {
+            "state": "failed",
+            "guidance": "A bad icon tile, the error line and Retry."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Name the object in mono and the person who asked in the description.",
+            "avoid": "Title every row Approval request.",
+            "reason": "People decide by what changes and who asked."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#approval-queue and exercise the documented interaction."
         }
       ]
     },
@@ -810,7 +1323,7 @@
         "Identity"
       ],
       "behavior": [
-        "Avatar supports person, machine, agent and fallback identities, numeric size and optional status. Every kind shares one paint, a tint square with ink initials or icon and 4px corners; the initials or icon tell the kinds apart. Initials are 10, 12 and 14px at 24, 32 and 40px. The status dot is an 8px square outside the bottom corner with a 2px surface ring. AvatarGroup overlaps by 4px and exposes overflow, and Identity pairs a lead with text."
+        "Avatar supports person, machine, agent and fallback identities, numeric size and optional status. Every kind shares one paint, a tint square with ink initials or icon and radius-control corners (square by default, 4px in soft mode); the initials or icon tell the kinds apart. Initials are 10, 12 and 14px at 24, 32 and 40px. The status dot is an 8px square outside the bottom corner with a 2px surface ring. AvatarGroup overlaps by 4px and exposes overflow, and Identity pairs a lead with text."
       ],
       "accessibility": [
         "Provide an identity name or accessible label. Organizations use text or a neutral icon, never an invented avatar."
@@ -1046,7 +1559,7 @@
         "Count"
       ],
       "behavior": [
-        "tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with 4px corners and one weight, and take an optional dot and mono content. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists."
+        "tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with radius-sm corners (square by default, 4px in soft mode) and one weight, and take an optional dot and mono content. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists."
       ],
       "accessibility": [
         "Tone must accompany readable text; a dot alone does not explain status."
@@ -1343,10 +1856,13 @@
         "Switcher"
       ],
       "behavior": [
-        "Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths."
+        "Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths.",
+        "A crumb with a menu is a switcher segment: its text and its standalone chevron button open the same Switcher, anchored to the segment's start. The segment draws no ground or padding; hover, press, open and focus states draw on the chevron.",
+        "lastIsCurrent={false} keeps every crumb an ancestor, for trails that sit above a page title."
       ],
       "accessibility": [
-        "Use the breadcrumb landmark name and aria-current for the current location. Switching menus retain accessible labels when visible text collapses."
+        "Use the breadcrumb landmark name and aria-current for the current location. Switching menus retain accessible labels when visible text collapses.",
+        "The chevron is the switcher's only tab stop and carries the popup attributes. Its name joins the menu label and the crumb's text, so the visible label stays hidden from assistive technology."
       ],
       "limitations": [
         "The owner supplies real destinations and switching callbacks; collapse does not implement routing."
@@ -1429,6 +1945,21 @@
             "detect": {
               "by": "review",
               "how": "Activate every ancestor and confirm the displayed local context matches its label."
+            }
+          },
+          {
+            "id": "breadcrumb-switcher-segment",
+            "when": "A crumb switches the organization, project or environment.",
+            "do": "Pass menu on the crumb so the whole segment opens the Switcher and only the chevron highlights.",
+            "avoid": "Pad the segment or give it a hover ground, or wrap the label in a second focusable trigger.",
+            "reason": "Padding moves the root text off the content edge, and a second trigger doubles the keyboard path to the same popover.",
+            "evidence": [
+              "src/components/v4/ui/breadcrumb.tsx",
+              "src/components/v4/ui/breadcrumb.module.css"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Hover and click the crumb text: only the chevron changes, and the popover opens from the segment's left edge."
             }
           },
           {
@@ -7924,7 +8455,8 @@
         "Slider"
       ],
       "behavior": [
-        "Radix value/defaultValue is a number array; onValueChange reports live adjustment and onValueCommit reports committed adjustment. Array length determines the number of thumbs."
+        "Radix value/defaultValue is a number array; onValueChange reports live adjustment and onValueCommit reports committed adjustment. Array length determines the number of thumbs.",
+        "The filled range and the thumb use the accent in both themes, and the thumb has a 2px on-accent ring. The thumb follows the corner mode: a square in square mode and a rounded square (radius-sm) in soft mode, never a circle. A disabled slider drops to faint and the disabled control surface."
       ],
       "accessibility": [
         "Name each thumb with thumbLabels or aria-labelledby; with one shared label, each thumb gets that label plus its position. Each thumb announces its minimum, maximum and value, and arrow keys adjust it."
@@ -8095,6 +8627,8 @@
       ],
       "exports": [
         "Toaster",
+        "toast",
+        "V4_TOASTER_ID",
         "ToastStack",
         "ToastItem"
       ],
@@ -8103,13 +8637,16 @@
         "ToastStack"
       ],
       "behavior": [
-        "Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist."
+        "Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist.",
+        "The v4 Toaster has its own toaster id (V4_TOASTER_ID), and the toast exported beside it routes every call to that id. The app's v3 Toaster only shows toasts without an id, so a v4 toast and a v3 toast never render twice, even when both Toasters are mounted on one page.",
+        "Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content."
       ],
       "accessibility": [
         "ToastStack exposes status feedback and named action/dismiss buttons. Its auto-dismiss timer pauses while hovered or keyboard-focused, then resumes the remaining duration."
       ],
       "limitations": [
-        "Toaster/Sonner and controlled ToastStack are alternative owners, not a shared queue. The host creates results after actual settlement and handles action effects."
+        "Toaster/Sonner and controlled ToastStack are alternative owners, not a shared queue. The host creates results after actual settlement and handles action effects.",
+        "Call toast from @infisical/sonner, not from the sonner package: a plain sonner toast has no toaster id and goes to the app's v3 Toaster instead."
       ],
       "examples": [
         {
@@ -8443,7 +8980,7 @@
         "Switch"
       ],
       "behavior": [
-        "Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is a mid grey track with a pure white knob. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio."
+        "Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is the accent track (sw-on) with an on-accent ink knob (sw-knob-on). Track and knob follow the corner mode: square in square mode, radius-control and half of it in soft mode. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio."
       ],
       "accessibility": [
         "Label the switch and keep its name stable when its checked state changes. Do not stage it behind Save."
@@ -10268,6 +10805,106 @@
       ]
     },
     {
+      "id": "cover",
+      "title": "Cover",
+      "group": "Utilities",
+      "summary": "The brand cover: a display title and tagline beside a block composition drawn from the system's tokens.",
+      "sourceFiles": [
+        "src/components/v4/ui/cover.tsx",
+        "src/components/v4/ui/cover.module.css"
+      ],
+      "exports": [
+        "Cover"
+      ],
+      "referenceNames": [
+        "Cover"
+      ],
+      "behavior": [
+        "The cover keeps a 960 by 288 ratio and scales its type with its own width.",
+        "The art is an ink slab, an accent square and a control band with a grid of dots, all filled from color tokens and rounded with the corner tokens, so it follows theme and corner changes."
+      ],
+      "accessibility": [
+        "The art is decorative and hidden from assistive technology. The title is an h1."
+      ],
+      "limitations": [
+        "For the workbench, docs and release surfaces only; product pages use PageHeader."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Brand cover",
+          "module": "./examples/cover/default.tsx",
+          "states": [
+            "default"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "size support",
+          "expected": [
+            "no authored named size"
+          ],
+          "shown": [],
+          "omitted": [
+            {
+              "value": "no authored named size",
+              "reason": "The cover scales with its container at a fixed ratio."
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use Cover at the top of a brand or documentation surface with a short title and one-line tagline."
+        ],
+        "avoid": [
+          "Use it as a product page header or add photos or gradients to the art."
+        ],
+        "decision": "Choose Cover for brand surfaces. Use PageHeader for product pages.",
+        "rules": [
+          {
+            "id": "cover-tokens",
+            "when": "The cover art changes.",
+            "do": "Draw blocks from color, radius and space tokens so theme and corner choices carry through.",
+            "avoid": "Hard-code colors or corner radii in the SVG.",
+            "reason": "The cover is the system's own sample and must follow its settings.",
+            "evidence": [
+              "src/components/v4/ui/cover.tsx",
+              "src/components/v4/ui/cover.module.css"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Toggle the theme and check that every block follows it."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "narrow",
+            "guidance": "Type scales down with the container; the tagline keeps body size."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep the tagline to one plain sentence.",
+            "avoid": "Stack slogans or badges over the art.",
+            "reason": "The composition carries the brand by itself."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#cover and exercise the documented interaction."
+        }
+      ]
+    },
+    {
       "id": "data-grid",
       "title": "Data grid",
       "group": "Data display",
@@ -10773,6 +11410,135 @@
         {
           "kind": "browser",
           "command": "Open the executable example and verify keyboard, narrow viewport, dark theme and failure recovery."
+        }
+      ]
+    },
+    {
+      "id": "floating-action-bar",
+      "title": "Floating action bar",
+      "group": "Composites",
+      "summary": "Bulk actions for the current selection, floating over the bottom of the view while anything is selected.",
+      "sourceFiles": [
+        "src/components/v4/ui/floating-action-bar.tsx",
+        "src/components/v4/ui/floating-action-bar.module.css"
+      ],
+      "exports": [
+        "FloatingActionBar"
+      ],
+      "referenceNames": [
+        "FloatingActionBar"
+      ],
+      "behavior": [
+        "The bar shows while count is above zero and keeps the last count while it leaves. It enters and leaves on the motion springs; reduced motion jumps.",
+        "Select all appears while fewer than total are selected.",
+        "moreActions always sit in the More menu. Under 400px wide, Select all hides and the noun after the count moves to screen readers only.",
+        "fixed sits 24px above the viewport's bottom; contained sits 16px above the nearest positioned ancestor's bottom."
+      ],
+      "accessibility": [
+        "The bar is a named toolbar: Left and Right move between its buttons, Home and End jump, and Escape clears the selection.",
+        "The count is a status. When the bar leaves with focus inside it, focus returns to where it came from."
+      ],
+      "limitations": [
+        "Labeled actions do not yet move into More by measured width; keep two or three labeled actions and put the rest in moreActions."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Bulk actions over a list",
+          "module": "./examples/floating-action-bar/default.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "placement",
+          "expected": [
+            "fixed",
+            "contained"
+          ],
+          "shown": [
+            {
+              "value": "contained",
+              "exampleId": "default",
+              "label": "contained, two of five selected"
+            }
+          ],
+          "omitted": [
+            {
+              "value": "fixed",
+              "reason": "Fixed placement would float over the whole workbench; contained shows the same bar inside its stage."
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use FloatingActionBar only for actions on a multiple selection in a list or table."
+        ],
+        "avoid": [
+          "Put a page's own actions in the bar or hide the selection behind it."
+        ],
+        "decision": "Choose FloatingActionBar for bulk actions on a selection. Page actions belong in PageHeader and row actions in the row.",
+        "rules": [
+          {
+            "id": "floating-action-bar-undo",
+            "when": "A bulk action changes or removes items.",
+            "do": "Say how many it touched and offer Undo after it, unless the loss is permanent.",
+            "avoid": "Ask for confirmation before every bulk action.",
+            "reason": "Undo keeps the flow fast and still recovers mistakes.",
+            "evidence": [
+              "src/pages/design-system/examples/floating-action-bar/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Run Delete in the example and check that the result names the count."
+            }
+          },
+          {
+            "id": "floating-action-bar-order",
+            "when": "The bar has several actions.",
+            "do": "Order actions by importance with the danger action last and the rest in moreActions.",
+            "avoid": "Lead with Delete or show every action as a labeled button.",
+            "reason": "The bar has one line and never wraps.",
+            "evidence": [
+              "src/components/v4/ui/floating-action-bar.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read the actions left to right."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "busy",
+            "guidance": "A running action shows its button's loading state and the bar stays up until it finishes."
+          },
+          {
+            "state": "empty",
+            "guidance": "With no selection the bar is not rendered."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep labels to a verb, such as Move or Delete.",
+            "avoid": "Repeat the count in every action label.",
+            "reason": "The count already sits at the start of the bar."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#floating-action-bar and exercise the documented interaction."
         }
       ]
     },
@@ -11878,6 +12644,133 @@
       ]
     },
     {
+      "id": "loader",
+      "title": "Loader",
+      "group": "Feedback",
+      "summary": "Fill a region with a labeled Spinner while its first data loads, then show the content.",
+      "sourceFiles": [
+        "src/components/v4/ui/loader.tsx",
+        "src/components/v4/ui/loader.module.css"
+      ],
+      "exports": [
+        "Loader"
+      ],
+      "referenceNames": [
+        "Loader"
+      ],
+      "behavior": [
+        "Loader composes Spinner with its label, description and delay; it adds the area that centers it and marks the region busy.",
+        "With loading false it renders its children and nothing else.",
+        "The default delay of 300ms keeps fast loads from flashing."
+      ],
+      "accessibility": [
+        "Spinner's label carries one polite status announcement; the region sets aria-busy while loading."
+      ],
+      "limitations": [
+        "For an inline status beside text, use Spinner with a label directly; Loader only fills areas.",
+        "Use Progress for a known count and Skeleton for a known layout."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Base, page and loaded",
+          "module": "./examples/loader/default.tsx",
+          "states": [
+            "loading",
+            "default"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "size",
+          "expected": [
+            "base",
+            "page"
+          ],
+          "shown": [
+            {
+              "value": "base",
+              "exampleId": "default",
+              "label": "base"
+            },
+            {
+              "value": "page",
+              "exampleId": "default",
+              "label": "page"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use Loader around a card, panel, sheet or page body while its first data loads, with a label that names the object."
+        ],
+        "avoid": [
+          "Nest a Loader inside a page Loader, or put one inside a button."
+        ],
+        "decision": "Choose Loader for a region whose wait you cannot measure. Use Spinner with a label for inline status, Progress for a known count and Skeleton for a known layout.",
+        "rules": [
+          {
+            "id": "loader-label",
+            "when": "A region shows a Loader.",
+            "do": "Pass a present participle that names the object, such as Loading secrets.",
+            "avoid": "Use a bare Loading label or no label at all.",
+            "reason": "People need to know what is loading and where it will appear.",
+            "evidence": [
+              "src/components/v4/ui/loader.tsx",
+              "src/pages/design-system/examples/loader/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each Loader label and check that it names what loads."
+            }
+          },
+          {
+            "id": "loader-reconcile",
+            "when": "Text near the region already says what is happening.",
+            "do": "Use a bare Spinner or Spinner with a label instead of a Loader.",
+            "avoid": "Add a second Loader inside a region that already shows one.",
+            "reason": "One loader per region keeps a single status announcement.",
+            "evidence": [
+              "src/components/v4/ui/loader.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Search the region for nested Loader or Spinner status elements."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "loading",
+            "guidance": "The Spinner centers in the region after the delay, with its label under it."
+          },
+          {
+            "state": "loaded",
+            "guidance": "The children replace the Loader in place."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep the page loader's assembly as the one entrance flourish.",
+            "avoid": "Restart the page loader every time data refreshes.",
+            "reason": "Replaying the assembly reads as a new load."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#loader and exercise the documented interaction."
+        }
+      ]
+    },
+    {
       "id": "middle-truncate",
       "title": "Middle truncate",
       "group": "Utilities",
@@ -12342,6 +13235,271 @@
       ]
     },
     {
+      "id": "multi-step",
+      "title": "Multi step",
+      "group": "Composites",
+      "summary": "A task in steps where each step checks its fields before the next, in a dialog, a sheet or the page.",
+      "sourceFiles": [
+        "src/components/v4/ui/multi-step.tsx",
+        "src/components/v4/ui/multi-step.module.css"
+      ],
+      "exports": [
+        "MultiStep",
+        "Steps"
+      ],
+      "referenceNames": [
+        "MultiStep",
+        "Steps"
+      ],
+      "behavior": [
+        "Each step slides in from the direction of travel while its box eases to the new height; reduced motion jumps.",
+        "validate returns true or nothing to continue, false to stay and focus the first invalid field, or a message for the footer. A promise keeps Continue busy.",
+        "onComplete runs after the last step validates. A rejection shows its message in the footer.",
+        "Moving to a step focuses its first field, and Enter in a text field continues.",
+        "The page variant shows a vertical step list beside a card; under 640px the list becomes the step bar above the card."
+      ],
+      "accessibility": [
+        "The horizontal indicator is a progressbar with Step 2 of 3 as its value text; the vertical list marks the current step with aria-current.",
+        "In the vertical list, earlier steps are buttons that go back to them. Moving forward always runs the step's validate, and the horizontal indicator is not interactive."
+      ],
+      "limitations": [
+        "The dialog opens in place; it does not grow out of its trigger.",
+        "The host owns field values, so values survive going back.",
+        "The dialog and sheet cannot be dismissed while a step is checking; closing them calls onCancel and returns to the first step."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Connect an integration in three containers",
+          "module": "./examples/multi-step/default.tsx",
+          "states": [
+            "default",
+            "invalid",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "variant",
+          "expected": [
+            "dialog",
+            "sheet",
+            "page"
+          ],
+          "shown": [
+            {
+              "value": "dialog",
+              "exampleId": "default",
+              "label": "dialog"
+            },
+            {
+              "value": "sheet",
+              "exampleId": "default",
+              "label": "sheet"
+            },
+            {
+              "value": "page",
+              "exampleId": "default",
+              "label": "page"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use MultiStep for three to five ordered steps where later steps depend on earlier ones, ending with a review that names the action."
+        ],
+        "avoid": [
+          "Use it for sections people visit in any order, or for a two-step task."
+        ],
+        "decision": "Choose MultiStep for ordered, validated steps. Use Tabs for sections in any order and a Dialog with sections for two steps.",
+        "rules": [
+          {
+            "id": "multi-step-validate",
+            "when": "A step has required fields.",
+            "do": "Return false from validate after setting field errors, so focus moves to the first invalid field.",
+            "avoid": "Advance and report every error on the review step.",
+            "reason": "Errors are easiest to fix where the value was entered.",
+            "evidence": [
+              "src/components/v4/ui/multi-step.tsx",
+              "src/pages/design-system/examples/multi-step/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Press Continue with an empty team slug and check that focus lands on the field."
+            }
+          },
+          {
+            "id": "multi-step-complete-label",
+            "when": "The last step runs the task.",
+            "do": "Name the action in completeLabel, such as Connect or Import 4 secrets.",
+            "avoid": "Leave the primary as Finish or Submit.",
+            "reason": "The last button commits the task, so it should say what happens.",
+            "evidence": [
+              "src/pages/design-system/examples/multi-step/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read the primary label on the last step."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "invalid",
+            "guidance": "The step stays and focus moves to the first invalid field."
+          },
+          {
+            "state": "busy",
+            "guidance": "Continue shows its loading state while validate or onComplete runs."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Title steps with nouns, such as Team and Review.",
+            "avoid": "Write steps as sentences or number them in the title.",
+            "reason": "The indicator already numbers them."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#multi-step and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "page-header",
+      "title": "Page header",
+      "group": "Navigation",
+      "summary": "The top of a page: the page-level trail, the title with its badges, a lede, actions and tabs.",
+      "sourceFiles": [
+        "src/components/v4/ui/page-header.tsx",
+        "src/components/v4/ui/page-header.module.css"
+      ],
+      "exports": [
+        "PageHeader"
+      ],
+      "referenceNames": [
+        "PageHeader"
+      ],
+      "behavior": [
+        "The breadcrumb sits 8px above the title and every crumb is an ancestor, so none is marked current.",
+        "lg sets the title in the 44/44 display role for top-level pages; md uses the 28/32 role for one object's page.",
+        "Actions sit beside the title and drop under it when both cannot share a line. Titles wrap and never truncate.",
+        "Tabs sit 24px below everything else."
+      ],
+      "accessibility": [
+        "The title is the page's one h1.",
+        "A long folder path collapses its middle into a named button that expands in place."
+      ],
+      "limitations": [
+        "The host provides the tab panels and routes; the header only places them."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Top-level page and object page",
+          "module": "./examples/page-header/default.tsx",
+          "states": [
+            "default",
+            "overflow"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "size",
+          "expected": [
+            "lg",
+            "md"
+          ],
+          "shown": [
+            {
+              "value": "lg",
+              "exampleId": "default",
+              "label": "lg"
+            },
+            {
+              "value": "md",
+              "exampleId": "default",
+              "label": "md"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use one PageHeader per page with a title, a lede that says what needs attention and at most one primary action."
+        ],
+        "avoid": [
+          "Repeat the organization, project or environment trail here, or repeat the title as the last crumb."
+        ],
+        "decision": "Choose PageHeader for the page's own title and trail. The product-level trail belongs in TopBar.",
+        "rules": [
+          {
+            "id": "page-header-lede",
+            "when": "A page has a lede under its title.",
+            "do": "Say what needs attention with a count, such as 3 secrets are missing in production.",
+            "avoid": "Describe what the page is, such as This page lists your secrets.",
+            "reason": "The title already names the page; the lede earns its line by telling the person what to do.",
+            "evidence": [
+              "src/components/v4/ui/page-header.tsx",
+              "src/pages/design-system/examples/page-header/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Read each lede and check that it states a count or a needed action."
+            }
+          },
+          {
+            "id": "page-header-actions",
+            "when": "A page offers actions in its header.",
+            "do": "Place at most one primary action, last, and keep the rest secondary or in a menu.",
+            "avoid": "Line up several primary buttons beside the title.",
+            "reason": "One primary action tells the person what the page is for.",
+            "evidence": [
+              "src/pages/design-system/examples/page-header/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Count primary buttons in each header."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "overflow",
+            "guidance": "Long titles wrap, and long folder paths collapse their middle crumbs."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Use sentence case for titles and keep keys, paths and hosts in mono.",
+            "avoid": "Title case every word or add an eyebrow that repeats the root crumb.",
+            "reason": "The root crumb already sits in the top bar above the title."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#page-header and exercise the documented interaction."
+        }
+      ]
+    },
+    {
       "id": "pagination",
       "title": "Pagination",
       "group": "Navigation",
@@ -12770,6 +13928,289 @@
         {
           "kind": "browser",
           "command": "Open the executable example and verify keyboard, narrow viewport, dark theme and failure recovery."
+        }
+      ]
+    },
+    {
+      "id": "settings-card",
+      "title": "Settings card",
+      "group": "Composites",
+      "summary": "One setting, or a few that save together, with a footer that shows status and Save.",
+      "sourceFiles": [
+        "src/components/v4/ui/settings-card.tsx",
+        "src/components/v4/ui/settings-card.module.css"
+      ],
+      "exports": [
+        "SettingsCard"
+      ],
+      "referenceNames": [
+        "SettingsCard"
+      ],
+      "behavior": [
+        "The footer shows one status at a time: the hint, Unsaved changes, Saving, Saved for three seconds, the failure message, or the lock reason.",
+        "Save runs from the button or Enter in a field. A returned promise shows Saving; a rejection shows the Error's message and keeps the typed values.",
+        "Discard appears only while there are changes and calls onDiscard.",
+        "locked disables the fields, hides the buttons and shows the reason. tone danger draws the bad line and wash and shows your own actions."
+      ],
+      "accessibility": [
+        "The card is a section named by its title, and the footer status is a polite live region.",
+        "Fields stay in a native form, so Enter submits."
+      ],
+      "limitations": [
+        "The host keeps the values and passes dirty; the card does not compare values itself.",
+        "Locked fields use a disabled fieldset, so they look disabled rather than read-only."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Save, locked and danger",
+          "module": "./examples/settings-card/default.tsx",
+          "states": [
+            "default",
+            "editing",
+            "loading",
+            "success",
+            "error",
+            "read-only"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "tone",
+          "expected": [
+            "default",
+            "danger"
+          ],
+          "shown": [
+            {
+              "value": "default",
+              "exampleId": "default",
+              "label": "default"
+            },
+            {
+              "value": "danger",
+              "exampleId": "default",
+              "label": "danger"
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use SettingsCard for settings someone changes and saves together, one card per decision."
+        ],
+        "avoid": [
+          "Wrap settings that apply instantly, such as a lone Switch, or several unrelated settings in one card."
+        ],
+        "decision": "Choose SettingsCard when a setting saves explicitly. Use a plain Card and a Toast for settings that apply instantly.",
+        "rules": [
+          {
+            "id": "settings-card-errors",
+            "when": "A save fails.",
+            "do": "Reject with an Error whose message says what failed and what to do, and keep what was typed.",
+            "avoid": "Clear the fields or show a generic Something went wrong.",
+            "reason": "People should be able to fix the value and save again without retyping.",
+            "evidence": [
+              "src/components/v4/ui/settings-card.tsx",
+              "src/pages/design-system/examples/settings-card/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Clear the name in the example and save; the message explains the fix and the field keeps its value."
+            }
+          },
+          {
+            "id": "settings-card-danger",
+            "when": "A setting destroys data.",
+            "do": "Use tone danger, place the card last on the page and open an AlertDialog that names the object from its action.",
+            "avoid": "Put a destructive action in an ordinary card's Save button.",
+            "reason": "Destructive settings need a distinct boundary and a confirmation that names what is lost.",
+            "evidence": [
+              "src/components/v4/ui/settings-card.tsx",
+              "src/pages/design-system/examples/settings-card/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Check that danger cards come last and that their action confirms with the object's name."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "dirty",
+            "guidance": "A 6px warn mark and Unsaved changes; Save enables and Discard appears."
+          },
+          {
+            "state": "locked",
+            "guidance": "The lock icon and the reason replace the buttons."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Name the setting with a noun and say what it affects in the description.",
+            "avoid": "Write instructions such as Use this card to change your name.",
+            "reason": "The title and fields already say what to do."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#settings-card and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "sidebar",
+      "title": "Sidebar",
+      "group": "Navigation",
+      "summary": "The app's navigation beside the inset: tools, sections of rows, footer rows and one account button for the person and their organization.",
+      "sourceFiles": [
+        "src/components/v4/ui/sidebar.tsx",
+        "src/components/v4/ui/sidebar.module.css"
+      ],
+      "exports": [
+        "Sidebar"
+      ],
+      "referenceNames": [
+        "Sidebar",
+        "AppTile"
+      ],
+      "behavior": [
+        "The tools row holds the collapse toggle, then search and invite icon buttons with tooltips.",
+        "Sections stack rows 1px apart. A labeled section draws its eyebrow with a rule that runs to the sidebar's edge.",
+        "A row with children opens one level of pages on a guide line. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.",
+        "Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, section labels become rules and a group opens its pages in a menu to the right.",
+        "The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings."
+      ],
+      "accessibility": [
+        "The rows sit in a named nav landmark. Up and Down move between rows and Home and End jump; Tab still reaches every row.",
+        "The current page carries aria-current. Rail rows keep their label as the accessible name.",
+        "Focus draws the 2px ink outline inside the row, so the scrolling nav never clips it.",
+        "The account button is named for the person and the organization, and the popover returns focus to it on close."
+      ],
+      "limitations": [
+        "The reference's two-space switch (Home and Organization) is not implemented; pass the sections for the space you show.",
+        "The host owns routing: rows call onNavigate or follow href, and the host passes the current id back.",
+        "Organizations never show an avatar or icon. The account button shows the person's avatar."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "Expanded and rail",
+          "module": "./examples/sidebar/default.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "width",
+          "expected": [
+            "expanded",
+            "rail"
+          ],
+          "shown": [
+            {
+              "value": "expanded",
+              "exampleId": "default",
+              "label": "Expanded, a child page current"
+            },
+            {
+              "value": "rail",
+              "exampleId": "default",
+              "label": "Rail, counts as dots"
+            }
+          ]
+        },
+        {
+          "axis": "size support",
+          "expected": [
+            "no authored named size"
+          ],
+          "shown": [],
+          "omitted": [
+            {
+              "value": "no authored named size",
+              "reason": "The sidebar has one width and a rail. Row heights follow the 36px control recipe."
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use Sidebar for the app's main navigation, with short noun labels, counts for things waiting on the person and the account at the bottom."
+        ],
+        "avoid": [
+          "Put a separate organization switcher in the nav, show an organization avatar, or use counts for totals."
+        ],
+        "decision": "Choose Sidebar for the persistent app navigation. Use TopBar for the product-level trail and Tabs for sections inside one page.",
+        "rules": [
+          {
+            "id": "sidebar-account-identity",
+            "when": "The account button shows who is signed in and which organization they are in.",
+            "do": "Show the person's avatar with their name over the organization's name, and list organizations by name and plan.",
+            "avoid": "Render an organization avatar, initials tile or icon in the button, the switcher rows or the crumb.",
+            "reason": "Organizations have no avatar in the product, so a generated tile would be a mark nobody chose.",
+            "evidence": [
+              "src/components/v4/ui/sidebar.tsx",
+              "src/pages/design-system/examples/sidebar/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Open the account popover and confirm no organization row or the button renders an avatar for the organization."
+            }
+          },
+          {
+            "id": "sidebar-counts",
+            "when": "A row has items waiting on the person, such as approvals.",
+            "do": "Pass count for the waiting items only, so it shows as an accent Count and as a dot in the rail.",
+            "avoid": "Show totals such as the number of projects, or color the current row with the accent.",
+            "reason": "The accent marks what needs the person; where they are stays neutral.",
+            "evidence": [
+              "src/components/v4/ui/sidebar.tsx",
+              "src/components/v4/ui/sidebar.module.css"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Every count in the example is something a person must act on, and the current row has no accent."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "current",
+            "guidance": "The current row takes the sidebar-current ground with ink text at 600; its group keeps its label in ink."
+          },
+          {
+            "state": "rail",
+            "guidance": "Only icons show. Each row keeps a tooltip and its accessible name, and counts become 6px dots."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep labels to one or two words and put the page's full name in its PageHeader.",
+            "avoid": "Write long sidebar labels or add a second level of nested groups.",
+            "reason": "Deeper structure belongs in the page as tabs or a tree."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#sidebar and exercise the documented interaction."
         }
       ]
     },
@@ -13463,6 +14904,155 @@
         {
           "kind": "browser",
           "command": "npm run ui:dev; open /design-system#text and exercise the documented interaction."
+        }
+      ]
+    },
+    {
+      "id": "top-bar",
+      "title": "Top bar",
+      "group": "Navigation",
+      "summary": "The strip across the top of the inset with the product-level breadcrumb on the left and page-wide tools on the right.",
+      "sourceFiles": [
+        "src/components/v4/ui/top-bar.tsx",
+        "src/components/v4/ui/top-bar.module.css"
+      ],
+      "exports": [
+        "TopBar",
+        "AppShell",
+        "AppInset",
+        "PageGutter"
+      ],
+      "referenceNames": [
+        "TopBar"
+      ],
+      "behavior": [
+        "TopBar is 48px tall on a line-soft rule and the inset ground, and sticks to the top of the inset while the page scrolls.",
+        "Each crumb with a menu is a switcher segment: clicking its text or its chevron opens the same Switcher, and only the chevron highlights.",
+        "AppInset defines one page gutter from its own width. TopBar and PageGutter both pad by it, so the root crumb's text and the page content share a left edge at every width.",
+        "Long crumb labels truncate and keep their full text in the switcher."
+      ],
+      "accessibility": [
+        "The trail is a named breadcrumb landmark. Each switcher's chevron is the only tab stop for its crumb and is named for its purpose and the current value.",
+        "AppInset renders the main landmark."
+      ],
+      "limitations": [
+        "The reference's staged narrow-width rules (hiding the search label and ancestor labels) are not implemented; labels truncate instead.",
+        "The gutter grows past 40px only when the inset is wider than the page measure plus the gutters."
+      ],
+      "examples": [
+        {
+          "id": "default",
+          "title": "App shell with switcher crumbs",
+          "module": "./examples/top-bar/default.tsx",
+          "states": [
+            "default",
+            "controlled",
+            "overflow",
+            "keyboard"
+          ]
+        }
+      ],
+      "coverage": [
+        {
+          "axis": "shell",
+          "expected": [
+            "beside sidebar",
+            "standalone"
+          ],
+          "shown": [
+            {
+              "value": "beside sidebar",
+              "exampleId": "default",
+              "label": "Beside the sidebar, crumb root on the content edge"
+            },
+            {
+              "value": "standalone",
+              "exampleId": "default",
+              "label": "Without a sidebar, long project name truncates"
+            }
+          ]
+        },
+        {
+          "axis": "size support",
+          "expected": [
+            "no authored named size"
+          ],
+          "shown": [],
+          "omitted": [
+            {
+              "value": "no authored named size",
+              "reason": "The bar has one 48px height; its width follows the inset."
+            }
+          ]
+        }
+      ],
+      "guidance": {
+        "use": [
+          "Use TopBar inside AppInset with the organization as the root crumb, then the project and environment, each a switcher, and three or four tools on the right."
+        ],
+        "avoid": [
+          "Pad the bar or the page by hand, add an organization avatar to the root crumb, or repeat the page-level trail here."
+        ],
+        "decision": "Choose TopBar for the product-level location. Put the page-level trail (folders, an object's parents) in PageHeader.",
+        "rules": [
+          {
+            "id": "top-bar-shared-gutter",
+            "when": "A page sits under the top bar.",
+            "do": "Render TopBar and the page content inside one AppInset and wrap the content in PageGutter.",
+            "avoid": "Give the page its own max-width and centering while the bar uses a fixed padding.",
+            "reason": "Two sources of width drift apart, so the root crumb stops lining up with the content edge at some widths.",
+            "evidence": [
+              "src/components/v4/ui/top-bar.tsx",
+              "src/components/v4/ui/top-bar.module.css",
+              "src/pages/design-system/examples/top-bar/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Resize the example from narrow to very wide and compare the left edge of the root crumb's text with the page title."
+            }
+          },
+          {
+            "id": "top-bar-switcher-segment",
+            "when": "A crumb switches the organization, project or environment.",
+            "do": "Give the crumb a menu, so the segment opens the Switcher from its text or its chevron and only the chevron highlights.",
+            "avoid": "Draw a hover ground or padding on the whole segment, or make the label a second focus stop.",
+            "reason": "A segment without padding keeps the root text on the content edge, and one focusable trigger keeps the keyboard path short.",
+            "evidence": [
+              "src/components/v4/ui/top-bar.tsx",
+              "src/pages/design-system/examples/top-bar/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "Hover the crumb text and confirm only the chevron takes the hover ground; Tab reaches one stop per crumb."
+            }
+          }
+        ],
+        "states": [
+          {
+            "state": "open",
+            "guidance": "The open switcher's chevron keeps the press ground until the popover closes."
+          },
+          {
+            "state": "overflow",
+            "guidance": "Labels truncate with an ellipsis and keep the full text in the switcher."
+          }
+        ],
+        "antiSlop": [
+          {
+            "do": "Keep the right side to search and two or three icon tools with tooltips.",
+            "avoid": "Fill the bar with account menus, theme toggles and promotional buttons.",
+            "reason": "The account and theme already live in the Sidebar account popover."
+          }
+        ]
+      },
+      "checks": [
+        {
+          "kind": "static",
+          "command": "npm run type:check"
+        },
+        {
+          "kind": "browser",
+          "command": "npm run ui:dev; open /design-system#top-bar and exercise the documented interaction."
         }
       ]
     }

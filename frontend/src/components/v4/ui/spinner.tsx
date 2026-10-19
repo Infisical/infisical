@@ -88,6 +88,14 @@ export const Spinner = React.forwardRef<SVGSVGElement, SpinnerProps>(
                     y={y * pitch}
                     width={dot}
                     height={dot}
+                    data-cross={
+                      Math.abs(x + y + 1 - (grid[0].length + grid.length) / 2) <=
+                        (size === "page" ? 2 : 1) &&
+                      Math.abs(x - y - (grid[0].length - grid.length) / 2) <=
+                        (size === "page" ? 2 : 1)
+                        ? ""
+                        : undefined
+                    }
                     style={{
                       animationDelay: (() => {
                         const columns = grid[0].length;

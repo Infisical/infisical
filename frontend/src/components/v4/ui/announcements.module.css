@@ -1,0 +1,100 @@
+.dialog.dialog {
+  max-width: 480px;
+  padding: 0;
+  gap: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.viewport {
+  overflow: hidden;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+}
+.media {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 200px;
+  padding: var(--v4-space-24) var(--v4-space-24) 0;
+  overflow: hidden;
+  background: var(--v4-tint);
+  pointer-events: none;
+}
+.media > * {
+  width: 100%;
+}
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--v4-space-6);
+  padding: var(--v4-space-20) var(--v4-space-24) 0;
+}
+.eyebrow {
+  margin: 0;
+  color: var(--v4-muted);
+  font-family: var(--v4-type-eyebrow-font-family);
+  font-size: var(--v4-type-eyebrow-font-size);
+  line-height: var(--v4-type-eyebrow-line-height);
+  font-weight: var(--v4-type-eyebrow-font-weight);
+  letter-spacing: var(--v4-type-eyebrow-letter-spacing);
+  text-transform: uppercase;
+}
+.title {
+  margin: 0;
+  color: var(--v4-ink);
+  font-family: var(--v4-type-title-font-family);
+  font-size: var(--v4-type-title-font-size);
+  line-height: var(--v4-type-title-line-height);
+  font-weight: var(--v4-type-title-font-weight);
+  letter-spacing: var(--v4-type-title-letter-spacing);
+}
+.description {
+  color: var(--v4-text2);
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+}
+.action {
+  margin-top: var(--v4-space-4);
+}
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v4-space-12);
+  padding: var(--v4-space-20) var(--v4-space-24) var(--v4-space-24);
+}
+.dots {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  background: var(--v4-line);
+  cursor: pointer;
+  transition-property: width, background-color;
+  transition-duration: var(--v4-duration-moderate);
+  transition-timing-function: var(--v4-ease-standard);
+}
+.dot[data-current] {
+  width: 12px;
+  background: var(--v4-ink);
+}
+.dot:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
+}
+.buttons {
+  display: flex;
+  gap: var(--v4-space-12);
+}

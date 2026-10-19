@@ -7,7 +7,6 @@
 .tableScroll {
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
   overflow: auto;
-  scrollbar-gutter: stable;
   background: var(--v4-surface);
   border: var(--v4-size-control-border) solid var(--v4-line);
   position: relative;

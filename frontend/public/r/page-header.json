@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "page-header",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@infisical/breadcrumb",
+    "@infisical/infisical-base"
+  ],
+  "dependencies": [
+    "cn@^0.4.0"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/page-header.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/page-header.tsx",
+      "content": "import * as React from \"react\";\nimport { cn } from \"cn\";\n\nimport { Breadcrumb, type BreadcrumbCrumb } from \"./breadcrumb\";\n\nimport styles from \"./page-header.module.css\";\n\nexport type PageHeaderProps = Omit<React.ComponentPropsWithoutRef<\"header\">, \"title\"> & {\n  title: React.ReactNode;\n  size?: \"lg\" | \"md\";\n  mono?: boolean;\n  breadcrumb?: readonly BreadcrumbCrumb[];\n  maxItems?: number;\n  badges?: React.ReactNode;\n  description?: React.ReactNode;\n  actions?: React.ReactNode;\n  tabs?: React.ReactNode;\n  media?: React.ReactNode;\n};\n\nexport const PageHeader = React.forwardRef<HTMLElement, PageHeaderProps>(\n  (\n    {\n      title,\n      size = \"lg\",\n      mono = false,\n      breadcrumb,\n      maxItems,\n      badges,\n      description,\n      actions,\n      tabs,\n      media,\n      className,\n      ...props\n    },\n    ref\n  ) => (\n    <header\n      ref={ref}\n      data-slot=\"page-header\"\n      data-size={size}\n      className={cn(styles.header, className)}\n      {...props}\n    >\n      {breadcrumb && breadcrumb.length > 0 && (\n        <Breadcrumb\n          aria-label=\"Page path\"\n          items={breadcrumb}\n          maxItems={maxItems}\n          lastIsCurrent={false}\n          className={styles.trail}\n        />\n      )}\n      <div className={styles.main}>\n        {media && <span className={styles.media}>{media}</span>}\n        <div className={styles.copy}>\n          <div className={styles.titleLine}>\n            <h1 className={cn(styles.title, mono && styles.mono)}>{title}</h1>\n            {badges && <span className={styles.badges}>{badges}</span>}\n          </div>\n          {description && <p className={styles.description}>{description}</p>}\n        </div>\n        {actions && <div className={styles.actions}>{actions}</div>}\n      </div>\n      {tabs && <div className={styles.tabs}>{tabs}</div>}\n    </header>\n  )\n);\nPageHeader.displayName = \"PageHeader\";\n"
+    },
+    {
+      "path": "src/components/v4/ui/page-header.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/page-header.module.css",
+      "content": ".header {\n  display: flex;\n  flex-direction: column;\n  min-width: 0;\n}\n.trail {\n  margin-bottom: var(--v4-space-8);\n}\n.main {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: flex-start;\n  gap: var(--v4-space-16) var(--v4-space-24);\n  min-width: 0;\n}\n.media {\n  display: inline-flex;\n  flex: none;\n  width: var(--v4-size-control-lg);\n  height: var(--v4-size-control-lg);\n}\n.copy {\n  display: flex;\n  flex: 1 1 var(--v4-size-text-min);\n  flex-direction: column;\n  gap: var(--v4-space-10);\n  min-width: var(--v4-size-text-min);\n}\n.header[data-size=\"md\"] .copy {\n  gap: var(--v4-space-8);\n}\n.titleLine {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: var(--v4-space-8) var(--v4-space-12);\n  min-width: 0;\n}\n.title {\n  margin: 0;\n  min-width: 0;\n  overflow-wrap: anywhere;\n  color: var(--v4-ink);\n  font-family: var(--v4-type-display-font-family);\n  font-size: var(--v4-type-display-font-size);\n  line-height: var(--v4-type-display-line-height);\n  font-weight: var(--v4-type-display-font-weight);\n  letter-spacing: var(--v4-type-display-letter-spacing);\n}\n.header[data-size=\"md\"] .title {\n  font-family: var(--v4-type-title-lg-font-family);\n  font-size: var(--v4-type-title-lg-font-size);\n  line-height: var(--v4-type-title-lg-line-height);\n  font-weight: var(--v4-type-title-lg-font-weight);\n  letter-spacing: var(--v4-type-title-lg-letter-spacing);\n}\n.mono {\n  font-family: var(--v4-font-mono);\n  letter-spacing: 0;\n}\n.header[data-size=\"md\"] .mono {\n  font-family: var(--v4-font-mono);\n}\n.badges {\n  display: inline-flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: var(--v4-space-6);\n}\n.description {\n  margin: 0;\n  max-width: var(--v4-size-measure-prose);\n  color: var(--v4-muted);\n  font-family: var(--v4-type-body-lg-font-family);\n  font-size: var(--v4-type-body-lg-font-size);\n  line-height: var(--v4-type-body-lg-line-height);\n  font-weight: var(--v4-type-body-lg-font-weight);\n  letter-spacing: var(--v4-type-body-lg-letter-spacing);\n}\n.actions {\n  display: flex;\n  flex: 0 1 auto;\n  flex-wrap: wrap;\n  max-width: 100%;\n  align-items: center;\n  gap: var(--v4-space-8);\n  min-height: var(--v4-type-display-line-height);\n}\n.header[data-size=\"md\"] .actions {\n  min-height: var(--v4-type-title-lg-line-height);\n}\n.tabs {\n  margin-top: var(--v4-space-24);\n}\n"
+    }
+  ]
+}

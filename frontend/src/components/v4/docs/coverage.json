@@ -1,17 +1,38 @@
 {
-  "requiredCapabilities": 64,
-  "componentFamilies": 64,
-  "patterns": 0,
-  "catalogEntries": 66,
+  "requiredCapabilities": 76,
+  "componentFamilies": 72,
+  "patterns": 4,
+  "catalogEntries": 78,
   "supplementalGuides": [
     "layout",
     "text"
   ],
-  "examples": 145,
+  "examples": 157,
   "missingCapabilities": [],
   "unmappedExports": [],
   "assessment": "Inventory and recipe coverage only. Behavior parity, browser checks and installation require executed evidence.",
   "obligations": [
+    {
+      "id": "access-list",
+      "kind": "pattern",
+      "exports": [
+        "AccessList"
+      ],
+      "name": "AccessList",
+      "variants": [
+        "owner locked",
+        "multiple selection",
+        "bulk bar",
+        "revoked with undo",
+        "empty"
+      ],
+      "behavior": "Framed List of member link rows with selection; contained FloatingActionBar revokes; owner unselectable",
+      "acceptance": [
+        "Owner never selected",
+        "Undo restores",
+        "Roles in words"
+      ]
+    },
     {
       "id": "accordion",
       "kind": "component",
@@ -28,6 +49,25 @@
         "Keyboard Home/End/arrows",
         "Disabled skipped",
         "Closed content unfocusable"
+      ]
+    },
+    {
+      "id": "activity-log",
+      "kind": "pattern",
+      "exports": [
+        "ActivityLog"
+      ],
+      "name": "ActivityLog",
+      "variants": [
+        "day sections",
+        "machine and agent badges",
+        "loading more",
+        "all loaded"
+      ],
+      "behavior": "Plain small List with day sections and load more",
+      "acceptance": [
+        "Existing rows stay while loading",
+        "Footer counts events"
       ]
     },
     {
@@ -94,6 +134,47 @@
         "Nested collapse works",
         "Reopen retains child state",
         "Reduced motion ends immediately"
+      ]
+    },
+    {
+      "id": "announcements",
+      "kind": "composite",
+      "exports": [
+        "Announcements"
+      ],
+      "name": "Announcements",
+      "variants": [
+        "cards",
+        "media",
+        "action",
+        "dots",
+        "last card"
+      ],
+      "behavior": "480px dialog of cards that slide in the direction of travel; Left and Right wrap; Next becomes Done; onSeen per card",
+      "acceptance": [
+        "Focus starts on Next",
+        "Position announced",
+        "Media inert"
+      ]
+    },
+    {
+      "id": "approval-queue",
+      "kind": "pattern",
+      "exports": [
+        "ApprovalQueue"
+      ],
+      "name": "ApprovalQueue",
+      "variants": [
+        "new",
+        "pending",
+        "resolved",
+        "failed"
+      ],
+      "behavior": "Framed List with actions below each request; requests change state in place",
+      "acceptance": [
+        "Resolved rows stay with Undo",
+        "Failed rows say how to recover",
+        "Count drops on resolve"
       ]
     },
     {
@@ -489,6 +570,24 @@
       ]
     },
     {
+      "id": "cover",
+      "kind": "component",
+      "exports": [
+        "Cover"
+      ],
+      "name": "Cover",
+      "variants": [
+        "light",
+        "dark",
+        "corners"
+      ],
+      "behavior": "Brand cover from color, radius and space tokens at a fixed ratio",
+      "acceptance": [
+        "Art follows theme",
+        "Art hidden from assistive technology"
+      ]
+    },
+    {
       "id": "data-grid",
       "kind": "component",
       "exports": [
@@ -660,6 +759,27 @@
         "Folder picker nested popup",
         "Full filename recoverable",
         "Reduced motion collapse"
+      ]
+    },
+    {
+      "id": "floating-action-bar",
+      "kind": "composite",
+      "exports": [
+        "FloatingActionBar"
+      ],
+      "name": "FloatingActionBar",
+      "variants": [
+        "fixed",
+        "contained",
+        "select all",
+        "more",
+        "busy action"
+      ],
+      "behavior": "Shows while count above zero; toolbar arrows; Escape clears; focus returns when it leaves",
+      "acceptance": [
+        "Count announced",
+        "Escape clears",
+        "Danger action last"
       ]
     },
     {
@@ -900,6 +1020,26 @@
       ]
     },
     {
+      "id": "loader",
+      "kind": "component",
+      "exports": [
+        "Loader"
+      ],
+      "name": "Loader",
+      "variants": [
+        "base",
+        "page",
+        "delay",
+        "loaded"
+      ],
+      "behavior": "Region wrapper around a labeled Spinner; renders children when not loading",
+      "acceptance": [
+        "One status announcement",
+        "Region busy while loading",
+        "No flash under the delay"
+      ]
+    },
+    {
       "id": "menubar",
       "kind": "component",
       "exports": [],
@@ -970,6 +1110,30 @@
       ]
     },
     {
+      "id": "multi-step",
+      "kind": "composite",
+      "exports": [
+        "MultiStep",
+        "Steps"
+      ],
+      "name": "MultiStep",
+      "variants": [
+        "dialog",
+        "sheet",
+        "page",
+        "horizontal steps",
+        "vertical steps",
+        "invalid",
+        "busy"
+      ],
+      "behavior": "Ordered steps that validate before advancing; Back keeps values; last step names the action",
+      "acceptance": [
+        "Invalid step focuses its first invalid field",
+        "Enter continues",
+        "Footer shows failures"
+      ]
+    },
+    {
       "id": "navigation-menu",
       "kind": "component",
       "exports": [],
@@ -985,6 +1149,29 @@
         "Current link announced",
         "Open panel collision",
         "No hover-only destination"
+      ]
+    },
+    {
+      "id": "page-header",
+      "kind": "pattern",
+      "exports": [
+        "PageHeader"
+      ],
+      "name": "PageHeader",
+      "variants": [
+        "lg",
+        "md",
+        "breadcrumb",
+        "badges",
+        "actions",
+        "tabs",
+        "media"
+      ],
+      "behavior": "Page-level trail of ancestors above one h1; lede, actions beside the title that wrap under it, tabs below",
+      "acceptance": [
+        "One h1",
+        "No crumb repeats the title",
+        "Actions wrap instead of clipping"
       ]
     },
     {
@@ -1185,6 +1372,30 @@
       ]
     },
     {
+      "id": "settings-card",
+      "kind": "composite",
+      "exports": [
+        "SettingsCard"
+      ],
+      "name": "SettingsCard",
+      "variants": [
+        "default",
+        "dirty",
+        "saving",
+        "saved",
+        "failed",
+        "locked",
+        "loading",
+        "danger"
+      ],
+      "behavior": "Fields in a form with a footer status and Save; rejection keeps values and shows the message",
+      "acceptance": [
+        "Save disabled until dirty",
+        "Enter saves",
+        "Locked shows the reason"
+      ]
+    },
+    {
       "id": "sheet",
       "kind": "component",
       "exports": [
@@ -1205,6 +1416,30 @@
         "Escape/backdrop owner policy",
         "Focus safe on row removal",
         "Narrow viewport no horizontal clip"
+      ]
+    },
+    {
+      "id": "sidebar",
+      "kind": "composite",
+      "exports": [
+        "Sidebar"
+      ],
+      "name": "Sidebar",
+      "variants": [
+        "expanded",
+        "rail",
+        "sections",
+        "children",
+        "counts",
+        "footer rows",
+        "account popover"
+      ],
+      "behavior": "Tools row, labeled sections with rules, one level of children, accent counts for waiting items, account button with the person's avatar and the organization's name, rail with tooltips and dots",
+      "acceptance": [
+        "No organization avatar",
+        "Current row neutral",
+        "Arrow keys move between rows",
+        "Rail keeps accessible names"
       ]
     },
     {
@@ -1476,6 +1711,29 @@
         "No duplicate accessible name",
         "Tooltip never sole essential copy",
         "Shortcut names readable"
+      ]
+    },
+    {
+      "id": "top-bar",
+      "kind": "composite",
+      "exports": [
+        "TopBar",
+        "AppShell",
+        "AppInset",
+        "PageGutter"
+      ],
+      "name": "TopBar",
+      "variants": [
+        "beside sidebar",
+        "standalone",
+        "switcher crumbs",
+        "tools"
+      ],
+      "behavior": "Product-level trail of switcher crumbs rooted at the organization name; shared page gutter so the root crumb aligns with the content edge; chevron is the only highlighted element",
+      "acceptance": [
+        "Root crumb text on the content edge at every width",
+        "Segment click opens the switcher",
+        "One tab stop per crumb"
       ]
     }
   ]

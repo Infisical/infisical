@@ -266,7 +266,7 @@
     background: var(--v4-scroll-thumb);
     background-clip: padding-box;
     border: 2px solid transparent;
-    border-radius: 4px;
+    border-radius: calc(var(--v4-radius-control) * var(--corners));
   }
   :where(.v4) ::-webkit-scrollbar-thumb:hover {
     background-color: var(--v4-scroll-thumb-hover);
@@ -542,4 +542,9 @@
     --tw-duration: var(--v4-duration-fast);
     --tw-ease: var(--v4-ease-spring);
   }
+}
+
+:is(.v4, .v4-portal)[data-corners="soft"],
+:is(.v4, .v4-portal)[data-corners="soft"][data-theme="dark"] {
+  --corners: 1;
 }

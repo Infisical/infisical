@@ -3,6 +3,8 @@ import { cn } from "cn";
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
 import { Slot } from "radix-ui";
 
+import { useControllableState } from "../lib/use-controllable-state";
+import { Icon } from "./icon";
 import { Switcher, type SwitcherProps } from "./switcher";
 
 import breadcrumbStyles from "./breadcrumb.module.css";
@@ -13,22 +15,95 @@ export type BreadcrumbCrumb = {
   onClick?: React.MouseEventHandler<HTMLElement>;
   mono?: boolean;
   media?: React.ReactNode;
-  menu?: Omit<SwitcherProps, "trigger">;
+  menu?: Omit<SwitcherProps, "trigger" | "anchor">;
+};
+
+const MenuCrumb = ({
+  crumb,
+  labelId,
+  purposeId
+}: {
+  crumb: BreadcrumbCrumb & { menu: NonNullable<BreadcrumbCrumb["menu"]> };
+  labelId: string;
+  purposeId: string;
+}) => {
+  const { menu } = crumb;
+  const [open, setOpen] = useControllableState({
+    value: menu.open,
+    defaultValue: menu.defaultOpen ?? false,
+    onChange: menu.onOpenChange
+  });
+  const openAtPress = React.useRef(false);
+  return (
+    <Switcher
+      {...menu}
+      open={open}
+      onOpenChange={setOpen}
+      trigger={
+        <button
+          type="button"
+          data-slot="breadcrumb-switcher"
+          className={breadcrumbStyles.chevron}
+          aria-label={menu.label}
+          aria-labelledby={`${purposeId} ${labelId}`}
+        >
+          <span id={purposeId} className="sr-only">
+            {menu.label}
+          </span>
+          <span id={labelId} className="sr-only">
+            {crumb.label}
+          </span>
+          <Icon name="chev-ud" size={14} />
+        </button>
+      }
+      anchor={(trigger) => (
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Pointer convenience; the chevron button is the keyboard trigger for the same popover.
+        <span
+          className={breadcrumbStyles.segment}
+          onPointerDown={() => {
+            openAtPress.current = open;
+          }}
+          onClick={(event) => {
+            if ((event.target as Element).closest("button")) return;
+            setOpen(!openAtPress.current);
+          }}
+        >
+          {crumb.media && (
+            <span className={breadcrumbStyles.media} aria-hidden="true">
+              {crumb.media}
+            </span>
+          )}
+          <span
+            aria-hidden="true"
+            className={cn(breadcrumbStyles.label, crumb.mono && breadcrumbStyles.mono)}
+            title={typeof crumb.label === "string" ? crumb.label : undefined}
+          >
+            {crumb.label}
+          </span>
+          {trigger}
+        </span>
+      )}
+    />
+  );
 };
 export type BreadcrumbProps = React.ComponentPropsWithoutRef<"nav"> & {
   items?: readonly BreadcrumbCrumb[];
   variant?: "default" | "product";
   maxItems?: number;
+  lastIsCurrent?: boolean;
 };
 const Breadcrumb = React.forwardRef<HTMLElement, BreadcrumbProps>(
-  ({ className, items, variant = "default", maxItems, children, ...props }, ref) => {
+  (
+    { className, items, variant = "default", maxItems, lastIsCurrent = true, children, ...props },
+    ref
+  ) => {
     const [expanded, setExpanded] = React.useState(false);
     const nameId = React.useId();
     const collapsible = Boolean(
       items && maxItems !== undefined && items.length > Math.max(3, maxItems)
     );
     const renderCrumb = (crumb: BreadcrumbCrumb, index: number) => {
-      const last = index === (items?.length ?? 0) - 1;
+      const last = lastIsCurrent && index === (items?.length ?? 0) - 1;
       const content = (
         <>
           {crumb.media && <span className={breadcrumbStyles.media}>{crumb.media}</span>}
@@ -39,25 +114,7 @@ const Breadcrumb = React.forwardRef<HTMLElement, BreadcrumbProps>(
           >
             {crumb.label}
           </span>
-          {crumb.menu && <ChevronRightIcon className="size-3 rotate-90" aria-hidden="true" />}
         </>
-      );
-      const trigger = (
-        <button
-          type="button"
-          className={breadcrumbStyles.link}
-          aria-label={crumb.menu?.label}
-          aria-labelledby={
-            crumb.menu ? `${nameId}-${index}-purpose ${nameId}-${index}-label` : undefined
-          }
-        >
-          {crumb.menu && (
-            <span id={`${nameId}-${index}-purpose`} className="sr-only">
-              {crumb.menu.label}
-            </span>
-          )}
-          {content}
-        </button>
       );
       return (
         <li
@@ -73,7 +130,11 @@ const Breadcrumb = React.forwardRef<HTMLElement, BreadcrumbProps>(
             </span>
           )}
           {crumb.menu ? (
-            <Switcher {...crumb.menu} trigger={trigger} />
+            <MenuCrumb
+              crumb={{ ...crumb, menu: crumb.menu }}
+              labelId={`${nameId}-${index}-label`}
+              purposeId={`${nameId}-${index}-purpose`}
+            />
           ) : last ? (
             <span
               aria-current="page"

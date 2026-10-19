@@ -585,7 +585,7 @@
   border-radius: calc(var(--v4-radius-control) * var(--corners));
 }
 .switch > [data-slot="switch-thumb"] {
-  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  border-radius: calc(var(--v4-radius-control) / 2 * var(--corners));
 }
 .progress,
 .progressIndicator {
@@ -668,23 +668,30 @@
   background-color: var(--v4-line);
 }
 .sliderRange {
-  background-color: var(--v4-ink);
+  background-color: var(--v4-accent);
 }
 .sliderThumb[data-slot] {
   width: var(--v4-size-icon);
   height: var(--v4-size-icon);
-  border: var(--v4-size-control-border) solid var(--v4-control);
-  border-radius: 50%;
-  background: var(--v4-surface);
+  border: 2px solid var(--v4-on-accent);
+  border-radius: calc(var(--v4-radius-sm) * var(--corners));
+  background: var(--v4-accent);
   box-shadow: 0 1px 2px color-mix(in oklab, var(--v4-frame) 18%, transparent);
-  transition-property: border-color;
+  transition-property: box-shadow;
   transition-duration: var(--v4-duration-fast);
   transition-timing-function: var(--v4-ease-standard);
 }
 @media (hover: hover) {
   .sliderThumb[data-slot]:hover {
-    border-color: var(--v4-ink);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--v4-accent) 45%, transparent);
   }
+}
+[data-slot="slider"][data-disabled] .sliderRange {
+  background-color: var(--v4-faint);
+}
+[data-slot="slider"][data-disabled] .sliderThumb[data-slot] {
+  border-color: var(--v4-line);
+  background: var(--v4-control-disabled-surface);
 }
 .skeleton {
   border-radius: calc(var(--v4-radius-control) * var(--corners));

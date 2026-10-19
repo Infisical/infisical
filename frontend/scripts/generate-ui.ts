@@ -486,9 +486,10 @@ const ids = new Set<string>();
 const editorialRuleIds = new Set<string>();
 const sourceOwners = new Map<string, string>();
 const knownModules = new Set(
-  filesIn(`${componentRoot}/ui`).filter(
-    (file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx")
-  )
+  [`${componentRoot}/ui`, `${componentRoot}/patterns`]
+    .filter((folder) => existsSync(path.join(root, folder)))
+    .flatMap((folder) => filesIn(folder))
+    .filter((file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"))
 );
 componentCatalog.forEach((definition) => {
   if (ids.has(definition.id)) failures.push(`Duplicate component ID: ${definition.id}`);
@@ -768,7 +769,7 @@ const portablePresentation = (file: string) => {
               name === "ExampleGrid"
                 ? `grid min-w-0 w-full items-start gap-x-6 gap-y-8 ${gridWidth === "full" ? "grid-cols-1" : gridWidth === "compact" ? "justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]" : gridWidth === "wide" ? "grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]" : "grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]"}`
                 : name === "ExampleStage"
-                  ? `relative min-w-0 w-full overflow-auto${stageHeight === "shell" ? " h-[360px] isolate [transform:translateZ(0)]" : stageHeight === "compact" ? " h-40 isolate [transform:translateZ(0)]" : stageHeight === "medium" ? " h-60 isolate [transform:translateZ(0)]" : stageHeight === "data" ? " max-h-[400px]" : ""}`
+                  ? `relative min-w-0 w-full overflow-auto${stageHeight === "shell" ? " h-[360px] isolate [transform:translateZ(0)]" : stageHeight === "app" ? " h-[600px] isolate [transform:translateZ(0)]" : stageHeight === "compact" ? " h-40 isolate [transform:translateZ(0)]" : stageHeight === "medium" ? " h-60 isolate [transform:translateZ(0)]" : stageHeight === "data" ? " max-h-[400px]" : ""}`
                   : name === "ExampleCell"
                     ? `m-0 flex min-w-0 w-full flex-col gap-3${cellAlignment === "center" ? " items-center text-center" : ""}`
                     : "flex min-w-0 w-full flex-col items-start gap-6";

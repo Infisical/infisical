@@ -32,7 +32,7 @@ const foundationLinks = [
   {
     href: "#spacing-shape",
     title: "Spacing and shape",
-    description: "Compact controls, shared spacing and soft corners."
+    description: "Compact controls, shared spacing and square corners."
   }
 ];
 
@@ -439,9 +439,10 @@ export const SpacingShapePage = () => (
     </DocSection>
     <DocSection title="Source radius scale">
       <p className="text-muted-foreground mb-4 text-sm leading-6">
-        Soft corners are the shared default across the workbench and its portals. The corner
-        multiplier is <code>1</code>. Each specimen shows its source radius; controls stay compact
-        rather than becoming pills.
+        Square corners are the default across the workbench and its portals: the corner multiplier
+        is <code>0</code>. The soft scale below is an available mode; switch it on with the corners
+        control in the dock, or with <code>corners=&quot;soft&quot;</code> on V4Scope. Each specimen
+        shows its soft radius; controls stay compact rather than becoming pills.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         {tokens.radius.tokens.map((radius) => (

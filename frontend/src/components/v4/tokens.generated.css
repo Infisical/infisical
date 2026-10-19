@@ -137,8 +137,8 @@
   --v4-info-wash: #eef3f8;
   --v4-info-line: #c3d1df;
   --v4-link: var(--v4-info);
-  --v4-sw-on: #7f7e78;
-  --v4-sw-knob-on: #ffffff;
+  --v4-sw-on: var(--v4-accent);
+  --v4-sw-knob-on: var(--v4-on-accent);
   --v4-toast-bg: var(--v4-surface);
   --v4-toast-line: var(--v4-line);
   --v4-toast-text: var(--v4-ink);
@@ -311,8 +311,8 @@
   --v4-info-wash: #0e1620;
   --v4-info-line: #243a52;
   --v4-link: var(--v4-info);
-  --v4-sw-on: #8a8983;
-  --v4-sw-knob-on: #ffffff;
+  --v4-sw-on: var(--v4-accent);
+  --v4-sw-knob-on: var(--v4-on-accent);
   --v4-toast-bg: #1e2022;
   --v4-toast-line: #2f3234;
   --v4-toast-text: #f1f0ea;
