@@ -1,6 +1,6 @@
 ---
 title: "Migrate to .infisical.yaml"
-description: "The Infisical CLI now reads project settings from `.infisical.yaml` instead of `.infisical.json`, and creates `.infisical.yaml` from an existing `.infisical.json`. Learn how to finish the migration."
+description: "The Infisical CLI now reads project settings from `.infisical.yaml` instead of `.infisical.json`, and creates `.infisical.yaml` from an existing `.infisical.json`."
 ---
 
 ## What changed
@@ -59,8 +59,6 @@ Let the CLI create `.infisical.yaml` from `.infisical.json`, or create `.infisic
     </Steps>
 
     If your repository has more than one `.infisical.json`, such as one per package in a monorepo, run a command in each directory that holds one.
-
-    Until you commit `.infisical.yaml`, the CLI tries to create the file again each time it runs in a new checkout of the repository, such as in every CI pipeline run. The file appears there as untracked, so if a CI step requires a clean working tree, that step can fail.
 
   </Tab>
   <Tab title="Edit the file by hand">
@@ -158,8 +156,7 @@ Check that the command lists the secrets from the project and environment you ex
 
   </Accordion>
   <Accordion title="What if the CLI can't create .infisical.yaml?">
-    If the CLI can't write `.infisical.yaml`, for example because the directory
-    is read-only, the command still runs with the settings in
+    If the CLI can't write `.infisical.yaml` the command still runs with the settings in
     `.infisical.json`, and the CLI tries again the next time you run a command.
     At most once a day, the CLI also prints a deprecation notice that names the
     directory it couldn't write to.
