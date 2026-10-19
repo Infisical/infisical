@@ -618,15 +618,14 @@ export const Navbar = () => {
                 </NavbarSwitcherContent>
               </NavbarSwitcher>
             </div>
-            {!isProjectScope && <NavbarPageBreadcrumbs />}
             {isProjectScope && (
               <>
                 <TypeSelect />
                 <ProjectSelect />
                 <ApplicationSelect />
-                <NavbarPageBreadcrumbs />
               </>
             )}
+            <NavbarPageBreadcrumbs />
           </>
         )}
       </div>
