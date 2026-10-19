@@ -140,7 +140,7 @@ export const readLegacyReviews = async (
   if (!requestIds.length) return [] as TLegacyReview[];
   const columns = ["id", "requestId", "reviewerUserId", "status", "createdAt", ...(withComment ? ["comment"] : [])];
   return (await tx(tables.legacyReviewers)
-    .whereRaw(`"requestId" = ANY(?::uuid[])`, [requestIds])
+    .whereIn("requestId", requestIds)
     .select(columns)) as TLegacyReview[];
 };
 
@@ -154,7 +154,7 @@ export const readApproverGroupMembers = async (tx: Knex, approvers: TLegacyAppro
 
 export const readRequestIdsAlreadyOnGlobal = async (tx: Knex, requestIds: string[]) => {
   if (!requestIds.length) return [] as string[];
-  return (await tx(TableName.ApprovalRequests).whereRaw(`"id" = ANY(?::uuid[])`, [requestIds]).pluck("id")) as string[];
+  return (await tx(TableName.ApprovalRequests).whereIn("id", requestIds).pluck("id")) as string[];
 };
 
 export const checkPolicyEnvironments = (environments: TPolicyEnvironment[], failures: TMigrationFailure[]) => {
@@ -559,7 +559,7 @@ export const runLegacyPolicyMigration = async (
         if (hasPostgresErrorCode(error, DatabaseErrorCode.LockNotAvailable)) {
           counts.locked += 1;
           logger.warn(
-            `${logPrefix}: policy not migrated, it stays on the legacy approval system [policyId=${policyId}] reasons=[locked: its rows were held by another transaction for over ${POLICY_LOCK_TIMEOUT_MS}ms, the next run retries it]`
+            `${logPrefix}: policy not migrated, it stays on the legacy approval system [policyId=${policyId}] reasons=[locked: its rows were held by another transaction for over ${POLICY_LOCK_TIMEOUT_MS}ms]`
           );
         } else {
           counts.failedWithError += 1;
