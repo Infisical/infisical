@@ -14,23 +14,30 @@ export const generateSessionToken = () => {
   return { token, tokenHash: hashSessionToken(token) };
 };
 
-// The actor columns are SET NULL when the owner is deleted, so the row outlives them. Resolve refuses such
-// a session; the status says the same, or the list would show it Active with nobody left to revoke it.
-export const isOwnerlessSession = (session: { userId?: string | null; identityId?: string | null }) =>
-  !session.userId && !session.identityId;
+type TSessionOwnerColumns = {
+  userId?: string | null;
+  identityId?: string | null;
+  actingIdentityId?: string | null;
+  actingIdentityName?: string | null;
+};
 
-export const isSessionOwnedBy = (
-  ctx: { actor: ActorType; actorId: string },
-  session: { userId?: string | null; identityId?: string | null }
-) =>
+// The actor columns are SET NULL when the owner is deleted, so the row outlives them, and an on-behalf-of session
+// keeps its acting identity's name once that identity is deleted. Resolve refuses either; the status says the same,
+// or the list would show it Active when nothing can use it.
+export const isOrphanedSession = (session: TSessionOwnerColumns) =>
+  (!session.userId && !session.identityId) || (Boolean(session.actingIdentityName) && !session.actingIdentityId);
+
+// The machine identity that started a session on a user's behalf holds it alongside the user.
+export const isSessionOwnedBy = (ctx: { actor: ActorType; actorId: string }, session: TSessionOwnerColumns) =>
   (ctx.actor === ActorType.USER && session.userId === ctx.actorId) ||
-  (ctx.actor === ActorType.IDENTITY && session.identityId === ctx.actorId);
+  (ctx.actor === ActorType.IDENTITY &&
+    (session.identityId === ctx.actorId || session.actingIdentityId === ctx.actorId));
 
 export const deriveSessionStatus = (
-  session: { expiresAt: Date | null; revokedAt: Date | null; userId?: string | null; identityId?: string | null },
+  session: { expiresAt: Date | null; revokedAt: Date | null } & TSessionOwnerColumns,
   now = new Date()
 ): AgentVaultSessionStatus => {
-  if (session.revokedAt || isOwnerlessSession(session)) return AgentVaultSessionStatus.Revoked;
+  if (session.revokedAt || isOrphanedSession(session)) return AgentVaultSessionStatus.Revoked;
   if (session.expiresAt && session.expiresAt <= now) return AgentVaultSessionStatus.Expired;
   return AgentVaultSessionStatus.Active;
 };

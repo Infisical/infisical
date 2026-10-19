@@ -22,6 +22,7 @@ import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultDecryptedSessionLogPage,
+  TAgentVaultDelegation,
   TAgentVaultMember,
   TAgentVaultProductActor,
   TAgentVaultProductMember,
@@ -102,6 +103,9 @@ export const agentVaultKeys = {
   availableMembers: (orgId: string) => [...agentVaultKeys.members(orgId), "available"] as const,
   availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.availableMembers(orgId), params] as const,
+  delegations: (orgId: string) => [...agentVaultKeys.all(orgId), "delegations"] as const,
+  delegationsOf: (orgId: string, machineIdentityIds: string[]) =>
+    [...agentVaultKeys.delegations(orgId), machineIdentityIds] as const,
   sessionLogSettings: (orgId: string) =>
     [...agentVaultKeys.all(orgId), "settings", "session-logs"] as const,
   sessionLogHealth: (orgId: string) =>
@@ -130,6 +134,24 @@ export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentV
       return data;
     },
     enabled,
+    placeholderData: (prev) => prev
+  });
+};
+
+// Read through the list, so an identity with no delegation is an empty result rather than a 404. Admins only.
+export const useListAgentVaultDelegations = (machineIdentityIds: string[], enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.delegationsOf(currentOrg.id, machineIdentityIds),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ delegations: TAgentVaultDelegation[] }>(
+        "/api/v1/agent-vault/delegations",
+        { params: { machineIdentityIds: machineIdentityIds.join(","), limit: 100 } }
+      );
+      return data.delegations;
+    },
+    enabled: enabled && machineIdentityIds.length > 0,
     placeholderData: (prev) => prev
   });
 };

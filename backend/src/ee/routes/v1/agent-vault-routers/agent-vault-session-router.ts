@@ -7,7 +7,6 @@ import {
 import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   AGENT_VAULT_MAX_SESSION_BUNDLES,
-  AGENT_VAULT_SESSION_DEFAULT_TTL,
   AGENT_VAULT_SESSION_MAX_TTL_MS,
   AGENT_VAULT_SESSION_TTL_NEVER
 } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
@@ -35,6 +34,13 @@ const SessionAccessBundleSchema = z.object({
 const SessionSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
   actor: AgentVaultSessionActorSchema,
+  actingIdentity: z
+    .object({
+      id: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION.actingIdentityId),
+      name: z.string().describe(AGENT_VAULT.SESSION.actingIdentityName)
+    })
+    .nullable()
+    .describe(AGENT_VAULT.SESSION.actingIdentity),
   status: z.nativeEnum(AgentVaultSessionStatus),
   expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
   revokedAt: z.date().nullable(),
@@ -127,7 +133,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     schema: {
       hide: false,
       operationId: "createAgentVaultSession",
-      description: "Create an Agent Vault session with an access bundle you can reach",
+      description:
+        "Create an Agent Vault session with an access bundle you can reach, or, as a machine identity with a delegation, on behalf of a user",
       tags: [ApiDocsTags.AgentVaultSessions],
       body: z.object({
         accessBundles: slugSchema({ max: 64, field: "Access bundle" })
@@ -135,11 +142,13 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .min(1)
           .max(AGENT_VAULT_MAX_SESSION_BUNDLES)
           .describe(AGENT_VAULT.SESSION.accessBundles),
+        // Optional rather than defaulted: the default depends on whether the session is on a user's behalf.
         ttl: z
           .string()
           .trim()
-          .default(AGENT_VAULT_SESSION_DEFAULT_TTL)
+          .optional()
           .superRefine((val, ctx) => {
+            if (val === undefined) return;
             if (val === AGENT_VAULT_SESSION_TTL_NEVER) return;
             let parsed: number | undefined;
             try {
@@ -161,7 +170,24 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               });
             }
           })
-          .describe(AGENT_VAULT.SESSION.ttl)
+          .describe(AGENT_VAULT.SESSION.ttl),
+        onBehalfOf: z
+          .object({
+            userId: z.string().uuid().optional().describe(AGENT_VAULT.SESSION.onBehalfOfUserId),
+            userEmail: z
+              .string()
+              .trim()
+              .toLowerCase()
+              .email()
+              .max(255)
+              .optional()
+              .describe(AGENT_VAULT.SESSION.onBehalfOfUserEmail)
+          })
+          .refine((val) => Boolean(val.userId) !== Boolean(val.userEmail), {
+            message: "Name the user by userId or by userEmail, not both"
+          })
+          .optional()
+          .describe(AGENT_VAULT.SESSION.onBehalfOf)
       }),
       response: {
         200: z.object({
@@ -188,7 +214,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         actorName = req.auth.identityName;
       }
 
-      const { session, token } = await server.services.agentVaultSession.mintSession({
+      const { session, token, ttl, onBehalfOf } = await server.services.agentVaultSession.mintSession({
         actorName,
         actorEmail,
         projectId: req.internalAgentVaultProjectId,
@@ -206,7 +232,12 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             sessionId: session.id,
             accessBundleId: session.accessBundles[0].id,
             accessBundleName: session.accessBundles[0].name,
-            expiresAt: session.expiresAt?.toISOString() ?? null
+            expiresAt: session.expiresAt?.toISOString() ?? null,
+            ...(onBehalfOf && {
+              onBehalfOfUserId: onBehalfOf.userId,
+              onBehalfOfUserName: onBehalfOf.username,
+              ...(onBehalfOf.email && { onBehalfOfUserEmail: onBehalfOf.email })
+            })
           }
         }
       });
@@ -216,7 +247,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         properties: {
           sessionId: session.id,
           accessBundleId: session.accessBundles[0].id,
-          ttlSeconds: req.body.ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : Math.floor(ms(req.body.ttl) / 1000)
+          ttlSeconds: ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : Math.floor(ms(ttl) / 1000),
+          isOnBehalfOfUser: Boolean(onBehalfOf)
         }
       });
 

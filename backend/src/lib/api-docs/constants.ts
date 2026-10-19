@@ -108,6 +108,7 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
+  AgentVaultDelegations = "Agent Vault Delegations",
   AgentVaultSessionLogs = "Agent Vault Session Logs",
   AgentVaultSettings = "Agent Vault Settings",
   AgentVaultAppConnections = "Agent Vault App Connections",
@@ -4727,13 +4728,17 @@ export const AGENT_VAULT = {
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
-    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
+    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d. A session started on behalf of a user defaults to 1h and lasts at most 24h, so never isn't allowed for it.",
+    onBehalfOf:
+      "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session then reaches the access bundles the user reaches and uses the user's personal values. Name the user by userId or by userEmail.",
+    onBehalfOfUserId: "The ID of the user to start the session on behalf of.",
+    onBehalfOfUserEmail: "The email address of the user to start the session on behalf of.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
-    search: "Match sessions by actor name, actor email or access bundle name.",
+    search: "Match sessions by actor name, actor email, acting machine identity name or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip.",
     actorType: "Whether the session belongs to a user or a machine identity.",
@@ -4744,7 +4749,36 @@ export const AGENT_VAULT = {
       "The first name of the user. Once the user is deleted, the full name recorded when the session was created.",
     lastName: "The last name of the user, or null once the user is deleted.",
     identityName:
-      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
+      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created.",
+    actingIdentity:
+      "The machine identity that started the session on the actor's behalf, or null when the actor started it.",
+    actingIdentityId: "The ID of the acting machine identity, or null once it is deleted.",
+    actingIdentityName:
+      "The name of the acting machine identity. Once it is deleted, the name recorded when the session was created."
+  },
+  DELEGATION: {
+    machineIdentityId: "The ID of the machine identity the delegation belongs to.",
+    machineIdentityIds:
+      "Return only the delegations of these machine identities. Separate several IDs with commas, up to 100.",
+    machineIdentity: "The machine identity that can start sessions on behalf of users.",
+    machineIdentityName: "The name of the machine identity.",
+    scope:
+      "Which users the machine identity can start sessions on behalf of: every Agent Vault member (all-members), or only the users and the members of the groups in the delegation (selected).",
+    userIds:
+      "The users the machine identity can act on behalf of. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+    groupIds:
+      "The groups whose members the machine identity can act on behalf of. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+    users: "The users in the delegation.",
+    groups: "The groups in the delegation. Their members are covered while they stay in the group.",
+    userId: "The ID of the user.",
+    username: "The username of the user.",
+    email: "The email address of the user.",
+    firstName: "The first name of the user.",
+    lastName: "The last name of the user.",
+    groupId: "The ID of the group.",
+    groupName: "The name of the group.",
+    limit: "The maximum number of delegations to return.",
+    offset: "How many delegations to skip."
   }
 };
 

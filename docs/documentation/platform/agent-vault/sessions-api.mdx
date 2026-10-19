@@ -58,6 +58,10 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 - `accessBundles` takes a list, but a session can have only one access bundle, so the list must have exactly one name
 - `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
 
+<Tip>
+  If your code runs agents for other people, as a chat bot does, the machine identity can create each session [on behalf of the person who asked](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so the session gets that person's access bundles and personal values.
+</Tip>
+
 The response includes the session's ID, the session token, and when the session expires:
 
 ```json

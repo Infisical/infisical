@@ -20,6 +20,7 @@ agent-vault/                 shared: enums, host grammar, conflict detection, re
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-variable/        global and personal variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
+agent-vault-delegation/      which users a machine identity may start sessions on behalf of
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
@@ -112,6 +113,49 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
 - **Sessions are never deleted**, so the Sessions page is a full history and a session's row keeps the key its
   logs need. Settled with the product owner.
+
+## Sessions on behalf of users
+
+A machine identity with a **delegation** can mint a session on behalf of a user (`onBehalfOf` on mint). The session
+belongs to the user: `userId` is the user, so resolve uses the user's role, reach and personal values without a branch
+of its own. The identity is kept as `actingIdentityId` and `actingIdentityName`. A delegation is one
+`agent_vault_delegations` row per identity, with a scope of `all-members` or `selected`, plus
+`agent_vault_delegation_subjects` rows naming users and groups.
+
+- **Never put the acting identity in `identityId`.** Resolve reads `userId` first and falls back to `identityId`, so
+  deleting the user would quietly turn the session into the identity's own, with the identity's grants. The DB check
+  `agent_vault_sessions_acting_identity_check` keeps an on-behalf-of session a user's.
+- **`actingIdentityName` is what marks the session on-behalf-of** once deleting the identity sets the id to NULL, the
+  same lesson as `actorType`. A session with the name and no id is orphaned: it reads as revoked
+  (`isOrphanedSession`) and resolve refuses it.
+- **Resolve re-checks the acting identity every time**: active in the org, a live Agent Vault role, and a delegation
+  that still covers the user (`$assertActingIdentityStillDelegated`). Any miss is a 401, like an actor removed from
+  Agent Vault. Removing a delegation revokes nothing, so its sessions work again if it comes back; revoking is what
+  ends one. Settled the same way as removal from Agent Vault.
+- **Reach is the user's alone, never intersected with the identity's.** Intersection is a possible later option,
+  not a bug. An admin user reaches every bundle, so an all-members delegation covers every bundle too.
+- **Mint checks the delegation before it looks the user up**, so an identity no admin delegated learns nothing about
+  who is in the org, and an unknown user gets the same message as an uncovered one. Only a machine identity may send
+  `onBehalfOf`. The user must be an active, accepted org member, as resolve requires.
+- **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
+  the last actor it ran for in the request context, where the audit log reads the caller's permission metadata. The
+  second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
+- **The user's session permission is checked with `can()`, not thrown through CASL**, since a CASL denial would be
+  recorded against the identity making the request.
+- **TTL defaults to 1h and caps at 24h, and `never` is refused**: the user didn't start the session and may not know
+  it exists. The route's `ttl` is optional rather than defaulted because the default depends on `onBehalfOf`.
+- **The acting identity holds the session alongside the user**: the identity's list, get, revoke and session log
+  reads match `actingIdentityId` as well as `identityId` (`isSessionOwnedBy`, the session DAL's actor filter).
+- **Coverage reads group membership without `isPending`**, the way the permission engine grants access through a
+  group. Filtering it would refuse accepted users, since the flag is no longer cleared.
+- **A subject is named by its own Agent Vault membership**, the rule bundle grants use: a user who reaches Agent
+  Vault only through a group is covered by naming the group. Coverage itself is read live, so leaving the group
+  ends it.
+- **Removing an identity from Agent Vault deletes its delegation**, in the revoke transaction, so adding it back
+  restores nothing. Platform paths (org removal, the generic project membership routes) don't, and a delegation can
+  outlive the membership there; resolve still refuses, because it requires the identity's live Agent Vault role.
+- **Delegation routes take no `AuthMode.OAUTH`.** The admin check reads the role, which a delegated token's scopes
+  don't narrow, and a delegation lets an identity act as other users.
 
 ## Proxies
 
@@ -270,8 +314,10 @@ reference.
   a variable the caller may not act on is a 404, never a 403: someone else's personal one, and a global one for a
   member. Global keys are unique per project (500 cap), personal ones per owner (100 cap), each enforced by a partial
   unique index plus an advisory lock per project or per owner.
-- **Everything personal is scoped to the caller, never to an id the caller sends.** No route names another actor,
-  so an admin can't list, read or set anyone else's variables or values. The owner is a user or a machine identity
+- **Everything personal is scoped to the caller, never to an id the caller sends.** No route that reads or writes
+  personal values or variables names another actor, so an admin can't list, read or set anyone else's variables or
+  values. An on-behalf-of mint names a user, but only to own the session (see
+  [Sessions on behalf of users](#sessions-on-behalf-of-users)). The owner is a user or a machine identity
   (`ownerOf`); the UI only covers users for now, but resolve and the API already work for an identity's own
   sessions.
 - **Resolve fills member fields last**: the admin's fields are expanded against global variables first, then each

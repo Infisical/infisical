@@ -34,6 +34,7 @@ import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/a
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
@@ -80,6 +81,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "findForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
+  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "identityCoversUser">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
@@ -124,6 +126,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultVariableDAL,
   agentVaultPersonalValueDAL,
   agentVaultSessionDAL,
+  agentVaultDelegationDAL,
   agentVaultSessionLogConfigDAL,
   membershipDAL,
   orgDAL,
@@ -627,6 +630,56 @@ export const agentVaultProxyServiceFactory = ({
     return resolved;
   };
 
+  // The identity that started a session on a user's behalf has to still be in the org and in Agent Vault, and its
+  // delegation has to still cover the user. Read on every resolve, so taking any of them away ends the session on
+  // the proxy's next poll.
+  const $assertActingIdentityStillDelegated = async ({
+    projectId,
+    orgId,
+    userId,
+    actingIdentityId
+  }: {
+    projectId: string;
+    orgId: string;
+    userId: string | null;
+    actingIdentityId: string | null;
+  }) => {
+    const refused = () =>
+      new UnauthorizedError({
+        message: "The machine identity that started this session is no longer allowed to act on behalf of its user"
+      });
+    if (!actingIdentityId || !userId) throw refused();
+
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: actingIdentityId,
+      orgId,
+      status: OrgMembershipStatus.Accepted
+    });
+    if (!orgMembership?.isActive) throw refused();
+
+    try {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: ActorType.IDENTITY,
+        actorId: actingIdentityId,
+        projectId,
+        actorAuthMethod: null,
+        actorOrgId: orgId,
+        actionProjectType: ActionProjectType.AgentVault
+      });
+      if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
+        throw refused();
+      }
+    } catch (error) {
+      if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") throw refused();
+      throw error;
+    }
+
+    if (!(await agentVaultDelegationDAL.identityCoversUser({ projectId, identityId: actingIdentityId, userId }))) {
+      throw refused();
+    }
+  };
+
   /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
   const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
     const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
@@ -647,6 +700,15 @@ export const agentVaultProxyServiceFactory = ({
     // ownerless session resolve as an admin.
     if (!session.userId && !session.identityId) {
       throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
+    }
+    // The name marks an on-behalf-of session even after deleting the identity nulls its id.
+    if (session.actingIdentityName) {
+      await $assertActingIdentityStillDelegated({
+        projectId: session.projectId,
+        orgId,
+        userId: session.userId ?? null,
+        actingIdentityId: session.actingIdentityId ?? null
+      });
     }
 
     const actor = session.userId

@@ -8,7 +8,7 @@ import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultSessionActor } from "./agent-vault-session-types";
+import { TAgentVaultSessionActingIdentity, TAgentVaultSessionActor } from "./agent-vault-session-types";
 
 export type TAgentVaultSessionDALFactory = ReturnType<typeof agentVaultSessionDALFactory>;
 
@@ -16,39 +16,63 @@ export type TAgentVaultSessionListRow = {
   id: string;
   userId: string | null;
   identityId: string | null;
+  actingIdentityId: string | null;
+  actingIdentityName: string | null;
   actor: TAgentVaultSessionActor;
+  actingIdentity: TAgentVaultSessionActingIdentity | null;
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
   accessBundles: { id: string | null; name: string; position: number }[];
 };
 
-// Mirrors deriveSessionStatus: a session with neither actor id counts as revoked.
-const ownerless = (qb: Knex.QueryBuilder) =>
-  void qb.whereNull(`${TableName.AgentVaultSession}.userId`).whereNull(`${TableName.AgentVaultSession}.identityId`);
-const owned = (qb: Knex.QueryBuilder) =>
+// The acting identity's own alias, since the actor's identity is joined under the table's name.
+const ACTING_IDENTITY = "actingIdentity";
+
+// Mirrors deriveSessionStatus: a session with neither actor id, or whose acting identity was deleted, counts as revoked.
+const orphaned = (qb: Knex.QueryBuilder) =>
   void qb
-    .whereNotNull(`${TableName.AgentVaultSession}.userId`)
-    .orWhereNotNull(`${TableName.AgentVaultSession}.identityId`);
+    .where((sub) => {
+      void sub
+        .whereNull(`${TableName.AgentVaultSession}.userId`)
+        .whereNull(`${TableName.AgentVaultSession}.identityId`);
+    })
+    .orWhere((sub) => {
+      void sub
+        .whereNotNull(`${TableName.AgentVaultSession}.actingIdentityName`)
+        .whereNull(`${TableName.AgentVaultSession}.actingIdentityId`);
+    });
+const live = (qb: Knex.QueryBuilder) =>
+  void qb
+    .where((sub) => {
+      void sub
+        .whereNotNull(`${TableName.AgentVaultSession}.userId`)
+        .orWhereNotNull(`${TableName.AgentVaultSession}.identityId`);
+    })
+    .where((sub) => {
+      void sub
+        .whereNull(`${TableName.AgentVaultSession}.actingIdentityName`)
+        .orWhereNotNull(`${TableName.AgentVaultSession}.actingIdentityId`);
+    });
 
 const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus, now: Date) => {
   if (status === AgentVaultSessionStatus.Revoked) {
     void query.where((qb) => {
-      void qb.whereNotNull(`${TableName.AgentVaultSession}.revokedAt`).orWhere(ownerless);
+      void qb.whereNotNull(`${TableName.AgentVaultSession}.revokedAt`).orWhere(orphaned);
     });
     return;
   }
   if (status === AgentVaultSessionStatus.Expired) {
     void query
       .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
-      .where(owned)
+      .where(live)
       .whereNotNull(`${TableName.AgentVaultSession}.expiresAt`)
       .where(`${TableName.AgentVaultSession}.expiresAt`, "<=", now);
     return;
   }
   void query
     .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
-    .where(owned)
+    .where(live)
     .where((qb) => {
       void qb
         .whereNull(`${TableName.AgentVaultSession}.expiresAt`)
@@ -137,7 +161,14 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         void query.where(`${TableName.AgentVaultSession}.projectId`, projectId);
         if (sessionId) void query.where(`${TableName.AgentVaultSession}.id`, sessionId);
         if (actor?.type === ActorType.USER) void query.where(`${TableName.AgentVaultSession}.userId`, actor.id);
-        if (actor?.type === ActorType.IDENTITY) void query.where(`${TableName.AgentVaultSession}.identityId`, actor.id);
+        // An identity's own sessions, and the ones it started on a user's behalf.
+        if (actor?.type === ActorType.IDENTITY) {
+          void query.where((qb) => {
+            void qb
+              .where(`${TableName.AgentVaultSession}.identityId`, actor.id)
+              .orWhere(`${TableName.AgentVaultSession}.actingIdentityId`, actor.id);
+          });
+        }
         if (statuses?.length) {
           void query.where((qb) => {
             statuses.forEach((status) => {
@@ -152,7 +183,12 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           // snapshot alone would miss a renamed actor and match a name no longer shown.
           void query
             .leftJoin(TableName.Users, `${TableName.AgentVaultSession}.userId`, `${TableName.Users}.id`)
-            .leftJoin(TableName.Identity, `${TableName.AgentVaultSession}.identityId`, `${TableName.Identity}.id`);
+            .leftJoin(TableName.Identity, `${TableName.AgentVaultSession}.identityId`, `${TableName.Identity}.id`)
+            .leftJoin(
+              `${TableName.Identity} as ${ACTING_IDENTITY}`,
+              `${TableName.AgentVaultSession}.actingIdentityId`,
+              `${ACTING_IDENTITY}.id`
+            );
 
           void query.where((qb) => {
             void qb
@@ -166,6 +202,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
               ])
               .orWhereILike(`${TableName.AgentVaultSession}.actorName`, term)
               .orWhereILike(`${TableName.AgentVaultSession}.actorEmail`, term)
+              .orWhereILike(`${ACTING_IDENTITY}.name`, term)
+              .orWhereILike(`${TableName.AgentVaultSession}.actingIdentityName`, term)
               .orWhereExists((sub) => {
                 void sub
                   .select(db.raw("1"))
@@ -213,6 +251,11 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Users, `${TableName.AgentVaultSession}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.Identity, `${TableName.AgentVaultSession}.identityId`, `${TableName.Identity}.id`)
         .leftJoin(
+          `${TableName.Identity} as ${ACTING_IDENTITY}`,
+          `${TableName.AgentVaultSession}.actingIdentityId`,
+          `${ACTING_IDENTITY}.id`
+        )
+        .leftJoin(
           TableName.AgentVaultSessionAccessBundle,
           `${TableName.AgentVaultSessionAccessBundle}.sessionId`,
           `${TableName.AgentVaultSession}.id`
@@ -239,6 +282,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("actorName").withSchema(TableName.AgentVaultSession),
           db.ref("actorEmail").withSchema(TableName.AgentVaultSession),
+          db.ref("actingIdentityId").withSchema(TableName.AgentVaultSession),
+          db.ref("actingIdentityName").withSchema(TableName.AgentVaultSession),
+          db.ref("name").withSchema(ACTING_IDENTITY).as("actingIdentityLiveName"),
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
@@ -260,6 +306,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         identityName: string | null;
         actorName: string;
         actorEmail: string | null;
+        actingIdentityId: string | null;
+        actingIdentityName: string | null;
+        actingIdentityLiveName: string | null;
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
@@ -274,7 +323,12 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             id: row.id,
             userId: row.userId,
             identityId: row.identityId,
+            actingIdentityId: row.actingIdentityId,
+            actingIdentityName: row.actingIdentityName,
             actor: toSessionActor(row),
+            actingIdentity: row.actingIdentityName
+              ? { id: row.actingIdentityId, name: row.actingIdentityLiveName ?? row.actingIdentityName }
+              : null,
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,
             createdAt: row.createdAt,

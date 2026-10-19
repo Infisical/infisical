@@ -35,6 +35,7 @@ import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias
 
 import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
 import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import {
   clearPersonalValuesAfterRevoke,
   TClearPersonalValuesDeps
@@ -53,6 +54,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "delete">;
 } & TClearPersonalValuesDeps;
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
@@ -142,7 +144,8 @@ export const agentVaultMembershipServiceFactory = ({
   usageMeteringService,
   agentVaultPersonalValueDAL,
   userGroupMembershipDAL,
-  identityGroupMembershipDAL
+  identityGroupMembershipDAL,
+  agentVaultDelegationDAL
 }: TAgentVaultMembershipServiceFactoryDep) => {
   const getActorPermission = (projectId: string, ctx: TGenericPermission) =>
     permissionService.getProjectPermission({
@@ -671,6 +674,13 @@ export const agentVaultMembershipServiceFactory = ({
 
       // membership_roles cascades on the membership FK, so the roles go with these rows.
       await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
+
+      // A delegation left behind would come back with a later add, so an identity rejoining acts for no one until an
+      // admin allows it again.
+      const removedIdentityIds = named(held, AgentVaultMemberType.MachineIdentity);
+      if (removedIdentityIds.length) {
+        await agentVaultDelegationDAL.delete({ projectId, $in: { identityId: removedIdentityIds } }, tx);
+      }
 
       // Their bundle grants went above. Their own variables stay, as they would if they only lost a bundle.
       await clearPersonalValuesAfterRevoke(

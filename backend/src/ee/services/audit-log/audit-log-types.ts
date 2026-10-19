@@ -832,6 +832,8 @@ export enum EventType {
   AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE = "agent-vault-access-bundle-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_DELEGATION_SET = "agent-vault-delegation-set",
+  AGENT_VAULT_DELEGATION_DELETE = "agent-vault-delegation-delete",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
   AGENT_VAULT_PROXY_TOKEN_ROTATE = "agent-vault-proxy-token-rotate",
@@ -6756,6 +6758,10 @@ interface AgentVaultSessionMintEvent {
     accessBundleId: string;
     accessBundleName: string;
     expiresAt: string | null;
+    // Set when a machine identity started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6763,6 +6769,25 @@ interface AgentVaultSessionRevokeEvent {
   type: EventType.AGENT_VAULT_SESSION_REVOKE;
   metadata: {
     sessionId: string;
+  };
+}
+
+interface AgentVaultDelegationSetEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_SET;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
+  };
+}
+
+interface AgentVaultDelegationDeleteEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_DELETE;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
   };
 }
 
@@ -8680,6 +8705,8 @@ export type Event =
   | AgentVaultAccessBundleMemberAddEvent
   | AgentVaultAccessBundleMemberRemoveEvent
   | AgentVaultSessionMintEvent
+  | AgentVaultDelegationSetEvent
+  | AgentVaultDelegationDeleteEvent
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent

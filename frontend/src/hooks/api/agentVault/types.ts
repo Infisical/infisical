@@ -1,5 +1,6 @@
 import {
   AgentVaultCredentialType,
+  AgentVaultDelegationScope,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultSessionLogDecision,
@@ -231,14 +232,34 @@ export type TAgentVaultSessionActor =
       id: string | null;
     });
 
+/** The machine identity that started a session on its actor's behalf. `id` is null once it is deleted. */
+export type TAgentVaultSessionActingIdentity = { id: string | null; name: string };
+
 export type TAgentVaultSession = {
   id: string;
   actor: TAgentVaultSessionActor;
+  actingIdentity: TAgentVaultSessionActingIdentity | null;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
+};
+
+export type TAgentVaultDelegation = {
+  machineIdentity: { id: string; name: string };
+  scope: AgentVaultDelegationScope;
+  users: Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "type">[];
+  groups: Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>, "type">[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TSetAgentVaultDelegationDTO = {
+  machineIdentityId: string;
+  scope: AgentVaultDelegationScope;
+  userIds?: string[];
+  groupIds?: string[];
 };
 
 export type TAgentVaultMintedSession = {
