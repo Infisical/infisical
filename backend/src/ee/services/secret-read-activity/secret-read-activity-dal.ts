@@ -199,7 +199,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
               .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
           });
 
-      const [directAdmins, groupAdmins] = (await Promise.all([
+      const [directAdmins, groupUserAdmins, groupIdentityAdmins] = (await Promise.all([
         adminMemberships((tx || db.replicaNode())(TableName.Membership)).select(
           db.ref("actorUserId").withSchema(TableName.Membership),
           db.ref("actorIdentityId").withSchema(TableName.Membership)
@@ -210,15 +210,27 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
             `${TableName.Membership}.actorGroupId`,
             `${TableName.UserGroupMembership}.groupId`
           )
-        ).select(db.ref("userId").withSchema(TableName.UserGroupMembership))
-      ])) as [{ actorUserId: string | null; actorIdentityId: string | null }[], { userId: string }[]];
+        ).select(db.ref("userId").withSchema(TableName.UserGroupMembership)),
+        adminMemberships(
+          (tx || db.replicaNode())(TableName.Membership).join(
+            TableName.IdentityGroupMembership,
+            `${TableName.Membership}.actorGroupId`,
+            `${TableName.IdentityGroupMembership}.groupId`
+          )
+        ).select(db.ref("identityId").withSchema(TableName.IdentityGroupMembership))
+      ])) as [
+        { actorUserId: string | null; actorIdentityId: string | null }[],
+        { userId: string }[],
+        { identityId: string }[]
+      ];
 
       return new Set([
         ...directAdmins.flatMap(({ actorUserId, actorIdentityId }) => {
           const actorId = actorUserId ?? actorIdentityId;
           return actorId ? [actorId] : [];
         }),
-        ...groupAdmins.map(({ userId }) => userId)
+        ...groupUserAdmins.map(({ userId }) => userId),
+        ...groupIdentityAdmins.map(({ identityId }) => identityId)
       ]);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project admins" });
