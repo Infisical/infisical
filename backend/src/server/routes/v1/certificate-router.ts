@@ -8,6 +8,7 @@ import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
+import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { openApiHidden } from "@app/server/lib/schemas";
@@ -2072,9 +2073,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
-      hide: true,
+      hide: false,
       operationId: "exportCertificatePkcs12",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Download certificate in PKCS12 format",
@@ -2082,14 +2083,19 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       body: z.object({
-        password: z
-          .string()
-          .min(6, "Password must be at least 6 characters long")
-          .describe("Password for the keystore (minimum 6 characters)"),
-        alias: z.string().min(1, "Alias is required").describe("Alias for the certificate in the keystore")
+        password: Pkcs12PasswordSchema.describe(CERTIFICATES.EXPORT_PKCS12.password),
+        alias: z.string().trim().min(1, "Alias is required").max(255).describe(CERTIFICATES.EXPORT_PKCS12.alias)
       }),
       response: {
-        200: z.any().describe("PKCS12 keystore as binary data")
+        200: z.any().describe(
+          JSON.stringify({
+            content: {
+              "application/octet-stream": {
+                schema: { type: "string", format: "binary", description: CERTIFICATES.EXPORT_PKCS12.keystore }
+              }
+            }
+          })
+        )
       }
     },
     handler: async (req, reply) => {

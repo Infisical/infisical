@@ -34,7 +34,8 @@ export enum SignerKeyAlgorithm {
 
 export enum CertKeySource {
   Infisical = "infisical",
-  Hsm = "hsm"
+  Hsm = "hsm",
+  AwsKms = "aws-kms"
 }
 
 export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly SignerKeyAlgorithm[] = [

@@ -42,7 +42,9 @@ type ContentProps = {
 
 export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const { currentProject } = useProject();
-  const accentVariant = currentProject.type === ProjectType.AgentVault ? "av" : "project";
+  let accentVariant: "av" | "ss" | "project" = "project";
+  if (currentProject.type === ProjectType.AgentVault) accentVariant = "av";
+  else if (currentProject.type === ProjectType.SecretScanning) accentVariant = "ss";
 
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
 

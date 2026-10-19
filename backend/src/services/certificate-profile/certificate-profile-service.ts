@@ -21,13 +21,14 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertStatus } from "../certificate/certificate-types";
+import type { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "../certificate-authority/certificate-authority-enums";
@@ -61,7 +62,6 @@ import {
 } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
-import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -337,7 +337,7 @@ type TCertificateProfileServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
-  hsmConnectorService: THsmConnectorServiceFactory;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
@@ -401,7 +401,7 @@ export const certificateProfileServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCertDAL,
-  hsmConnectorService,
+  caKeySourceService,
   externalCertificateAuthorityDAL,
   permissionService,
   kmsService,
@@ -527,8 +527,8 @@ export const certificateProfileServiceFactory = ({
     // Check for slug uniqueness within project
     const existingSlugProfile = await certificateProfileDAL.findBySlugAndProjectId(data.slug, projectId);
     if (existingSlugProfile) {
-      throw new ForbiddenRequestError({
-        message: "Certificate profile with this name already exists in project"
+      throw new ConflictError({
+        message: `A certificate profile named '${data.slug}' already exists. Choose a different name.`
       });
     }
 
@@ -631,7 +631,7 @@ export const certificateProfileServiceFactory = ({
           certificateAuthorityCertDAL,
           projectDAL,
           kmsService,
-          hsmConnectorService
+          caKeySourceService
         }
       });
 
@@ -816,8 +816,8 @@ export const certificateProfileServiceFactory = ({
         existingProfile.projectId
       );
       if (conflictingProfile && conflictingProfile.id !== profileId) {
-        throw new ForbiddenRequestError({
-          message: "Certificate profile with this name already exists in project"
+        throw new ConflictError({
+          message: `A certificate profile named '${data.slug}' already exists. Choose a different name.`
         });
       }
     }

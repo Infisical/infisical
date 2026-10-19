@@ -1,64 +1,81 @@
 ---
 title: "Dell PowerEdge SEKM"
-description: "Integrate Infisical KMIP with Dell PowerEdge servers using Secure Enterprise Key Management (SEKM) for Self-Encrypting Drives."
+description: "Encrypt the drives in Dell PowerEdge servers with keys from Infisical KMS."
 ---
 
-This guide walks you through setting up Secure Enterprise Key Management (SEKM) on Dell PowerEdge servers with iDRAC to encrypt Self-Encrypting Drives (SEDs) using Infisical as your key management server.
+Dell PowerEdge servers can encrypt their self-encrypting drives (SEDs) with keys from a KMIP key manager, through a feature of iDRAC called Secure Enterprise Key Management (SEKM). This guide sets up iDRAC as a [KMIP client](/documentation/platform/kms/kmip-clients) of Infisical KMS.
 
 ## Prerequisites
 
-- Infisical KMIP server deployed and running (see [KMIP Integration](/documentation/platform/kms/kmip))
-- Dell PowerEdge server with iDRAC Enterprise license
-- SEKM license installed on iDRAC
-- Network connectivity between iDRAC and KMIP server on port 5696
+- A running [KMIP server](/documentation/platform/kms/kmip-server) that iDRAC can reach on port 5696
+- A KMS project where you have the **Admin** role
+- A Dell PowerEdge server with an iDRAC Enterprise license and an SEKM license
 
-## Integration steps
+## Step 1: Register iDRAC as a KMIP client
 
 <Steps>
-  <Step title="Create a KMIP Client in Infisical">
-    In your KMS project, navigate to **KMIP** and create a KMIP client for the iDRAC.
+  <Step>
+    In your KMS project, go to **KMIP** and select **Add KMIP Client**.
   </Step>
-
-  <Step title="Configure SEKM on iDRAC">
-    1. Log into the iDRAC web interface
-    2. Navigate to **iDRAC Settings > Services**
-    3. Expand **iDRAC Key Management** and select **SEKM**
-    4. Enter the KMIP server address and port (default: 5696)
-    5. Select **Next**
+  <Step>
+    Enter a **Name**, select every operation under **Permissions**, then select **Add KMIP Client**.
   </Step>
-
-  <Step title="Generate Certificate Request on iDRAC">
-    When iDRAC prompts you to generate a certificate request, you'll need to enter subject values. You can find the required values in Infisical by selecting **Generate Certificate** on your KMIP client and selecting the **CSR** request method - the modal will display the exact **Client ID** and **Project ID** to use.
-    
-    1. Click **Generate CSR** on iDRAC
-    2. Enter the certificate information:
-       - **Common Name (CN)**: Enter the **Client ID** shown in Infisical
-       - **Organizational Unit (OU)**: Enter the **Project ID** shown in Infisical
-       - Fill in other fields as needed (Organization, Country, etc.)
-    3. Click **Generate** and download the certificate request file
+  <Step>
+    Select the options menu on the client's row, select **Generate Certificate**, and set **Request Method** to **Certificate Signing Request (CSR)**. Keep the dialog open: you need the **Client ID** and **Project ID** it shows in the next step.
   </Step>
+</Steps>
 
-  <Step title="Sign the Certificate in Infisical">
-    1. In the Infisical modal, paste the certificate request content from iDRAC
-    2. Set the certificate validity period (e.g., "1y" for one year)
-    3. Select **Sign Certificate**
-    4. Download the signed certificate and certificate chain
+## Step 2: Create a certificate request on iDRAC
+
+<Steps>
+  <Step>
+    In the iDRAC web interface, go to **iDRAC Settings** > **Services**, expand **iDRAC Key Management**, and select **SEKM**.
   </Step>
-
-  <Step title="Upload Certificate to iDRAC">
-    1. In iDRAC, upload the signed client certificate
-    2. Upload the certificate chain as the KMS CA certificate
-    3. Select **Test Network Connection** to verify connectivity
-    4. Complete the SEKM configuration
+  <Step>
+    Enter the KMIP server's address and port `5696`, then select **Next**.
   </Step>
+  <Step>
+    Select **Generate CSR**, and fill in the certificate fields:
 
-  <Step title="Enable Encryption on Storage Controller">
-    Once SEKM is configured, you can enable encryption on your storage controller (PERC, HBA, or NVMe) through iDRAC.
+    - **Common Name (CN)**: The **Client ID** from Infisical
+    - **Organizational Unit (OU)**: The **Project ID** from Infisical
+    - Any other fields your organization requires, such as **Organization** and **Country**
+  </Step>
+  <Step>
+    Select **Generate**, and download the certificate request.
+  </Step>
+</Steps>
+
+## Step 3: Sign the certificate in Infisical
+
+<Steps>
+  <Step>
+    In the Infisical dialog, paste the certificate request into **Certificate Signing Request (CSR)**.
+  </Step>
+  <Step>
+    Enter a **TTL**, such as `1y`, then select **Sign Certificate**.
+  </Step>
+  <Step>
+    Download the **Certificate Body** and the **Certificate Chain**.
+  </Step>
+</Steps>
+
+## Step 4: Finish the setup on iDRAC
+
+<Steps>
+  <Step>
+    In iDRAC, upload the **Certificate Body** as the client certificate, and the **Certificate Chain** as the KMS CA certificate.
+  </Step>
+  <Step>
+    Select **Test Network Connection**, then finish the SEKM setup.
+  </Step>
+  <Step>
+    Turn on encryption for your storage controller (PERC, HBA, or NVMe) in iDRAC.
   </Step>
 </Steps>
 
 ## Troubleshooting
 
-- **Certificate validation fails**: Make sure you used the correct Client ID and Project ID when generating the certificate request on iDRAC.
-- **Connection timeout**: Verify network connectivity and that firewall rules allow traffic on port 5696.
-- **Authentication errors**: Ensure you uploaded both the signed certificate and the certificate chain to iDRAC.
+- **Certificate validation fails**: Check that the certificate request used the **Client ID** as the common name and the **Project ID** as the organizational unit
+- **Connection times out**: Check that iDRAC can reach the KMIP server, and that your firewall allows traffic on port 5696
+- **Authentication fails**: Check that you uploaded both the client certificate and the certificate chain to iDRAC

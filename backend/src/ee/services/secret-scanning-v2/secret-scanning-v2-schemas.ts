@@ -60,11 +60,16 @@ export const BaseCreateSecretScanningDataSourceSchema = ({
     connectionId: isConnectionRequired
       ? z.string().uuid().describe(SecretScanningDataSources.CREATE(type).connectionId)
       : z.undefined(),
-    isAutoScanEnabled: z
+    isAutoScanEnabled: z.boolean().optional().describe(SecretScanningDataSources.CREATE(type).isAutoScanEnabled),
+    isHistoricalScanEnabled: z
       .boolean()
       .optional()
-      .default(true)
-      .describe(SecretScanningDataSources.CREATE(type).isAutoScanEnabled)
+      .describe(SecretScanningDataSources.CREATE(type).isHistoricalScanEnabled),
+    isScanNewCommitsEnabled: z
+      .boolean()
+      .optional()
+      .describe(SecretScanningDataSources.CREATE(type).isScanNewCommitsEnabled),
+    isDiscoveryEnabled: z.boolean().optional().describe(SecretScanningDataSources.CREATE(type).isDiscoveryEnabled)
   });
 
 export const BaseUpdateSecretScanningDataSourceSchema = (type: SecretScanningDataSource) =>
@@ -76,7 +81,16 @@ export const BaseUpdateSecretScanningDataSourceSchema = (type: SecretScanningDat
       .max(256, "Description cannot exceed 256 characters")
       .nullish()
       .describe(SecretScanningDataSources.UPDATE(type).description),
-    isAutoScanEnabled: z.boolean().optional().describe(SecretScanningDataSources.UPDATE(type).isAutoScanEnabled)
+    isAutoScanEnabled: z.boolean().optional().describe(SecretScanningDataSources.UPDATE(type).isAutoScanEnabled),
+    isHistoricalScanEnabled: z
+      .boolean()
+      .optional()
+      .describe(SecretScanningDataSources.UPDATE(type).isHistoricalScanEnabled),
+    isScanNewCommitsEnabled: z
+      .boolean()
+      .optional()
+      .describe(SecretScanningDataSources.UPDATE(type).isScanNewCommitsEnabled),
+    isDiscoveryEnabled: z.boolean().optional().describe(SecretScanningDataSources.UPDATE(type).isDiscoveryEnabled)
   });
 
 export const GitRepositoryScanFindingDetailsSchema = z.object({

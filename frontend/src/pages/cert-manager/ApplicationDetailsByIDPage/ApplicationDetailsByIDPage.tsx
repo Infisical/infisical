@@ -15,7 +15,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   AccessRestrictedDialog,
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -330,7 +330,7 @@ export const ApplicationDetailsByIDPage = () => {
         </div>
       </div>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
         title={`Delete ${application.name}?`}

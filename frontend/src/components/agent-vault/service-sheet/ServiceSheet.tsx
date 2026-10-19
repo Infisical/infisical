@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import slugify from "@sindresorhus/slugify";
 import axios from "axios";
@@ -22,12 +22,13 @@ import {
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { AgentVaultTemplate, findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
-import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
+import { findVariableReferences, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
+import { useDebounce, useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
   AgentVaultVariableReferenceField,
+  useAgentVaultVariableKeyStatus,
   useCreateAgentVaultService,
-  useListAgentVaultVariables,
   useUpdateAgentVaultService
 } from "@app/hooks/api/agentVault";
 import {
@@ -53,7 +54,11 @@ import {
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
-import { NO_STORED_KEYS, ServiceVariablesContext } from "./ServiceVariablesContext";
+import {
+  NO_MISSING_KEYS,
+  NO_STORED_KEYS,
+  ServiceVariablesContext
+} from "./ServiceVariablesContext";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
@@ -156,8 +161,6 @@ export const ServiceSheet = ({
   const createService = useCreateAgentVaultService();
   const updateService = useUpdateAgentVaultService();
 
-  const { data: variables } = useListAgentVaultVariables(accessBundleId, isOpen);
-  const variableKeys = useMemo(() => variables?.map((variable) => variable.key), [variables]);
   const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is
   // saved: until then the dialog's focus trap would pull focus back from the field that asked.
@@ -176,26 +179,56 @@ export const ServiceSheet = ({
     []
   );
 
-  const serviceVariables = useMemo(
-    () => ({ variables, storedKeys, requestVariable }),
-    [variables, storedKeys, requestVariable]
-  );
-
   const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
 
-  const schema = useMemo(() => buildServiceSchema(service, variableKeys), [service, variableKeys]);
+  // Read when the form validates, so the schema isn't rebuilt each time a lookup answers.
+  const missingKeysRef = useRef<ReadonlySet<string>>(NO_MISSING_KEYS);
+  const schema = useMemo(
+    () => buildServiceSchema(service, () => missingKeysRef.current),
+    [service]
+  );
 
   const formMethods = useForm<TServiceForm>({
     defaultValues: BLANK_SERVICE_FORM,
     resolver: zodResolver(schema)
   });
   const {
+    control,
     handleSubmit,
     reset,
     setError,
     trigger,
     formState: { errors, isDirty, isSubmitting }
   } = formMethods;
+
+  // Only the keys the form references are looked up, never the whole list.
+  const [secret, username, customHeaders, substitutions] = useWatch({
+    control,
+    name: ["secret", "username", "customHeaders", "substitutions"]
+  });
+  const referencedKeys = useMemo(() => {
+    const texts = [
+      secret,
+      username,
+      ...(customHeaders ?? []).map((header) => header.value),
+      ...(substitutions ?? []).map((substitution) => substitution.value)
+    ];
+    const keys = texts.flatMap((text) =>
+      text && text !== UNCHANGED_SECRET ? findVariableReferences(text) : []
+    );
+    return [...new Set(keys.filter((key) => VARIABLE_KEY_RE.test(key)))].sort().join(",");
+  }, [secret, username, customHeaders, substitutions]);
+  const [debouncedReferencedKeys] = useDebounce(referencedKeys, 300);
+  const { missing: missingKeys } = useAgentVaultVariableKeyStatus(
+    debouncedReferencedKeys ? debouncedReferencedKeys.split(",") : [],
+    { enabled: isOpen }
+  );
+  missingKeysRef.current = missingKeys;
+
+  const serviceVariables = useMemo(
+    () => ({ missingKeys, storedKeys, requestVariable }),
+    [missingKeys, storedKeys, requestVariable]
+  );
 
   const discardActionRef = useRef<VoidFunction>(() => onOpenChange(false));
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
@@ -671,9 +704,7 @@ export const ServiceSheet = ({
           onOpenChange={(open) => {
             if (!open) setNewVariableKey(null);
           }}
-          accessBundleId={accessBundleId}
           initialKey={newVariableKey ?? undefined}
-          existingKeys={variableKeys ?? []}
           onCreated={(variable) => {
             if (newVariableRequest.current) newVariableRequest.current.created = variable;
           }}

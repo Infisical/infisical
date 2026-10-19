@@ -56,7 +56,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -77,6 +77,7 @@ type RoleSortState = {
 };
 
 export const ProjectRoleList = () => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
@@ -194,7 +195,7 @@ export const ProjectRoleList = () => {
               >
                 {(isAllowed) => (
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     onClick={() => handlePopUpOpen("role")}
                     isDisabled={!isAllowed}
                   >

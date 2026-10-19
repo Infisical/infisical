@@ -2,6 +2,10 @@ import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, EllipsisIcon } from "lucide-react";
 
 import {
+  getSelfHostedLicenseState,
+  SELF_HOSTED_LICENSE_COPY
+} from "@app/components/license/self-hosted-license";
+import {
   Badge,
   Button,
   Card,
@@ -18,6 +22,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useSubscription } from "@app/context";
 import {
   BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
@@ -798,6 +803,7 @@ export const InactiveProductCard = ({
   onManage: (productId: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 }) => {
+  const { subscription } = useSubscription();
   const trialPlan = prod.plans.find((plan) => plan.selfServe && plan.trialable);
   const hasSelfServePlan = prod.plans.some((plan) => plan.selfServe);
   const hasSalesLedPlan = prod.plans.some((plan) => plan.salesLed);
@@ -811,7 +817,7 @@ export const InactiveProductCard = ({
 
   let note = "This product hasn't been activated for your organization.";
   if (isManaged) {
-    note = "Not included in your license. Contact your account manager to enable it.";
+    note = SELF_HOSTED_LICENSE_COPY[getSelfHostedLicenseState(subscription)].inactiveProductNote;
   } else if (!selfServe && !canContactSales) {
     note = "Contact your account manager to enable this product.";
   }
