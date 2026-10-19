@@ -588,12 +588,38 @@ export function SecretAccessInsights({
         }
       ];
     };
-    const readers = [
+    const directReaders = [
       ...secretAccessList.users.flatMap((user) => toReader(user, "user", "userIds")),
       ...secretAccessList.identities.flatMap((identity) =>
         toReader(identity, "identity", "identityIds")
       )
     ];
+    // Members who have the value only through a group are not in the access list's users or identities, but
+    // the read activity names everyone who can read the value, so they are drawn from it.
+    const listed = new Set([
+      ...secretAccessList.users.map((user) => `user:${user.id}`),
+      ...secretAccessList.identities.map((identity) => `identity:${identity.id}`)
+    ]);
+    const groupOnlyReaders = (readActivity?.entitled ?? []).flatMap((reader) => {
+      if (reader.isAdmin || listed.has(`${reader.actorType}:${reader.actorId}`)) return [];
+      const memberField = reader.actorType === "user" ? "userIds" : "identityIds";
+      const groupIds = groups
+        .filter((group) => group[memberField].includes(reader.actorId))
+        .map((group) => group.id);
+      const status = readStatusOf(reader.actorType, reader.actorId);
+      return [
+        {
+          id: reader.actorId,
+          name: reader.actorName ?? reader.actorId,
+          type: reader.actorType,
+          isDirect: false,
+          groupIds,
+          lastReadAt: status?.kind === "read" ? status.lastReadAt : undefined,
+          unreadSince: status?.kind === "unread" ? status.since : undefined
+        }
+      ];
+    });
+    const readers = [...directReaders, ...groupOnlyReaders];
     const groupIdsInUse = new Set(
       readers.flatMap((reader) => (reader.isDirect ? [] : reader.groupIds))
     );

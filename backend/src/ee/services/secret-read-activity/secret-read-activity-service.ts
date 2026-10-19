@@ -414,11 +414,16 @@ export const secretReadActivityServiceFactory = ({
     const { entitled, exposedTo, unread, ghostReaders, exposure } = summarize(activity);
     const unreadKeys = new Set(unread.map((reader) => `${reader.actorType}:${reader.id}`));
 
-    // A ghost reader may have left the project or been deleted since, so names the project's members do not
-    // give are looked up directly; a reader deleted outright has none.
-    const unnamed = ghostReaders.filter((read) => !actorNames.has(`${read.actorType}:${read.actorId}`));
-    const idsOf = (actorType: TSecretReaderType) =>
-      unnamed.filter((read) => read.actorType === actorType).map((read) => read.actorId);
+    // A ghost reader may have left the project or been deleted since, and a reader who has the value through a
+    // group is not among the direct members, so names the members do not give are looked up directly; a reader
+    // deleted outright has none.
+    const unnamed = [
+      ...ghostReaders,
+      ...entitled.map((reader) => ({ actorType: reader.actorType, actorId: reader.id }))
+    ].filter((read) => !actorNames.has(`${read.actorType}:${read.actorId}`));
+    const idsOf = (actorType: TSecretReaderType) => [
+      ...new Set(unnamed.filter((read) => read.actorType === actorType).map((read) => read.actorId))
+    ];
     const [userIds, identityIds] = [idsOf(ActorType.USER), idsOf(ActorType.IDENTITY)];
     const [users, identities] = await Promise.all([
       userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
@@ -435,6 +440,7 @@ export const secretReadActivityServiceFactory = ({
         (reader): TEntitledReader => ({
           actorType: reader.actorType,
           actorId: reader.id,
+          actorName: actorNames.get(`${reader.actorType}:${reader.id}`) ?? null,
           unread: unreadKeys.has(`${reader.actorType}:${reader.id}`),
           isAdmin: adminActorIds.has(reader.id),
           accessChangedAt: accessChangedAtByActorId.get(reader.id) ?? null

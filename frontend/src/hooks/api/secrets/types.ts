@@ -176,6 +176,7 @@ export type TSecretReadActivity = TSecretExposureCounts & {
   entitled: {
     actorType: "user" | "identity";
     actorId: string;
+    actorName: string | null;
     unread: boolean;
     isAdmin: boolean;
     accessChangedAt: string | null;

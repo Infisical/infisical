@@ -1504,6 +1504,7 @@ export const RAW_SECRETS = {
       "The start of the period unused access is judged on: the later of 30 days ago and when read tracking began for the project. A reader only counts as unused access once the secret and their access both predate it.",
     entitled:
       "One entry for each user or machine identity that can read the secret's value today, project admins included so their reads can be shown, saying whether they count as unused access and, if not, why.",
+    readerName: "The username of the user, or the name of the machine identity. Null when it could not be resolved.",
     unread:
       "Whether the reader counts as unused access: no read since trackedSince, with the secret and their access both older than judgedFrom.",
     isAdmin:

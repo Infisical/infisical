@@ -132,6 +132,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                     .enum([ActorType.USER, ActorType.IDENTITY])
                     .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
                   actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
+                  actorName: z.string().nullable().describe(RAW_SECRETS.GET_READ_ACTIVITY.readerName),
                   unread: z.boolean().describe(RAW_SECRETS.GET_READ_ACTIVITY.unread),
                   isAdmin: z.boolean().describe(RAW_SECRETS.GET_READ_ACTIVITY.isAdmin),
                   accessChangedAt: z.date().nullable().describe(RAW_SECRETS.GET_READ_ACTIVITY.accessChangedAt)

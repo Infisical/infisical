@@ -139,6 +139,7 @@ export type TExposedSecret = TSecretExposureCounts & {
 export type TEntitledReader = {
   actorType: TSecretReaderType;
   actorId: string;
+  actorName: string | null;
   unread: boolean;
   isAdmin: boolean;
   accessChangedAt: Date | null;
