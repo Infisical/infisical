@@ -1,24 +1,24 @@
 ---
-title: "Troubleshoot failed CLI commands"
-description: "Find out why a CLI command failed, using the request ID, status code, and message that the CLI prints."
+title: "Troubleshooting errors"
+description: "Find out why a CLI command failed."
 ---
 
-When a CLI command fails on a request to Infisical, the error the CLI prints includes the ID that Infisical gave the request, the HTTP status code, and the message from the server. Save that error, because the request ID in it identifies the request in the Infisical server logs.
-
-## Prerequisites
-
-- The [Infisical CLI](/cli/install), version 0.44.0 or later
+When a CLI command fails on a request to Infisical, it prints an error that includes the request's ID, the HTTP status code, and the message from the server. You can use the request ID to troubleshoot the error.
 
 ## Where the CLI prints the error
 
-When a command fails, the CLI prints the error to stderr as plain text and exits with status `1`. These flags don't change that:
+When a command fails, the CLI prints the error to stderr as plain text and exits with status `1`.
 
-- `--log-format` and `--log-destination` change only the CLI's log messages, so they don't turn the error into JSON or move it to stdout (see the [global flags](/cli/reference#global-flags))
-- `--silent` hides update notices and profile notices, but not the error
+<Note>
+Although the following [global flags](/cli/reference#global-flags) modify the CLI's output, they don't silence error messages:
+
+- `--log-format` and `--log-destination` change only the CLI's log messages, so they don't apply to error messages
+- `--silent` hides update notices and profile notices, but not errors
+</Note>
 
 ## Save the error
 
-To keep the error, redirect stderr to a file with `2>`. For example, this command lists the folders at the root of a project's `prod` environment, and if it fails, the error is saved to `infisical.err`:
+To keep the error, redirect stderr to a file with `2>`. For example, this command lists the folders at the root of a project's `prod` environment. If the command fails, the error is saved to `infisical.err`:
 
 ```bash
 export INFISICAL_TOKEN=<access-token>
@@ -27,10 +27,12 @@ infisical sm secrets folders get --projectId=<project-id> --env=prod --path=/ --
 ```
 
 - The CLI reads the machine identity's access token from `INFISICAL_TOKEN`, so the token doesn't appear in the command
-- `2>` saves only stderr, so the folder list the command prints to stdout stays out of the file
+- `2>` saves only stderr, so anything the command prints to stdout stays out of the file
 - `--silent` keeps update notices out of the file
 
+<Tip>
 In a CI pipeline, use your pipeline's secret store to set `INFISICAL_TOKEN`, and keep `infisical.err` as a build artifact.
+</Tip>
 
 ## What the saved error contains
 
@@ -50,11 +52,11 @@ Context:
 If this issue continues, get support at https://infisical.com/slack
 ```
 
-The error shows the request ID in `Request ID`, the HTTP status code in `Response Code`, and the message from the server in `Message`. It doesn't contain the access token, so you can store it and share it.
+The error shows the request ID in `Request ID`, the HTTP status code in `Response Code`, and the message from the server in `Message`. It doesn't contain the access token, so you can safely store and share the error.
 
 ## Look up the request ID
 
-Where you look up the request ID depends on where Infisical runs:
+The request ID identifies the request in the Infisical server logs. Who can search those logs depends on where Infisical runs:
 
-- If you self-host Infisical, search your Infisical server's logs for the request ID (every line the server logs for that request includes it, and together those lines show the route, the response status, and the error)
-- If you use Infisical Cloud, share the request ID in the [Infisical community](https://community.infisical.com/)
+- If you self-host Infisical, search your server's logs for the request ID (it's visible in every line for that request, and together those lines show the route, the response status, and the error)
+- If you use Infisical Cloud, only Infisical can search the server logs, so include the request ID when you ask for help in the [Infisical community](https://community.infisical.com/)
