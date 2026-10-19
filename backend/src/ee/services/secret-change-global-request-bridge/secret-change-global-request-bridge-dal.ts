@@ -9,7 +9,6 @@ import { ApprovalPolicyType } from "@app/services/approval-policy/approval-polic
 
 import {
   applyRequestOrdering,
-  findFolderIdsByPathPattern,
   TSecretApprovalRequestListFilter
 } from "../secret-approval-request/secret-approval-request-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
@@ -182,7 +181,7 @@ export const secretChangeGlobalRequestBridgeDALFactory = (db: TDbClient) => {
             .orWhereILike("environmentName", pattern)
             .orWhereILike("environment", pattern)
             .orWhereILike("policySecretPath", pattern)
-            .orWhereIn("folderId", findFolderIdsByPathPattern(dbInstance, projectId, pattern))
+            .orWhereILike("requestFolderPath", pattern)
             .orWhereExists(
               dbInstance(TableName.SecretApprovalRequestSecretV2)
                 .select(dbInstance.raw("1"))
