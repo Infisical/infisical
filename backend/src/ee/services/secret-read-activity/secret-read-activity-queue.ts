@@ -38,7 +38,8 @@ const SECRET_READ_GATE_TTL_SECONDS = 25 * 60 * 60;
 const SECRET_READ_STREAM_MAX_LENGTH = 300_000;
 const SECRET_READ_FLUSH_BATCH_SIZE = 1000;
 const SECRET_READ_FLUSH_MAX_ENTRIES = 50_000;
-// Covers the cron manager's default handler timeout, so a slow flush still holds the lock until it finishes.
+// The flush is cut off before its lock can expire, so a slow run never overlaps the next one.
+const SECRET_READ_FLUSH_TIMEOUT_MS = 4 * 60 * 1000;
 const SECRET_READ_CONSUMER_LOCK_TTL_MS = 5 * 60 * 1000;
 // The cap counts entries, not bytes, so this bounds an entry at about 3.7 KB and a full stream at about 1.1 GB.
 const SECRET_READ_STREAM_ENTRY_MAX_SECRETS = 100;
@@ -350,6 +351,7 @@ export const secretReadActivityQueueServiceFactory = ({
       name: CronJobName.SecretReadActivityFlush,
       pattern: "* * * * *",
       runHashTtlS: 60 * 60,
+      handlerTimeoutMs: SECRET_READ_FLUSH_TIMEOUT_MS,
       enabled: !appCfg.isSecondaryInstance,
       handler: $consumeReadStream
     });
