@@ -131,7 +131,9 @@ export const SecretExposurePanel = ({ exposure, className }: PanelProps) => {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-accent">Nobody can read this secret&apos;s value.</p>
+          <p className="text-xs text-accent">
+            Only project admins can read this secret&apos;s value, so nothing drives the score.
+          </p>
         )}
         <p className="text-xs text-muted">
           Up to 45 points for how many can read the value (project admins aside), 30 for ghost
