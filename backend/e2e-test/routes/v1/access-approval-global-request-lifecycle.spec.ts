@@ -1,7 +1,15 @@
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { AccessScope, OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  TableName,
+  TAccessApprovalPoliciesInsert,
+  TAccessApprovalRequestsInsert
+} from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
@@ -1241,15 +1249,16 @@ describe("Additional privilege list on the global system", () => {
     const environment = await db(TableName.Environment)
       .where({ projectId: seedData1.project.id, slug: seedData1.environment.slug })
       .first();
-    await db(TableName.AccessApprovalPolicy).insert({
+    const legacyPolicy: TAccessApprovalPoliciesInsert & { id: string } = {
       id: policy.id,
       name: "privilege-list-migrated",
       secretPath,
       envId: environment?.id as string,
       deletedAt: new Date()
-    });
+    };
+    await db(TableName.AccessApprovalPolicy).insert(legacyPolicy);
     await db(TableName.AccessApprovalPolicyApprover).insert({ policyId: policy.id, approverUserId: seedData1.id });
-    await db(TableName.AccessApprovalRequest).insert({
+    const legacyRequest: TAccessApprovalRequestsInsert & { id: string } = {
       id: requestId,
       policyId: policy.id,
       privilegeId: privilege?.id,
@@ -1258,7 +1267,8 @@ describe("Additional privilege list on the global system", () => {
       temporaryRange: "1h",
       permissions: JSON.stringify([]),
       status: "approved"
-    });
+    };
+    await db(TableName.AccessApprovalRequest).insert(legacyRequest);
     legacyRequestIds.push(requestId);
 
     const res = await patchPolicy(policy.id, {
