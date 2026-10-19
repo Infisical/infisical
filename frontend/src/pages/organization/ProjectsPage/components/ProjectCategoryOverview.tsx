@@ -621,10 +621,14 @@ export const ProjectCategoryOverview = ({ showPlanBadges = true }: Props) => {
                               variant="info"
                               tabIndex={0}
                               aria-label={`${plan.planLabel} plan${plan.isTrialing ? " (trial)" : ""}`}
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
                               onKeyDown={(e) => e.stopPropagation()}
                             >
                               {plan.shortPlanLabel}
+                              {plan.isTrialing && " Trial"}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
