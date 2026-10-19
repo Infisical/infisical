@@ -343,7 +343,8 @@ export const SecretExposureCard = () => {
       >
         <SheetContent
           onOpenAutoFocus={(event) => event.preventDefault()}
-          className="gap-y-0 sm:max-w-6xl"
+          size="wide"
+          className="gap-y-0"
           side="right"
         >
           <SheetHeader>

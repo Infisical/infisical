@@ -93,7 +93,7 @@ export const SecretNode = ({ data }: NodeProps & { data: TSecretNodeData }) => {
   const { secret } = data;
   return (
     <div className="flex h-full w-full flex-col gap-1 rounded-md border border-secret/50 bg-secret/10 px-2.5 py-2">
-      <span className="text-xs tracking-wide text-accent uppercase">Secret</span>
+      <span className="text-xs text-accent">Secret</span>
       <p className="truncate font-mono text-sm text-foreground">{secret.key}</p>
       <p className="truncate font-mono text-xs text-accent">
         {secret.secretPath} · {secret.environment}
@@ -140,7 +140,7 @@ export const BandLabelNode = ({ data }: NodeProps & { data: TBandLabelNodeData }
   <div className="flex h-full w-full flex-col justify-end gap-0.5 whitespace-nowrap">
     <span
       className={cn(
-        "text-xs tracking-wide uppercase",
+        "text-xs font-medium",
         data.tone === "warning" ? "text-warning" : "text-accent"
       )}
     >

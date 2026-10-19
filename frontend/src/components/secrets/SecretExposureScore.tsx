@@ -83,7 +83,7 @@ export const SecretExposurePanel = ({ exposure, className }: PanelProps) => {
       )}
     >
       <div className="flex w-44 shrink-0 flex-col gap-1.5">
-        <span className="text-xs tracking-wide text-muted uppercase">Exposure</span>
+        <span className="text-xs text-muted">Exposure</span>
         <div className="flex items-baseline gap-2">
           <span
             className={cn("text-4xl leading-none font-semibold", EXPOSURE_BAND_TEXT[exposure.band])}
