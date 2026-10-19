@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "cn";
 import { Drawer as DrawerPrimitive } from "vaul";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
 import { useOwnedEscape } from "../lib/use-owned-escape";
+import { cn } from "../lib/utils";
 
 import overlay from "./overlay.module.css";
 

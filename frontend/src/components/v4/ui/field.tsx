@@ -3,12 +3,12 @@
 import * as React from "react";
 import { useMemo } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
 
 import { Label } from "@app/components/v4/ui/label";
 import { Separator } from "@app/components/v4/ui/separator";
 
 import { FieldControlContext } from "../lib/field-context";
+import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 
 import helperStyles from "./helpers.module.css";

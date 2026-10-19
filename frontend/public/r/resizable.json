@@ -6,7 +6,6 @@
     "@infisical/infisical-base"
   ],
   "dependencies": [
-    "cn@^0.4.0",
     "react-resizable-panels@^4.14.3"
   ],
   "files": [
@@ -14,7 +13,7 @@
       "path": "src/components/v4/ui/resizable.tsx",
       "type": "registry:file",
       "target": "src/components/v4/ui/resizable.tsx",
-      "content": "import * as ResizablePrimitive from \"react-resizable-panels\";\nimport { cn } from \"cn\";\n\nimport styles from \"./resizable.module.css\";\n\nfunction ResizablePanelGroup({ className, ...props }: ResizablePrimitive.GroupProps) {\n  return (\n    <ResizablePrimitive.Group\n      data-slot=\"resizable-panel-group\"\n      data-orientation={props.orientation ?? \"horizontal\"}\n      className={cn(\n        styles.group,\n        \"flex h-full w-full aria-[orientation=vertical]:flex-col\",\n        className\n      )}\n      {...props}\n    />\n  );\n}\n\nfunction ResizablePanel({ ...props }: ResizablePrimitive.PanelProps) {\n  return (\n    <ResizablePrimitive.Panel data-slot=\"resizable-panel\" className={styles.panel} {...props} />\n  );\n}\n\nfunction ResizableHandle({\n  withHandle,\n  className,\n  ...props\n}: ResizablePrimitive.SeparatorProps & {\n  withHandle?: boolean;\n}) {\n  return (\n    <ResizablePrimitive.Separator\n      data-slot=\"resizable-handle\"\n      className={cn(\n        styles.handle,\n        \"w-px aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:w-full\",\n        className\n      )}\n      {...props}\n    >\n      {withHandle && <div className={styles.grip} />}\n    </ResizablePrimitive.Separator>\n  );\n}\n\nexport { ResizableHandle, ResizablePanel, ResizablePanelGroup };\n"
+      "content": "import * as ResizablePrimitive from \"react-resizable-panels\";\n\nimport { cn } from \"../lib/utils\";\n\nimport styles from \"./resizable.module.css\";\n\nfunction ResizablePanelGroup({ className, ...props }: ResizablePrimitive.GroupProps) {\n  return (\n    <ResizablePrimitive.Group\n      data-slot=\"resizable-panel-group\"\n      data-orientation={props.orientation ?? \"horizontal\"}\n      className={cn(\n        styles.group,\n        \"flex h-full w-full aria-[orientation=vertical]:flex-col\",\n        className\n      )}\n      {...props}\n    />\n  );\n}\n\nfunction ResizablePanel({ ...props }: ResizablePrimitive.PanelProps) {\n  return (\n    <ResizablePrimitive.Panel data-slot=\"resizable-panel\" className={styles.panel} {...props} />\n  );\n}\n\nfunction ResizableHandle({\n  withHandle,\n  className,\n  ...props\n}: ResizablePrimitive.SeparatorProps & {\n  withHandle?: boolean;\n}) {\n  return (\n    <ResizablePrimitive.Separator\n      data-slot=\"resizable-handle\"\n      className={cn(\n        styles.handle,\n        \"w-px aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:w-full\",\n        className\n      )}\n      {...props}\n    >\n      {withHandle && <div className={styles.grip} />}\n    </ResizablePrimitive.Separator>\n  );\n}\n\nexport { ResizableHandle, ResizablePanel, ResizablePanelGroup };\n"
     },
     {
       "path": "src/components/v4/ui/resizable.module.css",

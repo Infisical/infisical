@@ -1,9 +1,9 @@
 import * as React from "react";
-import { cn } from "cn";
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
 import { Slot } from "radix-ui";
 
 import { useControllableState } from "../lib/use-controllable-state";
+import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 import { Switcher, type SwitcherProps } from "./switcher";
 

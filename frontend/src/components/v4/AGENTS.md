@@ -22,3 +22,7 @@ Read the generated component guides in [docs/README.md](docs/README.md) or run `
 Use the shared preview frame and ExampleGrid, ExampleCell and ExampleStage presentation components. Compare supported variants, distinct sizes and applicable states as labeled peers. Captions sit 8px below their own specimen and describe its actual state. Specimens and captions align to the start, and specimens in a row share a bottom baseline, so the captions of a row line up. Equal-appearance aliases share one specimen. Keep specimens in one row of similar height; give a much taller one its own row.
 
 Use only the composition needed to demonstrate the component. Do not add synthetic save/reject/reset controls, request logs, export workflows or stress-test toolbars to Human pages. Ordinary action buttons do not become pressed toggles merely to produce feedback. Keep core interactions working and relevant states visible. Put technical orchestration in component tests and explain constraints in the closed Usage and rules disclosure. Generated Agent examples lower documentation-only presentation wrappers to native layout elements, so they remain portable.
+
+## Icons
+
+Lucide (`lucide-react`) is the icon source of truth for v4. Use `Icon` (52 product names mapped to Lucide, or any Lucide icon through `icon`) or import Lucide directly. `assets/icons-legacy/` holds the original Infisical 2.0 line set from #8691 for reference only: nothing imports it and the registry does not ship it. Do not hand-draw SVG icons.

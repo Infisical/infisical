@@ -4,13 +4,16 @@ export const iconDefinition = {
   id: "icon",
   title: "Icon",
   group: "Utilities",
-  summary: "Render the 52 owned product glyphs as safe SVG geometry.",
-  sourceFiles: ["src/components/v4/ui/icon.tsx", "src/components/v4/ui/icon-data.ts"],
+  summary:
+    "Render a Lucide icon by product name or directly, on the shared size and stroke tokens.",
+  sourceFiles: ["src/components/v4/ui/icon.tsx"],
   exports: ["Icon", "iconNames"],
   referenceNames: ["Icon"],
   behavior: [
-    "Names are a TypeScript union derived from the immutable owned shape map.",
-    "Size and stroke width preserve the shared 24-unit geometry."
+    "Lucide (lucide-react) is the icon source of truth. Icon renders a Lucide glyph: pass name for one of the 52 product names, or icon for any Lucide icon directly.",
+    "Size defaults to the size-icon token (16px for controls; 18px for navigation and list media and 14px for small buttons come from the surrounding component) and the stroke defaults to stroke-icon (1.7) as Lucide's strokeWidth. Icons inherit currentColor.",
+    "Name mapping: search → Search, key → KeyRound, plus → Plus, minus → Minus, check → Check, x → X, chev-down → ChevronDown, chev-right → ChevronRight, chev-left → ChevronLeft, chev-ud → ChevronsUpDown, more → Ellipsis, copy → Copy, eye → Eye, history → History, trash → Trash2, lock → Lock, info → Info, alert → TriangleAlert, alert-c → CircleAlert, check-c → CircleCheck, agent → Bot, machine → Server, cert → ShieldCheck, terminal → SquareTerminal, user → User, external → ExternalLink, sync → RefreshCw, upload → Upload, clock → Clock, folder → Folder, link → Link, settings → SlidersHorizontal, bell → Bell, globe → Globe, inbox → Inbox, home → House, arrow-down → ArrowDown, git → GitBranch, calendar → Calendar, arrow-up → ArrowUp, file → File, folder-open → FolderOpen, download → Download, menu → Menu, sidebar → PanelLeft, user-plus → UserPlus, megaphone → Megaphone, apps → LayoutGrid, building → Building2, sun → Sun, moon → Moon, monitor → Monitor.",
+    "The original Infisical 2.0 line set from PR 8691 is kept as a legacy artifact in assets/icons-legacy/. No component imports it and the registry does not ship it."
   ],
   accessibility: [
     "Icons are decorative by default. With label, the icon is announced as an image with that name."
@@ -19,7 +22,7 @@ export const iconDefinition = {
   examples: [
     {
       id: "default",
-      title: "Owned glyphs with visible names",
+      title: "Product icon names with visible names",
       module: "./examples/icon/default.tsx",
       states: ["default"]
     },
@@ -59,10 +62,10 @@ export const iconDefinition = {
     },
     {
       axis: "name and semantics",
-      expected: ["all owned names", "decorative", "named", "action"],
+      expected: ["all product names", "decorative", "named", "action"],
       shown: [
         {
-          value: "all owned names",
+          value: "all product names",
           exampleId: "default",
           label: "search"
         },
@@ -92,7 +95,7 @@ export const iconDefinition = {
       "Invent a new glyph for ordinary status, label both icon and button with duplicate names or use an unfamiliar symbol for a destructive action alone."
     ],
     decision:
-      "Choose Icon for an owned product glyph and Avatar for a person. Use visible text when the meaning is unfamiliar or consequential.",
+      "Choose Icon for a Lucide glyph (by product name or directly) and Avatar for a person. Use visible text when the meaning is unfamiliar or consequential.",
     rules: [
       {
         id: "icon-usage",

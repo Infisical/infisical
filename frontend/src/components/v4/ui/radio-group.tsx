@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "cn";
 import { motion, useReducedMotion } from "motion/react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 
 import { exit, spring } from "../lib/motion";
 import { useControllableState } from "../lib/use-controllable-state";
+import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 

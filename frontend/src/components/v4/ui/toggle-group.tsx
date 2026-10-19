@@ -1,11 +1,12 @@
 import * as React from "react";
 import { type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";
 
 import { SlidingIndicator } from "@app/components/v4/lib/sliding-indicator";
 import { useMeasuredIndicator } from "@app/components/v4/lib/use-measured-indicator";
 import { toggleVariants } from "@app/components/v4/ui/toggle";
+
+import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 

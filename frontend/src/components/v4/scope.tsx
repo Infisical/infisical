@@ -1,7 +1,8 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { cn } from "cn";
 import { MotionConfig } from "motion/react";
+
+import { cn } from "./lib/utils";
 
 type Theme = "light" | "dark";
 export type V4Corners = "square" | "soft";

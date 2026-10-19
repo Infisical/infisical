@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "cn";
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 
 import { useOwnedEscape } from "../lib/use-owned-escape";
+import { cn } from "../lib/utils";
 
 import overlay from "./overlay.module.css";
 

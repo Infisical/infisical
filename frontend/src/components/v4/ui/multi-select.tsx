@@ -1,9 +1,9 @@
 import * as React from "react";
-import { cn } from "cn";
 
 import { useFieldControlAttributes } from "../lib/field-context";
 import { useControllableState } from "../lib/use-controllable-state";
 import { type OptionCreateHandler, useOptionCreation } from "../lib/use-option-creation";
+import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Icon } from "./icon";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./popover";

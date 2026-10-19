@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "cn";
+
+import { cn } from "../lib/utils";
 
 import styles from "./data.module.css";
 

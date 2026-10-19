@@ -1,6 +1,6 @@
 import * as React from "react";
-import { cn } from "cn";
 
+import { cn } from "../lib/utils";
 import { Code, type CodeProps } from "./code";
 import { Icon, type IconName } from "./icon";
 import { Json, type JsonProps, prepareJson } from "./json";

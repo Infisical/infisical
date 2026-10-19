@@ -1,9 +1,9 @@
 import * as React from "react";
-import { cn } from "cn";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { exit, snap, spring } from "../lib/motion";
 import { useControllableState } from "../lib/use-controllable-state";
+import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "./dialog";
 import { Icon } from "./icon";
@@ -199,16 +199,17 @@ export const MultiStep = ({
   };
   if (!entry) return null;
   const travel = reduced ? 0 : 24;
-  const stepHead =
-    variant === "page" ? (
-      <div className={styles.stepHead}>
+  const stepHead = (
+    <div className={styles.stepHead}>
+      {variant === "page" && (
         <p className={styles.eyebrow}>
           Step {current + 1} of {steps.length}
         </p>
-        <h3 className={styles.heading}>{entry.heading ?? entry.title}</h3>
-        {entry.description && <p className={styles.lede}>{entry.description}</p>}
-      </div>
-    ) : null;
+      )}
+      <h3 className={styles.heading}>{entry.heading ?? entry.title}</h3>
+      {entry.description && <p className={styles.lede}>{entry.description}</p>}
+    </div>
+  );
   const flow = (
     <form
       noValidate
@@ -218,30 +219,32 @@ export const MultiStep = ({
         advance();
       }}
     >
-      <motion.div
-        ref={viewport}
-        layout={!reduced}
-        transition={spring.moderate}
-        className={styles.viewport}
-      >
-        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-          <motion.div
-            key={current}
-            data-step={current}
-            className={styles.body}
-            initial={{ opacity: 0, x: direction * travel }}
-            animate={{ opacity: 1, x: 0, transition: reduced ? snap : spring.moderate }}
-            exit={{
-              opacity: 0,
-              x: -direction * travel,
-              transition: reduced ? snap : exit.moderate
-            }}
-          >
-            {stepHead}
-            {entry.content}
-          </motion.div>
-        </AnimatePresence>
-      </motion.div>
+      <fieldset disabled={busy} className={styles.fields}>
+        <motion.div
+          ref={viewport}
+          layout={!reduced}
+          transition={spring.moderate}
+          className={styles.viewport}
+        >
+          <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+            <motion.div
+              key={current}
+              data-step={current}
+              className={styles.body}
+              initial={{ opacity: 0, x: direction * travel }}
+              animate={{ opacity: 1, x: 0, transition: reduced ? snap : spring.moderate }}
+              exit={{
+                opacity: 0,
+                x: -direction * travel,
+                transition: reduced ? snap : exit.moderate
+              }}
+            >
+              {stepHead}
+              {entry.content}
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+      </fieldset>
       <div className={styles.footer}>
         <p className={cn(styles.status, error && styles.error)} role="status">
           {error ?? (variant === "page" ? null : `Step ${current + 1} of ${steps.length}`)}

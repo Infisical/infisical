@@ -1,6 +1,6 @@
 import * as React from "react";
-import { cn } from "cn";
 
+import { cn } from "../lib/utils";
 import { Spinner } from "./spinner";
 
 import styles from "./loader.module.css";
@@ -35,6 +35,7 @@ export const Loader = React.forwardRef<HTMLDivElement, LoaderProps>(
         ref={ref}
         data-slot="loader"
         data-size={size}
+        aria-busy="true"
         className={cn(styles.loader, className)}
         {...props}
       >

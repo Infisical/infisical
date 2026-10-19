@@ -6,15 +6,12 @@
     "@infisical/infisical-base",
     "@infisical/spinner"
   ],
-  "dependencies": [
-    "cn@^0.4.0"
-  ],
   "files": [
     {
       "path": "src/components/v4/ui/loader.tsx",
       "type": "registry:file",
       "target": "src/components/v4/ui/loader.tsx",
-      "content": "import * as React from \"react\";\nimport { cn } from \"cn\";\n\nimport { Spinner } from \"./spinner\";\n\nimport styles from \"./loader.module.css\";\n\nexport type LoaderProps = Omit<React.ComponentPropsWithoutRef<\"div\">, \"children\"> & {\n  loading?: boolean;\n  label: string;\n  description?: string;\n  size?: \"base\" | \"page\";\n  delay?: number;\n  children?: React.ReactNode;\n};\n\nexport const Loader = React.forwardRef<HTMLDivElement, LoaderProps>(\n  (\n    {\n      loading = true,\n      label,\n      description,\n      size = \"base\",\n      delay = 300,\n      children,\n      className,\n      ...props\n    },\n    ref\n  ) => {\n    // eslint-disable-next-line react/jsx-no-useless-fragment -- A forwardRef render returns an element, not a bare node.\n    if (!loading) return <>{children}</>;\n    return (\n      <div\n        ref={ref}\n        data-slot=\"loader\"\n        data-size={size}\n        className={cn(styles.loader, className)}\n        {...props}\n      >\n        <Spinner size={size} label={label} description={description} delay={delay} />\n      </div>\n    );\n  }\n);\nLoader.displayName = \"Loader\";\n"
+      "content": "import * as React from \"react\";\n\nimport { cn } from \"../lib/utils\";\nimport { Spinner } from \"./spinner\";\n\nimport styles from \"./loader.module.css\";\n\nexport type LoaderProps = Omit<React.ComponentPropsWithoutRef<\"div\">, \"children\"> & {\n  loading?: boolean;\n  label: string;\n  description?: string;\n  size?: \"base\" | \"page\";\n  delay?: number;\n  children?: React.ReactNode;\n};\n\nexport const Loader = React.forwardRef<HTMLDivElement, LoaderProps>(\n  (\n    {\n      loading = true,\n      label,\n      description,\n      size = \"base\",\n      delay = 300,\n      children,\n      className,\n      ...props\n    },\n    ref\n  ) => {\n    // eslint-disable-next-line react/jsx-no-useless-fragment -- A forwardRef render returns an element, not a bare node.\n    if (!loading) return <>{children}</>;\n    return (\n      <div\n        ref={ref}\n        data-slot=\"loader\"\n        data-size={size}\n        aria-busy=\"true\"\n        className={cn(styles.loader, className)}\n        {...props}\n      >\n        <Spinner size={size} label={label} description={description} delay={delay} />\n      </div>\n    );\n  }\n);\nLoader.displayName = \"Loader\";\n"
     },
     {
       "path": "src/components/v4/ui/loader.module.css",

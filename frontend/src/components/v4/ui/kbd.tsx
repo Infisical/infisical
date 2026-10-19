@@ -1,7 +1,46 @@
 import * as React from "react";
-import { cn } from "cn";
+import {
+  ArrowBigUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowRightToLine,
+  ArrowUp,
+  ChevronUp,
+  Command,
+  CornerDownLeft,
+  Delete,
+  type LucideIcon,
+  Option
+} from "lucide-react";
+
+import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 import styles from "./kbd.module.css";
+
+const symbolIcons: Record<string, LucideIcon> = {
+  "⌘": Command,
+  "⇧": ArrowBigUp,
+  "⌥": Option,
+  "⌃": ChevronUp,
+  "↵": CornerDownLeft,
+  "⌫": Delete,
+  "↑": ArrowUp,
+  "↓": ArrowDown,
+  "←": ArrowLeft,
+  "→": ArrowRight,
+  "⇥": ArrowRightToLine
+};
+
+export const KeyGlyph = ({ glyph }: { glyph: string }) => {
+  const symbol = symbolIcons[glyph];
+  return symbol ? (
+    <Icon icon={symbol} size="var(--v4-size-icon-xs)" className={styles.icon} />
+  ) : (
+    glyph
+  );
+};
 
 export type KeyCombo = string | readonly string[] | readonly (readonly string[])[];
 export interface KbdProps extends Omit<React.ComponentPropsWithoutRef<"kbd">, "children"> {
@@ -21,7 +60,7 @@ function splitCombo(value: string): string[] {
     return parts;
   }
   return text
-    .replace(/([⌘⇧⌥⌃])/g, "$1 ")
+    .replace(/([⌘⇧⌥⌃↵⌫⇥↑↓←→])/g, "$1 ")
     .trim()
     .split(/\s+/);
 }
@@ -66,7 +105,8 @@ function keyLabel(key: string, apple: boolean): { glyph: string; name: string } 
     "←": { glyph: "←", name: "Arrow left" },
     "→": { glyph: "→", name: "Arrow right" },
     space: { glyph: "Space", name: "Space" },
-    tab: { glyph: "Tab", name: "Tab" },
+    tab: apple ? { glyph: "⇥", name: "Tab" } : { glyph: "Tab", name: "Tab" },
+    "⇥": { glyph: "⇥", name: "Tab" },
     "+": { glyph: "+", name: "Plus" }
   };
   return (
@@ -123,7 +163,7 @@ const Kbd = React.forwardRef<HTMLElement, KbdProps>(
                 data-size={size}
                 className={styles.cap}
               >
-                {key.glyph}
+                <KeyGlyph glyph={key.glyph} />
               </kbd>
             ))}
           </React.Fragment>

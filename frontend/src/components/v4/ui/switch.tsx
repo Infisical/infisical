@@ -1,11 +1,11 @@
 import * as React from "react";
-import { cn } from "cn";
 import { motion, useReducedMotion } from "motion/react";
 import { Switch as SwitchPrimitive } from "radix-ui";
 
 import { useFieldControlAttributes } from "../lib/field-context";
 import { snap, spring } from "../lib/motion";
 import { useControllableState } from "../lib/use-controllable-state";
+import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 

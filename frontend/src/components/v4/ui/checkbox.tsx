@@ -1,12 +1,12 @@
 import * as React from "react";
-import { cn } from "cn";
-import { MinusIcon } from "lucide-react";
+import { CheckIcon, MinusIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 
 import { useFieldControlAttributes } from "../lib/field-context";
 import { exit, fade, motionMs } from "../lib/motion";
 import { useControllableState } from "../lib/use-controllable-state";
+import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 
@@ -60,26 +60,22 @@ const Checkbox = React.forwardRef<
         data-slot="checkbox-indicator"
         className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
       >
-        <svg
+        <motion.span
           data-check
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
           aria-hidden
+          className="grid place-content-center [&>svg]:size-3.5"
+          initial={false}
+          animate={{
+            clipPath: drawn ? "inset(0 0% 0 0)" : "inset(0 100% 0 0)",
+            opacity: drawn ? 1 : 0
+          }}
+          transition={{
+            clipPath: drawn ? fade.enter : exit.fast,
+            opacity: { duration: 0, delay: drawn ? 0 : motionMs.exit.fast / 1000 }
+          }}
         >
-          <motion.path
-            d="M4 12l5 5L20 6"
-            initial={false}
-            animate={{ pathLength: drawn ? 1 : 0, opacity: drawn ? 1 : 0 }}
-            transition={{
-              pathLength: drawn ? fade.enter : exit.fast,
-              opacity: { duration: 0, delay: drawn ? 0 : motionMs.exit.fast / 1000 }
-            }}
-          />
-        </svg>
+          <CheckIcon strokeWidth={2} />
+        </motion.span>
         <MinusIcon data-mixed />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>

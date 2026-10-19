@@ -543,7 +543,7 @@
   border-radius: 50%;
   background-color: var(--v4-on-ink);
 }
-.check [data-slot="checkbox-indicator"] > svg {
+.check [data-slot="checkbox-indicator"] > * {
   grid-area: 1 / 1;
 }
 .check [data-mixed],

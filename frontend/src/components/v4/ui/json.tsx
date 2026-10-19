@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/no-noninteractive-tabindex -- Named scroll regions need keyboard focus for scrolling. */
 import * as React from "react";
-import { cn } from "cn";
 
+import { cn } from "../lib/utils";
 import { AnimatedCollapse } from "./animated-collapse";
 import { Code } from "./code";
 import { type JsonNode, type JsonValue, prepareJson, type Redaction } from "./json-model";

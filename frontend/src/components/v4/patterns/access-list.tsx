@@ -70,8 +70,9 @@ export const AccessList = ({
     if (!onRestore) return;
     setFailure(undefined);
     try {
-      await onRestore(revoked);
-      setRevoked([]);
+      const restored = revoked;
+      await onRestore(restored);
+      setRevoked((value) => value.filter((id) => !restored.includes(id)));
     } catch (error) {
       setFailure(error instanceof Error ? error.message : "Access was not restored. Try again.");
     }

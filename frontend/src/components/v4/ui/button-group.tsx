@@ -1,9 +1,10 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
 import { Slot } from "radix-ui";
 
 import { Separator } from "@app/components/v4/ui/separator";
+
+import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 

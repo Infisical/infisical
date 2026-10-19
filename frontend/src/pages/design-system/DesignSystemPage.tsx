@@ -15,6 +15,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
 
 import logo from "./assets/infisical-logo.svg";
+import { AccentPanelButton, AccentPanelProvider, useAccentPanel } from "./accent-panel";
 import { AgentPage } from "./AgentPage";
 import { ComponentPreviewPage } from "./ComponentPreviewPage";
 import { ColorPage, OverviewPage, SpacingShapePage, TypographyPage } from "./FoundationPages";
@@ -47,6 +48,15 @@ const PageContent = ({ page }: { page: DocumentationPage }) => {
       return <MotionPage />;
     case "rules":
       return <RulesPage />;
+    case "button":
+      return (
+        <>
+          <div className="mb-4 flex justify-end">
+            <AccentPanelButton />
+          </div>
+          <ComponentPreviewPage page={page} />
+        </>
+      );
     default:
       return <ComponentPreviewPage page={page} />;
   }
@@ -121,6 +131,27 @@ const DocumentationNavigation = ({
   </nav>
 );
 
+const DockAccentButton = () => {
+  const panel = useAccentPanel();
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={dockStyles.segment}
+      aria-label="Open the accent picker"
+      onClick={panel?.open}
+    >
+      <span
+        aria-hidden
+        className="inline-block size-3 border border-border"
+        style={{ background: "var(--v4-accent)" }}
+      />
+      Accent
+    </Button>
+  );
+};
+
 export const DesignSystemPage = () => {
   const [view, setView] = useState<"human" | "agent">("human");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -156,143 +187,146 @@ export const DesignSystemPage = () => {
   const nextTheme = theme === "dark" ? "light" : "dark";
   return (
     <V4Scope className="flex h-svh flex-col overflow-hidden" theme={theme} corners={corners}>
-      <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
-        Skip to content
-      </a>
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-          <div className="shrink-0 px-6 pt-7 pb-6">
-            <Brand theme={theme} />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-            <DocumentationNavigation currentPage={currentPage} />
-          </div>
-        </aside>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center justify-between px-4 pt-3 lg:hidden">
-            <Brand theme={theme} />
-            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  iconOnly
-                  icon="menu"
-                  aria-label="Open documentation navigation"
-                />
-              </SheetTrigger>
-              <SheetContent
-                ref={mobileNavigation}
-                side="left"
-                style={{ width: "min(18rem, calc(100vw - var(--v4-space-32)))" }}
-                onOpenAutoFocus={(event) => {
-                  const current =
-                    mobileNavigation.current?.querySelector<HTMLAnchorElement>(
-                      'a[aria-current="page"]'
-                    );
-                  if (current) {
-                    event.preventDefault();
-                    current.focus();
-                  }
+      <AccentPanelProvider>
+        <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
+          Skip to content
+        </a>
+        <div className="flex min-h-0 flex-1">
+          <aside className="hidden w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+            <div className="shrink-0 px-6 pt-7 pb-6">
+              <Brand theme={theme} />
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+              <DocumentationNavigation currentPage={currentPage} />
+            </div>
+          </aside>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex shrink-0 items-center justify-between px-4 pt-3 lg:hidden">
+              <Brand theme={theme} />
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    iconOnly
+                    icon="menu"
+                    aria-label="Open documentation navigation"
+                  />
+                </SheetTrigger>
+                <SheetContent
+                  ref={mobileNavigation}
+                  side="left"
+                  style={{ width: "min(18rem, calc(100vw - var(--v4-space-32)))" }}
+                  onOpenAutoFocus={(event) => {
+                    const current =
+                      mobileNavigation.current?.querySelector<HTMLAnchorElement>(
+                        'a[aria-current="page"]'
+                      );
+                    if (current) {
+                      event.preventDefault();
+                      current.focus();
+                    }
+                  }}
+                >
+                  <SheetTitle className="sr-only">Documentation navigation</SheetTitle>
+                  <SheetDescription className="sr-only">
+                    Browse foundations, components and contribution guidance.
+                  </SheetDescription>
+                  <div className="shrink-0 px-6 pt-7 pb-2">
+                    <Brand theme={theme} onSelect={() => setMobileOpen(false)} />
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+                    <DocumentationNavigation
+                      currentPage={currentPage}
+                      onSelect={() => setMobileOpen(false)}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+            <Suspense
+              fallback={
+                <p role="status" className="px-4 pt-5 text-sm lg:px-10 lg:pt-8">
+                  Loading examples
+                </p>
+              }
+            >
+              <main
+                key={currentPage}
+                id={currentPage}
+                data-document-view={view}
+                tabIndex={-1}
+                className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pt-5 outline-none lg:px-10 lg:pt-8"
+                style={{
+                  marginBottom: `calc(${dockHeight === undefined ? "var(--v4-space-48)" : `${dockHeight}px`} + ${dockInset} + var(--v4-space-8))`
                 }}
               >
-                <SheetTitle className="sr-only">Documentation navigation</SheetTitle>
-                <SheetDescription className="sr-only">
-                  Browse foundations, components and contribution guidance.
-                </SheetDescription>
-                <div className="shrink-0 px-6 pt-7 pb-2">
-                  <Brand theme={theme} onSelect={() => setMobileOpen(false)} />
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-                  <DocumentationNavigation
-                    currentPage={currentPage}
-                    onSelect={() => setMobileOpen(false)}
-                  />
-                </div>
-              </SheetContent>
-            </Sheet>
+                <article className="mx-auto max-w-[56rem] pb-8">
+                  {view === "human" ? (
+                    <PageContent page={currentPage} />
+                  ) : (
+                    <div className="max-w-[40rem]">
+                      <AgentPage key={currentPage} page={currentPage} />
+                    </div>
+                  )}
+                </article>
+              </main>
+            </Suspense>
           </div>
-          <Suspense
-            fallback={
-              <p role="status" className="px-4 pt-5 text-sm lg:px-10 lg:pt-8">
-                Loading examples
-              </p>
-            }
-          >
-            <main
-              key={currentPage}
-              id={currentPage}
-              data-document-view={view}
-              tabIndex={-1}
-              className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pt-5 outline-none lg:px-10 lg:pt-8"
-              style={{
-                marginBottom: `calc(${dockHeight === undefined ? "var(--v4-space-48)" : `${dockHeight}px`} + ${dockInset} + var(--v4-space-8))`
+        </div>
+        <div
+          data-documentation-dock
+          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4"
+          style={{ bottom: `calc(${dockInset})` }}
+        >
+          <div ref={dock} className={dockStyles.dock}>
+            <ToggleGroup
+              type="single"
+              value={view}
+              size="sm"
+              bare
+              aria-label="Documentation view"
+              onValueChange={(mode) => {
+                if (mode === "human" || mode === "agent") setView(mode);
               }}
             >
-              <article className="mx-auto max-w-[56rem] pb-8">
-                {view === "human" ? (
-                  <PageContent page={currentPage} />
-                ) : (
-                  <div className="max-w-[40rem]">
-                    <AgentPage key={currentPage} page={currentPage} />
-                  </div>
-                )}
-              </article>
-            </main>
-          </Suspense>
+              <ToggleGroupItem value="human">Human</ToggleGroupItem>
+              <ToggleGroupItem value="agent">Agent</ToggleGroupItem>
+            </ToggleGroup>
+            <span aria-hidden="true" className={dockStyles.divider} />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={dockStyles.segment}
+              aria-label={`Corners: ${corners}. Switch to ${nextCorners}`}
+              onClick={() => {
+                try {
+                  window.localStorage.setItem("v4-corners", nextCorners);
+                } catch {
+                  // Storage is unavailable; keep the choice for this session only.
+                }
+                setCorners(nextCorners);
+              }}
+            >
+              {corners === "soft" ? "Soft" : "Square"}
+            </Button>
+            <DockAccentButton />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className={dockStyles.segment}
+              iconOnly
+              onClick={() => setTheme(nextTheme, "design-system")}
+              aria-label={`Switch to ${nextTheme} theme`}
+            >
+              <Icon name={theme === "dark" ? "sun" : "moon"} />
+            </Button>
+          </div>
         </div>
-      </div>
-      <div
-        data-documentation-dock
-        className="pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4"
-        style={{ bottom: `calc(${dockInset})` }}
-      >
-        <div ref={dock} className={dockStyles.dock}>
-          <ToggleGroup
-            type="single"
-            value={view}
-            size="sm"
-            bare
-            aria-label="Documentation view"
-            onValueChange={(mode) => {
-              if (mode === "human" || mode === "agent") setView(mode);
-            }}
-          >
-            <ToggleGroupItem value="human">Human</ToggleGroupItem>
-            <ToggleGroupItem value="agent">Agent</ToggleGroupItem>
-          </ToggleGroup>
-          <span aria-hidden="true" className={dockStyles.divider} />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={dockStyles.segment}
-            aria-label={`Corners: ${corners}. Switch to ${nextCorners}`}
-            onClick={() => {
-              try {
-                window.localStorage.setItem("v4-corners", nextCorners);
-              } catch {
-                // Storage is unavailable; keep the choice for this session only.
-              }
-              setCorners(nextCorners);
-            }}
-          >
-            {corners === "soft" ? "Soft" : "Square"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className={dockStyles.segment}
-            iconOnly
-            onClick={() => setTheme(nextTheme, "design-system")}
-            aria-label={`Switch to ${nextTheme} theme`}
-          >
-            <Icon name={theme === "dark" ? "sun" : "moon"} />
-          </Button>
-        </div>
-      </div>
+      </AccentPanelProvider>
     </V4Scope>
   );
 };

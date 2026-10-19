@@ -1,8 +1,8 @@
 import * as React from "react";
-import { cn } from "cn";
 import { motion, useReducedMotion } from "motion/react";
 
 import { exit, fade, motionMs, snap, spring } from "../lib/motion";
+import { cn } from "../lib/utils";
 
 import styles from "./text.module.css";
 

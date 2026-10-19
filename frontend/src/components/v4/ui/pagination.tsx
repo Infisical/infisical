@@ -1,9 +1,9 @@
 import * as React from "react";
-import { cn } from "cn";
 import { MoreHorizontalIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
 
+import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 import { Select } from "./select";
 import { Spinner } from "./spinner";

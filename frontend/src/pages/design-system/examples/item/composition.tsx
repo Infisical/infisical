@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { FileText } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -15,7 +17,7 @@ import {
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
 const manifestImage = `data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="2" fill="Canvas" stroke="CanvasText"/><text x="6" y="16" font-family="monospace" font-size="9" fill="CanvasText">env</text><path d="M6 23h28M6 28h22M6 33h25" stroke="CanvasText"/></svg>'
+  renderToStaticMarkup(<FileText xmlns="http://www.w3.org/2000/svg" color="CanvasText" />)
 )}`;
 
 export default function Example() {

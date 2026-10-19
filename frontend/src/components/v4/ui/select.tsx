@@ -1,10 +1,10 @@
 import * as React from "react";
-import { cn } from "cn";
 import { Select as SelectPrimitive } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
 import { useFieldControlAttributes } from "../lib/field-context";
+import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";

@@ -1,3 +1,5 @@
+import { AppWindow, ArrowRight, Vault } from "lucide-react";
+
 import { AspectRatio } from "@app/components/v4/ui/aspect-ratio";
 
 import { ExampleCell } from "../../example-presentation";
@@ -16,39 +18,15 @@ export default function Example() {
           <ExampleCell align="stretch" label={label}>
             <AspectRatio ratio={ratio}>
               <div className="h-full border border-border bg-muted">
-                <svg
+                <div
                   role="img"
                   aria-label="Synthetic connection diagram: application connects to vault"
-                  viewBox="0 0 160 90"
-                  width="100%"
-                  height="100%"
+                  className="flex h-full items-center justify-center gap-3"
                 >
-                  <rect
-                    x="8"
-                    y="25"
-                    width="50"
-                    height="40"
-                    rx="4"
-                    fill="none"
-                    stroke="currentColor"
-                  />
-                  <path d="M58 45h40m-8-6 8 6-8 6" fill="none" stroke="currentColor" />
-                  <rect
-                    x="100"
-                    y="25"
-                    width="50"
-                    height="40"
-                    rx="4"
-                    fill="none"
-                    stroke="currentColor"
-                  />
-                  <text x="15" y="49" fontSize="10" fill="currentColor">
-                    App
-                  </text>
-                  <text x="110" y="49" fontSize="10" fill="currentColor">
-                    Vault
-                  </text>
-                </svg>
+                  <AppWindow className="size-6" strokeWidth={1.7} aria-hidden />
+                  <ArrowRight className="size-4" strokeWidth={1.7} aria-hidden />
+                  <Vault className="size-6" strokeWidth={1.7} aria-hidden />
+                </div>
               </div>
             </AspectRatio>
           </ExampleCell>

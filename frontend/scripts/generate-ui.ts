@@ -937,6 +937,7 @@ const support = filesIn(componentRoot).filter(
   (file) =>
     !file.includes("/ui/") &&
     !file.includes("/patterns/") &&
+    !file.includes("/icons-legacy/") &&
     !file.endsWith("/generated-manifest.json") &&
     !file.includes("/contracts/") &&
     !file.endsWith("/catalog.ts") &&
@@ -945,7 +946,7 @@ const support = filesIn(componentRoot).filter(
     (!file.includes("/docs/") || generated.has(file))
 );
 const fileEntry = (file: string) => ({ path: file, type: "registry:file", target: file });
-const baseDependencies = new Set(["cn", "tailwindcss", "tw-animate-css"]);
+const baseDependencies = new Set(["tailwindcss", "tw-animate-css"]);
 support.forEach((file) =>
   importsFrom(file).forEach((specifier) => {
     const local = localFile(file, specifier);

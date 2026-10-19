@@ -1,6 +1,5 @@
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
-import { cn } from "cn";
 
 import {
   Dialog,
@@ -11,6 +10,7 @@ import {
 } from "@app/components/v4/ui/dialog";
 import { Icon } from "@app/components/v4/ui/icon";
 
+import { cn } from "../lib/utils";
 import { menuShortcutContent } from "./menu-content";
 
 import controlStyles from "./controls.module.css";

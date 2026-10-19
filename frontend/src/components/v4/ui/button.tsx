@@ -1,10 +1,10 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
 import { animate, motion, useMotionValue } from "motion/react";
 import { Slot } from "radix-ui";
 
 import { spring } from "../lib/motion";
+import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icon";
 import { Spinner } from "./spinner";
 

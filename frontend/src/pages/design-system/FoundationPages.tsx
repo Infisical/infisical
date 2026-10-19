@@ -1,8 +1,12 @@
+import { useLayoutEffect, useRef, useState } from "react";
+
 import { componentCatalog } from "@app/components/v4/catalog";
 import required from "@app/components/v4/required-capabilities.json";
+import { V4Scope } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import { Input } from "@app/components/v4/ui/input";
 
+import { AccentPanelButton, useAccentPanel } from "./accent-panel";
 import { DocDisclosure, DocSection, PageHeading, PreviewFrame } from "./doc-parts";
 import {
   type ColorMode,
@@ -192,25 +196,81 @@ const ColorSwatch = ({ name, mode }: { name: string; mode: ColorMode }) => {
   );
 };
 
+const LiveValue = ({ name }: { name: string }) => {
+  const panel = useAccentPanel();
+  const ref = useRef<HTMLElement>(null);
+  const [value, setValue] = useState("");
+  useLayoutEffect(() => {
+    if (ref.current)
+      setValue(getComputedStyle(ref.current).getPropertyValue(`--v4-${name}`).trim());
+  }, [name, panel?.choice]);
+  return (
+    <code ref={ref} className="block">
+      {name} {value}
+    </code>
+  );
+};
+
+const LivePair = ({
+  mode,
+  background,
+  foreground
+}: {
+  mode: "light" | "dark";
+  background: string;
+  foreground: string;
+}) => (
+  <V4Scope theme={mode}>
+    <div
+      className="flex min-h-32 flex-col justify-between gap-5 p-4"
+      style={{
+        backgroundColor: `var(--v4-${background})`,
+        color: `var(--v4-${foreground})`
+      }}
+    >
+      <p className="text-sm font-medium">{mode === "light" ? "Light" : "Dark"}</p>
+      <div className="text-xs leading-5">
+        <LiveValue name={background} />
+        <LiveValue name={foreground} />
+      </div>
+    </div>
+  </V4Scope>
+);
+
+const AccentSwatch = ({ mode }: { mode: "light" | "dark" }) => {
+  const panel = useAccentPanel();
+  return (
+    <V4Scope theme={mode}>
+      <div
+        className="flex min-h-40 flex-col justify-between gap-6 p-5"
+        style={{ backgroundColor: "var(--v4-accent)", color: "var(--v4-on-accent)" }}
+      >
+        <p className="text-sm font-medium">{mode === "light" ? "Light" : "Dark"} neon lime</p>
+        <div>
+          <p style={typeSpecimenStyle("title-lg")}>Infisical</p>
+          <code className="mt-2 block text-xs">
+            {panel?.choice[mode] ?? resolveColorToken("accent", mode)}
+          </code>
+        </div>
+      </div>
+    </V4Scope>
+  );
+};
+
 export const ColorPage = () => (
   <div>
     <PageHeading title="Color" />
+    <div className="mb-4 flex items-center justify-between gap-4">
+      <p className="text-muted-foreground text-sm leading-6">
+        Compare accents opens a workbench-only picker (also in the dock and on the Button page). It
+        overrides the accent family for this page and keeps the choice in the URL, so a link
+        reproduces the view. The canonical tokens do not change.
+      </p>
+      <AccentPanelButton />
+    </div>
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {(["light", "dark"] as const).map((mode) => (
-        <div
-          key={mode}
-          className="flex min-h-40 flex-col justify-between gap-6 p-5"
-          style={{
-            backgroundColor: resolveColorToken("accent", mode),
-            color: resolveColorToken("on-accent", mode)
-          }}
-        >
-          <p className="text-sm font-medium">{mode === "light" ? "Light" : "Dark"} neon lime</p>
-          <div>
-            <p style={typeSpecimenStyle("title-lg")}>Infisical</p>
-            <code className="mt-2 block text-xs">{resolveColorToken("accent", mode)}</code>
-          </div>
-        </div>
+        <AccentSwatch key={mode} mode={mode} />
       ))}
     </div>
     <p className="text-muted-foreground mt-4 text-sm leading-6">
@@ -249,24 +309,7 @@ export const ColorPage = () => (
             <h3 className="mb-3 text-sm font-medium">{pair.label}</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               {(["light", "dark"] as const).map((mode) => (
-                <div
-                  key={mode}
-                  className="flex min-h-32 flex-col justify-between gap-5 p-4"
-                  style={{
-                    backgroundColor: resolveColorToken(pair.background, mode),
-                    color: resolveColorToken(pair.foreground, mode)
-                  }}
-                >
-                  <p className="text-sm font-medium">{mode === "light" ? "Light" : "Dark"}</p>
-                  <div className="text-xs leading-5">
-                    <code className="block">
-                      {pair.background} {resolveColorToken(pair.background, mode)}
-                    </code>
-                    <code className="block">
-                      {pair.foreground} {resolveColorToken(pair.foreground, mode)}
-                    </code>
-                  </div>
-                </div>
+                <LivePair key={mode} mode={mode} {...pair} />
               ))}
             </div>
           </div>

@@ -2,8 +2,9 @@
   container-type: inline-size;
   position: relative;
   width: 100%;
+  display: grid;
   aspect-ratio: 960 / 288;
-  overflow: hidden;
+  overflow: clip;
   background: var(--v4-surface);
   color: var(--v4-ink);
 }
@@ -31,9 +32,9 @@
   rx: calc(var(--v4-radius-xs) * var(--corners));
 }
 .words {
-  position: absolute;
-  bottom: 3.33cqi;
-  left: 4.17cqi;
+  position: relative;
+  align-self: end;
+  margin: 1.67cqi 0 3.33cqi 4.17cqi;
   max-width: 46cqi;
 }
 .title {

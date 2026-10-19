@@ -11,18 +11,6 @@
     "src/components/v4/ui/chart.tsx": 1,
     "src/components/v4/ui/navigation-menu.tsx": 1
   },
-  "icon-source": {
-    "src/components/v4/ui/accordion.tsx": 1,
-    "src/components/v4/ui/breadcrumb.tsx": 1,
-    "src/components/v4/ui/calendar.tsx": 1,
-    "src/components/v4/ui/carousel.tsx": 1,
-    "src/components/v4/ui/checkbox.tsx": 1,
-    "src/components/v4/ui/input-otp.tsx": 1,
-    "src/components/v4/ui/pagination.tsx": 1,
-    "src/components/v4/ui/sonner.tsx": 1,
-    "src/pages/design-system/doc-parts.tsx": 1,
-    "src/pages/design-system/examples/alert-dialog/sizes.tsx": 1
-  },
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
   },

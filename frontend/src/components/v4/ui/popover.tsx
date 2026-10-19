@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "cn";
 import { Popover as PopoverPrimitive, Slot } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
 import { useOwnedEscape } from "../lib/use-owned-escape";
+import { cn } from "../lib/utils";
 
 import menu from "./menu.module.css";
 

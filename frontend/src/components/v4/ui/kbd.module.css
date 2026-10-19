@@ -45,3 +45,6 @@
   height: var(--v4-space-16);
   min-width: var(--v4-space-16);
 }
+.icon {
+  flex: none;
+}

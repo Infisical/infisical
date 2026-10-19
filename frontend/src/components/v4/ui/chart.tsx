@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "cn";
 import type { TooltipValueType } from "recharts";
 import * as RechartsPrimitive from "recharts";
 
+import { cn } from "../lib/utils";
 import { useV4Theme } from "../scope";
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;

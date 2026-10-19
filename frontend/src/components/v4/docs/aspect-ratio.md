@@ -109,9 +109,10 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/aspect-ratio/media.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/aspect-ratio. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/aspect-ratio. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
+import { AppWindow, ArrowRight, Vault } from "lucide-react";
 import { AspectRatio } from "../../../../components/v4/ui/aspect-ratio";
 const height = 160;
 export default function Example() {
@@ -124,17 +125,11 @@ export default function Example() {
           <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
             <AspectRatio ratio={ratio}>
               <div className="h-full border border-border bg-muted">
-                <svg role="img" aria-label="Synthetic connection diagram: application connects to vault" viewBox="0 0 160 90" width="100%" height="100%">
-                  <rect x="8" y="25" width="50" height="40" rx="4" fill="none" stroke="currentColor"/>
-                  <path d="M58 45h40m-8-6 8 6-8 6" fill="none" stroke="currentColor"/>
-                  <rect x="100" y="25" width="50" height="40" rx="4" fill="none" stroke="currentColor"/>
-                  <text x="15" y="49" fontSize="10" fill="currentColor">
-                    App
-                  </text>
-                  <text x="110" y="49" fontSize="10" fill="currentColor">
-                    Vault
-                  </text>
-                </svg>
+                <div role="img" aria-label="Synthetic connection diagram: application connects to vault" className="flex h-full items-center justify-center gap-3">
+                  <AppWindow className="size-6" strokeWidth={1.7} aria-hidden/>
+                  <ArrowRight className="size-4" strokeWidth={1.7} aria-hidden/>
+                  <Vault className="size-6" strokeWidth={1.7} aria-hidden/>
+                </div>
               </div>
             </AspectRatio>
           </div><figcaption className="text-muted-foreground text-xs">{label}</figcaption></figure>

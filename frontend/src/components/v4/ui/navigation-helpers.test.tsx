@@ -43,7 +43,8 @@ describe("keyboard hints", () => {
     expect(shortcutSteps("G then S")).toEqual([["G"], ["S"]]);
     await render(<Kbd keys="mod+shift+P" platform="mac" />);
     expect(element('[role="group"]').getAttribute("aria-label")).toBe("Command Shift P");
-    expect(host.textContent).toBe("⌘⇧P");
+    expect(host.textContent).toBe("P");
+    expect(host.querySelectorAll('[data-slot="kbd"] svg[aria-hidden="true"]')).toHaveLength(2);
     await render(<Kbd keys={[["mod", "K"], ["G"]]} platform="other" />);
     expect(element('[role="group"]').getAttribute("aria-label")).toBe("Control K then G");
     expect(host.textContent).toContain("CtrlKthenG");

@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "cn";
 import { HoverCard as HoverCardPrimitive } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
+
+import { cn } from "../lib/utils";
 
 import menu from "./menu.module.css";
 

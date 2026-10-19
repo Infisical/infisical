@@ -1,7 +1,7 @@
 import * as React from "react";
-import { cn } from "cn";
 
 import { useControllableState } from "../lib/use-controllable-state";
+import { cn } from "../lib/utils";
 import { Button } from "./button";
 import {
   Command,

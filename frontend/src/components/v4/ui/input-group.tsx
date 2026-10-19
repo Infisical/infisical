@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
 
 import { Button } from "@app/components/v4/ui/button";
 
 import { FieldControlContext, useFieldControlAttributes } from "../lib/field-context";
+import { cn } from "../lib/utils";
 
 import geometry from "./button-geometry.module.css";
 import controlStyles from "./controls.module.css";

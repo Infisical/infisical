@@ -1,10 +1,10 @@
 # Icon
 
-Render the 52 owned product glyphs as safe SVG geometry.
+Render a Lucide icon by product name or directly, on the shared size and stroke tokens.
 
 ## Choose this component
 
-Choose Icon for an owned product glyph and Avatar for a person. Use visible text when the meaning is unfamiliar or consequential.
+Choose Icon for a Lucide glyph (by product name or directly) and Avatar for a person. Use visible text when the meaning is unfamiliar or consequential.
 
 ## Usage rules
 
@@ -42,14 +42,15 @@ Why: Repeated symbols increase visual density without adding distinctions.
 ## Import and exports
 
 - src/components/v4/ui/icon.tsx
-- src/components/v4/ui/icon-data.ts
 
 Exports: Icon, iconNames. Source TypeScript defines the API.
 
 ## Behavior
 
-- Names are a TypeScript union derived from the immutable owned shape map.
-- Size and stroke width preserve the shared 24-unit geometry.
+- Lucide (lucide-react) is the icon source of truth. Icon renders a Lucide glyph: pass name for one of the 52 product names, or icon for any Lucide icon directly.
+- Size defaults to the size-icon token (16px for controls; 18px for navigation and list media and 14px for small buttons come from the surrounding component) and the stroke defaults to stroke-icon (1.7) as Lucide's strokeWidth. Icons inherit currentColor.
+- Name mapping: search → Search, key → KeyRound, plus → Plus, minus → Minus, check → Check, x → X, chev-down → ChevronDown, chev-right → ChevronRight, chev-left → ChevronLeft, chev-ud → ChevronsUpDown, more → Ellipsis, copy → Copy, eye → Eye, history → History, trash → Trash2, lock → Lock, info → Info, alert → TriangleAlert, alert-c → CircleAlert, check-c → CircleCheck, agent → Bot, machine → Server, cert → ShieldCheck, terminal → SquareTerminal, user → User, external → ExternalLink, sync → RefreshCw, upload → Upload, clock → Clock, folder → Folder, link → Link, settings → SlidersHorizontal, bell → Bell, globe → Globe, inbox → Inbox, home → House, arrow-down → ArrowDown, git → GitBranch, calendar → Calendar, arrow-up → ArrowUp, file → File, folder-open → FolderOpen, download → Download, menu → Menu, sidebar → PanelLeft, user-plus → UserPlus, megaphone → Megaphone, apps → LayoutGrid, building → Building2, sun → Sun, moon → Moon, monitor → Monitor.
+- The original Infisical 2.0 line set from PR 8691 is kept as a legacy artifact in assets/icons-legacy/. No component imports it and the registry does not ship it.
 
 ## Accessibility
 
@@ -80,14 +81,14 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### name and semantics
 
-- all owned names: example `default`, visible label "search".
+- all product names: example `default`, visible label "search".
 - decorative: example `sizes`, visible label "12px".
 - named: example `sizes`, visible label "Named image".
 - action: example `sizes`, visible label "Action icon".
 
 ## Executable examples
 
-### Owned glyphs with visible names
+### Product icon names with visible names
 
 Save this example at `src/pages/design-system/examples/icon/default.tsx`; its relative imports are generated for that exact path. States: default.
 

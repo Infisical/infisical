@@ -1,9 +1,9 @@
 import * as React from "react";
-import { cn } from "cn";
 import { Menubar as MenubarPrimitive } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
+import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 import { menuRowContent, menuShortcutContent } from "./menu-content";
 

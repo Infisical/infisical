@@ -1,6 +1,6 @@
 import * as React from "react";
-import { cn } from "cn";
 
+import { cn } from "../lib/utils";
 import { Breadcrumb, type BreadcrumbCrumb } from "./breadcrumb";
 
 import styles from "./top-bar.module.css";

@@ -222,3 +222,9 @@ button.stepButton:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

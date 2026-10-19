@@ -723,10 +723,10 @@
     },
     {
       "id": "one-icon-set",
-      "title": "Draw every icon from the v4 set",
-      "instruction": "Render icons with the v4 Icon component and its named shapes. When a shape is missing, add it to the icon data once rather than importing another icon library into a component.",
-      "good": "<Icon name=\"chev-down\" /> inside a Select trigger, sized by --v4-size-icon.",
-      "avoid": "An import { ChevronDownIcon } from \"lucide-react\" in a v4 component, which brings its own stroke width and size.",
+      "title": "Draw every icon from Lucide",
+      "instruction": "Lucide (lucide-react) is the icon source of truth. Render icons with the v4 Icon component, by product name or with icon set to a Lucide icon, or import a Lucide icon directly and size it with the size tokens and stroke-icon. Do not import another icon library, the legacy icon data in assets/icons-legacy or a hand-drawn SVG.",
+      "good": "<Icon name=\"chev-down\" /> inside a Select trigger, sized by --v4-size-icon, or <Icon icon={Vault} />.",
+      "avoid": "An import from react-icons or @radix-ui/react-icons, the legacy icon data, or an inline <svg> path drawn by hand.",
       "detect": {
         "by": "lint",
         "check": "icon-source"

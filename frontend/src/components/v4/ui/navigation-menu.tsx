@@ -2,10 +2,10 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { Presence } from "@radix-ui/react-presence";
 import { cva } from "class-variance-authority";
-import { cn } from "cn";
 import { NavigationMenu as NavigationMenuPrimitive, Slot } from "radix-ui";
 
 import { useControllableState } from "../lib/use-controllable-state";
+import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";

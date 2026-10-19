@@ -1,7 +1,7 @@
 import * as React from "react";
-import { cn } from "cn";
 
 import { useFieldControlAttributes } from "../lib/field-context";
+import { cn } from "../lib/utils";
 import { CopyButton } from "./sensitive-editor";
 
 import styles from "./code.module.css";

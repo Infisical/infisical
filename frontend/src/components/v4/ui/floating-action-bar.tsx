@@ -1,8 +1,8 @@
 import * as React from "react";
-import { cn } from "cn";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { exit, snap, spring } from "../lib/motion";
+import { cn } from "../lib/utils";
 import { Button } from "./button";
 import {
   DropdownMenu,
