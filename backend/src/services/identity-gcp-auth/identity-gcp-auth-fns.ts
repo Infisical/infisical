@@ -24,7 +24,7 @@ export const hasGcpTrustBinding = ({
 };
 
 export const GCP_TRUST_BINDING_REQUIRED_MESSAGE =
-  "Configure at least one allowed GCP service account, or for GCE identities an allowed project. A zone alone is not enough, because zones are shared by every GCP customer. Without one, any GCP workload that knows this identity's ID could log in as it.";
+  "Configure at least one allowed GCP service account, or for GCE identities an allowed project.";
 
 /**
  * Validates that the identity token [jwt] sent in from a client GCE instance as part of GCP ID Token authentication

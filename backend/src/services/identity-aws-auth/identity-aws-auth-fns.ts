@@ -101,5 +101,4 @@ export const hasAwsTrustBinding = ({
   allowedPrincipalArns?: string | null;
 }) => Boolean(allowedAccountIds?.trim()) || Boolean(allowedPrincipalArns?.trim());
 
-export const AWS_TRUST_BINDING_REQUIRED_MESSAGE =
-  "Configure at least one allowed AWS account ID or principal ARN. Without one, any AWS principal that knows this identity's ID could log in as it.";
+export const AWS_TRUST_BINDING_REQUIRED_MESSAGE = "Configure at least one allowed AWS account ID or principal ARN.";
