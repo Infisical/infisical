@@ -3,9 +3,9 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -127,13 +127,13 @@ const Page = () => {
         </div>
       </div>
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteInstallation.isOpen}
         title="Are you sure you want to delete this installation?"
-        subTitle="This action cannot be undone. The installation record will be permanently deleted."
-        onChange={(isOpen) => handlePopUpToggle("deleteInstallation", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action cannot be undone. The installation record will be permanently deleted."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteInstallation", isOpen)}
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </div>
   );

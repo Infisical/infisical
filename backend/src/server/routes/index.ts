@@ -4547,7 +4547,8 @@ export const registerRoutes = async (
     secretScanningV2DAL,
     secretScanningV2Queue,
     kmsService,
-    appConnectionDAL
+    appConnectionDAL,
+    keyStore
   });
 
   const migrationService = externalMigrationServiceFactory({

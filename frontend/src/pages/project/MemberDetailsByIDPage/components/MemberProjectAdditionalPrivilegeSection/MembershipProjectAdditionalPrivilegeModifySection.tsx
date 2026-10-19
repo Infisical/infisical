@@ -35,6 +35,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import {
   useCreateProjectUserAdditionalPrivilege,
   useGetProjectUserPrivilegeDetails,
@@ -97,6 +98,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   menuPortalContainerRef,
   initialPermissions
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const isCreate = !privilegeId;
   const [openPolicies, setOpenPolicies] = useState<string[]>(() =>
     initialPermissions
@@ -518,7 +520,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
             Cancel
           </Button>
           <Button
-            variant="project"
+            variant={scopeVariant}
             type="submit"
             isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty || isFormDisabled}

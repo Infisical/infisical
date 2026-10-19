@@ -1,0 +1,62 @@
+---
+title: "Troubleshooting errors"
+description: "Find out why a CLI command failed."
+---
+
+When a CLI command fails on a request to Infisical, it prints an error that includes the request's ID, the HTTP status code, and the message from the server. You can use the request ID to troubleshoot the error.
+
+## Where the CLI prints the error
+
+When a command fails, the CLI prints the error to stderr as plain text and exits with status `1`.
+
+<Note>
+Although the following [global flags](/cli/reference#global-flags) modify the CLI's output, they don't silence error messages:
+
+- `--log-format` and `--log-destination` change only the CLI's log messages, so they don't apply to error messages
+- `--silent` hides update notices and profile notices, but not errors
+</Note>
+
+## Save the error
+
+To keep the error, redirect stderr to a file with `2>`. For example, this command lists the folders at the root of a project's `prod` environment. If the command fails, the error is saved to `infisical.err`:
+
+```bash
+export INFISICAL_TOKEN=<access-token>
+
+infisical sm secrets folders get --projectId=<project-id> --env=prod --path=/ --silent 2>infisical.err
+```
+
+- The CLI reads the machine identity's access token from `INFISICAL_TOKEN`, so the token doesn't appear in the command
+- `2>` saves only stderr, so anything the command prints to stdout stays out of the file
+- `--silent` keeps update notices out of the file
+
+<Tip>
+In a CI pipeline, use your pipeline's secret store to set `INFISICAL_TOKEN`, and keep `infisical.err` as a build artifact.
+</Tip>
+
+## What the saved error contains
+
+If the machine identity in the [example](#save-the-error) isn't a member of the project, the command writes a file like this one:
+
+```text
+Request: GET https://app.infisical.com/api/v1/folders?directory=%2F&environment=prod&workspaceId=626884b6-d49f-425b-8e63-391a339ec94f
+Instance: https://app.infisical.com
+Request ID: req-7PQupHqgWGjWDC
+Response Code: 403 Forbidden
+Message: You are not a member of this project with ID 626884b6-d49f-425b-8e63-391a339ec94f. Please assign this identity to the project with the appropriate permissions, then try again.
+Context:
+  Check your credentials or verify you're using the correct domain. Current domain: https://app.infisical.com
+
+  • Unable to get folders
+
+If this issue continues, get support at https://infisical.com/slack
+```
+
+The error shows the request ID in `Request ID`, the HTTP status code in `Response Code`, and the message from the server in `Message`. It doesn't contain the access token, so you can safely store and share the error.
+
+## Look up the request ID
+
+The request ID identifies the request in the Infisical server logs. Who can search those logs depends on where Infisical runs:
+
+- If you self-host Infisical, search your server's logs for the request ID (it's visible in every line for that request, and together those lines show the route, the response status, and the error)
+- If you use Infisical Cloud, only Infisical can search the server logs, so include the request ID when you ask for help in the [Infisical community](https://community.infisical.com/)
