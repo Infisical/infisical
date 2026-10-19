@@ -118,9 +118,6 @@ const PRODUCT_CARDS: Record<ActiveProducts, ProductCardDefinition> = {
   }
 };
 
-const PREVIEW_CARD_CLASS_NAME =
-  "relative overflow-visible outline-1 outline-offset-4 outline-warning/60 outline-solid";
-
 const formatNumber = (num: number): string => {
   return num.toLocaleString();
 };
@@ -615,26 +612,10 @@ export const ProjectCategoryOverview = ({ showPlanBadges = true }: Props) => {
                         {getProjectTitle(type)}
                       </span>
                       {plan && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge
-                              variant="info"
-                              tabIndex={0}
-                              aria-label={`${plan.planLabel} plan${plan.isTrialing ? " (trial)" : ""}`}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                              onKeyDown={(e) => e.stopPropagation()}
-                            >
-                              {plan.shortPlanLabel}
-                              {plan.isTrialing && " Trial"}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {plan.planLabel} plan{plan.isTrialing ? " (trial)" : ""}
-                          </TooltipContent>
-                        </Tooltip>
+                        <Badge variant="info">
+                          {plan.planLabel}
+                          {plan.isTrialing && " Trial"}
+                        </Badge>
                       )}
                     </CardTitle>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
@@ -660,7 +641,11 @@ export const ProjectCategoryOverview = ({ showPlanBadges = true }: Props) => {
                   </div>
                 )}
               </CardContent>
-              {isPreview && <ButtonBadge variant="warning">Preview</ButtonBadge>}
+              {isPreview && (
+                <ButtonBadge variant="warning" className="right-4">
+                  Preview
+                </ButtonBadge>
+              )}
             </>
           );
 
@@ -676,7 +661,7 @@ export const ProjectCategoryOverview = ({ showPlanBadges = true }: Props) => {
                 <TooltipTrigger asChild>
                   <div aria-disabled className="cursor-not-allowed">
                     <Card
-                      className={`h-auto rounded-md opacity-50 ${isPreview ? PREVIEW_CARD_CLASS_NAME : ""}`}
+                      className={`h-auto rounded-md opacity-50 ${isPreview ? "relative overflow-visible" : ""}`}
                     >
                       {tileBody}
                     </Card>
@@ -690,7 +675,7 @@ export const ProjectCategoryOverview = ({ showPlanBadges = true }: Props) => {
             );
           }
 
-          const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName} ${isPreview ? PREVIEW_CARD_CLASS_NAME : ""}`;
+          const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName} ${isPreview ? "relative overflow-visible" : ""}`;
 
           // These resolve their destination asynchronously (instance picker, lazy project
           // bootstrap, join-on-behalf), so they stay handler-driven.
