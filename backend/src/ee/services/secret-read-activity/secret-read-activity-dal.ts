@@ -59,7 +59,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
           .groupBy("objectId", "objectType", "actorId", "actorType")
           .select("objectId", "objectType", "actorId", "actorType")
           .max("lastReadAt as lastReadAt")) as TSecretLastRead[];
-        rows.push(...batch);
+        for (const row of batch) rows.push(row);
       }
       return rows;
     } catch (error) {

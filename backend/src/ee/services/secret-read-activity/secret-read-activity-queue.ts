@@ -315,7 +315,9 @@ export const secretReadActivityQueueServiceFactory = ({
     const rows: TSecretLastRead[] = [];
     for (const [projectId, projectReads] of Object.entries(groupBy(reads, (read) => read.projectId))) {
       // eslint-disable-next-line no-await-in-loop
-      rows.push(...(await $resolveProjectReads(projectId, projectReads)));
+      const projectRows = await $resolveProjectReads(projectId, projectReads);
+      // Not spread into push: a large batch resolves to more rows than fit in one call's arguments.
+      for (const row of projectRows) rows.push(row);
     }
     // A read that waited in the stream past the window counts for nothing, and its month's partition may already be
     // dropped, so writing it would fail the whole batch on every retry.
