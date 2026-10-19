@@ -21,6 +21,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import {
   CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter
@@ -1631,13 +1632,10 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId
   }: TGetCertPkcs12DTO) => {
-    if (!password || password.trim() === "") {
-      throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
-    }
-
-    if (password.length < 6) {
+    const passwordCheck = Pkcs12PasswordSchema.safeParse(password);
+    if (!passwordCheck.success) {
       throw new BadRequestError({
-        message: "Password must be at least 6 characters long for PKCS12 keystore security"
+        message: `Invalid keystore password: ${passwordCheck.error.issues.map((issue) => issue.message).join(", ")}`
       });
     }
 

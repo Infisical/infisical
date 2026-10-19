@@ -41,7 +41,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useTimedReset } from "@app/hooks";
+import { useScopeVariant, useTimedReset } from "@app/hooks";
 import { useCreateServiceToken } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -92,6 +92,7 @@ type Props = {
 };
 
 const ServiceTokenForm = () => {
+  const scopeVariant = useScopeVariant();
   const { t } = useTranslation();
   const fieldId = useId();
 
@@ -378,7 +379,7 @@ const ServiceTokenForm = () => {
                         <Field key={optionValue} orientation="horizontal">
                           <Checkbox
                             id={`permission-${optionValue}`}
-                            variant="project"
+                            variant={scopeVariant}
                             isChecked={value[optionValue]}
                             isDisabled={optionValue === "read"}
                             onCheckedChange={(state) =>
@@ -408,7 +409,7 @@ const ServiceTokenForm = () => {
       <SheetFooter className="justify-end border-t">
         {hasServiceToken ? (
           <SheetClose asChild>
-            <Button type="button" variant="project">
+            <Button type="button" variant={scopeVariant}>
               Done
             </Button>
           </SheetClose>
@@ -422,7 +423,7 @@ const ServiceTokenForm = () => {
             <Button
               type="submit"
               form="add-service-token-form"
-              variant="project"
+              variant={scopeVariant}
               isPending={isSubmitting}
               isDisabled={isSubmitting}
             >

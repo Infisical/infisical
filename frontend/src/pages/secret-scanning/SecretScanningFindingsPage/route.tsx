@@ -11,8 +11,12 @@ export const Route = createFileRoute(
 )({
   validateSearch: zodValidator(
     z.object({
-      search: z.string().optional(),
-      status: z.nativeEnum(SecretScanningFindingStatus).optional().catch(undefined)
+      dataSourceId: z.string().uuid().optional().catch(undefined),
+      resourceId: z.string().uuid().optional().catch(undefined),
+      status: z
+        .union([z.nativeEnum(SecretScanningFindingStatus), z.literal("all")])
+        .optional()
+        .catch(undefined)
     })
   ),
   beforeLoad: ({ context }) => {

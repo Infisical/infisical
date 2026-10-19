@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Field, FieldError, FieldLabel, SheetClose, TextArea } from "@app/components/v3";
+import { Button, EmailInput, Field, FieldError, FieldLabel, SheetClose } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { emailListSchema, parseEmailList } from "@app/helpers/email";
+import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import { useScopeVariant } from "@app/hooks";
 import {
@@ -34,7 +34,7 @@ import {
 import { DEFAULT_PROJECT_ROLE } from "./ProjectRoleSelect";
 
 const addMemberFormSchema = projectAssignmentSchema.extend({
-  emails: emailListSchema,
+  emails: emailListSchema({ max: MAX_INVITE_EMAILS, isRequired: true }),
   organizationRole: z.object({
     name: z.string(),
     slug: z.string(),
@@ -74,7 +74,8 @@ export const AddOrgMemberModal = ({
   });
 
   const methods = useForm<TAddMemberForm>({
-    resolver: zodResolver(addMemberFormSchema)
+    resolver: zodResolver(addMemberFormSchema),
+    defaultValues: { emails: [] }
   });
   const {
     control,
@@ -87,6 +88,7 @@ export const AddOrgMemberModal = ({
   useEffect(() => {
     if (organizationRoles) {
       reset({
+        emails: [],
         organizationRole: findOrgMembershipRole(
           organizationRoles,
           currentOrg.defaultMembershipRole
@@ -108,10 +110,9 @@ export const AddOrgMemberModal = ({
     const targetProjects = resolveTargetProjects(product, projectsToInvite, rawProjects);
     if (!targetProjects) return;
 
-    const usernames = parseEmailList(emails);
     const { data } = await addUsersMutateAsync({
       organizationId: currentOrg?.id,
-      inviteeEmails: usernames,
+      inviteeEmails: emails,
       organizationRoleSlug: organizationRole.slug
     });
 
@@ -122,7 +123,7 @@ export const AddOrgMemberModal = ({
           projectId: el.id,
           projectType: el.type,
           roleSlugs: [projectRole.slug],
-          usernames
+          usernames: emails
         })
       )
     );
@@ -136,7 +137,7 @@ export const AddOrgMemberModal = ({
 
     if (!data.completeInviteLinks?.length) {
       createNotification({
-        text: `Successfully invited user${usernames.length > 1 ? "s" : ""} to the organization.`,
+        text: `Successfully invited user${emails.length > 1 ? "s" : ""} to the organization.`,
         type: "success"
       });
     }
@@ -146,7 +147,7 @@ export const AddOrgMemberModal = ({
     }
 
     reset({
-      emails: "",
+      emails: [],
       product: undefined,
       projects: [],
       projectRole: DEFAULT_PROJECT_ROLE,
@@ -181,15 +182,16 @@ export const AddOrgMemberModal = ({
             <Controller
               control={control}
               name="emails"
-              render={({ field, fieldState: { error } }) => (
+              render={({ field: { value, onChange, ref }, fieldState: { error } }) => (
                 <Field>
                   <FieldLabel htmlFor="add-org-member-emails">Emails</FieldLabel>
-                  <TextArea
+                  <EmailInput
+                    ref={ref}
                     id="add-org-member-emails"
-                    className="h-24"
+                    value={value}
+                    onValueChange={onChange}
                     isError={Boolean(error)}
                     placeholder="email@example.com, email2@example.com..."
-                    {...field}
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

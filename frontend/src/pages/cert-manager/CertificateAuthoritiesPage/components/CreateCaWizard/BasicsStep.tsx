@@ -1,4 +1,5 @@
-import { Controller, UseFormReturn } from "react-hook-form";
+import { Controller, UseFormReturn, useWatch } from "react-hook-form";
+import slugify from "@sindresorhus/slugify";
 
 import {
   Field,
@@ -23,6 +24,16 @@ type Props = {
 };
 
 export const BasicsStep = ({ form }: Props) => {
+  const [type, commonName] = useWatch({ control: form.control, name: ["type", "commonName"] });
+  const commonNameSlug = slugify(commonName ?? "", { lowercase: true, decamelize: false });
+  const suggestedName = (
+    commonNameSlug.split("-").includes(type)
+      ? commonNameSlug
+      : [type, commonNameSlug || "ca"].join("-")
+  )
+    .slice(0, 64)
+    .replace(/-+$/, "");
+
   return (
     <FieldGroup>
       <Controller
@@ -37,6 +48,7 @@ export const BasicsStep = ({ form }: Props) => {
               <Input
                 {...field}
                 placeholder="my-internal-ca"
+                suggestedValue={suggestedName}
                 isError={Boolean(error)}
                 autoComplete="off"
                 name="certificate-authority-name"

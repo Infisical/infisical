@@ -1,6 +1,11 @@
 import { join } from "path";
 
-import { ProjectMembershipRole, TSecretScanningFindings } from "@app/db/schemas";
+import {
+  ProjectMembershipRole,
+  TSecretScanningDataSources,
+  TSecretScanningFindings,
+  TSecretScanningResourcesInsert
+} from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   createTempFolder,
@@ -62,6 +67,8 @@ type TSecretRotationV2QueueServiceFactoryDep = {
 export type TSecretScanningV2QueueServiceFactory = ReturnType<typeof secretScanningV2QueueServiceFactory>;
 
 const STUCK_SCAN_REAP_BATCH_SIZE = 100;
+// Longer than submitting jobs for every scan of one request takes, so a scan still being submitted isn't redelivered.
+const QUEUED_SCAN_REDELIVERY_GRACE = ms("5m");
 const STUCK_SCAN_STATUS_MESSAGE =
   "The scan did not complete and was cancelled. This usually means the resource is too large to scan.";
 
@@ -164,9 +171,32 @@ export const secretScanningV2QueueServiceFactory = ({
     return failedScans.length > 0;
   };
 
+  // Jobs are keyed by scan, and finished jobs are removed, so submitting one that is still waiting or running is a
+  // no-op. That makes redelivering a scan safe: only a lost job is recreated.
+  const enqueueFullScanJob = (scan: { id: string; resourceId: string }, dataSourceId: string) =>
+    queueService.queue(
+      QueueName.SecretScanningV2FullScan,
+      QueueJobs.SecretScanningV2FullScan,
+      { scanId: scan.id, resourceId: scan.resourceId, dataSourceId },
+      {
+        jobId: scan.id,
+        removeOnFail: true,
+        attempts: FULL_SCAN_ATTEMPTS,
+        backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
+      }
+    );
+
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
-    { resourceExternalId, triggeredByUserId }: { resourceExternalId?: string; triggeredByUserId?: string } = {}
+    {
+      resourceExternalId,
+      triggeredByUserId,
+      shouldScanResource
+    }: {
+      resourceExternalId?: string;
+      triggeredByUserId?: string;
+      shouldScanResource?: (resource: Pick<TSecretScanningResourcesInsert, "externalId" | "name">) => boolean;
+    } = {}
   ) => {
     try {
       const { type } = dataSource;
@@ -176,30 +206,49 @@ export const secretScanningV2QueueServiceFactory = ({
         appConnectionDAL
       });
 
+      // Only the data source's resources are scanned. The provider is still listed so a renamed resource is cloned
+      // under its current name and a deleted one is skipped.
       const rawResources = await factory.listRawResources(dataSource);
 
-      let filteredRawResources = rawResources;
+      const scans = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        // Read on the primary, since a resource added just before this call may not have reached the replica, and
+        // locked, so two requests can't both see no in-flight scan and queue the same resource twice.
+        const existingResources = await secretScanningV2DAL.resources.findByDataSourceIdForUpdate(dataSource.id, tx);
+        const existingByExternalId = new Map(existingResources.map((resource) => [resource.externalId, resource]));
 
-      // TODO: should add individual resource fetch to factory
-      if (resourceExternalId) {
-        filteredRawResources = rawResources.filter((resource) => resource.externalId === resourceExternalId);
-      }
+        let filteredRawResources = rawResources.filter((resource) => existingByExternalId.has(resource.externalId));
 
-      if (!filteredRawResources.length) {
-        throw new BadRequestError({
-          message: `${resourceExternalId ? `Resource with "ID" ${resourceExternalId} could not be found.` : "Data source has no resources to scan"}. Ensure your data source config is correct and not filtering out scanning resources.`
-        });
-      }
+        // TODO: should add individual resource fetch to factory
+        if (resourceExternalId) {
+          filteredRawResources = filteredRawResources.filter((resource) => resource.externalId === resourceExternalId);
+        }
 
-      await secretScanningV2DAL.resources.transaction(async (tx) => {
-        const resources = await secretScanningV2DAL.resources.upsert(
-          filteredRawResources.map((rawResource) => ({
-            ...rawResource,
-            dataSourceId: dataSource.id
-          })),
-          ["externalId", "dataSourceId"],
-          tx
-        );
+        if (shouldScanResource) {
+          filteredRawResources = filteredRawResources.filter(shouldScanResource);
+        }
+
+        if (!filteredRawResources.length) {
+          throw new BadRequestError({
+            message: resourceExternalId
+              ? "This resource could not be found. It may have been deleted, or the App Connection may no longer have access to it."
+              : "This data source has no resources to scan. Add one, then try again."
+          });
+        }
+
+        // Only names are refreshed. An upsert would bring back a resource removed after it was read; inserting its
+        // scan fails on the foreign key instead.
+        const resources: typeof existingResources = [];
+        for (const rawResource of filteredRawResources) {
+          const existing = existingByExternalId.get(rawResource.externalId)!;
+
+          if (existing.name === rawResource.name) {
+            resources.push(existing);
+          } else {
+            // eslint-disable-next-line no-await-in-loop
+            const renamed = await secretScanningV2DAL.resources.updateById(existing.id, { name: rawResource.name }, tx);
+            resources.push(renamed ?? existing);
+          }
+        }
 
         const inFlightScans = await secretScanningV2DAL.scans.find(
           {
@@ -215,9 +264,9 @@ export const secretScanningV2QueueServiceFactory = ({
         const scannedResourceIds = new Set(inFlightScans.map((scan) => scan.resourceId));
         const resourcesToScan = resources.filter((resource) => !scannedResourceIds.has(resource.id));
 
-        if (!resourcesToScan.length) return;
+        if (!resourcesToScan.length) return [];
 
-        const scans = await secretScanningV2DAL.scans.insertMany(
+        return secretScanningV2DAL.scans.insertMany(
           resourcesToScan.map((resource) => ({
             resourceId: resource.id,
             type: SecretScanningScanType.Historical,
@@ -225,26 +274,21 @@ export const secretScanningV2QueueServiceFactory = ({
           })),
           tx
         );
+      });
 
-        for (const scan of scans) {
+      // Submitted after commit, or a worker could pick a job up before its scan exists and abort it as deleted.
+      // The scans are already saved, so a submission that fails here is left for the stuck-scan reaper to redeliver.
+      for (const scan of scans) {
+        try {
           // eslint-disable-next-line no-await-in-loop
-          await queueService.queue(
-            QueueName.SecretScanningV2FullScan,
-            QueueJobs.SecretScanningV2FullScan,
-            {
-              scanId: scan.id,
-              resourceId: scan.resourceId,
-              dataSourceId: dataSource.id
-            },
-            {
-              jobId: scan.id,
-              removeOnFail: true,
-              attempts: FULL_SCAN_ATTEMPTS,
-              backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
-            }
+          await enqueueFullScanJob(scan, dataSource.id);
+        } catch (error) {
+          logger.error(
+            error,
+            `secretScanningV2Queue: Failed to submit full scan, leaving it for redelivery [scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${dataSource.id}]`
           );
         }
-      });
+      }
     } catch (error) {
       logger.error(error, `Failed to queue full-scan for data source with ID "${dataSource.id}"`);
 
@@ -268,7 +312,7 @@ export const secretScanningV2QueueServiceFactory = ({
     const logDetails = `[scanId=${scanId}] [resourceId=${resourceId}] [dataSourceId=${dataSourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
     // Read from the primary: a lagging replica would report a just-queued scan as missing, and a job
-    // that returns here leaves its scan `queued`, which the stuck-scan reaper never picks up.
+    // that returns here leaves its scan `queued` until the reaper redelivers it.
     const primary = secretScanningV2DAL.primaryNode();
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
     const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
@@ -580,8 +624,12 @@ export const secretScanningV2QueueServiceFactory = ({
   const queueResourceDiffScan = async ({
     payload,
     dataSourceId,
-    dataSourceType
-  }: Omit<TQueueSecretScanningResourceDiffScanPayload, "scanId" | "resourceId">) => {
+    dataSourceType,
+    isDiscovered = false
+  }: Omit<TQueueSecretScanningResourceDiffScanPayload, "scanId" | "resourceId"> & {
+    // Only discovery may create the resource. A known one that is gone was removed after the push was read.
+    isDiscovered?: boolean;
+  }) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]({
       kmsService,
       appConnectionDAL
@@ -590,17 +638,33 @@ export const secretScanningV2QueueServiceFactory = ({
     const resourcePayload = factory.getDiffScanResourcePayload(payload);
 
     try {
-      const { resourceId, scanId } = await secretScanningV2DAL.resources.transaction(async (tx) => {
-        const [resource] = await secretScanningV2DAL.resources.upsert(
-          [
-            {
-              ...resourcePayload,
-              dataSourceId
-            }
-          ],
-          ["externalId", "dataSourceId"],
-          tx
-        );
+      const queued = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        let resource;
+
+        if (isDiscovered) {
+          [resource] = await secretScanningV2DAL.resources.upsert(
+            [
+              {
+                ...resourcePayload,
+                dataSourceId
+              }
+            ],
+            ["externalId", "dataSourceId"],
+            tx
+          );
+        } else {
+          const existing = await secretScanningV2DAL.resources.findOne(
+            { dataSourceId, externalId: resourcePayload.externalId },
+            tx
+          );
+          if (!existing) return null;
+
+          resource =
+            existing.name === resourcePayload.name
+              ? existing
+              : ((await secretScanningV2DAL.resources.updateById(existing.id, { name: resourcePayload.name }, tx)) ??
+                existing);
+        }
 
         const scan = await secretScanningV2DAL.scans.create(
           {
@@ -615,6 +679,15 @@ export const secretScanningV2QueueServiceFactory = ({
           scanId: scan.id
         };
       });
+
+      if (!queued) {
+        logger.info(
+          `secretScanningV2Queue: skipping diff scan, resource was removed [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+        );
+        return;
+      }
+
+      const { resourceId, scanId } = queued;
 
       await queueService.queue(
         QueueName.SecretScanningV2RealtimeScan,
@@ -1016,6 +1089,25 @@ export const secretScanningV2QueueServiceFactory = ({
     handler: async () => {
       const { SECRET_SCANNING_STUCK_SCAN_TIMEOUT } = getConfig();
 
+      // A scan saved as queued whose job never reached the queue (Redis rejected it, or the process stopped before
+      // submitting it) would otherwise wait forever, and block new scans of its resource as already in flight.
+      const queuedScans = await secretScanningV2DAL.scans.findQueuedHistorical(
+        new Date(Date.now() - QUEUED_SCAN_REDELIVERY_GRACE),
+        STUCK_SCAN_REAP_BATCH_SIZE
+      );
+
+      for (const scan of queuedScans) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await enqueueFullScanJob(scan, scan.dataSourceId);
+        } catch (error) {
+          logger.error(
+            error,
+            `secretScanningV2Queue: Failed to redeliver queued full scan [scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${scan.dataSourceId}]`
+          );
+        }
+      }
+
       const stuckScans = await secretScanningV2DAL.scans.findStuck(
         new Date(Date.now() - SECRET_SCANNING_STUCK_SCAN_TIMEOUT),
         STUCK_SCAN_REAP_BATCH_SIZE
@@ -1060,8 +1152,100 @@ export const secretScanningV2QueueServiceFactory = ({
     }
   });
 
+  const queueResourceFullScan = async ({
+    dataSourceId,
+    resourcePayload
+  }: {
+    dataSourceId: string;
+    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
+  }) => {
+    try {
+      const scan = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        const [resource] = await secretScanningV2DAL.resources.upsert(
+          [{ ...resourcePayload, dataSourceId }],
+          ["externalId", "dataSourceId"],
+          tx
+        );
+
+        return secretScanningV2DAL.scans.create(
+          { resourceId: resource.id, type: SecretScanningScanType.Historical },
+          tx
+        );
+      });
+
+      await enqueueFullScanJob(scan, dataSourceId);
+    } catch (error) {
+      logger.error(
+        error,
+        `secretScanningV2Queue: Failed to queue full scan for discovered resource [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+      );
+    }
+  };
+
+  // A push from a repository with no resource row means it was added after setup, so discovery decides
+  // whether it joins the data source. Pushes to known repositories are scanned only when new commits are.
+  const handleResourcePushEvent = async ({
+    dataSource,
+    dataSourceType,
+    payload
+  }: {
+    dataSource: Pick<
+      TSecretScanningDataSources,
+      "id" | "isDiscoveryEnabled" | "isScanNewCommitsEnabled" | "isHistoricalScanEnabled"
+    >;
+    dataSourceType: SecretScanningDataSource;
+    payload: TQueueSecretScanningResourceDiffScanPayload["payload"];
+  }) => {
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
+      kmsService,
+      appConnectionDAL
+    });
+
+    const resourcePayload = factory.getDiffScanResourcePayload(payload);
+    const logDetails = `[dataSourceId=${dataSource.id}] [resourceExternalId=${resourcePayload.externalId}]`;
+
+    const existingResource = await secretScanningV2DAL.resources.findOne({
+      dataSourceId: dataSource.id,
+      externalId: resourcePayload.externalId
+    });
+
+    if (existingResource) {
+      if (!dataSource.isScanNewCommitsEnabled) {
+        logger.info(`secretScanningV2PushEvent: ignoring push, scanning new commits is disabled ${logDetails}`);
+        return;
+      }
+
+      await queueResourceDiffScan({ dataSourceType, payload, dataSourceId: dataSource.id });
+      return;
+    }
+
+    if (!dataSource.isDiscoveryEnabled) {
+      logger.info(
+        `secretScanningV2PushEvent: ignoring push from unknown resource, discovery is disabled ${logDetails}`
+      );
+      return;
+    }
+
+    // The historical scan covers the pushed commits too, so it replaces the diff scan.
+    if (dataSource.isHistoricalScanEnabled) {
+      await queueResourceFullScan({ dataSourceId: dataSource.id, resourcePayload });
+      return;
+    }
+
+    if (dataSource.isScanNewCommitsEnabled) {
+      await queueResourceDiffScan({ dataSourceType, payload, dataSourceId: dataSource.id, isDiscovered: true });
+      return;
+    }
+
+    await secretScanningV2DAL.resources.upsert(
+      [{ ...resourcePayload, dataSourceId: dataSource.id }],
+      ["externalId", "dataSourceId"]
+    );
+  };
+
   return {
     queueDataSourceFullScan,
-    queueResourceDiffScan
+    queueResourceDiffScan,
+    handleResourcePushEvent
   };
 };

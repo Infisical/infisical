@@ -18,13 +18,13 @@ export const OfflineBillingPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="h-full bg-page">
+    <div className="bg-page">
       <Helmet>
         <title>{t("common.head-title", { title: t("billing.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
+      <div className="flex w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope="org"

@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { useGetPkiCollectionById, useRemoveItemFromPkiCollection } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -72,7 +72,7 @@ export const PkiCollectionItemsSection = ({ collectionId, type }: Props) => {
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiCollectionItem.isOpen}
         title={`Are you sure you want to remove the item from the collection ${pkiCollection.name}?`}
         description="This action is irreversible."

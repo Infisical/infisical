@@ -22,7 +22,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -101,7 +101,7 @@ export const KmipServerTab = withPermission(
         <CardHeader>
           <CardTitle>
             KMIP Servers
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip" />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip-server" />
           </CardTitle>
           <CardDescription>
             Create and configure KMIP servers that proxy KMIP requests to Infisical KMS
@@ -225,7 +225,7 @@ export const KmipServerTab = withPermission(
             </Table>
           )}
         </CardContent>
-        <DeleteConfirmDialog
+        <ConfirmationAlertDialog
           isOpen={popUp.deleteKmipServer.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("deleteKmipServer", isOpen)}
           title={`Delete KMIP Server ${kmipServerToDelete?.name || ""}?`}

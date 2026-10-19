@@ -709,6 +709,8 @@ export enum EventType {
   SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN = "secret-scanning-data-source-trigger-scan",
   SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
   SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
+  SECRET_SCANNING_RESOURCE_ADD = "secret-scanning-resource-add",
+  SECRET_SCANNING_RESOURCE_REMOVE = "secret-scanning-resource-remove",
   SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
   SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
   SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update",
@@ -5761,6 +5763,27 @@ interface SecretScanningResourceListEvent {
   };
 }
 
+interface SecretScanningResourceAddEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_ADD;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    dataSourceName: string;
+    resources: { resourceId: string; resourceName: string }[];
+  };
+}
+
+interface SecretScanningResourceRemoveEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_REMOVE;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    dataSourceName: string;
+    resourceId: string;
+    resourceName: string;
+  };
+}
+
 interface SecretScanningScanListEvent {
   type: EventType.SECRET_SCANNING_SCAN_LIST;
   metadata: {
@@ -8484,6 +8507,8 @@ export type Event =
   | SecretScanningDataSourceTriggerScanEvent
   | SecretScanningDataSourceScanEvent
   | SecretScanningResourceListEvent
+  | SecretScanningResourceAddEvent
+  | SecretScanningResourceRemoveEvent
   | SecretScanningScanListEvent
   | SecretScanningFindingListEvent
   | SecretScanningFindingUpdateEvent

@@ -54,7 +54,7 @@ import {
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -78,6 +78,7 @@ export const IdentityRoleDetailsSection = ({
   identityMembershipDetails,
   isMembershipDetailsLoading
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
@@ -376,7 +377,7 @@ export const IdentityRoleDetailsSection = ({
                         const isEditDisabled = !isAllowed || !canModifyIdentityRoles;
                         const button = (
                           <Button
-                            variant="project"
+                            variant={scopeVariant}
                             size="xs"
                             onClick={() => {
                               handlePopUpOpen("modifyRole");

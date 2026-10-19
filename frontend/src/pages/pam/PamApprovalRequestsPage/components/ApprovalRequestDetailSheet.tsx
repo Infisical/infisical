@@ -13,7 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { useUser } from "@app/context";
 import {
   PamAccessRequestDecision,
@@ -89,7 +89,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
 
   return (
     <>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={isRevokeConfirmOpen}
         onOpenChange={setIsRevokeConfirmOpen}
         title="Revoke Access"

@@ -62,11 +62,11 @@ Used to signal the scope a surface, badge, or action belongs to.
 | Project          | `--color-project` |
 | Admin            | `--color-admin`   |
 
-PAM and Agent Vault are product identities rather than additional levels in
-the org/project hierarchy. Use `--color-product-pam` and `--color-product-av`
-when the current product calls for them; `PageHeader` maps the PAM and Agent
-Vault project types to these accents, while `Button` exposes `pam` and `av`
-variants. Check each component's supported variants instead of treating all
+PAM, Agent Vault and Secret Scanning are product identities rather than
+additional levels in the org/project hierarchy. Use `--color-product-pam`,
+`--color-product-av` and `--color-product-ss` when the current product calls
+for them; `PageHeader` and the org sidebar map those project types to these
+accents, while `Button` exposes `pam`, `av` and `ss` variants. Check each component's supported variants instead of treating all
 scope and product variants as interchangeable.
 
 ### Semantic colors
@@ -223,6 +223,7 @@ specialized primitives not listed here (for example `CodeBlock`, `CopyButton`,
 | [`DateRangeFilter`](frontend/src/components/v3/platform/DateRangeFilter/DateRangeFilter.tsx)                                               | Platform date-range filter with presets — for filter bars.                                                  |
 | [`SecretInput`](frontend/src/components/v3/platform/SecretInput/SecretInput.tsx)                                                           | Platform secret-value editor with mask toggle and `${var}` highlighting.                                    |
 | [`PasswordGenerator`](frontend/src/components/v3/platform/PasswordGenerator/PasswordGenerator.tsx)                                         | Platform password generator against project secret-validation rules.                                        |
+| [`EmailInput`](frontend/src/components/v3/platform/EmailInput/EmailInput.tsx)                                                              | Platform chip field for one or more free-text email addresses. Validate it with `emailListSchema` from `@app/helpers/email`; check single addresses or picker-created invitees with `isValidEmail` rather than a local regex or `z.string().email()`. |
 
 #### Containers & overlays
 

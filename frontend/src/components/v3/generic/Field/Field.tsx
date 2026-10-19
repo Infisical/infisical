@@ -132,7 +132,8 @@ const fieldLabelVariants = cva(
         "sub-org":
           "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5! [--control-variant-color:var(--color-sub-org)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-sub-org)_30%,transparent)]",
         pam: "has-[[data-state=checked]]:border-product-pam/30 has-[[data-state=checked]]:bg-product-pam/5! [--control-variant-color:var(--color-product-pam)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-pam)_30%,transparent)]",
-        av: "has-[[data-state=checked]]:border-product-av/30 has-[[data-state=checked]]:bg-product-av/5! [--control-variant-color:var(--color-product-av)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-av)_30%,transparent)]"
+        av: "has-[[data-state=checked]]:border-product-av/30 has-[[data-state=checked]]:bg-product-av/5! [--control-variant-color:var(--color-product-av)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-av)_30%,transparent)]",
+        ss: "has-[[data-state=checked]]:border-product-ss/30 has-[[data-state=checked]]:bg-product-ss/5! [--control-variant-color:var(--color-product-ss)] has-[[data-state=checked]]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-ss)_30%,transparent)]"
       },
       size: {
         default: "text-xs",

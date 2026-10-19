@@ -138,8 +138,8 @@ export const SecretInsightsPage = withPermission(
           <title>Secret Insights | Infisical</title>
           <link rel="icon" href="/infisical.ico" />
         </Helmet>
-        <div className="h-full">
-          <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
+        <div>
+          <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
             <PageHeader
               className="mb-4 dashboard:mb-10"
               scope={ProjectType.SecretManager}

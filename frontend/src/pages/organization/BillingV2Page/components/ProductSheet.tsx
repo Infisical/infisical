@@ -458,6 +458,11 @@ type ProductSheetProps = {
   // Optionally open the sheet straight into a sub-view (e.g. "commitment" from the commit-and-save
   // nudge) instead of the default plans view.
   initialView?: SheetView;
+  // Opens the trial confirmation for this plan tier straight away (the signup trial deep link), when the
+  // org may still trial it. Dismissing that confirmation closes the sheet.
+  initialTrialTier?: string;
+  showAnnualTrialNote?: boolean;
+  trialOrgName?: string;
   returnPath: string;
   renewsOn: string | null;
   // capabilities.selfServe: false for an enterprise-managed org. Self-serve CTAs render disabled and a
@@ -477,6 +482,9 @@ export const ProductSheet = ({
   entitlement,
   hasActiveSubscription,
   initialView,
+  initialTrialTier,
+  showAnnualTrialNote,
+  trialOrgName,
   returnPath,
   renewsOn,
   selfServe,
@@ -491,7 +499,11 @@ export const ProductSheet = ({
   // The plan tier chosen for the upgrade view.
   const [upgradePlan, setUpgradePlan] = useState<string | null>(null);
   // The plan tier awaiting trial confirmation (drives the confirm dialog).
-  const [trialConfirmTier, setTrialConfirmTier] = useState<string | null>(null);
+  const [trialConfirmTier, setTrialConfirmTier] = useState<string | null>(() => {
+    const plan = prod?.plans.find((candidate) => candidate.tier === initialTrialTier);
+    return selfServe && plan?.selfServe && plan.trialable ? plan.tier : null;
+  });
+  const [isInitialTrialConfirm, setIsInitialTrialConfirm] = useState(Boolean(trialConfirmTier));
   // Whether the cancel-trial confirm dialog is open.
   const [showCancelTrial, setShowCancelTrial] = useState(false);
 
@@ -580,6 +592,7 @@ export const ProductSheet = ({
       onEntitlementChanged?.();
       onClose();
     } catch {
+      setIsInitialTrialConfirm(false);
       setTrialConfirmTier(null);
     }
   };
@@ -774,6 +787,10 @@ export const ProductSheet = ({
         open={Boolean(trialConfirmTier)}
         onOpenChange={(open) => {
           if (!open && !startTrial.isPending) {
+            if (isInitialTrialConfirm) {
+              onClose();
+              return;
+            }
             setTrialConfirmTier(null);
           }
         }}
@@ -785,15 +802,21 @@ export const ProductSheet = ({
             </AlertDialogMedia>
             <AlertDialogTitle>
               Start your {trialConfirmPlan?.name ?? prod.name} trial
+              {isInitialTrialConfirm && trialOrgName && ` for ${trialOrgName}`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {trialIsUpgrade
                 ? `Your ${trialLengthLabel}trial is free and nothing changes about your bill. You'll keep paying for ${basePlanName} until it ends, then move to ${trialConfirmPlan?.name} and be charged the difference. End the trial before then to stay on ${basePlanName}.`
                 : `Your ${trialLengthLabel}trial is free. After it ends, your subscription continues automatically and you'll be billed monthly based on usage. Cancel before the trial ends to avoid charges.`}
+              {showAnnualTrialNote &&
+                !trialIsUpgrade &&
+                " Trials convert to monthly billing, so annual pricing doesn't apply to this trial."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {isInitialTrialConfirm ? "Skip for now" : "Cancel"}
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="org"
               isDisabled={startTrial.isPending}
