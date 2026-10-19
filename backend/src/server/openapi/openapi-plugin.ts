@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { pipeline } from "node:stream";
+import { pipeline, Readable } from "node:stream";
 import { createGunzip } from "node:zlib";
 
 import swagger from "@fastify/swagger";
@@ -113,6 +113,19 @@ const openApiDocs = fp(async (fastify, { source }: { source: TOpenApiArtifactSou
       void reply
         .header("content-encoding", encoding)
         .header("content-length", encoding === "br" ? artifact.brBytes : artifact.gzipBytes);
+    } else {
+      void reply.header("content-length", artifact.identityBytes);
+    }
+
+    // Fastify's HEAD handling reads a stream body to the end before discarding it, so sending the
+    // file here would decompress the whole spec for nothing. An empty stream keeps the
+    // content-length set above, which an undefined body would reset to 0.
+    if (req.method === "HEAD") {
+      await reply.send(Readable.from([]));
+      return;
+    }
+
+    if (encoding) {
       await reply.send(artifact.open(encoding));
       return;
     }
@@ -121,7 +134,6 @@ const openApiDocs = fp(async (fastify, { source }: { source: TOpenApiArtifactSou
     // response stream so the request fails instead of hanging; Fastify reports it from there.
     const body = createGunzip();
     pipeline(artifact.open("gzip"), body, () => {});
-    void reply.header("content-length", artifact.identityBytes);
     await reply.send(body);
   };
 

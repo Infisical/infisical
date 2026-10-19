@@ -183,9 +183,12 @@ describe("OpenAPI spec routes", () => {
 
   test("still answers HEAD", async () => {
     const res = await app.inject({ method: "HEAD", url: "/api/docs/json" });
+    const get = await app.inject({ method: "GET", url: "/api/docs/json" });
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/json; charset=utf-8");
+    expect(res.headers["content-length"]).toBe(String(get.rawPayload.byteLength));
+    expect(res.rawPayload.byteLength).toBe(0);
   });
 
   test("serves the yaml spec the same way", async () => {
