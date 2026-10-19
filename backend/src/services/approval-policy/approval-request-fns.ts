@@ -159,8 +159,8 @@ export const createApprovalRequestWithSteps = async (
         expiresAt,
         scopeType: scopeType ?? null,
         scopeId: scopeId ?? null,
-        autoApprovalEvidence: autoApprovalEvidence ?? null,
-        autoApprovedAt: autoApprovedAt ?? null
+        ...(autoApprovalEvidence && { autoApprovalEvidence }),
+        ...(autoApprovedAt && { autoApprovedAt })
       },
       tx
     );
