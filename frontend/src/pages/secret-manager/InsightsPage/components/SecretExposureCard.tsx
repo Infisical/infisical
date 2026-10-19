@@ -12,9 +12,6 @@ import {
   SecretExposureBadge
 } from "@app/components/secrets/SecretExposureScore";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Badge,
   Card,
   CardContent,
@@ -159,16 +156,12 @@ export const SecretExposureCard = () => {
           ))}
         </div>
         {isPreliminary && (
-          <Alert variant="info" className="mb-4">
-            <InfoIcon />
-            <AlertTitle>Preliminary Results</AlertTitle>
-            <AlertDescription>
-              Unused access is judged over 30 days of reads. Tracking for this project began on{" "}
-              {format(new Date(data.trackingStartedAt), "PP")}, so for now it covers only the reads
-              since then and weighs less in the score. Results are complete on{" "}
-              {format(new Date(data.preliminaryUntil), "PP")}.
-            </AlertDescription>
-          </Alert>
+          <p className="mb-4 flex items-center gap-1.5 text-xs text-muted">
+            <InfoIcon className="size-3.5 shrink-0" />
+            Preliminary: reads are tracked since {format(new Date(data.trackingStartedAt), "PP")},
+            so unused access covers that period and weighs less in the score until{" "}
+            {format(new Date(data.preliminaryUntil), "PP")}.
+          </p>
         )}
         {totalCount === 0 ? (
           <Empty className="border">
