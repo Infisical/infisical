@@ -1,6 +1,7 @@
 import { ComponentProps, forwardRef, type JSX } from "react";
 import { Check, Copy } from "lucide-react";
 
+import { copyToClipboard } from "@app/helpers/clipboard";
 import { useTimedReset } from "@app/hooks";
 
 import { IconButton } from "../IconButton";
@@ -23,10 +24,14 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
         variant={variant}
         size={size}
         aria-label={ariaLabel}
-        onClick={(event) => {
-          navigator.clipboard.writeText(value);
-          setCopyText("Copied");
-          onClick?.(event);
+        onClick={async (event) => {
+          try {
+            await copyToClipboard(value);
+            setCopyText("Copied");
+            onClick?.(event);
+          } catch {
+            // Keep the button state unchanged when the browser blocks copying.
+          }
         }}
       >
         {isCopying ? <Check /> : <Copy />}

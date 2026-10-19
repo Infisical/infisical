@@ -11,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { copyToClipboard } from "@app/helpers/clipboard";
 import { useToggle } from "@app/hooks";
 
 type Props = {
@@ -20,16 +21,23 @@ type Props = {
 export const OrgInviteLink = ({ invite }: Props) => {
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
 
-  const copyLinkToClipboard = () => {
+  const copyLinkToClipboard = async () => {
     if (isInviteLinkCopied) return;
 
-    navigator.clipboard.writeText(invite.link);
-    setInviteLinkCopied.timedToggle();
+    try {
+      await copyToClipboard(invite.link);
+      setInviteLinkCopied.timedToggle();
 
-    createNotification({
-      type: "info",
-      text: "Copied invitation link to clipboard"
-    });
+      createNotification({
+        type: "info",
+        text: "Copied invitation link to clipboard"
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Could not copy the invitation link. Please copy it manually."
+      });
+    }
   };
 
   return (
