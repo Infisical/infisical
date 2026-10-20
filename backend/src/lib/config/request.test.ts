@@ -1,6 +1,3 @@
-import http from "node:http";
-import { AddressInfo } from "node:net";
-
 import { AxiosError } from "axios";
 
 import { createRequestClient, isRetryableRequestError } from "./request";
@@ -35,24 +32,7 @@ describe("createRequestClient", () => {
   });
 
   test("passes other request errors through unchanged", async () => {
-    const server = http.createServer((_req, res) => {
-      res.statusCode = 500;
-      res.end();
-    });
-    await new Promise<void>((resolve) => {
-      server.listen(0, "127.0.0.1", resolve);
-    });
-    try {
-      const { port } = server.address() as AddressInfo;
-      const err = (await client
-        .get(`http://127.0.0.1:${port}/`, { timeout: 5000, proxy: false })
-        .catch((e: unknown) => e)) as AxiosError;
-      expect(err.message).toBe("Request failed with status code 500");
-      expect(err.response?.status).toBe(500);
-    } finally {
-      await new Promise<void>((resolve) => {
-        server.close(() => resolve());
-      });
-    }
+    const error = new AxiosError("Request failed with status code 500", AxiosError.ERR_BAD_RESPONSE);
+    await expect(client.get("http://example.com/", { adapter: () => Promise.reject(error) })).rejects.toBe(error);
   });
 });
