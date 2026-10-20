@@ -60,11 +60,15 @@ const PolicyActionsMenu = ({
 }) => {
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
-  const handleCopyId = () => {
-    navigator.clipboard.writeText(policy.id);
-    setIsIdCopied.on();
-    createNotification({ type: "info", text: "Approval policy ID copied to clipboard" });
-    setTimeout(() => setIsIdCopied.off(), 2000);
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(policy.id);
+      setIsIdCopied.on();
+      createNotification({ type: "info", text: "Approval policy ID copied to clipboard" });
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    } catch {
+      createNotification({ type: "error", text: "Could not copy to clipboard" });
+    }
   };
 
   return (

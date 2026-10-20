@@ -164,11 +164,15 @@ const AlertRow = ({
   const { mutate: updateAlert } = useUpdateAlert();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
-  const handleCopyId = () => {
-    navigator.clipboard.writeText(alert.id);
-    setIsIdCopied.on();
-    createNotification({ type: "info", text: "Alert ID copied to clipboard" });
-    setTimeout(() => setIsIdCopied.off(), 2000);
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(alert.id);
+      setIsIdCopied.on();
+      createNotification({ type: "info", text: "Alert ID copied to clipboard" });
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    } catch {
+      createNotification({ type: "error", text: "Could not copy to clipboard" });
+    }
   };
 
   const handleToggleAlert = () =>
