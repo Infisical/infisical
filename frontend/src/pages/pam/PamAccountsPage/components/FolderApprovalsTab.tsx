@@ -21,7 +21,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -724,7 +724,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={!!requestToRevoke}
         onOpenChange={(open) => {
           if (!open) setRequestToRevoke(null);

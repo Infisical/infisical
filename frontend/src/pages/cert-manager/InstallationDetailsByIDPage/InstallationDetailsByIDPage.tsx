@@ -15,7 +15,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -229,7 +229,7 @@ const Page = () => {
         installation={installation}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteInstallation.isOpen}
         title="Are you sure you want to delete this installation?"
         description="This action cannot be undone. The installation record will be permanently deleted."

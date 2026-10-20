@@ -21,7 +21,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -637,7 +637,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         applicationId={application.id}
       />
       {upgradeGate}
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePolicy.isOpen}
         description="This action is irreversible."
         confirmKey="delete"
@@ -686,7 +686,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </DialogContent>
       </Dialog>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(profileToDetach)}
         title={`Detach profile ${profileToDetach?.profileSlug ?? ""}?`}
         description="This application will no longer be able to issue from this Profile. Existing certificates remain."

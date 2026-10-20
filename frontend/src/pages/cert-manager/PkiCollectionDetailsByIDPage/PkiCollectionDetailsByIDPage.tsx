@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -164,7 +164,7 @@ export const PkiCollectionPage = () => {
         </div>
       )}
       <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiCollection.isOpen}
         description="This action is irreversible."
         title={`Are you sure you want to delete the PKI collection ${data?.name ?? ""}?`}

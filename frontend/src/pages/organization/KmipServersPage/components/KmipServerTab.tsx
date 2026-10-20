@@ -22,7 +22,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -225,7 +225,7 @@ export const KmipServerTab = withPermission(
             </Table>
           )}
         </CardContent>
-        <DeleteConfirmDialog
+        <ConfirmationAlertDialog
           isOpen={popUp.deleteKmipServer.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("deleteKmipServer", isOpen)}
           title={`Delete KMIP Server ${kmipServerToDelete?.name || ""}?`}

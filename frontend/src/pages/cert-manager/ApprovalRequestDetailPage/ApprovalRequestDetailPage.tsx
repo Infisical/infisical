@@ -8,7 +8,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader, EmptyState } from "@app/components/v2";
-import { Badge, Button, DeleteConfirmDialog } from "@app/components/v3";
+import { Badge, Button, ConfirmationAlertDialog } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -411,7 +411,7 @@ const PageContent = () => {
           </div>
         </div>
       </div>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.cancelRequest.isOpen}
         confirmVariant="project"
         description="This action is irreversible."

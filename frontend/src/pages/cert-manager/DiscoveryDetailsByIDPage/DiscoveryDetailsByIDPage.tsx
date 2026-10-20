@@ -8,7 +8,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -198,7 +198,7 @@ const Page = () => {
         discovery={popUp.editJob.data as TPkiDiscovery | undefined}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteJob.isOpen}
         title="Are you sure you want to delete this discovery job?"
         description="This action cannot be undone. The discovery configuration will be permanently deleted."

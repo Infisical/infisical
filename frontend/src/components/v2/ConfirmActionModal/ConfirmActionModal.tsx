@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { type JSX, ReactNode, useEffect, useState } from "react";
 
 import { useToggle } from "@app/hooks";
 
@@ -22,7 +22,7 @@ type Props = {
 };
 
 /**
- * @deprecated Use the v3 `DeleteConfirmDialog` from `@app/components/v3` with a non-danger
+ * @deprecated Use the v3 `ConfirmationAlertDialog` from `@app/components/v3` with a non-danger
  * `confirmVariant`. See the overlay recipe in `components/V3_MIGRATION.md` for the prop mapping.
  */
 export const ConfirmActionModal = ({

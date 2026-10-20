@@ -11,7 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -225,7 +225,7 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
         existingMembers={members}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMember.isOpen}
         title="Remove member?"
         description="The member loses access to this application immediately. Their access to other applications is unchanged."
