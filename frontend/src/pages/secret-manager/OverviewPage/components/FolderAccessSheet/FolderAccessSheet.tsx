@@ -92,9 +92,16 @@ export const FolderAccessSheet = ({
     offset: (page - 1) * PER_PAGE,
     search: debouncedSearch.trim() || undefined
   };
-  const { data: users, isPending: isUsersPending } = useListFolderAccessUsers(listArgs);
-  const { data: identities, isPending: isIdentitiesPending } =
-    useListFolderAccessIdentities(listArgs);
+  const {
+    data: users,
+    isPending: isUsersPending,
+    isFetching: isUsersFetching
+  } = useListFolderAccessUsers(listArgs);
+  const {
+    data: identities,
+    isPending: isIdentitiesPending,
+    isFetching: isIdentitiesFetching
+  } = useListFolderAccessIdentities(listArgs);
 
   const createUserAccess = useCreateUserFolderAccess();
   const updateUserAccess = useUpdateUserFolderAccess();
@@ -127,6 +134,13 @@ export const FolderAccessSheet = ({
   );
 
   const isLoading = isUsersPending || isIdentitiesPending;
+  // a granted candidate stays in this list until the refetch lands, and a second pick would send a
+  // duplicate create that the server rejects
+  const isGrantLocked =
+    createUserAccess.isPending ||
+    createIdentityAccess.isPending ||
+    isUsersFetching ||
+    isIdentitiesFetching;
   // the endpoints page the project roster and only then split each page into the actors that do and
   // do not have access here, so this count pages members and not the rows below it
   const rosterCount = Math.max(users?.totalCount ?? 0, identities?.totalCount ?? 0);
@@ -137,7 +151,7 @@ export const FolderAccessSheet = ({
     if (rosterCount === 0) {
       return isSearching
         ? {
-            title: "No Members Found",
+            title: "No members found",
             description:
               "No one in this project matches your search. Invite them to the project first, then grant folder access here."
           }
@@ -277,7 +291,9 @@ export const FolderAccessSheet = ({
                 <SectionLabel title="Has Access" count={actors.length} />
                 {!actors.length && (
                   <p className="px-2 py-2.5 text-xs text-muted">
-                    No one matching your search has access to this folder yet.
+                    {rosterCount > PER_PAGE
+                      ? "No one matching your search on this page has access to this folder. Check another page, or refine your search."
+                      : "No one matching your search has access to this folder yet."}
                   </p>
                 )}
                 {actors.map((actor) => (
@@ -307,6 +323,7 @@ export const FolderAccessSheet = ({
                   <FolderAccessGrantRow
                     key={`${actor.type}-${actor.id}`}
                     actor={actor}
+                    isDisabled={isGrantLocked}
                     onSetTier={(tier) => setTier(actor, tier)}
                   />
                 ))}
