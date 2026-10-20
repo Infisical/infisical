@@ -27,7 +27,7 @@ describe("certificate alert event emitter", () => {
 
     expect(emitted).toEqual([
       {
-        id: expect.any(String),
+        id: expect.any(String) as string,
         type: CertificateApplicationAlertEvent.Issuance,
         data: {
           orgId: "org-1",

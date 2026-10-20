@@ -21,7 +21,7 @@ describe("defineEvent", () => {
     const input = ExampleEvent.build({ secretImportId: "import-1" });
 
     expect(input).toEqual({
-      id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+      id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/) as string,
       type: "com.infisical.secrets.secret-import.modified.v2",
       data: { secretImportId: "import-1" }
     });

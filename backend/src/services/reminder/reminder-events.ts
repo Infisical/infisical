@@ -19,7 +19,6 @@ export const SecretReminderDuePayloadSchema = z.object({
 export type TSecretReminderDueInput = {
   orgId: string;
   projectId: string;
-  reminderId: string;
   secretId: string;
   note?: string | null;
   repeatDays?: number | null;
@@ -28,7 +27,7 @@ export type TSecretReminderDueInput = {
 
 export const emitSecretReminderDue = (
   eventEmitter: TEventEmitter,
-  { orgId, projectId, reminderId, secretId, note, repeatDays, occurrenceDate }: TSecretReminderDueInput,
+  { orgId, projectId, secretId, note, repeatDays, occurrenceDate }: TSecretReminderDueInput,
   tx: Knex
 ): Promise<void> =>
   eventEmitter.emit(
