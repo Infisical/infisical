@@ -1,11 +1,13 @@
 ---
 title: "Migrate to .infisical.yaml"
-description: "The Infisical CLI now reads project settings from `.infisical.yaml` instead of `.infisical.json`. Learn how to convert your project's configuration file."
+description: "The Infisical CLI now reads project settings from `.infisical.yaml` instead of `.infisical.json`, and creates `.infisical.yaml` from an existing `.infisical.json`."
 ---
 
 ## What changed
 
 The CLI is moving away from `.infisical.json`. It now reads [project settings](/cli/project-config) from `.infisical.yaml`. The CLI still reads `.infisical.json` for now, but a future release will stop reading it.
+
+Starting with version 0.44.3, if you run a command in a directory that has `.infisical.json`, the CLI creates `.infisical.yaml` in the same directory with the same settings. The CLI leaves `.infisical.json` in place for you to delete.
 
 ## Who is affected
 
@@ -22,36 +24,41 @@ Older versions of the CLI don't read `.infisical.yaml`, so after you delete `.in
 
 ## Migration steps
 
-Convert the file with the `infisical migrate-config` command, or edit it by hand.
+Let the CLI create `.infisical.yaml` from `.infisical.json`, or create `.infisical.yaml` by hand.
 
 <Tabs>
-  <Tab title="Run migrate-config">
+  <Tab title="Let the CLI create the file">
+    <Note>
+      The CLI creates `.infisical.yaml` for you in version 0.44.3 and later. If your CLI is older, [upgrade it](/cli/upgrade) or create `.infisical.yaml` by hand.
+    </Note>
+
     <Steps>
       <Step>
-        In the directory that holds `.infisical.json`, run:
+        In the directory that holds `.infisical.json`, run any `infisical` command, such as:
 
         ```bash
-        infisical migrate-config
+        infisical sm secrets
         ```
 
-        The command copies every setting from `.infisical.json` into a new `.infisical.yaml` in the same directory, deletes `.infisical.json`, and prints the paths of both files:
+        The CLI creates `.infisical.yaml` and prints the path of the new file, followed by a warning that both files exist:
 
         ```
-        Migrated /home/user/my-app/.infisical.json to /home/user/my-app/.infisical.yaml.
-        If this project is under version control, commit the new .infisical.yaml and the removal of .infisical.json.
+        Created /home/user/my-app/.infisical.yaml from the legacy /home/user/my-app/.infisical.json (commit it if this project is under version control).
+        Warning: Both .infisical.yaml and .infisical.json exist in /home/user/my-app. .infisical.yaml takes precedence, so the legacy /home/user/my-app/.infisical.json is no longer used and you can remove it.
         ```
       </Step>
       <Step>
-        Commit the new file and the deletion of the old one:
+        Delete `.infisical.json`, then commit the new file and the deletion:
 
         ```bash
+        rm .infisical.json
         git add .infisical.yaml .infisical.json
         git commit -m "Migrate Infisical CLI config to .infisical.yaml"
         ```
       </Step>
     </Steps>
 
-    The command converts one file. If your repository has more than one `.infisical.json`, such as one per package in a monorepo, run the command in each directory that holds one.
+    If your repository has more than one `.infisical.json`, such as one per package in a monorepo, run a command in each directory that holds one.
 
   </Tab>
   <Tab title="Edit the file by hand">
@@ -122,7 +129,7 @@ If a Dockerfile or CI script refers to `.infisical.json` by name, such as in a `
 In the directory that holds `.infisical.yaml`, run a command that reads the file, such as:
 
 ```bash
-infisical secrets
+infisical sm secrets
 ```
 
 Check that the command lists the secrets from the project and environment you expect. If it reports that the project ID is missing, compare the keys in `.infisical.yaml` with the [field mapping](#migration-steps).
@@ -131,19 +138,43 @@ Check that the command lists the secrets from the project and environment you ex
 
 <AccordionGroup>
   <Accordion title="What if .infisical.json and .infisical.yaml are in the same directory?">
-    The CLI can read both `.infisical.yaml` and `.infisical.json`. But
-    `.infisical.yaml` takes precedence
+    The CLI reads `.infisical.yaml` and ignores `.infisical.json`, so changes
+    you make to `.infisical.json` don't apply. Make any changes in
+    `.infisical.yaml`.
+
+    In version 0.44.3 and later, each time you run a command, the CLI also
+    prints a warning that both files exist. To stop the warning, delete
+    `.infisical.json`.
+
   </Accordion>
-  <Accordion title="Can I run infisical init instead of migrate-config?">
+  <Accordion title="Can I run infisical init instead?">
     `infisical init` writes a new `.infisical.yaml` that holds only the project
     ID, so you lose the environment, branch mapping, folder, and instance
-    settings from `.infisical.json`. To keep those settings, run `infisical
-    migrate-config`.
+    settings from `.infisical.json`. To keep those settings, let the CLI create
+    `.infisical.yaml` from `.infisical.json`, or create `.infisical.yaml` by
+    hand.
+
+  </Accordion>
+  <Accordion title="What if the CLI can't create .infisical.yaml?">
+    If the CLI can't write `.infisical.yaml` the command still runs with the settings in
+    `.infisical.json`, and the CLI tries again the next time you run a command.
+    At most once a day, the CLI also prints a deprecation notice that names the
+    directory it couldn't write to.
+
+    To finish the migration, make the directory writable and run a command
+    again, or follow the steps in the **Edit the file by hand** tab.
+
   </Accordion>
   <Accordion title="How do I hide the deprecation notice?">
-    Set the `INFISICAL_DISABLE_WORKSPACE_CONFIG_MIGRATION_NOTICE` environment
-    variable to any value, such as `true`. The CLI prints the notice at most
-    once a day and writes it to standard error, so the notice doesn't change the
-    output of commands like `infisical export`.
+    The notice stops once `.infisical.yaml` exists. To hide the notice before
+    then, set the `INFISICAL_DISABLE_WORKSPACE_CONFIG_MIGRATION_NOTICE`
+    environment variable to any value, such as `true`. Neither the variable nor
+    `--silent` hides the warning that both files exist. To stop that warning,
+    delete `.infisical.json`.
+
+    The CLI writes the notice, the warning, and the message about creating
+    `.infisical.yaml` to standard error, so they don't change the output of
+    commands like `infisical export`.
+
   </Accordion>
 </AccordionGroup>
