@@ -1138,16 +1138,17 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   (`UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS`), grouping actors by identical rules so each rule set is checked once
   per secret. The per-secret endpoint checks the caller's access to the secret before building its reach, which
   decrypts every secret that could reference it.
-- **The card judges a full window, or everything since tracking began.** It leaves out project admins (users and
-  identities with the Admin role, directly or through a group, from `findAdminActorIds`): they can read everything
-  by design. Their reads are still recorded, so the access sheet's Last Read stays true for them. A pair is listed
-  once the secret (`trackedSince`) and the actor's access (`findAccessChangedAt`: the latest membership creation,
-  role or privilege creation, edit or expiry) both predate the later of the window start and the project's tracking
-  start (the later of the migration that created the table and the project's creation). So in a project tracked for
-  less than 30 days the card already lists access unread since tracking began, and the response's
-  `preliminaryUntil` tells the UI to label it preliminary. Which secrets a change opened up is not recorded, so any
-  access change restarts the window, including an edit to the rules of a custom role the reader holds. The per-secret sheet
-  shows the plain fact instead: a read, or "No reads". Each card row also carries three counts for its secret,
+- **Only a full window is judged.** Until a project's reads have been tracked for 30 days (tracking start is the
+  later of the migration that created the table and the project's creation), nobody counts as unused access: the
+  reads before tracking began are unknown, so `$loadSecretSummarizer` returns no unread readers or groups, the
+  card is empty, and the response's `unusedAccessFrom` says when judging starts. After that, the card leaves out
+  project admins (users and identities with the Admin role, directly or through a group, from
+  `findAdminActorIds`): they can read everything by design. Their reads are still recorded, so the access sheet's
+  Last Read stays true for them. A pair is listed once the secret (`trackedSince`) and the actor's access
+  (`findAccessChangedAt`: the latest membership creation, role or privilege creation, edit or expiry) both predate
+  the window start. Which secrets a change opened up is not recorded, so any access change restarts the window,
+  including an edit to the rules of a custom role the reader holds. The per-secret sheet shows the plain fact
+  instead: a read, "No reads", or "No reads yet" with the reason. Each card row also carries three counts for its secret,
   derived from sets the computation already holds: `entitledCount` (everyone who can read the value today,
   project admins left out, since a secret is not exposed to someone who can read everything by design),
   `unreadCount` (those among them with no read in the window) and
@@ -1156,10 +1157,8 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   to 100 score with Low, Elevated, High and Critical bands and whole-point drivers that add up to it (readers up
   to 45 on a log scale saturating at 40, ghost readers up to 30 saturating at 4, unused access up to 25 by
   share). It is the blast radius prototype's three read-activity terms rescaled; the terms that would need new
-  queries (syncs, rotation age, cross-project destinations) are deliberately left out. The unused-access term is
-  weighted by how much of the 30-day window the reads cover (`trackedDays`, from the project's `judgedFrom`), and
-  its label names that period, so a project tracked for three days neither claims "30 days" nor scores three
-  days of silence like thirty. The score, the graph and the ghost readers live only in the secret's access sheet
+  queries (syncs, rotation age, cross-project destinations) are deliberately left out. Before a project has a full
+  window the unused-access term is zero, since nothing is judged. The score, the graph and the ghost readers live only in the secret's access sheet
   (`GET /secrets/:name/read-activity`), which also returns, for every reader who can read the value, whether they
   count as unused access and why not (`isAdmin`, `accessChangedAt` after `judgedFrom`, or a secret newer than it),
   and names each ghost reader from the project's members, else from the user or identity row, else null.

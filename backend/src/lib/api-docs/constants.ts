@@ -953,30 +953,30 @@ export const INSIGHTS = {
     limit: "The maximum number of principals to return per page.",
     search: "Only principals whose name contains this text, ignoring case.",
     principals:
-      "The users, groups and machine identities that can read secrets they have not read in the tracked period, those with the most such secrets first. Project admins and admin groups are left out: they can read everything by design.",
+      "The users, groups and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first. Project admins and admin groups are left out: they can read everything by design.",
     principalType: "Whether the principal is a user, a group or a machine identity.",
     principalId: "The ID of the user, group or machine identity.",
     name: "The username of the user, or the name of the group or machine identity.",
     memberCount: "How many users and machine identities the group has. Null for a user or machine identity.",
     entitledCount: "How many secrets the principal can read the value of today.",
     unreadCount:
-      "How many of those it has not read, or an import or reference of, in the tracked period. A group has not read a secret when none of its members have. Secrets and access newer than the period are not counted.",
+      "How many of those it has not read, or an import or reference of, in the last 30 days. A group has not read a secret when none of its members have. Secrets and access newer than 30 days are not counted.",
     environments: "The slugs of the environments holding the unread secrets.",
     lastReadAt:
-      "When the principal last read any secret in the project within the tracked period, as the first read of that day; a group's is its members' latest. Null when it read nothing.",
+      "When the principal last read any secret in the project in the last 30 days, as the first read of that day; a group's is its members' latest. Null when it read nothing.",
     accessVia: "How the principal has the access: its roles, additional privileges, and the groups it belongs to.",
     totalCount: "The number of principals the caller can page through.",
     trackingStartedAt:
       "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
-    preliminaryUntil:
-      "When the results first cover the full 30 days. Until then they are preliminary: they cover only the reads since tracking started, and the access that existed when it started."
+    unusedAccessFrom:
+      "When unused access starts being judged: 30 days after reads started being tracked for the project. Until then nothing is listed, since reads from before tracking began are unknown."
   },
   GET_UNUSED_ACCESS_PRINCIPAL: {
     projectId: "The ID of the project.",
     principalType: "Whether the principal is a user, a group or a machine identity.",
     principalId: "The ID of the user, group or machine identity.",
     secrets:
-      "The secrets the principal can read but has not read in the tracked period, among those the caller can see, ordered by environment and path.",
+      "The secrets the principal can read but has not read in the last 30 days, among those the caller can see, ordered by environment and path.",
     secretKey: "The key of the secret.",
     environment: "The slug of the environment the secret is in.",
     secretPath: "The path of the folder the secret is in.",
@@ -1418,7 +1418,7 @@ export const SECRET_EXPOSURE = {
   driverLabel: "The term in words, with its counts.",
   entitledCount:
     "How many users and machine identities can read this secret's value today. Project admins are left out: they can read everything by design, so the secret is not exposed to them.",
-  unreadCount: "How many of those have not read it in the tracked period, up to the last 30 days.",
+  unreadCount: "How many of those have not read it in the last 30 days.",
   ghostReaderCount:
     "How many users and machine identities read this secret in the last 30 days but can no longer read it today, for example after leaving the project. They still know the value."
 };
@@ -1515,7 +1515,7 @@ export const RAW_SECRETS = {
     trackedSince:
       "The start of the period reads are reported for: the later of 30 days ago, when read tracking began, and when the secret and its folder were created.",
     judgedFrom:
-      "The start of the period unused access is judged on: the later of 30 days ago and when read tracking began for the project. A reader only counts as unused access once the secret and their access both predate it.",
+      "The start of the period unused access is judged on: the later of 30 days ago and when read tracking began for the project. Nobody counts as unused access until it is 30 days ago, and then only readers whose access, like the secret, predates it.",
     entitled:
       "One entry for each user or machine identity that can read the secret's value today, project admins included so their reads can be shown, saying whether they count as unused access and, if not, why.",
     readerName: "The username of the user, or the name of the machine identity. Null when it could not be resolved.",

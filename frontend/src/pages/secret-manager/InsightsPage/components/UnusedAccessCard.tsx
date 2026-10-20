@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { format } from "date-fns";
-import { ChevronRightIcon, InfoIcon, SearchIcon } from "lucide-react";
+import { ChevronRightIcon, SearchIcon } from "lucide-react";
 
 import { formatReadDay } from "@app/components/secrets/SecretReadStatusBadge";
 import {
@@ -31,11 +31,7 @@ import { useProject, useSubscription } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { TUnusedAccessPrincipal, useGetUnusedAccess } from "@app/hooks/api/secretInsights";
 
-import {
-  describeReadPeriod,
-  formatRemainingTtl,
-  PRINCIPAL_TYPE_CONFIG
-} from "./unusedAccessHelpers";
+import { formatRemainingTtl, PRINCIPAL_TYPE_CONFIG } from "./unusedAccessHelpers";
 import { UnusedAccessPrincipalSheet } from "./UnusedAccessPrincipalSheet";
 
 export const UnusedAccessCard = () => {
@@ -57,10 +53,8 @@ export const UnusedAccessCard = () => {
       ? formatRemainingTtl(data.remainingTtl)
       : null;
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
-  const readPeriod = data
-    ? describeReadPeriod(data.trackingStartedAt, data.preliminaryUntil)
-    : "in the last 30 days";
-  const isPreliminary = Boolean(data && new Date(data.preliminaryUntil) > new Date());
+  // Nothing is judged until the project has 30 days of reads.
+  const isJudging = !data || new Date(data.unusedAccessFrom) <= new Date();
 
   const renderBody = () => {
     if (isPending) return <Skeleton className="h-[200px] w-full" />;
@@ -81,17 +75,19 @@ export const UnusedAccessCard = () => {
     }
 
     if (totalCount === 0) {
+      let description = "Every identity has read the secrets it can access in the last 30 days.";
+      if (debouncedSearch) {
+        description = "No user, group or machine identity with unused access matches your search.";
+      } else if (!isJudging) {
+        description = `Unused access is judged on 30 days of reads, from ${format(new Date(data.unusedAccessFrom), "PP")}.`;
+      }
       return (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
               {debouncedSearch ? "No matching identity" : "No unused access found"}
             </EmptyTitle>
-            <EmptyDescription>
-              {debouncedSearch
-                ? "No user, group or machine identity with unused access matches your search."
-                : `Every identity has read the secrets it can access ${readPeriod}.`}
-            </EmptyDescription>
+            <EmptyDescription>{description}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       );
@@ -152,7 +148,7 @@ export const UnusedAccessCard = () => {
                     {row.lastReadAt ? (
                       formatReadDay(row.lastReadAt)
                     ) : (
-                      <span className="text-muted">None {readPeriod}</span>
+                      <span className="text-muted">None in 30 days</span>
                     )}
                   </TableCell>
                   <TableCell isTruncatable className="max-w-56">
@@ -190,19 +186,11 @@ export const UnusedAccessCard = () => {
             )}
           </CardTitle>
           <CardDescription>
-            Users, groups, and machine identities that can read secrets they have not read{" "}
-            {readPeriod}. Select one to see which secrets.
+            Users, groups, and machine identities that can read secrets they have not read in the
+            last 30 days. Select one to see which secrets.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {isPreliminary && (
-            <p className="flex items-center gap-1.5 text-xs text-muted">
-              <InfoIcon className="size-3.5 shrink-0" />
-              Reads have been tracked since {format(new Date(data!.trackingStartedAt), "PP")}, so
-              access counts as unused once it has gone that long without a read; the full 30-day
-              window applies from {format(new Date(data!.preliminaryUntil), "PP")}.
-            </p>
-          )}
           <InputGroup className="max-w-sm">
             <InputGroupAddon>
               <SearchIcon />

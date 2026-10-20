@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { UnusedAccessPrincipalType } from "@app/hooks/api/secretInsights";
@@ -11,12 +10,6 @@ export const PRINCIPAL_TYPE_CONFIG: Record<
   [UnusedAccessPrincipalType.Identity]: { icon: HardDriveIcon, label: "Machine Identity" },
   [UnusedAccessPrincipalType.Group]: { icon: UsersIcon, label: "Group" }
 };
-
-// The period the reads are judged on: the full window once tracking is that old, else since it began.
-export const describeReadPeriod = (trackingStartedAt: string, preliminaryUntil: string) =>
-  new Date(preliminaryUntil) > new Date()
-    ? `since ${format(new Date(trackingStartedAt), "PP")}`
-    : "in the last 30 days";
 
 export const formatRemainingTtl = (seconds: number) => {
   if (seconds < 60) {

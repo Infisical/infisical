@@ -189,33 +189,4 @@ describe("calculateExposureScore", () => {
       "1 ghost reader can no longer read it but still knows the value"
     ]);
   });
-
-  test("weights unused access by how much of the window the reads cover, and says so", () => {
-    const counts = { entitledCount: 4, unreadCount: 4, ghostReaderCount: 0 };
-    const fullWindow = calculateExposureScore(counts);
-    const threeDays = calculateExposureScore(counts, 3);
-    const firstDay = calculateExposureScore(counts, 0.9);
-    const unusedPoints = (exposure: ReturnType<typeof calculateExposureScore>) =>
-      exposure.drivers.find((driver) => driver.kind === SecretExposureDriver.UnusedAccess)?.points ?? 0;
-
-    expect(unusedPoints(fullWindow)).toBe(25);
-    expect(unusedPoints(threeDays)).toBeLessThan(unusedPoints(fullWindow));
-    expect(unusedPoints(firstDay)).toBeLessThan(unusedPoints(threeDays));
-    expect(threeDays.drivers.map((driver) => driver.label)).toContain("4 of 4 have not read it in the 3 days tracked");
-    expect(calculateExposureScore(counts, 1).drivers.map((driver) => driver.label)).toContain(
-      "4 of 4 have not read it in the 1 day tracked"
-    );
-    expect(firstDay.drivers.map((driver) => driver.label)).toContain(
-      "4 of 4 have not read it since tracking began today"
-    );
-    expect(calculateExposureScore(counts, 45).drivers.map((driver) => driver.label)).toContain(
-      "4 of 4 have not read it in 30 days"
-    );
-  });
-
-  test("drops the unused-access driver when the tracked period is too short to give it a point", () => {
-    const exposure = calculateExposureScore({ entitledCount: 1, unreadCount: 1, ghostReaderCount: 0 }, 0.4);
-    expect(exposure.drivers.map((driver) => driver.kind)).toEqual([SecretExposureDriver.Readers]);
-    expect(pointsOf(exposure)).toBe(exposure.score);
-  });
 });

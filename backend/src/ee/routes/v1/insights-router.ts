@@ -476,7 +476,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getInsightsUnusedAccess",
       description:
-        "List the users, groups and machine identities that can read secrets they have not read in the tracked period, those with the most such secrets first",
+        "List the users, groups and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS.projectId)
@@ -493,7 +493,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const { principals, totalCount, trackingStartedAt, preliminaryUntil, remainingTTL, projectName } =
+      const { principals, totalCount, trackingStartedAt, unusedAccessFrom, remainingTTL, projectName } =
         await server.services.secretReadActivity.listUnusedAccess({ projectId, ...req.query }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -507,7 +507,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { principals, totalCount, trackingStartedAt, preliminaryUntil };
+      return { principals, totalCount, trackingStartedAt, unusedAccessFrom };
     }
   });
 
@@ -517,8 +517,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsUnusedAccessPrincipal",
-      description:
-        "List the secrets one user, group or machine identity can read but has not read in the tracked period",
+      description: "List the secrets one user, group or machine identity can read but has not read in the last 30 days",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.projectId),
@@ -534,7 +533,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId, principalType, principalId } = req.params;
-      const { principal, secrets, unlistedCount, trackingStartedAt, preliminaryUntil, remainingTTL, projectName } =
+      const { principal, secrets, unlistedCount, trackingStartedAt, unusedAccessFrom, remainingTTL, projectName } =
         await server.services.secretReadActivity.getUnusedAccessPrincipal(
           { projectId, principalType, principalId },
           req.permission
@@ -551,7 +550,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { principal, secrets, unlistedCount, trackingStartedAt, preliminaryUntil };
+      return { principal, secrets, unlistedCount, trackingStartedAt, unusedAccessFrom };
     }
   });
 

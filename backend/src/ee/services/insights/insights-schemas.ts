@@ -82,7 +82,7 @@ const UnusedAccessPrincipalRowSchema = z.object({
 export const UnusedAccessSchema = z.object({
   totalCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.totalCount),
   trackingStartedAt: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.trackingStartedAt),
-  preliminaryUntil: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.preliminaryUntil),
+  unusedAccessFrom: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.unusedAccessFrom),
   principals: UnusedAccessPrincipalRowSchema.array().describe(INSIGHTS.GET_UNUSED_ACCESS.principals)
 });
 
@@ -90,7 +90,7 @@ export const UnusedAccessPrincipalSchema = z.object({
   principal: UnusedAccessPrincipalRowSchema,
   unlistedCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.unlistedCount),
   trackingStartedAt: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.trackingStartedAt),
-  preliminaryUntil: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.preliminaryUntil),
+  unusedAccessFrom: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.unusedAccessFrom),
   secrets: z
     .object({
       secretKey: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.secretKey),

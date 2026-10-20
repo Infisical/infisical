@@ -532,17 +532,25 @@ export function SecretAccessInsights({
           "Project admins can read everything by design, so they are not counted as unused access."
       };
     }
+    // judgedFrom is the start of the last 30 days once tracking has run that long, and when it began before.
     const judgedFrom = new Date(readActivity.judgedFrom);
+    const judgingStartsAt = new Date(judgedFrom.getTime() + 30 * 24 * 60 * 60 * 1000);
+    if (judgingStartsAt > new Date()) {
+      return {
+        kind: "pending",
+        reason: `Reads have been tracked since ${format(judgedFrom, "PP")}. Unused access is judged on 30 days of reads, from ${format(judgingStartsAt, "PP")}.`
+      };
+    }
     if (reader?.accessChangedAt && new Date(reader.accessChangedAt) > judgedFrom) {
       return {
         kind: "pending",
-        reason: `Their access changed on ${format(new Date(reader.accessChangedAt), "PP")}, so they have not had the whole tracked period to read it.`
+        reason: `Their access changed on ${format(new Date(reader.accessChangedAt), "PP")}, so they have not had 30 days to read it.`
       };
     }
     if (new Date(readActivity.trackedSince) > judgedFrom) {
       return {
         kind: "pending",
-        reason: `The secret has only been tracked since ${format(new Date(readActivity.trackedSince), "PP")}, so nobody has had the whole period to read it.`
+        reason: "The secret is newer than 30 days, so nobody has had 30 days to read it."
       };
     }
     return { kind: "pending", reason: "Not counted as unused access." };
