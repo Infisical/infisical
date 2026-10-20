@@ -1,11 +1,11 @@
 ---
 title: "Sessions on behalf of users"
-description: "Let a machine identity, such as a chat bot or a task runner, create sessions that use a user's own access bundles and personal values."
+description: "Let a machine identity, such as a chat bot or a task runner, create sessions on behalf of users, with each user's own personal values."
 ---
 
-A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in Agent Vault. A session created on behalf of a user belongs to that user, so it reaches only the [access bundles](/documentation/platform/agent-vault/access-bundles) granted to the user, and the proxy uses the user's own [personal values](/documentation/platform/agent-vault/services#member-provided-values).
+A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in Agent Vault. A session created on behalf of a user belongs to that user, so the proxy uses the user's own [personal values](/documentation/platform/agent-vault/services#member-provided-values). The session can use an [access bundle](/documentation/platform/agent-vault/access-bundles) only if both the user and the machine identity can use the bundle.
 
-Use a delegation when one service starts agents for many people, such as a chat bot that runs an agent for each message, or a task runner that runs an agent for each ticket. Each agent then gets only the access of the person who asked for it, and uses that person's own credential wherever a service leaves part of its credential to members.
+Use a delegation when one service starts agents for many people, such as a chat bot that runs an agent for each message, or a task runner that runs an agent for each ticket. Each agent then gets no more access than the person who asked for it, and uses that person's own credential wherever a service leaves part of its credential to members.
 
 ```mermaid
 sequenceDiagram
@@ -27,6 +27,7 @@ sequenceDiagram
 
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), or an Agent Vault admin who can [set up the delegation](#set-up-a-delegation) for you
 - A machine identity that's a member of Agent Vault and can log in with [Universal Auth](/documentation/platform/identities/universal-auth), as [Step 1 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) describes
+- A [grant](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) for the machine identity on each access bundle its sessions use
 - Users who are members of Agent Vault and have a grant on the access bundles their agents use
 
 ## Set up a delegation
@@ -81,17 +82,18 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 ```
 
 - In `onBehalfOf`, set either `userEmail` or `userId`, not both
-- In `accessBundles`, name a bundle that's granted to the user, not to the machine identity
+- In `accessBundles`, name a bundle that both the user and the machine identity can use
 - `ttl` defaults to `1h` and can be at most `24h`, so `never` isn't allowed
 
 Start the agent with the session token from the response, and revoke the session when the agent finishes, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
 
 ## What the session can reach
 
-A session created on behalf of a user gets the user's access, not the machine identity's:
+A session created on behalf of a user can use an access bundle only if both the user and the machine identity can use the bundle, and the session uses the user's personal values:
 
-- The session can use only the access bundles granted to the user, directly or through a group (if the user is an Agent Vault admin, every bundle)
-- The proxy uses the user's personal values, and refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
+- The user can use the access bundles granted to them, directly or through a group (if the user is an Agent Vault admin, every bundle)
+- The machine identity can use the access bundles granted to it, directly or through a group (if the machine identity is an Agent Vault admin, every bundle)
+- The proxy refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
 
 ## When the session stops working
 
@@ -104,7 +106,7 @@ Infisical checks the delegation again each time the proxy polls, once every [pol
 
 If an admin sets up the delegation again, or adds the user back to it, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
 
-Changes to the user's own access, such as losing a grant on the access bundle, affect the session the same way they affect the user's other sessions, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes.
+If the user or the machine identity can no longer use the access bundle, the session stops getting credentials for the bundle, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes.
 
 ## Track sessions created on behalf of users
 
@@ -124,10 +126,13 @@ When the machine identity creates the session, the audit event names the machine
   <Accordion title="Creating the session fails with &quot;This machine identity isn't allowed to start sessions on behalf of users&quot;">
     The machine identity has no delegation. [Set one up](#set-up-a-delegation), or ask an Agent Vault admin to.
   </Accordion>
+  <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to this machine identity&quot;">
+    The access bundle isn't granted to the machine identity, or no access bundle has that name. [Grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity, or name a bundle the machine identity already has.
+  </Accordion>
   <Accordion title="Creating the session fails with &quot;This machine identity can't start sessions on behalf of ...&quot;">
     The delegation doesn't cover the user, or no active member of your organization has that email or ID. Check the email or ID you sent, then check the users and groups in the machine identity's delegation.
   </Accordion>
-  <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to ...&quot;">
+  <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to '...'&quot;">
     The access bundle isn't granted to the user. [Grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the user, or name a bundle the user already has.
   </Accordion>
   <Accordion title="Creating the session fails with &quot;A session started on behalf of a user lasts at most 24h&quot;">

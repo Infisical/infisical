@@ -56,6 +56,14 @@ export const findReachableAccessBundleIds = async (
   return [...new Set(reachable.map((row) => row.scopeResourceId!))];
 };
 
+// null reaches every bundle, so intersecting with it returns the other side unchanged.
+export const intersectAccessBundleIds = (a: string[] | null, b: string[] | null): string[] | null => {
+  if (a === null) return b;
+  if (b === null) return a;
+  const inB = new Set(b);
+  return a.filter((id) => inB.has(id));
+};
+
 const $loadAgentVaultPermission = async (
   { permissionService }: { permissionService: TPermissionDep },
   { projectId, ctx }: { projectId: string; ctx: TGenericPermission }

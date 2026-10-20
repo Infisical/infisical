@@ -238,7 +238,8 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
         </CardTitle>
         <CardDescription>
           The users this machine identity can start sessions on behalf of. Each session uses that
-          user&apos;s access bundles and personal values.
+          user&apos;s personal values, and only access bundles that both the user and this machine
+          identity can use.
         </CardDescription>
         {!isPending && (
           <CardAction>

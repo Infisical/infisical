@@ -3974,7 +3974,7 @@ describe("Agent Vault V1 Router", async () => {
       const alice = await createAgentVaultUser("obo-alice", projectId);
       const bob = await createAgentVaultUser("obo-bob", projectId);
       try {
-        await grantBundle(bundle.id, { userIds: [alice.userId, bob.userId] });
+        await grantBundle(bundle.id, { userIds: [alice.userId, bob.userId], machineIdentityIds: [bot.id] });
 
         const undelegated = await mintFor(bot, { userId: alice.userId }, bundle.name);
         expect(undelegated.statusCode).toBe(403);
@@ -4029,7 +4029,7 @@ describe("Agent Vault V1 Router", async () => {
       const carol = await createAgentVaultUser("obo-carol", null);
       await testDb("user_group_membership").insert({ groupId: group.id, userId: carol.userId });
       try {
-        await grantBundle(bundle.id, { groupIds: [group.id] });
+        await grantBundle(bundle.id, { groupIds: [group.id], machineIdentityIds: [bot.id] });
 
         const direct = await inject("PUT", delegationUrl(bot.id), { scope: "selected", userIds: [carol.userId] });
         expect(direct.statusCode).toBe(400);
@@ -4052,18 +4052,34 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("the session reaches the bundles the user reaches, never the identity's own", async () => {
+    test("a session on a user's behalf can use only a bundle both the user and the identity can use", async () => {
       const projectId = await getProjectId();
-      const theirs = await createAccessBundle(`obo-theirs-${Date.now()}`);
+      const shared = await createAccessBundle(`obo-shared-${Date.now()}`);
+      const usersOnly = await createAccessBundle(`obo-users-only-${Date.now()}`);
       const botsOnly = await createAccessBundle(`obo-bots-only-${Date.now()}`);
       const bot = await createMemberIdentity(`obo-reach-bot-${Date.now()}`);
       const alice = await createAgentVaultUser("obo-reach-alice", projectId);
       try {
-        await grantBundle(theirs.id, { userIds: [alice.userId] });
+        await grantBundle(shared.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await grantBundle(usersOnly.id, { userIds: [alice.userId] });
         await grantBundle(botsOnly.id, { machineIdentityIds: [bot.id] });
         await delegate(bot, { scope: "selected", userIds: [alice.userId] });
 
-        expect((await mintFor(bot, { userId: alice.userId }, theirs.name)).statusCode).toBe(200);
+        expect((await mintFor(bot, { userId: alice.userId }, shared.name)).statusCode).toBe(200);
+
+        // The identity's own bundles are checked before the user is looked up, so a name that doesn't exist and a user
+        // who doesn't exist read exactly like a bundle the identity isn't granted.
+        const notTheBots = await Promise.all([
+          mintFor(bot, { userId: alice.userId }, usersOnly.name),
+          mintFor(bot, { userId: crypto.randomUUID() }, usersOnly.name),
+          mintFor(bot, { userId: alice.userId }, `obo-no-such-bundle-${Date.now()}`)
+        ]);
+        notTheBots.forEach((refused) => {
+          expect(refused.statusCode).toBe(400);
+          expect(refused.json().message).toMatch(
+            /^No access bundle named '[^']+' is granted to this machine identity\. A session on behalf of a user can use only bundles granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the bundle to the machine identity\.$/
+          );
+        });
 
         const notTheirs = await mintFor(bot, { userId: alice.userId }, botsOnly.name);
         expect(notTheirs.statusCode).toBe(400);
@@ -4083,7 +4099,7 @@ describe("Agent Vault V1 Router", async () => {
       const alice = await createAgentVaultUser("obo-all-alice", projectId);
       const outsider = await createAgentVaultUser("obo-all-outsider", null);
       try {
-        await grantBundle(bundle.id, { userIds: [alice.userId] });
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
         const delegation = await delegate(bot, { scope: "all-members" });
         expect(delegation).toMatchObject({ scope: "all-members", users: [], groups: [] });
 
@@ -4161,7 +4177,10 @@ describe("Agent Vault V1 Router", async () => {
         });
 
       const bot = await createMemberIdentity(`obo-resolve-bot-${Date.now()}`);
+      const serviceNames = (res: Awaited<ReturnType<typeof resolve>>) =>
+        (res.json().services as { name: string }[]).map((service) => service.name);
       try {
+        await grantBundle(bundle.id, { machineIdentityIds: [bot.id] });
         await delegate(bot, { scope: "selected", userIds: [seedData1.id] });
         const minted = await mintFor(bot, { userId: seedData1.id }, bundle.name);
         expect(minted.statusCode).toBe(200);
@@ -4181,6 +4200,17 @@ describe("Agent Vault V1 Router", async () => {
         await delegate(bot, { scope: "selected", userIds: [seedData1.id] });
         expect((await resolve(token)).statusCode).toBe(200);
 
+        // The admin user still reaches the bundle, but the identity losing its grant takes the bundle's services away,
+        // the way losing a user's grant does, and granting it again brings them back.
+        expect((await inject("DELETE", bundleMembersUrl(bundle.id), { machineIdentityIds: [bot.id] })).statusCode).toBe(
+          200
+        );
+        const withoutGrant = await resolve(token);
+        expect(withoutGrant.statusCode).toBe(200);
+        expect(serviceNames(withoutGrant)).not.toContain("github");
+        await grantBundle(bundle.id, { machineIdentityIds: [bot.id] });
+        expect(serviceNames(await resolve(token))).toContain("github");
+
         // Removing the identity from Agent Vault deletes its delegation, so adding it back restores nothing.
         expect(
           (await inject("DELETE", "/api/v1/agent-vault/members", { machineIdentityIds: [bot.id] })).statusCode
@@ -4199,7 +4229,7 @@ describe("Agent Vault V1 Router", async () => {
       const bot = await createMemberIdentity(botName);
       const alice = await createAgentVaultUser("obo-owner-alice", projectId);
       try {
-        await grantBundle(bundle.id, { userIds: [alice.userId] });
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
         await delegate(bot, { scope: "selected", userIds: [alice.userId] });
 
         const first = (await mintFor(bot, { userId: alice.userId }, bundle.name)).json().session.id as string;

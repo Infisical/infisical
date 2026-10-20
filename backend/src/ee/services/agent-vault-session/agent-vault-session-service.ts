@@ -87,17 +87,7 @@ export const agentVaultSessionServiceFactory = ({
     status: deriveSessionStatus({ ...session, userId, identityId, actingIdentityId, actingIdentityName })
   });
 
-  // The delegation is checked before the user is looked up, so an identity no admin delegated learns nothing about
-  // who is in the org, and a user who doesn't exist reads exactly like one the delegation doesn't cover.
-  const resolveOnBehalfOfUser = async ({
-    projectId,
-    ctx,
-    onBehalfOf
-  }: {
-    projectId: string;
-    ctx: TGenericPermission;
-    onBehalfOf: TOnBehalfOfUser;
-  }) => {
+  const findCallerDelegation = async ({ projectId, ctx }: { projectId: string; ctx: TGenericPermission }) => {
     if (ctx.actor !== ActorType.IDENTITY) {
       throw new BadRequestError({ message: "Only a machine identity can start a session on behalf of a user" });
     }
@@ -109,7 +99,21 @@ export const agentVaultSessionServiceFactory = ({
           "This machine identity isn't allowed to start sessions on behalf of users. An Agent Vault admin can allow it by setting its delegation under Access Control."
       });
     }
+    return delegation;
+  };
 
+  // A user who doesn't exist reads exactly like one the delegation doesn't cover.
+  const resolveOnBehalfOfUser = async ({
+    projectId,
+    ctx,
+    onBehalfOf,
+    delegation
+  }: {
+    projectId: string;
+    ctx: TGenericPermission;
+    onBehalfOf: TOnBehalfOfUser;
+    delegation: Awaited<ReturnType<typeof findCallerDelegation>>;
+  }) => {
     const identifier = onBehalfOf.userId ?? onBehalfOf.userEmail ?? "";
     const notCovered = () =>
       new ForbiddenRequestError({
@@ -132,8 +136,8 @@ export const agentVaultSessionServiceFactory = ({
 
     if (!(await agentVaultDelegationDAL.coversUser({ delegation, userId: user.id }))) throw notCovered();
 
-    // The session reaches what the user reaches, so their own role and grants decide the bundle, never the
-    // identity's. actorAuthMethod is null as in resolve: the session row stores no auth method.
+    // The user's own role and grants decide what they reach. actorAuthMethod is null as in resolve: the session row
+    // stores no auth method.
     const userCtx: TGenericPermission = {
       actor: ActorType.USER,
       actorId: user.id,
@@ -196,21 +200,6 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    let reachable: string[] | null;
-    let onBehalfOfUser: Awaited<ReturnType<typeof resolveOnBehalfOfUser>> | null = null;
-    if (onBehalfOf) {
-      onBehalfOfUser = await resolveOnBehalfOfUser({ projectId, ctx, onBehalfOf });
-      reachable = onBehalfOfUser.accessBundleIds;
-      // getProjectPermission leaves the last actor it ran for in the request context, where the audit log reads the
-      // caller's permission metadata. Running the caller's check again, memoized so it costs no query, puts it back.
-      await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    } else {
-      ({ accessBundleIds: reachable } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
-        { projectId, ctx }
-      ));
-    }
-
     if (!accessBundles.length) {
       throw new BadRequestError({ message: "Name the access bundle this session should carry" });
     }
@@ -223,17 +212,52 @@ export const agentVaultSessionServiceFactory = ({
 
     const bundles = await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } });
     const bundlesByName = new Map(bundles.map((bundle) => [bundle.name, bundle]));
-
-    const unreachable = accessBundles.find((name) => {
-      const bundle = bundlesByName.get(name);
-      return !bundle || (reachable !== null && !reachable.includes(bundle.id));
-    });
-    if (unreachable) {
-      throw new BadRequestError({
-        message: onBehalfOfUser
-          ? `No access bundle named '${unreachable}' is granted to '${onBehalfOfUser.user.username}'. Check the name, or ask an Agent Vault admin to grant it to them.`
-          : `No access bundle named '${unreachable}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
+    // An unknown name reads like an ungranted one, so the error never confirms that a bundle exists.
+    const firstUnreachable = (reachable: string[] | null) =>
+      accessBundles.find((name) => {
+        const bundle = bundlesByName.get(name);
+        return !bundle || (reachable !== null && !reachable.includes(bundle.id));
       });
+
+    let onBehalfOfUser: Awaited<ReturnType<typeof resolveOnBehalfOfUser>> | null = null;
+    if (onBehalfOf) {
+      // A session on a user's behalf can use only the bundles both the user and the identity reach. The delegation is
+      // checked first and the identity's own bundles next, so an identity learns nothing about who is in the org until
+      // an admin has delegated it and granted it the bundle it asks for.
+      const delegation = await findCallerDelegation({ projectId, ctx });
+      const { accessBundleIds: identityReach } = await getAgentVaultReachability(
+        { permissionService, membershipDAL },
+        { projectId, ctx }
+      );
+      const notGrantedToIdentity = firstUnreachable(identityReach);
+      if (notGrantedToIdentity) {
+        throw new BadRequestError({
+          message: `No access bundle named '${notGrantedToIdentity}' is granted to this machine identity. A session on behalf of a user can use only bundles granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the bundle to the machine identity.`
+        });
+      }
+
+      onBehalfOfUser = await resolveOnBehalfOfUser({ projectId, ctx, onBehalfOf, delegation });
+      // getProjectPermission leaves the last actor it ran for in the request context, where the audit log reads the
+      // caller's permission metadata. Running the caller's check again, memoized so it costs no query, puts it back.
+      await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+
+      const notGrantedToUser = firstUnreachable(onBehalfOfUser.accessBundleIds);
+      if (notGrantedToUser) {
+        throw new BadRequestError({
+          message: `No access bundle named '${notGrantedToUser}' is granted to '${onBehalfOfUser.user.username}'. Check the name, or ask an Agent Vault admin to grant it to them.`
+        });
+      }
+    } else {
+      const { accessBundleIds } = await getAgentVaultReachability(
+        { permissionService, membershipDAL },
+        { projectId, ctx }
+      );
+      const notGranted = firstUnreachable(accessBundleIds);
+      if (notGranted) {
+        throw new BadRequestError({
+          message: `No access bundle named '${notGranted}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
+        });
+      }
     }
 
     const expiresAt = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : new Date(Date.now() + ms(ttl));
@@ -245,8 +269,8 @@ export const agentVaultSessionServiceFactory = ({
       kmsService
     );
 
-    // An on-behalf-of session belongs to the user, so resolve uses their reach and their personal values, and the
-    // caller is kept as the acting identity.
+    // An on-behalf-of session belongs to the user, so resolve uses their personal values, and the caller is kept as
+    // the acting identity, whose reach resolve intersects with the user's.
     const owner = onBehalfOfUser
       ? {
           userId: onBehalfOfUser.user.id,

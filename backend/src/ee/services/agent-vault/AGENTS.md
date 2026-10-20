@@ -117,8 +117,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 ## Sessions on behalf of users
 
 A machine identity with a **delegation** can mint a session on behalf of a user (`onBehalfOf` on mint). The session
-belongs to the user: `userId` is the user, so resolve uses the user's role, reach and personal values without a branch
-of its own. The identity is kept as `actingIdentityId` and `actingIdentityName`. A delegation is one
+belongs to the user: `userId` is the user, so resolve uses the user's role and personal values without a branch of its
+own. The identity is kept as `actingIdentityId` and `actingIdentityName`, and its reach narrows the user's. A delegation
+is one
 `agent_vault_delegations` row per identity, with a scope of `all-members` or `selected`, plus
 `agent_vault_delegation_subjects` rows naming users and groups.
 
@@ -129,14 +130,16 @@ of its own. The identity is kept as `actingIdentityId` and `actingIdentityName`.
   same lesson as `actorType`. A session with the name and no id is orphaned: it reads as revoked
   (`isOrphanedSession`) and resolve refuses it.
 - **Resolve re-checks the acting identity every time**: active in the org, a live Agent Vault role, and a delegation
-  that still covers the user (`$assertActingIdentityStillDelegated`). Any miss is a 401, like an actor removed from
+  that still covers the user (`$getActingIdentityReach`). Any miss is a 401, like an actor removed from
   Agent Vault. Removing a delegation revokes nothing, so its sessions work again if it comes back; revoking is what
   ends one. Settled the same way as removal from Agent Vault.
-- **Reach is the user's alone, never intersected with the identity's.** Intersection is a possible later option,
-  not a bug. An admin user reaches every bundle, so an all-members delegation covers every bundle too.
-- **Mint checks the delegation before it looks the user up**, so an identity no admin delegated learns nothing about
-  who is in the org, and an unknown user gets the same message as an uncovered one. Only a machine identity may send
-  `onBehalfOf`. The user must be an active, accepted org member, as resolve requires.
+- **Reach is the intersection of the user's and the identity's** (`intersectAccessBundleIds`): a bundle needs both,
+  through the admin role or a grant, at mint and on every resolve. Settled with the product owner. The identity losing
+  a grant drops the bundle's services like a user's lost grant, with no 401.
+- **Mint checks the delegation, then the identity's own bundles, then the user**, so an identity learns nothing about
+  who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
+  as an uncovered one. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted org member,
+  as resolve requires.
 - **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
   the last actor it ran for in the request context, where the audit log reads the caller's permission metadata. The
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
