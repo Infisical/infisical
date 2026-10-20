@@ -3,7 +3,6 @@ import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -12,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -109,15 +109,16 @@ export const CertificatePoliciesTab = () => {
             mode="edit"
           />
 
-          <DeleteActionModal
+          <ConfirmationAlertDialog
             isOpen={isDeleteModalOpen}
+            description="This action is irreversible."
             title={`Delete Certificate Policy ${selectedPolicy.name}?`}
-            onChange={(isOpen) => {
+            onOpenChange={(isOpen) => {
               setIsDeleteModalOpen(isOpen);
               if (!isOpen) setSelectedPolicy(null);
             }}
-            deleteKey={selectedPolicy.name}
-            onDeleteApproved={handleDeleteConfirm}
+            confirmKey={selectedPolicy.name}
+            onConfirm={handleDeleteConfirm}
           />
         </>
       )}

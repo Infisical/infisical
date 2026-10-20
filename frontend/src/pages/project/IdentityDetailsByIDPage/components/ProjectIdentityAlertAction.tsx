@@ -2,6 +2,7 @@ import { subject } from "@casl/ability";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
+import { AlertResourceType } from "@app/hooks/api/alerts";
 import { AlertAction } from "@app/views/Alerts";
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
 
 export const ProjectIdentityAlertAction = ({ identityId, projectId, readOnly = false }: Props) => (
   <AlertAction
+    resourceType={AlertResourceType.IdentityAuthentication}
     resourceId={identityId}
     projectId={projectId}
     readOnly={readOnly}

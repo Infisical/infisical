@@ -41,7 +41,7 @@ func main() {
 		log.Fatalf("fakenet: smtp listener: %v", err)
 	}
 
-	go func() { log.Fatalf("fakenet: %v", fakenet.ServeDNS(":53", selfIP)) }()
+	go func() { log.Fatalf("fakenet: %v", srv.ServeDNS(":53", selfIP)) }()
 
 	go func() {
 		log.Fatalf("fakenet: admin listener: %v", http.ListenAndServe(":8080", srv.Admin(ca)))

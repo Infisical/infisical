@@ -383,7 +383,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
               <SheetTitle>Edit Signing Configuration</SheetTitle>
             </SheetHeader>
             <form
-              className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4"
+              className="flex min-h-0 flex-1 flex-col"
               onSubmit={handleAzureAdcsSubmit(
                 async ({ appConnectionId, template, validityPeriod }: AzureAdcsEditFormData) => {
                   try {
@@ -409,92 +409,96 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                 }
               )}
             >
-              <Controller
-                control={azureAdcsControl}
-                name="appConnectionId"
-                render={({ field: { onChange, value }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="signing-config-azure-ad-cs-connection">
-                      Azure AD CS Connection <span className="text-danger">*</span>
-                    </FieldLabel>
-                    <Combobox
-                      isError={Boolean(error)}
-                      isClearable={false}
-                      id="signing-config-azure-ad-cs-connection"
-                      creation={azureAdcsConnectionCreation}
-                      isLoading={isAzureAdcsConnectionsPending}
-                      value={(availableAzureAdcsConnections || []).find(
-                        (conn) => conn.id === value
-                      )}
-                      onValueChange={(selected) => {
-                        onChange(selected.id);
-                        azureAdcsSetValue("template", "", { shouldDirty: true });
-                      }}
-                      options={availableAzureAdcsConnections || []}
-                      placeholder="Select an Azure AD CS connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={azureAdcsControl}
-                name="template"
-                render={({ field: { onChange, value }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="signing-config-certificate-template">
-                      Certificate Template <span className="text-danger">*</span>
-                    </FieldLabel>
-                    <Combobox
-                      isError={Boolean(error)}
-                      isClearable={false}
-                      id="signing-config-certificate-template"
-                      isLoading={isAzureAdcsTemplatesLoading && !!selectedAzureAdcsConnectionId}
-                      isDisabled={!selectedAzureAdcsConnectionId}
-                      value={
-                        azureAdcsTemplates.find((t) => t === value) ? { label: value, value } : null
-                      }
-                      onValueChange={(selected) => {
-                        onChange(selected.value);
-                      }}
-                      options={azureAdcsTemplates.map((t) => ({ label: t, value: t }))}
-                      placeholder={
-                        selectedAzureAdcsConnectionId
-                          ? "Select a template..."
-                          : "Select a connection first"
-                      }
-                      getOptionLabel={(option) => option.label}
-                      getOptionValue={(option) => option.value}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={azureAdcsControl}
-                name="validityPeriod"
-                render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="signing-config-validity-period-days">
-                      Validity Period (Days)
-                    </FieldLabel>
-                    <Input
-                      id="signing-config-validity-period-days"
-                      isError={Boolean(error)}
-                      {...field}
-                      type="number"
-                      placeholder="365"
-                    />
-                    <FieldDescription>
-                      Number of days the certificate should be valid
-                    </FieldDescription>
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <SheetFooter className="-mx-4 justify-end">
+              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
+                <Controller
+                  control={azureAdcsControl}
+                  name="appConnectionId"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="signing-config-azure-ad-cs-connection">
+                        Azure AD CS Connection <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Combobox
+                        isError={Boolean(error)}
+                        isClearable={false}
+                        id="signing-config-azure-ad-cs-connection"
+                        creation={azureAdcsConnectionCreation}
+                        isLoading={isAzureAdcsConnectionsPending}
+                        value={(availableAzureAdcsConnections || []).find(
+                          (conn) => conn.id === value
+                        )}
+                        onValueChange={(selected) => {
+                          onChange(selected.id);
+                          azureAdcsSetValue("template", "", { shouldDirty: true });
+                        }}
+                        options={availableAzureAdcsConnections || []}
+                        placeholder="Select an Azure AD CS connection..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={azureAdcsControl}
+                  name="template"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="signing-config-certificate-template">
+                        Certificate Template <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Combobox
+                        isError={Boolean(error)}
+                        isClearable={false}
+                        id="signing-config-certificate-template"
+                        isLoading={isAzureAdcsTemplatesLoading && !!selectedAzureAdcsConnectionId}
+                        isDisabled={!selectedAzureAdcsConnectionId}
+                        value={
+                          azureAdcsTemplates.find((t) => t === value)
+                            ? { label: value, value }
+                            : null
+                        }
+                        onValueChange={(selected) => {
+                          onChange(selected.value);
+                        }}
+                        options={azureAdcsTemplates.map((t) => ({ label: t, value: t }))}
+                        placeholder={
+                          selectedAzureAdcsConnectionId
+                            ? "Select a template..."
+                            : "Select a connection first"
+                        }
+                        getOptionLabel={(option) => option.label}
+                        getOptionValue={(option) => option.value}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={azureAdcsControl}
+                  name="validityPeriod"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="signing-config-validity-period-days">
+                        Validity Period (Days)
+                      </FieldLabel>
+                      <Input
+                        id="signing-config-validity-period-days"
+                        isError={Boolean(error)}
+                        {...field}
+                        type="number"
+                        placeholder="365"
+                      />
+                      <FieldDescription>
+                        Number of days the certificate should be valid
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </div>
+              <SheetFooter>
                 <SheetClose asChild>
                   <Button variant="ghost">Cancel</Button>
                 </SheetClose>
@@ -635,127 +639,127 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
             <SheetHeader>
               <SheetTitle>Edit Signing Configuration</SheetTitle>
             </SheetHeader>
-            <form
-              className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4"
-              onSubmit={handleSubmit(onEditSubmit)}
-            >
-              <Controller
-                control={control}
-                name="appConnectionId"
-                render={({ field: { onChange, value }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="signing-config-venafi-connection">
-                      Venafi Connection <span className="text-danger">*</span>
-                    </FieldLabel>
-                    <Combobox
-                      isError={Boolean(error)}
-                      isClearable={false}
-                      id="signing-config-venafi-connection"
-                      creation={venafiConnectionCreation}
-                      isLoading={isVenafiPending}
-                      value={
-                        (availableVenafiConnections || []).find((conn) => conn.id === value) ?? null
-                      }
-                      onValueChange={(selected) => {
-                        onChange(selected.id);
-                        setValue("applicationId", "");
-                        setValue("issuingTemplateId", "");
-                      }}
-                      options={availableVenafiConnections || []}
-                      placeholder="Select a Venafi connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={control}
-                name="applicationId"
-                render={({ field: { onChange, value }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="signing-config-application">
-                      Application <span className="text-danger">*</span>
-                    </FieldLabel>
-                    <Combobox
-                      isError={Boolean(error)}
-                      isClearable={false}
-                      id="signing-config-application"
-                      isLoading={isApplicationsLoading && !!selectedConnectionId}
-                      isDisabled={!selectedConnectionId}
-                      value={applications.find((app) => app.id === value) ?? null}
-                      onValueChange={(selected) => {
-                        onChange(selected.id);
-                        setValue("issuingTemplateId", "");
-                      }}
-                      options={applications}
-                      placeholder={
-                        selectedConnectionId
-                          ? "Select an application..."
-                          : "Select a connection first"
-                      }
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={control}
-                name="issuingTemplateId"
-                render={({ field: { onChange, value }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="signing-config-issuing-template">
-                      Issuing Template <span className="text-danger">*</span>
-                    </FieldLabel>
-                    <Combobox
-                      isError={Boolean(error)}
-                      isClearable={false}
-                      id="signing-config-issuing-template"
-                      isLoading={isTemplatesLoading && !!selectedApplicationId}
-                      isDisabled={!selectedApplicationId}
-                      value={issuingTemplates.find((tmpl) => tmpl.id === value) ?? null}
-                      onValueChange={(selected) => {
-                        onChange(selected.id);
-                      }}
-                      options={issuingTemplates}
-                      placeholder={
-                        selectedApplicationId
-                          ? "Select an issuing template..."
-                          : "Select an application first"
-                      }
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={control}
-                name="validityPeriod"
-                render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="signing-config-validity-period-days-2">
-                      Validity Period (Days)
-                    </FieldLabel>
-                    <Input
-                      id="signing-config-validity-period-days-2"
-                      isError={Boolean(error)}
-                      {...field}
-                      type="number"
-                      placeholder="365"
-                    />
-                    <FieldDescription>
-                      Number of days the certificate should be valid
-                    </FieldDescription>
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <SheetFooter className="-mx-4 justify-end">
+            <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(onEditSubmit)}>
+              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
+                <Controller
+                  control={control}
+                  name="appConnectionId"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="signing-config-venafi-connection">
+                        Venafi Connection <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Combobox
+                        isError={Boolean(error)}
+                        isClearable={false}
+                        id="signing-config-venafi-connection"
+                        creation={venafiConnectionCreation}
+                        isLoading={isVenafiPending}
+                        value={
+                          (availableVenafiConnections || []).find((conn) => conn.id === value) ??
+                          null
+                        }
+                        onValueChange={(selected) => {
+                          onChange(selected.id);
+                          setValue("applicationId", "");
+                          setValue("issuingTemplateId", "");
+                        }}
+                        options={availableVenafiConnections || []}
+                        placeholder="Select a Venafi connection..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="applicationId"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="signing-config-application">
+                        Application <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Combobox
+                        isError={Boolean(error)}
+                        isClearable={false}
+                        id="signing-config-application"
+                        isLoading={isApplicationsLoading && !!selectedConnectionId}
+                        isDisabled={!selectedConnectionId}
+                        value={applications.find((app) => app.id === value) ?? null}
+                        onValueChange={(selected) => {
+                          onChange(selected.id);
+                          setValue("issuingTemplateId", "");
+                        }}
+                        options={applications}
+                        placeholder={
+                          selectedConnectionId
+                            ? "Select an application..."
+                            : "Select a connection first"
+                        }
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="issuingTemplateId"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="signing-config-issuing-template">
+                        Issuing Template <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Combobox
+                        isError={Boolean(error)}
+                        isClearable={false}
+                        id="signing-config-issuing-template"
+                        isLoading={isTemplatesLoading && !!selectedApplicationId}
+                        isDisabled={!selectedApplicationId}
+                        value={issuingTemplates.find((tmpl) => tmpl.id === value) ?? null}
+                        onValueChange={(selected) => {
+                          onChange(selected.id);
+                        }}
+                        options={issuingTemplates}
+                        placeholder={
+                          selectedApplicationId
+                            ? "Select an issuing template..."
+                            : "Select an application first"
+                        }
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="validityPeriod"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="signing-config-validity-period-days-2">
+                        Validity Period (Days)
+                      </FieldLabel>
+                      <Input
+                        id="signing-config-validity-period-days-2"
+                        isError={Boolean(error)}
+                        {...field}
+                        type="number"
+                        placeholder="365"
+                      />
+                      <FieldDescription>
+                        Number of days the certificate should be valid
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </div>
+              <SheetFooter>
                 <SheetClose asChild>
                   <Button variant="ghost">Cancel</Button>
                 </SheetClose>

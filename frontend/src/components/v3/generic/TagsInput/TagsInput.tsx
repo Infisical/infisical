@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import { XIcon } from "lucide-react";
+import { TriangleAlertIcon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 import { useScrollEdges } from "../../utils/useScrollEdges";
@@ -12,10 +12,12 @@ import {
   COMBOBOX_CHIPS_INPUT_CLASS,
   comboboxChipsViewportClass
 } from "../Combobox/combobox-chips";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
 import "../../utils/ScrollEdgeFade.css";
 
 const NO_ITEMS: string[] = [];
+const DEFAULT_PASTE_DELIMITER = /[\n\r, ]/;
 
 type TagsInputProps = Omit<
   React.ComponentPropsWithoutRef<"input">,
@@ -29,6 +31,10 @@ type TagsInputProps = Omit<
   /** Returning a reason refuses the commit. `existing` never contains the value being checked. */
   validateTag?: (tag: string, existing: string[]) => string | null;
   onValidationError?: (reason: string | null) => void;
+  /** Returning a reason flags a committed tag as invalid without refusing it, so it stays visible and removable. */
+  getTagError?: (tag: string) => string | null;
+  /** What splits a pasted list into separate tags. Defaults to commas, spaces and newlines. */
+  pasteDelimiter?: RegExp;
   inputValue?: string;
   onInputValueChange?: (draft: string) => void;
   className?: string;
@@ -43,6 +49,8 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
       isError,
       validateTag,
       onValidationError,
+      getTagError,
+      pasteDelimiter = DEFAULT_PASTE_DELIMITER,
       inputValue,
       onInputValueChange,
       className,
@@ -97,13 +105,17 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
 
     const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
       const pasted = event.clipboardData.getData("text");
-      const splitOn = /[\n\r, ]/;
-      if (!splitOn.test(pasted)) return;
+      if (!pasteDelimiter.test(pasted)) return;
 
       event.preventDefault();
 
-      const parts = pasted
-        .split(splitOn)
+      const { selectionStart, selectionEnd } = event.currentTarget;
+      const parts = [
+        draft.slice(0, selectionStart ?? draft.length),
+        pasted,
+        draft.slice(selectionEnd ?? draft.length)
+      ]
+        .flatMap((chunk) => chunk.split(pasteDelimiter))
         .map((part) => part.trim())
         .filter(Boolean);
 
@@ -162,22 +174,43 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
             data-scrollable-start={scrollEdges.start}
             data-scrollable-end={scrollEdges.end}
           >
-            {tags.map((tag) => (
-              <ComboboxPrimitive.Chip key={tag} className={COMBOBOX_CHIP_CLASS}>
-                <span className={COMBOBOX_CHIP_LABEL_CLASS}>{tag}</span>
-                {!isDisabled && (
-                  <ComboboxPrimitive.ChipRemove
-                    aria-label={`Remove ${tag}`}
-                    // Removal is Base UI's, through the controlled Root. Doing it here too would fire the
-                    // caller's handler twice. Adding is ours, in `commit`, since there is no options list.
-                    onClick={() => onValidationError?.(null)}
-                    className={COMBOBOX_CHIP_REMOVE_CLASS}
-                  >
-                    <XIcon className="size-3" />
-                  </ComboboxPrimitive.ChipRemove>
-                )}
-              </ComboboxPrimitive.Chip>
-            ))}
+            {tags.map((tag) => {
+              const tagError = getTagError?.(tag) ?? null;
+              const isInvalid = tagError !== null;
+              const chip = (
+                <ComboboxPrimitive.Chip
+                  key={tag}
+                  data-invalid={isInvalid || undefined}
+                  className={cn(COMBOBOX_CHIP_CLASS, isInvalid && "bg-danger/15 text-danger")}
+                >
+                  {isInvalid && <TriangleAlertIcon aria-hidden className="size-3 shrink-0" />}
+                  <span className={COMBOBOX_CHIP_LABEL_CLASS}>{tag}</span>
+                  {isInvalid && <span className="sr-only">({tagError})</span>}
+                  {!isDisabled && (
+                    <ComboboxPrimitive.ChipRemove
+                      aria-label={`Remove ${tag}`}
+                      // Removal is Base UI's, through the controlled Root. Doing it here too would fire the
+                      // caller's handler twice. Adding is ours, in `commit`, since there is no options list.
+                      onClick={() => onValidationError?.(null)}
+                      className={cn(
+                        COMBOBOX_CHIP_REMOVE_CLASS,
+                        isInvalid &&
+                          "text-danger hover:bg-danger/20 hover:text-danger focus-visible:ring-danger"
+                      )}
+                    >
+                      <XIcon className="size-3" />
+                    </ComboboxPrimitive.ChipRemove>
+                  )}
+                </ComboboxPrimitive.Chip>
+              );
+              if (!isInvalid) return chip;
+              return (
+                <Tooltip key={tag}>
+                  <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                  <TooltipContent>{tagError}</TooltipContent>
+                </Tooltip>
+              );
+            })}
             <ComboboxPrimitive.Input
               ref={forwardedRef}
               aria-invalid={isError || undefined}
@@ -185,7 +218,10 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               onBlur={() => commit(draft)}
-              className={COMBOBOX_CHIPS_INPUT_CLASS}
+              className={cn(
+                COMBOBOX_CHIPS_INPUT_CLASS,
+                tags.length > 0 && !draft && "min-w-0 focus:min-w-24"
+              )}
               {...inputProps}
             />
           </div>

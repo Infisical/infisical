@@ -331,6 +331,11 @@ describe("CertificateV3Service", () => {
       certificatePolicyService: mockCertificatePolicyService,
       acmeAccountDAL: mockAcmeAccountDAL,
       internalCaService: mockInternalCaService,
+      caKeySourceService: {
+        resolveCsrSignatureAlgorithm: vi.fn(
+          async ({ csrSignatureAlgorithm }: { csrSignatureAlgorithm?: string }) => csrSignatureAlgorithm
+        )
+      },
       permissionService: mockPermissionService,
       certificateSyncDAL: {
         findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]),

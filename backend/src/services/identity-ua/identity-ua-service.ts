@@ -275,7 +275,7 @@ export const identityUaServiceFactory = ({
         }
       }
 
-      if (clientSecretNumUsesLimit > 0 && clientSecretNumUses >= clientSecretNumUsesLimit) {
+      if (Number(clientSecretNumUsesLimit) > 0 && Number(clientSecretNumUses) >= Number(clientSecretNumUsesLimit)) {
         // number of times client secret can be used for
         // a login operation reached
         await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {

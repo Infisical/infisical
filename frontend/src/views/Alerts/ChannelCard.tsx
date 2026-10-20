@@ -1,6 +1,6 @@
-import { ReactElement, useState } from "react";
-import { Controller, useFormContext, UseFormRegisterReturn, useWatch } from "react-hook-form";
-import { EyeIcon, EyeOffIcon, SendIcon, TrashIcon } from "lucide-react";
+import { ReactElement } from "react";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { SendIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -11,10 +11,6 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
   Label,
   Toggle
 } from "@app/components/v3";
@@ -31,6 +27,10 @@ import {
 
 import { getChannelIcon } from "./channelIcons";
 import { ChannelRecipientsField } from "./ChannelRecipientsField";
+import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
+import { WebhookAuthenticationField } from "./WebhookAuthenticationField";
+import { WebhookHeadersField } from "./WebhookHeadersField";
+import { WebhookSigningSecretField } from "./WebhookSigningSecretField";
 
 export type TChannelRecipientsRenderProps = {
   value: TAlertChannelRecipient[];
@@ -47,43 +47,6 @@ type Props = {
   onRemove: () => void;
   canRemove: boolean;
   renderRecipients?: (props: TChannelRecipientsRenderProps) => ReactElement;
-};
-
-const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
-
-const ChannelSecretInput = ({
-  id,
-  placeholder,
-  isError,
-  registration
-}: {
-  id: string;
-  placeholder?: string;
-  isError?: boolean;
-  registration: UseFormRegisterReturn;
-}) => {
-  const [isRevealed, setIsRevealed] = useState(false);
-
-  return (
-    <InputGroup>
-      <InputGroupInput
-        {...registration}
-        id={id}
-        type={isRevealed ? "text" : "password"}
-        placeholder={placeholder}
-        autoComplete="off"
-        aria-invalid={Boolean(isError)}
-      />
-      <InputGroupAddon align="inline-end">
-        <InputGroupButton
-          aria-label={isRevealed ? "Hide value" : "Reveal value"}
-          onClick={() => setIsRevealed((current) => !current)}
-        >
-          {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
-        </InputGroupButton>
-      </InputGroupAddon>
-    </InputGroup>
-  );
 };
 
 export const ChannelCard = ({
@@ -264,20 +227,9 @@ export const ChannelCard = ({
               <FieldError errors={[channelErrors?.url]} />
             </FieldContent>
           </Field>
-          <Field>
-            <FieldLabel htmlFor={`channel-${index}-signingSecret`}>
-              Signing secret <span className="text-muted">(optional)</span>
-            </FieldLabel>
-            <FieldContent>
-              <ChannelSecretInput
-                id={`channel-${index}-signingSecret`}
-                placeholder={isExisting && channel?.hasSigningSecret ? KEEP_PLACEHOLDER : ""}
-                isError={Boolean(channelErrors?.signingSecret)}
-                registration={register(`channels.${index}.signingSecret`)}
-              />
-              <FieldError errors={[channelErrors?.signingSecret]} />
-            </FieldContent>
-          </Field>
+          <WebhookAuthenticationField index={index} />
+          <WebhookSigningSecretField index={index} />
+          <WebhookHeadersField index={index} />
         </>
       )}
 

@@ -5,11 +5,9 @@ import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/se
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { logger } from "@app/lib/logger";
 
-import { GitHubDataSourceConfigSchema } from "./github-secret-scanning-schemas";
-
 export const githubSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
-  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">
+  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">
 ) => {
   const handleInstallationDeletedEvent = async (installationId: number) => {
     const dataSource = await secretScanningV2DAL.dataSources.findOne({
@@ -55,37 +53,11 @@ export const githubSecretScanningService = (
       return;
     }
 
-    const parsedConfig = GitHubDataSourceConfigSchema.safeParse(dataSource.config);
-
-    if (!parsedConfig.success) {
-      logger.error(
-        parsedConfig.error,
-        `secretScanningV2PushEvent: GitHub - Invalid data source config [dataSourceId=${dataSource.id}] [installationId=${installation.id}]`
-      );
-      return;
-    }
-
-    const { isAutoScanEnabled } = dataSource;
-    const { includeRepos } = parsedConfig.data;
-
-    if (!isAutoScanEnabled) {
-      logger.info(
-        `secretScanningV2PushEvent: GitHub - ignoring due to auto scan disabled [dataSourceId=${dataSource.id}] [installationId=${installation.id}]`
-      );
-      return;
-    }
-
-    if (includeRepos.includes("*") || includeRepos.includes(repository.full_name)) {
-      await secretScanningV2Queue.queueResourceDiffScan({
-        dataSourceType: SecretScanningDataSource.GitHub,
-        payload,
-        dataSourceId: dataSource.id
-      });
-    } else {
-      logger.info(
-        `secretScanningV2PushEvent: GitHub - ignoring due to repository not being present in config [installationId=${installation.id}] [dataSourceId=${dataSource.id}]`
-      );
-    }
+    await secretScanningV2Queue.handleResourcePushEvent({
+      dataSource,
+      dataSourceType: SecretScanningDataSource.GitHub,
+      payload
+    });
   };
 
   return {

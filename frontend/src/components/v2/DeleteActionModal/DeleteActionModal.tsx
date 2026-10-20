@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { type JSX, ReactNode, useEffect, useState } from "react";
 
 import { useToggle } from "@app/hooks";
 
@@ -23,6 +23,10 @@ type Props = {
   isDisabled?: boolean;
 };
 
+/**
+ * @deprecated Use the v3 `ConfirmationAlertDialog` from `@app/components/v3`. See the overlay recipe in
+ * `components/V3_MIGRATION.md` for the prop mapping.
+ */
 export const DeleteActionModal = ({
   isOpen,
   onClose,

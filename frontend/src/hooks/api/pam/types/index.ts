@@ -200,7 +200,7 @@ export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
   type === PamAccountType.Windows || type === PamAccountType.WindowsAd;
 
 export type TPamAccountSettingsOverrides = {
-  recordingS3Config?: { bucket: string; region: string; keyPrefix?: string };
+  recordingS3Config?: { bucket: string; region?: string; keyPrefix?: string };
 };
 
 export type TPamAccount = {

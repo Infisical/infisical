@@ -16,6 +16,7 @@ import {
   Input,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   TextArea
@@ -307,14 +308,14 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-end border-t">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" variant="project" isPending={updateMutation.isPending}>
               Save changes
             </Button>
-          </div>
+          </SheetFooter>
         </form>
       </SheetContent>
     </Sheet>

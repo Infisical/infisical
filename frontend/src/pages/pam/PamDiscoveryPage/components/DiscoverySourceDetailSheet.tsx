@@ -889,7 +889,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
               : "Never"
           }
         ]}
-        footer={
+        sidebarFooter={
           <Button
             variant="pam"
             size="xs"

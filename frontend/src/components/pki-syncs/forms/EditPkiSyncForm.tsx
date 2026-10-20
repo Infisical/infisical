@@ -20,6 +20,7 @@ import {
   FieldContent,
   FieldDescription,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
@@ -28,6 +29,7 @@ import {
 import {
   getCertificateDisplayName,
   isPaloAltoNetworksPkiSync,
+  PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE,
   PKI_SYNC_MAP
 } from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -169,8 +171,9 @@ const getFormSteps = (
     title: "Certificates",
     subtitle: "Describe the certificates this sync holds.",
     rightLabel: "CERTIFICATES",
-    rightDescription:
-      "Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save."
+    rightDescription: `Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save.${
+      isPaloAltoNetworksPkiSync(destination) ? `\n\n${PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE}` : ""
+    }`
   });
 
   steps.push({
@@ -474,16 +477,8 @@ export const EditPkiSyncForm = ({
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <div className="flex items-center gap-3">
-            <Button
-              variant="project"
-              type="submit"
-              isPending={isSubmitting}
-              isDisabled={!isDirty || isSubmitting || isDetectingPaloAltoNetworksDevice}
-            >
-              Save
-            </Button>
             <Button
               variant="outline"
               type="button"
@@ -513,8 +508,16 @@ export const EditPkiSyncForm = ({
             >
               Next
             </Button>
+            <Button
+              variant="project"
+              type="submit"
+              isPending={isSubmitting}
+              isDisabled={!isDirty || isSubmitting || isDetectingPaloAltoNetworksDevice}
+            >
+              Save
+            </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
 
       <AlertDialog
