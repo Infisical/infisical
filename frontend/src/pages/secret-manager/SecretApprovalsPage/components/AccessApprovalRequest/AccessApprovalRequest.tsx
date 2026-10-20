@@ -140,16 +140,7 @@ export const AccessApprovalRequest = ({
   projectId: string;
   onConfigurePolicies: () => void;
 }) => {
-  const [selectedRequest, setSelectedRequest] = useState<
-    | (TAccessApprovalRequest & {
-        user: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
-        isRequestedByCurrentUser: boolean;
-        isSelfApproveAllowed: boolean;
-        isApprover: boolean;
-        isDisabled?: boolean;
-      })
-    | null
-  >(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   const { handlePopUpOpen, popUp, handlePopUpClose } = usePopUp([
     "requestAccess",
@@ -565,29 +556,37 @@ export const AccessApprovalRequest = ({
 
   const handleSelectRequest = useCallback(
     (request: TAccessApprovalRequest) => {
-      const details = generateRequestDetails(request);
-      const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
-
       navigate({ search: (prev) => ({ ...prev, requestId: request.id }) });
-
-      setSelectedRequest({
-        ...request,
-        user: details.isRequestedByCurrentUser
-          ? user
-          : memberUser || {
-              firstName: request.requestedByUser?.firstName,
-              lastName: request.requestedByUser?.lastName,
-              email: request.requestedByUser?.email
-            },
-        isRequestedByCurrentUser: details.isRequestedByCurrentUser,
-        isSelfApproveAllowed: details.isSelfApproveAllowed,
-        isApprover: details.isApprover
-      });
-
+      setSelectedRequestId(request.id);
       handlePopUpOpen("reviewRequest");
     },
-    [generateRequestDetails, membersGroupById, user, setSelectedRequest, handlePopUpOpen]
+    [navigate, handlePopUpOpen]
   );
+
+  // The polled list is the source of truth, so the open sheet follows a dispatch that fails or
+  // completes instead of showing the snapshot it was opened with.
+  const selectedRequest = useMemo(() => {
+    if (!selectedRequestId) return null;
+    const request = requests?.find((r) => r.id === selectedRequestId);
+    if (!request) return null;
+
+    const details = generateRequestDetails(request);
+    const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
+
+    return {
+      ...request,
+      user: details.isRequestedByCurrentUser
+        ? user
+        : memberUser || {
+            firstName: request.requestedByUser?.firstName,
+            lastName: request.requestedByUser?.lastName,
+            email: request.requestedByUser?.email
+          },
+      isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+      isSelfApproveAllowed: details.isSelfApproveAllowed,
+      isApprover: details.isApprover
+    };
+  }, [selectedRequestId, requests, generateRequestDetails, membersGroupById, user]);
 
   const isFiltered = Boolean(
     search ||
@@ -597,7 +596,7 @@ export const AccessApprovalRequest = ({
   );
 
   useEffect(() => {
-    if (requestId && !selectedRequest && requests?.length) {
+    if (requestId && !selectedRequestId && requests?.length) {
       const foundRequest = requests.find((r) => r.id === requestId);
       if (foundRequest) {
         handleSelectRequest(foundRequest);
@@ -1073,7 +1072,7 @@ export const AccessApprovalRequest = ({
             }
 
             handlePopUpClose("reviewRequest");
-            setSelectedRequest(null);
+            setSelectedRequestId(null);
             refetchRequests();
           }}
           canBypass={generateRequestDetails(selectedRequest).canBypass}

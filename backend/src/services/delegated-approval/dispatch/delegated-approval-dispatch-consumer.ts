@@ -138,6 +138,11 @@ export const delegatedApprovalDispatchConsumerFactory = ({
           "The approval request is no longer pending, so it was not sent to the delegated approval system."
         );
       }
+      if (approvalRequest.expiresAt && new Date(approvalRequest.expiresAt) < new Date()) {
+        throw new UnrecoverableError(
+          "The approval request expired before it could be sent to the delegated approval system. Create the request again."
+        );
+      }
       if (!delegatedPolicy) {
         throw new UnrecoverableError(
           "The policy's delegated approver was removed before the request could be sent. Configure a delegated approver on the policy and create the request again."

@@ -370,7 +370,12 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
           metadata: {
             requestId: result.request.id,
             requestedByUserId: result.request.requestedByUserId,
+            requestedByUserName: result.requesterName,
+            requestedByUserEmail: result.requesterEmail,
             policyId: result.request.policyId,
+            policyName: result.policyName,
+            environment: result.environment,
+            secretPath: result.secretPath,
             delegatedApprovalType: result.delegatedApprovalType
           }
         }
@@ -418,7 +423,12 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
           metadata: {
             requestId: result.request.id,
             requestedByUserId: result.request.requestedByUserId,
-            policyId: result.request.policyId
+            requestedByUserName: result.requesterName,
+            requestedByUserEmail: result.requesterEmail,
+            policyId: result.request.policyId,
+            policyName: result.policyName,
+            environment: result.environment,
+            secretPath: result.secretPath
           }
         }
       });

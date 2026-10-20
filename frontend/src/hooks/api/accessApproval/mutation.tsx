@@ -245,7 +245,7 @@ export const useCancelAccessRequest = () => {
   >({
     mutationFn: async ({ requestId }) => {
       const { data } = await apiRequest.post(
-        `/api/v1/access-approvals/requests/${requestId}/cancel`
+        `/api/v1/access-approvals/requests/${requestId}/cancel-delegated-dispatch`
       );
       return data;
     },

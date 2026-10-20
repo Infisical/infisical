@@ -189,6 +189,19 @@ describe("delegatedApprovalDispatchConsumer", () => {
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.FailedDispatch);
   });
 
+  test("fails terminally when the approval request expired before it was sent", async () => {
+    const { consumer, row } = buildConsumer({
+      approval: { ...approvalRequest, expiresAt: new Date(Date.now() - 60_000) }
+    });
+
+    const [result] = await consumer.handle([makeEvent()]);
+
+    expect(result.status).toBe(EventResultStatus.Failed);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(row()?.status).toBe(DelegatedApprovalRequestStatus.FailedDispatch);
+    expect(row()?.statusReason).toContain("expired");
+  });
+
   test.each([
     ["is gone", null],
     ["is no longer awaiting dispatch", { ...pendingDelegatedRequest, status: DelegatedApprovalRequestStatus.Approved }],

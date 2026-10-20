@@ -625,6 +625,10 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     }
 
     return approvalPolicyDAL.transaction(async (tx) => {
+      const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({ message: `Access approval policy with ID '${policyId}' not found` });
+      }
       if (involvesDelegatedApproval) await $assertNoPendingRequests(policy, tx);
 
       await approvalPolicyDAL.updateById(

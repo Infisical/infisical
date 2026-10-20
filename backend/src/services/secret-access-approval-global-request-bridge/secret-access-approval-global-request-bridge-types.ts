@@ -8,6 +8,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
   TApprovalRequestApprovalsDALFactory,
   TApprovalRequestDALFactory,
@@ -50,6 +51,7 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
     TSecretAccessApprovalGlobalPolicyBridgeDALFactory,
     "findSecretAccessPolicies"
   >;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByIdForShare" | "findStepsByPolicyId">;
   secretAccessApprovalGlobalRequestBridgeDAL: Pick<
     TSecretAccessApprovalGlobalRequestBridgeDALFactory,
     | "findSecretAccessRequestById"

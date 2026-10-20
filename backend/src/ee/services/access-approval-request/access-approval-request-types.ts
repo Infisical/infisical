@@ -243,6 +243,11 @@ export interface TAccessApprovalRequestServiceFactory {
     };
     projectId: string;
     delegatedApprovalType: DelegatedApprovalPolicyType;
+    policyName: string;
+    requesterName: string;
+    requesterEmail: string;
+    environment: string;
+    secretPath: string;
   }>;
   cancelAccessRequest: (arg: TCancelAccessRequestDTO) => Promise<{
     request: {
@@ -260,6 +265,11 @@ export interface TAccessApprovalRequestServiceFactory {
       expiresAt?: Date | null | undefined;
     };
     projectId: string;
+    policyName: string;
+    requesterName: string;
+    requesterEmail: string;
+    environment: string;
+    secretPath: string;
   }>;
   revokeAccessRequest: (arg: TRevokeAccessRequestDTO) => Promise<{
     request: {

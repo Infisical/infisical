@@ -1058,43 +1058,47 @@ export const ReviewAccessRequestModal = ({
                 {delegatedStatus && (
                   <section className="flex flex-col gap-3">
                     <h3 className="text-sm font-normal text-foreground">Status</h3>
-                    <ItemGroup
-                      className={twMerge(
-                        "gap-0 rounded-lg border border-border bg-container",
-                        delegatedStatus.variant === "danger" && "border-danger/25"
-                      )}
-                    >
-                      <Item className="flex-nowrap items-start rounded-none border-0">
-                        <ItemContent className="min-w-0 gap-1">
-                          <span className="text-sm text-foreground">
-                            {delegatedStatus.getMessage(delegatedApprovalName)}
-                          </span>
-                          {!isRetryingDelegatedDispatch &&
-                            request.delegatedApproval?.statusReason && (
-                              <span className="text-xs break-words text-muted">
-                                {request.delegatedApproval.statusReason}
-                              </span>
-                            )}
-                        </ItemContent>
-                        <ItemActions className="shrink-0 items-center gap-3">
-                          <span className="text-xs whitespace-nowrap text-muted">
-                            Requested {format(new Date(request.createdAt), "MMM d, yyyy h:mm aa")}
-                          </span>
-                          {canRetryDispatch && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              isPending={retryDelegatedApprovalDispatch.isPending}
-                              onClick={handleRetryDispatch}
-                            >
-                              <RefreshCwIcon />
-                              Retry
-                            </Button>
+                    <Item variant="outline">
+                      <ItemMedia variant="icon">
+                        {delegatedStatus.variant === "danger" && (
+                          <TriangleAlertIcon className="text-danger" />
+                        )}
+                        {delegatedStatus.variant === "success" && (
+                          <CheckIcon className="text-success" />
+                        )}
+                        {delegatedStatus.variant === "warning" && (
+                          <HourglassIcon className="text-warning" />
+                        )}
+                      </ItemMedia>
+                      <ItemContent>
+                        <span className="text-sm text-foreground">
+                          {delegatedStatus.getMessage(delegatedApprovalName)}
+                        </span>
+                        {!isRetryingDelegatedDispatch &&
+                          request.delegatedApproval?.statusReason && (
+                            <span className="text-xs break-words text-muted">
+                              {request.delegatedApproval.statusReason}
+                            </span>
                           )}
-                        </ItemActions>
-                      </Item>
-                    </ItemGroup>
+                      </ItemContent>
+                      <ItemActions>
+                        <span className="text-xs whitespace-nowrap text-muted">
+                          Requested {format(new Date(request.createdAt), "MMM d, yyyy h:mm aa")}
+                        </span>
+                        {canRetryDispatch && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            isPending={retryDelegatedApprovalDispatch.isPending}
+                            onClick={handleRetryDispatch}
+                          >
+                            <RefreshCwIcon />
+                            Retry
+                          </Button>
+                        )}
+                      </ItemActions>
+                    </Item>
                   </section>
                 )}
               </>

@@ -46,9 +46,16 @@ const cannotEditPolicies = createMongoAbility([
   { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval }
 ]);
 
+const delegatedPolicy = {
+  id: "policy-1",
+  name: "Prod access",
+  delegatedApproval: { type: "servicenow", connectionId: "connection-1" }
+};
+
 const createService = ({
   lockedRequest = pendingRequest as unknown,
   delegated = delegatedRequest as unknown,
+  policy = delegatedPolicy as unknown,
   permission = cannotEditPolicies
 } = {}) => {
   let current = { ...pendingRequest };
@@ -60,6 +67,9 @@ const createService = ({
   const service = secretAccessApprovalGlobalRequestBridgeServiceFactory({
     secretAccessApprovalGlobalRequestBridgeDAL: {
       findSecretAccessRequestById: vi.fn().mockImplementation(async () => current)
+    },
+    secretAccessApprovalGlobalPolicyBridgeDAL: {
+      findSecretAccessPolicies: vi.fn().mockResolvedValue(policy ? [policy] : [])
     },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
     delegatedApprovalService: { getRequestByRequestId: vi.fn().mockResolvedValue(delegated) },
@@ -151,6 +161,15 @@ describe("secretAccessApprovalGlobalRequestBridge.reviewAccessApprovalRequest", 
     const { service, updateById } = createService();
 
     await expect(reviewAs(service, ApprovalStatus.REJECTED)).rejects.toThrow(
+      externallyReviewedAccessRequestMessage("req-1")
+    );
+    expect(updateById).not.toHaveBeenCalled();
+  });
+
+  test("refuses a local review when the policy now delegates approval, even without a delegated request", async () => {
+    const { service, updateById } = createService({ delegated: null });
+
+    await expect(reviewAs(service, ApprovalStatus.APPROVED)).rejects.toThrow(
       externallyReviewedAccessRequestMessage("req-1")
     );
     expect(updateById).not.toHaveBeenCalled();
