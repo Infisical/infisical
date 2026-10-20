@@ -381,7 +381,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
-    url: "/:requestId/cancel",
+    url: "/:requestId/cancel-delegated-dispatch",
     method: "POST",
     config: {
       rateLimit: writeLimit
