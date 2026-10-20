@@ -252,7 +252,7 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
     name: "Infisical",
     image: "Infisical.png",
     category: AgentVaultTemplateCategory.DeveloperTools,
-    description: "Secrets and projects on this Infisical instance.",
+    description: "The Infisical API.",
     // The instance serving this page, so cloud regions and self-hosted domains all work unedited.
     hostPattern: window.location.host,
     credential: { type: AgentVaultCredentialType.Bearer }
