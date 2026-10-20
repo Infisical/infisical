@@ -647,7 +647,11 @@ export const signerIssuanceServiceFactory = ({
     const existingOrderId = ref.digicert?.orderId;
     const lifecycle = ref.digicert?.lifecycle;
 
-    const persistPlacedOrder = async (orderId: number, certificateId: number | null) => {
+    const persistPlacedOrder = async (
+      orderId: number,
+      certificateId: number | null,
+      placedLifecycle: typeof lifecycle = lifecycle
+    ) => {
       await signerIssuanceJobDAL.updateById(job.id, {
         externalOrderRef: {
           digicert: {
@@ -655,7 +659,7 @@ export const signerIssuanceServiceFactory = ({
             certificateId,
             lastStatus: CodeSigningOrderStatus.Pending,
             lastCheckedAt: new Date().toISOString(),
-            lifecycle
+            lifecycle: placedLifecycle
           }
         }
       });
@@ -695,6 +699,7 @@ export const signerIssuanceServiceFactory = ({
       }
 
       let placed: { orderId: number; certificateId: number | null };
+      let placedLifecycle = lifecycle;
       if (lifecycle?.mode === "renew") {
         try {
           placed = await digicertFns.orderCodeSigningCertificate({
@@ -719,6 +724,7 @@ export const signerIssuanceServiceFactory = ({
             signatureHash,
             comments
           });
+          placedLifecycle = { mode: "reissue", previousOrderId: lifecycle.previousOrderId };
         }
       } else {
         placed = await digicertFns.orderCodeSigningCertificate({
@@ -731,7 +737,7 @@ export const signerIssuanceServiceFactory = ({
           comments
         });
       }
-      await persistPlacedOrder(placed.orderId, placed.certificateId);
+      await persistPlacedOrder(placed.orderId, placed.certificateId, placedLifecycle);
       return;
     }
 
@@ -864,9 +870,8 @@ export const signerIssuanceServiceFactory = ({
       const digicert = (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
       if (digicert?.orderId === orderId) return true;
       if (digicert?.lifecycle?.previousOrderId !== orderId) return false;
-      const isAttemptInFlight =
-        Boolean(job.lastAttemptAt) && now - new Date(job.lastAttemptAt as Date).getTime() < IN_FLIGHT_ATTEMPT_MS;
-      return Boolean(digicert.orderId) || isAttemptInFlight;
+      if (digicert.orderId) return digicert.lifecycle.mode === "reissue";
+      return Boolean(job.lastAttemptAt) && now - new Date(job.lastAttemptAt as Date).getTime() < IN_FLIGHT_ATTEMPT_MS;
     });
     if (reissueInProgress) {
       throw new ConflictError({
