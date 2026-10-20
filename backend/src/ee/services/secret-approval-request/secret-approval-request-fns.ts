@@ -1,5 +1,6 @@
 import { TSecretApprovalRequests } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection } from "@app/lib/types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -43,20 +44,26 @@ export const sendApprovalEmailsFn = async ({
     }))
   );
 
-  // now we need to go through each of the reviewers and print out all the commits that they need to approve
   for await (const reviewerUser of policy.userApprovers) {
-    await smtpService.sendMail({
-      recipients: [reviewerUser?.email as string],
-      subjectLine: "Infisical Secret Change Request",
+    try {
+      await smtpService.sendMail({
+        recipients: [reviewerUser?.email as string],
+        subjectLine: "Infisical Secret Change Request",
 
-      substitutions: {
-        firstName: reviewerUser.firstName,
-        projectName: project.name,
-        organizationName: project.organization.name,
-        approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval?requestId=${secretApprovalRequest.id}`
-      },
-      template: SmtpTemplates.SecretApprovalRequestNeedsReview
-    });
+        substitutions: {
+          firstName: reviewerUser.firstName,
+          projectName: project.name,
+          organizationName: project.organization.name,
+          approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval?requestId=${secretApprovalRequest.id}`
+        },
+        template: SmtpTemplates.SecretApprovalRequestNeedsReview
+      });
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to send secret change request email to approver [requestId=${secretApprovalRequest.id}] [userId=${reviewerUser.userId}]`
+      );
+    }
   }
 };
 
