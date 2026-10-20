@@ -78,6 +78,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
+import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -87,9 +88,10 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { previousSecretLocation } from "@app/services/secret-folder/secret-folder-events";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
-import { emitSecretsModified, secretModifiedEvents } from "@app/services/secret-v2-bridge/secret-events";
+import { emitSecretsModified } from "@app/services/secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
   fnSecretBulkDelete,
@@ -1176,7 +1178,12 @@ export const secretRotationV2ServiceFactory = ({
         );
         await emitSecretsModified(
           eventEmitter,
-          { projectId, environment: destinationEnvironment, secretPath: destinationFolder.path },
+          {
+            projectId,
+            environment: destinationEnvironment,
+            secretPath: destinationFolder.path,
+            modificationType: EventModificationType.Deleted
+          },
           overwrittenSecrets,
           tx
         );
@@ -1211,18 +1218,19 @@ export const secretRotationV2ServiceFactory = ({
           tx
         );
 
-        // Moved in place, so each secret keeps its id and is modified at both locations.
-        await eventEmitter.emit(
-          [
-            ...secretModifiedEvents(
-              { projectId, environment: environment.slug, secretPath: folder.path },
-              sourceSecrets
-            ),
-            ...secretModifiedEvents(
-              { projectId, environment: destinationEnvironment, secretPath: destinationFolder.path },
-              sourceSecrets
+        await emitSecretsModified(
+          eventEmitter,
+          {
+            projectId,
+            environment: destinationEnvironment,
+            secretPath: destinationFolder.path,
+            modificationType: EventModificationType.Updated,
+            previous: previousSecretLocation(
+              { environment: environment.slug, secretPath: folder.path },
+              { environment: destinationEnvironment, secretPath: destinationFolder.path }
             )
-          ],
+          },
+          sourceSecrets,
           tx
         );
 

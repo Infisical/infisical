@@ -2,12 +2,17 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { SecretType } from "@app/db/schemas";
-import { defineEvent } from "@app/services/event-outbox/event-definition";
+import { defineEvent, EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  PreviousSecretLocationSchema,
+  TPreviousSecretLocation
+} from "@app/services/secret-folder/secret-folder-events";
 
-// One event per shared secret per write, for create, update and delete alike: a consumer reacts to the
-// secret having changed, and re-reads its current state (or finds it gone) to learn how. A move emits
-// at both locations, since it deletes the secret at the source and writes it at the destination.
+// One event per shared secret per write. A consumer re-reads the secret's current state (or finds it
+// gone) to learn what changed. Moving a secret between folders recreates it under a new id, so it is
+// `deleted` at the source and `created` at the destination; a write that moves it in place (eg a
+// rotation moving its generated secrets) is one `updated` event whose `previous` holds the old location.
 // Personal overrides belong to one user, not the project's shared state, so nothing is emitted for them.
 export const SecretModifiedEventV1 = defineEvent({
   domain: "secrets",
@@ -18,7 +23,9 @@ export const SecretModifiedEventV1 = defineEvent({
     secretId: z.string().uuid(),
     projectId: z.string().min(1),
     environment: z.string().min(1),
-    secretPath: z.string().min(1)
+    secretPath: z.string().min(1),
+    modificationType: z.nativeEnum(EventModificationType),
+    previous: PreviousSecretLocationSchema.optional()
   })
 });
 
@@ -30,14 +37,19 @@ export type TSecretEventScope = {
   secretPath: string;
 };
 
-export const secretModifiedEvents = (scope: TSecretEventScope, secrets: { id: string; type: string }[]) =>
+export type TSecretModification = TSecretEventScope & {
+  modificationType: EventModificationType;
+  previous?: TPreviousSecretLocation;
+};
+
+export const secretModifiedEvents = (modification: TSecretModification, secrets: { id: string; type: string }[]) =>
   secrets
     .filter(({ type }) => type === SecretType.Shared)
-    .map(({ id }) => SecretModifiedEventV1.build({ secretId: id, ...scope }));
+    .map(({ id }) => SecretModifiedEventV1.build({ secretId: id, ...modification }));
 
 export const emitSecretsModified = (
   eventEmitter: TEventEmitter,
-  scope: TSecretEventScope,
+  modification: TSecretModification,
   secrets: { id: string; type: string }[],
   tx?: Knex
-): Promise<void> => eventEmitter.emit(secretModifiedEvents(scope, secrets), tx);
+): Promise<void> => eventEmitter.emit(secretModifiedEvents(modification, secrets), tx);

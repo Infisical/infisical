@@ -25,6 +25,7 @@ import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
+import { EventModificationType } from "../event-outbox/event-definition";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -226,7 +227,12 @@ export const fnSecretBulkInsert = async ({
     { tx }
   );
 
-  await emitSecretsModified(eventEmitter, eventScope, newSecrets, tx);
+  await emitSecretsModified(
+    eventEmitter,
+    { ...eventScope, modificationType: EventModificationType.Created },
+    newSecrets,
+    tx
+  );
 
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
@@ -428,7 +434,12 @@ export const fnSecretBulkUpdate = async ({
     }
   }
 
-  await emitSecretsModified(eventEmitter, eventScope, newSecrets, tx);
+  await emitSecretsModified(
+    eventEmitter,
+    { ...eventScope, modificationType: EventModificationType.Updated },
+    newSecrets,
+    tx
+  );
 
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
@@ -498,7 +509,12 @@ export const fnSecretBulkDelete = async ({
     }
   }
 
-  await emitSecretsModified(eventEmitter, eventScope, deletedSecrets, tx);
+  await emitSecretsModified(
+    eventEmitter,
+    { ...eventScope, modificationType: EventModificationType.Deleted },
+    deletedSecrets,
+    tx
+  );
 
   return deletedSecrets;
 };
@@ -1000,7 +1016,12 @@ export const fnUpdateSecretLinkedReferences = async ({
       folderPaths.flatMap((folder) =>
         folder
           ? secretModifiedEvents(
-              { projectId, environment: folder.environmentSlug, secretPath: folder.path },
+              {
+                projectId,
+                environment: folder.environmentSlug,
+                secretPath: folder.path,
+                modificationType: EventModificationType.Updated
+              },
               (updatedSecretsByFolder.get(folder.id) ?? []).map(({ secret }) => secret)
             )
           : []
@@ -1419,7 +1440,12 @@ export const fnUpdateMovedSecretReferences = async ({
       folderPaths.flatMap((folder) =>
         folder
           ? secretModifiedEvents(
-              { projectId, environment: folder.environmentSlug, secretPath: folder.path },
+              {
+                projectId,
+                environment: folder.environmentSlug,
+                secretPath: folder.path,
+                modificationType: EventModificationType.Updated
+              },
               (updatedSecretsByFolder.get(folder.id) ?? []).map(({ secret }) => secret)
             )
           : []
@@ -2107,7 +2133,12 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     );
     await emitSecretsModified(
       eventEmitter,
-      { projectId, environment: sourceEnvironment, secretPath: sourceFolder.path },
+      {
+        projectId,
+        environment: sourceEnvironment,
+        secretPath: sourceFolder.path,
+        modificationType: EventModificationType.Deleted
+      },
       locallyDeletedSecrets,
       tx
     );

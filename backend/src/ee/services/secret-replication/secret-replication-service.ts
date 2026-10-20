@@ -10,6 +10,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
+import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -398,7 +399,8 @@ export const secretReplicationServiceFactory = ({
                     folderId: createdFolder.id,
                     projectId,
                     environment: destinationFolder.environmentSlug,
-                    secretPath: destinationReplicationFolderPath
+                    secretPath: destinationReplicationFolderPath,
+                    modificationType: EventModificationType.Created
                   },
                   tx
                 );
@@ -605,7 +607,12 @@ export const secretReplicationServiceFactory = ({
                     },
                     tx
                   );
-                  await emitSecretsModified(eventEmitter, replicationEventScope, locallyDeletedSecrets, tx);
+                  await emitSecretsModified(
+                    eventEmitter,
+                    { ...replicationEventScope, modificationType: EventModificationType.Deleted },
+                    locallyDeletedSecrets,
+                    tx
+                  );
                 }
                 await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
               });

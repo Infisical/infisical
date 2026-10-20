@@ -12,6 +12,14 @@ import { TEventEmitter, TEventInput } from "./event-outbox-types";
 // change to `data`, so adding an optional field is not a new version.
 const SEGMENT_PATTERN = new RE2("^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$");
 
+// The ADR groups every state change to an entity into one `modified` event, so its data says which kind
+// of change it was.
+export enum EventModificationType {
+  Created = "created",
+  Updated = "updated",
+  Deleted = "deleted"
+}
+
 // Throws at module load, so a name that breaks the convention fails the process on boot rather than
 // reaching a request.
 export const defineEvent = <TData extends z.AnyZodObject>({

@@ -20,6 +20,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
@@ -332,7 +333,12 @@ export const secretFolderServiceFactory = ({
         createdFolders.push({ folderId: doc.id, secretPath: folderWithFullPath.path });
         await eventEmitter.emit(
           createdFolders.map((createdFolder) =>
-            FolderModifiedEventV1.build({ ...createdFolder, projectId, environment })
+            FolderModifiedEventV1.build({
+              ...createdFolder,
+              projectId,
+              environment,
+              modificationType: EventModificationType.Created
+            })
           ),
           tx
         );
@@ -484,15 +490,16 @@ export const secretFolderServiceFactory = ({
           }
 
           if (doc.name !== folder.name) {
-            await eventEmitter.emit(
-              [folder.name, doc.name].map((folderName) =>
-                FolderModifiedEventV1.build({
-                  folderId: doc.id,
-                  projectId: projectId as string,
-                  environment,
-                  secretPath: path.posix.join(parentFolder.path, folderName)
-                })
-              ),
+            await FolderModifiedEventV1.emit(
+              eventEmitter,
+              {
+                folderId: doc.id,
+                projectId: projectId as string,
+                environment,
+                secretPath: path.posix.join(parentFolder.path, doc.name),
+                modificationType: EventModificationType.Updated,
+                previous: { secretPath: path.posix.join(parentFolder.path, folder.name) }
+              },
               tx
             );
           }
@@ -631,10 +638,16 @@ export const secretFolderServiceFactory = ({
       }
 
       if (newFolderWithPath.path !== oldFolderWithPath.path) {
-        await eventEmitter.emit(
-          [oldFolderWithPath.path, newFolderWithPath.path].map((folderPath) =>
-            FolderModifiedEventV1.build({ folderId: doc.id, projectId, environment: env.slug, secretPath: folderPath })
-          ),
+        await FolderModifiedEventV1.emit(
+          eventEmitter,
+          {
+            folderId: doc.id,
+            projectId,
+            environment: env.slug,
+            secretPath: newFolderWithPath.path,
+            modificationType: EventModificationType.Updated,
+            previous: { secretPath: oldFolderWithPath.path }
+          },
           tx
         );
       }
@@ -899,7 +912,8 @@ export const secretFolderServiceFactory = ({
           folderId: doc.id,
           projectId,
           environment,
-          secretPath: path.posix.join(parentFolder.path, doc.name)
+          secretPath: path.posix.join(parentFolder.path, doc.name),
+          modificationType: EventModificationType.Deleted
         },
         tx
       );
@@ -1410,7 +1424,12 @@ export const secretFolderServiceFactory = ({
           createdFolderPaths.push({ folderId: doc.id, secretPath: pathWithFolder });
           await eventEmitter.emit(
             createdFolderPaths.map((createdFolder) =>
-              FolderModifiedEventV1.build({ ...createdFolder, projectId, environment })
+              FolderModifiedEventV1.build({
+                ...createdFolder,
+                projectId,
+                environment,
+                modificationType: EventModificationType.Created
+              })
             ),
             tx
           );
@@ -1606,7 +1625,8 @@ export const secretFolderServiceFactory = ({
               folderId: doc.id,
               projectId,
               environment,
-              secretPath: path.posix.join(parentFolder.path, doc.name)
+              secretPath: path.posix.join(parentFolder.path, doc.name),
+              modificationType: EventModificationType.Deleted
             },
             tx
           );
@@ -2045,7 +2065,8 @@ export const secretFolderServiceFactory = ({
             folderId: entry.newFolderId,
             projectId,
             environment: destinationEnvironment,
-            secretPath: entry.destinationAbsPath
+            secretPath: entry.destinationAbsPath,
+            modificationType: EventModificationType.Created
           })
         ),
         tx
@@ -2138,7 +2159,8 @@ export const secretFolderServiceFactory = ({
           folderId: deletedRoot.id,
           projectId,
           environment: sourceEnvironment,
-          secretPath: sourceFolderPath
+          secretPath: sourceFolderPath,
+          modificationType: EventModificationType.Deleted
         },
         tx
       );

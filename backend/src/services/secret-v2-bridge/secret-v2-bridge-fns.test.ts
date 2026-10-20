@@ -381,7 +381,13 @@ describe("fnSecretBulkDelete", () => {
         {
           id: expect.any(String) as string,
           type: "com.infisical.secrets.secret.modified.v1",
-          data: { secretId: "secret-1", projectId: "proj-1", environment: "dev", secretPath: "/app" }
+          data: {
+            secretId: "secret-1",
+            projectId: "proj-1",
+            environment: "dev",
+            secretPath: "/app",
+            modificationType: "deleted"
+          }
         }
       ],
       tx

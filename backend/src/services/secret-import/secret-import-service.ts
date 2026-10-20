@@ -20,6 +20,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
+import { EventModificationType } from "../event-outbox/event-definition";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -266,7 +267,13 @@ export const secretImportServiceFactory = ({
 
       await SecretImportModifiedEventV1.emit(
         eventEmitter,
-        { secretImportId: doc.id, projectId, environment, secretPath: folder.path },
+        {
+          secretImportId: doc.id,
+          projectId,
+          environment,
+          secretPath: folder.path,
+          modificationType: EventModificationType.Created
+        },
         tx
       );
       return doc;
@@ -460,7 +467,13 @@ export const secretImportServiceFactory = ({
 
       await SecretImportModifiedEventV1.emit(
         eventEmitter,
-        { secretImportId: doc.id, projectId, environment, secretPath: folder.path },
+        {
+          secretImportId: doc.id,
+          projectId,
+          environment,
+          secretPath: folder.path,
+          modificationType: EventModificationType.Updated
+        },
         tx
       );
       return doc;
@@ -523,7 +536,8 @@ export const secretImportServiceFactory = ({
               folderId: replicatedFolder.id,
               projectId,
               environment,
-              secretPath: replicatedFolder.path
+              secretPath: replicatedFolder.path,
+              modificationType: EventModificationType.Deleted
             },
             tx
           );
@@ -535,7 +549,13 @@ export const secretImportServiceFactory = ({
 
       await SecretImportModifiedEventV1.emit(
         eventEmitter,
-        { secretImportId: doc.id, projectId, environment, secretPath: folder.path },
+        {
+          secretImportId: doc.id,
+          projectId,
+          environment,
+          secretPath: folder.path,
+          modificationType: EventModificationType.Deleted
+        },
         tx
       );
 

@@ -11,7 +11,10 @@ import { createSecretV2, deleteSecretV2, updateSecretV2 } from "../../testUtils/
 
 type TRecordedEvent = {
   eventType: string;
-  payload: { projectId: string; environment: string; secretPath: string } & Record<string, string>;
+  payload: { projectId: string; environment: string; secretPath: string; modificationType: string } & Record<
+    string,
+    unknown
+  >;
 };
 
 // No API shows outbox rows, so the events a write emitted are read from the table. The recorder
@@ -26,8 +29,8 @@ const recordedEvents = async (projectId: string, eventType?: string): Promise<TR
   return rows as TRecordedEvent[];
 };
 
-const locationsOf = (events: TRecordedEvent[]) =>
-  events.map(({ payload }) => `${payload.environment}:${payload.secretPath}`);
+const changesOf = (events: TRecordedEvent[]) =>
+  events.map(({ payload }) => `${payload.modificationType} ${payload.environment}:${payload.secretPath}`);
 
 describe("Secret, folder and import events", () => {
   let projectId: string;
@@ -58,10 +61,15 @@ describe("Secret, folder and import events", () => {
     await deleteSecretV2({ workspaceId: projectId, environmentSlug: "dev", secretPath: "/", key: "SINGLE", authToken });
 
     const events = await recordedEvents(projectId, SecretModifiedEventV1.type);
-    expect(events).toHaveLength(3);
-    events.forEach(({ payload }) => {
-      expect(payload).toEqual({ secretId: secret.id, projectId, environment: "dev", secretPath: "/" });
-    });
+    expect(events.map(({ payload }) => payload)).toEqual(
+      ["created", "updated", "deleted"].map((modificationType) => ({
+        secretId: secret.id,
+        projectId,
+        environment: "dev",
+        secretPath: "/",
+        modificationType
+      }))
+    );
   });
 
   test("a personal override emits nothing", async () => {
@@ -100,7 +108,8 @@ describe("Secret, folder and import events", () => {
     expect(new Set(events.map(({ payload }) => payload.secretId)).size).toBe(3);
   });
 
-  test("a move emits at the source and at the destination", async () => {
+  // A move recreates the secret under a new id, so the original is deleted and the copy created.
+  test("a move emits deleted at the source and created at the destination", async () => {
     await createFolder({ workspaceId: projectId, environmentSlug: "dev", secretPath: "/", name: "target", authToken });
     const secret = await createInFolder("/", "MOVED");
     const createdCount = (await recordedEvents(projectId, SecretModifiedEventV1.type)).length;
@@ -121,7 +130,8 @@ describe("Secret, folder and import events", () => {
     expect(res.statusCode).toBe(200);
 
     const moveEvents = (await recordedEvents(projectId, SecretModifiedEventV1.type)).slice(createdCount);
-    expect(locationsOf(moveEvents).sort()).toEqual(["dev:/", "dev:/target"]);
+    expect(changesOf(moveEvents).sort()).toEqual(["created dev:/target", "deleted dev:/"]);
+    expect(moveEvents.find(({ payload }) => payload.modificationType === "deleted")?.payload.secretId).toBe(secret.id);
   });
 
   test("renaming a referenced secret emits for the secret in another folder that references it", async () => {
@@ -144,7 +154,8 @@ describe("Secret, folder and import events", () => {
       secretId: referencing.id,
       projectId,
       environment: "dev",
-      secretPath: "/app"
+      secretPath: "/app",
+      modificationType: "updated"
     });
   });
 
@@ -174,11 +185,12 @@ describe("Secret, folder and import events", () => {
       secretId: rolledBack.id,
       projectId,
       environment: "dev",
-      secretPath: "/"
+      secretPath: "/",
+      modificationType: "deleted"
     });
   });
 
-  test("folder create, rename and delete emit folder.modified at the paths they touch", async () => {
+  test("folder create, rename and delete each emit folder.modified, a rename carrying its old path", async () => {
     // The intermediate "/parent" is created by the same request, and emits too.
     const folder = await createFolder({
       workspaceId: projectId,
@@ -187,9 +199,9 @@ describe("Secret, folder and import events", () => {
       name: "child",
       authToken
     });
-    expect(locationsOf(await recordedEvents(projectId, FolderModifiedEventV1.type))).toEqual([
-      "dev:/parent",
-      "dev:/parent/child"
+    expect(changesOf(await recordedEvents(projectId, FolderModifiedEventV1.type))).toEqual([
+      "created dev:/parent",
+      "created dev:/parent/child"
     ]);
 
     const renameRes = await testServer.inject({
@@ -199,9 +211,17 @@ describe("Secret, folder and import events", () => {
       body: { projectId, environment: "dev", path: "/parent", name: "renamed" }
     });
     expect(renameRes.statusCode).toBe(200);
-    expect(locationsOf(await recordedEvents(projectId, FolderModifiedEventV1.type)).slice(2)).toEqual([
-      "dev:/parent/child",
-      "dev:/parent/renamed"
+    expect(
+      (await recordedEvents(projectId, FolderModifiedEventV1.type)).slice(2).map(({ payload }) => payload)
+    ).toEqual([
+      {
+        folderId: folder.id,
+        projectId,
+        environment: "dev",
+        secretPath: "/parent/renamed",
+        modificationType: "updated",
+        previous: { secretPath: "/parent/child" }
+      }
     ]);
 
     await deleteFolder({
@@ -216,11 +236,13 @@ describe("Secret, folder and import events", () => {
       folderId: folder.id,
       projectId,
       environment: "dev",
-      secretPath: "/parent/renamed"
+      secretPath: "/parent/renamed",
+      modificationType: "deleted"
     });
   });
 
-  test("a folder move emits for the new folders and the deleted source", async () => {
+  // A move recreates the folder under a new id, like a secret move.
+  test("a folder move emits created for the new folder and deleted for the source", async () => {
     await createFolder({
       workspaceId: projectId,
       environmentSlug: "dev",
@@ -246,7 +268,7 @@ describe("Secret, folder and import events", () => {
     expect(res.statusCode).toBe(200);
 
     const moveEvents = (await recordedEvents(projectId, FolderModifiedEventV1.type)).slice(before);
-    expect(locationsOf(moveEvents).sort()).toEqual(["dev:/destination/source", "dev:/source"]);
+    expect(changesOf(moveEvents).sort()).toEqual(["created dev:/destination/source", "deleted dev:/source"]);
   });
 
   test("import create, update and delete emit secret-import.modified for the folder holding the import", async () => {
@@ -278,7 +300,13 @@ describe("Secret, folder and import events", () => {
 
     const events = await recordedEvents(projectId, SecretImportModifiedEventV1.type);
     expect(events.map(({ payload }) => payload)).toEqual(
-      Array(3).fill({ secretImportId: secretImport.id, projectId, environment: "staging", secretPath: "/" })
+      ["created", "updated", "deleted"].map((modificationType) => ({
+        secretImportId: secretImport.id,
+        projectId,
+        environment: "staging",
+        secretPath: "/",
+        modificationType
+      }))
     );
   });
 });
