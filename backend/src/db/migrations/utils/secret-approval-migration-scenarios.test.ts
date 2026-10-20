@@ -301,6 +301,14 @@ describe("secret approval migration scenarios that migrate", () => {
 
     expect(rows.requests[0]).toMatchObject({ requesterName: "c1@example.com", requesterEmail: "" });
   });
+
+  test("a policy whose only approver group has no members migrates with that group as its approver", () => {
+    const { failures, rows } = run(scenario({ approvers: [groupApprover("g1")] }));
+
+    expect(failures).toEqual([]);
+    expect(rows.policySteps).toMatchObject([{ policyId: "pol-1", stepNumber: 1, requiredApprovals: 1 }]);
+    expect(rows.policyStepApprovers).toEqual([{ policyStepId: rows.policySteps[0].id, userId: null, groupId: "g1" }]);
+  });
 });
 
 describe("secret approval migration scenarios that fail the checks", () => {
