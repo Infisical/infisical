@@ -17,12 +17,11 @@ import { MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { IconButton } from "@app/components/v3";
 
 import { buildAccessGraph, TAccessGraphInput } from "./buildAccessGraph";
-import { BandLabelNode, GhostNode, LaneEdge, ReaderNode, SecretNode } from "./nodes";
+import { BandLabelNode, LaneEdge, ReaderNode, SecretNode } from "./nodes";
 
 const NODE_TYPES = {
   reader: ReaderNode,
   secret: SecretNode,
-  ghost: GhostNode,
   bandLabel: BandLabelNode
 };
 
@@ -121,7 +120,7 @@ const SecretAccessGraphContent = ({ input }: Props) => {
         onPaneClick={() => setFocusedId(undefined)}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
-        proOptions={{ hideAttribution: true }}
+        proOptions={{ hideAttribution: false }}
         nodesDraggable={false}
         nodesConnectable={false}
         edgesFocusable={false}
@@ -145,11 +144,12 @@ const SecretAccessGraphContent = ({ input }: Props) => {
   );
 };
 
-// Outside the scrolling element, so the controls stay put however tall the graph gets.
+// Outside the scrolling element, so the controls stay put however tall the graph gets; top right, clear of the
+// readers and of the React Flow attribution in the bottom right.
 const ZoomControls = () => {
   const { zoomIn, zoomOut, setViewport } = useReactFlow();
   return (
-    <div className="absolute right-3 bottom-3 z-10 flex flex-col overflow-hidden rounded-md border border-border bg-card">
+    <div className="absolute top-3 right-3 z-10 flex flex-col overflow-hidden rounded-md border border-border bg-card">
       <IconButton variant="ghost" size="xs" aria-label="Zoom in" onClick={() => zoomIn()}>
         <PlusIcon />
       </IconButton>

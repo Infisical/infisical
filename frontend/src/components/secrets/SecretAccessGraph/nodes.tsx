@@ -8,7 +8,7 @@ import {
   Position
 } from "@xyflow/react";
 import { format } from "date-fns";
-import { HardDriveIcon, KeyIcon, UserIcon } from "lucide-react";
+import { HardDriveIcon, KeyIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { SecretExposureBadge } from "@app/components/secrets/SecretExposureScore";
 import { formatReadDay } from "@app/components/secrets/SecretReadStatusBadge";
@@ -18,7 +18,6 @@ import { cn } from "@app/components/v3/utils";
 import {
   TAccessGraphActorType,
   TBandLabelNodeData,
-  TGhostNodeData,
   TLaneEdgeData,
   TReaderNodeData,
   TSecretNodeData
@@ -45,6 +44,7 @@ const AccessPath = ({ isDirect, groupNames }: { isDirect: boolean; groupNames: s
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
+          <UsersIcon className="size-3 shrink-0 text-accent" aria-label="group" />
           <span className="truncate">
             {isDirect ? "Direct · via" : "Via"} {first}
           </span>
@@ -93,7 +93,7 @@ export const ReaderNode = ({ data }: NodeProps & { data: TReaderNodeData }) => {
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
-        <TypeIcon className="size-3.5 shrink-0 text-muted" aria-label={TYPE_LABEL[reader.type]} />
+        <TypeIcon className="size-3.5 shrink-0 text-accent" aria-label={TYPE_LABEL[reader.type]} />
         <p className="truncate text-xs font-medium text-foreground">{reader.name}</p>
         {reader.isAdmin && (
           <Badge variant="neutral" className="ml-auto shrink-0">
@@ -125,34 +125,6 @@ export const SecretNode = ({ data }: NodeProps & { data: TSecretNodeData }) => {
         </div>
       )}
       <Handle type="target" position={Position.Left} className={hiddenHandle} />
-    </div>
-  );
-};
-
-// A reader of this value who cannot read it today. No handle on purpose: there is no current path from
-// them to the secret, and an edge would say otherwise.
-export const GhostNode = ({ data }: NodeProps & { data: TGhostNodeData }) => {
-  const { ghost } = data;
-  const TypeIcon = TYPE_ICON[ghost.type];
-  return (
-    <div className="flex h-full w-full flex-col justify-center gap-1 rounded-md border border-warning/40 bg-warning/5 px-3">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <TypeIcon className="size-3.5 shrink-0 text-muted" aria-label={TYPE_LABEL[ghost.type]} />
-        <p
-          className={cn(
-            "truncate text-xs font-medium",
-            ghost.name ? "text-foreground" : "text-muted italic"
-          )}
-        >
-          {ghost.name ?? `Deleted ${TYPE_LABEL[ghost.type]}`}
-        </p>
-      </div>
-      <span className="truncate text-xs text-warning">
-        {ghost.name ? "Access removed" : "Deleted"}, still knows the value
-      </span>
-      <span className="truncate text-xs text-muted">
-        Read {formatReadDay(ghost.lastReadAt).toLowerCase()}
-      </span>
     </div>
   );
 };

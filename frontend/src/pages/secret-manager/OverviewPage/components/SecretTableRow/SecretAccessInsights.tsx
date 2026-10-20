@@ -23,7 +23,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { SecretAccessGraph, TAccessGraphInput } from "@app/components/secrets/SecretAccessGraph";
-import { SecretExposurePanel } from "@app/components/secrets/SecretExposureScore";
 import {
   SecretReadStatusBadge,
   TReaderReadStatus
@@ -566,8 +565,7 @@ export function SecretAccessInsights({
     readActivityDescription = `Reads by users and machine identities since ${format(new Date(readActivity.trackedSince), "PP")}, including reads through imports and references.`;
   }
 
-  // Readers connect to the secret directly, or through the groups that grant them the value; ghost readers
-  // hang below with no path to it.
+  // Every reader who can read the value, directly or through a group, with one line each to the secret.
   const graphInput = useMemo<TAccessGraphInput | undefined>(() => {
     if (!secretAccessList) return undefined;
     const groups = secretAccessList.groups.filter((group) => grantsReadValue(group.allowedActions));
@@ -636,12 +634,6 @@ export function SecretAccessInsights({
         id: group.id,
         name: group.name,
         memberCount: group.userIds.length + group.identityIds.length
-      })),
-      ghosts: (readActivity?.ghostReaders ?? []).map((ghost) => ({
-        id: ghost.actorId,
-        name: ghost.actorName,
-        type: ghost.actorType,
-        lastReadAt: ghost.lastReadAt
       })),
       hasReadActivity: Boolean(canReadInsights && readActivity),
       trackedSince: readActivity?.trackedSince
@@ -800,20 +792,8 @@ export function SecretAccessInsights({
   return (
     <>
       <div className="flex thin-scrollbar flex-col gap-4 overflow-y-auto p-4">
-        {canReadInsights && !readActivityError && (
-          <SecretExposurePanel exposure={readActivity?.exposure} />
-        )}
         <div className="flex items-center gap-2">
           <ButtonGroup>
-            <Button
-              size="xs"
-              variant={view === "graph" ? "project" : "outline"}
-              aria-pressed={view === "graph"}
-              onClick={() => setView("graph")}
-            >
-              <NetworkIcon />
-              Graph
-            </Button>
             <Button
               size="xs"
               variant={view === "table" ? "project" : "outline"}
@@ -822,6 +802,15 @@ export function SecretAccessInsights({
             >
               <TableIcon />
               Table
+            </Button>
+            <Button
+              size="xs"
+              variant={view === "graph" ? "project" : "outline"}
+              aria-pressed={view === "graph"}
+              onClick={() => setView("graph")}
+            >
+              <NetworkIcon />
+              Graph
             </Button>
           </ButtonGroup>
           {view === "table" && (
@@ -882,12 +871,13 @@ export function SecretAccessInsights({
               </DropdownMenu>
             </>
           )}
-          {view === "graph" && <div className="flex-1" />}
-          <AddMemberPopover
-            secretKey={secretKey}
-            environment={environment}
-            secretPath={secretPath}
-          />
+          {view === "table" && (
+            <AddMemberPopover
+              secretKey={secretKey}
+              environment={environment}
+              secretPath={secretPath}
+            />
+          )}
         </div>
         {view === "graph" &&
           (isLoading || !graphInput ? (
@@ -1099,53 +1089,6 @@ export function SecretAccessInsights({
                   })}
                 </TableBody>
               </Table>
-            )}
-            {canReadInsights && readActivity && readActivity.ghostReaders.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <div>
-                  <h3 className="text-sm font-medium">Ghost Readers</h3>
-                  <p className="text-xs text-muted">
-                    Read this secret since {format(new Date(readActivity.trackedSince), "PP")} but
-                    can no longer access it. They still know the value.
-                  </p>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-48">Type</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="w-40">Last Read</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {readActivity.ghostReaders.map((reader) => {
-                      const { icon: TypeIcon, label: typeLabel } = TYPE_CONFIG[reader.actorType];
-                      return (
-                        <TableRow key={`${reader.actorType}-${reader.actorId}`}>
-                          <TableCell>
-                            <span className="flex items-center gap-2">
-                              <TypeIcon className="size-4 text-accent" />
-                              {typeLabel}
-                            </span>
-                          </TableCell>
-                          <TableCell isTruncatable className="max-w-[180px] font-medium">
-                            {reader.actorName ?? (
-                              <span className="text-muted italic">
-                                Deleted {reader.actorType === "user" ? "user" : "machine identity"}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="w-40 whitespace-nowrap">
-                            <SecretReadStatusBadge
-                              status={{ kind: "read", lastReadAt: reader.lastReadAt }}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
             )}
           </>
         )}

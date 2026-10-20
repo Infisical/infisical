@@ -48,7 +48,6 @@ const input: TAccessGraphInput = {
     { id: "devs", name: "devs", memberCount: 2 },
     { id: "ops", name: "ops", memberCount: 1 }
   ],
-  ghosts: [{ id: "gone", name: null, type: "identity", lastReadAt: "2026-10-10T00:00:00.000Z" }],
   hasReadActivity: true,
   trackedSince: "2026-09-19T00:00:00.000Z"
 };
@@ -59,17 +58,14 @@ describe("buildAccessGraph", () => {
   const readerNode = (type: "user" | "identity", id: string) =>
     nodeById.get(readerNodeId({ type, id }))!;
 
-  test("lays readers and the secret out in two columns with ghosts under the readers, and no group boxes", () => {
+  test("lays readers and the secret out in two columns, with no other boxes", () => {
     const secret = nodeById.get(SECRET_NODE_ID)!;
-    const ghost = nodeById.get("ghost-identity-gone")!;
-    expect(readerNode("user", "alice").position.x).toBeLessThan(secret.position.x);
-    expect(ghost.position.x).toBe(readerNode("user", "alice").position.x);
-    expect(ghost.position.y).toBeGreaterThan(
-      Math.max(...input.readers.map((entry) => readerNode(entry.type, entry.id).position.y))
+    input.readers.forEach((entry) => {
+      expect(readerNode(entry.type, entry.id).position.x).toBeLessThan(secret.position.x);
+    });
+    expect(nodes.every((node) => ["reader", "secret", "bandLabel"].includes(node.type ?? ""))).toBe(
+      true
     );
-    expect(
-      nodes.every((node) => ["reader", "secret", "ghost", "bandLabel"].includes(node.type ?? ""))
-    ).toBe(true);
   });
 
   test("puts unused access first, then readers too new to judge, then readers, then admins", () => {
@@ -87,7 +83,6 @@ describe("buildAccessGraph", () => {
     expect(readerNode("identity", "ci").data.groupNames).toEqual(["devs", "ops"]);
     expect(readerNode("user", "bob").data.groupNames).toEqual(["devs"]);
     expect(readerNode("user", "alice").data.groupNames).toEqual([]);
-    expect(edges.some((edge) => edge.source.startsWith("ghost-"))).toBe(false);
   });
 
   test("bends each line in its own lane, in the gap before the secret", () => {

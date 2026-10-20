@@ -25,14 +25,6 @@ export type TAccessGraphGroup = {
   memberCount: number;
 };
 
-export type TAccessGraphGhost = {
-  id: string;
-  // Null when the reader has since been deleted.
-  name: string | null;
-  type: TAccessGraphActorType;
-  lastReadAt: string;
-};
-
 export type TAccessGraphSecret = {
   key: string;
   environment: string;
@@ -44,7 +36,6 @@ export type TAccessGraphInput = {
   secret: TAccessGraphSecret;
   readers: TAccessGraphReader[];
   groups: TAccessGraphGroup[];
-  ghosts: TAccessGraphGhost[];
   // False when the viewer cannot see read activity, so no edge claims a read or its absence.
   hasReadActivity: boolean;
   trackedSince?: string;
@@ -57,16 +48,13 @@ export type TReaderNodeData = {
 };
 
 export type TSecretNodeData = { secret: TAccessGraphSecret };
-export type TGhostNodeData = { ghost: TAccessGraphGhost };
 export type TBandLabelNodeData = { label: string; detail: string; tone?: "neutral" | "warning" };
 export type TLaneEdgeData = { centerX: number };
 
 export const NODE_WIDTH = 240;
 const READER_NODE_HEIGHT = 74;
 const SECRET_NODE_HEIGHT = 104;
-const GHOST_NODE_HEIGHT = 74;
 const BAND_LABEL_HEIGHT = 36;
-const BAND_GAP = 24;
 const HEADER_GAP = 8;
 const COLUMN_GAP = 160;
 const ROW_GAP = 14;
@@ -139,7 +127,6 @@ export const buildAccessGraph = ({
   secret,
   readers,
   groups,
-  ghosts,
   hasReadActivity
 }: TAccessGraphInput) => {
   const nodes: Node[] = [];
@@ -216,37 +203,7 @@ export const buildAccessGraph = ({
     data: { secret } satisfies TSecretNodeData
   });
 
-  // No edges from here on: a ghost reader has no current path to the secret, and drawing one would say
-  // they can still read the value.
-  const firstGhostY = readersBottom + BAND_GAP + BAND_LABEL_HEIGHT + HEADER_GAP;
-  const ghostY = stackColumn(firstGhostY, GHOST_NODE_HEIGHT);
-  if (ghosts.length) {
-    nodes.push(
-      bandLabelNode("band-ghosts", MARGIN, firstGhostY, {
-        label: `Ghost readers · ${ghosts.length}`,
-        detail: "read it, but have no path to it now",
-        tone: "warning"
-      })
-    );
-    ghosts.forEach((ghost, index) => {
-      nodes.push({
-        id: `ghost-${ghost.type}-${ghost.id}`,
-        type: "ghost",
-        position: { x: MARGIN, y: ghostY(index) },
-        width: NODE_WIDTH,
-        height: GHOST_NODE_HEIGHT,
-        selectable: false,
-        data: { ghost } satisfies TGhostNodeData
-      });
-    });
-  }
-
-  const contentHeight =
-    Math.max(
-      readersBottom,
-      secretY + SECRET_NODE_HEIGHT,
-      ghosts.length ? firstGhostY + columnHeight(ghosts.length, GHOST_NODE_HEIGHT) : 0
-    ) + MARGIN;
+  const contentHeight = Math.max(readersBottom, secretY + SECRET_NODE_HEIGHT) + MARGIN;
   const contentWidth = secretColumnX + NODE_WIDTH + MARGIN;
 
   return { nodes, edges, contentHeight, contentWidth };
