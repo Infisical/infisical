@@ -1,33 +1,28 @@
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 
 import { SecretSync } from "./secret-sync-enums";
-import { getSecretSyncWriteLockKeys } from "./secret-sync-fns";
+import { getSharedDestinationLockKey } from "./secret-sync-fns";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
 
-describe("getSecretSyncWriteLockKeys", () => {
-  test("locks a Cloudflare Workers sync on its Worker as well as on itself", () => {
+describe("getSharedDestinationLockKey", () => {
+  test("locks a Cloudflare Workers sync on its Worker", () => {
     expect(
-      getSecretSyncWriteLockKeys({
-        id: "sync-a",
+      getSharedDestinationLockKey({
         destination: SecretSync.CloudflareWorkers,
         connectionId: "conn",
         destinationConfig: { scriptId: "my-worker" }
       })
-    ).toEqual([
-      KeyStorePrefixes.SecretSyncLock("sync-a"),
-      KeyStorePrefixes.CloudflareWorkerSyncLock("conn", "my-worker")
-    ]);
+    ).toBe(KeyStorePrefixes.CloudflareWorkerSyncLock("conn", "my-worker"));
   });
 
-  test("locks other syncs on themselves only", () => {
+  test("gives other syncs no shared lock", () => {
     expect(
-      getSecretSyncWriteLockKeys({
-        id: "sync-b",
+      getSharedDestinationLockKey({
         destination: SecretSync.CloudflarePages,
         connectionId: "conn",
         destinationConfig: { projectName: "site", environment: "production" }
       })
-    ).toEqual([KeyStorePrefixes.SecretSyncLock("sync-b")]);
+    ).toBeUndefined();
   });
 });
