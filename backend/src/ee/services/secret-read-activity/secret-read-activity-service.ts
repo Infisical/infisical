@@ -721,6 +721,8 @@ export const secretReadActivityServiceFactory = ({
     ]);
     return {
       ...summary,
+      // Dates come back from the cache as strings.
+      rows: summary.rows.map((row) => ({ ...row, lastReadAt: row.lastReadAt ? new Date(row.lastReadAt) : null })),
       remainingTTL,
       projectName: project?.name ?? "",
       trackingStartedAt,
