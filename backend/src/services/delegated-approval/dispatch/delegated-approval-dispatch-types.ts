@@ -42,5 +42,3 @@ export type TDelegatedApprovalProvider = {
 export type TDelegatedApprovalDispatchDetailsBuilder = (
   request: TApprovalRequests
 ) => TDelegatedApprovalDispatchDetails;
-
-export type TDelegatedApprovalDispatchJobPayload = { delegatedRequestId: string };

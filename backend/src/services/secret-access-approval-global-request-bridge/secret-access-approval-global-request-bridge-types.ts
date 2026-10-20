@@ -18,7 +18,6 @@ import {
 import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { TSecretAccessPolicy } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { TDelegatedApprovalDispatchQueueFactory } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -67,7 +66,6 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
     TDelegatedApprovalServiceFactory,
     "getPolicyByPolicyId" | "createRequest" | "getRequestByRequestId" | "getRequestsByRequestIds" | "retryDispatch"
   >;
-  delegatedApprovalDispatchQueue: Pick<TDelegatedApprovalDispatchQueueFactory, "queueDispatch">;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;

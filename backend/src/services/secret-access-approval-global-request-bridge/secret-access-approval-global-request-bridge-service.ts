@@ -78,7 +78,6 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
   secretAccessApprovalGlobalPolicyBridgeDAL,
   secretAccessApprovalGlobalRequestBridgeDAL,
   delegatedApprovalService,
-  delegatedApprovalDispatchQueue,
   smtpService,
   notificationService,
   kmsService,
@@ -332,7 +331,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     const parsedMs = requestExpirationTime ? ms(requestExpirationTime) : null;
     const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
-    const { created, delegatedRequest } = await approvalRequestDAL.transaction(async (tx) => {
+    const created = await approvalRequestDAL.transaction(async (tx) => {
       const approvalRequest = await createApprovalRequestWithSteps(
         {
           projectId,
@@ -351,15 +350,11 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
         tx
       );
-      return {
-        created: approvalRequest,
-        delegatedRequest: delegatedPolicy ? await delegatedApprovalService.createRequest({ approvalRequest }, tx) : null
-      };
+      if (delegatedPolicy) {
+        await delegatedApprovalService.createRequest({ approvalRequest }, tx);
+      }
+      return approvalRequest;
     });
-
-    if (delegatedRequest) {
-      await delegatedApprovalDispatchQueue.queueDispatch({ delegatedRequestId: delegatedRequest.id });
-    }
 
     const request = await $findRequestById(created.id);
     const [firstStep] = policy.steps;
