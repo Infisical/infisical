@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
@@ -91,6 +91,11 @@ import {
   useGetAccessApprovalRequests,
   useGetAccessRequestsCount
 } from "@app/hooks/api/accessApproval/queries";
+import {
+  isDelegatedDispatchRetrying,
+  noteDelegatedDispatchRetryStatuses,
+  useDelegatedDispatchRetryVersion
+} from "@app/hooks/api/accessApproval/retrying-delegated-dispatch";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import {
   DelegatedApprovalRequestStatus,
@@ -236,12 +241,31 @@ export const AccessApprovalRequest = ({
   const {
     data: requests,
     refetch: refetchRequests,
-    isPending: areRequestsPending
+    isPending: areRequestsPending,
+    isFetching: areRequestsFetching
   } = useGetAccessApprovalRequests({
     projectSlug,
     authorUserId: validRequestedByFilter,
     envSlug: validEnvFilter
   });
+  useDelegatedDispatchRetryVersion();
+  const requestsCameFromFetch = useRef(false);
+
+  useEffect(() => {
+    if (areRequestsFetching) {
+      requestsCameFromFetch.current = true;
+      return;
+    }
+    if (!requestsCameFromFetch.current || !requests) return;
+
+    requestsCameFromFetch.current = false;
+    noteDelegatedDispatchRetryStatuses(
+      requests.map((request) => ({
+        id: request.id,
+        status: request.delegatedApproval?.status
+      }))
+    );
+  }, [areRequestsFetching, requests]);
 
   const { data: delegatedApprovalOptions } = useDelegatedApprovalOptions({
     enabled: Boolean(requests?.some((request) => request.delegatedApproval))
@@ -477,6 +501,13 @@ export const AccessApprovalRequest = ({
           type: "danger",
           icon: ShieldBanIcon
         };
+      else if (isDelegatedDispatchRetrying(request.id))
+        displayData = {
+          label: "Retrying",
+          type: "info",
+          icon: RefreshCwIcon,
+          isIconSpinning: true
+        };
       else if (request.delegatedApproval?.status === DelegatedApprovalRequestStatus.FailedDispatch)
         displayData = {
           label: "Not Submitted",
@@ -491,7 +522,7 @@ export const AccessApprovalRequest = ({
         displayData =
           request.delegatedApproval.status === DelegatedApprovalRequestStatus.PendingDispatch
             ? {
-                label: "Retrying",
+                label: "Submitting",
                 type: "info",
                 icon: RefreshCwIcon,
                 isIconSpinning: true

@@ -89,6 +89,7 @@ import {
   useReviewAccessRequest,
   useRevokeAccessRequest
 } from "@app/hooks/api";
+import { useIsDelegatedDispatchRetrying } from "@app/hooks/api/accessApproval/retrying-delegated-dispatch";
 import {
   Approver,
   ApproverType,
@@ -214,6 +215,11 @@ const DELEGATED_STATUS_PRESENTATION: Record<
   }
 };
 
+const RETRYING_DELEGATED_STATUS = {
+  variant: "warning" as const,
+  getMessage: (name: string) => `Retrying the submission to ${name}.`
+};
+
 export const ReviewAccessRequestModal = ({
   isOpen,
   onOpenChange,
@@ -258,9 +264,18 @@ export const ReviewAccessRequestModal = ({
     delegatedApprovalOptions?.find(
       (option) => option.type === request.policy.delegatedApproval?.type
     )?.name ?? "the external approval system";
-  const delegatedStatus = request.delegatedApproval
-    ? DELEGATED_STATUS_PRESENTATION[request.delegatedApproval.status]
-    : undefined;
+  const isRetryingDelegatedDispatch = useIsDelegatedDispatchRetrying(request.id);
+  let delegatedStatus:
+    | {
+        variant: "warning" | "danger" | "success";
+        getMessage: (delegatedApprovalName: string) => string;
+      }
+    | undefined;
+  if (isRetryingDelegatedDispatch) {
+    delegatedStatus = RETRYING_DELEGATED_STATUS;
+  } else if (request.delegatedApproval) {
+    delegatedStatus = DELEGATED_STATUS_PRESENTATION[request.delegatedApproval.status];
+  }
 
   const assignPrivilegesConditions = useMemo(
     () => getMemberAssignPrivilegesConditions(permission),
@@ -530,6 +545,7 @@ export const ReviewAccessRequestModal = ({
     !request.policy.deletedAt;
 
   const canRetryDispatch =
+    !isRetryingDelegatedDispatch &&
     isDelegatedPending &&
     request.delegatedApproval?.status === DelegatedApprovalRequestStatus.FailedDispatch &&
     (request.isRequestedByCurrentUser ||
@@ -1053,11 +1069,12 @@ export const ReviewAccessRequestModal = ({
                           <span className="text-sm text-foreground">
                             {delegatedStatus.getMessage(delegatedApprovalName)}
                           </span>
-                          {request.delegatedApproval?.statusReason && (
-                            <span className="text-xs break-words text-muted">
-                              {request.delegatedApproval.statusReason}
-                            </span>
-                          )}
+                          {!isRetryingDelegatedDispatch &&
+                            request.delegatedApproval?.statusReason && (
+                              <span className="text-xs break-words text-muted">
+                                {request.delegatedApproval.statusReason}
+                              </span>
+                            )}
                         </ItemContent>
                         <ItemActions className="shrink-0 items-center gap-3">
                           <span className="text-xs whitespace-nowrap text-muted">
