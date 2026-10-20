@@ -11,6 +11,7 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import {
+  Badge,
   Checkbox,
   IconButton,
   TableCell,
@@ -47,6 +48,8 @@ type Props = {
   pendingAction?: PendingAction;
   onBatchRevert?: (folderName: string) => void;
   isSelectionDisabled?: boolean;
+  isPinned?: boolean;
+  isHighlighted?: boolean;
 };
 
 export const FolderTableRow = ({
@@ -66,7 +69,9 @@ export const FolderTableRow = ({
   onClick,
   pendingAction,
   onBatchRevert,
-  isSelectionDisabled
+  isSelectionDisabled,
+  isPinned,
+  isHighlighted
 }: Props) => {
   const [isClicking, setIsClicking] = useState(false);
   const handleClick = () => {
@@ -83,6 +88,7 @@ export const FolderTableRow = ({
     <TableRow
       className={twMerge(
         "group hover:z-10",
+        isHighlighted && "row-highlight",
         isSelected && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
         pendingActionRowClass(pendingAction)
       )}
@@ -147,6 +153,11 @@ export const FolderTableRow = ({
               </TooltipTrigger>
               <TooltipContent className="max-w-sm">{description}</TooltipContent>
             </Tooltip>
+          )}
+          {isPinned && (
+            <Badge variant="project" className="ml-2">
+              New
+            </Badge>
           )}
         </div>
         <div

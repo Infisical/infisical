@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { createdResourceMutationKeys, dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import {
   TCheckSecretRotationV2CredentialsDTO,
   TCreateSecretRotationV2DTO,
@@ -17,6 +17,7 @@ import {
 export const useCreateSecretRotationV2 = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: createdResourceMutationKeys.secretRotation,
     mutationFn: async ({ type, ...params }: TCreateSecretRotationV2DTO) => {
       const { data } = await apiRequest.post<TSecretRotationV2Response>(
         `/api/v2/secret-rotations/${type}`,

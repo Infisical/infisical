@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { createdResourceMutationKeys, dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
@@ -203,6 +203,7 @@ export const useCreateFolder = ({ meta }: { meta?: MutationMeta } = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateFolderDTO>({
+    mutationKey: createdResourceMutationKeys.folder,
     meta,
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v2/folders", {

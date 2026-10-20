@@ -58,6 +58,8 @@ type Props = {
   getProxiedServiceByName: (slug: string, name: string) => TDashboardProxiedService | undefined;
   onEdit: (proxiedService: TDashboardProxiedService) => void;
   onDelete: (proxiedService: TDashboardProxiedService) => void;
+  isPinned?: boolean;
+  isHighlighted?: boolean;
 };
 
 export const ProxiedServiceTableRow = ({
@@ -66,7 +68,9 @@ export const ProxiedServiceTableRow = ({
   isProxiedServiceInEnv,
   getProxiedServiceByName,
   onEdit,
-  onDelete
+  onDelete,
+  isPinned,
+  isHighlighted
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
 
@@ -186,7 +190,7 @@ export const ProxiedServiceTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge("group hover:z-10", isHighlighted && "row-highlight")}
       >
         <TableCell
           className={twMerge(
@@ -225,13 +229,25 @@ export const ProxiedServiceTableRow = ({
           {isSingleEnvView && singleEnvService ? (
             <div className="relative flex w-full items-center">
               <span className="truncate">{proxiedServiceName}</span>
+              {isPinned && (
+                <Badge variant="project" className="ml-2">
+                  New
+                </Badge>
+              )}
               {renderInlineDetails(singleEnvService)}
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
                 {renderActionButtons(singleEnvService)}
               </div>
             </div>
           ) : (
-            proxiedServiceName
+            <>
+              {proxiedServiceName}
+              {isPinned && (
+                <Badge variant="project" className="ml-2">
+                  New
+                </Badge>
+              )}
+            </>
           )}
         </TableCell>
         {environments.length > 1 &&

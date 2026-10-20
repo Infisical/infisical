@@ -74,6 +74,8 @@ type Props = {
   onCheckActiveCredentials: (secretRotation: TSecretRotationV2) => Promise<void> | void;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  isPinned?: boolean;
+  isHighlighted?: boolean;
 };
 
 const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
@@ -100,7 +102,9 @@ export const SecretRotationTableRow = ({
   onReconcile,
   onCheckActiveCredentials,
   activityId,
-  onActivityChange
+  onActivityChange,
+  isPinned,
+  isHighlighted
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
@@ -340,6 +344,7 @@ export const SecretRotationTableRow = ({
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
         className={twMerge(
           "group hover:z-10",
+          isHighlighted && "row-highlight",
           (isExpanded || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
         )}
       >
@@ -397,6 +402,11 @@ export const SecretRotationTableRow = ({
                 />
                 {SECRET_ROTATION_MAP[singleEnvRotation.type].name}
               </Badge>
+              {isPinned && (
+                <Badge variant="project" className="mr-2.5">
+                  New
+                </Badge>
+              )}
               {singleEnvRotation.description && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -430,6 +440,11 @@ export const SecretRotationTableRow = ({
           ) : (
             <>
               {secretRotationName}
+              {isPinned && (
+                <Badge variant="project" className="ml-2">
+                  New
+                </Badge>
+              )}
               {statuses?.some((status) => status === SecretRotationStatus.Failed) && (
                 <Tooltip>
                   <TooltipTrigger asChild>

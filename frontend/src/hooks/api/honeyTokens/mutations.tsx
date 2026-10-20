@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { createdResourceMutationKeys, dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import {
   TCreateHoneyTokenDTO,
@@ -15,6 +15,7 @@ export const useCreateHoneyToken = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TCreateHoneyTokenResponse, object, TCreateHoneyTokenDTO>({
+    mutationKey: createdResourceMutationKeys.honeyToken,
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post<TCreateHoneyTokenResponse>(
         "/api/v1/honey-tokens",

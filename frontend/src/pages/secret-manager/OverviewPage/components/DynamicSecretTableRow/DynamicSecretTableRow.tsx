@@ -57,6 +57,8 @@ type Props = {
   onViewLeases: (dynamicSecret: DynamicSecretWithEnv) => void;
   onDelete: (dynamicSecret: DynamicSecretWithEnv) => void;
   onForceDelete: (dynamicSecret: DynamicSecretWithEnv) => void;
+  isPinned?: boolean;
+  isHighlighted?: boolean;
 };
 
 export const DynamicSecretTableRow = ({
@@ -70,7 +72,9 @@ export const DynamicSecretTableRow = ({
   onGenerateLease,
   onViewLeases,
   onDelete,
-  onForceDelete
+  onForceDelete,
+  isPinned,
+  isHighlighted
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
 
@@ -272,7 +276,7 @@ export const DynamicSecretTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge("group hover:z-10", isHighlighted && "row-highlight")}
       >
         <TableCell
           className={twMerge(
@@ -314,6 +318,11 @@ export const DynamicSecretTableRow = ({
               <Badge variant="neutral" className="ml-2">
                 {dynamicSecretProviderRegistry.requireDefinition(singleEnvDynamicSecret.type).label}
               </Badge>
+              {isPinned && (
+                <Badge variant="project" className="ml-2">
+                  New
+                </Badge>
+              )}
               {renderStatusIndicator(singleEnvDynamicSecret)}
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
                 {renderActionButtons(singleEnvDynamicSecret)}
@@ -322,6 +331,11 @@ export const DynamicSecretTableRow = ({
           ) : (
             <>
               {dynamicSecretName}
+              {isPinned && (
+                <Badge variant="project" className="ml-2">
+                  New
+                </Badge>
+              )}
               {statuses?.some(
                 (status) =>
                   status === DynamicSecretStatus.FailedDeletion ||

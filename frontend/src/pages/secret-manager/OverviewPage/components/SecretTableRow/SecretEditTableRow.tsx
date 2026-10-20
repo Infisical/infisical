@@ -183,6 +183,7 @@ type Props = {
   onCopySecret?: () => void;
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
   onExpandedChange?: (isExpanded: boolean) => void;
+  isNew?: boolean;
 };
 
 export const SecretEditTableRow = ({
@@ -223,7 +224,8 @@ export const SecretEditTableRow = ({
   revokedProjectFolderGrant,
   onCopySecret,
   onAccessInsightsUpgrade,
-  onExpandedChange
+  onExpandedChange,
+  isNew
 }: Props) => {
   const telemetry = useOverviewTelemetry();
   const valueSheetFlow = useRef<OverviewFlowHandle>(undefined);
@@ -1941,14 +1943,18 @@ export const SecretEditTableRow = ({
                     onClick={async () => {
                       if (sharedValueData) {
                         handlePopUpOpen("createSharedSecret", {
-                          value: sharedValueData.value
+                          value: sharedValueData.value,
+                          name: secretName
                         });
                         return;
                       }
 
                       const { data, error } = await refetchSharedValue();
                       if (data) {
-                        handlePopUpOpen("createSharedSecret", { value: data.value });
+                        handlePopUpOpen("createSharedSecret", {
+                          value: data.value,
+                          name: secretName
+                        });
                       } else {
                         createNotification({
                           type: "error",
@@ -2273,6 +2279,7 @@ export const SecretEditTableRow = ({
                   </span>
                 </PopoverAnchor>
               )}
+              {isNew && <Badge variant="project">New</Badge>}
             </div>
             {commentPopoverContent}
           </Popover>
