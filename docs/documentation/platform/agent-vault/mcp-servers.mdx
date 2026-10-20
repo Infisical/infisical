@@ -45,16 +45,16 @@ The service covers every request to the server URL's host, whatever the path. If
 
 ## Credential types
 
-### OAuth 2.1
+### OAuth
 
-With OAuth 2.1, you sign in to the provider once from Infisical. Infisical stores the tokens the provider returns and refreshes the access token before it expires. The proxy only receives the access token, and the agent never receives any token.
+With OAuth, you sign in to the provider once from Infisical. Infisical stores the tokens the provider returns and refreshes the access token before it expires. The proxy only receives the access token, and the agent never receives any token.
 
 <Steps>
   <Step>
-    Under **Auth Method**, select **OAuth 2.1**, then select **Authorize**.
+    Under **Auth Method**, select **OAuth**, then select the button that names your server, such as **Authorize with mcp.linear.app**.
 
     <Note>
-      Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, the card asks for an OAuth app of your own instead. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** the card shows. Then enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty for a public client), and select **Authorize** again.
+      Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, the card asks for an OAuth app of your own instead. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** the card shows. Then enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty for a public client), and authorize again.
     </Note>
   </Step>
   <Step>
@@ -73,7 +73,7 @@ With OAuth 2.1, you sign in to the provider once from Infisical. Infisical store
 
 With a Bearer token, you paste a token the MCP server accepts into **Token**, such as a [GitHub personal access token](https://github.com/settings/tokens) for GitHub MCP. The proxy sends the token as `Authorization: Bearer <token>`.
 
-To send the token in a different header or with a different prefix, expand **Advanced** and change **Header Name** or **Prefix**. To use a token that several services share, type `{{` in **Token** and select a [variable](/documentation/platform/agent-vault/variables).
+To send the token in a different header or with a different prefix, expand **Advanced Options** and change **Header Name** or **Prefix**. To use a token that several services share, type `{{` in **Token** and select a [variable](/documentation/platform/agent-vault/variables).
 
 ## Custom headers
 
@@ -81,7 +81,7 @@ If the MCP server needs another header besides the credential, such as an organi
 
 <Steps>
   <Step>
-    On the **Credential** step, expand **Advanced** and select **Add Custom Header**.
+    On the **Credential** step, expand **Advanced Options** and select **Add Custom Header**.
   </Step>
   <Step>
     Enter the header's **Name**, an optional **Prefix**, and the **Value**. To use a [variable](/documentation/platform/agent-vault/variables), type `{{` in **Value**.

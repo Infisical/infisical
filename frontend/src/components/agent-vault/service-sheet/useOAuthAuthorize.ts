@@ -18,7 +18,7 @@ const POPUP_FEATURES = "popup,width=600,height=720";
 export type TOAuthAuthorizeState =
   | { status: "idle" }
   | { status: "starting" }
-  | { status: "pending"; popupClosed: boolean }
+  | { status: "pending" }
   | { status: "authorized"; authorization: TAgentVaultOAuthAuthorization }
   | { status: "failed"; message: string };
 
@@ -42,11 +42,9 @@ export const useOAuthAuthorize = ({
     id: string;
     attempt: number;
   } | null>(null);
-  const {
-    data: authorization,
-    error: authorizationError,
-    dataUpdatedAt
-  } = useGetAgentVaultOAuthAuthorization(pendingAuthorization?.id ?? "");
+  const { data: authorization, error: authorizationError } = useGetAgentVaultOAuthAuthorization(
+    pendingAuthorization?.id ?? ""
+  );
 
   const popupRef = useRef<Window | null>(null);
   // Bumped by every new attempt and by cancel, so a response for an older attempt is dropped.
@@ -74,10 +72,7 @@ export const useOAuthAuthorize = ({
   useEffect(() => {
     if (!pendingAuthorization || attemptRef.current !== pendingAuthorization.attempt) return;
     if (authorizationError) {
-      fail(
-        serverMessage(authorizationError) ??
-          "Couldn't check the authorization status. Select Authorize to try again."
-      );
+      fail(serverMessage(authorizationError) ?? "Couldn't check the authorization status.");
       return;
     }
     if (!authorization) return;
@@ -88,24 +83,15 @@ export const useOAuthAuthorize = ({
       return;
     }
     if (authorization.status === AgentVaultOAuthAuthorizationStatus.Failed) {
-      fail(authorization.error ?? "The server refused the authorization. Try again.");
-      return;
+      fail(authorization.error ?? "The server refused the authorization.");
     }
-
-    // Cross-Origin-Opener-Policy can report an open popup as closed, so this changes only the hint.
-    const popupClosed = !popupRef.current || popupRef.current.closed;
-    setState((previous) =>
-      previous.status === "pending" && previous.popupClosed !== popupClosed
-        ? { status: "pending", popupClosed }
-        : previous
-    );
-  }, [pendingAuthorization, authorization, authorizationError, dataUpdatedAt, fail, stop]);
+  }, [pendingAuthorization, authorization, authorizationError, fail, stop]);
 
   useEffect(() => {
     if (!pendingAuthorization) return undefined;
     const timeout = window.setTimeout(() => {
       if (attemptRef.current === pendingAuthorization.attempt) {
-        fail("The authorization timed out after 5 minutes. Select Authorize to try again.");
+        fail("Timed out waiting for the sign-in.");
       }
     }, POLL_TIMEOUT_MS);
     return () => window.clearTimeout(timeout);
@@ -122,8 +108,7 @@ export const useOAuthAuthorize = ({
       if (!popup) {
         setState({
           status: "failed",
-          message:
-            "Your browser blocked the authorization window. Allow pop-ups for this site, then select Authorize again."
+          message: "Your browser blocked the sign-in window. Allow pop-ups for this site."
         });
         return;
       }
@@ -151,16 +136,13 @@ export const useOAuthAuthorize = ({
               return;
             }
             popup.location.href = createdAuthorization.authorizeUrl;
-            setState({ status: "pending", popupClosed: false });
+            setState({ status: "pending" });
             setPendingAuthorization({ id: createdAuthorization.id, attempt });
           }
         )
         .catch((error: unknown) => {
           if (attemptRef.current !== attempt) return;
-          fail(
-            serverMessage(error) ??
-              "Couldn't start the authorization. Check the server URL and try again."
-          );
+          fail(serverMessage(error) ?? "Couldn't start the sign-in.");
         });
     },
     [createAuthorization, fail, stop]

@@ -34,7 +34,7 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
   [AgentVaultCredentialType.Basic]: "Basic Auth",
   [AgentVaultCredentialType.Passthrough]: "Pass-through",
-  [AgentVaultCredentialType.OAuth]: "OAuth 2.1"
+  [AgentVaultCredentialType.OAuth]: "OAuth"
 };
 
 export const HTTP_CREDENTIAL_TYPES = [
@@ -301,7 +301,7 @@ export const buildServiceSchema = (service?: TAgentVaultService | null, variable
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["credentialType"],
-            message: "An MCP server takes OAuth 2.1 or a bearer token."
+            message: "An MCP server takes OAuth or a bearer token."
           });
         }
         if (isOAuthAuthorizationMissing(data, service)) {

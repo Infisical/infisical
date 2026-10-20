@@ -1,17 +1,17 @@
 import { useId } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { KeyRoundIcon, ShieldCheckIcon } from "lucide-react";
 
 import {
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldLabel,
-  FieldTitle,
   Input,
-  RadioGroup,
-  RadioGroupItem
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@app/components/v3";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
@@ -23,20 +23,13 @@ import { TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 import { useServiceVariables } from "./ServiceVariablesContext";
 import { TransformationsFields } from "./TransformationsFields";
 
-const AUTH_METHOD_OPTIONS = [
-  {
-    type: AgentVaultCredentialType.OAuth,
-    icon: ShieldCheckIcon,
-    title: "OAuth 2.1",
-    description: "Authorize once. Infisical stores the token and keeps it fresh."
-  },
-  {
-    type: AgentVaultCredentialType.Bearer,
-    icon: KeyRoundIcon,
-    title: "Bearer Token",
-    description: "A token you provide, sent in a header on every request to the server."
-  }
-] as const;
+const AUTH_METHOD_LABELS = {
+  [AgentVaultCredentialType.OAuth]: "OAuth",
+  [AgentVaultCredentialType.Bearer]: "Bearer Token"
+} as const;
+
+const DEFAULT_HEADER_NAME = "Authorization";
+const DEFAULT_HEADER_PREFIX = "Bearer";
 
 type Props = {
   accessBundleId: string;
@@ -50,6 +43,9 @@ export const McpCredentialFields = ({ accessBundleId, service, openItem, onOpenC
   const { storedKeys } = useServiceVariables();
   const secret = watch("secret");
   const credentialType = watch("credentialType");
+  const headerName = watch("headerName");
+  const headerPrefix = watch("headerPrefix");
+  const customHeaders = watch("customHeaders");
   const isOAuth = credentialType === AgentVaultCredentialType.OAuth;
   const authMethodLabelId = useId();
   const headerNameInputId = useId();
@@ -63,36 +59,34 @@ export const McpCredentialFields = ({ accessBundleId, service, openItem, onOpenC
   };
 
   const hasStoredSecret = storedType === AgentVaultCredentialType.Bearer;
+  const trimmedHeaderName = (headerName ?? "").trim();
+  // The default Authorization: Bearer header needs no preview; it earns one once something is customized.
+  const isHeaderCustomized =
+    !isOAuth &&
+    ((trimmedHeaderName && trimmedHeaderName.toLowerCase() !== DEFAULT_HEADER_NAME.toLowerCase()) ||
+      (headerPrefix ?? "").trim() !== DEFAULT_HEADER_PREFIX);
+  const showSends = isHeaderCustomized || customHeaders.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
       <Field>
         <FieldLabel id={authMethodLabelId}>Auth Method</FieldLabel>
         <FieldContent>
-          <RadioGroup
-            aria-labelledby={authMethodLabelId}
+          <Select
             value={isOAuth ? AgentVaultCredentialType.OAuth : AgentVaultCredentialType.Bearer}
             onValueChange={(value) => selectType(value as AgentVaultCredentialType)}
-            className="gap-3 md:grid-cols-2"
           >
-            {AUTH_METHOD_OPTIONS.map(({ type, icon: Icon, title, description }) => {
-              const id = `${authMethodLabelId}-${type}`;
-              return (
-                <FieldLabel key={type} htmlFor={id} variant="av">
-                  <Field orientation="horizontal">
-                    <FieldContent>
-                      <FieldTitle>
-                        <Icon />
-                        {title}
-                      </FieldTitle>
-                      <FieldDescription>{description}</FieldDescription>
-                    </FieldContent>
-                    <RadioGroupItem id={id} value={type} />
-                  </Field>
-                </FieldLabel>
-              );
-            })}
-          </RadioGroup>
+            <SelectTrigger aria-labelledby={authMethodLabelId} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {Object.entries(AUTH_METHOD_LABELS).map(([type, label]) => (
+                <SelectItem key={type} value={type}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </FieldContent>
       </Field>
 
@@ -124,12 +118,11 @@ export const McpCredentialFields = ({ accessBundleId, service, openItem, onOpenC
         />
       )}
 
-      <SendsPreview />
+      {showSends && <SendsPreview />}
 
       <TransformationsFields
         openItem={openItem}
         onOpenChange={onOpenChange}
-        label="Advanced"
         hasSubstitutions={false}
       >
         {!isOAuth && (

@@ -1,24 +1,26 @@
-import { useId, useState } from "react";
+import { Fragment, ReactNode, useId, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { format } from "date-fns";
-import { CheckIcon, CircleAlertIcon, ShieldCheckIcon } from "lucide-react";
+import { CheckIcon, CircleAlertIcon, CircleXIcon, InfoIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
-  Alert,
-  AlertDescription,
   Badge,
   Button,
   CopyButton,
-  Detail,
-  DetailLabel,
-  DetailValue,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
   Input,
-  Spinner
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { AgentVaultOAuthStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
@@ -31,6 +33,8 @@ import {
 } from "./serviceSchema";
 import { useOAuthAuthorize } from "./useOAuthAuthorize";
 
+const CALLBACK_PATH = "/agent-vault/oauth/callback";
+
 const hostOf = (serverUrl: string) => {
   try {
     return new URL(serverUrl).host;
@@ -38,19 +42,6 @@ const hostOf = (serverUrl: string) => {
     return "the server";
   }
 };
-
-const ScopeList = ({ scopes }: { scopes: string[] }) =>
-  scopes.length ? (
-    <div className="flex flex-wrap gap-1.5">
-      {scopes.map((scope) => (
-        <Badge key={scope} variant="outline" className="font-mono">
-          {scope}
-        </Badge>
-      ))}
-    </div>
-  ) : (
-    <span className="text-muted">None requested</span>
-  );
 
 const OAUTH_STATUS_VARIANTS = {
   [AgentVaultOAuthStatus.Connected]: "success",
@@ -63,6 +54,75 @@ export const OAuthStatusBadge = ({ status }: { status: AgentVaultOAuthStatus }) 
     {status === AgentVaultOAuthStatus.Connected ? <CheckIcon /> : <CircleAlertIcon />}
     {OAUTH_STATUS_LABELS[status]}
   </Badge>
+);
+
+const TONE_CLASS = { danger: "text-danger", warning: "text-warning" } as const;
+
+const Status = ({
+  icon,
+  tone,
+  title,
+  children
+}: {
+  icon?: ReactNode;
+  tone?: "warning" | "danger";
+  title: ReactNode;
+  children?: ReactNode;
+}) => (
+  <div className="flex min-w-0 flex-col gap-0.5">
+    <span
+      className={twMerge(
+        "flex items-center gap-1.5 text-sm [&>svg]:size-3.5 [&>svg]:shrink-0",
+        tone ? TONE_CLASS[tone] : "text-foreground"
+      )}
+    >
+      {icon}
+      {title}
+    </span>
+    {children && <span className="text-xs text-muted">{children}</span>}
+  </div>
+);
+
+const SCOPE_PREVIEW = 10;
+
+const ScopeValues = ({ scopes, className }: { scopes: string[]; className?: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const shown = isExpanded ? scopes : scopes.slice(0, SCOPE_PREVIEW);
+  const hidden = scopes.length - shown.length;
+  return (
+    <span className={twMerge("min-w-0", className)}>
+      {shown.map((scope, index) => (
+        <Fragment key={scope}>
+          <span className="whitespace-nowrap">{scope}</span>
+          {index < shown.length - 1 ? ", " : ""}
+        </Fragment>
+      ))}
+      {hidden > 0 && (
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="ml-1.5 align-baseline text-xs text-muted hover:text-foreground"
+          onClick={() => setIsExpanded(true)}
+        >
+          +{hidden} more
+        </Button>
+      )}
+    </span>
+  );
+};
+
+const Scopes = ({ granted, requested }: { granted: string[]; requested: string[] }) => (
+  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+    <span className="text-muted">Scopes</span>
+    {granted.length ? <ScopeValues scopes={granted} /> : <span className="text-muted">None</span>}
+    {requested.length > 0 && (
+      <>
+        <span className="text-muted">Requested</span>
+        <ScopeValues scopes={requested} className="text-warning" />
+      </>
+    )}
+  </div>
 );
 
 type Props = {
@@ -91,9 +151,8 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
     });
   const clientIdInputId = useId();
   const clientSecretInputId = useId();
-  // The server reuses a stored client on reauthorization, so a rotated or expired one can only be
-  // replaced by entering it here.
-  const [isReplacingClient, setIsReplacingClient] = useState(false);
+  const redirectUriInputId = useId();
+  const [isUsingOwnApp, setIsUsingOwnApp] = useState(false);
 
   const trimmedUrl = serverUrl.trim();
   const host = hostOf(trimmedUrl);
@@ -119,10 +178,12 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
     });
 
   const isWaiting = state.status === "starting" || state.status === "pending";
-  const isClientEntered = isClientRequired || isReplacingClient;
+  const wantsOwnApp = isClientRequired || isUsingOwnApp;
+  const isOwnApp = wantsOwnApp && !isNewlyAuthorized;
+  const hasAuthorization = isNewlyAuthorized || Boolean(stored);
 
-  const keepSavedClient = () => {
-    setIsReplacingClient(false);
+  const switchToAutomaticSetup = () => {
+    setIsUsingOwnApp(false);
     setValue("oauthClientId", "");
     setValue("oauthClientSecret", "");
   };
@@ -132,154 +193,192 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
       accessBundleId,
       serverUrl: trimmedUrl,
       ...(stored && service ? { serviceId: service.id } : {}),
-      ...(isClientEntered
-        ? { clientId: clientId.trim(), clientSecret: clientSecret || undefined }
-        : {})
+      ...(wantsOwnApp ? { clientId: clientId.trim(), clientSecret: clientSecret || undefined } : {})
     });
 
-  const hasAuthorization = isNewlyAuthorized || Boolean(stored);
-  const authorizeLabel = hasAuthorization ? "Reauthorize" : "Authorize";
+  const requested = stored
+    ? stored.requiredScopes.filter((scope) => !stored.grantedScopes.includes(scope))
+    : [];
 
-  const renderStatus = () => {
+  const isProblem =
+    state.status === "failed" ||
+    (stored && stored.status !== AgentVaultOAuthStatus.Connected && !isNewlyAuthorized);
+
+  let authorizeLabel = `Authorize with ${host}`;
+  if (state.status === "failed") authorizeLabel = "Try Again";
+  else if (hasAuthorization) authorizeLabel = "Reauthorize";
+
+  const authorizeButton = isWaiting ? (
+    <div className="flex items-center gap-2">
+      <Button type="button" variant="outline" size="sm" isDisabled>
+        <Spinner size="xs" className="m-0 shrink-0 fill-product-av" />
+        Waiting for sign-in...
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={cancel}>
+        Cancel
+      </Button>
+    </div>
+  ) : (
+    <Button
+      type="button"
+      variant={hasAuthorization && !isProblem ? "outline" : "av"}
+      size="sm"
+      className="shrink-0"
+      onClick={handleAuthorize}
+      isDisabled={!trimmedUrl || (wantsOwnApp && !clientId.trim())}
+    >
+      {authorizeLabel}
+    </Button>
+  );
+
+  const renderStatus = (): { head: ReactNode; details?: ReactNode } | null => {
+    if (state.status === "failed") {
+      return {
+        head: (
+          <Status icon={<CircleXIcon />} tone="danger" title="Couldn't Authorize">
+            {state.message}
+          </Status>
+        ),
+        details: stored ? (
+          <Scopes granted={stored.grantedScopes} requested={requested} />
+        ) : undefined
+      };
+    }
+
     if (isNewlyAuthorized) {
-      return (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <Badge variant="success">
-              <CheckIcon />
-              Authorized
-            </Badge>
-            <span className="text-sm text-muted">
-              {stored ? "Saving replaces the stored tokens." : `Connected to ${host}.`}
-            </span>
-          </div>
-          <Detail>
-            <DetailLabel>Granted Scopes</DetailLabel>
-            <DetailValue>
-              <ScopeList scopes={scopes} />
-            </DetailValue>
-          </Detail>
-        </div>
+      return {
+        head: <Status icon={<CheckIcon />} title={stored ? "Reauthorized" : "Authorized"} />,
+        details: <Scopes granted={scopes} requested={[]} />
+      };
+    }
+
+    if (!stored) return null;
+
+    const authorizedAt = stored.authorizedAt ? new Date(stored.authorizedAt) : null;
+
+    let head: ReactNode;
+    if (stored.status === AgentVaultOAuthStatus.NeedsReauthorization) {
+      head = (
+        <Status
+          icon={<CircleXIcon />}
+          tone="danger"
+          title={OAUTH_STATUS_LABELS[AgentVaultOAuthStatus.NeedsReauthorization]}
+        >
+          {host} no longer accepts this authorization.
+        </Status>
+      );
+    } else if (stored.status === AgentVaultOAuthStatus.NeedsAdditionalScopes) {
+      head = (
+        <Status
+          icon={<CircleAlertIcon />}
+          tone="warning"
+          title={OAUTH_STATUS_LABELS[AgentVaultOAuthStatus.NeedsAdditionalScopes]}
+        >
+          An agent needed scopes this authorization doesn&apos;t have.
+        </Status>
+      );
+    } else {
+      head = (
+        <Status
+          title={
+            authorizedAt ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                  <span tabIndex={0}>Authorized on {format(authorizedAt, "MMM d, yyyy")}</span>
+                </TooltipTrigger>
+                <TooltipContent>{format(authorizedAt, "MMM d, yyyy h:mm a")}</TooltipContent>
+              </Tooltip>
+            ) : (
+              "Authorized"
+            )
+          }
+        />
       );
     }
 
-    if (stored) {
-      return (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <OAuthStatusBadge status={stored.status} />
-            {stored.status === AgentVaultOAuthStatus.NeedsReauthorization && (
-              <span className="text-sm text-muted">
-                The server no longer accepts the stored tokens. Reauthorize to restore access.
-              </span>
-            )}
-            {stored.status === AgentVaultOAuthStatus.NeedsAdditionalScopes && (
-              <span className="text-sm text-muted">
-                A tool call needed scopes this authorization lacks. Reauthorize to grant them.
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-x-8 gap-y-4">
-            <Detail>
-              <DetailLabel>Granted Scopes</DetailLabel>
-              <DetailValue>
-                <ScopeList scopes={stored.grantedScopes} />
-              </DetailValue>
-            </Detail>
-            {stored.status === AgentVaultOAuthStatus.NeedsAdditionalScopes &&
-              stored.requiredScopes.length > 0 && (
-                <Detail>
-                  <DetailLabel>Missing Scopes</DetailLabel>
-                  <DetailValue>
-                    <ScopeList scopes={stored.requiredScopes} />
-                  </DetailValue>
-                </Detail>
-              )}
-            <Detail>
-              <DetailLabel>Authorized By</DetailLabel>
-              <DetailValue>
-                {stored.authorizedBy?.username ?? "Unknown"}
-                {stored.authorizedAt && (
-                  <>
-                    {" on "}
-                    <span className="font-mono">
-                      {format(new Date(stored.authorizedAt), "MMM d, yyyy h:mm a")}
-                    </span>
-                  </>
-                )}
-              </DetailValue>
-            </Detail>
-          </div>
-          {stored.lastError && (
-            <Alert variant="warning">
-              <CircleAlertIcon />
-              <AlertDescription>Last refresh failed: {stored.lastError}</AlertDescription>
-            </Alert>
+    return {
+      head,
+      details: (
+        <div className="flex flex-col gap-2">
+          {stored.lastError && stored.status !== AgentVaultOAuthStatus.NeedsReauthorization && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                  tabIndex={0}
+                  className={twMerge(
+                    "flex w-fit items-center gap-1.5 text-xs",
+                    // Under a yellow status, Reauthorize already fixes this, so it shouldn't compete with it.
+                    stored.status === AgentVaultOAuthStatus.NeedsAdditionalScopes
+                      ? "text-muted"
+                      : "text-danger"
+                  )}
+                >
+                  <InfoIcon className="size-3 shrink-0" />
+                  The last token refresh failed.
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">{stored.lastError}</TooltipContent>
+            </Tooltip>
           )}
+          <Scopes granted={stored.grantedScopes} requested={requested} />
         </div>
-      );
-    }
-
-    return (
-      <p className="text-sm text-muted">
-        Sign in to {host} in a pop-up window. Infisical stores the tokens it returns, and the agent
-        never sees them.
-      </p>
-    );
+      )
+    };
   };
+
+  const status = renderStatus();
 
   return (
     <Field>
       <FieldLabel>Authorization</FieldLabel>
       <FieldContent>
-        <div className="flex flex-col gap-4 rounded-md border border-border bg-container p-4">
-          <div className="flex items-start gap-3">
-            <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-            <div className="min-w-0 flex-1">{renderStatus()}</div>
-          </div>
+        <div className="flex flex-col gap-3">
+          {status ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">{status.head}</div>
+                {!isOwnApp && authorizeButton}
+              </div>
+              {status.details}
+            </div>
+          ) : (
+            !isOwnApp && <div>{authorizeButton}</div>
+          )}
 
-          {isClientEntered && !isNewlyAuthorized && (
-            <div className="flex flex-col gap-4 border-t border-border pt-4">
-              {!isClientRequired && (
-                <p className="text-sm text-muted">
-                  Enter the client ID and secret of the OAuth app to use from now on. They replace
-                  the saved client when you reauthorize. Its redirect URI must point to this
-                  Infisical instance.
+          {isOwnApp && (
+            <div className="flex flex-col gap-4">
+              {isClientRequired && (
+                <p className="text-xs text-muted">
+                  {registrationError
+                    ? `${host} didn't accept automatic setup, so use your own OAuth app.`
+                    : `${host} needs your own OAuth app.`}
                 </p>
               )}
-              {isClientRequired && registrationError && (
-                <>
-                  <Alert variant="warning">
-                    <CircleAlertIcon />
-                    <AlertDescription>{registrationError}</AlertDescription>
-                  </Alert>
-                  <p className="text-sm text-muted">
-                    Create an OAuth app with the provider, set its redirect URI to the one below,
-                    then enter its client ID and secret.
-                  </p>
-                </>
-              )}
-              {isClientRequired && !registrationError && (
-                <p className="text-sm text-muted">
-                  {host} doesn&apos;t let Infisical register itself as a client. Create an OAuth app
-                  with the provider, set its redirect URI to the one below, then enter its client ID
-                  and secret.
-                </p>
-              )}
-              {redirectUri && (
-                <Field>
-                  <FieldLabel>Redirect URI</FieldLabel>
-                  <FieldContent>
-                    <div className="flex items-center gap-2">
-                      <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-card px-2 py-1.5 font-mono text-xs">
-                        {redirectUri}
-                      </code>
-                      <CopyButton value={redirectUri} ariaLabel="Copy redirect URI" />
-                    </div>
-                  </FieldContent>
-                </Field>
-              )}
-              <div className="flex flex-col gap-3 md:flex-row">
+              <Field>
+                <FieldLabel htmlFor={redirectUriInputId}>Redirect URI</FieldLabel>
+                <FieldContent>
+                  <InputGroup>
+                    <InputGroupInput
+                      id={redirectUriInputId}
+                      readOnly
+                      value={redirectUri ?? `${window.location.origin}${CALLBACK_PATH}`}
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <CopyButton
+                        value={redirectUri ?? `${window.location.origin}${CALLBACK_PATH}`}
+                        ariaLabel="Copy redirect URI"
+                      />
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <FieldDescription>
+                    Add this as a redirect URI in your OAuth app on {host}, then enter the
+                    app&apos;s client ID and secret.
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+              <div className="flex flex-col gap-4 md:flex-row md:gap-3">
                 <Field className="flex-1">
                   <FieldLabel htmlFor={clientIdInputId}>Client ID</FieldLabel>
                   <FieldContent>
@@ -295,7 +394,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
                   </FieldContent>
                 </Field>
                 <Field className="flex-1">
-                  <FieldLabel htmlFor={clientSecretInputId}>Client Secret</FieldLabel>
+                  <FieldLabel htmlFor={clientSecretInputId}>Client Secret (optional)</FieldLabel>
                   <FieldContent>
                     <Input
                       type="password"
@@ -305,56 +404,25 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
                       autoComplete="new-password"
                       isError={Boolean(errors.oauthClientSecret)}
                     />
-                    <FieldDescription>Leave empty for a public client.</FieldDescription>
                     <FieldError>{errors.oauthClientSecret?.message}</FieldError>
                   </FieldContent>
                 </Field>
               </div>
+              <div>{authorizeButton}</div>
             </div>
           )}
 
-          {state.status === "failed" && (
-            <Alert variant="danger">
-              <CircleAlertIcon />
-              <AlertDescription>{state.message}</AlertDescription>
-            </Alert>
-          )}
-
-          {isWaiting ? (
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2 text-sm text-muted">
-                <Spinner size="xs" className="m-0 shrink-0 fill-product-av" />
-                <span>
-                  {state.status === "pending" && state.popupClosed
-                    ? "Waiting for the authorization. If you closed the window before finishing, select Cancel and try again."
-                    : `Waiting for you to finish signing in to ${host} in the pop-up window.`}
-                </span>
-              </div>
-              <Button type="button" variant="ghost" size="sm" onClick={cancel}>
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
+          {!isClientRequired && !isNewlyAuthorized && !isWaiting && (
+            <div>
               <Button
                 type="button"
-                variant={hasAuthorization ? "outline" : "av"}
+                variant="link"
                 size="sm"
-                onClick={handleAuthorize}
-                isDisabled={!trimmedUrl || (isClientEntered && !clientId.trim())}
+                className="text-muted hover:text-foreground"
+                onClick={isUsingOwnApp ? switchToAutomaticSetup : () => setIsUsingOwnApp(true)}
               >
-                {state.status === "failed" ? "Try Again" : authorizeLabel}
+                {isUsingOwnApp ? "Use automatic setup" : "Use your own OAuth app"}
               </Button>
-              {stored && !isClientRequired && !isNewlyAuthorized && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={isReplacingClient ? keepSavedClient : () => setIsReplacingClient(true)}
-                >
-                  {isReplacingClient ? "Keep Saved Client" : "Use a Different Client"}
-                </Button>
-              )}
             </div>
           )}
         </div>

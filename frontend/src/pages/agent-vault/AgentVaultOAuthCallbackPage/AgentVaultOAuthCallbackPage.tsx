@@ -21,7 +21,6 @@ import {
 } from "@app/hooks/api/agentVault";
 
 const CLOSE_AFTER_SUCCESS_MS = 1000;
-const CLOSE_AFTER_FAILURE_MS = 4000;
 
 type TOutcome =
   | { status: "working" }
@@ -78,11 +77,8 @@ export const AgentVaultOAuthCallbackPage = () => {
   }, []);
 
   useEffect(() => {
-    if (outcome.status === "working") return undefined;
-    const id = window.setTimeout(
-      () => window.close(),
-      outcome.status === "authorized" ? CLOSE_AFTER_SUCCESS_MS : CLOSE_AFTER_FAILURE_MS
-    );
+    if (outcome.status !== "authorized") return undefined;
+    const id = window.setTimeout(() => window.close(), CLOSE_AFTER_SUCCESS_MS);
     return () => window.clearTimeout(id);
   }, [outcome.status]);
 
@@ -90,11 +86,10 @@ export const AgentVaultOAuthCallbackPage = () => {
   let description = "Confirming the authorization with Infisical.";
   if (outcome.status === "authorized") {
     title = "Authorization Complete";
-    description =
-      "This window closes on its own. Return to Infisical to finish adding the service.";
+    description = "This window closes on its own. Return to Infisical to finish.";
   } else if (outcome.status === "failed") {
     title = "Authorization Failed";
-    description = "This window closes on its own. Return to Infisical and select Authorize again.";
+    description = "Return to Infisical and try again.";
   }
 
   return (
@@ -108,7 +103,7 @@ export const AgentVaultOAuthCallbackPage = () => {
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         {outcome.status !== "working" && (
-          <CardContent className="flex flex-col gap-4">
+          <CardContent className="mt-4 flex flex-col gap-4">
             {outcome.status === "failed" && (
               <Alert variant="danger">
                 <CircleAlertIcon />
