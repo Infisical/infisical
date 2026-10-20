@@ -59,10 +59,13 @@ export type TEventInput = z.input<typeof EventInputSchema>;
 
 export type TEventEmitter = {
   emit: (event: TEventInput, tx?: Knex) => Promise<void>;
+  emitMany: (events: TEventInput[], tx?: Knex) => Promise<void>;
 };
 
-// What a consumer sees. Lock, attempt and status columns are the outbox's business.
-export type TEvent = Pick<TEventOutbox, "id" | "eventType" | "payload" | "occurredAt">;
+// What a consumer sees. Lock, attempt and status columns are the outbox's business. `id` is this
+// consumer's row, which is what a result reports on; `eventId` is the occurrence, shared by every
+// consumer's row for it.
+export type TEvent = Pick<TEventOutbox, "id" | "eventId" | "eventType" | "payload" | "occurredAt">;
 
 export enum EventResultStatus {
   Delivered = "delivered",

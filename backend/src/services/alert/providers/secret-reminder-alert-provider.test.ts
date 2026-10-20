@@ -106,7 +106,8 @@ describe("secret reminder alert provider", () => {
       {
         emit: async (event) => {
           emitted = event.payload;
-        }
+        },
+        emitMany: async () => {}
       },
       {
         orgId: "org-1",

@@ -118,6 +118,7 @@ describe("event outbox dal", () => {
       [
         {
           consumer: "alert",
+          eventId: "550e8400-e29b-41d4-a716-446655440000",
           eventType: "approval.workflow.request_opened",
           payload: { orgId: "org-1", resourceType: "approval.workflow", resourceId: "policy-1", targetIds: ["req-1"] },
           occurredAt: new Date()

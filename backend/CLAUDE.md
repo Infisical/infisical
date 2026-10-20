@@ -802,9 +802,15 @@ await someDAL.transaction(async (tx) => {
   anything for this resource is decided in the worker; a row nobody wanted is marked `Delivered` and
   pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
   adding a read to the emit path.
-- Nothing is caught. A swallowed insert failure hands the caller a poisoned transaction (`25P02` on its
-  next statement), and a payload that fails the consumer's `payloadSchema` is a bug at the emit site.
-  Both checks run before any DB access.
+- A malformed event is dropped, not thrown: a bad key, a payload over 16KB, or a payload a consumer's
+  `payloadSchema` rejects (that consumer's row only) is logged and counted on
+  `infisical.event_outbox.dropped.count`, and the caller's write carries on. It is a bug at the emit
+  site, and failing a secret write over it is worse than the lost event. All three checks run before any
+  DB access, so the transaction is untouched. The insert itself is not caught: a swallowed insert failure
+  hands the caller a poisoned transaction (`25P02` on its next statement).
+- `emitMany(events, tx)` writes a batch in one go (eg one event per secret in a bulk write), in chunks
+  of 1000 rows to stay under Postgres's bind parameter limit. Every event gets one `eventId` (UUID),
+  shared by all its consumers' rows; `TEvent.id` is the consumer's row, `TEvent.eventId` the occurrence.
 
 **How delivery works:**
 
@@ -865,6 +871,23 @@ emit site shows up in the logs on its first event.
 
 Approval lifecycle events reach the outbox through `TApprovalResource.buildEvent`, which the approval
 service emits inside each transition's transaction (PAM folder alerts use it).
+
+**New events follow the Event Standards and Versioning ADR (CloudEvents 1.0).** Define them with
+`defineEvent` (`event-outbox/event-definition.ts`), which names the event
+`com.infisical.<domain>.<entity>.<action>.v<version>` and throws at module load on a name that breaks the
+convention. A consumer uses the definition's `data` schema as its `payloadSchema`. `toCloudEvent` builds
+the CloudEvents envelope from a delivered `TEvent` for anything that leaves the backend. The events
+emitted before the ADR (eg `identity.authentication.auth-method-changed`) keep their names.
+
+**Secret, folder and import changes emit `com.infisical.secrets.{secret,folder,secret-import}.modified.v1`**
+(definitions in `secret-v2-bridge/secret-events.ts`, `secret-folder/secret-folder-events.ts`,
+`secret-import/secret-import-events.ts`). Secrets emit from inside `fnSecretBulkInsert`,
+`fnSecretBulkUpdate` and `fnSecretBulkDelete`, whose required `eventEmitter` and `eventScope` parameters
+make the type checker list every caller, so a new caller cannot skip the emit. A write to `secrets_v2`
+that bypasses those functions (eg a raw DAL `delete`) must emit with `emitSecretsModified` itself, in the
+same transaction. Only shared secrets emit. The e2e suite registers a recording consumer for these events
+(`e2e-test/fakes/event-outbox-registry.ts`), so `e2e-test/routes/v4/secret-events.spec.ts` can read what a
+write emitted.
 
 **The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
 event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)

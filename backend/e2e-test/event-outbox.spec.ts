@@ -21,6 +21,7 @@ const KEY = { consumer: CONSUMER };
 
 const makeRow = (overrides?: Partial<TOutboxInsertRow>): TOutboxInsertRow => ({
   consumer: CONSUMER,
+  eventId: randomUUID(),
   eventType: "e2e.resource.happened",
   payload: { orgId: ORG_ID, resourceType: "e2e.resource", resourceId: "res-1", targetIds: ["t-1"] },
   occurredAt: new Date(),

@@ -25,6 +25,7 @@ import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -39,6 +40,7 @@ import {
   SecretValidationError
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { createSecretBlindIndexer, TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
+import { emitSecretsModified, secretModifiedEvents } from "./secret-events";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
@@ -72,6 +74,8 @@ export const fnSecretBulkInsert = async ({
   secretTagDAL,
   secretVersionTagDAL,
   folderCommitService,
+  eventEmitter,
+  eventScope,
   actor,
   tx
 }: TFnSecretBulkInsert) => {
@@ -222,6 +226,8 @@ export const fnSecretBulkInsert = async ({
     { tx }
   );
 
+  await emitSecretsModified(eventEmitter, eventScope, newSecrets, tx);
+
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
@@ -237,6 +243,8 @@ export const fnSecretBulkUpdate = async ({
   secretTagDAL,
   secretVersionTagDAL,
   resourceMetadataDAL,
+  eventEmitter,
+  eventScope,
   actor
 }: TFnSecretBulkUpdate) => {
   const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
@@ -420,6 +428,8 @@ export const fnSecretBulkUpdate = async ({
     }
   }
 
+  await emitSecretsModified(eventEmitter, eventScope, newSecrets, tx);
+
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
@@ -434,7 +444,9 @@ export const fnSecretBulkDelete = async ({
   folderCommitService,
   secretVersionDAL,
   projectId,
-  commitChanges
+  commitChanges,
+  eventEmitter,
+  eventScope
 }: TFnSecretBulkDelete) => {
   const deletedSecrets = await secretDAL.deleteMany(
     inputSecrets.map(({ type, secretKey }) => ({
@@ -485,6 +497,8 @@ export const fnSecretBulkDelete = async ({
       );
     }
   }
+
+  await emitSecretsModified(eventEmitter, eventScope, deletedSecrets, tx);
 
   return deletedSecrets;
 };
@@ -795,6 +809,7 @@ type TFnUpdateSecretLinkedReferences = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  eventEmitter: TEventEmitter;
   encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
   decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
   blindIndexer: TSecretBlindIndexer;
@@ -819,6 +834,7 @@ export const fnUpdateSecretLinkedReferences = async ({
   folderCommitService,
   folderDAL,
   secretQueueService,
+  eventEmitter,
   encryptor,
   decryptor,
   blindIndexer,
@@ -980,6 +996,18 @@ export const fnUpdateSecretLinkedReferences = async ({
   if (updatedFolderIds.length > 0) {
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
 
+    await eventEmitter.emitMany(
+      folderPaths.flatMap((folder) =>
+        folder
+          ? secretModifiedEvents(
+              { projectId, environment: folder.environmentSlug, secretPath: folder.path },
+              (updatedSecretsByFolder.get(folder.id) ?? []).map(({ secret }) => secret)
+            )
+          : []
+      ),
+      tx
+    );
+
     await Promise.all(
       folderPaths.map(async (folder) => {
         if (folder) {
@@ -1022,6 +1050,7 @@ type TFnUpdateMovedSecretReferences = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  eventEmitter: TEventEmitter;
   encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
   decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
   blindIndexer: TSecretBlindIndexer;
@@ -1051,6 +1080,7 @@ export const fnUpdateMovedSecretReferences = async ({
   folderCommitService,
   folderDAL,
   secretQueueService,
+  eventEmitter,
   encryptor,
   decryptor,
   blindIndexer,
@@ -1385,6 +1415,18 @@ export const fnUpdateMovedSecretReferences = async ({
   if (updatedFolderIds.length > 0) {
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
 
+    await eventEmitter.emitMany(
+      folderPaths.flatMap((folder) =>
+        folder
+          ? secretModifiedEvents(
+              { projectId, environment: folder.environmentSlug, secretPath: folder.path },
+              (updatedSecretsByFolder.get(folder.id) ?? []).map(({ secret }) => secret)
+            )
+          : []
+      ),
+      tx
+    );
+
     await Promise.all(
       folderPaths.map(async (folder) => {
         if (folder) {
@@ -1620,6 +1662,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     secretVersionTagDAL,
     resourceMetadataDAL,
     folderCommitService,
+    eventEmitter,
     secretApprovalPolicyService,
     secretApprovalRequestCreationFns,
     secretQueueService,
@@ -1928,6 +1971,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
       createdSecrets = await fnSecretBulkInsert({
         folderId: destinationFolder.id,
+        eventEmitter,
+        eventScope: { projectId, environment: destinationEnvironment, secretPath: destinationFolder.path },
         orgId: actorOrgId,
         secretVersionDAL,
         secretDAL,
@@ -1977,6 +2022,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
       await fnSecretBulkUpdate({
         folderId: destinationFolder.id,
+        eventEmitter,
+        eventScope: { projectId, environment: destinationEnvironment, secretPath: destinationFolder.path },
         orgId: actorOrgId,
         resourceMetadataDAL,
         folderCommitService,
@@ -2058,6 +2105,12 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       },
       tx
     );
+    await emitSecretsModified(
+      eventEmitter,
+      { projectId, environment: sourceEnvironment, secretPath: sourceFolder.path },
+      locallyDeletedSecrets,
+      tx
+    );
 
     isSourceUpdated = true;
   }
@@ -2089,6 +2142,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         folderCommitService,
         folderDAL,
         secretQueueService,
+        eventEmitter,
         encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
         decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
         blindIndexer,

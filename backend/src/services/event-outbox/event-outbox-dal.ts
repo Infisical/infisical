@@ -5,6 +5,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TEventOutbox } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 
 import { computeBackoffMs, EventOutboxStatus, TOutboxFlushKey } from "./event-outbox-types";
 
@@ -17,26 +18,34 @@ export type TOutboxClaim = {
 
 export type TOutboxInsertRow = {
   consumer: string;
+  eventId: string;
   eventType: string;
   payload: unknown;
   idempotencyKey?: string | null;
   occurredAt: Date;
 };
 
+// Postgres caps a statement at 65535 bind parameters, and a row takes seven, so a bulk secret write
+// emitting one event per secret would otherwise fail the whole write past ~9k secrets.
+const INSERT_BATCH_SIZE = 1000;
+
 export const eventOutboxDALFactory = (db: TDbClient) => {
   const insertEvents = async (rows: TOutboxInsertRow[], tx?: Knex): Promise<void> => {
     if (rows.length === 0) return;
     try {
-      await (tx || db)(TableName.EventOutbox)
-        .insert(
-          rows.map((row) => ({
-            ...row,
-            payload: JSON.stringify(row.payload),
-            idempotencyKey: row.idempotencyKey ?? null
-          }))
-        )
-        .onConflict(db.raw('("consumer", "idempotencyKey") WHERE "idempotencyKey" IS NOT NULL'))
-        .ignore();
+      for (const chunk of chunkArray(rows, INSERT_BATCH_SIZE)) {
+        // eslint-disable-next-line no-await-in-loop -- one statement at a time on the caller's connection
+        await (tx || db)(TableName.EventOutbox)
+          .insert(
+            chunk.map((row) => ({
+              ...row,
+              payload: JSON.stringify(row.payload),
+              idempotencyKey: row.idempotencyKey ?? null
+            }))
+          )
+          .onConflict(db.raw('("consumer", "idempotencyKey") WHERE "idempotencyKey" IS NOT NULL'))
+          .ignore();
+      }
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: insertEvents" });
     }

@@ -19,11 +19,22 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
-const { exhaustedMetrics } = vi.hoisted(() => ({ exhaustedMetrics: [] as { consumer: string; count: number }[] }));
+const { exhaustedMetrics, droppedMetrics } = vi.hoisted(() => ({
+  exhaustedMetrics: [] as { consumer: string; count: number }[],
+  droppedMetrics: [] as { eventType: string; reason: string; consumer?: string }[]
+}));
 vi.mock("@app/lib/telemetry/metrics", () => ({
+  EventOutboxDropReason: {
+    InvalidEvent: "invalid_event",
+    PayloadTooLarge: "payload_too_large",
+    PayloadRejected: "payload_rejected"
+  },
   recordEventOutboxLagMetric: () => {},
   recordEventOutboxExhaustedMetric: (params: { consumer: string; count: number }) => {
     exhaustedMetrics.push(params);
+  },
+  recordEventOutboxDroppedMetric: (params: { eventType: string; reason: string; consumer?: string }) => {
+    droppedMetrics.push(params);
   }
 }));
 
@@ -105,32 +116,90 @@ describe("event outbox emit", () => {
     expect(inserted[0].tx).toBe(TX);
   });
 
-  // An unreadable payload means a wrong emit site. Failing loudly beats dropping a notification over a
-  // misspelled field.
-  test("throws when the payload does not match the consumer's schema", async () => {
+  // A bad event is a bug at the emit site, but it must not fail the business write it describes.
+  describe("drops a malformed event without failing the write", () => {
+    beforeEach(() => {
+      droppedMetrics.length = 0;
+    });
+
+    test("when the payload does not match the consumer's schema", async () => {
+      const { service, inserted } = buildService([makeConsumer()]);
+
+      await service.emit(makeEvent({ payload: makePayload({ targetIds: [] }) }), TX);
+
+      expect(inserted).toHaveLength(0);
+      expect(droppedMetrics).toEqual([
+        { eventType: "approval.workflow.request_opened", reason: "payload_rejected", consumer: "alert" }
+      ]);
+    });
+
+    test("only for the consumer that rejects it", async () => {
+      const { service, insertedRows } = buildService([
+        makeConsumer({ name: "alert" }),
+        makeConsumer({ name: "lenient", payloadSchema: z.object({}) as never })
+      ]);
+
+      await service.emit(makeEvent({ payload: makePayload({ targetIds: [] }) }), TX);
+
+      expect(insertedRows().map((row) => (row as { consumer: string }).consumer)).toEqual(["lenient"]);
+    });
+
+    test("when the payload is oversized", async () => {
+      const { service, inserted } = buildService([
+        makeConsumer({ payloadSchema: z.object({ blob: z.string() }) as never })
+      ]);
+
+      await service.emit(makeEvent({ payload: { blob: "x".repeat(MAX_OUTBOX_PAYLOAD_BYTES + 1) } }), TX);
+
+      expect(inserted).toHaveLength(0);
+      expect(droppedMetrics).toEqual([{ eventType: "approval.workflow.request_opened", reason: "payload_too_large" }]);
+    });
+
+    test("when the envelope is malformed", async () => {
+      const { service, inserted } = buildService([makeConsumer()]);
+
+      await service.emit(makeEvent({ eventType: "Not A Key" }), TX);
+
+      expect(inserted).toHaveLength(0);
+      expect(droppedMetrics).toEqual([{ eventType: "Not A Key", reason: "invalid_event" }]);
+    });
+
+    test("and still writes the well-formed events emitted with it", async () => {
+      const { service, insertedRows } = buildService([makeConsumer()]);
+
+      await service.emitMany([makeEvent({ eventType: "Not A Key" }), makeEvent()], TX);
+
+      expect(insertedRows()).toHaveLength(1);
+    });
+  });
+
+  test("gives every consumer's row for one event the same eventId", async () => {
+    const { service, insertedRows } = buildService([makeConsumer({ name: "alert" }), makeConsumer({ name: "other" })]);
+
+    await service.emit(makeEvent(), TX);
+
+    const [first, second] = insertedRows() as { eventId: string }[];
+    expect(first.eventId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(second.eventId).toBe(first.eventId);
+  });
+
+  test("writes many events in one insert, each with its own eventId, inside the caller's tx", async () => {
     const { service, inserted } = buildService([makeConsumer()]);
 
-    await expect(service.emit(makeEvent({ payload: makePayload({ targetIds: [] }) }), TX)).rejects.toThrow(
-      "the 'alert' consumer cannot accept"
-    );
-    expect(inserted).toHaveLength(0);
+    await service.emitMany([makeEvent(), makeEvent(), makeEvent()], TX);
+
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0].tx).toBe(TX);
+    const eventIds = (inserted[0].rows as { eventId: string }[]).map((row) => row.eventId);
+    expect(new Set(eventIds).size).toBe(3);
   });
 
-  test("throws on an oversized payload rather than storing a document", async () => {
-    const { service, inserted } = buildService([
-      makeConsumer({ payloadSchema: z.object({ blob: z.string() }) as never })
-    ]);
+  test("does not touch the database when every event is dropped", async () => {
+    const { service, inserted } = buildService([makeConsumer()]);
 
-    await expect(service.emit(makeEvent({ payload: { blob: "x".repeat(20_000) } }), TX)).rejects.toThrow(
-      `over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit`
-    );
+    await service.emitMany([makeEvent({ eventType: "Not A Key" })], TX);
+
     expect(inserted).toHaveLength(0);
-  });
-
-  test("throws on a malformed event envelope", async () => {
-    const { service } = buildService([makeConsumer()]);
-
-    await expect(service.emit(makeEvent({ eventType: "Not A Key" }), TX)).rejects.toThrow("Invalid outbox event");
   });
 
   // Swallowing it would hand the caller a poisoned transaction instead of the real error.

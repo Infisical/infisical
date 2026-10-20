@@ -831,6 +831,32 @@ export const recordEventOutboxExhaustedMetric = (params: { consumer: string; cou
     eventOutboxExhaustedCounter.add(params.count, { "event_outbox.consumer": params.consumer });
   });
 
+export enum EventOutboxDropReason {
+  InvalidEvent = "invalid_event",
+  PayloadTooLarge = "payload_too_large",
+  PayloadRejected = "payload_rejected"
+}
+
+export const eventOutboxDroppedCounter = infisicalCoreMeter.createCounter("infisical.event_outbox.dropped.count", {
+  description:
+    "Events never written to the outbox because the emit site built a bad one, by event type and reason. The business write still committed, so every one is a change no consumer will hear about. Alarm on any occurrence: it is a bug at the emit site.",
+  unit: "{event}"
+});
+
+export const recordEventOutboxDroppedMetric = (params: {
+  eventType: string;
+  reason: EventOutboxDropReason;
+  consumer?: string;
+}) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    eventOutboxDroppedCounter.add(1, {
+      "event_outbox.event_type": params.eventType,
+      "event_outbox.drop_reason": params.reason,
+      ...(params.consumer ? { "event_outbox.consumer": params.consumer } : {})
+    });
+  });
+
 export enum ProductAnalyticsDropReason {
   Retention = "retention",
   Unparseable = "unparseable"

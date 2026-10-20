@@ -1,9 +1,15 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 
 import { TEventOutbox } from "@app/db/schemas";
-import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { recordEventOutboxExhaustedMetric, recordEventOutboxLagMetric } from "@app/lib/telemetry/metrics";
+import {
+  EventOutboxDropReason,
+  recordEventOutboxDroppedMetric,
+  recordEventOutboxExhaustedMetric,
+  recordEventOutboxLagMetric
+} from "@app/lib/telemetry/metrics";
 
 import { TEventOutboxDALFactory, TOutboxInsertRow } from "./event-outbox-dal";
 import { TEventOutboxRegistry } from "./event-outbox-registry";
@@ -97,53 +103,70 @@ export type TEventOutboxServiceFactoryDep = {
 export type TEventOutboxServiceFactory = ReturnType<typeof eventOutboxServiceFactory>;
 
 export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry }: TEventOutboxServiceFactoryDep) => {
-  // Pass the caller's `tx` so the row commits with the business write; omit it only when there is no
-  // business write to be atomic with. Nothing is caught on purpose: a bad event is a bug at the emit
-  // site (500, not 400), and swallowing a failed insert would leave the caller with a poisoned
-  // transaction.
-  const emit = async (event: TEventInput, tx?: Knex): Promise<void> => {
+  // A malformed event is dropped, logged and counted, never thrown: it is a bug at the emit site, and
+  // failing the caller's write over it would turn a missed notification into a failed secret update.
+  // Every check runs before any DB access, so a drop leaves the caller's transaction untouched.
+  const $drop = (eventType: string, reason: EventOutboxDropReason, detail: string, consumer?: string) => {
+    logger.error(
+      `event-outbox: dropped event [eventType=${eventType}] [reason=${reason}]${consumer ? ` [consumer=${consumer}]` : ""}: ${detail}`
+    );
+    recordEventOutboxDroppedMetric({ eventType, reason, consumer });
+    return [];
+  };
+
+  const $buildRows = (event: TEventInput, eventId: string): TOutboxInsertRow[] => {
     const parsed = EventInputSchema.safeParse(event);
     if (!parsed.success) {
-      throw new InternalServerError({
-        name: "EventOutboxInvalidEvent",
-        message: `Invalid outbox event: ${formatIssues(parsed.error.issues)}`
-      });
+      return $drop(event.eventType, EventOutboxDropReason.InvalidEvent, formatIssues(parsed.error.issues));
     }
     const validated = parsed.data;
 
     const payloadBytes = Buffer.byteLength(JSON.stringify(validated.payload), "utf8");
     if (payloadBytes > MAX_OUTBOX_PAYLOAD_BYTES) {
-      throw new InternalServerError({
-        name: "EventOutboxPayloadTooLarge",
-        message: `Outbox event payload for '${validated.eventType}' is ${payloadBytes} bytes, over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit. The outbox carries identifiers, not documents.`
-      });
+      return $drop(
+        validated.eventType,
+        EventOutboxDropReason.PayloadTooLarge,
+        `payload is ${payloadBytes} bytes, over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit; the outbox carries identifiers, not documents`
+      );
     }
-
-    const subscribers = eventOutboxRegistry.subscribersOf(validated.eventType);
-    if (subscribers.length === 0) return;
 
     const occurredAt = validated.occurredAt ?? new Date();
 
-    const rows: TOutboxInsertRow[] = subscribers.map((consumer) => {
+    return eventOutboxRegistry.subscribersOf(validated.eventType).flatMap((consumer) => {
       const payload = consumer.payloadSchema.safeParse(validated.payload);
       if (!payload.success) {
-        throw new InternalServerError({
-          name: "EventOutboxPayloadRejected",
-          message: `Outbox event '${validated.eventType}' has a payload the '${consumer.name}' consumer cannot accept: ${formatIssues(payload.error.issues)}`
-        });
+        return $drop(
+          validated.eventType,
+          EventOutboxDropReason.PayloadRejected,
+          formatIssues(payload.error.issues),
+          consumer.name
+        );
       }
 
-      return {
-        consumer: consumer.name,
-        eventType: validated.eventType,
-        payload: validated.payload,
-        idempotencyKey: validated.idempotencyKey ?? null,
-        occurredAt
-      };
+      return [
+        {
+          consumer: consumer.name,
+          eventId,
+          eventType: validated.eventType,
+          payload: validated.payload,
+          idempotencyKey: validated.idempotencyKey ?? null,
+          occurredAt
+        }
+      ];
     });
+  };
+
+  // Pass the caller's `tx` so the rows commit with the business write; omit it only when there is no
+  // business write to be atomic with. A failed insert is not caught: swallowing it would leave the
+  // caller with a poisoned transaction.
+  const emitMany = async (events: TEventInput[], tx?: Knex): Promise<void> => {
+    const rows = events.flatMap((event) => $buildRows(event, crypto.randomUUID()));
+    if (rows.length === 0) return;
 
     await eventOutboxDAL.insertEvents(rows, tx);
   };
+
+  const emit = (event: TEventInput, tx?: Knex): Promise<void> => emitMany([event], tx);
 
   const $commitWithRetry = async (
     { consumer }: TOutboxFlushKey,
@@ -348,5 +371,5 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  return { emit, drain, sweepStaleClaims, pruneTerminalRows };
+  return { emit, emitMany, drain, sweepStaleClaims, pruneTerminalRows };
 };

@@ -119,7 +119,10 @@ const createService = () => {
     )
   };
 
-  const eventEmitter = { emit: vi.fn<(event: unknown, tx?: unknown) => Promise<void>>(async () => undefined) };
+  const eventEmitter = {
+    emit: vi.fn<(event: unknown, tx?: unknown) => Promise<void>>(async () => undefined),
+    emitMany: vi.fn(async () => undefined)
+  };
 
   const projectDAL = {
     findProjectTypesByIds: vi.fn(async () => [])
@@ -405,7 +408,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       kmsService: {} as never,
       keyStore: keyStore as never,
       queueService: queueService as never,
-      eventEmitter: { emit: vi.fn(async () => undefined) }
+      eventEmitter: { emit: vi.fn(async () => undefined), emitMany: vi.fn(async () => undefined) }
     });
 
     return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL, keyStore, queueService };

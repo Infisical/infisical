@@ -24,6 +24,7 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -154,6 +155,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   queueService: Pick<TQueueServiceFactory, "queue">;
@@ -204,6 +206,7 @@ export const secretApprovalRequestServiceFactory = ({
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
   folderCommitService,
+  eventEmitter,
   notificationService,
   telemetryService,
   queueService,
@@ -231,6 +234,7 @@ export const secretApprovalRequestServiceFactory = ({
       secretTagDAL,
       resourceMetadataDAL,
       folderCommitService,
+      eventEmitter,
       secretQueueService,
       secretApprovalRequestSecretDAL,
       validateSecrets,
