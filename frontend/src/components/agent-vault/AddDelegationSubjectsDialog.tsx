@@ -80,7 +80,6 @@ export const AddDelegationSubjectsDialog = ({
 
   const listedUserIds = new Set(delegation?.users.map((user) => user.id));
   const listedGroupIds = new Set(delegation?.groups.map((group) => group.id));
-  const listedCount = listedUserIds.size + listedGroupIds.size;
 
   const options = useMemo<SubjectOption[]>(
     () => [
@@ -144,16 +143,11 @@ export const AddDelegationSubjectsDialog = ({
     }
   };
 
-  const replacementNote = () => {
-    if (isAllMembers && listedCount) {
-      return `This replaces the ${listedCount} ${listedCount === 1 ? "user or group" : "users and groups"} listed.`;
-    }
-    if (!isAllMembers && isCurrentlyAllMembers) {
-      return "This replaces All Agent Vault Members with the users and groups you pick.";
-    }
-    return null;
-  };
-  const note = replacementNote();
+  // Only narrowing gets a note: switching to all members still covers everyone listed.
+  const note =
+    !isAllMembers && isCurrentlyAllMembers
+      ? "This replaces All Agent Vault Members with the users and groups you pick."
+      : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -246,6 +240,9 @@ export const AddDelegationSubjectsDialog = ({
         )}
 
         <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button
             variant="av"
             isDisabled={isUnchanged}
@@ -253,9 +250,6 @@ export const AddDelegationSubjectsDialog = ({
             onClick={async () => handleSave()}
           >
             {isAllMembers ? "Allow All Members" : "Add"}
-          </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
           </Button>
         </DialogFooter>
       </DialogContent>
