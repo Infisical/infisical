@@ -31,7 +31,7 @@ import {
   AgentVaultTrafficPolicy
 } from "../agent-vault/agent-vault-enums";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
-import { TAgentVaultServiceConfig } from "../agent-vault/agent-vault-service-types";
+import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
@@ -582,7 +582,7 @@ export const agentVaultProxyServiceFactory = ({
             // The answer pairs this row's host with the credential, so a refreshed one has to be for the same server.
             destination: {
               hostPattern: row.hostPattern,
-              serverUrl: (row.config as TAgentVaultServiceConfig | null)?.serverUrl ?? null
+              serverUrl: getServiceServerUrl(row.config)
             }
           })
           .then(({ credential }) => {

@@ -90,6 +90,10 @@ export type TAgentVaultServiceConfig =
   | TAgentVaultMcpServiceConfig
   | { [K in keyof TAgentVaultMcpServiceConfig]?: never };
 
+// The server an OAuth token is pinned to: a token is only ever sent to the server URL it was refreshed for.
+export const getServiceServerUrl = (config: unknown): string | null =>
+  (config as TAgentVaultServiceConfig | null)?.serverUrl ?? null;
+
 export type TAgentVaultServiceTypeDefinition = {
   type: AgentVaultServiceType;
   label: string;

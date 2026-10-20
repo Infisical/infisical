@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 import {
-  AgentVaultOAuthAuthorizationStatus,
-  useCreateAgentVaultOAuthAuthorization,
-  useGetAgentVaultOAuthAuthorization
+  AgentVaultOauthAuthorizationStatus,
+  useCreateAgentVaultOauthAuthorization,
+  useGetAgentVaultOauthAuthorization
 } from "@app/hooks/api/agentVault";
 import {
-  TAgentVaultOAuthAuthorization,
-  TCreateAgentVaultOAuthAuthorizationDTO
+  TAgentVaultOauthAuthorization,
+  TCreateAgentVaultOauthAuthorizationDTO
 } from "@app/hooks/api/agentVault/types";
 
 const POLL_TIMEOUT_MS = 5 * 60 * 1000;
@@ -19,7 +19,7 @@ export type TOAuthAuthorizeState =
   | { status: "idle" }
   | { status: "starting" }
   | { status: "pending" }
-  | { status: "authorized"; authorization: TAgentVaultOAuthAuthorization }
+  | { status: "authorized"; authorization: TAgentVaultOauthAuthorization }
   | { status: "failed"; message: string };
 
 const serverMessage = (error: unknown) => {
@@ -31,9 +31,9 @@ const serverMessage = (error: unknown) => {
 export const useOAuthAuthorize = ({
   onAuthorized
 }: {
-  onAuthorized: (authorization: TAgentVaultOAuthAuthorization) => void;
+  onAuthorized: (authorization: TAgentVaultOauthAuthorization) => void;
 }) => {
-  const createAuthorization = useCreateAgentVaultOAuthAuthorization();
+  const createAuthorization = useCreateAgentVaultOauthAuthorization();
   const [state, setState] = useState<TOAuthAuthorizeState>({ status: "idle" });
   const [isClientRequired, setIsClientRequired] = useState(false);
   const [redirectUri, setRedirectUri] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export const useOAuthAuthorize = ({
     id: string;
     attempt: number;
   } | null>(null);
-  const { data: authorization, error: authorizationError } = useGetAgentVaultOAuthAuthorization(
+  const { data: authorization, error: authorizationError } = useGetAgentVaultOauthAuthorization(
     pendingAuthorization?.id ?? ""
   );
 
@@ -77,13 +77,13 @@ export const useOAuthAuthorize = ({
       return;
     }
     if (!authorization) return;
-    if (authorization.status === AgentVaultOAuthAuthorizationStatus.Authorized) {
+    if (authorization.status === AgentVaultOauthAuthorizationStatus.Authorized) {
       stop();
       setState({ status: "authorized", authorization });
       onAuthorizedRef.current(authorization);
       return;
     }
-    if (authorization.status === AgentVaultOAuthAuthorizationStatus.Failed) {
+    if (authorization.status === AgentVaultOauthAuthorizationStatus.Failed) {
       fail(authorization.error ?? "The server refused the authorization.");
     }
   }, [pendingAuthorization, authorization, authorizationError, fail, stop]);
@@ -101,7 +101,7 @@ export const useOAuthAuthorize = ({
   // Call straight from the click handler: browsers only allow a popup opened during a user gesture,
   // so it is opened blank first and pointed at the authorize URL once the server returns it.
   const authorize = useCallback(
-    (params: TCreateAgentVaultOAuthAuthorizationDTO) => {
+    (params: TCreateAgentVaultOauthAuthorizationDTO) => {
       stop();
       const attempt = attemptRef.current;
 

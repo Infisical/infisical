@@ -16,8 +16,8 @@ import {
   CardTitle
 } from "@app/components/v3";
 import {
-  AgentVaultOAuthAuthorizationStatus,
-  useCompleteAgentVaultOAuthAuthorization
+  AgentVaultOauthAuthorizationStatus,
+  useCompleteAgentVaultOauthAuthorization
 } from "@app/hooks/api/agentVault";
 
 const CLOSE_AFTER_SUCCESS_MS = 1000;
@@ -40,7 +40,7 @@ const failureMessage = (error: unknown) => {
 
 export const AgentVaultOAuthCallbackPage = () => {
   const search = useSearch({ from: "/_authenticate/agent-vault/oauth/callback" });
-  const completeAuthorization = useCompleteAgentVaultOAuthAuthorization();
+  const completeAuthorization = useCompleteAgentVaultOauthAuthorization();
   const [outcome, setOutcome] = useState<TOutcome>({ status: "working" });
   const hasStarted = useRef(false);
 
@@ -62,7 +62,7 @@ export const AgentVaultOAuthCallbackPage = () => {
     completeAuthorization
       .mutateAsync({ authorizationId, state, code, iss, error, errorDescription })
       .then((authorization) => {
-        if (authorization.status === AgentVaultOAuthAuthorizationStatus.Authorized) {
+        if (authorization.status === AgentVaultOauthAuthorizationStatus.Authorized) {
           setOutcome({ status: "authorized" });
           return;
         }

@@ -255,8 +255,10 @@ code exchange and refresh; the proxy only ever receives the access token.
 
 - **The tokens live on the service row**, like every other credential: the non-secret half (endpoints, client,
   scopes, status, expiry, token hash) in `credentialConfig`, `{ accessToken, refreshToken, clientSecret }` sealed
-  in `encryptedCredential`. Each service has its own client, and a client is reused only with the issuer it was
-  registered at.
+  in `encryptedCredential`. Each service has its own client, used only with the issuer it was registered at.
+  Reauthorizing registers a fresh client, since the server may have dropped the old one and the sign-in would then
+  die on its page; only a client entered by hand is kept, and the stored one is the fallback when registration
+  fails. Scopes carry over only at the same issuer.
 - **Refresh writes the row, which no other credential does, so it races admin edits.** A refresh is a
   compare-and-swap on `encryptedCredential` and a jsonb merge of only the token keys, so an admin who reauthorized
   meanwhile keeps the newer tokens. An admin edit that keeps the tokens never writes `credentialConfig`, so it
@@ -285,11 +287,16 @@ code exchange and refresh; the proxy only ever receives the access token.
   injects it unchanged. The header is always `Authorization: Bearer` (the MCP authorization spec), so an OAuth
   credential stores no header name or prefix and its input is only `authorizationId`. Resolve refreshes a token that expires before the next poll; the proxy calls
   `credential-refresh` after an upstream 401. A failing provider never fails resolve for other services: it costs
-  that service a stale token and a `lastError`. `invalid_grant` moves the service to needs reauthorization.
+  that service a stale token and a `lastError`. A refresh error that means the login is dead (`invalid_grant`, a
+  dropped client, providers' own revoked or expired refresh token codes: `DEAD_LOGIN_ERROR_CODES`) moves the service
+  to needs reauthorization, so it isn't retried every poll. Any token type but a proof-of-possession one (DPoP, MAC,
+  PoP) is sent as a bearer token, since servers may name their own (Slack's is `user`).
 - **Both proxy calls answer well inside the proxy's 15 second timeout.** Resolve waits 4 seconds in total for its
-  refreshes and sends the stored token for any still running, which finish in the background. A refresh waits
-  about 3 seconds for another's lock, then answers with what is stored, and its token requests (the
-  `invalid_target` retry included) share one 7 second budget. Keep that sum under the proxy's timeout.
+  refreshes and sends the stored token for any still running, which finish in the background. Token requests (the
+  `invalid_target` retry included) share one 7 second budget. Resolve's refresh waits about 3 seconds for another's
+  lock; the proxy's refresh after a 401 waits about 10, so it outlasts the holder and gets the new token rather than
+  the rejected one. Either then answers with what is stored, and a waiter whose holder failed spends only the time
+  left before 13 seconds on its own request. Keep that under the proxy's timeout.
 - **Neither refreshes nor resolve are audited.** Connect and reauthorize are recorded by the service create and
   update events, which carry `oauthIssuer` and `oauthScopes`.
 - **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may

@@ -32,13 +32,13 @@ export enum AgentVaultCredentialType {
   OAuth = "oauth"
 }
 
-export enum AgentVaultOAuthStatus {
+export enum AgentVaultOauthStatus {
   Connected = "connected",
   NeedsReauthorization = "needs-reauthorization",
   NeedsAdditionalScopes = "needs-additional-scopes"
 }
 
-export enum AgentVaultOAuthAuthorizationStatus {
+export enum AgentVaultOauthAuthorizationStatus {
   Pending = "pending",
   Authorized = "authorized",
   Failed = "failed"

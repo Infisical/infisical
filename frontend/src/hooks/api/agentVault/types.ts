@@ -3,8 +3,8 @@ import {
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultMemberType,
-  AgentVaultOAuthAuthorizationStatus,
-  AgentVaultOAuthStatus,
+  AgentVaultOauthAuthorizationStatus,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSessionLogDecision,
   AgentVaultSessionScope,
@@ -14,9 +14,9 @@ import {
   AgentVaultVariableReferenceField
 } from "./enums";
 
-export type TAgentVaultOAuthCredentialSummary = {
+export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;
-  status: AgentVaultOAuthStatus;
+  status: AgentVaultOauthStatus;
   issuer: string;
   grantedScopes: string[];
   requiredScopes: string[];
@@ -30,7 +30,7 @@ export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
   | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough }
-  | TAgentVaultOAuthCredentialSummary;
+  | TAgentVaultOauthCredentialSummary;
 
 export type TAgentVaultCredentialInput =
   | {
@@ -42,7 +42,7 @@ export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Basic; username: string; password: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
-export type TAgentVaultOAuthCredentialInput = {
+export type TAgentVaultOauthCredentialInput = {
   type: AgentVaultCredentialType.OAuth;
   authorizationId: string;
 };
@@ -56,7 +56,7 @@ export type TAgentVaultCredentialUpdate =
     }
   | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
   | { type: AgentVaultCredentialType.Passthrough }
-  | TAgentVaultOAuthCredentialInput;
+  | TAgentVaultOauthCredentialInput;
 
 export type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
 
@@ -311,7 +311,7 @@ export type TCreateAgentVaultServiceDTO =
       transport: AgentVaultMcpTransport;
       credential:
         | Extract<TAgentVaultCredentialInput, { type: AgentVaultCredentialType.Bearer }>
-        | TAgentVaultOAuthCredentialInput;
+        | TAgentVaultOauthCredentialInput;
       customHeaders?: TAgentVaultCustomHeaderInput[];
     };
 
@@ -329,14 +329,14 @@ export type TUpdateAgentVaultServiceDTO = {
   substitutions?: TAgentVaultSubstitutionInput[];
 };
 
-export type TAgentVaultOAuthAuthorization = {
+export type TAgentVaultOauthAuthorization = {
   id: string;
-  status: AgentVaultOAuthAuthorizationStatus;
+  status: AgentVaultOauthAuthorizationStatus;
   error: string | null;
   scopes: string[];
 };
 
-export type TCreateAgentVaultOAuthAuthorizationDTO = {
+export type TCreateAgentVaultOauthAuthorizationDTO = {
   accessBundleId: string;
   serverUrl: string;
   serviceId?: string;
@@ -344,7 +344,7 @@ export type TCreateAgentVaultOAuthAuthorizationDTO = {
   clientSecret?: string;
 };
 
-export type TCreateAgentVaultOAuthAuthorizationResponse = {
+export type TCreateAgentVaultOauthAuthorizationResponse = {
   registrationRequired: boolean;
   // False when the server answered but advertises no OAuth, which usually means a wrong URL.
   oauthAdvertised: boolean;
@@ -353,13 +353,13 @@ export type TCreateAgentVaultOAuthAuthorizationResponse = {
   registrationError: string | null;
   authorization: {
     id: string;
-    status: AgentVaultOAuthAuthorizationStatus;
+    status: AgentVaultOauthAuthorizationStatus;
     authorizeUrl: string;
     scopes: string[];
   } | null;
 };
 
-export type TCompleteAgentVaultOAuthAuthorizationDTO = {
+export type TCompleteAgentVaultOauthAuthorizationDTO = {
   authorizationId: string;
   state: string;
   code?: string;

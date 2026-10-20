@@ -23,7 +23,7 @@ import {
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
-import { TAgentVaultServiceConfig } from "../agent-vault/agent-vault-service-types";
+import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import {
@@ -47,9 +47,11 @@ import {
   generatePkce,
   generateState,
   hashAccessToken,
+  isDeadLoginError,
   isSameState,
   normalizeProviderText,
   refreshAccessToken,
+  TOKEN_REQUEST_BUDGET_MS,
   validateCallbackIssuer,
   withTokenCompatibility
 } from "./agent-vault-oauth-token-fns";
@@ -71,14 +73,20 @@ import {
   TResolvedOauthCredential
 } from "./agent-vault-oauth-types";
 
-export const AGENT_VAULT_OAUTH_AUTHORIZATION_TTL_SECONDS = 10 * 60;
+const AGENT_VAULT_OAUTH_AUTHORIZATION_TTL_SECONDS = 10 * 60;
 const COMPLETE_LOCK_TTL_SECONDS = 60;
 // Outlasts the holder's work: the token requests share a 7 second budget.
 const REFRESH_LOCK_DURATION_MS = 15 * 1000;
-// Waits at most ~3s for a concurrent refresh of the same service, then answers with whatever is stored. With the
-// token budget, the proxy's credential refresh answers inside its 15 second timeout.
-const REFRESH_LOCK_SETTINGS = { retryCount: 12, retryDelay: 200, retryJitter: 50 };
-export const AGENT_VAULT_OAUTH_CALLBACK_PATH = "/agent-vault/oauth/callback";
+// How long a refresh waits for a concurrent one of the same service before answering with whatever is stored.
+// Resolve waits ~3s, since its own 4 second budget sends the stored token anyway. The proxy's refresh after a 401
+// waits ~10s, so it outlasts the holder's 7 second token budget and gets the new token instead of the rejected one.
+const RESOLVE_REFRESH_LOCK_SETTINGS = { retryCount: 12, retryDelay: 200, retryJitter: 50 };
+const REJECTED_TOKEN_REFRESH_LOCK_SETTINGS = { retryCount: 48, retryDelay: 200, retryJitter: 50 };
+// A refresh answers within this, under the proxy's 15 second timeout, so a waiter whose holder failed gets only the
+// time left for its own token request, and skips it below the minimum.
+const REFRESH_ANSWER_DEADLINE_MS = 13 * 1000;
+const MIN_REFRESH_BUDGET_MS = 1000;
+const AGENT_VAULT_OAUTH_CALLBACK_PATH = "/agent-vault/oauth/callback";
 
 type TAgentVaultOauthServiceFactoryDep = {
   keyStore: Pick<
@@ -111,10 +119,8 @@ type TLoadedOauthService = {
 export const AGENT_VAULT_SERVICE_MOVED_MESSAGE =
   "This service's server changed after the proxy last fetched it, so Infisical won't send its credential to the old host. The proxy picks up the change on its next poll.";
 
-const serverUrlOf = (config: unknown) => (config as TAgentVaultServiceConfig | null)?.serverUrl ?? null;
-
 // Names hosts only: a server URL's path or query can hold a key.
-export const assertAuthorizationServerUrl = (authorizedServerUrl: string, serviceServerUrl: string | null) => {
+const assertAuthorizationServerUrl = (authorizedServerUrl: string, serviceServerUrl: string | null) => {
   if (authorizedServerUrl === serviceServerUrl) return;
   const authorizedHost = describeServer(authorizedServerUrl);
   if (!serviceServerUrl) {
@@ -134,7 +140,7 @@ export const assertAuthorizationServerUrl = (authorizedServerUrl: string, servic
 export const OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE =
   "Changing an OAuth service's server URL needs a new authorization, since its tokens belong to the old server. Authorize the service for the new URL and send its 'authorizationId'.";
 
-export const AGENT_VAULT_REAUTHORIZED_DURING_SAVE_MESSAGE =
+const AGENT_VAULT_REAUTHORIZED_DURING_SAVE_MESSAGE =
   "This service was reauthorized by another save while this one was in progress, and that newer connection was kept. Reload the service, then authorize again if you still want to replace it.";
 
 // Run under the bundle lock against the row read there, since a save that landed after the first read may have
@@ -316,8 +322,12 @@ export const agentVaultOauthServiceFactory = ({
     const discovery = await discoverOauthServer(http, serverUrl);
     const compatibility = [...discovery.compatibility];
 
-    let client: TOauthClient;
-    let registration: AgentVaultOauthRegistration;
+    // A client is only ever used with the issuer it was registered at, and so are the scopes it was granted.
+    const sameIssuerStored = stored && stored.config.issuer === discovery.issuer ? stored : null;
+
+    let client: TOauthClient | null = null;
+    let registration: AgentVaultOauthRegistration | null = null;
+    let registrationError: string | null = null;
     if (clientId) {
       client = manualOauthClient({
         clientId,
@@ -325,15 +335,13 @@ export const agentVaultOauthServiceFactory = ({
         tokenEndpointAuthMethodsSupported: discovery.tokenEndpointAuthMethodsSupported
       });
       registration = AgentVaultOauthRegistration.Manual;
-    } else if (stored && stored.config.issuer === discovery.issuer) {
-      // A client is only ever used with the issuer it was registered at.
-      client = {
-        clientId: stored.config.clientId,
-        clientSecret: stored.clientSecret,
-        tokenEndpointAuthMethod: stored.config.tokenEndpointAuthMethod
-      };
-      registration = stored.config.registration;
-    } else if (discovery.registrationEndpoint) {
+    } else if (
+      sameIssuerStored?.config.registration !== AgentVaultOauthRegistration.Manual &&
+      discovery.registrationEndpoint
+    ) {
+      // Reauthorizing registers a fresh client rather than reusing the stored one, which the server may have dropped
+      // (expired, or registered for an old SITE_URL), and then the sign-in would fail on the provider's page without
+      // Infisical ever hearing back. Only a client entered by hand is kept, since nothing can register it again.
       try {
         const registered = await registerOauthClient({
           http,
@@ -348,30 +356,34 @@ export const agentVaultOauthServiceFactory = ({
         if (!(error instanceof OauthRegistrationError)) throw error;
         // A guessed /register that isn't there means the server has no registration, not that it is broken.
         // Either way the fix is the same, an admin-entered client, so the caller is asked for one.
-        return {
-          registrationRequired: true,
-          oauthAdvertised: discovery.oauthAdvertised,
-          redirectUri: callbackUri,
-          registrationError: discovery.endpointsGuessed
-            ? null
-            : oauthSetupError(
-                serverUrl,
-                `${error.message} Enter the client ID and secret of your own OAuth app instead.`
-              ).message,
-          authorization: null
-        };
+        registrationError = discovery.endpointsGuessed
+          ? null
+          : oauthSetupError(serverUrl, `${error.message} Enter the client ID and secret of your own OAuth app instead.`)
+              .message;
       }
-    } else {
+    }
+    // The stored client is still worth trying when no fresh one could be registered.
+    if (!client && sameIssuerStored) {
+      client = {
+        clientId: sameIssuerStored.config.clientId,
+        clientSecret: sameIssuerStored.clientSecret,
+        tokenEndpointAuthMethod: sameIssuerStored.config.tokenEndpointAuthMethod
+      };
+      registration = sameIssuerStored.config.registration;
+    }
+    if (!client || !registration) {
       return {
         registrationRequired: true,
         oauthAdvertised: discovery.oauthAdvertised,
         redirectUri: callbackUri,
-        registrationError: null,
+        registrationError,
         authorization: null
       };
     }
 
-    const storedScopes = stored ? [...new Set([...stored.config.grantedScopes, ...stored.config.requiredScopes])] : [];
+    const storedScopes = sameIssuerStored
+      ? [...new Set([...sameIssuerStored.config.grantedScopes, ...sameIssuerStored.config.requiredScopes])]
+      : [];
     const requestedScopes = storedScopes.length
       ? [
           ...new Set([
@@ -485,7 +497,10 @@ export const agentVaultOauthServiceFactory = ({
         serverUrl: record.serverUrl
       });
 
-      if (error) {
+      // RFC 9207 section 2.4: a response from the wrong issuer is not trusted, its error text included.
+      if (issuerProblem) {
+        fail(issuerProblem);
+      } else if (error) {
         const providerError = normalizeProviderText(error, undefined, [code, state]);
         const detail =
           normalizeProviderText(errorDescription, undefined, [code, state]) || providerError || "no reason given";
@@ -494,8 +509,6 @@ export const agentVaultOauthServiceFactory = ({
             ? `Access to '${host}' was denied, so nothing was connected.`
             : `'${host}' didn't authorize Infisical: ${detail}`
         );
-      } else if (issuerProblem) {
-        fail(issuerProblem);
       } else if (!code) {
         fail(`'${host}' sent no authorization code. Authorize again.`);
       } else {
@@ -682,7 +695,7 @@ export const agentVaultOauthServiceFactory = ({
       secret,
       encryptedCredential: service.encryptedCredential,
       hostPattern: service.hostPattern,
-      serverUrl: serverUrlOf(service.config)
+      serverUrl: getServiceServerUrl(service.config)
     };
   };
 
@@ -719,6 +732,7 @@ export const agentVaultOauthServiceFactory = ({
     expiresWithinSeconds,
     destination
   }: TRefreshServiceTokenDTO): Promise<{ credential: TResolvedOauthCredential; status: AgentVaultOauthStatus }> => {
+    const deadline = Date.now() + REFRESH_ANSWER_DEADLINE_MS;
     let cipherPair: Promise<TProjectCipher> | null = null;
     const cipher = () => {
       cipherPair ??= getProjectCipher(projectId);
@@ -758,7 +772,7 @@ export const agentVaultOauthServiceFactory = ({
         secret,
         encryptedCredential,
         hostPattern: row.hostPattern,
-        serverUrl: serverUrlOf(row.config)
+        serverUrl: getServiceServerUrl(row.config)
       });
 
     // A failed swap means the row moved on (a reauthorization, usually), and the new row is the answer.
@@ -793,7 +807,7 @@ export const agentVaultOauthServiceFactory = ({
       lock = await keyStore.acquireLock(
         [KeyStorePrefixes.AgentVaultOauthRefreshLock(serviceId)],
         REFRESH_LOCK_DURATION_MS,
-        REFRESH_LOCK_SETTINGS
+        rejectedTokenHash === undefined ? RESOLVE_REFRESH_LOCK_SETTINGS : REJECTED_TOKEN_REFRESH_LOCK_SETTINGS
       );
     } catch {
       // Another refresh held the lock the whole time; whatever it stored is the best answer available.
@@ -810,6 +824,9 @@ export const agentVaultOauthServiceFactory = ({
         return answer();
       }
 
+      const budgetMs = Math.min(TOKEN_REQUEST_BUDGET_MS, deadline - Date.now());
+      if (budgetMs < MIN_REFRESH_BUDGET_MS) return answer();
+
       const { config, secret } = current;
       const result = await refreshAccessToken({
         http,
@@ -822,13 +839,14 @@ export const agentVaultOauthServiceFactory = ({
         resource: config.resource,
         requestedScopes: config.requestedScopes,
         sensitiveValues: [secret.accessToken],
-        refreshToken: secret.refreshToken!
+        refreshToken: secret.refreshToken!,
+        budgetMs
       });
 
       if (!result.ok) {
-        if (result.errorCode === "invalid_grant") {
+        if (isDeadLoginError(result.errorCode)) {
           await markNeedsReauthorization(
-            "The MCP server no longer accepts the stored refresh token (it may have been revoked). Reauthorize this service."
+            `The MCP server no longer accepts this service's login (${result.message}). Reauthorize this service.`
           );
         } else {
           await applyStatus({ lastError: result.message });

@@ -3,9 +3,9 @@ import { z } from "zod";
 import { AgentVaultOauthAuthorizationStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   MAX_CLIENT_ID_LENGTH,
-  MAX_CLIENT_SECRET_LENGTH,
-  OAUTH_CLIENT_CREDENTIAL_PATTERN
+  MAX_CLIENT_SECRET_LENGTH
 } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-client-fns";
+import { OAUTH_VSCHAR_PATTERN } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-token-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -23,10 +23,7 @@ const AuthorizationViewSchema = z.object({
 });
 
 const printable = (max: number) =>
-  z
-    .string()
-    .max(max)
-    .regex(OAUTH_CLIENT_CREDENTIAL_PATTERN, "Use printable ASCII characters without line breaks or accents");
+  z.string().max(max).regex(OAUTH_VSCHAR_PATTERN, "Use printable ASCII characters without line breaks or accents");
 
 // JWT only: an authorization ends in a browser redirect, so only a signed-in user can start or finish one.
 export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) => {
@@ -48,14 +45,12 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
           .string()
           .trim()
           .min(1)
-          .max(MAX_CLIENT_ID_LENGTH)
           .pipe(printable(MAX_CLIENT_ID_LENGTH))
           .optional()
           .describe(AGENT_VAULT.OAUTH.clientId),
         clientSecret: z
           .string()
           .min(1)
-          .max(MAX_CLIENT_SECRET_LENGTH)
           .pipe(printable(MAX_CLIENT_SECRET_LENGTH))
           .optional()
           .describe(AGENT_VAULT.OAUTH.clientSecret)

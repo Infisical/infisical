@@ -60,7 +60,7 @@ import {
 } from "@app/components/v3";
 import {
   AgentVaultCredentialType,
-  AgentVaultOAuthStatus,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
   useDeleteAgentVaultService
 } from "@app/hooks/api/agentVault";
@@ -310,7 +310,7 @@ export const ServicesCard = ({
                     <ServiceIcon hostPattern={service.hostPattern} />
                     {service.name}
                     {service.credential.type === AgentVaultCredentialType.OAuth &&
-                      service.credential.status !== AgentVaultOAuthStatus.Connected && (
+                      service.credential.status !== AgentVaultOauthStatus.Connected && (
                         <OAuthStatusBadge status={service.credential.status} />
                       )}
                   </div>

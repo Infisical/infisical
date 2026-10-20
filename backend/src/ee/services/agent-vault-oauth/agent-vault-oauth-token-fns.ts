@@ -122,12 +122,14 @@ const parseTokenBody = (contentType: string, body: string): Record<string, unkno
   return null;
 };
 
+// RFC 6749 appendix A: client IDs, client secrets and tokens are all VSCHAR. The access token is injected into a
+// header by the proxy, so a line break or NUL in it must never get that far; the client ID is stored in jsonb and
+// sent in the authorize URL, and the secret is form-encoded into the token request, which throws on a lone surrogate.
+export const OAUTH_VSCHAR_PATTERN = new RE2(/^[\x20-\x7e]+$/);
+
 const MAX_TOKEN_LENGTH = 16_384;
-// RFC 6749 appendix A.12 and A.17: tokens are VSCHAR. The access token is injected into a header by the proxy, so a
-// line break or NUL in it must never get that far.
-const TOKEN_PATTERN = new RE2(/^[\x20-\x7e]+$/);
 const isUsableToken = (value: unknown): value is string =>
-  typeof value === "string" && value.length <= MAX_TOKEN_LENGTH && TOKEN_PATTERN.test(value);
+  typeof value === "string" && value.length <= MAX_TOKEN_LENGTH && OAUTH_VSCHAR_PATTERN.test(value);
 
 // One year. A longer lifetime is treated as none given, so the token is refreshed only when the upstream rejects
 // it, which is what a server meaning "doesn't expire" wants. Clamping instead would mark a token that has no
@@ -158,14 +160,19 @@ export const parseGrantedScopes = (
   return { scopes: splitScopes(scope), commaSeparated: false };
 };
 
+const PROOF_OF_POSSESSION_TOKEN_TYPES = new Set(["dpop", "mac", "pop"]);
+
 export const parseTokenResponse = (
   body: Record<string, unknown>,
   requestedScopes: string[] = []
 ): TOauthTokens | null => {
   const accessToken = body.access_token;
   if (!isUsableToken(accessToken)) return null;
-  // Only bearer tokens can be injected as a header; DPoP and MAC tokens need proof the proxy can't give.
-  if (typeof body.token_type === "string" && body.token_type.toLowerCase() !== "bearer") return null;
+  // RFC 6749 section 7.1 lets a server name its own token types, and some name bearer tokens differently (Slack
+  // sends "user"). Only proof-of-possession tokens are refused, since they need proof the proxy can't give.
+  if (typeof body.token_type === "string" && PROOF_OF_POSSESSION_TOKEN_TYPES.has(body.token_type.toLowerCase())) {
+    return null;
+  }
 
   const refreshToken = isUsableToken(body.refresh_token) ? body.refresh_token : undefined;
   const { scopes, commaSeparated } = parseGrantedScopes(body.scope, requestedScopes);
@@ -330,7 +337,7 @@ export const requestToken = async ({
       return {
         ok: false,
         errorCode: null,
-        message: `'${host}' returned a token Infisical can't use (it must be a bearer token of printable characters).`,
+        message: `'${host}' returned a token Infisical can't use (it must be printable text that works as a bearer token).`,
         resourceDropped: !withResource
       };
     }
@@ -355,6 +362,22 @@ export const requestToken = async ({
   }
   return result;
 };
+
+// Refresh errors that mean the login is gone for good, so retrying on every poll only repeats the refusal. The
+// client codes mean the server dropped the registered client (the MCP SDK starts over on invalid_client too); the
+// rest are providers' own names for a dead refresh token.
+const DEAD_LOGIN_ERROR_CODES = new Set([
+  "invalid_grant",
+  "invalid_client",
+  "unauthorized_client",
+  "bad_refresh_token", // GitHub
+  "invalid_refresh_token", // Slack
+  "token_revoked", // Slack
+  "token_expired" // Slack
+]);
+
+export const isDeadLoginError = (errorCode: string | null) =>
+  errorCode !== null && DEAD_LOGIN_ERROR_CODES.has(errorCode);
 
 export const exchangeAuthorizationCode = (
   args: Omit<Parameters<typeof requestToken>[0], "params"> & { code: string; codeVerifier: string; redirectUri: string }

@@ -15,17 +15,17 @@ import {
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
-  TAgentVaultOAuthAuthorization,
+  TAgentVaultOauthAuthorization,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultService,
   TAgentVaultSessionLogSettings,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
-  TCompleteAgentVaultOAuthAuthorizationDTO,
+  TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultAccessBundleDTO,
-  TCreateAgentVaultOAuthAuthorizationDTO,
-  TCreateAgentVaultOAuthAuthorizationResponse,
+  TCreateAgentVaultOauthAuthorizationDTO,
+  TCreateAgentVaultOauthAuthorizationResponse,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
@@ -459,13 +459,13 @@ export const useRevealAgentVaultVariableValue = () =>
     }
   });
 
-export const useCreateAgentVaultOAuthAuthorization = () =>
+export const useCreateAgentVaultOauthAuthorization = () =>
   useMutation({
     // Discovery and registration failures name the server and what failed, and the Authorize card
     // shows them in place.
     meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
-    mutationFn: async (params: TCreateAgentVaultOAuthAuthorizationDTO) => {
-      const { data } = await apiRequest.post<TCreateAgentVaultOAuthAuthorizationResponse>(
+    mutationFn: async (params: TCreateAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<TCreateAgentVaultOauthAuthorizationResponse>(
         "/api/v1/agent-vault/oauth/authorizations",
         params
       );
@@ -473,15 +473,15 @@ export const useCreateAgentVaultOAuthAuthorization = () =>
     }
   });
 
-export const useCompleteAgentVaultOAuthAuthorization = () =>
+export const useCompleteAgentVaultOauthAuthorization = () =>
   useMutation({
     // The callback page shows every outcome itself.
     meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, "NotFound"] },
     mutationFn: async ({
       authorizationId,
       ...params
-    }: TCompleteAgentVaultOAuthAuthorizationDTO) => {
-      const { data } = await apiRequest.post<{ authorization: TAgentVaultOAuthAuthorization }>(
+    }: TCompleteAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<{ authorization: TAgentVaultOauthAuthorization }>(
         `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}/complete`,
         params
       );

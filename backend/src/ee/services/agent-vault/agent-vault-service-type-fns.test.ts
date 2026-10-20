@@ -10,7 +10,7 @@ import {
   deriveMcpHostPattern,
   findUnsupportedServiceFields,
   resolveServiceHostPattern
-} from "./agent-vault-service-types";
+} from "./agent-vault-service-type-fns";
 
 const http = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Http];
 const mcp = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Mcp];

@@ -17,6 +17,7 @@ import {
   normalizeProviderText,
   parseExpiresIn,
   parseGrantedScopes,
+  parseTokenResponse,
   requestToken,
   validateCallbackIssuer,
   withTokenCompatibility
@@ -426,6 +427,16 @@ describe("token requests", () => {
     } finally {
       now.mockRestore();
     }
+  });
+});
+
+describe("token types", () => {
+  test.each(["Bearer", "bearer", "user", "N_A", undefined])("a %s token is used as a bearer token", (tokenType) => {
+    expect(parseTokenResponse({ access_token: "xoxp-1", token_type: tokenType })?.accessToken).toBe("xoxp-1");
+  });
+
+  test.each(["DPoP", "mac", "PoP"])("a %s token is refused, since it needs proof the proxy can't give", (tokenType) => {
+    expect(parseTokenResponse({ access_token: "at", token_type: tokenType })).toBeNull();
   });
 });
 

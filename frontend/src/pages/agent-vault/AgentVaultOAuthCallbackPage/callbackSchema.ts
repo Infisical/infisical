@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const authorizationIdSchema = z.string().uuid();
 
-export const AgentVaultOAuthCallbackQueryParamsSchema = z.object({
+export const AgentVaultOauthCallbackQueryParamsSchema = z.object({
   code: z.string().max(4096).optional().catch(undefined),
   // The ID becomes an API path segment. Reject malformed state before the callback can submit a request.
   state: z

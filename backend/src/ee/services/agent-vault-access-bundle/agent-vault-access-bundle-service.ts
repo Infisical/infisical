@@ -54,9 +54,10 @@ import {
   assertServiceFieldsSupported,
   buildServiceConfig,
   getAgentVaultServiceType,
+  getServiceServerUrl,
   resolveServiceHostPattern,
   TAgentVaultServiceConfig
-} from "../agent-vault/agent-vault-service-types";
+} from "../agent-vault/agent-vault-service-type-fns";
 import {
   findStoredVariableIds,
   findVariableKeys,
@@ -667,8 +668,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
-  // The tokens come from an authorization the same user completed. It is claimed right before the write and
-  // deleted only once the write commits, so a save that fails can be retried without authorizing again.
+  // The tokens come from an authorization the same user completed. Claiming it deletes it right before the write,
+  // and a save that then fails puts it back, so it can be retried without authorizing again.
   const claimOauthCredential = async ({
     projectId,
     ctx,
@@ -1135,7 +1136,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         : undefined;
     const oauthAuthorizationId =
       credential?.type === AgentVaultCredentialType.OAuth ? credential.authorizationId : undefined;
-    const storedServerUrl = (service.config as TAgentVaultServiceConfig | null)?.serverUrl;
+    const storedServerUrl = getServiceServerUrl(service.config);
     const staysOauth = credential ? credential.type === AgentVaultCredentialType.OAuth : Boolean(storedOauth);
     if (serverUrl !== undefined && serverUrl !== storedServerUrl && staysOauth && !oauthAuthorizationId) {
       throw new BadRequestError({ message: OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE });
@@ -1255,7 +1256,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           ctx: rest.ctx,
           accessBundleId: bundle.id,
           serviceId: service.id,
-          serverUrl: (serviceConfig ?? (service.config as TAgentVaultServiceConfig)).serverUrl!,
+          serverUrl: getServiceServerUrl(serviceConfig ?? service.config)!,
           authorizationId: oauthAuthorizationId,
           previousRequiredScopes: storedOauth?.requiredScopes
         })
@@ -1275,7 +1276,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // read under the lock. That save may have moved the service, retyped or rotated its credential, or
     // reauthorized it, and writing over it from the first read would undo it. Pure, so it can't touch the database.
     const reconcileWithLockedRow = (locked: TAgentVaultServices) => {
-      const lockedConfig = locked.config as TAgentVaultServiceConfig | null;
       const lockedOauth =
         locked.credentialType === AgentVaultCredentialType.OAuth
           ? (locked.credentialConfig as TAgentVaultOauthConfig)
@@ -1292,8 +1292,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         if (lockedOauth && !oauth && (!credential || credential.type === AgentVaultCredentialType.OAuth)) {
           checkOauthServerUnderLock({
             requestedServerUrl: serverUrl,
-            readServerUrl: storedServerUrl ?? null,
-            effectiveServerUrl: lockedServiceConfig.serverUrl ?? null,
+            readServerUrl: storedServerUrl,
+            effectiveServerUrl: getServiceServerUrl(lockedServiceConfig),
             lockedOauth
           });
         }
@@ -1312,7 +1312,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           // The claim checked the server URL of the first read; these tokens must never reach another host.
           const requiredScopes = checkOauthClaimUnderLock({
             authorizedServerUrl: oauth.claim.record.serverUrl,
-            lockedServerUrl: (lockedServiceConfig ?? lockedConfig)?.serverUrl ?? null,
+            lockedServerUrl: getServiceServerUrl(lockedServiceConfig ?? locked.config),
             readOauth: storedOauth,
             lockedOauth
           });

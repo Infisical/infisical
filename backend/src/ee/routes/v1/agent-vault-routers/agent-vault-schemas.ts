@@ -17,7 +17,7 @@ import {
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix-schemas";
-import { agentVaultMcpServerUrlSchema } from "@app/ee/services/agent-vault/agent-vault-service-types";
+import { agentVaultMcpServerUrlSchema } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
 import {
   acceptsVariableReferences,
   addDuplicateCustomHeaderNameIssues,

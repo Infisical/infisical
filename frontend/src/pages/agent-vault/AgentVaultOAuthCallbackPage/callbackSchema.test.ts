@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AgentVaultOAuthCallbackQueryParamsSchema } from "./callbackSchema";
+import { AgentVaultOauthCallbackQueryParamsSchema } from "./callbackSchema";
 
 describe("OAuth callback input", () => {
   it("keeps the UUID state and bounded values from a valid provider redirect", () => {
@@ -9,7 +9,7 @@ describe("OAuth callback input", () => {
       code: "code",
       iss: "https://provider.example.com"
     };
-    expect(AgentVaultOAuthCallbackQueryParamsSchema.parse(params)).toEqual(params);
+    expect(AgentVaultOauthCallbackQueryParamsSchema.parse(params)).toEqual(params);
   });
 
   it.each([
@@ -19,11 +19,11 @@ describe("OAuth callback input", () => {
     "",
     "x".repeat(257)
   ])("drops a state that could select another API path: %s", (state) => {
-    expect(AgentVaultOAuthCallbackQueryParamsSchema.parse({ state }).state).toBeUndefined();
+    expect(AgentVaultOauthCallbackQueryParamsSchema.parse({ state }).state).toBeUndefined();
   });
 
   it("drops provider fields exceeding the API's bounds", () => {
-    const parsed = AgentVaultOAuthCallbackQueryParamsSchema.parse({
+    const parsed = AgentVaultOauthCallbackQueryParamsSchema.parse({
       code: "x".repeat(4097),
       iss: "x".repeat(2049),
       error: "x".repeat(1025),

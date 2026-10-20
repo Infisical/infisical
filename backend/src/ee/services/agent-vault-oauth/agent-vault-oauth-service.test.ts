@@ -105,6 +105,7 @@ const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> 
   const tokenRequests: URLSearchParams[] = [];
   const registrations: unknown[] = [];
   let registerHandler: () => TOauthHttpResponse = () => json(201, { client_id: "registered-client" });
+  let lockHandler: (settings: unknown) => Promise<void> = async () => {};
   let tokenHandler: (form: URLSearchParams) => TOauthHttpResponse = () =>
     json(200, { access_token: "at-1", token_type: "Bearer", refresh_token: "rt-1", expires_in: 3600, scope: "read" });
 
@@ -154,7 +155,10 @@ const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> 
       },
       deleteItem: async (key: string) => (store.delete(key) ? 1 : 0),
       ttl: async (key: string) => (store.has(key) ? (ttls.get(key) ?? -1) : -2),
-      acquireLock: async () => ({ release: async () => ({}) as never })
+      acquireLock: async (_keys: string[], _duration: number, settings?: unknown) => {
+        await lockHandler(settings);
+        return { release: async () => ({}) as never };
+      }
     },
     kmsService: kms as never,
     agentVaultServiceDAL: {
@@ -271,6 +275,9 @@ const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> 
     },
     onRegister: (handler: typeof registerHandler) => {
       registerHandler = handler;
+    },
+    onAcquireLock: (handler: typeof lockHandler) => {
+      lockHandler = handler;
     }
   };
 };
@@ -297,6 +304,31 @@ const authorize = async (env: ReturnType<typeof setup>) => {
   });
   return authorization!.id;
 };
+
+const oauthConfig = (overrides: Partial<TAgentVaultOauthConfig> = {}): TAgentVaultOauthConfig => ({
+  type: AgentVaultCredentialType.OAuth,
+  grantType: "authorization_code",
+  serverUrl: SERVER_URL,
+  issuer: "https://mcp.linear.app",
+  authorizationEndpoint: "https://mcp.linear.app/authorize",
+  tokenEndpoint: "https://mcp.linear.app/token",
+  resource: SERVER_URL,
+  clientId: "registered-client",
+  registration: AgentVaultOauthRegistration.Dynamic,
+  tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None,
+  compatibility: [],
+  requestedScopes: ["read", "write"],
+  grantedScopes: ["read"],
+  requiredScopes: [],
+  status: AgentVaultOauthStatus.Connected,
+  expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+  accessTokenHash: hashAccessToken("old-access"),
+  authorizedBy: { userId: USER_ID, username: "me@example.com" },
+  authorizedAt: new Date().toISOString(),
+  lastRefreshedAt: null,
+  lastError: null,
+  ...overrides
+});
 
 describe("starting an authorization", () => {
   test("discovers, registers a client, and returns an authorize URL with PKCE S256, resource and state", async () => {
@@ -377,6 +409,75 @@ describe("starting an authorization", () => {
     const { authorization } = await createAuthorization(env, { clientId: "my-app", clientSecret: "shh" });
     expect(new URL(authorization!.authorizeUrl).searchParams.get("client_id")).toBe("my-app");
     expect(env.registrations).toHaveLength(0);
+  });
+
+  const storeOauthService = (env: ReturnType<typeof setup>, overrides: Partial<TAgentVaultOauthConfig> = {}) =>
+    env.rows.set(SERVICE_ID, {
+      id: SERVICE_ID,
+      name: "linear",
+      type: AgentVaultServiceType.Mcp,
+      accessBundleId: BUNDLE_ID,
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: oauthConfig({ clientId: "old-client", grantedScopes: ["admin"], ...overrides }),
+      encryptedCredential: sealBytes({
+        accessToken: "old-access",
+        refreshToken: "old-refresh",
+        clientSecret: "old-shh"
+      })
+    });
+  const clientIdOf = (authorizeUrl: string) => new URL(authorizeUrl).searchParams.get("client_id");
+
+  test("reauthorizing registers a fresh client instead of reusing a registered one the server may have dropped", async () => {
+    const env = setup();
+    storeOauthService(env);
+    const { authorization } = await createAuthorization(env, { serviceId: SERVICE_ID });
+    expect(env.registrations).toHaveLength(1);
+    expect(clientIdOf(authorization!.authorizeUrl)).toBe("registered-client");
+  });
+
+  test("reauthorizing keeps a client entered by hand, since nothing can register it again", async () => {
+    const env = setup();
+    storeOauthService(env, { registration: AgentVaultOauthRegistration.Manual });
+    const { authorization } = await createAuthorization(env, { serviceId: SERVICE_ID });
+    expect(env.registrations).toHaveLength(0);
+    expect(clientIdOf(authorization!.authorizeUrl)).toBe("old-client");
+  });
+
+  test("reauthorizing falls back to the stored client when a fresh one can't be registered", async () => {
+    const env = setup();
+    env.onRegister(() => json(400, { error: "invalid_client_metadata" }));
+    storeOauthService(env);
+    const result = await createAuthorization(env, { serviceId: SERVICE_ID });
+    expect(result.registrationRequired).toBe(false);
+    expect(clientIdOf(result.authorization!.authorizeUrl)).toBe("old-client");
+    const record = JSON.parse(
+      env.store.get(`agent-vault-oauth-authorization:${result.authorization!.id}`)!
+    ) as TAgentVaultOauthAuthorization;
+    expect(record.registration).toBe(AgentVaultOauthRegistration.Dynamic);
+  });
+
+  test("reauthorizing at a different issuer uses neither the stored client nor its scopes", async () => {
+    const env = setup({
+      metadata: {
+        ...LINEAR_JSON,
+        "https://mcp.linear.app/.well-known/oauth-authorization-server": {
+          ...(LINEAR_JSON["https://mcp.linear.app/.well-known/oauth-authorization-server"] as object),
+          registration_endpoint: undefined
+        }
+      }
+    });
+    storeOauthService(env, { registration: AgentVaultOauthRegistration.Manual, issuer: "https://old.example.com" });
+    expect((await createAuthorization(env, { serviceId: SERVICE_ID })).registrationRequired).toBe(true);
+
+    const { authorization } = await createAuthorization(env, { serviceId: SERVICE_ID, clientId: "my-app" });
+    expect(authorization!.scopes).toEqual(["read", "write"]);
+  });
+
+  test("reauthorizing at the same issuer asks again for the scopes the service holds and still needs", async () => {
+    const env = setup();
+    storeOauthService(env, { requiredScopes: ["write"] });
+    const { authorization } = await createAuthorization(env, { serviceId: SERVICE_ID });
+    expect(authorization!.scopes).toEqual(["admin", "write"]);
   });
 
   test("a client secret without a client ID is refused", async () => {
@@ -515,6 +616,26 @@ describe("completing an authorization", () => {
     expect(env.tokenRequests).toHaveLength(0);
   });
 
+  test.each([
+    { iss: "https://evil.example.com", problem: /different server/ },
+    { iss: undefined, problem: /didn't say which server issued it/ }
+  ])("an error response with iss $iss never shows the provider's text", async ({ iss, problem }) => {
+    const env = setup();
+    const { authorization } = await createAuthorization(env);
+    const { authorization: view } = await env.service.completeAuthorization({
+      projectId: PROJECT_ID,
+      ctx: ctxOf(USER_ID),
+      authorizationId: authorization!.id,
+      state: new URL(authorization!.authorizeUrl).searchParams.get("state")!,
+      error: "server_error",
+      errorDescription: "Visit https://evil.example.com/login to fix this",
+      iss
+    });
+    expect(view.status).toBe(AgentVaultOauthAuthorizationStatus.Failed);
+    expect(view.error).toMatch(problem);
+    expect(view.error).not.toMatch(/Visit|didn't authorize/);
+  });
+
   test("a missing iss from a server that advertises it fails", async () => {
     const env = setup();
     const { authorization } = await createAuthorization(env);
@@ -537,7 +658,8 @@ describe("completing an authorization", () => {
       authorizationId: authorization!.id,
       state: new URL(authorization!.authorizeUrl).searchParams.get("state")!,
       error: "server_error",
-      errorDescription: `The admin\r\n\tdisabled\u202e this app. ${"x".repeat(3000)}`
+      errorDescription: `The admin\r\n\tdisabled\u202e this app. ${"x".repeat(3000)}`,
+      iss: "https://mcp.linear.app"
     });
     expect(view.authorization.status).toBe(AgentVaultOauthAuthorizationStatus.Failed);
     expect(view.authorization.error).toMatch(
@@ -554,7 +676,8 @@ describe("completing an authorization", () => {
       ctx: ctxOf(USER_ID),
       authorizationId: first.id,
       state: new URL(first.authorizeUrl).searchParams.get("state")!,
-      error: "access_denied"
+      error: "access_denied",
+      iss: "https://mcp.linear.app"
     });
     expect(deniedView.authorization.error).toBe("Access to 'mcp.linear.app' was denied, so nothing was connected.");
 
@@ -754,31 +877,6 @@ describe("using an authorization", () => {
   });
 });
 
-const oauthConfig = (overrides: Partial<TAgentVaultOauthConfig> = {}): TAgentVaultOauthConfig => ({
-  type: AgentVaultCredentialType.OAuth,
-  grantType: "authorization_code",
-  serverUrl: SERVER_URL,
-  issuer: "https://mcp.linear.app",
-  authorizationEndpoint: "https://mcp.linear.app/authorize",
-  tokenEndpoint: "https://mcp.linear.app/token",
-  resource: SERVER_URL,
-  clientId: "registered-client",
-  registration: AgentVaultOauthRegistration.Dynamic,
-  tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None,
-  compatibility: [],
-  requestedScopes: ["read", "write"],
-  grantedScopes: ["read"],
-  requiredScopes: [],
-  status: AgentVaultOauthStatus.Connected,
-  expiresAt: new Date(Date.now() + 3600_000).toISOString(),
-  accessTokenHash: hashAccessToken("old-access"),
-  authorizedBy: { userId: USER_ID, username: "me@example.com" },
-  authorizedAt: new Date().toISOString(),
-  lastRefreshedAt: null,
-  lastError: null,
-  ...overrides
-});
-
 describe("refreshing a service's token", () => {
   let env: ReturnType<typeof setup>;
   const row = () => env.rows.get(SERVICE_ID)!;
@@ -873,6 +971,85 @@ describe("refreshing a service's token", () => {
     expect(result.credential.value).toBe("old-access");
     expect(config().status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
     expect(config().lastError).toMatch(/Reauthorize this service/);
+  });
+
+  test.each([
+    { error: "invalid_client", status: 401, why: "the server dropped the registered client" },
+    { error: "unauthorized_client", status: 400, why: "the client may no longer use this grant" },
+    { error: "bad_refresh_token", status: 200, why: "GitHub, with a 200" },
+    { error: "invalid_refresh_token", status: 200, why: "Slack, with ok: false" },
+    { error: "token_revoked", status: 200, why: "Slack" },
+    { error: "token_expired", status: 200, why: "Slack" }
+  ])("$error marks the service as needing reauthorization ($why)", async ({ error, status }) => {
+    env.onToken(() => json(status, { ok: false, error }));
+    const result = await env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      destination: DESTINATION,
+      rejectedTokenHash: hashAccessToken("old-access")
+    });
+    expect(result.status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
+    expect(config().lastError).toBe(
+      `The MCP server no longer accepts this service's login ('mcp.linear.app' refused the token request: ${error}). Reauthorize this service.`
+    );
+
+    // A dead login isn't retried on the next poll.
+    await env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      destination: DESTINATION,
+      rejectedTokenHash: hashAccessToken("old-access")
+    });
+    expect(env.tokenRequests).toHaveLength(1);
+  });
+
+  test("the proxy's refresh after a 401 waits longer for a concurrent refresh than resolve does", async () => {
+    const waits: number[] = [];
+    env.onAcquireLock(async (settings) => {
+      const { retryCount, retryDelay } = settings as { retryCount: number; retryDelay: number };
+      waits.push(retryCount * retryDelay);
+    });
+    env.onToken(() => json(200, { access_token: "new-access", token_type: "Bearer", expires_in: 600 }));
+    await env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      destination: DESTINATION,
+      rejectedTokenHash: hashAccessToken("old-access")
+    });
+    row().credentialConfig = oauthConfig({
+      accessTokenHash: hashAccessToken("new-access"),
+      expiresAt: new Date(Date.now() + 30_000).toISOString()
+    });
+    await env.service.refreshServiceToken({
+      serviceId: SERVICE_ID,
+      projectId: PROJECT_ID,
+      destination: DESTINATION,
+      expiresWithinSeconds: 60
+    });
+    expect(waits).toHaveLength(2);
+    // Outlasts the holder's 7 second token budget, yet stays under the proxy's 15 second timeout.
+    expect(waits[0]).toBeGreaterThan(7_000);
+    expect(waits[0]).toBeLessThan(15_000);
+    expect(waits[1]).toBeLessThanOrEqual(3_000);
+  });
+
+  test("a refresh that waited out a failed holder only spends the time left before the proxy gives up", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      env.onAcquireLock(async () => {
+        vi.setSystemTime(Date.now() + 12_500);
+      });
+      const result = await env.service.refreshServiceToken({
+        serviceId: SERVICE_ID,
+        projectId: PROJECT_ID,
+        destination: DESTINATION,
+        rejectedTokenHash: hashAccessToken("old-access")
+      });
+      expect(result.credential.value).toBe("old-access");
+      expect(env.tokenRequests).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("any other failure records lastError and keeps the service connected", async () => {

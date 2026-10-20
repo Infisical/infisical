@@ -25,7 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { AgentVaultOAuthStatus } from "@app/hooks/api/agentVault";
+import { AgentVaultOauthStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 import {
@@ -47,14 +47,14 @@ const hostOf = (serverUrl: string) => {
 };
 
 const OAUTH_STATUS_VARIANTS = {
-  [AgentVaultOAuthStatus.Connected]: "success",
-  [AgentVaultOAuthStatus.NeedsReauthorization]: "danger",
-  [AgentVaultOAuthStatus.NeedsAdditionalScopes]: "warning"
+  [AgentVaultOauthStatus.Connected]: "success",
+  [AgentVaultOauthStatus.NeedsReauthorization]: "danger",
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "warning"
 } as const;
 
-export const OAuthStatusBadge = ({ status }: { status: AgentVaultOAuthStatus }) => (
+export const OAuthStatusBadge = ({ status }: { status: AgentVaultOauthStatus }) => (
   <Badge variant={OAUTH_STATUS_VARIANTS[status]}>
-    {status === AgentVaultOAuthStatus.Connected ? <CheckIcon /> : <CircleAlertIcon />}
+    {status === AgentVaultOauthStatus.Connected ? <CheckIcon /> : <CircleAlertIcon />}
     {OAUTH_STATUS_LABELS[status]}
   </Badge>
 );
@@ -212,7 +212,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
 
   const isProblem =
     state.status === "failed" ||
-    (stored && stored.status !== AgentVaultOAuthStatus.Connected && !isNewlyAuthorized);
+    (stored && stored.status !== AgentVaultOauthStatus.Connected && !isNewlyAuthorized);
 
   let authorizeLabel = `Authorize with ${host}`;
   if (state.status === "failed") authorizeLabel = "Try Again";
@@ -267,22 +267,22 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
     const authorizedAt = stored.authorizedAt ? new Date(stored.authorizedAt) : null;
 
     let head: ReactNode;
-    if (stored.status === AgentVaultOAuthStatus.NeedsReauthorization) {
+    if (stored.status === AgentVaultOauthStatus.NeedsReauthorization) {
       head = (
         <Status
           icon={<CircleXIcon />}
           tone="danger"
-          title={OAUTH_STATUS_LABELS[AgentVaultOAuthStatus.NeedsReauthorization]}
+          title={OAUTH_STATUS_LABELS[AgentVaultOauthStatus.NeedsReauthorization]}
         >
           {host} no longer accepts this authorization.
         </Status>
       );
-    } else if (stored.status === AgentVaultOAuthStatus.NeedsAdditionalScopes) {
+    } else if (stored.status === AgentVaultOauthStatus.NeedsAdditionalScopes) {
       head = (
         <Status
           icon={<CircleAlertIcon />}
           tone="warning"
-          title={OAUTH_STATUS_LABELS[AgentVaultOAuthStatus.NeedsAdditionalScopes]}
+          title={OAUTH_STATUS_LABELS[AgentVaultOauthStatus.NeedsAdditionalScopes]}
         >
           An agent needed scopes this authorization doesn&apos;t have.
         </Status>
@@ -311,7 +311,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
       head,
       details: (
         <div className="flex flex-col gap-2">
-          {stored.lastError && stored.status !== AgentVaultOAuthStatus.NeedsReauthorization && (
+          {stored.lastError && stored.status !== AgentVaultOauthStatus.NeedsReauthorization && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
@@ -320,7 +320,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
                   className={twMerge(
                     "flex w-fit items-center gap-1.5 text-xs",
                     // Under a yellow status, Reauthorize already fixes this, so it shouldn't compete with it.
-                    stored.status === AgentVaultOAuthStatus.NeedsAdditionalScopes
+                    stored.status === AgentVaultOauthStatus.NeedsAdditionalScopes
                       ? "text-muted"
                       : "text-danger"
                   )}

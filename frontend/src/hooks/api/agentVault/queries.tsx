@@ -6,7 +6,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 
-import { AgentVaultMemberType, AgentVaultOAuthAuthorizationStatus } from "./enums";
+import { AgentVaultMemberType, AgentVaultOauthAuthorizationStatus } from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
@@ -23,7 +23,7 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultMember,
-  TAgentVaultOAuthAuthorization,
+  TAgentVaultOauthAuthorization,
   TAgentVaultProductActor,
   TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
@@ -48,11 +48,11 @@ export const fetchAgentVaultProjectId = async () => {
   return data.projectId;
 };
 
-export const fetchAgentVaultOAuthAuthorization = async (
+export const fetchAgentVaultOauthAuthorization = async (
   authorizationId: string,
   signal?: AbortSignal
 ) => {
-  const { data } = await apiRequest.get<{ authorization: TAgentVaultOAuthAuthorization }>(
+  const { data } = await apiRequest.get<{ authorization: TAgentVaultOauthAuthorization }>(
     `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}`,
     { signal }
   );
@@ -128,19 +128,19 @@ export const agentVaultKeys = {
     [...agentVaultKeys.sessions(orgId), sessionId, "logs-live", range ?? {}] as const
 };
 
-export const useGetAgentVaultOAuthAuthorization = (authorizationId: string) => {
+export const useGetAgentVaultOauthAuthorization = (authorizationId: string) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
     queryKey: agentVaultKeys.oauthAuthorization(currentOrg.id, authorizationId),
-    queryFn: ({ signal }) => fetchAgentVaultOAuthAuthorization(authorizationId, signal),
+    queryFn: ({ signal }) => fetchAgentVaultOauthAuthorization(authorizationId, signal),
     enabled: Boolean(authorizationId),
     staleTime: 0,
     gcTime: 0,
     retry: false,
     refetchInterval: (query) =>
       query.state.error ||
-      (query.state.data && query.state.data.status !== AgentVaultOAuthAuthorizationStatus.Pending)
+      (query.state.data && query.state.data.status !== AgentVaultOauthAuthorizationStatus.Pending)
         ? false
         : 2000,
     // The provider popup can leave the Infisical tab in the background until authorization finishes.

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
-  AgentVaultOAuthStatus,
+  AgentVaultOauthStatus,
   AgentVaultServiceType
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
@@ -56,7 +56,7 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
     allowedPathPrefixes: null,
     credential: {
       type: AgentVaultCredentialType.OAuth,
-      status: AgentVaultOAuthStatus.NeedsReauthorization,
+      status: AgentVaultOauthStatus.NeedsReauthorization,
       issuer: "https://mcp.linear.app",
       grantedScopes: ["read"],
       requiredScopes: [],

@@ -1,5 +1,3 @@
-import RE2 from "re2";
-
 import { logger } from "@app/lib/logger";
 
 import { describeServer } from "./agent-vault-oauth-discovery-fns";
@@ -7,7 +5,8 @@ import { TOauthHttpClient } from "./agent-vault-oauth-http-fns";
 import {
   MAX_ERROR_CODE_LENGTH,
   MAX_ERROR_DESCRIPTION_LENGTH,
-  normalizeProviderText
+  normalizeProviderText,
+  OAUTH_VSCHAR_PATTERN
 } from "./agent-vault-oauth-token-fns";
 import {
   AGENT_VAULT_OAUTH_GRANT_TYPE,
@@ -35,9 +34,6 @@ export class OauthRegistrationError extends Error {
 
 const SUPPORTED_AUTH_METHODS = Object.values(AgentVaultOauthClientAuthMethod) as string[];
 
-// RFC 6749 appendix A.1 and A.2: both are VSCHAR. The ID is stored in jsonb and sent in the authorize URL, and the
-// secret is form-encoded into the token request, which throws on a lone surrogate.
-export const OAUTH_CLIENT_CREDENTIAL_PATTERN = new RE2(/^[\x20-\x7e]+$/);
 export const MAX_CLIENT_ID_LENGTH = 2048;
 export const MAX_CLIENT_SECRET_LENGTH = 4096;
 
@@ -52,16 +48,13 @@ const parseRegistration = (body: string): TOauthClient | null => {
     !parsed ||
     typeof parsed.client_id !== "string" ||
     parsed.client_id.length > MAX_CLIENT_ID_LENGTH ||
-    !OAUTH_CLIENT_CREDENTIAL_PATTERN.test(parsed.client_id)
+    !OAUTH_VSCHAR_PATTERN.test(parsed.client_id)
   ) {
     return null;
   }
   let clientSecret: string | undefined;
   if (typeof parsed.client_secret === "string" && parsed.client_secret) {
-    if (
-      parsed.client_secret.length > MAX_CLIENT_SECRET_LENGTH ||
-      !OAUTH_CLIENT_CREDENTIAL_PATTERN.test(parsed.client_secret)
-    ) {
+    if (parsed.client_secret.length > MAX_CLIENT_SECRET_LENGTH || !OAUTH_VSCHAR_PATTERN.test(parsed.client_secret)) {
       return null;
     }
     clientSecret = parsed.client_secret;

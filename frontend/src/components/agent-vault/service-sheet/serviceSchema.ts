@@ -7,12 +7,12 @@ import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
-  AgentVaultOAuthStatus,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface
 } from "@app/hooks/api/agentVault";
 import {
-  TAgentVaultOAuthCredentialSummary,
+  TAgentVaultOauthCredentialSummary,
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -43,10 +43,10 @@ export const HTTP_CREDENTIAL_TYPES = [
   AgentVaultCredentialType.Passthrough
 ];
 
-export const OAUTH_STATUS_LABELS: Record<AgentVaultOAuthStatus, string> = {
-  [AgentVaultOAuthStatus.Connected]: "Connected",
-  [AgentVaultOAuthStatus.NeedsReauthorization]: "Needs Reauthorization",
-  [AgentVaultOAuthStatus.NeedsAdditionalScopes]: "Needs Additional Scopes"
+export const OAUTH_STATUS_LABELS: Record<AgentVaultOauthStatus, string> = {
+  [AgentVaultOauthStatus.Connected]: "Connected",
+  [AgentVaultOauthStatus.NeedsReauthorization]: "Needs Reauthorization",
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Needs Additional Scopes"
 };
 
 export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {
@@ -194,7 +194,7 @@ export const newOAuthAuthorizationId = (form: TOAuthFormState) =>
 export const storedOAuthCredential = (
   service: TAgentVaultService | null | undefined,
   serverUrl: string
-): TAgentVaultOAuthCredentialSummary | null =>
+): TAgentVaultOauthCredentialSummary | null =>
   service?.type === AgentVaultServiceType.Mcp &&
   service.credential.type === AgentVaultCredentialType.OAuth &&
   service.serverUrl === serverUrl.trim()
