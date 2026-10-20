@@ -332,18 +332,31 @@ const ensureAixPasswordFlagsWritable = async (ctx: TAixFlagContext): Promise<voi
 // OpenSSH on AIX applies the forced change only once a session starts, so a non-interactive
 // `ssh host command` fails with "Password change required but no TTY available".
 const clearAixAdminChangeFlag = async (ctx: TAixFlagContext): Promise<void> => {
-  const failureMessage = (output: string) =>
-    `Password was changed but clearing the AIX ${AIX_ADMCHG_FLAG} flag for user '${ctx.targetUsername}' failed, so the account will be forced to change its password at next login. Reconcile the rotation to set a new password.${aixSudoHint(ctx)} Output: ${output}`;
+  const fail = (detail: string) =>
+    new Error(
+      `Password was changed but clearing the AIX ${AIX_ADMCHG_FLAG} flag for user '${ctx.targetUsername}' failed, so the new password was not saved and the account will be forced to change its password at next login. Rotate the secret again to set a new password.${aixSudoHint(ctx)} ${detail}`
+    );
 
-  const { flags, output: readOutput } = await readAixPasswordFlags(ctx);
-  if (!flags) throw new Error(failureMessage(readOutput));
+  let flags: string[] | undefined;
+  let readOutput: string;
+  try {
+    ({ flags, output: readOutput } = await readAixPasswordFlags(ctx));
+  } catch (error) {
+    throw fail((error as Error).message);
+  }
+  if (!flags) throw fail(`Output: ${readOutput}`);
   if (!flags.includes(AIX_ADMCHG_FLAG)) return;
 
-  const { succeeded, output: writeOutput } = await writeAixPasswordFlags(
-    ctx,
-    flags.filter((flag) => flag !== AIX_ADMCHG_FLAG)
-  );
-  if (!succeeded) throw new Error(failureMessage(writeOutput));
+  let result: { succeeded: boolean; output: string };
+  try {
+    result = await writeAixPasswordFlags(
+      ctx,
+      flags.filter((flag) => flag !== AIX_ADMCHG_FLAG)
+    );
+  } catch (error) {
+    throw fail((error as Error).message);
+  }
+  if (!result.succeeded) throw fail(`Output: ${result.output}`);
 };
 
 export const runSelfPasswordChange = (
