@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BotIcon, ChevronDownIcon, ClockIcon, ShieldIcon, TriangleAlertIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, ClockIcon, InfoIcon, ShieldIcon } from "lucide-react";
 
 import {
   Badge,
@@ -29,7 +29,16 @@ import {
 } from "./folder-access.utils";
 import { TierDropdown } from "./TierDropdown";
 
-const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
+const ROW_CLASS_NAME =
+  "flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-container-hover";
+
+const ActorIdentity = ({
+  actor,
+  children
+}: {
+  actor: TFolderAccessActor;
+  children?: React.ReactNode;
+}) => (
   <>
     <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
       {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
@@ -43,6 +52,7 @@ const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
             Admin
           </Badge>
         )}
+        {children}
       </div>
       <p className="truncate text-xs text-muted">{actor.subtitle}</p>
     </div>
@@ -57,6 +67,30 @@ type Props = {
   onMakePermanent: () => void;
   onRemove: () => void;
 };
+
+export const FolderAccessGrantRow = ({
+  actor,
+  isDisabled,
+  onSetTier
+}: Pick<Props, "actor" | "isDisabled" | "onSetTier">) => (
+  <div className={ROW_CLASS_NAME}>
+    <ActorIdentity actor={actor} />
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="project" size="xs" className="shrink-0" isDisabled={isDisabled}>
+          Grant Access
+          <ChevronDownIcon />
+        </Button>
+      </DropdownMenuTrigger>
+      <TierDropdown
+        headerNote={`Grant ${actor.name.split(" ")[0]} access to this folder.`}
+        temporaryLabel="Add temporary access"
+        onSelectTier={onSetTier}
+        onEditTemporaryAccess={() => {}}
+      />
+    </DropdownMenu>
+  </div>
+);
 
 export const FolderAccessRow = ({
   actor,
@@ -88,45 +122,45 @@ export const FolderAccessRow = ({
   // shown for completeness with no controls at all
   if (actor.isProjectAdmin) {
     return (
-      <div className="flex items-center gap-3 border-b border-border py-3">
+      <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
-        <p className="shrink-0 text-sm text-muted">Full access on all folders</p>
+        <p className="shrink-0 pr-2 text-sm text-muted">Full access on all folders</p>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-3 border-b border-border py-3">
-      <ActorIdentity actor={actor} />
+    <div className={ROW_CLASS_NAME}>
+      <ActorIdentity actor={actor}>
+        {Boolean(remainingTime && remainingTime?.expiresAt) && (
+          <Tooltip>
+            <TooltipTrigger>
+              <Badge variant={remainingTime?.isExpired ? "danger" : "neutral"} className="shrink-0">
+                <ClockIcon />
+                {remainingTime?.isExpired ? "Access Expired" : `Expires in ${remainingTime?.value}`}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              Access {remainingTime?.isExpired ? "expired" : "expires"} on{" "}
+              {formatExpiryFull(remainingTime?.expiresAt || new Date())}
+            </TooltipContent>
+          </Tooltip>
+        )}
 
-      {Boolean(remainingTime && remainingTime?.expiresAt) && (
-        <Tooltip>
-          <TooltipTrigger>
-            <Badge variant={remainingTime?.isExpired ? "danger" : "neutral"} className="shrink-0">
-              <ClockIcon />
-              {remainingTime?.isExpired ? "Access Expired" : `Expires in ${remainingTime?.value}`}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            Access {remainingTime?.isExpired ? "expired" : "expires"} on{" "}
-            {formatExpiryFull(remainingTime?.expiresAt || new Date())}
-          </TooltipContent>
-        </Tooltip>
-      )}
-
-      {access && actor.roles.length > 0 && (
-        <Tooltip>
-          <TooltipTrigger>
-            <Badge variant="warning" className="shrink-0">
-              Overrides project role
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            This folder permission takes precedence over the access {actor.name} gets from their
-            project role.
-          </TooltipContent>
-        </Tooltip>
-      )}
+        {access && actor.roles.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger>
+              <Badge variant="warning" className="shrink-0">
+                Overrides project role
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              This folder permission takes precedence over the access {actor.name} gets from their
+              project role.
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </ActorIdentity>
 
       <Popover open={isTemporaryOpen} onOpenChange={setIsTemporaryOpen}>
         <PopoverAnchor asChild>
@@ -135,9 +169,9 @@ export const FolderAccessRow = ({
               {access ? (
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="w-28 justify-between"
+                    className="min-w-24 justify-between"
                     isDisabled={isDisabled}
                   >
                     {FOLDER_ROLE_TIER_LABELS[access.permission]}
@@ -148,9 +182,9 @@ export const FolderAccessRow = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" isDisabled={isDisabled}>
-                        <TriangleAlertIcon className="text-warning" />
-                        Access from project role
+                      <Button variant="ghost" size="sm" isDisabled={isDisabled}>
+                        <InfoIcon className="text-info" />
+                        Project Role
                         <ChevronDownIcon />
                       </Button>
                     </DropdownMenuTrigger>

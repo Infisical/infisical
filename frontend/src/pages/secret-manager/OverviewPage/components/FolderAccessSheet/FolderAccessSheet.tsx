@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FolderIcon, SearchIcon, UsersIcon } from "lucide-react";
+import { FolderIcon, PlusIcon, SearchIcon, UsersIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -13,10 +13,12 @@ import {
   EmptyTitle,
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
   Pagination,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Skeleton
@@ -45,11 +47,18 @@ import {
   toIdentityActor,
   toUserActor
 } from "./folder-access.utils";
-import { FolderAccessRow } from "./FolderAccessRow";
+import { FolderAccessGrantRow, FolderAccessRow } from "./FolderAccessRow";
 import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints that share this page
 const PER_PAGE = 20;
+
+const SectionLabel = ({ title, count }: { title: string; count: number }) => (
+  <div className="flex items-center gap-1.5 px-2 text-xs font-medium text-accent">
+    {title}
+    <span className="font-normal text-muted tabular-nums">{count}</span>
+  </div>
+);
 
 type Props = {
   isOpen: boolean;
@@ -103,20 +112,34 @@ export const FolderAccessSheet = ({
     [users, identities]
   );
 
+  const isSearching = Boolean(debouncedSearch.trim());
+
+  // the same responses carry the members without access, so searching doubles as the grant flow
+  const candidates = useMemo(
+    () =>
+      isSearching
+        ? [
+            ...(users?.usersWithoutAccess ?? []).map(toUserActor),
+            ...(identities?.identitiesWithoutAccess ?? []).map(toIdentityActor)
+          ].sort(byAdminThenName)
+        : [],
+    [isSearching, users, identities]
+  );
+
   const isLoading = isUsersPending || isIdentitiesPending;
   // the endpoints page the project roster and only then split each page into the actors that do and
   // do not have access here, so this count pages members and not the rows below it
   const rosterCount = Math.max(users?.totalCount ?? 0, identities?.totalCount ?? 0);
   const pageStart = (page - 1) * PER_PAGE + 1;
   const pageEnd = Math.min(page * PER_PAGE, rosterCount);
-  const isSearching = Boolean(debouncedSearch.trim());
 
   const emptyState = (() => {
     if (rosterCount === 0) {
       return isSearching
         ? {
-            title: "No matches found",
-            description: "No users or machine identities match your search."
+            title: "No Members Found",
+            description:
+              "No one in this project matches your search. Invite them to the project first, then grant folder access here."
           }
         : {
             title: "No project members",
@@ -202,36 +225,32 @@ export const FolderAccessSheet = ({
           </SheetHeader>
 
           <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
-            <div className="flex items-center gap-2">
-              <InputGroup className="flex-1">
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  placeholder="Search users & machine identities..."
-                />
-              </InputGroup>
-              <Button
-                variant="project"
-                size="sm"
-                className="shrink-0"
-                onClick={() => {
-                  setIsAddOpen(true);
-                  analytics.captureForOrganization(
-                    AnalyticsEvent.FolderAccessAddSheetOpened,
-                    currentOrg.id,
-                    { projectId }
-                  );
+            <InputGroup>
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
                 }}
-              >
-                Add Access
-              </Button>
-            </div>
+                placeholder="Search users and machine identities..."
+              />
+              {search && (
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    aria-label="Clear search"
+                    onClick={() => {
+                      setSearch("");
+                      setPage(1);
+                    }}
+                  >
+                    <XIcon />
+                  </InputGroupButton>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
 
             {isLoading && (
               <div className="space-y-2">
@@ -241,7 +260,7 @@ export const FolderAccessSheet = ({
               </div>
             )}
 
-            {!isLoading && !actors.length && (
+            {!isLoading && !actors.length && !candidates.length && (
               <Empty className="border">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -253,8 +272,14 @@ export const FolderAccessSheet = ({
               </Empty>
             )}
 
-            {!isLoading && Boolean(actors.length) && (
-              <div className="flex flex-col">
+            {!isLoading && Boolean(actors.length || candidates.length) && (
+              <section className="flex flex-col gap-1">
+                <SectionLabel title="Has Access" count={actors.length} />
+                {!actors.length && (
+                  <p className="px-2 py-2.5 text-xs text-muted">
+                    No one matching your search has access to this folder yet.
+                  </p>
+                )}
                 {actors.map((actor) => (
                   <FolderAccessRow
                     key={`${actor.type}-${actor.id}`}
@@ -272,7 +297,20 @@ export const FolderAccessSheet = ({
                     onRemove={() => setRemovalActor(actor)}
                   />
                 ))}
-              </div>
+              </section>
+            )}
+
+            {!isLoading && Boolean(candidates.length) && (
+              <section className="flex flex-col gap-1">
+                <SectionLabel title="Other Project Members" count={candidates.length} />
+                {candidates.map((actor) => (
+                  <FolderAccessGrantRow
+                    key={`${actor.type}-${actor.id}`}
+                    actor={actor}
+                    onSetTier={(tier) => setTier(actor, tier)}
+                  />
+                ))}
+              </section>
             )}
 
             {!isLoading && rosterCount > PER_PAGE && (
@@ -287,6 +325,25 @@ export const FolderAccessSheet = ({
               />
             )}
           </div>
+
+          <SheetFooter className="items-center justify-between border-t">
+            <span className="text-xs text-muted">Changes save automatically</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsAddOpen(true);
+                analytics.captureForOrganization(
+                  AnalyticsEvent.FolderAccessAddSheetOpened,
+                  currentOrg.id,
+                  { projectId }
+                );
+              }}
+            >
+              <PlusIcon />
+              Add Multiple
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
 
