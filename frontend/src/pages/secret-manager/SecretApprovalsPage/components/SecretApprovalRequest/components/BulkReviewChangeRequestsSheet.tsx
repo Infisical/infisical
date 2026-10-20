@@ -415,7 +415,8 @@ const BulkReviewChangeRequestsSheetContent = ({
                       <span className="text-sm text-muted">#{request.slug}</span>
                       <span className="text-sm text-foreground">{getAuthorName(request)}</span>
                       <span className="text-sm text-muted">
-                        {getApprovedCount(request)}/{request.policy.approvals} approvals
+                        {getApprovedCount(details ?? request)}/
+                        {(details ?? request).policy.approvals} approvals
                       </span>
                       {renderConflicts(request.id)}
                       <div className="ml-auto flex items-center gap-2">
