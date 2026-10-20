@@ -15,6 +15,8 @@ const NEW_PATH = "/sap-policy-bridge-new";
 const MOVED_PATH = "/sap-policy-bridge-moved";
 const GLOB_BASE = "/sap-policy-bridge-glob";
 const V1_PATH = "/sap-policy-bridge-v1";
+const MIGRATED_PATH = "/sap-policy-bridge-migrated";
+const MIGRATED_MOVED_PATH = "/sap-policy-bridge-migrated-moved";
 const authHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 const approvers = [{ type: ApproverType.User, id: seedData1.id }];
 
@@ -328,6 +330,49 @@ describe("Secret approval policy bridge routing", () => {
     const deleteEnvRes = await deleteEnv(true);
     expect(deleteEnvRes.statusCode).toBe(200);
     expect(deleteEnvRes.json().environment.id).toBe(guardedEnvId);
+  });
+
+  test("a migrated policy's legacy twin is hidden until the global policy is deleted", async () => {
+    const createRes = await createBridgePolicy(MIGRATED_PATH);
+    expect(createRes.statusCode).toBe(200);
+    const policyId = createRes.json().approval.id as string;
+    bridgeIds.push(policyId);
+    await seedLegacySecretApprovalPolicy(getDb(), {
+      id: policyId,
+      projectId,
+      environment: envSlug,
+      secretPath: MIGRATED_PATH,
+      name: "migrated-twin",
+      approverUserId: seedData1.id
+    });
+    legacyIds.push(policyId);
+
+    const renamed = await updatePolicy(policyId, { name: "migrated-renamed" });
+    expect(renamed.statusCode).toBe(200);
+    expect(await legacyRow(policyId)).toMatchObject({ name: "migrated-twin" });
+    expect(await bridgeRow(policyId)).toMatchObject({ name: "migrated-renamed" });
+
+    const listRes = await listPolicies();
+    expect(listRes.statusCode).toBe(200);
+    expect(listRes.json().approvals.filter((policy: { id: string }) => policy.id === policyId)).toHaveLength(1);
+
+    const boardRes = await getBoardPolicy(MIGRATED_PATH);
+    expect(boardRes.statusCode).toBe(200);
+    expect(boardRes.json().policy).toMatchObject({ id: policyId, name: "migrated-renamed" });
+
+    const moved = await updatePolicy(policyId, { secretPath: MIGRATED_MOVED_PATH });
+    expect(moved.statusCode).toBe(200);
+    const replacementRes = await createBridgePolicy(MIGRATED_PATH);
+    expect(replacementRes.statusCode).toBe(200);
+    bridgeIds.push(replacementRes.json().approval.id as string);
+
+    const deleteRes = await deletePolicy(policyId);
+    expect(deleteRes.statusCode).toBe(200);
+    expect(await bridgeRow(policyId)).toBeUndefined();
+    expect((await legacyRow(policyId))?.deletedAt).toBeInstanceOf(Date);
+
+    const afterDelete = await listPolicies();
+    expect(afterDelete.json().approvals.map((policy: { id: string }) => policy.id)).not.toContain(policyId);
   });
 
   test("the deprecated v1 create puts a policy on a V3 project on the global approval system", async () => {

@@ -27,12 +27,13 @@ const getSeedEnv = async () => {
 
 // The create route always writes to the global tables now, so a legacy policy
 // has to be seeded straight into the legacy tables.
-const createLegacyPolicy = async (dto: { name: string; secretPath: string }) => {
+const createLegacyPolicy = async (dto: { name: string; secretPath: string; id?: string }) => {
   const db = getDb();
   const env = await getSeedEnv();
 
   const [policy] = await db(TableName.AccessApprovalPolicy)
     .insert({
+      ...(dto.id ? { id: dto.id } : {}),
       name: dto.name,
       secretPath: dto.secretPath,
       envId: env.id,
@@ -248,6 +249,27 @@ describe("Access approval policy routing", () => {
 
     const samePath = await patchPolicy(policy.id, { secretPath: "/policy-routing-conflict" });
     expect(samePath.statusCode).toBe(200);
+  });
+
+  test("A migrated policy's legacy row does not block the scope it moved away from", async () => {
+    const migrated = await createGlobalPolicy({
+      name: "policy-routing-migrated",
+      secretPath: "/policy-routing-migrated"
+    });
+    await createLegacyPolicy({
+      id: migrated.id,
+      name: "policy-routing-migrated",
+      secretPath: "/policy-routing-migrated"
+    });
+
+    const moved = await patchPolicy(migrated.id, { secretPath: "/policy-routing-migrated-moved" });
+    expect(moved.statusCode).toBe(200);
+
+    const replacement = await createGlobalPolicy({
+      name: "policy-routing-migrated-replacement",
+      secretPath: "/policy-routing-migrated"
+    });
+    expect(replacement.secretPath).toBe("/policy-routing-migrated");
   });
 
   test("Getting a global policy by id carries approver and bypasser names", async () => {
