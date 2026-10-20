@@ -286,7 +286,8 @@ export const externalMigrationQueueFactory = ({
                 secretKeys,
                 actor,
                 actorId,
-                actorOrgId
+                actorOrgId,
+                throwOnEmailFailure: true
               });
             } catch (error) {
               // rethrown so the job's retries apply: a reviewer who never hears about the request is worse than a

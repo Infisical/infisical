@@ -575,7 +575,8 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       actor,
       actorId,
       actorOrgId,
-      tx
+      tx,
+      throwOnEmailFailure
     }) => {
       const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(
         secretApprovalRequest.id,
@@ -597,7 +598,8 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         actor,
         actorId,
         actorOrgId,
-        tx
+        tx,
+        throwOnEmailFailure
       });
     };
 

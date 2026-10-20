@@ -26,7 +26,7 @@ export const sendApprovalEmailsFn = async ({
   projectId,
   secretApprovalRequest,
   notificationService
-}: TSendApprovalEmails) => {
+}: TSendApprovalEmails): Promise<unknown[]> => {
   const cfg = getConfig();
 
   const policy = await secretApprovalPolicyDAL.findById(secretApprovalRequest.policyId);
@@ -44,6 +44,7 @@ export const sendApprovalEmailsFn = async ({
     }))
   );
 
+  const failures: unknown[] = [];
   for await (const reviewerUser of policy.userApprovers) {
     try {
       await smtpService.sendMail({
@@ -63,8 +64,11 @@ export const sendApprovalEmailsFn = async ({
         error,
         `Failed to send secret change request email to approver [requestId=${secretApprovalRequest.id}] [userId=${reviewerUser.userId}]`
       );
+      failures.push(error);
     }
   }
+
+  return failures;
 };
 
 export type TSecretUpdateCommitCandidate = {

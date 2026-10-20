@@ -1633,8 +1633,18 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.createSecretChangeRequestSideEffects(dto);
     }
 
-    const { secretApprovalRequest, projectId, environment, secretPath, secretKeys, actor, actorId, actorOrgId, tx } =
-      dto;
+    const {
+      secretApprovalRequest,
+      projectId,
+      environment,
+      secretPath,
+      secretKeys,
+      actor,
+      actorId,
+      actorOrgId,
+      tx,
+      throwOnEmailFailure
+    } = dto;
     const user =
       actor === ActorType.IDENTITY
         ? undefined
@@ -1674,7 +1684,7 @@ export const secretApprovalRequestServiceFactory = ({
       }
     });
 
-    await sendApprovalEmailsFn({
+    const emailFailures = await sendApprovalEmailsFn({
       projectDAL,
       secretApprovalPolicyDAL,
       secretApprovalRequest,
@@ -1731,6 +1741,8 @@ export const secretApprovalRequestServiceFactory = ({
         }
       })
       .catch(() => {});
+
+    if (throwOnEmailFailure && emailFailures.length) throw emailFailures[0];
   };
 
   const generateSecretApprovalRequestV2Bridge = async (

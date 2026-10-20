@@ -122,6 +122,7 @@ export type TCreateSecretApprovalSideEffectsDTO = {
   secretPath: string;
   secretKeys: string[];
   tx?: Knex;
+  throwOnEmailFailure?: boolean;
 } & Omit<TProjectPermission, "actorAuthMethod">;
 
 export type TMergeSecretApprovalRequestDTO = {

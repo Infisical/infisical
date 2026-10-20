@@ -1,13 +1,17 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { OrderByDirection } from "@app/lib/types";
 
 import {
   compareSecretApprovalRequests,
   mergeSecretApprovalRequestPages,
+  sendApprovalEmailsFn,
   TSecretApprovalRequestSortable
 } from "./secret-approval-request-fns";
 import { SecretApprovalRequestOrderBy } from "./secret-approval-request-types";
+
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: "https://app.test" }) }));
+vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
 const request = (
   overrides: Partial<TSecretApprovalRequestSortable> & { id: string }
@@ -120,5 +124,57 @@ describe("mergeSecretApprovalRequestPages", () => {
       orderDirection: OrderByDirection.ASC
     });
     expect(merged.approvals.map((el) => el.id)).toEqual(["legacy-old", "global-old", "legacy-new", "global-new"]);
+  });
+});
+
+describe("sendApprovalEmailsFn", () => {
+  const build = () => {
+    const deps = {
+      secretApprovalPolicyDAL: {
+        findById: vi.fn().mockResolvedValue({
+          userApprovers: [
+            { userId: "user-2", firstName: "Bob", email: "bob@example.com" },
+            { userId: "user-3", firstName: "Eve", email: "eve@example.com" }
+          ]
+        })
+      },
+      projectDAL: {
+        findProjectWithOrg: vi
+          .fn()
+          .mockResolvedValue({ id: "project-1", name: "Project", orgId: "org-1", organization: { name: "Org" } })
+      },
+      smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) },
+      notificationService: { createUserNotifications: vi.fn().mockResolvedValue(undefined) }
+    };
+    const run = () =>
+      sendApprovalEmailsFn({
+        ...(deps as unknown as Omit<Parameters<typeof sendApprovalEmailsFn>[0], "projectId" | "secretApprovalRequest">),
+        projectId: "project-1",
+        secretApprovalRequest: { id: "request-1", policyId: "policy-1" }
+      });
+    return { deps, run };
+  };
+
+  test("resolves with no failures when every email is delivered", async () => {
+    const { deps, run } = build();
+
+    await expect(run()).resolves.toEqual([]);
+    expect(deps.smtpService.sendMail).toHaveBeenCalledTimes(2);
+  });
+
+  test("a failed email does not reject: it is returned and the next approver is still emailed", async () => {
+    const { deps, run } = build();
+    const smtpError = new Error("Invalid login: 535 Authentication Credentials Invalid");
+    deps.smtpService.sendMail.mockRejectedValueOnce(smtpError);
+
+    await expect(run()).resolves.toEqual([smtpError]);
+    expect(deps.smtpService.sendMail).toHaveBeenCalledTimes(2);
+    expect(deps.smtpService.sendMail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ recipients: ["eve@example.com"] })
+    );
+    expect(deps.notificationService.createUserNotifications).toHaveBeenCalledWith([
+      expect.objectContaining({ userId: "user-2" }),
+      expect.objectContaining({ userId: "user-3" })
+    ]);
   });
 });
