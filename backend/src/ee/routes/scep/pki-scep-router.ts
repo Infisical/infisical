@@ -194,7 +194,8 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
             profileId,
             profileSlug: result.profileSlug,
             expiresAt: result.expiresAt,
-            applicationId
+            applicationId,
+            ...(result.applicationName && { applicationName: result.applicationName })
           }
         }
       });

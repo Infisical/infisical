@@ -6,7 +6,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { QoveryVariableType } from "@app/hooks/api/secretSyncs/types/qovery-sync";
@@ -31,7 +31,7 @@ export const QoverySyncOptionsFields = () => {
                 value is hidden).
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id="qovery-variable-type"
               variant="project"
               checked={value === QoveryVariableType.Variable}

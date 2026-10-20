@@ -59,7 +59,7 @@ import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { TGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -211,6 +211,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   // The form is restored (not edited) after resuming, so `isDirty` stays false — track this to keep
   // the Connect button enabled.
   const [isResumed, setIsResumed] = useState(false);
+
+  useAppConnectionFormDirtyState(isDirty || isResumed);
 
   // When we come back from creating a new GitHub App, restore the in-progress form and remember the
   // new app so we can select it. The connection itself is created later when the user hits Connect.
@@ -620,9 +622,22 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             shouldUnregister
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
-                <FieldLabel>Personal Access Token</FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                <FieldError errors={[error]} />
+                <FieldLabel htmlFor="app-connection-git-hub-personal-access-token">
+                  Personal Access Token
+                </FieldLabel>
+                <SecretInput
+                  aria-describedby={
+                    error ? "app-connection-git-hub-personal-access-token-error" : undefined
+                  }
+                  id="app-connection-git-hub-personal-access-token"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <FieldError
+                  id="app-connection-git-hub-personal-access-token-error"
+                  errors={[error]}
+                />
               </Field>
             )}
           />

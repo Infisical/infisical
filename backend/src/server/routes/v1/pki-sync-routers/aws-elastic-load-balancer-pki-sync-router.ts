@@ -169,7 +169,8 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
             pkiSyncId,
             name: pkiSyncInfo.name,
             certificateId,
-            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId }),
+            ...(pkiSyncInfo.applicationName && { applicationName: pkiSyncInfo.applicationName })
           }
         }
       });
@@ -215,7 +216,8 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
           metadata: {
             pkiSyncId,
             name: pkiSyncInfo.name,
-            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId }),
+            ...(pkiSyncInfo.applicationName && { applicationName: pkiSyncInfo.applicationName })
           }
         }
       });

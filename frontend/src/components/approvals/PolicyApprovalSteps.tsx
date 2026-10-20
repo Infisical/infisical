@@ -1,10 +1,19 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { MultiValue } from "react-select";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon, TrashIcon } from "lucide-react";
 
-import { Button, FilterableSelect, FormControl, IconButton, Input } from "@app/components/v2";
+import { FilterableSelect } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Input
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
@@ -19,6 +28,7 @@ type Props = {
 
 export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
   const { control } = useFormContext<TFormWithApprovalSteps>();
+  const fieldIdPrefix = useId();
 
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
@@ -82,16 +92,13 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
     <div className="space-y-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <span className="text-sm font-medium text-mineshaft-200">Approval Steps</span>
-          <p className="text-xs text-mineshaft-400">
-            Define the approval workflow with sequential steps
-          </p>
+          <span className="text-sm font-medium text-foreground-secondary">Approval Steps</span>
+          <p className="text-xs text-muted">Define the approval workflow with sequential steps</p>
         </div>
         <Button
           type="button"
-          variant="outline_bg"
+          variant="outline"
           size="xs"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
           onClick={() =>
             appendStep({
               name: "",
@@ -101,30 +108,29 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
             })
           }
         >
+          <PlusIcon />
           Add Step
         </Button>
       </div>
 
       <div className="space-y-4">
         {stepFields.map((field, index) => (
-          <div key={field.id} className="rounded border border-mineshaft-600 bg-mineshaft-700 p-4">
+          <div key={field.id} className="rounded border border-border-control bg-surface-hover p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-project/20 text-xs font-semibold text-project">
                   {index + 1}
                 </span>
-                <span className="text-sm font-medium text-mineshaft-300">
-                  Approval Step {index + 1}
-                </span>
+                <span className="text-sm font-medium text-label">Approval Step {index + 1}</span>
               </div>
               {stepFields.length > 1 && (
                 <IconButton
-                  ariaLabel="Remove step"
-                  variant="plain"
+                  aria-label="Remove step"
+                  variant="ghost"
                   size="xs"
                   onClick={() => removeStep(index)}
                 >
-                  <FontAwesomeIcon icon={faTrash} className="text-red-500" />
+                  <TrashIcon className="text-danger" />
                 </IconButton>
               )}
             </div>
@@ -134,16 +140,20 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                 control={control}
                 name={`steps.${index}.name`}
                 render={({ field: nameField }) => (
-                  <FormControl
-                    label="Step Name (Optional)"
-                    helperText="A descriptive name for this approval step"
-                  >
-                    <Input
-                      {...nameField}
-                      value={nameField.value || ""}
-                      placeholder="e.g., Security Team Review"
-                    />
-                  </FormControl>
+                  <Field>
+                    <FieldLabel htmlFor={`${fieldIdPrefix}-${index}-name`}>
+                      Step Name <span className="text-muted">(optional)</span>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...nameField}
+                        id={`${fieldIdPrefix}-${index}-name`}
+                        value={nameField.value || ""}
+                        placeholder="e.g., Security Team Review"
+                      />
+                      <FieldDescription>A descriptive name for this approval step</FieldDescription>
+                    </FieldContent>
+                  </Field>
                 )}
               />
 
@@ -151,96 +161,99 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                 control={control}
                 name={`steps.${index}.requiredApprovals`}
                 render={({ field: approvalsField, fieldState: { error } }) => (
-                  <FormControl
-                    label="Required Approvals"
-                    isRequired
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    helperText="Number of approvers that must approve (1-100)"
-                  >
-                    <Input
-                      {...approvalsField}
-                      type="number"
-                      min={1}
-                      max={100}
-                      onChange={(e) => approvalsField.onChange(parseInt(e.target.value, 10))}
-                    />
-                  </FormControl>
+                  <Field>
+                    <FieldLabel htmlFor={`${fieldIdPrefix}-${index}-required-approvals`}>
+                      Required Approvals <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...approvalsField}
+                        id={`${fieldIdPrefix}-${index}-required-approvals`}
+                        type="number"
+                        min={1}
+                        max={100}
+                        isError={Boolean(error)}
+                        onChange={(e) => approvalsField.onChange(parseInt(e.target.value, 10))}
+                      />
+                      <FieldDescription isOpen={!error}>
+                        Number of approvers that must approve (1-100)
+                      </FieldDescription>
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
                 )}
               />
 
               <div className="space-y-3">
-                <div className="text-sm font-medium text-mineshaft-200">Approvers</div>
+                <div className="text-sm font-medium text-foreground-secondary">Approvers</div>
                 <Controller
                   control={control}
                   name={`steps.${index}.approvers`}
                   render={({ field: { value, onChange }, fieldState: { error } }) => {
                     const userApprovers = value.filter((a) => a.type === ApproverType.User);
                     const groupApprovers = value.filter((a) => a.type === ApproverType.Group);
+                    const approversError =
+                      userApprovers.length === 0 && groupApprovers.length === 0
+                        ? error?.message
+                        : undefined;
 
                     return (
                       <>
-                        <FormControl
-                          label="User Approvers"
-                          isError={Boolean(error)}
-                          errorText={
-                            error?.message &&
-                            userApprovers.length === 0 &&
-                            groupApprovers.length === 0
-                              ? error?.message
-                              : undefined
-                          }
-                        >
-                          <FilterableSelect
-                            isMulti
-                            placeholder="Select users..."
-                            options={memberOptions}
-                            getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) => userLabel(option.id)}
-                            value={userApprovers}
-                            onChange={(selected) => {
-                              const newApprovers = [
-                                ...((selected as MultiValue<{
-                                  type: ApproverType;
-                                  id: string;
-                                }>) || []),
-                                ...groupApprovers
-                              ];
-                              onChange(newApprovers);
-                            }}
-                          />
-                        </FormControl>
+                        <Field>
+                          <FieldLabel htmlFor={`${fieldIdPrefix}-${index}-user-approvers`}>
+                            User Approvers
+                          </FieldLabel>
+                          <FieldContent>
+                            <FilterableSelect
+                              inputId={`${fieldIdPrefix}-${index}-user-approvers`}
+                              isMulti
+                              placeholder="Select users..."
+                              options={memberOptions}
+                              getOptionValue={(option) => option.id}
+                              getOptionLabel={(option) => userLabel(option.id)}
+                              value={userApprovers}
+                              onChange={(selected) => {
+                                const newApprovers = [
+                                  ...((selected as MultiValue<{
+                                    type: ApproverType;
+                                    id: string;
+                                  }>) || []),
+                                  ...groupApprovers
+                                ];
+                                onChange(newApprovers);
+                              }}
+                            />
+                            <FieldError>{approversError}</FieldError>
+                          </FieldContent>
+                        </Field>
 
-                        <FormControl
-                          label="Group Approvers"
-                          isError={Boolean(error)}
-                          errorText={
-                            error?.message &&
-                            userApprovers.length === 0 &&
-                            groupApprovers.length === 0
-                              ? error?.message
-                              : undefined
-                          }
-                        >
-                          <FilterableSelect
-                            isMulti
-                            placeholder="Select groups..."
-                            options={groupOptions}
-                            getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) => groupLabel(option.id)}
-                            value={groupApprovers}
-                            onChange={(selected) => {
-                              const newApprovers = [
-                                ...userApprovers,
-                                ...((selected as MultiValue<{
-                                  type: ApproverType;
-                                  id: string;
-                                }>) || [])
-                              ];
-                              onChange(newApprovers);
-                            }}
-                          />
-                        </FormControl>
+                        <Field>
+                          <FieldLabel htmlFor={`${fieldIdPrefix}-${index}-group-approvers`}>
+                            Group Approvers
+                          </FieldLabel>
+                          <FieldContent>
+                            <FilterableSelect
+                              inputId={`${fieldIdPrefix}-${index}-group-approvers`}
+                              isMulti
+                              placeholder="Select groups..."
+                              options={groupOptions}
+                              getOptionValue={(option) => option.id}
+                              getOptionLabel={(option) => groupLabel(option.id)}
+                              value={groupApprovers}
+                              onChange={(selected) => {
+                                const newApprovers = [
+                                  ...userApprovers,
+                                  ...((selected as MultiValue<{
+                                    type: ApproverType;
+                                    id: string;
+                                  }>) || [])
+                                ];
+                                onChange(newApprovers);
+                              }}
+                            />
+                            <FieldError>{approversError}</FieldError>
+                          </FieldContent>
+                        </Field>
                       </>
                     );
                   }}
@@ -252,9 +265,9 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
       </div>
 
       {stepFields.length === 0 && (
-        <div className="rounded border border-dashed border-mineshaft-600 bg-mineshaft-800/50 p-8 text-center">
-          <p className="text-sm text-mineshaft-400">No approval steps defined</p>
-          <p className="mt-1 text-xs text-mineshaft-500">
+        <div className="rounded border border-dashed border-border-control bg-surface-raised/50 p-8 text-center">
+          <p className="text-sm text-muted">No approval steps defined</p>
+          <p className="mt-1 text-xs text-surface-selected">
             Click &quot;Add Step&quot; to create your first approval step
           </p>
         </div>

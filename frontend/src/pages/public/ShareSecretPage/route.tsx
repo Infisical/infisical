@@ -15,6 +15,6 @@ const ShareSecretRoute = () => {
   return <ShareSecretPage />;
 };
 
-export const Route = createFileRoute("/share-secret")({
+export const Route = createFileRoute("/shared/new")({
   component: ShareSecretRoute
 });

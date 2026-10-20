@@ -4,10 +4,14 @@ import { z } from "zod";
 import { CERTIFICATE_POLICIES } from "@app/lib/api-docs";
 import {
   CertExtendedKeyUsageType,
+  CertExtensionCriticality,
+  certificateExtensionOidSchema,
   CertKeyUsageType,
   CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
+  customExtensionLabelSchema,
+  customExtensionValueSchema,
   domainComponentSchema,
   MAX_DOMAIN_COMPONENTS,
   PKI_TEXT_COLUMN_MAX_LENGTH
@@ -116,6 +120,25 @@ const policyExtendedKeyUsagesSchema = z
     }
   );
 
+export const policyCustomExtensionSchema = z
+  .object({
+    oid: certificateExtensionOidSchema,
+    label: customExtensionLabelSchema.optional(),
+    critical: z.nativeEnum(CertExtensionCriticality).optional(),
+    allowed: z
+      .array(customExtensionValueSchema)
+      .optional()
+      .describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.allowed),
+    required: z
+      .array(customExtensionValueSchema)
+      .optional()
+      .describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.required),
+    denied: z.array(customExtensionValueSchema).optional().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.denied)
+  })
+  .refine((data) => Boolean(data.allowed?.length || data.required?.length || data.denied?.length), {
+    message: "Custom extension rule must have at least one allowed, required, or denied value"
+  });
+
 const policySanSchema = z
   .object({
     type: sanTypeSchema,
@@ -183,6 +206,7 @@ export const certificatePolicyResponseSchema = z.object({
   algorithms: policyAlgorithmsSchema.optional(),
   validity: policyValiditySchema.optional(),
   basicConstraints: policyBasicConstraintsSchema.optional(),
+  customExtensions: z.array(policyCustomExtensionSchema).optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
@@ -234,5 +258,14 @@ export const certificateRequestSchema = z.object({
     })
     .optional(),
   signatureAlgorithm: z.string().trim().min(1, "Signature algorithm cannot be empty").optional(),
-  keyAlgorithm: z.string().trim().min(1, "Key algorithm cannot be empty").optional()
+  keyAlgorithm: z.string().trim().min(1, "Key algorithm cannot be empty").optional(),
+  customExtensions: z
+    .array(
+      z.object({
+        oid: certificateExtensionOidSchema,
+        value: customExtensionValueSchema.optional(),
+        critical: z.boolean().optional()
+      })
+    )
+    .optional()
 });

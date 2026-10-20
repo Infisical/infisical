@@ -26,6 +26,7 @@ import {
   TextArea
 } from "@app/components/v3";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import {
   useGetVaultMounts,
@@ -53,6 +54,7 @@ const defaultVaultConnectionId = (appConnections: TAvailableAppConnection[]) =>
   appConnections.length === 1 ? appConnections[0].id : null;
 
 const Content = ({ onClose, appConnections }: ContentProps) => {
+  const scopeVariant = useScopeVariant();
   const rootForm = useFormContext<TFormSchema>();
   const hasAppConnections = appConnections.length > 0;
   const { isSubOrganization } = useOrganization();
@@ -86,7 +88,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     activeConnectionId
   );
 
-  const handleConnectionChange = (id: string) => {
+  const handleConnectionChange = (id: string | null) => {
     setSelectedConnectionId(id);
     setSelectedNamespace(null);
     setSelectedPolicy(null);
@@ -96,7 +98,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     setShouldFetchPolicies(false);
   };
 
-  const handleNamespaceChange = (ns: string) => {
+  const handleNamespaceChange = (ns: string | null) => {
     setSelectedNamespace(ns);
     setSelectedPolicy(null);
   };
@@ -256,7 +258,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
               value={
                 appConnections.find((connection) => connection.id === selectedConnectionId) ?? null
               }
-              onValueChange={(connection) => handleConnectionChange(connection.id)}
+              onValueChange={(connection) => handleConnectionChange(connection?.id ?? null)}
               options={appConnections}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
@@ -288,7 +290,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
           <Combobox
             id="vault-namespace"
             value={namespaces?.find((namespace) => namespace.name === selectedNamespace) ?? null}
-            onValueChange={(namespace) => handleNamespaceChange(namespace.name)}
+            onValueChange={(namespace) => handleNamespaceChange(namespace?.name ?? null)}
             options={namespaces ?? []}
             getOptionValue={(option) => option.name}
             getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
@@ -374,7 +376,7 @@ path "secret/metadata/prod/*" {
           <Button variant="ghost">Cancel</Button>
         </SheetClose>
         <Button
-          variant="project"
+          variant={scopeVariant}
           onClick={handleTranslateAndApply}
           isDisabled={!hclPolicy.trim() || isLoadingMounts || !mounts}
         >

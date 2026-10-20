@@ -100,7 +100,7 @@ infisical login
 
 ## Initialization
 
-Navigate to the root of your project directory and run the `init` command. This step connects your local project to the project on the Infisical platform and creates a `.infisical.json` file containing a reference to that latter project.
+Navigate to the root of your project directory and run the `init` command. This step connects your local project to the project on the Infisical platform and creates a `.infisical.yaml` file containing a reference to that latter project.
 
 ```console
 infisical init
@@ -109,15 +109,15 @@ infisical init
 ## Start your app with environment variables injected
 
 ```console
-infisical run -- <your_application_start_command>
+infisical sm run -- <your_application_start_command>
 ```
 
 ## Example start commands
 
 ```console
-infisical run -- npm run dev
-infisical run -- flask run
-infisical run -- ./your_bash_script.sh
+infisical sm run -- npm run dev
+infisical sm run -- flask run
+infisical sm run -- ./your_bash_script.sh
 ```
 
 Your app should now be running with the secrets from Infisical injected as environment variables.

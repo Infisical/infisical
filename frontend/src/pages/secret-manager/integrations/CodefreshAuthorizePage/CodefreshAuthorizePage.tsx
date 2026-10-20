@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -30,8 +41,6 @@ export const CodefreshAuthorizePage = () => {
         accessToken: apiKey
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/codefresh/create",
         params: {
@@ -44,28 +53,40 @@ export const CodefreshAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Codefresh Integration</CardTitle>
-        <FormControl
-          label="Codefresh API Key"
-          errorText={apiKeyErrorText}
-          isError={apiKeyErrorText !== ""}
-        >
-          <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-        >
-          Connect to Codefresh
-        </Button>
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Codefresh Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="codefresh-codefresh-api-key">Codefresh API Key</FieldLabel>
+            <Input
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              id="codefresh-codefresh-api-key"
+              isError={apiKeyErrorText !== ""}
+              aria-describedby={
+                apiKeyErrorText !== "" ? "codefresh-codefresh-api-key-error" : undefined
+              }
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="codefresh-codefresh-api-key-error">{apiKeyErrorText}</FieldError>
+            )}
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="outline">
+            Connect to Codefresh
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

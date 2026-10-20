@@ -240,16 +240,24 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       operationId: "recordSignupOnboardingV3",
       body: z.object({
         selectedProduct: z
-          .enum(["secret-manager", "cert-manager", "kms", "secret-scanning", "pam", "exploring"])
+          .enum(["secret-manager", "cert-manager", "kms", "secret-scanning", "pam", "agent-vault", "exploring"])
           .optional(),
         // An empty array means "just exploring".
         selectedProducts: z
-          .enum(["secret-manager", "cert-manager", "kms", "secret-scanning", "pam"])
+          .enum(["secret-manager", "cert-manager", "kms", "secret-scanning", "pam", "agent-vault"])
           .array()
-          .max(5)
+          .max(6)
           .optional(),
         launchDestination: z
-          .enum(["secret-manager", "cert-manager", "kms", "secret-scanning", "pam", "organization-overview"])
+          .enum([
+            "secret-manager",
+            "cert-manager",
+            "kms",
+            "secret-scanning",
+            "pam",
+            "agent-vault",
+            "organization-overview"
+          ])
           .optional(),
         attributionSource: z.string().trim().max(512).optional()
       }),

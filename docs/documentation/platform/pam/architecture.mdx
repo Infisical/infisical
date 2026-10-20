@@ -34,15 +34,19 @@ The actor never sees the credentials. The database/server never sees the actor d
 
 ## Network security
 
-The Gateway uses outbound connections only:
+In relay mode, the Gateway uses outbound connections only:
 
 - **No inbound ports** — your firewall doesn't need to allow any inbound traffic
 - **Outbound to Infisical** — for credential retrieval and session uploads
 - **Outbound to your infrastructure** — to connect to databases and servers
 
+In [direct listen mode](/documentation/platform/gateways/gateway-deployment#choose-a-connection-mode), Infisical opens the connection instead, so the Gateway accepts inbound traffic on its listen address from the Infisical host.
+
 <Tip>
-Your databases and servers stay completely isolated from the internet. The Gateway sits inside your network and reaches out; nothing reaches in.
+Your databases and servers stay completely isolated from the internet either way. Only the Gateway is reachable, and only from Infisical.
 </Tip>
+
+Direct listen changes where a CLI session connects from. Browser-based sessions work in either mode, because the platform brokers the connection. `infisical pam access` connects from the user's own machine instead, so it needs to reach the Gateway's listen address. Users outside that network need a VPN into it, or a relay running on the Gateway alongside direct listen.
 
 ## Encryption
 

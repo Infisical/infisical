@@ -19,8 +19,8 @@ import {
   FieldTitle,
   IconButton,
   Input,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { ProjectPermissionSub, useProject } from "@app/context";
@@ -337,7 +337,7 @@ const KubernetesFields = ({ mode }: { mode: TDynamicSecretProviderFormMode }) =>
                       CA.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     ref={field.ref}
                     checked={field.value}
                     onBlur={field.onBlur}
@@ -385,7 +385,7 @@ const KubernetesFields = ({ mode }: { mode: TDynamicSecretProviderFormMode }) =>
                       error={error?.message}
                     />
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     ref={field.ref}
                     checked={field.value ?? true}
                     onBlur={field.onBlur}

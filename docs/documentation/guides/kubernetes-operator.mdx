@@ -1,10 +1,10 @@
 ---
 title: "Manage secrets with the Kubernetes Operator"
-sidebarTitle: "Kubernetes Operator"
+sidebarTitle: "Setup"
 description: "Learn how to pull, push, and generate dynamic secrets in Kubernetes with the Infisical Operator."
 ---
 
-In this tutorial, you'll:
+In this guide, you'll:
 
 - Install the Infisical Kubernetes Operator and set up a Machine Identity with Kubernetes Auth.
 - Connect the operator to Infisical with the `InfisicalConnection` and `InfisicalAuth` CRDs.
@@ -13,7 +13,7 @@ In this tutorial, you'll:
 - Generate a dynamic database credential in your cluster with the `InfisicalDynamicSecret` CRD.
 
 <Note>
-  This tutorial's pull path uses the operator's `v1beta1` decoupled model: an [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) says where your Infisical instance is, an [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) says how the operator authenticates, and an [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-static-secret-crd) says which secrets sync where.
+  This guide's pull path uses the operator's `v1beta1` decoupled model: an [`InfisicalConnection`](/integrations/platforms/kubernetes/infisical-connection-crd) says where your Infisical instance is, an [`InfisicalAuth`](/integrations/platforms/kubernetes/infisical-auth-crd) says how the operator authenticates, and an [`InfisicalStaticSecret`](/integrations/platforms/kubernetes/infisical-static-secret-crd) says which secrets sync where.
 
   Pushing and dynamic secrets have no `v1beta1` equivalents, so those sections use the `v1alpha1` [`InfisicalPushSecret`](/integrations/platforms/kubernetes/infisical-push-secret-crd) and [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd) CRDs, which each carry their own inline `authentication` block. See the [Kubernetes Operator overview](/integrations/platforms/kubernetes/overview) for the other CRDs and authentication methods.
 </Note>
@@ -51,7 +51,7 @@ Before you begin, make sure you have:
     helm install infisical-operator infisical-helm-charts/secrets-operator
     ```
 
-    The Helm chart installs every operator CRD, including the `v1beta1` `InfisicalConnection`, `InfisicalAuth`, and `InfisicalStaticSecret` kinds this tutorial uses for the pull path.
+    The Helm chart installs every operator CRD, including the `v1beta1` `InfisicalConnection`, `InfisicalAuth`, and `InfisicalStaticSecret` kinds this guide uses for the pull path.
 
     Confirm the operator pod is running:
 
@@ -87,7 +87,7 @@ Before you begin, make sure you have:
         - **Token Reviewer JWT** and **CA Certificate**: leave both blank for now. You generate these in the next steps and return to paste them in. The **CA Certificate** field is on the **Advanced** tab.
 
     <Note>
-      You will return to this Kubernetes Auth method in the "Wire up the Kubernetes Auth method" step. With this tutorial's RBAC setup, authentication fails until you paste the Token Reviewer JWT. The CA certificate is optional but recommended.
+      You will return to this Kubernetes Auth method in the "Wire up the Kubernetes Auth method" step. With this guide's RBAC setup, authentication fails until you paste the Token Reviewer JWT. The CA certificate is optional but recommended.
     </Note>
   </Step>
 
@@ -95,17 +95,17 @@ Before you begin, make sure you have:
     1. Navigate back to **Overview** and select **Add New Project**.
         - Enter a **Project Name** and select **Secrets Management** as the product type.
         - Add a description (optional).
-    2. Open the project and add a secret. Use these values so they match the `InfisicalStaticSecret` CRD later in this tutorial:
+    2. Open the project and add a secret. Use these values so they match the `InfisicalStaticSecret` CRD later in this guide:
         - **Key**: `SMTP_HOST`
         - **Value**: `smtp@gmail.com`
         - **Environment**: `Production`
     3. Record the **Project Slug** and confirm the environment slug; you need both for the CRDs.
         - In **Project Settings**, copy the **Slug** field (distinct from the project name). It fills the `projectSlug` field in every CRD.
         - In **Project Settings > Environments**, find the **Production** environment's slug. It's usually `prod`, but confirm it: each CRD's environment field must match exactly, or the sync targets the wrong environment.
-    4. Open the **Project Access** tab and add the Machine Identity you created. Grant it Admin permissions for this tutorial.
+    4. Open the **Project Access** tab and add the Machine Identity you created. Grant it Admin permissions for this guide.
 
     <Note>
-      Admin is used here only to keep the tutorial simple. In production, scope the identity to the least privilege it needs.
+      Admin is used here only to keep the guide simple. In production, scope the identity to the least privilege it needs.
     </Note>
   </Step>
 
@@ -291,7 +291,7 @@ The `v1beta1` pull path splits connection and authentication into two reusable o
     infisical-connection   10s   https://app.infisical.com   True
     ```
 
-    If `READY` is not `True`, see the Troubleshooting section at the end of this tutorial.
+    If `READY` is not `True`, see the Troubleshooting section at the end of this guide.
   </Step>
 
   <Step title="Store the Identity ID in a Kubernetes Secret">
@@ -347,7 +347,7 @@ The `v1beta1` pull path splits connection and authentication into two reusable o
 
     - `identityIdRef` names the Secret (`name`, `namespace`) and the data key (`key`) holding the Identity ID. There is no inline `identityId` field in `v1beta1`.
     - `serviceAccountRef` must name the `infisical-service-account` you created. The operator mints a fresh 10-minute token for it via the TokenRequest API on every login.
-    - `method` selects the authentication method; this tutorial uses `kubernetes`. See the [`InfisicalAuth` reference](/integrations/platforms/kubernetes/infisical-auth-crd) for the other methods.
+    - `method` selects the authentication method; this guide uses `kubernetes`. See the [`InfisicalAuth` reference](/integrations/platforms/kubernetes/infisical-auth-crd) for the other methods.
 
     Apply the resource:
 
@@ -615,7 +615,7 @@ The [`InfisicalDynamicSecret`](/integrations/platforms/kubernetes/infisical-dyna
   <Step title="Create the InfisicalDynamicSecret resource">
     Three names are in play. Keep them straight:
 
-    | Name | Where it lives | Value in this tutorial |
+    | Name | Where it lives | Value in this guide |
     |---|---|---|
     | Infisical dynamic secret name | Set in the Infisical UI above | `dynamic-secret-lease` |
     | CRD `dynamicSecret.secretName` | Must equal the Infisical name | `dynamic-secret-lease` |
@@ -764,7 +764,7 @@ If a sync doesn't produce the expected result, inspect the resources' status con
 
 ## Clean up
 
-Remove the resources this tutorial created so you don't leave an active database lease or orphaned objects behind. Delete consumers before the objects they reference, so nothing reconciles against a missing dependency.
+Remove the resources this guide created so you don't leave an active database lease or orphaned objects behind. Delete consumers before the objects they reference, so nothing reconciles against a missing dependency.
 
 1. Delete the sync resources. Deleting the `InfisicalDynamicSecret` with `leaseRevocationPolicy: Revoke` revokes the active database lease.
 

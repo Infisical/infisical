@@ -20,7 +20,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       hide: false,
       tags: [ApiDocsTags.PkiInstallations],
       operationId: "listPkiInstallations",
-      description: "List PKI certificate installations for a project",
+      description: "List PKI certificate installations",
       querystring: z.object({
         projectId: z.string().optional().describe(openApiHidden()),
         discoveryId: z.string().uuid().optional().describe("Filter by discovery configuration ID"),

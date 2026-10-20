@@ -16,8 +16,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   TabsContent,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -82,7 +82,7 @@ export const LockoutTab = ({
                   </FieldDescription>
                   <FieldError>{error?.message}</FieldError>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="lockout-enabled"
                   variant={scopeVariant}
                   checked={value}

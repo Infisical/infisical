@@ -81,17 +81,6 @@ services:
       - "3008:3000"
     profiles: [queue]
 
-  db-test:
-    profiles: ["test"]
-    image: postgres:14-alpine
-    ports:
-      - "5430:5432"
-    environment:
-      POSTGRES_PASSWORD: infisical
-      POSTGRES_USER: infisical
-      POSTGRES_DB: infisical-test
-    command: postgres -c max_locks_per_transaction=512
-
   backend:
     container_name: infisical-dev-api
     build:
@@ -114,6 +103,7 @@ services:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
       - TELEMETRY_ENABLED=false
+      - OPENAPI_FULL_SPEC=true
       # Dev-only: lets the backend accept PingFederate's self-signed cert when testing
       # OIDC locally via `make up-dev-pingfed`. NEVER set this in production.
       # - NODE_TLS_REJECT_UNAUTHORIZED=0

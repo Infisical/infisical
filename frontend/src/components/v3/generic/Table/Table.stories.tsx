@@ -11,6 +11,7 @@ import {
 
 import {
   Badge,
+  Button,
   Checkbox,
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ import {
 import { cn } from "../../utils";
 import {
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCaption,
   TableCell,
@@ -30,7 +32,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  type TableSortDirection
+  TableSkeletonRows,
+  type TableSortDirection,
+  TableVirtualBody
 } from "./Table";
 
 type Identity = {
@@ -87,8 +91,18 @@ const identities: Identity[] = [
  * structure, a `<ul>` of `Item`s is usually a better fit.
  *
  * Useful per-cell flags:
+ * - **`sticky`** on `TableHeader` pins the header while scrolling a table
+ *   with a height-constrained container (`containerClassName="max-h-40"`).
  * - **`isTruncatable`** on `TableHead` / `TableCell` clips long content with
  *   ellipsis instead of letting the column blow out the row width.
+ * - **`isWrappable`** on `TableCell` wraps long text (descriptions, paths,
+ *   error messages) onto more lines within a bounded column width
+ *   (`max-w-md`, overridable through `className`). Set it on every cell of
+ *   the column.
+ *
+ * While rows load, render `TableSkeletonRows` inside `TableBody` with the
+ * table's column count (and an optional `rows` count, default 3) instead of
+ * hand-rolling skeleton cells.
  * - **`data-state="selected"`** on a `TableRow` paints the selected highlight
  *   for row-checkbox patterns.
  * - **`onSortChange`** on `TableHead` renders an accessible, full-cell sort button.
@@ -98,17 +112,21 @@ const identities: Identity[] = [
  * For datasets that don't fit on a single screen, pair the `Table` with the
  * `Pagination` component as a sibling below it — see *Example: With
  * Pagination*.
+ *
+ * Anchor the table on the start edge. Extra column width grows toward the end
+ * and scrolls inside the bordered container; do not center the table so it
+ * grows both ways. Stories use `layout: "padded"` for that reason.
  */
 const meta = {
   title: "Generic/Table",
   component: Table,
   parameters: {
-    layout: "centered"
+    layout: "padded"
   },
   tags: ["autodocs"],
   decorators: [
     (Story) => (
-      <div className="w-[760px]">
+      <div className="ms-0 w-full max-w-3xl min-w-0">
         <Story />
       </div>
     )
@@ -148,6 +166,78 @@ export const Default: Story = {
           </TableRow>
         ))}
       </TableBody>
+    </Table>
+  )
+};
+
+export const StickyHeader: Story = {
+  name: "Example: Sticky Header",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set `sticky` on `TableHeader` and constrain the table container height with `containerClassName`. The header stays visible while the rows scroll; by default, headers are not sticky."
+      }
+    }
+  },
+  render: () => (
+    <Table containerClassName="max-h-40">
+      <TableHeader sticky>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {identities.map((id) => (
+          <TableRow key={id.name}>
+            <TableCell className="font-medium">{id.name}</TableCell>
+            <TableCell>{id.role}</TableCell>
+            <TableCell>
+              <Badge variant="success">Active</Badge>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+const virtualizedRows = Array.from({ length: 10000 }, (_, i) => ({
+  key: `SECRET_KEY_${String(i + 1).padStart(5, "0")}`,
+  value: `value-${i + 1}`
+}));
+
+export const Virtualized: Story = {
+  name: "Example: Virtualized Rows",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `TableVirtualBody` in place of `TableBody` when a table can render thousands of rows. Only the rows in view are mounted. Constrain the container height with `containerClassName`, and spread the `rowProps` from the render function onto each `TableRow` so rows of varying height are measured. Give columns fixed widths (`table-fixed`, or fixed or truncated cell widths) so they don't resize as rows mount while scrolling."
+      }
+    }
+  },
+  render: () => (
+    <Table className="w-full table-fixed" containerClassName="max-h-80 overflow-y-auto">
+      <TableHeader sticky>
+        <TableRow>
+          <TableHead>Key</TableHead>
+          <TableHead>Value</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableVirtualBody count={virtualizedRows.length}>
+        {(index, rowProps) => {
+          const row = virtualizedRows[index];
+          return (
+            <TableRow key={row.key} {...rowProps}>
+              <TableCell className="font-mono text-xs">{row.key}</TableCell>
+              <TableCell className="font-mono text-xs">{row.value}</TableCell>
+            </TableRow>
+          );
+        }}
+      </TableVirtualBody>
     </Table>
   )
 };
@@ -224,6 +314,64 @@ export const WithFooter: Story = {
       </TableFooter>
     </Table>
   )
+};
+
+function AttachedFooterRender() {
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  return (
+    <div>
+      <Table hasAttachedFooter>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Event</TableHead>
+            <TableHead>Timestamp</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Secret read</TableCell>
+            <TableCell>Today</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <TableAttachedFooter>
+        {hasMore ? (
+          <Button
+            variant="ghost"
+            size="lg"
+            isFullWidth
+            isPending={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              window.setTimeout(() => {
+                setIsLoading(false);
+                setHasMore(false);
+              }, 1000);
+            }}
+          >
+            Load More
+          </Button>
+        ) : (
+          <span className="text-xs text-muted">End of logs</span>
+        )}
+      </TableAttachedFooter>
+    </div>
+  );
+}
+
+export const WithAttachedFooter: Story = {
+  name: "Example: With Attached Footer",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `TableAttachedFooter` as a sibling after `Table` for a full-width load-more action or a completion message. Set `hasAttachedFooter` on `Table` to join their borders; unlike `TableFooter`, this action stays outside the table's horizontal scroll area."
+      }
+    }
+  },
+  render: () => <AttachedFooterRender />
 };
 
 export const WithSelection: Story = {
@@ -401,6 +549,83 @@ export const TruncatedCells: Story = {
             <TableCell>{id.role}</TableCell>
           </TableRow>
         ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+export const WrappedCells: Story = {
+  name: "Example: Wrapped Cells",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Pass `isWrappable` to every `TableCell` of a column whose full text must stay readable, such as descriptions, paths, or error messages. The text wraps within a bounded width (`max-w-md`, overridable through `className`) and long unbroken values break where they need to. Other columns keep the default single-line layout."
+      }
+    }
+  },
+  render: () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Scan</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Error</TableHead>
+          <TableHead>Started</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {[
+          {
+            id: "scan-1",
+            status: "Failed",
+            error:
+              "Could not clone repository: the GitHub App installation lacks read access to the contents of this repository.",
+            started: "Oct 12, 2026 09:14"
+          },
+          {
+            id: "scan-2",
+            status: "Failed",
+            error:
+              "File too large to scan: /services/payments/fixtures/generated/large-transaction-export-2026-10-01.json",
+            started: "Oct 11, 2026 22:40"
+          },
+          { id: "scan-3", status: "Completed", error: "None", started: "Oct 11, 2026 08:02" }
+        ].map((scan) => (
+          <TableRow key={scan.id}>
+            <TableCell className="font-medium">{scan.id}</TableCell>
+            <TableCell>{scan.status}</TableCell>
+            <TableCell isWrappable>{scan.error}</TableCell>
+            <TableCell>{scan.started}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+export const LoadingRows: Story = {
+  name: "Example: Loading Rows",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "While the first page of data loads, render `TableSkeletonRows` inside `TableBody` with the number of columns in the header. `rows` defaults to 3."
+      }
+    }
+  },
+  render: () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Managed By</TableHead>
+          <TableHead variant="action" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableSkeletonRows columns={4} />
       </TableBody>
     </Table>
   )

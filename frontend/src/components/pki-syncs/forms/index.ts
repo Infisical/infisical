@@ -1,5 +1,5 @@
 export { CreatePkiSyncForm } from "./CreatePkiSyncForm";
-export { EditPkiSyncForm } from "./EditPkiSyncForm";
+export { EditPkiSyncForm, type TPkiSyncEditStepKey } from "./EditPkiSyncForm";
 export { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 export { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 export { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";

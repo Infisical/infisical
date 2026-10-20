@@ -23,6 +23,7 @@ import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 
 import {
+  AGENT_VAULT_ROLES,
   CERT_MANAGER_ROLES,
   DEFAULT_PROJECT_ROLE,
   getSingleSelectedProjectId,
@@ -61,6 +62,12 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     name: getProjectTitle(ProjectType.PAM),
     isSingleton: true,
     roles: PAM_ROLES
+  },
+  {
+    type: ProjectType.AgentVault,
+    name: getProjectTitle(ProjectType.AgentVault),
+    isSingleton: true,
+    roles: AGENT_VAULT_ROLES
   }
 ];
 

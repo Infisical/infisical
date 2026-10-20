@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type JSX, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
@@ -14,6 +14,10 @@ import {
   TrashIcon
 } from "lucide-react";
 
+import {
+  CrossProjectSecretSharingUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
@@ -56,7 +60,8 @@ import {
   ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import {
   TProjectFolderGrant,
@@ -200,6 +205,8 @@ export const CrossProjectSharingSection = () => {
   const [deleteTarget, setDeleteTarget] = useState<ProjectGroup | null>(null);
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const canEditGrants =
     permission.can(
       ProjectPermissionProjectFolderGrantActions.CreateGrant,
@@ -302,15 +309,16 @@ export const CrossProjectSharingSection = () => {
                       </IconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {(canEditGrants ||
-                        projectGroup.grants.some((grant) =>
-                          canRevokeGrant(grant.environmentSlug, grant.secretPath)
-                        )) && (
-                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
-                          <PencilIcon className="mr-2 size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
+                      {subscription?.crossProjectSecretSharing &&
+                        (canEditGrants ||
+                          projectGroup.grants.some((grant) =>
+                            canRevokeGrant(grant.environmentSlug, grant.secretPath)
+                          )) && (
+                          <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
+                            <PencilIcon className="mr-2 size-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
                       {projectGroup.grants.every((grant) =>
                         canRevokeGrant(grant.environmentSlug, grant.secretPath)
                       ) && (
@@ -395,6 +403,13 @@ export const CrossProjectSharingSection = () => {
               variant="project"
               size="sm"
               onClick={() => {
+                if (!subscription?.crossProjectSecretSharing) {
+                  openUpgradeGate({
+                    intent: CrossProjectSecretSharingUpgradeIntent,
+                    paywallKey: "project.cross-project-sharing"
+                  });
+                  return;
+                }
                 setEditData(null);
                 setIsShareSheetOpen(true);
               }}
@@ -437,6 +452,7 @@ export const CrossProjectSharingSection = () => {
         }}
         sourceProjectId={currentProject.id}
       />
+      {upgradeGate}
     </Card>
   );
 };

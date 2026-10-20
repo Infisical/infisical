@@ -9,14 +9,13 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageHeader,
   Tooltip
 } from "@app/components/v2";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -63,37 +62,36 @@ export const PkiCollectionPage = () => {
     });
     handlePopUpClose("deletePkiCollection");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/policies",
+      to: "/organizations/$orgId/cert-manager/policies",
       params: {
-        orgId: currentOrg.id,
-        projectId: params.projectId
+        orgId: currentOrg.id
       }
     });
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-8xl">
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/policies"
-            params={{
-              orgId: currentOrg.id,
-              projectId: params.projectId
-            }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-          >
-            <FontAwesomeIcon icon={faChevronLeft} />
-            Certificates
-          </Link>
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
+            backLink={
+              <Link
+                to="/organizations/$orgId/cert-manager/policies"
+                params={{
+                  orgId: currentOrg.id
+                }}
+              >
+                <FontAwesomeIcon icon={faChevronLeft} />
+                Certificates
+              </Link>
+            }
             scope={ProjectType.CertificateManager}
             title={data.name}
             description="Manage certificate collection"
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                <div className="hover:text-project data-[state=open]:text-project">
                   <Tooltip content="More options">
                     <Button variant="outline_bg">More</Button>
                   </Tooltip>
@@ -128,7 +126,7 @@ export const PkiCollectionPage = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:bg-red-500! hover:text-white!"
+                          ? "hover:bg-danger! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>
@@ -166,12 +164,13 @@ export const PkiCollectionPage = () => {
         </div>
       )}
       <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiCollection.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to delete the PKI collection ${data?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeletePkiCollectionSubmit(
             (popUp.deletePkiCollection.data as { collectionId: string })?.collectionId
           )

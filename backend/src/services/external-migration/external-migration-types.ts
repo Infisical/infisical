@@ -2,6 +2,8 @@ import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { TSecretServiceFactory } from "../secret/secret-service";
+import { SecretProtectionType } from "../secret/secret-types";
 import { ExternalMigrationProviders } from "./external-migration-schemas";
 
 export enum KvVersion {
@@ -140,4 +142,35 @@ export type TImportDopplerSecretsDTO = {
   targetSecretPath: string;
   actor: OrgServiceActor;
   auditLogInfo: AuditLogInfo;
+};
+
+export type TVaultFolderImportResult = {
+  folderPath: string;
+  secrets: { secretKey: string; secretValue: string }[];
+  approval?: Extract<
+    Awaited<ReturnType<TSecretServiceFactory["createManySecretsRaw"]>>,
+    { type: SecretProtectionType.Approval }
+  >["approval"];
+};
+
+export type TVaultImportSideEffectsJobPayload = {
+  projectId: string;
+  environment: string;
+  environmentName: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId: string;
+  auditLogInfo: AuditLogInfo;
+  writtenFolders: { folderPath: string; secretKeys: string[] }[];
+  approvedFolders: {
+    folderPath: string;
+    secretKeys: string[];
+    approval: {
+      id: string;
+      policyId: string;
+      slug: string;
+      committerUserId?: string | null;
+      commits: { id: string }[];
+    };
+  }[];
 };

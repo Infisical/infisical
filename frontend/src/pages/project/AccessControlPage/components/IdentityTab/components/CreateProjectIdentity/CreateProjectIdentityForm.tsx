@@ -15,12 +15,14 @@ import {
   FilterableSelect,
   Input,
   SheetFooter,
+  Skeleton,
   Tabs,
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
+import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS, PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import {
   projectIdentityMembershipQuery,
   useCreateIdentityProjectAdditionalPrivilege,
@@ -30,6 +32,7 @@ import {
   useListProjectIdentityMemberships,
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
+import { agentVaultKeys, useAddAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { UNIVERSAL_AUTH_DEFAULTS, useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { pamKeys, useAddPamProductIdentityMember } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -46,6 +49,12 @@ import {
   createProjectIdentitySchema,
   TCreateProjectIdentityForm
 } from "./schema";
+
+const SUBMIT_VARIANT_BY_PRODUCT: Partial<Record<ProjectType, "pam" | "av" | "ss">> = {
+  [ProjectType.PAM]: "pam",
+  [ProjectType.AgentVault]: "av",
+  [ProjectType.SecretScanning]: "ss"
+};
 
 const buildTemplatePermissions = (
   projectType: ProjectType,
@@ -78,42 +87,51 @@ type Props = {
   onClose: () => void;
 };
 
-export const CreateProjectIdentityForm = ({
+type TAssignableIdentity = { id: string; name: string };
+
+const ProjectIdentityFormContent = ({
   projectId,
   projectType,
   productLabel,
   canGrantPrivileges,
-  onClose
-}: Props) => {
+  onClose,
+  assignableIdentities
+}: Props & { assignableIdentities: TAssignableIdentity[] }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isCertManager = projectType === ProjectType.CertificateManager;
   const isPam = projectType === ProjectType.PAM;
+  const isAgentVault = projectType === ProjectType.AgentVault;
+  const isProductScoped = isPam || isAgentVault;
 
+  const { currentOrg } = useOrganization();
   const { data: projectRoles } = useGetProjectRoles(projectId, projectType);
 
-  // PAM product membership is only ever Admin or Member, and PAM has no externally visible project, so
-  // the generic role copy ("...over a project") is replaced with the product's own wording.
   const roles = useMemo(() => {
-    if (!isPam) return projectRoles;
+    if (!isProductScoped) return projectRoles;
+
+    const options = isPam ? PAM_PRODUCT_ROLE_OPTIONS : AGENT_VAULT_PRODUCT_ROLE_OPTIONS;
 
     return (projectRoles ?? []).flatMap((role) => {
-      const productRole = PAM_PRODUCT_ROLE_OPTIONS.find((option) => option.value === role.slug);
+      const productRole = options.find((option) => option.value === role.slug);
       if (!productRole) return [];
 
       return [{ ...role, name: productRole.label, description: productRole.description }];
     });
-  }, [projectRoles, isPam]);
+  }, [projectRoles, isProductScoped, isPam]);
 
   const defaultRole =
-    isCertManager || isPam
+    isCertManager || isProductScoped
       ? { slug: ProjectMembershipRole.Member, name: "Member" }
       : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
 
   const form = useForm<TCreateProjectIdentityForm>({
     resolver: zodResolver(createProjectIdentitySchema),
     defaultValues: {
-      mode: CreateProjectIdentityMode.Create,
+      mode:
+        assignableIdentities.length > 0
+          ? CreateProjectIdentityMode.Assign
+          : CreateProjectIdentityMode.Create,
       name: "",
       role: defaultRole,
       templateIds: []
@@ -129,29 +147,11 @@ export const CreateProjectIdentityForm = ({
 
   const mode = useWatch({ control, name: "mode" });
 
-  const { data: availableData, isPending: isAvailableLoading } = useQuery({
-    ...projectIdentityMembershipQuery.listAvailable({ projectId, projectType }),
-    placeholderData: (prev) => prev,
-    enabled: mode === CreateProjectIdentityMode.Assign
-  });
-  const { data: membershipsData } = useListProjectIdentityMemberships(
-    { projectId, projectType, limit: 1000 },
-    { enabled: mode === CreateProjectIdentityMode.Assign }
-  );
-
-  const assignableIdentities = useMemo(() => {
-    const alreadyMembers = new Set(
-      (membershipsData?.identityMemberships ?? []).map((m) => m.identity.id)
-    );
-    return (availableData ?? [])
-      .filter((i) => !alreadyMembers.has(i.id))
-      .map((i) => ({ id: i.id, name: i.name }));
-  }, [availableData, membershipsData]);
-
   const { mutateAsync: createProjectIdentity } = useCreateProjectIdentity();
   const { mutateAsync: updateMembership } = useUpdateProjectIdentityMembership();
   const { mutateAsync: createMembership } = useCreateProjectIdentityMembership();
   const { mutateAsync: addPamProductIdentityMember } = useAddPamProductIdentityMember();
+  const { mutateAsync: addAgentVaultMembers } = useAddAgentVaultMembers();
   const { mutateAsync: addUniversalAuth } = useAddIdentityUniversalAuth();
   const { mutateAsync: createAdditionalPrivilege } = useCreateIdentityProjectAdditionalPrivilege();
 
@@ -162,17 +162,15 @@ export const CreateProjectIdentityForm = ({
       let identityId: string;
 
       if (data.mode === CreateProjectIdentityMode.Create) {
-        // PAM's membership PATCH takes a single product role rather than the generic roles array, so
-        // the role is set at creation time instead of through a follow-up membership update.
         const created = await createProjectIdentity({
           name: data.name!.trim(),
           projectId,
           hasDeleteProtection: true,
-          ...(isPam && data.role?.slug ? { roles: [{ role: data.role.slug }] } : {})
+          ...(isProductScoped && data.role?.slug ? { roles: [{ role: data.role.slug }] } : {})
         });
         identityId = created.id;
 
-        if (!isPam && data.role?.slug) {
+        if (!isProductScoped && data.role?.slug) {
           await updateMembership({
             roles: [{ role: data.role.slug }],
             identityId,
@@ -191,7 +189,7 @@ export const CreateProjectIdentityForm = ({
       } else {
         identityId = data.identity!.id;
 
-        // PAM keeps its own add-member endpoint, which enforces the product-admin check, the
+        // Each product keeps its own add-member endpoint, which enforces the product-admin check, the
         // admin/member-only roles, and the rejection of identities scoped to another project.
         if (isPam) {
           await addPamProductIdentityMember({
@@ -199,6 +197,8 @@ export const CreateProjectIdentityForm = ({
             identityId,
             role: data.role.slug
           });
+        } else if (isAgentVault) {
+          await addAgentVaultMembers({ machineIdentityIds: [identityId], role: data.role.slug });
         } else {
           await createMembership({
             projectId,
@@ -209,9 +209,11 @@ export const CreateProjectIdentityForm = ({
         }
       }
 
-      // The PAM tab reads its own product-membership list, which the generic mutations don't know about.
       if (isPam) {
         queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
+      }
+      if (isAgentVault) {
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(currentOrg.id) });
       }
 
       const hasTemplateGrants = data.templateIds.length > 0;
@@ -298,7 +300,7 @@ export const CreateProjectIdentityForm = ({
             />
             <p className="text-sm text-muted">
               {mode === CreateProjectIdentityMode.Assign
-                ? "Reuse an existing machine identity from your organization."
+                ? "Reuse an organization machine identity, which can be added to several projects."
                 : `Create a dedicated machine identity managed at the ${productLabel} level.`}
             </p>
           </div>
@@ -311,7 +313,14 @@ export const CreateProjectIdentityForm = ({
                 <Field>
                   <FieldLabel>Name</FieldLabel>
                   <FieldContent>
-                    <Input {...field} autoFocus placeholder="Machine 1" isError={Boolean(error)} />
+                    <Input
+                      {...field}
+                      autoFocus
+                      placeholder="Machine 1"
+                      isError={Boolean(error)}
+                      autoComplete="off"
+                      name="project-identity-name"
+                    />
                   </FieldContent>
                   {error && <FieldError>{error.message}</FieldError>}
                 </Field>
@@ -328,7 +337,6 @@ export const CreateProjectIdentityForm = ({
                     <FilterableSelect
                       value={value || null}
                       onChange={(newValue) => onChange(newValue || undefined)}
-                      isLoading={isAvailableLoading}
                       placeholder="Select machine identity..."
                       options={assignableIdentities}
                       getOptionValue={(option) => option.id}
@@ -376,20 +384,56 @@ export const CreateProjectIdentityForm = ({
             </Field>
           )}
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
+          <Button type="button" variant="outline" onClick={onClose} isDisabled={isSubmitting}>
+            Cancel
+          </Button>
           <Button
             type="submit"
-            variant={isPam ? "pam" : "project"}
+            variant={SUBMIT_VARIANT_BY_PRODUCT[projectType] ?? "project"}
             isPending={isSubmitting}
             isDisabled={isSubmitting}
           >
             {mode === CreateProjectIdentityMode.Assign ? "Add" : "Create"}
           </Button>
-          <Button type="button" variant="outline" onClick={onClose} isDisabled={isSubmitting}>
-            Cancel
-          </Button>
         </SheetFooter>
       </form>
     </FormProvider>
   );
+};
+
+export const CreateProjectIdentityForm = (props: Props) => {
+  const { projectId, projectType } = props;
+  const isProductScoped = projectType === ProjectType.PAM || projectType === ProjectType.AgentVault;
+
+  const { data: availableData, isFetchedAfterMount: isAvailableFresh } = useQuery({
+    ...projectIdentityMembershipQuery.listAvailable({ projectId, projectType }),
+    refetchOnMount: "always"
+  });
+  const { data: membershipsData, isFetchedAfterMount: isMembershipsFresh } =
+    useListProjectIdentityMemberships(
+      { projectId, projectType, limit: 1000 },
+      { enabled: isProductScoped, refetchOnMount: "always" }
+    );
+
+  const assignableIdentities = useMemo(() => {
+    const alreadyMembers = new Set(
+      (membershipsData?.identityMemberships ?? []).map((m) => m.identity.id)
+    );
+    return (availableData ?? [])
+      .filter((i) => !alreadyMembers.has(i.id))
+      .map((i) => ({ id: i.id, name: i.name }));
+  }, [availableData, membershipsData]);
+
+  if (!isAvailableFresh || (isProductScoped && !isMembershipsFresh)) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+    );
+  }
+
+  return <ProjectIdentityFormContent {...props} assignableIdentities={assignableIdentities} />;
 };

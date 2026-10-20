@@ -30,7 +30,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -75,7 +75,7 @@ const Page = () => {
     });
 
     createNotification({
-      text: "Successfully deleted project role",
+      text: isCertManager ? "Successfully deleted role" : "Successfully deleted project role",
       type: "success"
     });
     handlePopUpClose("deleteRole");
@@ -99,21 +99,7 @@ const Page = () => {
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-8xl">
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId,
-              orgId
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Roles
-            }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-muted"
-          >
-            <ChevronLeftIcon className="size-4" />
-            {isCertManager ? "Roles" : "Project Roles"}
-          </Link>
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             scope={currentProject.type}
             title={displayName}
@@ -121,6 +107,21 @@ const Page = () => {
               <>
                 {data.slug} {data.description && `- ${data.description}`}
               </>
+            }
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId,
+                  orgId
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Roles
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}
+              </Link>
             }
           >
             {isCustomRole && (
@@ -209,19 +210,24 @@ const Page = () => {
               </DropdownMenu>
             )}
           </PageHeader>
-          {isCertManager && isCustomRole && (
-            <Alert variant="info" className="mb-4">
-              <InfoIcon />
-              <AlertTitle>Custom roles act as Member in Certificate Manager</AlertTitle>
-              <AlertDescription>
-                In the new Certificate Manager flow, access is granted through Application
-                memberships (Admin or Member). Permissions defined here only apply to legacy
-                endpoints — users with this role are treated as Member at the project level and only
-                see resources inside Applications they are explicitly added to.
-              </AlertDescription>
-            </Alert>
-          )}
-          <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole || !canEditRole} />
+          <div className="flex flex-col gap-4">
+            {isCertManager && isCustomRole && (
+              <Alert variant="info">
+                <InfoIcon />
+                <AlertTitle>Custom roles act as Member in Certificate Manager</AlertTitle>
+                <AlertDescription>
+                  In the new Certificate Manager flow, access is granted through Application
+                  memberships (Admin or Member). Permissions defined here only apply to legacy
+                  endpoints — users with this role are treated as Member in Certificate Manager and
+                  only see resources inside Applications they are explicitly added to.
+                </AlertDescription>
+              </Alert>
+            )}
+            <RolePermissionsSection
+              roleSlug={roleSlug}
+              isDisabled={!isCustomRole || !canEditRole}
+            />
+          </div>
         </div>
       )}
       <EditProjectRoleDialog
@@ -231,7 +237,7 @@ const Page = () => {
       />
       <DeleteProjectRoleDialog
         isOpen={popUp.deleteRole.isOpen}
-        roleName={data?.name ?? "project role"}
+        roleName={data?.name ?? (isCertManager ? "role" : "project role")}
         confirmationKey="confirm"
         isPending={isDeletingRole}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
@@ -248,10 +254,14 @@ const Page = () => {
 
 export const RoleDetailsBySlugPage = () => {
   const { t } = useTranslation();
+  const { currentProject } = useProject();
+  const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: "Project Settings" })}</title>
+        <title>
+          {t("common.head-title", { title: isCertManager ? "Role" : "Project Settings" })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <ProjectPermissionCan

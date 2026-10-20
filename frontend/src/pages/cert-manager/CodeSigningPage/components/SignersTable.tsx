@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { AlertTriangleIcon, PlusIcon, SearchIcon } from "lucide-react";
 
+import { CodeSigningUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -35,7 +36,8 @@ import {
 import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionSub,
-  useOrganization
+  useOrganization,
+  useSubscription
 } from "@app/context";
 import {
   getSignerStatusBadgeVariant,
@@ -56,6 +58,19 @@ type Props = {
 export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
+  const handleCreateSigner = () => {
+    if (!subscription.pkiCodeSigning) {
+      openUpgradeGate({
+        intent: CodeSigningUpgradeIntent,
+        paywallKey: "cert-manager.signers"
+      });
+      return;
+    }
+    onCreateSigner();
+  };
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(SIGNER_TABLE_PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -85,7 +100,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
             a={ProjectPermissionSub.CodeSigners}
           >
             {(isAllowed) => (
-              <Button variant="project" isDisabled={!isAllowed} onClick={onCreateSigner}>
+              <Button variant="project" isDisabled={!isAllowed} onClick={handleCreateSigner}>
                 <PlusIcon />
                 Create Signer
               </Button>
@@ -125,13 +140,12 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                 signers.map((signer) => (
                   <TableRow
                     key={signer.id}
-                    className="cursor-pointer hover:bg-mineshaft-700"
+                    className="cursor-pointer hover:bg-surface-hover"
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+                        to: "/organizations/$orgId/cert-manager/code-signing/$signerId",
                         params: {
                           orgId: currentOrg.id,
-                          projectId,
                           signerId: signer.id
                         }
                       })
@@ -214,6 +228,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
           />
         )}
       </CardContent>
+      {upgradeGate}
     </Card>
   );
 };

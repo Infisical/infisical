@@ -80,14 +80,41 @@ export const mintKmipServerJwt = ({
   );
 };
 
+/** Non-expiring like the other resource tokens: the tokenVersion check in inject-identity is the only kill switch. */
+export const mintAgentVaultProxyJwt = ({
+  agentVaultProxyId,
+  orgId,
+  tokenVersion,
+  accessTokenTTL
+}: {
+  agentVaultProxyId: string;
+  orgId: string;
+  tokenVersion: number;
+  accessTokenTTL: number;
+}) => {
+  const appCfg = getConfig();
+  return crypto.jwt().sign(
+    {
+      agentVaultProxyId,
+      orgId,
+      authTokenType: AuthTokenType.AGENT_VAULT_PROXY_ACCESS_TOKEN,
+      tokenVersion
+    },
+    appCfg.AUTH_SECRET,
+    accessTokenTTL === 0 ? undefined : { expiresIn: accessTokenTTL }
+  );
+};
+
 export type ResourceRef =
   | { type: "gateway"; id: string }
   | { type: "relay"; id: string }
-  | { type: "kmip"; id: string };
+  | { type: "kmip"; id: string }
+  | { type: "agentVaultProxy"; id: string };
 
 export const RESOURCE_TYPE_GATEWAY = "gateway" as const;
 export const RESOURCE_TYPE_RELAY = "relay" as const;
 export const RESOURCE_TYPE_KMIP = "kmip" as const;
+export const RESOURCE_TYPE_AGENT_VAULT_PROXY = "agentVaultProxy" as const;
 
 export const assertGatewayResource = (resource: { type: string }, methodName: string) => {
   if (resource.type !== RESOURCE_TYPE_GATEWAY) {
@@ -107,6 +134,14 @@ export const assertRelayResource = (resource: { type: string }, methodName: stri
 
 export const assertKmipServerResource = (resource: { type: string }, methodName: string) => {
   if (resource.type !== RESOURCE_TYPE_KMIP) {
+    throw new BadRequestError({
+      message: `Resource type "${resource.type}" not supported for ${methodName} auth`
+    });
+  }
+};
+
+export const assertAgentVaultProxyResource = (resource: { type: string }, methodName: string) => {
+  if (resource.type !== RESOURCE_TYPE_AGENT_VAULT_PROXY) {
     throw new BadRequestError({
       message: `Resource type "${resource.type}" not supported for ${methodName} auth`
     });
@@ -136,7 +171,17 @@ export const ResourceAuthLoginFailureReason = {
   NamespaceNotAllowed: "namespace_not_allowed",
   NameNotAllowed: "name_not_allowed",
   AudienceNotAllowed: "audience_not_allowed",
-  GatewayProxyUnavailable: "gateway_proxy_unavailable"
+  GatewayProxyUnavailable: "gateway_proxy_unavailable",
+  GcpMalformedToken: "gcp_malformed_token",
+  GcpMissingEmailClaim: "gcp_missing_email_claim",
+  GcpTokenAudienceRejected: "gcp_token_audience_rejected",
+  GcpTokenRejected: "gcp_token_rejected",
+  GcpTokenVerificationFailed: "gcp_token_verification_failed",
+  GcpTokenLifetimeRejected: "gcp_token_lifetime_rejected",
+  ServiceAccountNotAllowed: "service_account_not_allowed",
+  ComputeEngineDetailsMissing: "compute_engine_details_missing",
+  ProjectNotAllowed: "project_not_allowed",
+  ZoneNotAllowed: "zone_not_allowed"
 } as const;
 
 // Who performs the TokenReview. Api means Infisical does, using the configured reviewer token.
@@ -151,10 +196,22 @@ export type TKubernetesTokenReviewMode = (typeof KubernetesTokenReviewMode)[keyo
 
 export const ResourceAuthMethodType = {
   Aws: "aws",
+  Gcp: "gcp",
   Kubernetes: "kubernetes",
   Token: "token",
   Identity: "identity"
 } as const;
 
+// Mirrors the machine identity GCP auth types.
+export const GcpAuthType = {
+  Gce: "gce",
+  Iam: "iam"
+} as const;
+
+export type TGcpAuthType = (typeof GcpAuthType)[keyof typeof GcpAuthType];
+
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export type ResourceAuthMethodType = (typeof ResourceAuthMethodType)[keyof typeof ResourceAuthMethodType];
+
+// The methods a resource can actually be configured with; `identity` is legacy and read-only.
+export type TSettableAuthMethod = Exclude<ResourceAuthMethodType, typeof ResourceAuthMethodType.Identity>;

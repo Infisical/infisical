@@ -21,11 +21,17 @@ export type TOrgProductStats = {
   secretScanning: {
     dataSourcesCount: number;
     resourcesCount: number;
+    findingsCount: number;
     projectsCount: number;
   };
   pam: {
     accountsCount: number;
     accountTemplatesCount: number;
     foldersCount: number;
+  };
+  agentVault: {
+    accessBundlesCount: number;
+    servicesCount: number;
+    proxiesCount: number;
   };
 };

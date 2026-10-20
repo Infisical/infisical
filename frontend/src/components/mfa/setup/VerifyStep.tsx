@@ -90,9 +90,9 @@ const TotpVerify = ({
       <VerificationCodeForm
         name="totp-enrollment-code"
         value={totp}
-        onChange={(value) => {
+        onChange={(value, reason) => {
           setTotp(value.replace(/\D/g, "").slice(0, 6));
-          setVerificationError(undefined);
+          if (reason === "input") setVerificationError(undefined);
         }}
         onSubmit={handleVerify}
         submitVariant={variant}

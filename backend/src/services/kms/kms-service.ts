@@ -16,8 +16,9 @@ import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
-import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
+import { createSecretValueBlindIndexer } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { deriveCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
 import { setLegacyKeyMaterial, TLegacyKeyMaterial, TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
@@ -37,6 +38,7 @@ import {
   MAX_HMAC_IMPORT_KEY_BYTE_LENGTH,
   MIN_HMAC_IMPORT_KEY_BYTE_LENGTH,
   resolveInstanceEncryptionKeyBuffer,
+  validateClassicalKeyMaterial,
   verifyKeyTypeAndAlgorithm
 } from "@app/services/kms/kms-fns";
 
@@ -298,11 +300,14 @@ export const kmsServiceFactory = ({
     return tx ? dbQuery(tx) : kmsDAL.transaction(dbQuery);
   };
 
+  // a project only owns the reserved key generated for it. Anything else is the CMEK API's to delete
   const deleteInternalKms = async (kmsId: string, orgId: string, tx?: Knex) => {
     const kms = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kms) return;
     if (kms.isExternal) return;
     if (kms.orgId !== orgId) throw new ForbiddenRequestError({ message: "KMS doesn't belong to organization" });
+    if (!kms.isReserved) return;
+    if (kms.orgKms.id === kms.id) return;
     return kmsDAL.deleteById(kmsId, tx);
   };
 
@@ -668,27 +673,7 @@ export const kmsServiceFactory = ({
           });
         }
       } else {
-        const keyObj = crypto.nativeCrypto.createPrivateKey({
-          key,
-          format: "pem",
-          type: "pkcs8"
-        });
-        const keyType = keyObj.asymmetricKeyType;
-        const keyDetails = keyObj.asymmetricKeyDetails;
-
-        if (algorithm === AsymmetricKeyAlgorithm.RSA_4096) {
-          if (keyType !== "rsa" || keyDetails?.modulusLength !== 4096) {
-            throw new BadRequestError({
-              message: `Key material does not match the declared algorithm. Expected an RSA 4096-bit key.`
-            });
-          }
-        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256) {
-          if (keyType !== "ec" || keyDetails?.namedCurve !== "prime256v1") {
-            throw new BadRequestError({
-              message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
-            });
-          }
-        }
+        validateClassicalKeyMaterial(key, algorithm as AsymmetricKeyAlgorithm);
       }
     }
 
@@ -1285,6 +1270,7 @@ export const kmsServiceFactory = ({
     const dataKey = await $getDataKey(encryptionContext, trx);
 
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const generateSecretBlindIndex = createSecretValueBlindIndexer(dataKey);
 
     return {
       encryptor: ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
@@ -1300,7 +1286,7 @@ export const kmsServiceFactory = ({
         const decryptedBlob = cipher.decrypt(cipherTextBlob, dataKey);
         return decryptedBlob;
       },
-      generateSecretBlindIndex: (secretValue: Buffer) => generateSecretValueBlindIndexFromKmsKey(secretValue, dataKey)
+      generateSecretBlindIndex
     };
   };
 
@@ -1796,6 +1782,13 @@ export const kmsServiceFactory = ({
     await $ensureKekHistory();
   };
 
+  const getCookieSigningKey = () => {
+    if (!ROOT_ENCRYPTION_KEY.length) {
+      throw new InternalServerError({ message: "KMS root key is not loaded" });
+    }
+    return deriveCookieSigningKey(ROOT_ENCRYPTION_KEY);
+  };
+
   /** How a rotation stages a key the instance is not running with yet. */
   const encryptRootKeyForKek = (kekBuffer: Buffer) => {
     if (!ROOT_ENCRYPTION_KEY.length) {
@@ -1892,6 +1885,7 @@ export const kmsServiceFactory = ({
 
   return {
     startService,
+    getCookieSigningKey,
     encryptRootKeyForKek,
     getCurrentKekLabel,
     generateKmsKey,

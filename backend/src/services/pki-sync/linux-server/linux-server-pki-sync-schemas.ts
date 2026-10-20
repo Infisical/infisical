@@ -2,11 +2,33 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import {
+  assertKnownHostKeysAreNegotiable,
+  parseKnownHostKeys
+} from "@app/services/app-connection/ssh/ssh-host-key-fns";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
-import { BaseHealthCheckTestSchema, HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  EXPORT_PASSWORD_BLANK_MESSAGE,
+  isBlankExportPassword,
+  isKeystoreExportFormat,
+  KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
+  PemCertificateExtension,
+  PkiSyncExportFormat
+} from "@app/services/pki-sync/pki-sync-export-fns";
+import {
+  BaseHealthCheckTestSchema,
+  ExportPasswordSchema,
+  HostCommandSchema,
+  IncludeTruststoreSchema,
+  KeystoreAliasSchema,
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  PkiSyncTargetHostSchema,
+  PkiSyncTargetPortSchema,
+  UpdatePkiSyncFiltersField
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { LINUX_SERVER_NAMING } from "./linux-server-pki-sync-constants";
 
@@ -23,7 +45,25 @@ export const LinuxServerPkiSyncConfigSchema = z.object({
     .min(1, "Destination path is required")
     .max(4096, "Destination path is too long")
     .refine((p) => p.startsWith("/"), { message: "Destination path must be absolute (start with /)" })
-    .refine((p) => !PATH_TRAVERSAL.test(p), { message: "Destination path must not contain '..'" })
+    .refine((p) => !PATH_TRAVERSAL.test(p), { message: "Destination path must not contain '..'" }),
+  host: PkiSyncTargetHostSchema,
+  port: PkiSyncTargetPortSchema,
+  sshHostKeys: z
+    .string()
+    .trim()
+    .max(8192)
+    .optional()
+    .superRefine((value, ctx) => {
+      if (!value) return;
+      try {
+        assertKnownHostKeysAreNegotiable(parseKnownHostKeys(value));
+      } catch (err) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: (err as Error).message });
+      }
+    })
+    .describe(
+      "Trusted SSH host keys for the target, as produced by 'ssh-keyscan <host>'. When set, the sync refuses to authenticate if the host presents a different key."
+    )
 });
 
 export const LinuxServerPkiSyncOptionsSchema = z.object({
@@ -33,6 +73,8 @@ export const LinuxServerPkiSyncOptionsSchema = z.object({
   exportFormat: z.nativeEnum(PkiSyncExportFormat).default(PkiSyncExportFormat.Pem),
   pemCertificateExtension: z.nativeEnum(PemCertificateExtension).default(PemCertificateExtension.Pem),
   combineCertificateChain: z.boolean().default(false),
+  keystoreAlias: KeystoreAliasSchema,
+  includeTruststore: IncludeTruststoreSchema,
   fileMode: z
     .string()
     .trim()
@@ -78,10 +120,10 @@ export const LinuxServerPkiSyncOptionsSchema = z.object({
     )
 });
 
-// Sync-level secrets (the PKCS#12 export password) accepted on create/update. Stored encrypted in
+// Sync-level secrets (the PKCS#12 / JKS export password) accepted on create/update. Stored encrypted in
 // pki_syncs.encryptedCredentials and never returned.
 export const LinuxServerPkiSyncCredentialsSchema = z.object({
-  exportPassword: z.string().min(1).optional()
+  exportPassword: ExportPasswordSchema.optional()
 });
 
 export const LinuxServerPkiSyncSchema = PkiSyncSchema.extend({
@@ -101,14 +143,22 @@ export const CreateLinuxServerPkiSyncSchema = z
     subscriberId: z.string().nullish(),
     connectionId: z.string(),
     applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional()
+    certificateIds: z.array(z.string().uuid()).optional(),
+    filters: PkiSyncFiltersField
   })
   .superRefine((data, ctx) => {
-    if (data.syncOptions.exportFormat === PkiSyncExportFormat.Pkcs12 && !data.credentials?.exportPassword) {
+    if (!isKeystoreExportFormat(data.syncOptions.exportFormat)) return;
+    if (!data.credentials?.exportPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["credentials", "exportPassword"],
-        message: "A password is required when the export format is PKCS#12"
+        message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
+      });
+    } else if (isBlankExportPassword(data.credentials.exportPassword)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["credentials", "exportPassword"],
+        message: EXPORT_PASSWORD_BLANK_MESSAGE
       });
     }
   });
@@ -121,12 +171,14 @@ export const UpdateLinuxServerPkiSyncSchema = z.object({
   syncOptions: LinuxServerPkiSyncOptionsSchema.optional(),
   credentials: LinuxServerPkiSyncCredentialsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const LinuxServerPkiSyncListItemSchema = z.object({
   name: z.literal("Linux Server"),
   connection: z.literal(AppConnection.SSH),
+  additionalConnections: z.literal(AppConnection.LDAP).array().optional(),
   destination: z.literal(PkiSync.LinuxServer),
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)

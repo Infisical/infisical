@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Check, Clock, KeyRound, ShieldCheck, X } from "lucide-react";
+import { Check, Clock, KeyRound, ShieldAlert, ShieldCheck, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -14,6 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { useUser } from "@app/context";
 import {
   PamAccessRequestDecision,
@@ -81,7 +81,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
 
   const handleRevoke = async () => {
     if (!request) return;
-    await revokeMutation.mutateAsync({ requestId: request.id });
+    await revokeMutation.mutateAsync({ grantId: request.grantId! });
     createNotification({ text: "Access revoked", type: "success" });
     setIsRevokeConfirmOpen(false);
     onOpenChange(false);
@@ -89,14 +89,14 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
 
   return (
     <>
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={isRevokeConfirmOpen}
-        onChange={setIsRevokeConfirmOpen}
+        onOpenChange={setIsRevokeConfirmOpen}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this user's approved access?"
-        deleteKey="revoke"
-        buttonText="Revoke"
-        onDeleteApproved={handleRevoke}
+        description="Are you sure you want to revoke this user's approved access?"
+        confirmKey="revoke"
+        confirmLabel="Revoke"
+        onConfirm={handleRevoke}
       />
       <PamDetailSheet
         isOpen={isOpen}
@@ -144,9 +144,70 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
             : []),
           { label: "Reason", value: requestData?.reason || "No reason provided" }
         ]}
+        contentFooter={
+          (isPending || canRevoke) && (
+            <>
+              {isPending && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
+                    isPending={reviewMutation.isPending}
+                  >
+                    <X className="mr-1.5 size-4" />
+                    Deny
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Button
+                          variant="pam"
+                          onClick={() => handleReview(PamAccessRequestDecision.Approved)}
+                          isPending={reviewMutation.isPending}
+                          isDisabled={isOwnRequest}
+                        >
+                          <Check className="mr-1.5 size-4" />
+                          Approve
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {isOwnRequest && (
+                      <TooltipContent>You cannot approve your own request</TooltipContent>
+                    )}
+                  </Tooltip>
+                </>
+              )}
+              {canRevoke && (
+                <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
+                  Revoke Access
+                </Button>
+              )}
+            </>
+          )
+        }
       >
         <div className="flex h-full flex-1 flex-col p-6">
           <div className="flex flex-1 flex-col gap-6">
+            {request?.isBreakGlass && (
+              <div className="flex gap-2.5 rounded-md border border-danger/40 bg-danger/5 p-4">
+                <ShieldAlert className="mt-0.5 size-4 shrink-0 text-danger" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    Approval bypassed with break-glass
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    {request.requesterName} granted themselves this access without waiting for an
+                    approver.
+                  </p>
+                  {request.bypassReason && (
+                    <p className="mt-2 text-xs text-foreground">
+                      <span className="text-muted">Reason:</span> {request.bypassReason}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {isPending && (
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">Approval comment</p>
@@ -187,46 +248,6 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
               </p>
             )}
           </div>
-
-          {(isPending || canRevoke) && (
-            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              {isPending && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
-                    isPending={reviewMutation.isPending}
-                  >
-                    <X className="mr-1.5 size-4" />
-                    Deny
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <Button
-                          variant="pam"
-                          onClick={() => handleReview(PamAccessRequestDecision.Approved)}
-                          isPending={reviewMutation.isPending}
-                          isDisabled={isOwnRequest}
-                        >
-                          <Check className="mr-1.5 size-4" />
-                          Approve
-                        </Button>
-                      </div>
-                    </TooltipTrigger>
-                    {isOwnRequest && (
-                      <TooltipContent>You cannot approve your own request</TooltipContent>
-                    )}
-                  </Tooltip>
-                </>
-              )}
-              {canRevoke && (
-                <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
-                  Revoke Access
-                </Button>
-              )}
-            </div>
-          )}
         </div>
       </PamDetailSheet>
     </>

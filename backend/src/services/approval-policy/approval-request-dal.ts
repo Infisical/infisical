@@ -17,51 +17,72 @@ export type TApprovalRequestDALFactory = ReturnType<typeof approvalRequestDALFac
 export const approvalRequestDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalRequests);
 
-  const findStepsByRequestId = async (requestId: string) => {
+  const $attachStepRelations = async (steps: TApprovalRequestSteps[], dbInstance: Knex) => {
+    if (!steps.length) {
+      return [];
+    }
+
+    const stepIds = steps.map((step) => step.id);
+
+    const [approvers, approvals] = await Promise.all([
+      dbInstance(TableName.ApprovalRequestStepEligibleApprovers)
+        .whereIn("stepId", stepIds)
+        .select("stepId", "userId", "groupId"),
+      dbInstance(TableName.ApprovalRequestApprovals).whereIn("stepId", stepIds)
+    ]);
+
+    const approversByStepId = approvers.reduce<Record<string, { type: ApproverType; id: string }[]>>(
+      (acc, approver) => {
+        const stepApprovers = acc[approver.stepId] || [];
+        stepApprovers.push({
+          type: approver.userId ? ApproverType.User : ApproverType.Group,
+          id: (approver.userId || approver.groupId) as string
+        });
+        acc[approver.stepId] = stepApprovers;
+        return acc;
+      },
+      {}
+    );
+
+    const approvalsByStepId = approvals.reduce<Record<string, TApprovalRequestApprovals[]>>((acc, approval) => {
+      const stepApprovals = acc[approval.stepId] || [];
+      stepApprovals.push(approval);
+      acc[approval.stepId] = stepApprovals;
+      return acc;
+    }, {});
+
+    return steps.map((step) => ({
+      ...step,
+      approvers: approversByStepId[step.id] || [],
+      approvals: approvalsByStepId[step.id] || []
+    }));
+  };
+
+  const findStepsByRequestIds = async (requestIds: string[], tx?: Knex) => {
     try {
-      const dbInstance = db.replicaNode();
-      const steps = await dbInstance(TableName.ApprovalRequestSteps).where({ requestId }).orderBy("stepNumber", "asc");
+      if (!requestIds.length) return {};
+      const dbInstance = tx || db.replicaNode();
+      const steps = await dbInstance(TableName.ApprovalRequestSteps)
+        .whereIn("requestId", requestIds)
+        .orderBy("stepNumber", "asc");
+      const stepsWithRelations = await $attachStepRelations(steps, dbInstance);
 
-      if (!steps.length) {
-        return [];
-      }
-
-      const stepIds = steps.map((step) => step.id);
-
-      const [approvers, approvals] = await Promise.all([
-        dbInstance(TableName.ApprovalRequestStepEligibleApprovers)
-          .whereIn("stepId", stepIds)
-          .select("stepId", "userId", "groupId"),
-        dbInstance(TableName.ApprovalRequestApprovals).whereIn("stepId", stepIds)
-      ]);
-
-      const approversByStepId = approvers.reduce<Record<string, { type: ApproverType; id: string }[]>>(
-        (acc, approver) => {
-          const stepApprovers = acc[approver.stepId] || [];
-          stepApprovers.push({
-            type: approver.userId ? ApproverType.User : ApproverType.Group,
-            id: (approver.userId || approver.groupId) as string
-          });
-          acc[approver.stepId] = stepApprovers;
-          return acc;
-        },
-        {}
-      );
-
-      const approvalsByStepId = approvals.reduce<Record<string, TApprovalRequestApprovals[]>>((acc, approval) => {
-        const stepApprovals = acc[approval.stepId] || [];
-        stepApprovals.push(approval);
-        acc[approval.stepId] = stepApprovals;
+      return stepsWithRelations.reduce<Record<string, typeof stepsWithRelations>>((acc, step) => {
+        const requestSteps = acc[step.requestId] || [];
+        requestSteps.push(step);
+        acc[step.requestId] = requestSteps;
         return acc;
       }, {});
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find approval request steps by request ids" });
+    }
+  };
 
-      return steps.map((step) => {
-        return {
-          ...step,
-          approvers: approversByStepId[step.id] || [],
-          approvals: approvalsByStepId[step.id] || []
-        };
-      });
+  const findStepsByRequestId = async (requestId: string, tx?: Knex) => {
+    try {
+      const dbInstance = tx || db.replicaNode();
+      const steps = await dbInstance(TableName.ApprovalRequestSteps).where({ requestId }).orderBy("stepNumber", "asc");
+      return await $attachStepRelations(steps, dbInstance);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find approval request steps" });
     }
@@ -93,63 +114,10 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
         return [];
       }
 
-      const requestIds = requests.map((req) => req.id);
-
-      const steps = await dbInstance(TableName.ApprovalRequestSteps)
-        .whereIn("requestId", requestIds)
-        .orderBy("stepNumber", "asc");
-
-      const stepsByRequestId: Record<
-        string,
-        (TApprovalRequestSteps & {
-          approvers: { type: ApproverType; id: string }[];
-          approvals: TApprovalRequestApprovals[];
-        })[]
-      > = {};
-
-      if (steps.length) {
-        const stepIds = steps.map((step) => step.id);
-
-        const [approvers, approvals] = await Promise.all([
-          dbInstance(TableName.ApprovalRequestStepEligibleApprovers)
-            .whereIn("stepId", stepIds)
-            .select("stepId", "userId", "groupId"),
-          dbInstance(TableName.ApprovalRequestApprovals).whereIn("stepId", stepIds)
-        ]);
-
-        const approversByStepId = approvers.reduce<Record<string, { type: ApproverType; id: string }[]>>(
-          (acc, approver) => {
-            const stepApprovers = acc[approver.stepId] || [];
-            stepApprovers.push({
-              type: approver.userId ? ApproverType.User : ApproverType.Group,
-              id: (approver.userId || approver.groupId) as string
-            });
-            acc[approver.stepId] = stepApprovers;
-            return acc;
-          },
-          {}
-        );
-
-        const approvalsByStepId = approvals.reduce<Record<string, TApprovalRequestApprovals[]>>((acc, approval) => {
-          const stepApprovals = acc[approval.stepId] || [];
-          stepApprovals.push(approval);
-          acc[approval.stepId] = stepApprovals;
-          return acc;
-        }, {});
-
-        steps.forEach((step) => {
-          const formattedStep = {
-            ...step,
-            approvers: approversByStepId[step.id] || [],
-            approvals: approvalsByStepId[step.id] || []
-          };
-
-          if (!stepsByRequestId[step.requestId]) {
-            stepsByRequestId[step.requestId] = [];
-          }
-          stepsByRequestId[step.requestId].push(formattedStep);
-        });
-      }
+      const stepsByRequestId = await findStepsByRequestIds(
+        requests.map((req) => req.id),
+        dbInstance
+      );
 
       return requests.map((req) => ({
         ...req,
@@ -166,6 +134,66 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
       return row || null;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindApprovalRequestByIdForUpdate" });
+    }
+  };
+
+  const findPendingByPolicyIdForUpdate = async (policyId: string, tx: Knex) => {
+    try {
+      return await tx(TableName.ApprovalRequests)
+        .forUpdate()
+        .where({ policyId, status: ApprovalRequestStatus.Pending })
+        .orderBy("id", "asc");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPendingApprovalRequestsByPolicyIdForUpdate" });
+    }
+  };
+
+  const findOpenSecretChangeRequestsWhereSubjectIsApprover = async (args: {
+    projectId: string;
+    userIds?: string[];
+    groupId?: string;
+  }) => {
+    try {
+      if (!args.userIds?.length && !args.groupId) return [];
+
+      const dbInstance = db.replicaNode();
+      const query = dbInstance(TableName.ApprovalRequestStepEligibleApprovers)
+        .innerJoin(
+          TableName.ApprovalRequestSteps,
+          `${TableName.ApprovalRequestSteps}.id`,
+          `${TableName.ApprovalRequestStepEligibleApprovers}.stepId`
+        )
+        .innerJoin(
+          TableName.ApprovalRequests,
+          `${TableName.ApprovalRequests}.id`,
+          `${TableName.ApprovalRequestSteps}.requestId`
+        )
+        .innerJoin(
+          TableName.SecretChangeRequests,
+          `${TableName.SecretChangeRequests}.approvalRequestId`,
+          `${TableName.ApprovalRequests}.id`
+        )
+        .where(`${TableName.ApprovalRequests}.projectId`, args.projectId)
+        .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.SecretChange)
+        .where(`${TableName.ApprovalRequests}.status`, ApprovalRequestStatus.Open);
+
+      if (args.userIds?.length) {
+        void query.whereIn(`${TableName.ApprovalRequestStepEligibleApprovers}.userId`, args.userIds);
+      } else if (args.groupId) {
+        void query.where(`${TableName.ApprovalRequestStepEligibleApprovers}.groupId`, args.groupId);
+      }
+
+      const rows = await query
+        .distinct(`${TableName.SecretChangeRequests}.slug`)
+        .orderBy(`${TableName.SecretChangeRequests}.slug`, "asc")
+        .select<{ slug: string }[]>();
+
+      return rows;
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Find open secret change requests where subject is approver"
+      });
     }
   };
 
@@ -186,8 +214,11 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findStepsByRequestId,
+    findStepsByRequestIds,
     findByProjectId,
     findByIdForUpdate,
+    findPendingByPolicyIdForUpdate,
+    findOpenSecretChangeRequestsWhereSubjectIsApprover,
     markExpiredRequests
   };
 };

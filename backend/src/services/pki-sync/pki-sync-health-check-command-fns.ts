@@ -1,10 +1,11 @@
 import { BadRequestError } from "@app/lib/errors";
+import { getJksTruststoreCertificates } from "@app/services/certificate/certificate-jks-fns";
 
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSyncStatus } from "./pki-sync-enums";
 import {
   getExportedCertificateFileSuffixes,
-  PemCertificateExtension,
-  PkiSyncExportFormat
+  PkiSyncExportFormat,
+  TExportedCertificateFileShape
 } from "./pki-sync-export-fns";
 import {
   applyHostCommandOptionUpdate,
@@ -57,22 +58,39 @@ export const assertHealthCheckCommandIsTestable = (
     });
   }
 
-  if (commandUsesHostCommandVariable(command, HostCommandVariable.Pkcs12Password)) {
+  const passwordVariables = [HostCommandVariable.ExportPassword, HostCommandVariable.Pkcs12Password].filter(
+    (variable) => commandUsesHostCommandVariable(command, variable)
+  );
+  if (passwordVariables.length > 0) {
     throw new BadRequestError({
-      message: `A test cannot resolve ${formatHostCommandVariables([
-        HostCommandVariable.Pkcs12Password
-      ])} because the export password is only generated when a saved sync delivers a certificate. Run the health check on a saved sync instead.`
+      message: `A test cannot resolve ${formatHostCommandVariables(passwordVariables)} because the export password is only generated when a saved sync delivers a certificate. Run the health check on a saved sync instead.`
     });
   }
 
   return command;
 };
 
-type THealthCheckExportOptions = {
-  format: PkiSyncExportFormat;
-  includePrivateKey: boolean;
-  pemCertificateExtension?: PemCertificateExtension;
-  combineCertificateChain?: boolean;
+type THealthCheckExportOptions = Omit<
+  TExportedCertificateFileShape,
+  "hasCertificateChain" | "hasPrivateKey" | "hasTruststoreCertificates"
+>;
+
+const hasTruststoreCertificates = (
+  exportOptions: THealthCheckExportOptions,
+  certData: TCertificateMap[string]
+): boolean => {
+  if (exportOptions.format !== PkiSyncExportFormat.Jks || !exportOptions.includeTruststore) return false;
+  try {
+    return (
+      getJksTruststoreCertificates({
+        certificate: certData.cert,
+        fullCertificateChain: certData.fullCertificateChain ?? certData.certificateChain,
+        caCertificate: certData.caCertificate
+      }).length > 0
+    );
+  } catch {
+    return false;
+  }
 };
 
 const buildProspectiveCertificates = (args: {
@@ -87,7 +105,8 @@ const buildProspectiveCertificates = (args: {
     paths: getExportedCertificateFileSuffixes({
       ...exportOptions,
       hasCertificateChain: Boolean(certData.certificateChain),
-      hasPrivateKey: Boolean(certData.privateKey)
+      hasPrivateKey: Boolean(certData.privateKey),
+      hasTruststoreCertificates: hasTruststoreCertificates(exportOptions, certData)
     }).map((suffix) => joinPath(destinationDirectory, `${baseName}${suffix}`)),
     commonName: certData.commonName ?? undefined
   }));

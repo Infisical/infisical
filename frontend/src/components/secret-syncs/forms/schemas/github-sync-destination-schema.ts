@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import {
   GitHubSyncScope,
   GitHubSyncVisibility
@@ -16,7 +16,11 @@ export const GitHubSyncDestinationSchema = BaseSecretSyncSchema().merge(
           scope: z.literal(GitHubSyncScope.Organization),
           org: z.string().min(1, "Organization name required"),
           visibility: z.nativeEnum(GitHubSyncVisibility),
-          selectedRepositoryIds: z.number().array().optional()
+          selectedRepositoryIds: z
+            .number()
+            .array()
+            .optional()
+            .transform((value) => (value?.length ? value : undefined))
         }),
         z.object({
           scope: z.literal(GitHubSyncScope.Repository),

@@ -1,9 +1,11 @@
 import { Knex } from "knex";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamSessionStatus } from "../pam/pam-enums";
@@ -11,7 +13,7 @@ import { getResourceIdsWithActionsForActors, pamActorKey } from "../pam/pam-perm
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
-import { terminatePamSessions } from "./pam-session-fns";
+import { LIVE_PAM_SESSION_STATUSES, sendPamSessionCancellationSignal, terminatePamSessions } from "./pam-session-fns";
 
 // Users and machine identities can both hold PAM sessions, and the two are tracked in separate columns
 // (`userId` / `identityId` on the session, `actorUserId` / `actorIdentityId` on the membership). Carrying
@@ -152,4 +154,80 @@ export const terminatePamSessionsWithoutLaunchAccess = async ({
     gatewayV2Service,
     tx
   });
+};
+
+type TTerminatePamSessionsForUsersDTO = {
+  orgIds: string[];
+  userIds: string[];
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  tx?: Knex;
+};
+
+// Same transaction contract as `terminatePamSessions`: the row update rolls back with the caller's
+// transaction, the cancellation signals cannot, so the caller fires the returned callback after COMMIT.
+export const terminatePamSessionsForUsers = async ({
+  orgIds,
+  userIds,
+  pamSessionDAL,
+  gatewayV2Service,
+  tx
+}: TTerminatePamSessionsForUsersDTO): Promise<() => void> => {
+  const noop = () => {};
+  if (userIds.length === 0) return noop;
+
+  const sessions = await pamSessionDAL.findLiveByOrgAndUserIds(orgIds, userIds, tx);
+  if (sessions.length === 0) return noop;
+
+  await pamSessionDAL.update(
+    { $in: { id: sessions.map((session) => session.id), status: LIVE_PAM_SESSION_STATUSES } },
+    { status: PamSessionStatus.Terminated, endedAt: new Date() },
+    tx
+  );
+
+  return () => {
+    for (const session of sessions) {
+      // Gateway-less types (AWS IAM) hand STS credentials straight to the user; AWS has no per-session
+      // revocation, so those stay valid until they expire.
+      if (session.gatewayId) {
+        const sessionActor = resolveSessionActor(session);
+        sendPamSessionCancellationSignal({
+          sessionId: session.id,
+          gatewayId: session.gatewayId,
+          accountType: session.accountType,
+          actorId: sessionActor?.id ?? "",
+          actorType: sessionActor?.type,
+          actorEmail: session.actorEmail || session.actorName,
+          gatewayV2Service
+        });
+      }
+    }
+  };
+};
+
+export const assertUserStillActiveInOrg = async ({
+  orgId,
+  userId,
+  membershipDAL,
+  orgDAL,
+  tx
+}: {
+  orgId: string;
+  userId: string;
+  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
+  tx: Knex;
+}) => {
+  const org = await orgDAL.findById(orgId, tx);
+
+  const orgIds = org?.rootOrgId ? [orgId, org.rootOrgId] : [orgId];
+
+  for await (const id of orgIds) {
+    const membership = await membershipDAL.lockOrgMembershipForUser(id, userId, tx);
+    if (!membership || !membership.isActive) {
+      throw new ForbiddenRequestError({
+        message: "Your organization membership is no longer active. Contact an organization admin to restore access."
+      });
+    }
+  }
 };

@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { twMerge } from "tailwind-merge";
 
 type SizeOptions = "xs" | "sm" | "md" | "lg";
@@ -20,7 +21,7 @@ export const Spinner = ({ className, size = "md" }: Props): JSX.Element => {
       <svg
         aria-hidden="true"
         className={twMerge(
-          "m-1 animate-spin fill-primary text-gray-200 dark:text-gray-600",
+          "m-1 animate-spin fill-project text-foreground-cool dark:text-surface-cool-active",
           sizeChart[size],
           className
         )}

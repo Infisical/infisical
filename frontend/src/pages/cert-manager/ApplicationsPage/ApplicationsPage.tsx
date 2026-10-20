@@ -3,7 +3,6 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -22,6 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  PageHeader,
   PageLoader,
   Pagination,
   ResourceIcon,
@@ -53,7 +53,7 @@ import { PkiApplicationModal } from "./components/PkiApplicationModal";
 const APPLICATIONS_TABLE = "pkiApplicationsTable";
 
 export const ApplicationsPage = () => {
-  const { projectId, orgId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
@@ -113,10 +113,9 @@ export const ApplicationsPage = () => {
               className="cursor-pointer"
               onClick={() =>
                 navigate({
-                  to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+                  to: "/organizations/$orgId/cert-manager/applications/$applicationName",
                   params: {
                     orgId: orgId ?? "",
-                    projectId: projectId ?? "",
                     applicationName: app.name
                   }
                 })
@@ -124,7 +123,7 @@ export const ApplicationsPage = () => {
             >
               <TableCell className="w-full">
                 <div className="flex items-center gap-x-2 font-mono">
-                  <ResourceIcon className="size-4 shrink-0 text-primary" />
+                  <ResourceIcon className="size-4 shrink-0 text-project" />
                   <span>{app.name}</span>
                   {app.description?.length ? (
                     <Tooltip>
@@ -178,9 +177,9 @@ export const ApplicationsPage = () => {
       <Helmet>
         <title>Applications</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
             <PageHeader
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}

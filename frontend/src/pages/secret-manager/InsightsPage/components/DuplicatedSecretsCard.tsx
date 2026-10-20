@@ -172,7 +172,7 @@ export const DuplicatedSecretsCard = () => {
         )}
         {!isPending && isMigrationRunning && (
           <div className="flex h-[200px] flex-col items-center justify-center gap-3">
-            <Loader2Icon className="size-6 animate-spin text-primary" />
+            <Loader2Icon className="size-6 animate-spin text-project" />
             <p className="text-sm text-muted">
               Indexing secrets for duplicate detection. This may take a moment...
             </p>
@@ -180,8 +180,8 @@ export const DuplicatedSecretsCard = () => {
         )}
         {!isPending && isMigrationFailed && (
           <div className="flex h-[200px] flex-col items-center justify-center gap-3">
-            <AlertTriangleIcon className="size-6 text-red-500" />
-            <p className="text-sm text-red-400">
+            <AlertTriangleIcon className="size-6 text-danger" />
+            <p className="text-sm text-danger">
               Failed to index secrets: {statusData?.message ?? "Unknown error"}
             </p>
             <Button variant="outline" onClick={handleRetryClick}>

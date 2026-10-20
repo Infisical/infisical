@@ -3,7 +3,6 @@ import { BanIcon, CopyIcon, EllipsisIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -22,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -164,6 +164,7 @@ export const RelayPageHeader = ({
       </AlertDialog>
       <AlertDialog
         open={popUp.revokeRelay.isOpen}
+        confirmationValue={relay.name}
         onOpenChange={(open) => handlePopUpToggle("revokeRelay", open)}
       >
         <AlertDialogContent>
@@ -174,6 +175,7 @@ export const RelayPageHeader = ({
               to reconnect.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <AlertDialogConfirmationField inputProps={{ placeholder: relay.name }} />
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
             <AlertDialogAction

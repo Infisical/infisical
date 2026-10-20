@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
@@ -49,7 +49,8 @@ describe("dynamic-secret provider runtime metadata", () => {
     [
       DynamicSecretProviders.Github,
       DynamicSecretProviders.Ssh,
-      DynamicSecretProviders.Tailscale
+      DynamicSecretProviders.Tailscale,
+      DynamicSecretProviders.OAuth2
     ].forEach((provider) => {
       assert.equal(
         getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities.supportsRenewal,

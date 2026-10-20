@@ -122,9 +122,10 @@ Supports conditions and permission inversion.
 
 #### Subject: `audit-logs`
 
-| Action | Description                                             |
-| ------ | ------------------------------------------------------- |
-| `read` | View audit logs of actions performed within the project |
+| Action | Description                                                                                                                       |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `read` | View audit logs of actions performed within the project                                                                           |
+| `edit` | Choose which audit log event classes the project records. If you self-host Infisical, also set how long the project keeps its logs |
 
 #### Subject: `integrations`
 
@@ -285,6 +286,15 @@ Supports conditions and permission inversion.
 | `sync-secrets`   | Execute synchronization of secrets between systems | `environment`, `secretPath`, `connectionId` |
 | `import-secrets` | Import secrets from sync sources                   | `environment`, `secretPath`, `connectionId` |
 | `remove-secrets` | Remove secrets from sync destinations              | `environment`, `secretPath`, `connectionId` |
+
+#### Subject: `secret-validation-rules`
+
+| Action   | Description                                   |
+| -------- | --------------------------------------------- |
+| `read`   | View secret validation rules                  |
+| `create` | Add new secret validation rules               |
+| `edit`   | Modify existing secret validation rules       |
+| `delete` | Remove secret validation rules                |
 
 #### Subject: `dynamic-secrets`
 

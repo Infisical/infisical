@@ -508,6 +508,8 @@ export const GcpKmsForm = ({
                     value={field.value ?? ""}
                     isError={Boolean(error)}
                     placeholder="production-kms"
+                    autoComplete="off"
+                    name="gcp-kms-alias"
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

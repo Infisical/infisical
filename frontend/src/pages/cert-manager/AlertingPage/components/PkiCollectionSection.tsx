@@ -3,7 +3,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { Button } from "@app/components/v2";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeletePkiCollection } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -37,9 +38,9 @@ export const PkiCollectionSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Certificate Collections</p>
+        <p className="text-xl font-medium text-foreground">Certificate Collections</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.PkiCollections}
@@ -59,14 +60,15 @@ export const PkiCollectionSection = () => {
       </div>
       <PkiCollectionTable handlePopUpOpen={handlePopUpOpen} />
       <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiCollection.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to remove the alert ${
           (popUp?.deletePkiCollection?.data as { name: string })?.name || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemovePkiCollectionSubmit(
             (popUp?.deletePkiCollection?.data as { collectionId: string })?.collectionId
           )

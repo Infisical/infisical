@@ -38,6 +38,13 @@ const OpenRouterApiKeyRotationParametersSchema = z.object({
       `Key name must be ${OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH} characters or fewer`
     )
     .describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.name),
+  workspaceId: z
+    .string()
+    .trim()
+    .min(1, "Workspace ID cannot be empty")
+    .max(100)
+    .optional()
+    .describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.workspaceId),
   limit: z.number().positive().optional().nullable().describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.limit),
   limitReset: z
     .nativeEnum(OpenRouterLimitReset)

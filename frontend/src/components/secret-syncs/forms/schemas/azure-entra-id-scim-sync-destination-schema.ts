@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 export const AzureEntraIdScimSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
@@ -11,7 +11,8 @@ export const AzureEntraIdScimSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
     destination: z.literal(SecretSync.AzureEntraIdScim),
     destinationConfig: z.object({
-      servicePrincipalId: z.string().trim().min(1, "Service Principal ID required")
+      servicePrincipalId: z.string().trim().min(1, "Service Principal ID required"),
+      servicePrincipalDisplayName: z.string().optional()
     })
   })
 );

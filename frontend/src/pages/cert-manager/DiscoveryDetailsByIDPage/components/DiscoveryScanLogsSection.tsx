@@ -3,7 +3,6 @@ import { faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { Tooltip } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -22,7 +21,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useGetScanHistory } from "@app/hooks/api";
 import { getScanStatusBadge } from "@app/pages/cert-manager/pki-discovery-utils";
@@ -32,24 +34,30 @@ type Props = {
   onTriggerScan: () => void;
   isTriggerDisabled: boolean;
   isTriggerPending: boolean;
+  isScanRunning: boolean;
 };
 
 const PER_PAGE_INIT = 10;
+const SCAN_IN_FLIGHT_POLL_MS = 5000;
 
 export const DiscoveryScanLogsSection = ({
   discoveryId,
   onTriggerScan,
   isTriggerDisabled,
-  isTriggerPending
+  isTriggerPending,
+  isScanRunning
 }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
-  const { data, isPending } = useGetScanHistory({
-    discoveryId,
-    offset: (page - 1) * perPage,
-    limit: perPage
-  });
+  const { data, isPending } = useGetScanHistory(
+    {
+      discoveryId,
+      offset: (page - 1) * perPage,
+      limit: perPage
+    },
+    { refetchInterval: isScanRunning ? SCAN_IN_FLIGHT_POLL_MS : false }
+  );
 
   const scans = data?.scans || [];
   const totalCount = data?.totalCount || 0;
@@ -125,19 +133,19 @@ export const DiscoveryScanLogsSection = ({
                       <TableCell>{duration !== null ? `${duration}s` : "-"}</TableCell>
                       <TableCell>
                         {scan.errorMessage ? (
-                          <Tooltip
-                            className="max-w-sm"
-                            content={
+                          <Tooltip hoverable delayDuration={50}>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help truncate text-warning">
+                                {scan.errorMessage.length > 20
+                                  ? `${scan.errorMessage.substring(0, 20)}...`
+                                  : scan.errorMessage}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-sm">
                               <div className="max-h-40 overflow-y-auto py-1 text-xs break-words whitespace-normal">
                                 {scan.errorMessage}
                               </div>
-                            }
-                          >
-                            <span className="cursor-help truncate text-yellow-500">
-                              {scan.errorMessage.length > 20
-                                ? `${scan.errorMessage.substring(0, 20)}...`
-                                : scan.errorMessage}
-                            </span>
+                            </TooltipContent>
                           </Tooltip>
                         ) : (
                           "-"

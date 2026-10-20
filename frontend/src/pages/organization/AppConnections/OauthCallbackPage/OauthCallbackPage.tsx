@@ -20,6 +20,7 @@ import {
   GitHubConnectionMethod,
   GitLabConnectionMethod,
   HerokuConnectionMethod,
+  StripeConnectionMethod,
   TAppConnection,
   useCreateAppConnection,
   useUpdateAppConnection
@@ -36,7 +37,8 @@ const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
   [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData",
   [AppConnection.AzureDevOps]: "azureDevOpsConnectionFormData",
-  [AppConnection.Heroku]: "herokuConnectionFormData"
+  [AppConnection.Heroku]: "herokuConnectionFormData",
+  [AppConnection.Stripe]: "stripeConnectionFormData"
 };
 
 export const OAuthCallbackPage = () => {
@@ -605,6 +607,56 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
+  const handleStripe = useCallback(async () => {
+    const formData = getFormData(AppConnection.Stripe);
+    if (formData === null) return null;
+
+    clearState(AppConnection.Stripe);
+
+    const { connectionId, name, description, returnUrl, projectId } = formData;
+
+    let connection: TAppConnection;
+
+    try {
+      if (connectionId) {
+        connection = await updateAppConnection.mutateAsync({
+          app: AppConnection.Stripe,
+          connectionId,
+          credentials: {
+            code: code as string
+          }
+        });
+      } else {
+        connection = await createAppConnection.mutateAsync({
+          app: AppConnection.Stripe,
+          name,
+          description,
+          method: StripeConnectionMethod.OAuth,
+          projectId,
+          credentials: {
+            code: code as string
+          }
+        });
+      }
+    } catch {
+      navigate({
+        to: returnUrl,
+        params: {
+          projectId
+        }
+      });
+      return null;
+    }
+
+    return {
+      connectionId,
+      returnUrl,
+      appConnectionName: formData.app,
+      projectId,
+      connection
+    };
+  }, []);
+
   // Ensure that the localstorage is ready for use, to avoid the form data being malformed
   useEffect(() => {
     if (!isReady) {
@@ -641,6 +693,8 @@ export const OAuthCallbackPage = () => {
           data = await handleAzureDevOps();
         } else if (appConnection === AppConnection.Heroku) {
           data = await handleHeroku();
+        } else if (appConnection === AppConnection.Stripe) {
+          data = await handleStripe();
         }
       } catch {
         createNotification({

@@ -38,7 +38,7 @@ export const ProjectScanningConfigTab = () => {
         <EmptyState
           className="max-w-2xl rounded-md text-center"
           icon={faBan}
-          title="Could not find Project Configuration"
+          title="Could not find Secret Scanning configuration"
         />
       </div>
     );

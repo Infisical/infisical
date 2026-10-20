@@ -13,15 +13,15 @@ import {
   TIdentityKubernetesAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
-import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -31,24 +31,15 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  NotFoundError,
-  PermissionBoundaryError,
-  UnauthorizedError
-} from "@app/lib/errors";
-import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { getMissingGatewayMessage, getRetiredGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayHttpProxyActions, GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -62,8 +53,14 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -77,8 +74,10 @@ import { TIdentityKubernetesAuthDALFactory } from "./identity-kubernetes-auth-da
 import { handleAxiosError, isKnownError, KubernetesAuthErrorContext } from "./identity-kubernetes-auth-error-handlers";
 import {
   extractK8sUsername,
+  getJwtFingerprintForLog,
   getKubernetesHostname,
   getKubernetesServerName,
+  getKubernetesStatusForLog,
   withKubernetesHostScheme
 } from "./identity-kubernetes-auth-fns";
 import {
@@ -110,15 +109,16 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
-  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId">;
+  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId" | "findByIdForShare">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  gatewayService: TGatewayServiceFactory;
   gatewayV2Service: TGatewayV2ServiceFactory;
-  gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickHealthyGateway" | "runWithPoolFailover">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
@@ -127,11 +127,23 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
 
 const GATEWAY_AUTH_DEFAULT_HOST = "https://kubernetes.default.svc.cluster.local";
+
+// The retired gateway v1 `gatewayId` column is still populated on rows that were pinned to a v1
+// gateway. Nothing can resolve it any more, but it still means "this must not be dialed directly",
+// so every gateway-or-direct decision has to treat it as a configured gateway and fail closed.
+// Reading only gatewayV2Id/gatewayPoolId would send the token reviewer JWT straight to the
+// customer's Kubernetes API server from the platform.
+const isPinnedToRetiredGateway = (row: {
+  gatewayId?: string | null;
+  gatewayV2Id?: string | null;
+  gatewayPoolId?: string | null;
+}) => Boolean(row.gatewayId) && !row.gatewayV2Id && !row.gatewayPoolId;
 
 export const identityKubernetesAuthServiceFactory = ({
   identityDAL,
@@ -142,15 +154,14 @@ export const identityKubernetesAuthServiceFactory = ({
   identityAccessTokenDAL,
   permissionService,
   licenseService,
-  gatewayService,
   gatewayV2Service,
-  gatewayDAL,
   gatewayV2DAL,
   kmsService,
   gatewayPoolService,
   gatewayPoolDAL,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
   const $gatewayProxyWrapper = async <T>(
     inputs: {
@@ -190,7 +201,6 @@ export const identityKubernetesAuthServiceFactory = ({
         }
       );
 
-    // Pools are gateway-v2 only, so there is no v1 fallback to preserve on this branch.
     if (inputs.gatewayPoolId) {
       const { result } = await gatewayPoolService.runWithPoolFailover(
         { poolId: inputs.gatewayPoolId },
@@ -215,32 +225,12 @@ export const identityKubernetesAuthServiceFactory = ({
       targetPort: inputs.targetPort ?? 443
     });
 
-    if (gatewayV2ConnectionDetails) {
-      return $proxyThroughGatewayV2(gatewayV2ConnectionDetails);
+    // Falling through here would silently bypass the gateway this auth method is pinned to.
+    if (!gatewayV2ConnectionDetails) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(inputs.gatewayId!) });
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId!);
-
-    const callbackResult = await withGatewayProxy(
-      async (port, httpsAgent) => {
-        const res = await gatewayCallback(
-          inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
-          port,
-          httpsAgent
-        );
-        return res;
-      },
-      {
-        protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
-        targetHost: inputs.targetHost,
-        targetPort: inputs.targetPort,
-        relayDetails,
-        // only needed for TCP protocol, because the gateway as reviewer will use the pod's CA cert for auth directly
-        ...(gatewayHttpsAgent ? { httpsAgent: gatewayHttpsAgent } : {})
-      }
-    );
-
-    return callbackResult;
+    return $proxyThroughGatewayV2(gatewayV2ConnectionDetails);
   };
 
   /**
@@ -334,6 +324,10 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new NotFoundError({
         message: "Kubernetes auth method not found for identity, did you configure Kubernetes auth?"
       });
+    }
+
+    if (isPinnedToRetiredGateway(identityKubernetesAuth)) {
+      throw new BadRequestError({ message: getRetiredGatewayMessage("This Kubernetes auth method") });
     }
 
     const identity = await requestMemoize(requestMemoKeys.identityFindById(identityKubernetesAuth.identityId), () =>
@@ -431,28 +425,35 @@ export const identityKubernetesAuthServiceFactory = ({
                 servername
               })
         ).catch((err) => {
-          const tokenReviewerJwtSnippet = `${tokenReviewerJwt?.substring?.(0, 10) || ""}...${tokenReviewerJwt?.substring?.(tokenReviewerJwt.length - 10) || ""}`;
-          const serviceAccountJwtSnippet = `${serviceAccountJwt?.substring?.(0, 10) || ""}...${serviceAccountJwt?.substring?.(serviceAccountJwt.length - 10) || ""}`;
+          const tokenReviewerJwtFingerprint = getJwtFingerprintForLog(tokenReviewerJwt);
+          const serviceAccountJwtFingerprint = getJwtFingerprintForLog(serviceAccountJwt);
 
           if (err instanceof AxiosError) {
-            logger.error(
+            const status = err.response?.status;
+            const level = status === 401 || status === 403 ? "warn" : "error";
+            logger[level](
               {
-                response: err.response,
                 host,
                 port,
-                tokenReviewerJwtSnippet,
-                serviceAccountJwtSnippet,
-                code: err.code
+                status: err.response?.status,
+                code: err.code,
+                ...getKubernetesStatusForLog(err.response?.data, [tokenReviewerJwt, serviceAccountJwt]),
+                tokenReviewerJwtFingerprint,
+                serviceAccountJwtFingerprint
               },
-              "tokenReviewCallbackRaw: Kubernetes token review request error (request error)"
+              `tokenReviewCallbackRaw: Kubernetes token review request error (request error) [identityId=${identityKubernetesAuth.identityId}] [status=${err.response?.status}] [code=${err.code}]`
             );
 
-            throw handleAxiosError(err, { host, port }, KubernetesAuthErrorContext.KubernetesApiServer);
+            throw handleAxiosError(
+              err,
+              { host, port, credentials: [tokenReviewerJwt, serviceAccountJwt] },
+              KubernetesAuthErrorContext.KubernetesApiServer
+            );
           }
 
-          logger.error(
-            { error: err as Error, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
-            "tokenReviewCallbackRaw: Kubernetes token review request error (non-request error)"
+          logger[isKnownError(err) ? "warn" : "error"](
+            { error: err as Error, host, port, tokenReviewerJwtFingerprint, serviceAccountJwtFingerprint },
+            `tokenReviewCallbackRaw: Kubernetes token review request error (non-request error) [identityId=${identityKubernetesAuth.identityId}]`
           );
 
           if (isKnownError(err)) {
@@ -472,10 +473,7 @@ export const identityKubernetesAuthServiceFactory = ({
       const tokenReviewCallbackThroughGateway = async (host: string, port?: number) => {
         // localPort is the correlation key into the gatewayTunnel:* lines, which carry the tunnel id
         // and outlive this request: the tunnel is torn down after the response is already logged.
-        const gatewayIdForLog =
-          identityKubernetesAuth.gatewayV2Id ??
-          identityKubernetesAuth.gatewayId ??
-          identityKubernetesAuth.gatewayPoolId;
+        const gatewayIdForLog = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayPoolId;
         logger.info(
           { host, port },
           `tokenReviewCallbackThroughGateway: Processing kubernetes token review using gateway [identityId=${identityKubernetesAuth.identityId}] [gatewayId=${gatewayIdForLog}] [localPort=${port}]`
@@ -511,7 +509,11 @@ export const identityKubernetesAuthServiceFactory = ({
             );
 
             if (err instanceof AxiosError) {
-              throw handleAxiosError(err, { host, port }, KubernetesAuthErrorContext.GatewayProxy);
+              throw handleAxiosError(
+                err,
+                { host, port, credentials: [serviceAccountJwt] },
+                KubernetesAuthErrorContext.GatewayProxy
+              );
             }
 
             if (isKnownError(err)) {
@@ -537,11 +539,7 @@ export const identityKubernetesAuthServiceFactory = ({
       let data: TCreateTokenReviewResponse | undefined;
 
       if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
-        if (
-          !identityKubernetesAuth.gatewayId &&
-          !identityKubernetesAuth.gatewayV2Id &&
-          !identityKubernetesAuth.gatewayPoolId
-        ) {
+        if (!identityKubernetesAuth.gatewayV2Id && !identityKubernetesAuth.gatewayPoolId) {
           throw new BadRequestError({
             message: "Gateway or Gateway Pool is required when token review mode is set to Gateway"
           });
@@ -551,7 +549,7 @@ export const identityKubernetesAuthServiceFactory = ({
           {
             gatewayId: identityKubernetesAuth.gatewayPoolId
               ? undefined
-              : ((identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string),
+              : (identityKubernetesAuth.gatewayV2Id as string),
             gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
             caCert: caCert || undefined,
             verifyTlsCertificate: identityKubernetesAuth.verifyTlsCertificate,
@@ -573,17 +571,14 @@ export const identityKubernetesAuthServiceFactory = ({
 
         const [k8sHost, k8sPort] = kubernetesHost.split(":");
 
-        const hasGateway =
-          identityKubernetesAuth.gatewayId ||
-          identityKubernetesAuth.gatewayV2Id ||
-          identityKubernetesAuth.gatewayPoolId;
+        const hasGateway = identityKubernetesAuth.gatewayV2Id || identityKubernetesAuth.gatewayPoolId;
 
         data = hasGateway
           ? await $gatewayProxyWrapper(
               {
                 gatewayId: identityKubernetesAuth.gatewayPoolId
                   ? undefined
-                  : ((identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string),
+                  : (identityKubernetesAuth.gatewayV2Id as string),
                 gatewayPoolId: identityKubernetesAuth.gatewayPoolId ?? undefined,
                 targetHost: k8sHost,
                 targetPort: k8sPort ? Number(k8sPort) : 443,
@@ -858,34 +853,20 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
         orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to add kubernetes auth to identity with more privileged role",
+        actor,
+        actorId,
         actorAuthMethod,
         actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
+      }
+    );
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -928,7 +909,12 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert = templateFields.caCert || undefined;
       tokenReviewerJwt = templateFields.tokenReviewerJwt || undefined;
       tokenReviewMode = templateFields.tokenReviewMode;
-      gatewayId = template.gatewayV2Id ?? template.gatewayId ?? null;
+      if (isPinnedToRetiredGateway(template)) {
+        throw new BadRequestError({
+          message: getRetiredGatewayMessage(`Auth template '${template.name}'`)
+        });
+      }
+      gatewayId = template.gatewayV2Id ?? null;
       gatewayPoolId = template.gatewayPoolId ?? null;
       verifyTlsCertificate = templateFields.verifyTlsCertificate ?? Boolean(templateFields.caCert?.length);
       allowedAudience = templateFields.allowedAudience ?? "";
@@ -978,7 +964,6 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const resolvedVerifyTlsCertificate = verifyTlsCertificate ?? Boolean(caCert);
 
-    let isGatewayV1 = true;
     if (gatewayId) {
       if (!plan.gateway) {
         throw new BadRequestError({
@@ -987,16 +972,9 @@ export const identityKubernetesAuthServiceFactory = ({
         });
       }
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
-      if (!gateway && !gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
-        });
-      }
-
-      if (!gateway) {
-        isGatewayV1 = false;
+      if (!gatewayV2) {
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
 
       // when the gateway comes from a template, attaching the gateway was authorized at
@@ -1015,6 +993,13 @@ export const identityKubernetesAuthServiceFactory = ({
           OrgPermissionSubjects.Gateway
         );
       }
+      // A template's gateway can predate the org's pool requirement, so it is checked here as well.
+      await assertIndividualGatewayAllowed({
+        orgDAL,
+        orgId: identityMembershipOrg.scopeOrgId,
+        gatewayId,
+        inheritedFrom: template ? `Auth template '${template.name}'` : undefined
+      });
 
       if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
         const gatewayExecutor = $createGatewayValidationRequest(gatewayId);
@@ -1099,17 +1084,15 @@ export const identityKubernetesAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    let resolvedGatewayId: string | null | undefined = null;
     let resolvedGatewayV2Id: string | null | undefined = null;
     if (!gatewayPoolId && gatewayId) {
-      if (isGatewayV1) {
-        resolvedGatewayId = gatewayId;
-      } else {
-        resolvedGatewayV2Id = gatewayId;
-      }
+      resolvedGatewayV2Id = gatewayId;
     }
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityKubernetesAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
@@ -1122,7 +1105,6 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
-          gatewayId: resolvedGatewayId,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: gatewayPoolId ?? null,
           templateId: template?.id ?? null,
@@ -1136,6 +1118,17 @@ export const identityKubernetesAuthServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
 
@@ -1146,7 +1139,8 @@ export const identityKubernetesAuthServiceFactory = ({
       // a template's reviewer JWT is an org-scoped write-only credential; identity-level
       // readers must not be able to recover it through the identity endpoints
       tokenReviewerJwt: template ? "" : tokenReviewerJwt,
-      orgId: identityMembershipOrg.scopeOrgId
+      orgId: identityMembershipOrg.scopeOrgId,
+      gatewayId: identityKubernetesAuth.gatewayV2Id
     };
   };
 
@@ -1201,34 +1195,20 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
         orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to update kubernetes auth of identity with more privileged role",
+        actor,
+        actorId,
         actorAuthMethod,
         actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
+      }
+    );
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -1276,7 +1256,12 @@ export const identityKubernetesAuthServiceFactory = ({
       tokenReviewMode = templateFields.tokenReviewMode;
       // the template's gateway lives in columns, not the encrypted fields, so it can carry a
       // foreign key and clear itself in step with the columns copied onto this row
-      gatewayId = template.gatewayV2Id ?? template.gatewayId ?? null;
+      if (isPinnedToRetiredGateway(template)) {
+        throw new BadRequestError({
+          message: getRetiredGatewayMessage(`Auth template '${template.name}'`)
+        });
+      }
+      gatewayId = template.gatewayV2Id ?? null;
       gatewayPoolId = template.gatewayPoolId ?? null;
       verifyTlsCertificate = templateFields.verifyTlsCertificate ?? Boolean(templateFields.caCert?.length);
       allowedAudience = templateFields.allowedAudience ?? "";
@@ -1317,6 +1302,8 @@ export const identityKubernetesAuthServiceFactory = ({
     // too. every field below decides where or how the JWT is sent; the host alone is not enough
     // (a gateway tunnels it in API mode, and CA/verify settings guard it on the wire)
     if (!template && identityKubernetesAuth.isTokenReviewerJwtTemplateSourced && tokenReviewerJwt === undefined) {
+      // includes the retired v1 column: unlinking a v1-pinned gateway still repoints where
+      // the template-sourced reviewer JWT would be sent
       const storedGatewayId = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId ?? null;
       const repointsConnection =
         (kubernetesHost !== undefined && kubernetesHost !== identityKubernetesAuth.kubernetesHost) ||
@@ -1353,7 +1340,6 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    let isGatewayV1 = true;
     if (gatewayId) {
       if (!plan.gateway) {
         throw new BadRequestError({
@@ -1362,17 +1348,10 @@ export const identityKubernetesAuthServiceFactory = ({
         });
       }
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
 
-      if (!gateway && !gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
-        });
-      }
-
-      if (!gateway) {
-        isGatewayV1 = false;
+      if (!gatewayV2) {
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
 
       if (!template) {
@@ -1389,6 +1368,14 @@ export const identityKubernetesAuthServiceFactory = ({
           OrgPermissionSubjects.Gateway
         );
       }
+      // A template's gateway can predate the org's pool requirement, so it is checked here as well.
+      await assertIndividualGatewayAllowed({
+        orgDAL,
+        orgId: identityMembershipOrg.scopeOrgId,
+        gatewayId,
+        previousGatewayId: identityKubernetesAuth.gatewayV2Id,
+        inheritedFrom: template ? `Auth template '${template.name}'` : undefined
+      });
     }
 
     // Handle gateway pool permission check
@@ -1423,14 +1410,13 @@ export const identityKubernetesAuthServiceFactory = ({
 
     // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.
     const shouldUpdateGatewayId = Boolean(gatewayId !== undefined || gatewayPoolId !== undefined);
-    let gatewayIdValue: string | null | undefined = null;
+
+    if (isPinnedToRetiredGateway(identityKubernetesAuth) && !shouldUpdateGatewayId) {
+      throw new BadRequestError({ message: getRetiredGatewayMessage("This Kubernetes auth method") });
+    }
     let gatewayV2IdValue: string | null | undefined = null;
     if (!gatewayPoolId && gatewayId) {
-      if (isGatewayV1) {
-        gatewayIdValue = gatewayId;
-      } else {
-        gatewayV2IdValue = gatewayId;
-      }
+      gatewayV2IdValue = gatewayId;
     }
     let gatewayPoolIdValue: string | null | undefined;
     if (gatewayPoolId !== undefined) {
@@ -1451,7 +1437,7 @@ export const identityKubernetesAuthServiceFactory = ({
     } else if (gatewayId !== undefined) {
       effectiveGatewayId = gatewayId;
     } else {
-      effectiveGatewayId = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId;
+      effectiveGatewayId = identityKubernetesAuth.gatewayV2Id;
     }
 
     let effectiveCaCert: string | undefined;
@@ -1568,8 +1554,12 @@ export const identityKubernetesAuthServiceFactory = ({
       // tri-state passthrough: undefined keeps the current link, null unlinks, a uuid links
       // (a re-assert of the current id skips the template load above, so template is unset)
       templateId,
-      gatewayId: shouldUpdateGatewayId ? gatewayIdValue : undefined,
       gatewayV2Id: shouldUpdateGatewayId ? gatewayV2IdValue : undefined,
+      // A deliberate gateway change clears the retired v1 pin too, otherwise `isPinnedToRetiredGateway`
+      // would reject this row's logins forever with no way to detach: setting gatewayId to null only
+      // clears gatewayV2Id, leaving the retired column set. Rows nobody edits keep their v1 value, so
+      // the retirement stays revertible for everything that has not already been repointed.
+      gatewayId: shouldUpdateGatewayId ? null : undefined,
       gatewayPoolId: gatewayPoolIdValue,
       verifyTlsCertificate: resolvedVerifyTlsCertificate,
       accessTokenMaxTTL,
@@ -1596,7 +1586,24 @@ export const identityKubernetesAuthServiceFactory = ({
       updateQuery.isTokenReviewerJwtTemplateSourced = false;
     }
 
-    const updatedKubernetesAuth = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery);
+    const updatedKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
+      const doc = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery, tx);
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
+    });
 
     const updatedCACert = updatedKubernetesAuth.encryptedKubernetesCaCertificate
       ? decryptor({
@@ -1618,7 +1625,8 @@ export const identityKubernetesAuthServiceFactory = ({
       ...updatedKubernetesAuth,
       orgId: identityMembershipOrg.scopeOrgId,
       caCert: updatedCACert,
-      tokenReviewerJwt: updatedTokenReviewerJwt
+      tokenReviewerJwt: updatedTokenReviewerJwt,
+      gatewayId: updatedKubernetesAuth.gatewayV2Id
     };
   };
 
@@ -1707,7 +1715,7 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert,
       tokenReviewerJwt,
       orgId: identityMembershipOrg.scopeOrgId,
-      gatewayId: identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id
+      gatewayId: identityKubernetesAuth.gatewayV2Id
     };
   };
 
@@ -1736,67 +1744,42 @@ export const identityKubernetesAuthServiceFactory = ({
         message: "The identity does not have kubernetes auth"
       });
     }
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
         projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
+        action: OrgPermissionIdentityActions.RevokeAuth,
+        baseMessage: "Failed to revoke kubernetes auth of identity with more privileged role",
         actor,
         actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
         actorAuthMethod,
         actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to revoke kubernetes auth of identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.RevokeAuth,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
-    }
+      }
+    );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);
-      return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return {
+        ...deletedKubernetesAuth?.[0],
+        orgId: identityMembershipOrg.scopeOrgId,
+        // the row's own gatewayId is the retired v1 column; the API field reports gatewayV2Id
+        gatewayId: deletedKubernetesAuth?.[0]?.gatewayV2Id
+      };
     });
 
     // Detaching the auth method must invalidate any tokens already issued

@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { useProject } from "@app/context";
 
 import { PolicyTab } from "./components/PolicyTab";
@@ -10,17 +10,17 @@ import { RequestsTab } from "./components/RequestsTab";
 export const ApprovalsPage = () => {
   const { currentProject } = useProject();
   const { selectedTab } = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals/"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/approvals/"
   });
 
   const activeTab = selectedTab || "requests";
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       <Helmet>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={currentProject.type}
           title="Certificate Approvals"

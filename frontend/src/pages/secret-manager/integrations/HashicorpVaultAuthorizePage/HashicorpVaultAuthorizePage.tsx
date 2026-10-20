@@ -1,12 +1,23 @@
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button, Card, CardBody, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -64,116 +75,139 @@ export const HashicorpVaultAuthorizePage = () => {
       <Helmet>
         <title>Authorize Vault Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After connecting to Vault, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          <div className="flex flex-row items-center">
-            <div className="inline-flex items-center">
+      <form onSubmit={handleSubmit(handleFormSubmit)} noValidate className="w-full max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>
               <img
                 src="/images/integrations/Vault.png"
                 height={30}
                 width={30}
                 alt="HCP Vault logo"
               />
-            </div>
-            <span className="ml-2.5">HashiCorp Vault Integration</span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/hashicorp-vault"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <CardBody className="px-6 pt-0 pb-6">
-          <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+              HashiCorp Vault Integration
+              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/hashicorp-vault" />
+            </CardTitle>
+            <CardDescription>
+              After connecting to Vault, you will be prompted to set up an integration for a
+              particular Infisical project and environment.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
             <Controller
               control={control}
               name="vaultURL"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Vault Cluster URL"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isRequired
-                >
-                  <Input autoCorrect="off" spellCheck={false} placeholder="" {...field} />
-                </FormControl>
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HashicorpVaultAuthorizePage-field-1">
+                    Vault Cluster URL
+                    <span className="text-danger">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="HashicorpVaultAuthorizePage-field-1"
+                    aria-required
+                    aria-describedby="HashicorpVaultAuthorizePage-field-1-feedback"
+                    isError={Boolean(error)}
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder=""
+                    {...field}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="HashicorpVaultAuthorizePage-field-1-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
             <Controller
               control={control}
               name="vaultNamespace"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Vault Namespace"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isRequired={false}
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HashicorpVaultAuthorizePage-field-2">
+                    Vault Namespace
+                  </FieldLabel>
                   <Input
+                    id="HashicorpVaultAuthorizePage-field-2"
+                    aria-describedby="HashicorpVaultAuthorizePage-field-2-feedback"
+                    isError={Boolean(error)}
                     autoCorrect="off"
                     spellCheck={false}
                     placeholder="admin/education"
                     {...field}
                   />
-                </FormControl>
+                  {Boolean(error) && (
+                    <FieldError id="HashicorpVaultAuthorizePage-field-2-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
             <Controller
               control={control}
               name="vaultRoleID"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Vault RoleID"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isRequired
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HashicorpVaultAuthorizePage-field-3">
+                    Vault RoleID
+                    <span className="text-danger">*</span>
+                  </FieldLabel>
                   <Input
+                    id="HashicorpVaultAuthorizePage-field-3"
+                    aria-required
+                    aria-describedby="HashicorpVaultAuthorizePage-field-3-feedback"
+                    isError={Boolean(error)}
                     autoCorrect="off"
                     spellCheck={false}
                     placeholder="aaaaaaa-bbbb-cccc-dddd-aaaaaaaaaaa"
                     {...field}
                   />
-                </FormControl>
+                  {Boolean(error) && (
+                    <FieldError id="HashicorpVaultAuthorizePage-field-3-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
             <Controller
               control={control}
               name="vaultSecretID"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Vault SecretID"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isRequired
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HashicorpVaultAuthorizePage-field-4">
+                    Vault SecretID
+                    <span className="text-danger">*</span>
+                  </FieldLabel>
                   <Input
+                    id="HashicorpVaultAuthorizePage-field-4"
+                    aria-required
+                    aria-describedby="HashicorpVaultAuthorizePage-field-4-feedback"
+                    isError={Boolean(error)}
                     autoCorrect="off"
                     spellCheck={false}
                     placeholder="aaaaaaa-bbbb-cccc-dddd-aaaaaaaaaaa"
                     {...field}
                   />
-                </FormControl>
+                  {Boolean(error) && (
+                    <FieldError id="HashicorpVaultAuthorizePage-field-4-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
-            <Button type="submit" isLoading={isSubmitting}>
+          </CardContent>
+          <CardFooter className="justify-end border-t pt-4">
+            <Button type="submit" isPending={isSubmitting} variant="project">
               Connect to Vault
             </Button>
-          </form>
-        </CardBody>
-      </Card>
+          </CardFooter>
+        </Card>
+      </form>
     </div>
   );
 };

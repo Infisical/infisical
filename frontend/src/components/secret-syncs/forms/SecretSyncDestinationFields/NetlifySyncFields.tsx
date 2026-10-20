@@ -1,19 +1,16 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
-  TNetlifyAccount,
-  TNetlifySite,
   useNetlifyConnectionListAccounts,
   useNetlifyConnectionListSites
 } from "@app/hooks/api/appConnections/netlify";
@@ -56,6 +53,8 @@ export const NetlifySyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.accountId", "");
           setValue("destinationConfig.accountName", "");
+          setValue("destinationConfig.siteId", "");
+          setValue("destinationConfig.siteName", undefined);
         }}
       />
       <Controller
@@ -63,23 +62,36 @@ export const NetlifySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Account</FieldLabel>
+            <FieldLabel
+              id="secret-sync-netlify-account-id-label"
+              htmlFor="secret-sync-netlify-account-id"
+            >
+              Account
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-netlify-account-id-label"
+                aria-describedby={error ? "secret-sync-netlify-account-id-error" : undefined}
+                id="secret-sync-netlify-account-id"
+                isError={Boolean(error)}
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={accounts.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TNetlifyAccount>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.accountName", v?.name ?? "");
+                  setValue("destinationConfig.siteId", "");
+                  setValue("destinationConfig.siteName", undefined);
                 }}
                 options={accounts}
                 placeholder="Select an account..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-netlify-account-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -89,31 +101,44 @@ export const NetlifySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Site (Optional)</FieldLabel>
+            <FieldLabel
+              id="secret-sync-netlify-site-id-label"
+              htmlFor="secret-sync-netlify-site-id"
+            >
+              Site (Optional)
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-netlify-site-id-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-netlify-site-id-description secret-sync-netlify-site-id-error"
+                    : "secret-sync-netlify-site-id-description"
+                }
+                id="secret-sync-netlify-site-id"
+                isError={Boolean(error)}
                 isLoading={isSitesLoading && Boolean(accountId)}
                 isDisabled={!accountId}
                 value={sites.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TNetlifySite>;
-                  if (v?.id === value) {
-                    onChange(undefined);
-                    setValue("destinationConfig.siteName", undefined);
-                  } else {
-                    onChange(v?.id);
-                    setValue("destinationConfig.siteName", v?.name);
-                  }
+                onValueChange={(option) => {
+                  onChange(option.id);
+                  setValue("destinationConfig.siteName", option.name);
+                }}
+                onClear={() => {
+                  onChange("");
+                  setValue("destinationConfig.siteName", undefined);
                 }}
                 options={sites}
                 placeholder="Select a site..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-netlify-site-id-description">
                 If you do not select a site, the secrets will be synced to all sites in the account.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-netlify-site-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -123,26 +148,39 @@ export const NetlifySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Context (Optional)</FieldLabel>
+            <FieldLabel
+              id="secret-sync-netlify-context-label"
+              htmlFor="secret-sync-netlify-context"
+            >
+              Context (Optional)
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-netlify-context-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-netlify-context-description secret-sync-netlify-context-error"
+                    : "secret-sync-netlify-context-description"
+                }
+                id="secret-sync-netlify-context"
+                isError={Boolean(error)}
                 isDisabled={!accountId}
                 value={contexts.find((p) => p.value === value) ?? undefined}
-                onChange={(option) => {
-                  const v = option as SingleValue<{ label: string; value: NetlifySyncContext }>;
-                  if (v) onChange(v.value);
-                }}
+                onValueChange={(option) => onChange(option.value)}
+                onClear={() => onChange(null)}
                 options={contexts}
                 placeholder="Select a context..."
                 getOptionLabel={(option) => option.label}
                 getOptionValue={(option) => option.value}
+                getOptionKeywords={(option) => [option.value]}
+                modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-netlify-context-description">
                 Avoid configuring multiple syncs with overlapping contexts for the same site.
                 &quot;All Contexts&quot; overlaps with every context. Overlapping syncs may delete
                 each other&apos;s secrets.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-netlify-context-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

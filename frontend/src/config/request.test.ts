@@ -16,6 +16,9 @@ vi.mock("@app/components/utilities/SecurityClient", () => ({ default: { setToken
 vi.mock("@app/const", () => ({
   SessionStorageKeys: { ORG_LOGIN_SUCCESS_REDIRECT_URL: "redirect" }
 }));
+vi.mock("@app/helpers/certManagerActiveProject", () => ({
+  getTabCertManagerProjectIdForRequest: () => undefined
+}));
 vi.mock("@app/hooks/api/auth/refresh", () => ({ fetchAuthToken: mocks.fetchAuthToken }));
 vi.mock("@app/hooks/api/reactQuery", () => ({
   getAuthToken: () => mocks.authToken,
@@ -133,7 +136,10 @@ describe("request auth refresh boundary", () => {
     ["account-recovery", "account-recovery-token", "authorization"]
   ])("does not refresh a %s token failure", async (kind, token, headerName) => {
     if (kind === "MFA") mocks.mfaToken = token;
-    if (kind === "signup") mocks.signupToken = token;
+    if (kind === "signup") {
+      mocks.authToken = "";
+      mocks.signupToken = token;
+    }
 
     let requestAuthorization = "";
     apiRequest.defaults.adapter = async (config) => {
@@ -163,5 +169,6 @@ describe("isTokenExpiredError", () => {
   it("keeps legacy expiration markers supported", () => {
     expect(isTokenExpiredError("token expired")).toBe(true);
     expect(isTokenExpiredError({ error: "StaleSession" })).toBe(true);
+    expect(isTokenExpiredError("session is no longer valid")).toBe(true);
   });
 });

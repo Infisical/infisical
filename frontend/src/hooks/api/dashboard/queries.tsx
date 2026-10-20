@@ -21,9 +21,11 @@ import {
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretMetadataDTO,
   TGetSecretValueDTO,
   TSearchSecretsByMetadataDTO,
-  TSearchSecretsByMetadataResponse
+  TSearchSecretsByMetadataResponse,
+  TSecretMetadataPage
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
@@ -115,6 +117,14 @@ export const dashboardKeys = {
     ] as const
 };
 
+export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?: AbortSignal) => {
+  const { data } = await apiRequest.get<TSecretMetadataPage>(
+    "/api/v1/dashboard/accessible-secrets/metadata",
+    { params, signal }
+  );
+  return data;
+};
+
 export const fetchProjectSecretsOverview = async ({
   environments,
   tags,
@@ -203,6 +213,7 @@ export const useGetProjectSecretsOverview = (
     limit = 100,
     orderBy = DashboardSecretsOrderBy.Name,
     orderDirection = OrderByDirection.ASC,
+    sortEnvironment,
     search = "",
     tags,
     includeSecrets,
@@ -237,6 +248,7 @@ export const useGetProjectSecretsOverview = (
       limit,
       orderBy,
       orderDirection,
+      sortEnvironment,
       offset,
       projectId,
       includeSecrets,
@@ -256,6 +268,7 @@ export const useGetProjectSecretsOverview = (
         limit,
         orderBy,
         orderDirection,
+        sortEnvironment,
         offset,
         projectId,
         includeSecrets,
@@ -533,6 +546,8 @@ export const useGetProjectSecretsQuickSearch = (
 
 export const fetchSearchSecretsByMetadata = async ({
   projectId,
+  environments,
+  secretPath,
   operator,
   filters,
   tags
@@ -541,6 +556,8 @@ export const fetchSearchSecretsByMetadata = async ({
   // raw querystring, so build it explicitly rather than relying on axios' default array serialization.
   const params = new URLSearchParams();
   params.append("projectId", projectId);
+  if (environments?.length) params.append("environments", environments.join(","));
+  if (secretPath) params.append("secretPath", secretPath);
   params.append("operator", operator);
   filters.forEach((filter, index) => {
     params.append(`filters[${index}][key]`, filter.key);
@@ -562,7 +579,7 @@ export const fetchSearchSecretsByMetadata = async ({
 };
 
 export const useSearchSecretsByMetadata = (
-  { projectId, operator, filters, tags }: TSearchSecretsByMetadataDTO,
+  { projectId, operator, filters, tags, environments, secretPath }: TSearchSecretsByMetadataDTO,
   options?: Omit<
     UseQueryOptions<
       TSearchSecretsByMetadataResponse,
@@ -576,8 +593,23 @@ export const useSearchSecretsByMetadata = (
   return useQuery({
     ...options,
     enabled: (options?.enabled ?? true) && filters.length > 0 && Boolean(projectId),
-    queryKey: dashboardKeys.searchSecretsByMetadata({ projectId, operator, filters, tags }),
-    queryFn: () => fetchSearchSecretsByMetadata({ projectId, operator, filters, tags }),
+    queryKey: dashboardKeys.searchSecretsByMetadata({
+      projectId,
+      operator,
+      filters,
+      tags,
+      environments,
+      secretPath
+    }),
+    queryFn: () =>
+      fetchSearchSecretsByMetadata({
+        projectId,
+        operator,
+        filters,
+        tags,
+        environments,
+        secretPath
+      }),
     placeholderData: (previousData) => previousData
   });
 };

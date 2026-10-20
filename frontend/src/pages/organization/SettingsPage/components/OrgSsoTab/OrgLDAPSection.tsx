@@ -1,6 +1,7 @@
+import type { JSX } from "react";
 import { ArrowLeftRight, MoreHorizontal, Pencil } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { LdapUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -21,7 +22,7 @@ import {
   FieldGroup,
   FieldTitle,
   IconButton,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -175,7 +176,7 @@ export const OrgLDAPSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 >
                   {(isAllowed) => (
                     <div>
-                      <Switch
+                      <Toggle
                         id="enable-ldap-sso"
                         variant="org"
                         checked={data.isActive}
@@ -215,11 +216,14 @@ export const OrgLDAPSection = ({ onSwitchProvider }: Props): JSX.Element => {
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.org-ldap.section"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to LDAP authentication. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...LdapUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

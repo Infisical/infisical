@@ -53,7 +53,7 @@ export const DiscoveryDetailsSection = ({ discovery }: Props) => {
           {discovery.lastScanMessage && (
             <Detail>
               <DetailLabel>Last Scan Result</DetailLabel>
-              <DetailValue className="text-sm text-yellow-500">
+              <DetailValue className="text-sm text-warning">
                 {discovery.lastScanMessage}
               </DetailValue>
             </Detail>

@@ -17,7 +17,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -436,6 +436,7 @@ export const identityServiceFactory = ({
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, AgentVaultIdentities.key);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
@@ -488,6 +489,7 @@ export const identityServiceFactory = ({
     // identity meters change too.
     usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
     usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, AgentVaultIdentities.key);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

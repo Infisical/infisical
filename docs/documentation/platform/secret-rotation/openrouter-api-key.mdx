@@ -38,6 +38,7 @@ description: "Learn how to automatically rotate OpenRouter API keys."
 
         ![Rotation Parameters](/images/secret-rotations-v2/openrouter-api-key/parameters.png)
 
+        - **Workspace** (optional) – The OpenRouter workspace to create keys in, which you can't change after you create the rotation (if you leave this blank, OpenRouter uses your Default workspace)
         - **Key name** – Display name for the key in OpenRouter (required).
         - **Limit** (optional) – Spending limit in USD for this key.
         - **Limit reset** (optional) – How often the limit resets: daily, weekly, or monthly.
@@ -88,6 +89,7 @@ description: "Learn how to automatically rotate OpenRouter API keys."
             },
             "parameters": {
               "name": "my-app-key",
+              "workspaceId": "<openrouter-workspace-id>",
               "limit": 100,
               "limitReset": "monthly",
               "includeByokInLimit": false
@@ -117,6 +119,7 @@ description: "Learn how to automatically rotate OpenRouter API keys."
             "type": "openrouter-api-key",
             "parameters": {
               "name": "my-app-key",
+              "workspaceId": "<openrouter-workspace-id>",
               "limit": 100,
               "limitReset": "monthly",
               "includeByokInLimit": false

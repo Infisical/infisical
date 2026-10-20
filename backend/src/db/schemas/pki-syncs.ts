@@ -39,7 +39,8 @@ export const PkiSyncsSchema = z.object({
   encryptedCredentials: zodBuffer.nullable().optional(),
   lastHealthCheckRanAt: z.date().nullable().optional(),
   lastHealthCheckStatus: z.string().nullable().optional(),
-  lastHealthCheckMessage: z.string().nullable().optional()
+  lastHealthCheckMessage: z.string().nullable().optional(),
+  filters: z.unknown().nullable().optional()
 });
 
 export type TPkiSyncs = z.infer<typeof PkiSyncsSchema>;

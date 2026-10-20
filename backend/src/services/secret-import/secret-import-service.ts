@@ -27,7 +27,6 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -92,8 +91,8 @@ export const secretImportServiceFactory = ({
     if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
 
     // If org-level toggle is disabled, strip cross-project imports entirely
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+    const org = await orgDAL.findOrgById(actorOrgId);
+    if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       return imports
         .filter((imp) => imp.importEnv.projectId === projectId)
         .map((imp) => ({ ...imp, isAccessRevoked: false }));
@@ -155,7 +154,8 @@ export const secretImportServiceFactory = ({
 
     if (isCrossProjectImport) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+      const org = await orgDAL.findOrgById(actorOrgId);
+      if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
         throw new ForbiddenRequestError({
           message: "Cross-project secret sharing is not enabled for this organization"
         });
@@ -913,7 +913,6 @@ export const secretImportServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
-        licenseService,
         kmsService
       });
 
@@ -1050,8 +1049,8 @@ export const secretImportServiceFactory = ({
     let crossProjItems = importedBy.filter((el) => el.projectSlug);
 
     if (crossProjItems.length) {
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
+      const importedByOrg = await orgDAL.findOrgById(actorOrgId);
+      if (!(importedByOrg?.allowCrossProjectSecretSharing ?? false)) {
         crossProjItems = [];
       } else {
         const targetProjectIds = crossProjItems

@@ -1,13 +1,14 @@
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import { useOrganization } from "@app/context";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { useImplicitProjectId } from "@app/hooks";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 
 export const CertManagerInstanceBanner = () => {
-  const params = useParams({ strict: false }) as { projectId?: string };
-  const { projectId } = params;
+  const projectId = useImplicitProjectId();
   const { currentOrg } = useOrganization();
   const { data, isPending } = useCertManagerInstanceState();
 
@@ -17,8 +18,8 @@ export const CertManagerInstanceBanner = () => {
   const isViewingActive = activeProject?.id === projectId;
 
   return (
-    <div className="flex w-full items-start gap-x-2 border-b border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
-      <FontAwesomeIcon icon={faWarning} className="mt-0.5 shrink-0 text-base text-yellow" />
+    <div className="flex w-full items-start gap-x-2 border-b border-warning/50 bg-warning/30 px-4 py-2 text-sm text-warning">
+      <FontAwesomeIcon icon={faWarning} className="mt-0.5 shrink-0 text-base text-warning" />
       {isViewingActive ? (
         <p>
           This is your organization&apos;s active project. Use this for all work going forward.{" "}
@@ -26,7 +27,7 @@ export const CertManagerInstanceBanner = () => {
             to="/organizations/$orgId/settings"
             params={{ orgId: currentOrg.id }}
             search={{ selectedTab: "product-settings" }}
-            className="underline underline-offset-2 hover:text-yellow"
+            className="underline underline-offset-2 hover:text-warning"
           >
             Manage projects
           </Link>
@@ -36,9 +37,11 @@ export const CertManagerInstanceBanner = () => {
           You&apos;re viewing a legacy Certificate Manager project.{" "}
           {activeProject ? (
             <Link
-              to="/organizations/$orgId/projects/cert-manager/$projectId/overview"
-              params={{ orgId: currentOrg.id, projectId: activeProject.id }}
-              className="underline underline-offset-2 hover:text-yellow"
+              to="/organizations/$orgId/cert-manager/overview"
+              params={{ orgId: currentOrg.id }}
+              reloadDocument
+              onClick={() => setCertManagerActiveProjectCookie(currentOrg.id, activeProject.id)}
+              className="underline underline-offset-2 hover:text-warning"
             >
               Switch to your active project →
             </Link>
@@ -47,7 +50,7 @@ export const CertManagerInstanceBanner = () => {
               href="https://infisical.com/docs/documentation/platform/pki/migration"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-yellow"
+              className="underline underline-offset-2 hover:text-warning"
             >
               Migration guide
             </a>

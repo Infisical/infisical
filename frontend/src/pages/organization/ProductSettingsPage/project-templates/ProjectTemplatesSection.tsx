@@ -1,6 +1,6 @@
 import { LayoutTemplate, PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ProjectTemplatesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -41,8 +41,9 @@ export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props
             Project Templates
           </CardTitle>
           <CardDescription>
-            Create and configure templates with predefined roles and environments to streamline
-            project setup.
+            Create and configure templates with predefined roles
+            {projectType === ProjectType.SecretManager && " and environments"} to streamline project
+            setup.
           </CardDescription>
           <CardAction>
             <OrgPermissionCan
@@ -81,11 +82,14 @@ export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props
         isOpen={popUp.addTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addTemplate", isOpen)}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.project-templates"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to project templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...ProjectTemplatesUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

@@ -293,13 +293,35 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     return expandPkiSync(pkiSync);
   };
 
-  const updateById = async (syncId: string, data: Parameters<(typeof pkiSyncOrm)["updateById"]>[1]) => {
-    const pkiSync = (await pkiSyncOrm.transaction(async (tx) => {
+  const updateById = async (syncId: string, data: Parameters<(typeof pkiSyncOrm)["updateById"]>[1], outerTx?: Knex) => {
+    const run = async (tx: Knex) => {
       const sync = await pkiSyncOrm.updateById(syncId, data, tx);
       return basePkiSyncQuery({ filter: { id: sync.id }, db, tx }).first();
-    }))!;
+    };
+
+    const pkiSync = (outerTx ? await run(outerTx) : await pkiSyncOrm.transaction(run))!;
 
     return expandPkiSync(pkiSync);
+  };
+
+  const findFilteredSyncIds = async (limit: number, afterId?: string): Promise<string[]> => {
+    try {
+      let query = db
+        .replicaNode()(TableName.PkiSync)
+        .whereNotNull(`${TableName.PkiSync}.applicationId`)
+        .whereNotNull(`${TableName.PkiSync}.filters`);
+
+      if (afterId) query = query.where(`${TableName.PkiSync}.id`, ">", afterId);
+
+      const rows = (await query
+        .select(`${TableName.PkiSync}.id`)
+        .orderBy(`${TableName.PkiSync}.id`, "asc")
+        .limit(limit)) as Array<{ id: string }>;
+
+      return rows.map(({ id }) => id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find filtered PKI sync ids" });
+    }
   };
 
   const findPkiSyncsWithExpiredCertificates = async (): Promise<Array<{ id: string; subscriberId: string }>> => {
@@ -418,7 +440,10 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     ...pkiSyncOrm,
     recordHealthCheckOutcome,
     findFailureNotificationRecipients,
@@ -433,6 +458,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     find,
     create,
     updateById,
+    findFilteredSyncIds,
     findPkiSyncsWithExpiredCertificates
   };
 };

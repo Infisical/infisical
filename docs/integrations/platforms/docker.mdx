@@ -15,7 +15,7 @@ This guide walks you through injecting secrets from Infisical into a Dockerized 
 - An Infisical account on [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance](/self-hosting/overview)
 - A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
 - [Docker](https://docs.docker.com/get-started/get-docker/) installed
-- The [Infisical CLI](/cli/overview) installed on the machine where you run Docker
+- The [Infisical CLI](/cli/install) installed on the machine where you run Docker
 - An application or container image to run
 
 ## Setup
@@ -72,7 +72,7 @@ Choose how Docker should receive your application secrets:
     </Warning>
 
     <Note>
-      Machine identity access tokens are short-lived. Token expiration doesn't affect an application after `infisical run` has fetched its secrets, but the container needs a valid token every time it starts.
+      Machine identity access tokens are short-lived. Token expiration doesn't affect an application after `infisical sm run` has fetched its secrets, but the container needs a valid token every time it starts.
       
       In automated deployments, store the Client ID and Client Secret in your deployment platform's secret store and run `infisical login` immediately before each `docker run` or `docker compose up`.
     </Note>
@@ -106,27 +106,27 @@ Choose how Docker should receive your application secrets:
       Pin the [Infisical CLI version](https://github.com/Infisical/cli/releases) in production images to keep builds reproducible.
     </Tip>
 
-    Next, wrap your application's start command with [`infisical run`](/cli/commands/run). Replace `<project-id>` with the project ID you copied earlier:
+    Next, wrap your application's start command with [`infisical sm run`](/cli/reference#sm-run). Replace `<project-id>` with the project ID you copied earlier:
 
     <CodeGroup>
       ```dockerfile Node.js
-      CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--", "npm", "start"]
+      CMD ["infisical", "sm", "run", "--projectId=<project-id>", "--env=dev", "--", "npm", "start"]
       ```
 
       ```dockerfile Flask
-      CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--", "flask", "run", "--host=0.0.0.0"]
+      CMD ["infisical", "sm", "run", "--projectId=<project-id>", "--env=dev", "--", "flask", "run", "--host=0.0.0.0"]
       ```
 
       ```dockerfile Go
-      CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--", "./app"]
+      CMD ["infisical", "sm", "run", "--projectId=<project-id>", "--env=dev", "--", "./app"]
       ```
     </CodeGroup>
 
     <Accordion title="Run multiple startup commands">
-      Use the [`--command` option](/cli/commands/run#infisical-run:command) when your application needs to run multiple shell commands in sequence:
+      Use the [`--command` option](/cli/reference#sm-run--flag-command) when your application needs to run multiple shell commands in sequence:
 
       ```dockerfile
-      CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--command", "npm run migrate && npm start"]
+      CMD ["infisical", "sm", "run", "--projectId=<project-id>", "--env=dev", "--command", "npm run migrate && npm start"]
       ```
     </Accordion>
 
@@ -189,7 +189,7 @@ Choose how Docker should receive your application secrets:
 
     ### Step 1: Authenticate with the CLI
 
-    Authenticate with Infisical by running [`infisical login`](/cli/commands/login):
+    Authenticate with Infisical by running [`infisical login`](/cli/reference#login):
 
     ```bash
     infisical login
@@ -199,7 +199,7 @@ Choose how Docker should receive your application secrets:
 
     ### Step 2: Connect your project
 
-    In your application's directory, link it to the project you created by running [`infisical init`](/cli/commands/init):
+    In your application's directory, link it to the project you created by running [`infisical init`](/cli/reference#init):
 
     ```bash
     infisical init
@@ -213,7 +213,7 @@ Choose how Docker should receive your application secrets:
 
     ```bash
     docker run --rm \
-      --env-file <(infisical export --env=dev --format=dotenv) \
+      --env-file <(infisical sm export --env=dev --format=dotenv) \
       orders-service
     ```
 
@@ -274,7 +274,7 @@ Choose how Docker should receive your application secrets:
 
     ```bash
     docker run --rm \
-      --env-file <(infisical export --projectId=<project-id> --env=dev --format=dotenv) \
+      --env-file <(infisical sm export --projectId=<project-id> --env=dev --format=dotenv) \
       orders-service
     ```
 
@@ -294,7 +294,7 @@ Choose how Docker should receive your application secrets:
 
 If you [fetch secrets at startup](#fetch-at-startup), you can use [Docker Compose](https://docs.docker.com/compose/) to build and run one or more configured service images.
 
-[Configure each image](/integrations/platforms/docker#step-4-update-your-dockerfile) to start through `infisical run`, then configure your Compose file for your Infisical deployment:
+[Configure each image](/integrations/platforms/docker#step-4-update-your-dockerfile) to start through `infisical sm run`, then configure your Compose file for your Infisical deployment:
 
 <CodeGroup>
   ```yaml Infisical Cloud US

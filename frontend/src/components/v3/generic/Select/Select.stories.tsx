@@ -2,8 +2,11 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CloudIcon, KeyIcon, LockIcon, ServerIcon, ShieldIcon } from "lucide-react";
 
+import { Button } from "../Button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "../Dialog";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "../Field";
 import { Input } from "../Input";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "../Sheet";
 import {
   Select,
   SelectContent,
@@ -31,9 +34,9 @@ import {
  * you would for `Input` — the `id` belongs on the **trigger**, not the root.
  *
  * Reach for `Select` when the option list is short and known. For searchable
- * single-select lists use `Combobox`. Existing multi-select, grouped, and
- * creatable use cases remain on `ReactSelect` while their replacement APIs are
- * introduced — `Select` is single-value by design.
+ * object lists, multi-selects, or grouped options, use `Combobox`. Creatable
+ * use cases remain on `ReactSelect` until their replacement API is introduced.
+ * `Select` is single-value by design.
  */
 const meta = {
   title: "Generic/Select",
@@ -98,6 +101,29 @@ export const Default: Story = {
         <SelectItem value="qa">QA</SelectItem>
         <SelectItem value="prod">Production</SelectItem>
         <SelectItem value="dr">Disaster recovery</SelectItem>
+      </SelectContent>
+    </Select>
+  )
+};
+
+export const ShortPopperList: Story = {
+  name: "Example: Short Popper List",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use popper positioning when the menu should align to the trigger while remaining collision-aware. A short list expands to fit its options without showing inactive scroll controls."
+      }
+    }
+  },
+  render: () => (
+    <Select defaultValue="dotenv">
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Choose a file format" />
+      </SelectTrigger>
+      <SelectContent position="popper">
+        <SelectItem value="dotenv">.env File</SelectItem>
+        <SelectItem value="file">One Secret Per File</SelectItem>
       </SelectContent>
     </Select>
   )
@@ -505,5 +531,97 @@ export const LongList: Story = {
         ))}
       </SelectContent>
     </Select>
+  )
+};
+
+function NestedForm({ containerPortal = false }: { containerPortal?: boolean }) {
+  const [container, setContainer] = useState<HTMLFormElement | null>(null);
+  const [submitted, setSubmitted] = useState("");
+
+  return (
+    <form
+      ref={setContainer}
+      className="flex flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        setSubmitted(`${data.get("name")}: ${data.get("region")}`);
+      }}
+    >
+      <Field>
+        <FieldLabel htmlFor="nested-select-name">Name</FieldLabel>
+        <Input id="nested-select-name" name="name" defaultValue="Demo service" required />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="nested-select-region">Region</FieldLabel>
+        <Select name="region" defaultValue="region-1">
+          <SelectTrigger id="nested-select-region" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent
+            position="popper"
+            portalContainer={containerPortal ? container : undefined}
+          >
+            {Array.from({ length: 30 }, (_, index) => (
+              <SelectItem key={index} value={`region-${index + 1}`}>
+                Region {index + 1}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Button type="submit">Save</Button>
+      <output aria-live="polite">{submitted}</output>
+    </form>
+  );
+}
+
+export const InsideDialog: Story = {
+  name: "Example: Inside Dialog",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Keep the default body portal for V3 Dialogs, including scrollable content. Escape closes the Select first and restores its trigger focus; a subsequent Escape closes the Dialog. The native named Select value is included in the parent form submission."
+      }
+    }
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Open Dialog</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>Service Region</DialogTitle>
+        <DialogDescription>Choose a region for this demo service.</DialogDescription>
+        <NestedForm />
+      </DialogContent>
+    </Dialog>
+  )
+};
+
+export const InsideSheet: Story = {
+  name: "Example: Owned Portal Container",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "SelectContent accepts portalContainer using Radix Portal's container type. For a retained legacy overlay, attach a stable callback ref to the caller's existing form and pass that element as portalContainer with position=\"popper\". Item-aligned positioning assumes viewport coordinates and does not support transformed containers. Choose a container that will not clip the popup; do not portal into scrolling or clipping containers. V3 Dialogs and Sheets normally need no opt-in and should retain the default body portal. This example portals into the actual form without changing layer tokens or dismissal behavior."
+      }
+    }
+  },
+  render: () => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline">Open Sheet</Button>
+      </SheetTrigger>
+      <SheetContent>
+        <div className="flex flex-col gap-4 p-6">
+          <SheetTitle>Service Region</SheetTitle>
+          <SheetDescription>Choose a region for this demo service.</SheetDescription>
+          <NestedForm containerPortal />
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 };

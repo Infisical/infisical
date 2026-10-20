@@ -12,6 +12,7 @@ interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "ti
   severity?: string;
   viewUrl: string;
   items: { id: string; title: string; identifier?: string; fields?: { label: string; value: string }[] }[];
+  remainingCount?: number;
 }
 
 const SEVERITY_STYLES: Record<string, { label: string; color: string; background: string; border: string }> = {
@@ -30,12 +31,11 @@ export const AlertNotificationTemplate = ({
   severity = "info",
   viewUrl,
   siteUrl,
-  items
+  items,
+  remainingCount = 0
 }: AlertNotificationTemplateProps) => {
   const title = `${resourceKind} ${eventLabel} Notice`;
   const sev = SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.info;
-  const resourceNoun = resourceKind.toLowerCase();
-  const resourceLabel = items.length === 1 ? resourceNoun : `${resourceNoun}s`;
 
   return (
     <BaseEmailWrapper title={title} preview={summary} siteUrl={siteUrl}>
@@ -60,10 +60,7 @@ export const AlertNotificationTemplate = ({
 
       <Heading className="text-black text-[20px] leading-[28px] text-center font-semibold p-0 mx-0">{title}</Heading>
 
-      <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">
-        {summary}. Review the {resourceLabel} below and take action before {eventLabel.toLowerCase()} to avoid
-        disruption.
-      </Text>
+      <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">{summary}.</Text>
 
       <Section className="mt-[28px] mb-[8px]">
         {items.map((item) => (
@@ -86,6 +83,11 @@ export const AlertNotificationTemplate = ({
             ))}
           </Section>
         ))}
+        {remainingCount > 0 && (
+          <Text className="text-[13px] text-gray-600 text-center m-0 mt-[4px]">
+            And {remainingCount} more. View them all in Infisical.
+          </Text>
+        )}
       </Section>
 
       <Section className="text-center mt-[28px] mb-[4px]">
@@ -102,7 +104,7 @@ export const AlertNotificationTemplate = ({
 
       <Text className="text-[11px] text-gray-400 text-center leading-[16px] mt-[16px] mb-[0px]">
         You are receiving this because you are a recipient of this alert. Manage recipients and channels in the{" "}
-        {resourceOwnerKind.toLowerCase()}&apos;s alert settings in Infisical.
+        {resourceOwnerKind} alert settings in Infisical.
       </Text>
     </BaseEmailWrapper>
   );
@@ -130,11 +132,11 @@ AlertNotificationTemplate.PreviewProps = {
       ]
     },
     {
-      id: "ua-client-secret:2b9d4f7c-2222-4e83-b6a1-5c4e3d2b1a09",
+      id: "token-auth-token:2b9d4f7c-2222-4e83-b6a1-5c4e3d2b1a09",
       title: "deploy-bot",
       fields: [
         { label: "Secret Name", value: "release-token" },
-        { label: "Secret Type", value: "Universal Auth Client Secret" },
+        { label: "Secret Type", value: "Token Auth Access Token" },
         { label: "Expires", value: "November 10, 2025, 09:00 AM UTC" }
       ]
     }

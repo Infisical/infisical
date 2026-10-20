@@ -1,12 +1,10 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
-ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM node:22.22.0-trixie-slim AS base
+ARG INFISICAL_CLI_VERSION=0.43.136
 
-# Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
-RUN npm install -g npm@10.9.0
+FROM node:26.10.0-trixie-slim AS base
 
 FROM base AS frontend-dependencies
 WORKDIR /app
@@ -34,8 +32,6 @@ ARG INTERCOM_ID
 ENV VITE_INTERCOM_ID $INTERCOM_ID
 ARG INFISICAL_PLATFORM_VERSION
 ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
-ARG CAPTCHA_SITE_KEY
-ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
 
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
@@ -112,7 +108,6 @@ RUN npm ci
 
 COPY /backend .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
-RUN npm i -g tsconfig-paths
 RUN npm run build
 
 # Bake in-app announcements + their images at build time so self-hosted / air-gapped
@@ -160,6 +155,7 @@ RUN mkdir frontend-build
 FROM base AS production
 
 # Install all required runtime packages
+ARG INFISICAL_CLI_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     autoconf \
@@ -183,19 +179,36 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     smbclient \
     openssh-client \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.90 \
-    # Patch CVEs in base image packages (pinned versions for reproducibility)
+    && test -n "$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
+    # Upgrade base-image packages that apt will not move on its own. Only packages
+    # preinstalled in the base belong here; anything pulled in as a dependency
+    # already installs at the candidate version. Re-check each release; a stale
+    # pin holds the vulnerable version, and a withdrawn one fails the build.
     && apt-get install -y --only-upgrade \
     libgnutls30t64=3.8.9-3+deb13u4 \
-    libc6=2.41-12+deb13u3 \
-    libc-bin=2.41-12+deb13u3 \
-    libssl3t64=3.5.7-1~deb13u2 \
+    libc6=2.41-12+deb13u4 \
+    libc-bin=2.41-12+deb13u4 \
+    libssl3t64=3.5.7-1~deb13u3 \
     dpkg=1.22.22 \
     libcap2 \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
     libngtcp2-16=1.11.0-1+deb13u1 \
     libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
-    libsqlite3-0=3.46.1-7+deb13u1 \
+    libsqlite3-0=3.46.1-7+deb13u2 \
+    util-linux=2.41.5-0+deb13u1 \
+    mount=2.41.5-0+deb13u1 \
+    libblkid1=2.41.5-0+deb13u1 \
+    libuuid1=2.41.5-0+deb13u1 \
+    libmount1=2.41.5-0+deb13u1 \
+    libsmartcols1=2.41.5-0+deb13u1 \
+    liblastlog2-2=2.41.5-0+deb13u1 \
+    bsdutils=1:2.41.5-0+deb13u1 \
+    login=1:4.16.0-2+really2.41.5-0+deb13u1 \
+    libsystemd0=257.13-1~deb13u1 \
+    libudev1=257.13-1~deb13u1 \
+    liblzma5=5.8.1-1+deb13u1 \
+    sed=4.9-2+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
@@ -252,8 +265,6 @@ ARG POSTHOG_API_KEY
 ENV POSTHOG_API_KEY=$POSTHOG_API_KEY
 ARG INTERCOM_ID=intercom-id
 ENV INTERCOM_ID=$INTERCOM_ID
-ARG CAPTCHA_SITE_KEY
-ENV CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 
 WORKDIR /
 

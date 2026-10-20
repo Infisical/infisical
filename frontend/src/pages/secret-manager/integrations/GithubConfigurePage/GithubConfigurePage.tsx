@@ -12,28 +12,42 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { twMerge } from "tailwind-merge";
+import { motion } from "motion/react";
 import { z, ZodIssueCode } from "zod";
 
 import {
+  Badge,
   Button,
   Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
   CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
+  ProviderIcon,
   Select,
+  SelectContent,
   SelectItem,
-  Switch,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -263,7 +277,6 @@ export const GithubConfigurePage = () => {
           throw new Error("Invalid scope");
       }
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -275,6 +288,8 @@ export const GithubConfigurePage = () => {
         }
       });
     } catch {
+      return;
+    } finally {
       setIsLoading(false);
     }
   };
@@ -293,482 +308,575 @@ export const GithubConfigurePage = () => {
       <Helmet>
         <title>Set Up GitHub Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6">
-          <CardTitle
-            className="px-0 text-left text-xl"
-            subTitle="Choose which environment in Infisical you want to sync to environment variables in GitHub."
-          >
-            <div className="flex flex-row items-center">
-              <div className="flex items-center rounded-full bg-mineshaft-200">
-                <img
-                  src="/images/integrations/GitHub.png"
-                  height={30}
-                  width={30}
-                  alt="GitHub logo"
-                />
-              </div>
-              <span className="ml-2.5">GitHub Integration </span>
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <ProviderIcon icon="GitHub.png" height={30} width={30} alt="GitHub logo" />
+            <span>GitHub Integration</span>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment in Infisical you want to sync to environment variables in
+            GitHub.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
               <a
                 target="_blank"
                 rel="noopener noreferrer"
                 href="https://infisical.com/docs/integrations/cicd/githubactions"
               >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
               </a>
-            </div>
-          </CardTitle>
-          <Tabs defaultValue={TabSections.Connection}>
-            <TabList>
-              <div className="flex w-full flex-row border-b border-mineshaft-600">
-                <Tab value={TabSections.Connection}>Connection</Tab>
-                <Tab value={TabSections.Options}>Options</Tab>
-              </div>
-            </TabList>
-            <TabPanel value={TabSections.Connection}>
-              <motion.div
-                key="panel-1"
-                transition={{ duration: 0.15 }}
-                initial={{ opacity: 0, translateX: 30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: 30 }}
-              >
-                <Controller
-                  control={control}
-                  name="selectedSourceEnvironment"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Project Environment"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Select
-                        defaultValue={field.value}
-                        onValueChange={onChange}
-                        className="w-full border border-mineshaft-500"
-                      >
-                        {currentProject?.environments.map((sourceEnvironment) => (
-                          <SelectItem
-                            value={sourceEnvironment.slug}
-                            key={`source-environment-${sourceEnvironment.slug}`}
-                          >
-                            {sourceEnvironment.name}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="secretPath"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Secrets Path"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Input {...field} placeholder="Provide a path, default is /" />
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="scope"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl label="Scope" errorText={error?.message} isError={Boolean(error)}>
-                      <Select
-                        defaultValue={field.value}
-                        onValueChange={(e) => {
-                          setValue("repoIds", []);
-                          onChange(e);
-                        }}
-                        className="w-full border border-mineshaft-500"
-                      >
-                        <SelectItem value="github-org">Organization</SelectItem>
-                        <SelectItem value="github-repo">Repository</SelectItem>
-                        <SelectItem value="github-env">Repository Environment</SelectItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-                {scope === "github-repo" && (
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <form className="flex flex-col gap-5" onSubmit={handleSubmit(onFormSubmit)}>
+          <CardContent className="flex flex-col gap-5">
+            <Tabs defaultValue={TabSections.Connection}>
+              <TabsList variant="project">
+                <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+                <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+              </TabsList>
+              <TabsContent value={TabSections.Connection}>
+                <motion.div
+                  key="panel-1"
+                  transition={{ duration: 0.15 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: 30 }}
+                >
                   <Controller
                     control={control}
-                    name="repoIds"
-                    render={({ field: { onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        label="Repositories"
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                      >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            {integrationAuthApps.length > 0 ? (
-                              <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
-                                {repoIds?.length === 1
-                                  ? integrationAuthApps?.reduce(
-                                      (acc, { appId, name, owner }) =>
-                                        repoIds?.[0] === appId ? `${owner}/${name}` : acc,
-                                      ""
-                                    )
-                                  : `${repoIds?.length} repositories selected`}
-                                <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
-                              </div>
-                            ) : (
-                              <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
-                                No repositories found
-                              </div>
-                            )}
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="start"
-                            className="z-100 max-h-80 thin-scrollbar overflow-y-scroll"
+                    name="selectedSourceEnvironment"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <Field className="mb-4" data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="github-selectedsourceenvironment">
+                          Project Environment
+                        </FieldLabel>
+                        <Select defaultValue={field.value} onValueChange={onChange}>
+                          <SelectTrigger
+                            className="w-full"
+                            id="github-selectedsourceenvironment"
+                            isError={Boolean(error)}
+                            aria-describedby={
+                              error ? "github-selectedsourceenvironment-error" : undefined
+                            }
                           >
-                            {integrationAuthApps.length > 0 ? (
-                              integrationAuthApps.map((integrationAuthApp) => {
-                                const isSelected = repoIds?.includes(
-                                  String(integrationAuthApp.appId)
-                                );
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {currentProject?.environments.map((sourceEnvironment) => (
+                              <SelectItem
+                                value={sourceEnvironment.slug}
+                                key={`source-environment-${sourceEnvironment.slug}`}
+                              >
+                                {sourceEnvironment.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {Boolean(error) && (
+                          <FieldError id="github-selectedsourceenvironment-error">
+                            {error?.message}
+                          </FieldError>
+                        )}
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="secretPath"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="mb-4" data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="github-secretpath">Secrets Path</FieldLabel>
+                        <Input
+                          {...field}
+                          placeholder="Provide a path, default is /"
+                          id="github-secretpath"
+                          isError={Boolean(error)}
+                          aria-describedby={error ? "github-secretpath-error" : undefined}
+                        />
+                        {Boolean(error) && (
+                          <FieldError id="github-secretpath-error">{error?.message}</FieldError>
+                        )}
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="scope"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <Field className="mb-4" data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="github-scope">Scope</FieldLabel>
+                        <Select
+                          defaultValue={field.value}
+                          onValueChange={(e) => {
+                            setValue("repoIds", []);
+                            onChange(e);
+                          }}
+                        >
+                          <SelectTrigger
+                            className="w-full"
+                            id="github-scope"
+                            isError={Boolean(error)}
+                            aria-describedby={error ? "github-scope-error" : undefined}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="github-org">Organization</SelectItem>
+                            <SelectItem value="github-repo">Repository</SelectItem>
+                            <SelectItem value="github-env">Repository Environment</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {Boolean(error) && (
+                          <FieldError id="github-scope-error">{error?.message}</FieldError>
+                        )}
+                      </Field>
+                    )}
+                  />
+                  {scope === "github-repo" && (
+                    <Controller
+                      control={control}
+                      name="repoIds"
+                      render={({ field: { onChange }, fieldState: { error } }) => (
+                        <Field className="mb-4" data-invalid={Boolean(error?.message)}>
+                          <FieldLabel htmlFor="github-repoids">Repositories</FieldLabel>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              {integrationAuthApps.length > 0 ? (
+                                <Button
+                                  variant="outline"
+                                  className="w-full justify-between"
+                                  id="github-repoids"
+                                  aria-invalid={Boolean(error?.message)}
+                                  aria-describedby={
+                                    error?.message ? "github-repoids-error" : undefined
+                                  }
+                                >
+                                  {repoIds?.length === 1
+                                    ? integrationAuthApps?.reduce(
+                                        (acc, { appId, name, owner }) =>
+                                          repoIds?.[0] === appId ? `${owner}/${name}` : acc,
+                                        ""
+                                      )
+                                    : `${repoIds?.length} repositories selected`}
+                                  <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  className="w-full justify-between"
+                                  id="github-repoids"
+                                  aria-invalid={Boolean(error?.message)}
+                                  aria-describedby={
+                                    error?.message ? "github-repoids-error" : undefined
+                                  }
+                                >
+                                  No repositories found
+                                </Button>
+                              )}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="start"
+                              className="min-w-(--radix-dropdown-menu-trigger-width)"
+                            >
+                              {integrationAuthApps.length > 0 ? (
+                                integrationAuthApps.map((integrationAuthApp) => {
+                                  const isSelected = repoIds?.includes(
+                                    String(integrationAuthApp.appId)
+                                  );
 
-                                return (
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      if (repoIds?.includes(String(integrationAuthApp.appId))) {
-                                        onChange(
-                                          repoIds.filter(
-                                            (appId: string) =>
-                                              appId !== String(integrationAuthApp.appId)
-                                          )
-                                        );
-                                      } else {
-                                        onChange([
-                                          ...(repoIds || []),
-                                          String(integrationAuthApp.appId)
-                                        ]);
-                                      }
-                                    }}
-                                    key={`repos-id-${integrationAuthApp.appId}`}
-                                    icon={
-                                      isSelected ? (
+                                  return (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        if (repoIds?.includes(String(integrationAuthApp.appId))) {
+                                          onChange(
+                                            repoIds.filter(
+                                              (appId: string) =>
+                                                appId !== String(integrationAuthApp.appId)
+                                            )
+                                          );
+                                        } else {
+                                          onChange([
+                                            ...(repoIds || []),
+                                            String(integrationAuthApp.appId)
+                                          ]);
+                                        }
+                                      }}
+                                      key={`repos-id-${integrationAuthApp.appId}`}
+                                    >
+                                      {isSelected ? (
                                         <FontAwesomeIcon
                                           icon={faCheckCircle}
-                                          className="pr-0.5 text-primary"
+                                          className="pr-0.5 text-project"
                                         />
                                       ) : (
                                         <div className="pl-[1.01rem]" />
-                                      )
-                                    }
-                                    iconPos="left"
-                                    className="w-[28.4rem] text-sm"
-                                  >
-                                    {integrationAuthApp.owner}/{integrationAuthApp.name}
-                                  </DropdownMenuItem>
-                                );
-                              })
-                            ) : (
-                              <div />
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </FormControl>
-                    )}
-                  />
-                )}
-                {scope === "github-org" && (
-                  <>
-                    <Controller
-                      control={control}
-                      name="orgId"
-                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                        <FormControl
-                          label="Organization"
-                          errorText={
-                            integrationAuthOrgs?.length ? error?.message : "No organizations found"
-                          }
-                          isError={Boolean(integrationAuthOrgs?.length || error?.message)}
-                        >
-                          <Select
-                            value={field.value}
-                            onValueChange={onChange}
-                            className="w-full border border-mineshaft-500"
-                          >
-                            {integrationAuthOrgs &&
-                              integrationAuthOrgs.map(({ name, orgId }) => (
-                                <SelectItem key={`github-organization-${orgId}`} value={orgId}>
-                                  {name}
-                                </SelectItem>
-                              ))}
-                          </Select>
-                        </FormControl>
+                                      )}
+                                      {integrationAuthApp.owner}/{integrationAuthApp.name}
+                                    </DropdownMenuItem>
+                                  );
+                                })
+                              ) : (
+                                <div />
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {Boolean(error?.message) && (
+                            <FieldError id="github-repoids-error">{error?.message}</FieldError>
+                          )}
+                        </Field>
                       )}
                     />
-
-                    <Controller
-                      control={control}
-                      name="visibility"
-                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                        <FormControl
-                          tooltipText="Select which type of repositories that the secrets should be synced to."
-                          label="Visibility"
-                          errorText={error?.message}
-                          isError={Boolean(error?.message)}
-                        >
-                          <Select
-                            value={field.value}
-                            onValueChange={onChange}
-                            className="w-full border border-mineshaft-500"
-                          >
-                            {secretsVisibility.map(({ label, value }) => (
-                              <SelectItem key={`github-visibility-${value}`} value={value}>
-                                {label}
-                              </SelectItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      )}
-                    />
-
-                    {watch("visibility") === "selected" && (
+                  )}
+                  {scope === "github-org" && (
+                    <>
                       <Controller
                         control={control}
-                        name="repoIds"
-                        render={({ field: { onChange }, fieldState: { error } }) => (
-                          <FormControl
-                            label="Selected Repositories"
-                            isError={Boolean(error?.message)}
-                            errorText={error?.message}
-                          >
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                {integrationAuthApps.length > 0 ? (
-                                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
-                                    {repoIds?.length === 1
-                                      ? integrationAuthApps?.reduce(
-                                          (acc, { appId, name, owner }) =>
-                                            repoIds?.[0] === appId ? `${owner}/${name}` : acc,
-                                          ""
-                                        )
-                                      : `${repoIds?.length} repositories selected`}
-                                    <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
-                                  </div>
-                                ) : (
-                                  <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
-                                    No repositories found
-                                  </div>
-                                )}
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="start"
-                                className="z-100 max-h-80 thin-scrollbar overflow-y-scroll"
+                        name="orgId"
+                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                          <Field className="mb-4" data-invalid={Boolean(error?.message)}>
+                            <FieldLabel htmlFor="github-orgid">Organization</FieldLabel>
+                            <Select value={field.value} onValueChange={onChange}>
+                              <SelectTrigger
+                                className="w-full"
+                                id="github-orgid"
+                                isError={Boolean(error?.message)}
+                                aria-describedby={error?.message ? "github-orgid-error" : undefined}
                               >
-                                {selectedOrganization ? (
-                                  selectedOrganization.map((integrationAuthApp) => {
-                                    const isSelected = repoIds?.includes(
-                                      String(integrationAuthApp.appId)
-                                    );
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {integrationAuthOrgs &&
+                                  integrationAuthOrgs.map(({ name, orgId }) => (
+                                    <SelectItem key={`github-organization-${orgId}`} value={orgId}>
+                                      {name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            {Boolean(error?.message) && (
+                              <FieldError id="github-orgid-error">
+                                {integrationAuthOrgs?.length
+                                  ? error?.message
+                                  : "No organizations found"}
+                              </FieldError>
+                            )}
+                          </Field>
+                        )}
+                      />
 
-                                    return (
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          if (repoIds?.includes(String(integrationAuthApp.appId))) {
-                                            onChange(
-                                              repoIds?.filter(
-                                                (appId: string) =>
-                                                  appId !== String(integrationAuthApp.appId)
-                                              )
-                                            );
-                                          } else {
-                                            onChange([
-                                              ...repoIds,
-                                              String(integrationAuthApp.appId)
-                                            ]);
-                                          }
-                                        }}
-                                        key={`repos-id-${integrationAuthApp.appId}`}
-                                        icon={
-                                          isSelected ? (
+                      <Controller
+                        control={control}
+                        name="visibility"
+                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                          <Field className="mb-4" data-invalid={Boolean(error?.message)}>
+                            <FieldLabel htmlFor="github-visibility">
+                              Visibility
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" aria-label="More information">
+                                    ?
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Select which type of repositories that the secrets should be
+                                  synced to.
+                                </TooltipContent>
+                              </Tooltip>
+                            </FieldLabel>
+                            <Select value={field.value} onValueChange={onChange}>
+                              <SelectTrigger
+                                className="w-full"
+                                id="github-visibility"
+                                isError={Boolean(error?.message)}
+                                aria-describedby={
+                                  error?.message ? "github-visibility-error" : undefined
+                                }
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {secretsVisibility.map(({ label, value }) => (
+                                  <SelectItem key={`github-visibility-${value}`} value={value}>
+                                    {label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {Boolean(error?.message) && (
+                              <FieldError id="github-visibility-error">{error?.message}</FieldError>
+                            )}
+                          </Field>
+                        )}
+                      />
+
+                      {watch("visibility") === "selected" && (
+                        <Controller
+                          control={control}
+                          name="repoIds"
+                          render={({ field: { onChange }, fieldState: { error } }) => (
+                            <Field className="mb-4" data-invalid={Boolean(error?.message)}>
+                              <FieldLabel htmlFor="github-repoids">
+                                Selected Repositories
+                              </FieldLabel>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  {integrationAuthApps.length > 0 ? (
+                                    <Button
+                                      variant="outline"
+                                      className="w-full justify-between"
+                                      id="github-repoids"
+                                      aria-invalid={Boolean(error?.message)}
+                                      aria-describedby={
+                                        error?.message ? "github-repoids-error" : undefined
+                                      }
+                                    >
+                                      {repoIds?.length === 1
+                                        ? integrationAuthApps?.reduce(
+                                            (acc, { appId, name, owner }) =>
+                                              repoIds?.[0] === appId ? `${owner}/${name}` : acc,
+                                            ""
+                                          )
+                                        : `${repoIds?.length} repositories selected`}
+                                      <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      className="w-full justify-between"
+                                      id="github-repoids"
+                                      aria-invalid={Boolean(error?.message)}
+                                      aria-describedby={
+                                        error?.message ? "github-repoids-error" : undefined
+                                      }
+                                    >
+                                      No repositories found
+                                    </Button>
+                                  )}
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="start"
+                                  className="min-w-(--radix-dropdown-menu-trigger-width)"
+                                >
+                                  {selectedOrganization ? (
+                                    selectedOrganization.map((integrationAuthApp) => {
+                                      const isSelected = repoIds?.includes(
+                                        String(integrationAuthApp.appId)
+                                      );
+
+                                      return (
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            if (
+                                              repoIds?.includes(String(integrationAuthApp.appId))
+                                            ) {
+                                              onChange(
+                                                repoIds?.filter(
+                                                  (appId: string) =>
+                                                    appId !== String(integrationAuthApp.appId)
+                                                )
+                                              );
+                                            } else {
+                                              onChange([
+                                                ...repoIds,
+                                                String(integrationAuthApp.appId)
+                                              ]);
+                                            }
+                                          }}
+                                          key={`repos-id-${integrationAuthApp.appId}`}
+                                        >
+                                          {isSelected ? (
                                             <FontAwesomeIcon
                                               icon={faCheckCircle}
-                                              className="pr-0.5 text-primary"
+                                              className="pr-0.5 text-project"
                                             />
                                           ) : (
                                             <div className="pl-[1.01rem]" />
-                                          )
-                                        }
-                                        iconPos="left"
-                                        className="w-[28.4rem] text-sm"
-                                      >
-                                        {integrationAuthApp.owner}/{integrationAuthApp.name}
-                                      </DropdownMenuItem>
-                                    );
-                                  })
-                                ) : (
-                                  <div />
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </FormControl>
-                        )}
-                      />
-                    )}
-                  </>
-                )}
-                {scope === "github-env" && (
-                  <Controller
-                    control={control}
-                    name="repoId"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <FormControl
-                        label="Repository"
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <Select
-                          value={field.value}
-                          onValueChange={(e) => {
-                            const selectedRepo = integrationAuthApps.find((app) => app.appId === e);
-                            setValue("repoName", selectedRepo?.name);
-                            setValue("repoOwner", selectedRepo?.owner);
-                            onChange(e);
-                          }}
-                          className="w-full border border-mineshaft-500"
-                        >
-                          {integrationAuthApps?.length ? (
-                            integrationAuthApps.map((app) => {
-                              return (
-                                <SelectItem
-                                  value={app.appId as string}
-                                  key={`repo-id-${app.appId}`}
-                                  className="w-[28.4rem] text-sm"
-                                >
-                                  {app.owner}/{app.name}
-                                </SelectItem>
-                              );
-                            })
-                          ) : (
-                            <div />
+                                          )}
+                                          {integrationAuthApp.owner}/{integrationAuthApp.name}
+                                        </DropdownMenuItem>
+                                      );
+                                    })
+                                  ) : (
+                                    <div />
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              {Boolean(error?.message) && (
+                                <FieldError id="github-repoids-error">{error?.message}</FieldError>
+                              )}
+                            </Field>
                           )}
-                        </Select>
-                      </FormControl>
-                    )}
-                  />
-                )}
-                {scope === "github-env" && (
-                  <Controller
-                    control={control}
-                    name="envId"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <FormControl
-                        label="Environment"
-                        errorText={
-                          integrationAuthGithubEnvs?.length
-                            ? error?.message
-                            : "No Environment found"
-                        }
-                        isError={Boolean(integrationAuthGithubEnvs?.length || error?.message)}
-                      >
-                        <Select
-                          value={field.value}
-                          onValueChange={onChange}
-                          isDisabled={!repoId}
-                          className={twMerge(
-                            "w-full border border-mineshaft-500",
-                            !repoId && "h-10 cursor-not-allowed"
-                          )}
-                        >
-                          {integrationAuthGithubEnvs?.length ? (
-                            integrationAuthGithubEnvs.map((githubEnv) => {
-                              return (
-                                <SelectItem
-                                  value={githubEnv.name as string}
-                                  key={`env-id-${githubEnv.envId}`}
-                                  className="w-[28.4rem] text-sm"
-                                >
-                                  {githubEnv.name}
-                                </SelectItem>
-                              );
-                            })
-                          ) : (
-                            <div />
-                          )}
-                        </Select>
-                      </FormControl>
-                    )}
-                  />
-                )}
-              </motion.div>
-            </TabPanel>
-            <TabPanel value={TabSections.Options}>
-              <motion.div
-                key="panel-1"
-                transition={{ duration: 0.15 }}
-                initial={{ opacity: 0, translateX: -30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: 30 }}
-              >
-                <div className="mb-5 ml-1">
-                  <Controller
-                    control={control}
-                    name="shouldEnableDelete"
-                    render={({ field: { onChange, value } }) => (
-                      <Switch
-                        id="delete-github-option"
-                        onCheckedChange={(isChecked) => onChange(isChecked)}
-                        isChecked={value}
-                      >
-                        Delete secrets in Github that are not in Infisical
-                      </Switch>
-                    )}
-                  />
-                </div>
-                <Controller
-                  control={control}
-                  name="secretSuffix"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Append Secret Names with..."
-                      className="pb-39"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Input
-                        {...field}
-                        placeholder="Provide a suffix for secret names, default is no suffix"
-                      />
-                    </FormControl>
+                        />
+                      )}
+                    </>
                   )}
-                />
-              </motion.div>
-            </TabPanel>
-          </Tabs>
-          <div className="flex w-full justify-end">
-            <Button
-              type="submit"
-              color="mineshaft"
-              variant="outline_bg"
-              className="mb-6"
-              isLoading={isLoading}
-            >
+                  {scope === "github-env" && (
+                    <Controller
+                      control={control}
+                      name="repoId"
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <Field className="mb-4" data-invalid={Boolean(error)}>
+                          <FieldLabel htmlFor="github-repoid">Repository</FieldLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={(e) => {
+                              const selectedRepo = integrationAuthApps.find(
+                                (app) => app.appId === e
+                              );
+                              setValue("repoName", selectedRepo?.name);
+                              setValue("repoOwner", selectedRepo?.owner);
+                              onChange(e);
+                            }}
+                          >
+                            <SelectTrigger
+                              className="w-full"
+                              id="github-repoid"
+                              isError={Boolean(error)}
+                              aria-describedby={error ? "github-repoid-error" : undefined}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {integrationAuthApps?.length ? (
+                                integrationAuthApps.map((app) => {
+                                  return (
+                                    <SelectItem
+                                      value={app.appId as string}
+                                      key={`repo-id-${app.appId}`}
+                                    >
+                                      {app.owner}/{app.name}
+                                    </SelectItem>
+                                  );
+                                })
+                              ) : (
+                                <div />
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {Boolean(error) && (
+                            <FieldError id="github-repoid-error">{error?.message}</FieldError>
+                          )}
+                        </Field>
+                      )}
+                    />
+                  )}
+                  {scope === "github-env" && (
+                    <Controller
+                      control={control}
+                      name="envId"
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <Field className="mb-4" data-invalid={Boolean(error?.message)}>
+                          <FieldLabel htmlFor="github-envid">Environment</FieldLabel>
+                          <Select value={field.value} onValueChange={onChange} disabled={!repoId}>
+                            <SelectTrigger
+                              className="w-full"
+                              id="github-envid"
+                              isError={Boolean(error?.message)}
+                              aria-describedby={error?.message ? "github-envid-error" : undefined}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {integrationAuthGithubEnvs?.length ? (
+                                integrationAuthGithubEnvs.map((githubEnv) => {
+                                  return (
+                                    <SelectItem
+                                      value={githubEnv.name as string}
+                                      key={`env-id-${githubEnv.envId}`}
+                                    >
+                                      {githubEnv.name}
+                                    </SelectItem>
+                                  );
+                                })
+                              ) : (
+                                <div />
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {Boolean(error?.message) && (
+                            <FieldError id="github-envid-error">
+                              {integrationAuthGithubEnvs?.length
+                                ? error?.message
+                                : "No Environment found"}
+                            </FieldError>
+                          )}
+                        </Field>
+                      )}
+                    />
+                  )}
+                </motion.div>
+              </TabsContent>
+              <TabsContent value={TabSections.Options}>
+                <motion.div
+                  key="panel-1"
+                  transition={{ duration: 0.15 }}
+                  initial={{ opacity: 0, translateX: -30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: 30 }}
+                >
+                  <div className="mb-5 ml-1">
+                    <Controller
+                      control={control}
+                      name="shouldEnableDelete"
+                      render={({ field: { onChange, value } }) => (
+                        <Field orientation="horizontal">
+                          <FieldLabel htmlFor="delete-github-option">
+                            Delete secrets in Github that are not in Infisical
+                          </FieldLabel>
+                          <Toggle
+                            id="delete-github-option"
+                            onCheckedChange={(isChecked) => onChange(isChecked)}
+                            checked={value}
+                            variant="project"
+                          />
+                        </Field>
+                      )}
+                    />
+                  </div>
+                  <Controller
+                    control={control}
+                    name="secretSuffix"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="mb-4" data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="github-secretsuffix">
+                          Append Secret Names with...
+                        </FieldLabel>
+                        <Input
+                          {...field}
+                          placeholder="Provide a suffix for secret names, default is no suffix"
+                          id="github-secretsuffix"
+                          isError={Boolean(error)}
+                          aria-describedby={error ? "github-secretsuffix-error" : undefined}
+                        />
+                        {Boolean(error) && (
+                          <FieldError id="github-secretsuffix-error">{error?.message}</FieldError>
+                        )}
+                      </Field>
+                    )}
+                  />
+                </motion.div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button type="submit" isPending={isLoading} variant="project">
               Create Integration
             </Button>
-          </div>
+          </CardFooter>
         </form>
       </Card>
-      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+      <div className="mt-6 w-full max-w-md border-t border-border-faint" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground-secondary" />{" "}
+          <span className="text-md ml-3 text-foreground">Pro Tip</span>
         </div>
-        <span className="mt-4 text-sm text-mineshaft-300">
+        <span className="mt-4 text-sm text-label">
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in GitHub with secrets from Infisical.
         </span>
@@ -787,12 +895,12 @@ export const GithubConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="li my-2 inline text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-foreground underline decoration-project underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

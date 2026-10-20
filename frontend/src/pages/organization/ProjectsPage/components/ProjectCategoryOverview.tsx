@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
+import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
@@ -8,8 +10,8 @@ import { RequestProjectAccessModal } from "@app/components/projects/RequestProje
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
+  CardTitle,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -31,11 +33,18 @@ import {
   getProjectTitle,
   projectTypeToUrlSlug
 } from "@app/helpers/project";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
+import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
+import {
+  fetchSecretScanningProjectId,
+  secretScanningV2Keys,
+  useGetSecretScanningInstanceState
+} from "@app/hooks/api/secretScanningV2/queries";
 
 type ActiveProducts = ProjectType;
 
@@ -44,7 +53,8 @@ const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AgentVault
 ];
 
 const PRODUCT_STYLES: Record<
@@ -90,6 +100,13 @@ const PRODUCT_STYLES: Record<
       "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pam/60"
+  },
+  [ProjectType.AgentVault]: {
+    iconClassName: "h-4.5 w-4.5 text-product-av",
+    containerClassName:
+      "border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:border-product-av/50 group-hover:from-product-av/25 group-hover:to-product-av/10",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-av/60"
   }
 };
 
@@ -102,8 +119,12 @@ type ProductStat = {
   value: number;
 };
 
+// Derived so the placeholder count cannot drift from the products again.
+const PRODUCT_TILE_COUNT = Object.keys(ProjectType).length;
+
 export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
   const canRequestAccess = permission.can(
@@ -123,6 +144,12 @@ export const ProjectCategoryOverview = () => {
   );
   const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
   const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
+  const [isAgentVaultRequestAccessOpen, setIsAgentVaultRequestAccessOpen] = useState(false);
+  const [pendingAgentVaultProjectId, setPendingAgentVaultProjectId] = useState<string | null>(null);
+  const [isSecretScanningRequestAccessOpen, setIsSecretScanningRequestAccessOpen] = useState(false);
+  const [pendingSecretScanningProjectId, setPendingSecretScanningProjectId] = useState<
+    string | null
+  >(null);
 
   const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
   const cmInstances = useMemo(
@@ -151,6 +178,36 @@ export const ProjectCategoryOverview = () => {
   );
   const isPamAccessBlocked =
     Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
+
+  const isAgentVaultMember = useMemo(
+    () =>
+      Boolean(
+        currentOrg?.agentVaultProjectId &&
+          projects.some((project) => project.id === currentOrg.agentVaultProjectId)
+      ),
+    [currentOrg?.agentVaultProjectId, projects]
+  );
+  const isAgentVaultAccessBlocked =
+    Boolean(currentOrg?.agentVaultProjectId) &&
+    !isOrgAdmin &&
+    !canRequestAccess &&
+    !isAgentVaultMember;
+
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg?.id ?? "");
+  const activeSecretScanningProjectId = secretScanningInstance?.activeProjectId ?? null;
+  const isSecretScanningMember = useMemo(
+    () =>
+      Boolean(
+        activeSecretScanningProjectId &&
+          projects.some((project) => project.id === activeSecretScanningProjectId)
+      ),
+    [activeSecretScanningProjectId, projects]
+  );
+  const isSecretScanningAccessBlocked =
+    Boolean(activeSecretScanningProjectId) &&
+    !isOrgAdmin &&
+    !canRequestAccess &&
+    !isSecretScanningMember;
 
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
@@ -192,7 +249,7 @@ export const ProjectCategoryOverview = () => {
         return [
           { label: "data sources", value: productStats.secretScanning.dataSourcesCount },
           { label: "resources", value: productStats.secretScanning.resourcesCount },
-          { label: "projects", value: productStats.secretScanning.projectsCount }
+          { label: "findings", value: productStats.secretScanning.findingsCount }
         ];
       case ProjectType.PAM:
         return [
@@ -200,15 +257,22 @@ export const ProjectCategoryOverview = () => {
           { label: "account templates", value: productStats.pam.accountTemplatesCount },
           { label: "folders", value: productStats.pam.foldersCount }
         ];
+      case ProjectType.AgentVault:
+        return [
+          { label: "access bundles", value: productStats.agentVault.accessBundlesCount },
+          { label: "services", value: productStats.agentVault.servicesCount },
+          { label: "proxies", value: productStats.agentVault.proxiesCount }
+        ];
       default:
         return [];
     }
   };
 
   const navigateToCertManager = (projectId: string) => {
+    if (currentOrg?.id) setCertManagerActiveProjectCookie(currentOrg.id, projectId);
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-      params: { orgId: currentOrg?.id ?? "", projectId }
+      to: "/organizations/$orgId/cert-manager/overview",
+      params: { orgId: currentOrg?.id ?? "" }
     });
   };
 
@@ -300,6 +364,108 @@ export const ProjectCategoryOverview = () => {
     }
   };
 
+  const navigateToAgentVault = () => {
+    navigate({
+      to: "/organizations/$orgId/agent-vault/sessions",
+      params: { orgId: currentOrg?.id ?? "" }
+    });
+  };
+
+  const enterAgentVaultProject = async () => {
+    let agentVaultProjectId: string;
+    try {
+      agentVaultProjectId = currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to resolve the Agent Vault project."
+      });
+      return;
+    }
+
+    const isMember = projects.some((p) => p.id === agentVaultProjectId);
+    if (isMember) {
+      navigateToAgentVault();
+      return;
+    }
+
+    setPendingAgentVaultProjectId(agentVaultProjectId);
+
+    if (isOrgAdmin) {
+      try {
+        await orgAdminAccessProject.mutateAsync({ projectId: agentVaultProjectId });
+        navigateToAgentVault();
+      } catch (err) {
+        createNotification({
+          type: "error",
+          text: err instanceof Error ? err.message : "Failed to join the Agent Vault project."
+        });
+      }
+      return;
+    }
+
+    if (canRequestAccess) {
+      setIsAgentVaultRequestAccessOpen(true);
+      return;
+    }
+
+    createNotification({
+      type: "error",
+      text: "You don't have access to Agent Vault. Ask an Agent Vault admin to add you."
+    });
+  };
+
+  const navigateToSecretScanning = (projectId: string) => {
+    if (currentOrg?.id) setSecretScanningActiveProjectCookie(currentOrg.id, projectId);
+    navigate({
+      to: "/organizations/$orgId/secret-scanning/data-sources",
+      params: { orgId: currentOrg?.id ?? "" }
+    });
+  };
+
+  const enterSecretScanningProject = async () => {
+    let secretScanningProjectId: string;
+    try {
+      // Orgs from before projects were created at signup have none until this creates it.
+      secretScanningProjectId =
+        activeSecretScanningProjectId ??
+        (await queryClient.ensureQueryData({
+          queryKey: secretScanningV2Keys.activeProjectId(currentOrg?.id ?? ""),
+          queryFn: fetchSecretScanningProjectId
+        }));
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to resolve the Secret Scanning project."
+      });
+      return;
+    }
+
+    const isMember = projects.some((p) => p.id === secretScanningProjectId);
+    if (isMember) {
+      navigateToSecretScanning(secretScanningProjectId);
+      return;
+    }
+
+    setPendingSecretScanningProjectId(secretScanningProjectId);
+
+    if (isOrgAdmin) {
+      try {
+        await orgAdminAccessProject.mutateAsync({ projectId: secretScanningProjectId });
+        navigateToSecretScanning(secretScanningProjectId);
+      } catch {
+        // The global mutation error handler already reports the failure.
+      }
+    } else if (canRequestAccess) {
+      setIsSecretScanningRequestAccessOpen(true);
+    } else {
+      createNotification({
+        type: "error",
+        text: "You don't have access to Secret Scanning."
+      });
+    }
+  };
+
   const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
@@ -322,6 +488,16 @@ export const ProjectCategoryOverview = () => {
       return;
     }
 
+    if (type === ProjectType.AgentVault) {
+      await enterAgentVaultProject();
+      return;
+    }
+
+    if (type === ProjectType.SecretScanning) {
+      await enterSecretScanningProject();
+      return;
+    }
+
     navigate({
       to: "/organizations/$orgId/projects/$type",
       params: { orgId, type: projectTypeToUrlSlug(type) }
@@ -331,7 +507,7 @@ export const ProjectCategoryOverview = () => {
   if (isProjectsLoading) {
     return (
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: PRODUCT_TILE_COUNT }).map((_, i) => (
           <Card key={`tile-loading-${i + 1}`}>
             <CardHeader>
               <div className="flex items-start gap-3">
@@ -369,6 +545,20 @@ export const ProjectCategoryOverview = () => {
       } as Project)
     : undefined;
 
+  const secretScanningRequestAccessProject: Project | undefined = pendingSecretScanningProjectId
+    ? ({
+        id: pendingSecretScanningProjectId,
+        name: "Secret Scanning"
+      } as Project)
+    : undefined;
+
+  const agentVaultRequestAccessProject: Project | undefined = pendingAgentVaultProjectId
+    ? ({
+        id: pendingAgentVaultProjectId,
+        name: "Agent Vault"
+      } as Project)
+    : undefined;
+
   return (
     <>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -388,13 +578,14 @@ export const ProjectCategoryOverview = () => {
                     <Icon className={iconClassName} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <CardDescription className="text-base font-semibold text-foreground">
+                    <CardTitle className="flex items-center gap-1.5 text-base text-foreground">
                       <span
                         className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
                       >
                         {getProjectTitle(type)}
                       </span>
-                    </CardDescription>
+                      <PreviewBadge type={type} />
+                    </CardTitle>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
                       {getProjectDescription(type)}
                     </p>
@@ -423,7 +614,9 @@ export const ProjectCategoryOverview = () => {
 
           const isAccessBlocked =
             (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
-            (type === ProjectType.PAM && isPamAccessBlocked);
+            (type === ProjectType.PAM && isPamAccessBlocked) ||
+            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked) ||
+            (type === ProjectType.SecretScanning && isSecretScanningAccessBlocked);
 
           if (isAccessBlocked) {
             return (
@@ -443,9 +636,14 @@ export const ProjectCategoryOverview = () => {
 
           const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
 
-          // Cert Manager and PAM resolve their destination asynchronously (instance picker,
-          // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
-          if (type === ProjectType.CertificateManager || type === ProjectType.PAM) {
+          // These resolve their destination asynchronously (instance picker, lazy project
+          // bootstrap, join-on-behalf), so they stay handler-driven.
+          if (
+            type === ProjectType.CertificateManager ||
+            type === ProjectType.PAM ||
+            type === ProjectType.AgentVault ||
+            type === ProjectType.SecretScanning
+          ) {
             return (
               <Card
                 key={type}
@@ -490,6 +688,26 @@ export const ProjectCategoryOverview = () => {
         }}
         project={pamRequestAccessProject}
         subTitle="Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
+      />
+
+      <RequestProjectAccessModal
+        isOpen={isSecretScanningRequestAccessOpen}
+        onOpenChange={(isOpen) => {
+          setIsSecretScanningRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingSecretScanningProjectId(null);
+        }}
+        project={secretScanningRequestAccessProject}
+        subTitle="Requesting access to Secret Scanning. You may include an optional note for admins to review your request."
+      />
+
+      <RequestProjectAccessModal
+        isOpen={isAgentVaultRequestAccessOpen}
+        onOpenChange={(isOpen) => {
+          setIsAgentVaultRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingAgentVaultProjectId(null);
+        }}
+        project={agentVaultRequestAccessProject}
+        subTitle="Requesting access to Agent Vault. You may include an optional note for admins to review your request."
       />
 
       <CertManagerNotConfiguredModal

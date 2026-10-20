@@ -2,6 +2,7 @@ import { TriangleAlertIcon } from "lucide-react";
 
 import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
+import { TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME } from "../tableRowActionStyles";
 import { SecretImportSecretValueCell } from "./SecretImportSecretValueCell";
 
 type Props = {
@@ -23,7 +24,8 @@ export const SecretImportSecretRow = ({
 }: Props) => {
   return (
     <TableRow className="group">
-      <TableCell isTruncatable>
+      <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
+      <TableCell isTruncatable className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
         <div className="flex items-center gap-1.5">
           <span className="truncate">{secretKey}</span>
           {missingFromEnvs && missingFromEnvs.length > 0 && (

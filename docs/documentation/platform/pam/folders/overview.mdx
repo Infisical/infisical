@@ -38,6 +38,10 @@ Once created, you can start adding accounts to it. But first, you'll probably wa
 
 Access to a folder is controlled through **[memberships](/documentation/platform/pam/concepts/access-control)**. You assign a user, group, or [machine identity](/documentation/platform/identities/machine-identities) a role, and that role determines what they can do.
 
+<Note>
+  If you have the organization [Admin role](/documentation/platform/access-controls/role-based-access-controls), you can make yourself the Admin of any folder, such as a folder whose last Admin has left. On the **Accounts** page, folders you aren't a member of show a **Not a Member** badge. Open the folder's menu and select **Join as Admin**. Infisical notifies the folder's existing Admins and records the join in the [audit logs](/documentation/platform/pam/auditing).
+</Note>
+
 ### Adding members
 
 <Steps>
@@ -88,7 +92,7 @@ Groups are managed at the organization level and can sync from identity provider
 Now that you have a folder, you'll want to add accounts to it. But before that, you might want to set up [templates](/documentation/platform/pam/templates/overview) to define what rules apply to those accounts.
 
 <CardGroup cols={2}>
-  <Card title="Templates" icon="layer-group" href="/documentation/platform/pam/templates/overview">
+  <Card title="Templates" icon="layers" href="/documentation/platform/pam/templates/overview">
     Define session rules before adding accounts.
   </Card>
   <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">

@@ -7,7 +7,13 @@ import {
   WindowsFileAccess
 } from "@app/hooks/api/pkiSyncs";
 
-import { BasePkiSyncSchema, HostCommandSchema } from "./base-pki-sync-schema";
+import {
+  BasePkiSyncSchema,
+  HostCommandSchema,
+  PkiSyncConnectionSchema,
+  PkiSyncTargetHostSchema,
+  PkiSyncTargetPortSchema
+} from "./base-pki-sync-schema";
 
 const compileNameSchema = (val: string) =>
   val
@@ -24,6 +30,8 @@ const WindowsServerSyncOptionsSchema = z.object({
     .nativeEnum(PemCertificateExtension)
     .default(PemCertificateExtension.Pem),
   combineCertificateChain: z.boolean().default(false),
+  keystoreAlias: z.string().optional(),
+  includeTruststore: z.boolean().optional(),
   fileAccessRules: z
     .array(
       z.object({
@@ -74,11 +82,16 @@ export const WindowsServerPkiSyncDestinationSchema = BasePkiSyncSchema(
   z.object({
     destination: z.literal(PkiSync.WindowsServer),
     destinationConfig: z.object({
-      destinationPath: WindowsDestinationPathSchema
+      destinationPath: WindowsDestinationPathSchema,
+      host: PkiSyncTargetHostSchema,
+      port: PkiSyncTargetPortSchema,
+      sslEnabled: z.boolean().optional(),
+      sslRejectUnauthorized: z.boolean().optional(),
+      sslCertificate: z.string().trim().max(8192).optional()
     }),
     credentials: z
       .object({
-        exportPassword: z.string().min(1).optional()
+        exportPassword: z.string().optional()
       })
       .optional()
   })
@@ -93,12 +106,6 @@ export const UpdateWindowsServerPkiSyncDestinationSchema =
         .min(1, "Name is required")
         .max(255, "Name must be less than 255 characters"),
       destination: z.literal(PkiSync.WindowsServer),
-      connection: z.object({
-        id: z.string().uuid("Invalid connection ID format"),
-        name: z
-          .string()
-          .min(1, "Connection name is required")
-          .max(255, "Connection name must be less than 255 characters")
-      })
+      connection: PkiSyncConnectionSchema
     })
   );

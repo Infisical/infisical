@@ -21,7 +21,8 @@ export enum SignerIssuanceJobStatus {
 
 export enum CertKeySource {
   Infisical = "infisical",
-  Hsm = "hsm"
+  Hsm = "hsm",
+  AwsKms = "aws-kms"
 }
 
 export enum HsmKeyAlgorithm {

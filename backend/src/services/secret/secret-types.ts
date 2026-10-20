@@ -1,9 +1,16 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
+import {
+  SecretType,
+  TSecretBlindIndexes,
+  TSecretFolders,
+  TSecrets,
+  TSecretsInsert,
+  TSecretsUpdate
+} from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TGenericPermission, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -96,6 +103,7 @@ export type TUpdateSecretDTO = {
   skipMultilineEncoding?: boolean | null;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  secretReminderRecipients?: string[] | null;
   metadata?: {
     source?: string;
   };
@@ -116,6 +124,7 @@ export type TGetSecretsDTO = {
   recursive?: boolean;
   limit?: number;
   offset?: number;
+  abortSignal?: AbortSignal;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -186,6 +195,12 @@ export enum SecretsOrderBy {
   Name = "name" // "key" for secrets but using name for use across resources
 }
 
+export enum SecretSortField {
+  Name = "name",
+  CreatedAt = "createdAt",
+  UpdatedAt = "updatedAt"
+}
+
 export enum PersonalOverridesBehavior {
   Priority = "priority", // used in v4 router when includePersonalOverrides is true
   IncludeAll = "include-all", // used in deprecated v3 secret router to keep existing behavior
@@ -202,6 +217,13 @@ export type TGetAccessibleSecretsDTO = {
   environment: string;
   recursive?: boolean;
   filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
+} & TProjectPermission;
+
+export type TGetSecretMetadataDTO = {
+  secretPath: string;
+  environment: string;
+  cursor?: string;
+  limit: number;
 } & TProjectPermission;
 
 export type TGetSecretsRawDTO = {
@@ -230,6 +252,7 @@ export type TGetSecretsRawDTO = {
   includeMetadataInSearch?: boolean;
   excludeRotatedSecrets?: boolean;
   ifNoneMatch?: string;
+  abortSignal?: AbortSignal;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {
@@ -301,6 +324,7 @@ export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   projectId?: string;
   projectSlug?: string;
   environment: string;
+  folder?: Pick<TSecretFolders, "id" | "envId"> & { environment: { slug: string; name: string } };
   secrets: {
     secretKey: string;
     secretValue: string;
@@ -426,20 +450,13 @@ export type THandleReminderDTO = {
   newSecret: TPartialInputSecret;
   oldSecret: TPartialSecret;
   projectId: string;
-};
-
-export type TCreateSecretReminderDTO = {
-  oldSecret: TPartialSecret;
-  newSecret: TPartialSecret;
-  projectId: string;
-  secretReminderRecipients: string[];
-
-  deleteRecipients?: boolean;
+  // Whoever is updating the secret, as whom the reminder is saved.
+  actor: TGenericPermission;
 };
 
 export type TRemoveSecretReminderDTO = {
   secretId: string;
-  repeatDays: number;
+  repeatDays?: number;
   projectId: string;
   deleteRecipients?: boolean;
 };

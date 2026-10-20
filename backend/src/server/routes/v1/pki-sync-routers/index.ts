@@ -12,6 +12,10 @@ import { registerKempLoadMasterPkiSyncRouter } from "./kemp-loadmaster-pki-sync-
 import { registerLinuxServerPkiSyncRouter } from "./linux-server-pki-sync-router";
 import { registerNetScalerPkiSyncRouter } from "./netscaler-pki-sync-router";
 import { registerNutanixPrismCentralPkiSyncRouter } from "./nutanix-prism-central-pki-sync-router";
+import {
+  registerPaloAltoNetworksPkiSyncRouter,
+  registerPaloAltoNetworksSslTlsProfilePkiSyncRouter
+} from "./palo-alto-networks-pki-sync-router";
 import { registerWindowsServerPkiSyncRouter } from "./windows-server-pki-sync-router";
 
 export * from "./pki-sync-router";
@@ -28,6 +32,8 @@ export const PKI_SYNC_REGISTER_ROUTER_MAP: Record<
   [PkiSync.GcpCertificateManager]: registerGcpCertificateManagerPkiSyncRouter,
   [PkiSync.CloudflareCustomCertificate]: registerCloudflareCustomCertificatePkiSyncRouter,
   [PkiSync.NetScaler]: registerNetScalerPkiSyncRouter,
+  [PkiSync.PaloAltoNetworks]: registerPaloAltoNetworksPkiSyncRouter,
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: registerPaloAltoNetworksSslTlsProfilePkiSyncRouter,
   [PkiSync.F5BigIp]: registerF5BigIpPkiSyncRouter,
   [PkiSync.KempLoadMaster]: registerKempLoadMasterPkiSyncRouter,
   [PkiSync.LinuxServer]: registerLinuxServerPkiSyncRouter,

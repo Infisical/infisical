@@ -1,19 +1,29 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const SupabaseAuthorizePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
@@ -23,15 +33,11 @@ export const SupabaseAuthorizePage = () => {
         return;
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "supabase",
         accessToken: apiKey
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/supabase/create",
@@ -50,23 +56,31 @@ export const SupabaseAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Supabase Integration</CardTitle>
-        <FormControl
-          label="Supabase API Token"
-          errorText={apiKeyErrorText}
-          isError={apiKeyErrorText !== ""}
-        >
-          <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-        >
-          Connect to Supabase
-        </Button>
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Supabase Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="SupabaseAuthorizePage-field-1">Supabase API Token</FieldLabel>
+            <Input
+              id="SupabaseAuthorizePage-field-1"
+              aria-describedby="SupabaseAuthorizePage-field-1-feedback"
+              isError={apiKeyErrorText !== ""}
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="SupabaseAuthorizePage-field-1-feedback">{apiKeyErrorText}</FieldError>
+            )}
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
+            Connect to Supabase
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

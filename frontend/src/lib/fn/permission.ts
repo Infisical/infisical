@@ -138,6 +138,7 @@ const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
   [ProjectPermissionSub.DynamicSecrets]: "Dynamic Secrets",
   [ProjectPermissionSub.SecretRotation]: "Secret Rotation",
   [ProjectPermissionSub.SecretSyncs]: "Secret Syncs",
+  [ProjectPermissionSub.SecretValidationRules]: "Secret Validation Rules",
   [ProjectPermissionSub.SecretEventSubscriptions]: "Secret Event Subscriptions",
   [ProjectPermissionSub.SecretApproval]: "Secret Approval Policies",
   [ProjectPermissionSub.SecretApprovalRequest]: "Secret Approval Requests",

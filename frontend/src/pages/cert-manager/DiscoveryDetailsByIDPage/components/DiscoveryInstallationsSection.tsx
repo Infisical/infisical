@@ -27,24 +27,29 @@ import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discov
 type Props = {
   discoveryId: string;
   projectId: string;
+  isScanRunning: boolean;
 };
 
 const PER_PAGE_INIT = 10;
+const SCAN_IN_FLIGHT_POLL_MS = 5000;
 
-export const DiscoveryInstallationsSection = ({ discoveryId, projectId }: Props) => {
+export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRunning }: Props) => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const { orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/$discoveryId"
   });
 
-  const { data, isPending } = useListPkiInstallations({
-    projectId,
-    discoveryId,
-    offset: (page - 1) * perPage,
-    limit: perPage
-  });
+  const { data, isPending } = useListPkiInstallations(
+    {
+      projectId,
+      discoveryId,
+      offset: (page - 1) * perPage,
+      limit: perPage
+    },
+    { refetchInterval: isScanRunning ? SCAN_IN_FLIGHT_POLL_MS : false }
+  );
 
   const installations = data?.installations || [];
   const totalCount = data?.totalCount || 0;
@@ -86,10 +91,9 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId }: Props)
                     key={installation.id}
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId",
+                        to: "/organizations/$orgId/cert-manager/discovery/installations/$installationId",
                         params: {
                           orgId,
-                          projectId,
                           installationId: installation.id
                         }
                       })

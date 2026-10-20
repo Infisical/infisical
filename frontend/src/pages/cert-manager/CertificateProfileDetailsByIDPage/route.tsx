@@ -10,7 +10,7 @@ const profileDetailsSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-profiles/$profileId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificate-profiles/$profileId"
 )({
   component: CertificateProfileDetailsByIDPage,
   validateSearch: zodValidator(profileDetailsSearchSchema),
@@ -21,10 +21,9 @@ export const Route = createFileRoute(
         {
           label: "Certificate Profiles",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles",
+            to: "/organizations/$orgId/cert-manager/certificate-profiles",
             params: {
-              orgId: params.orgId,
-              projectId: params.projectId
+              orgId: params.orgId
             }
           })
         }

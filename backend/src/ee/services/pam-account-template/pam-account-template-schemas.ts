@@ -21,7 +21,8 @@ export const DEFAULT_HEARTBEAT_CONFIG: TPamHeartbeatConfig = { enabled: true, in
 
 export const PamRecordingS3ConfigSchema = z.object({
   bucket: z.string().trim().min(1),
-  region: z.nativeEnum(AWSRegion),
+  // S3-compatible connections take the region from their endpoint
+  region: z.nativeEnum(AWSRegion).optional(),
   keyPrefix: z.string().trim().optional()
 });
 
@@ -36,14 +37,17 @@ export const PamTemplateSettingsSchema = z.object({
   passwordRequirements: PasswordRequirementsSchema.optional(),
   rotation: PamRotationConfigSchema.optional(),
   heartbeat: PamHeartbeatConfigSchema.optional(),
-  sessionLogMaskingPatterns: z.string().optional()
+  sessionLogMaskingPatterns: z.string().optional(),
+  sessionLogMaskingBuiltInDetection: z.boolean().default(false)
 });
 
 export const PamTemplateSettingsInputSchema = PamTemplateSettingsSchema.extend({
-  sessionLogMaskingPatterns: patternsStringSchema().optional()
+  sessionLogMaskingPatterns: patternsStringSchema().optional(),
+  sessionLogMaskingBuiltInDetection: z.boolean().optional()
 });
 
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;
+export type TPamTemplateSettingsInput = z.infer<typeof PamTemplateSettingsInputSchema>;
 export type TPamAccountSettingsOverrides = z.infer<typeof PamAccountSettingsOverridesSchema>;
 export type TPamRotationConfig = z.infer<typeof PamRotationConfigSchema>;
 export type TPamHeartbeatConfig = z.infer<typeof PamHeartbeatConfigSchema>;

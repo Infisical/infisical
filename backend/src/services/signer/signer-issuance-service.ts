@@ -170,7 +170,7 @@ export const signerIssuanceServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(input.caId);
     if (!ca || ca.projectId !== input.projectId) {
       throw new BadRequestError({
-        message: `Certificate authority '${input.caId}' is not in this project.`
+        message: `Certificate authority '${input.caId}' is not in this organization.`
       });
     }
     if (ca.status !== CaStatus.ACTIVE) {

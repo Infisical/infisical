@@ -11,10 +11,11 @@ import {
   FieldDescription,
   FieldError,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
@@ -266,7 +267,7 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
                         Turn off to only sync manually.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="auto-sync-enabled"
                       variant="project"
                       checked={value}
@@ -313,7 +314,7 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
 
           <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+              <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
               <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
             </div>
             {renderStep()}
@@ -337,16 +338,8 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <div className="flex items-center gap-3">
-            <Button
-              variant="project"
-              type="submit"
-              isPending={isLoading}
-              isDisabled={!isDirty || isLoading}
-            >
-              {isCheckingDuplicate ? "Checking..." : "Save"}
-            </Button>
             <Button
               variant="outline"
               type="button"
@@ -376,8 +369,16 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
             >
               Next
             </Button>
+            <Button
+              variant="project"
+              type="submit"
+              isPending={isLoading}
+              isDisabled={!isDirty || isLoading}
+            >
+              {isCheckingDuplicate ? "Checking..." : "Save"}
+            </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
 
       <DuplicateDestinationConfirmationModal

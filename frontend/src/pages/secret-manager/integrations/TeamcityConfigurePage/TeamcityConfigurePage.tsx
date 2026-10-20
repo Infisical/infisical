@@ -1,18 +1,27 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
+import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import {
   Button,
   Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  DocumentationLinkBadge,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -25,7 +34,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const TeamcityConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const integrationAuthId = useSearch({
@@ -39,7 +48,6 @@ export const TeamcityConfigurePage = () => {
   const [targetAppId, setTargetAppId] = useState("");
   const [targetBuildConfigId, setTargetBuildConfigId] = useState<string>("");
   const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
 
   const { data: integrationAuth, isPending: isIntegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
@@ -68,8 +76,6 @@ export const TeamcityConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       const targetEnvironment = targetBuildConfigs?.find(
         (buildConfig) => buildConfig.buildConfigId === targetBuildConfigId
       );
@@ -86,8 +92,6 @@ export const TeamcityConfigurePage = () => {
         targetEnvironmentId: targetEnvironment?.buildConfigId,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
@@ -113,116 +117,136 @@ export const TeamcityConfigurePage = () => {
       <Helmet>
         <title>Set Up TeamCity Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment or folders in Infisical you want to sync to which project in TeamCity."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/TeamCity.png"
-                height={28}
-                width={28}
-                alt="TeamCity logo"
-              />
-            </div>
-            <span className="ml-2">TeamCity Integration</span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/teamcity"
-              target="_blank"
-              rel="noopener noreferrer"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img
+              src="/images/integrations/TeamCity.png"
+              height={28}
+              width={28}
+              alt="TeamCity logo"
+            />
+            TeamCity Integration
+            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/teamcity" />
+          </CardTitle>
+          <CardDescription>
+            Choose which environment or folders in Infisical you want to sync to which project in
+            TeamCity.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="TeamcityConfigurePage-field-1">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <FormControl label="Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
+              <SelectTrigger
+                id="TeamcityConfigurePage-field-1"
+                aria-describedby="TeamcityConfigurePage-field-1-feedback"
+                className="w-full"
               >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="TeamCity Project" className="px-6">
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-mineshaft-500"
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
+                  <SelectItem
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
+                  >
+                    {sourceEnvironment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TeamcityConfigurePage-field-2">Secrets Path</FieldLabel>
+            <Input
+              id="TeamcityConfigurePage-field-2"
+              aria-describedby="TeamcityConfigurePage-field-2-feedback"
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TeamcityConfigurePage-field-3">TeamCity Project</FieldLabel>
+            <Select
+              value={targetAppId}
+              onValueChange={(val) => setTargetAppId(val)}
+              disabled={integrationAuthApps.length === 0}
+            >
+              <SelectTrigger
+                id="TeamcityConfigurePage-field-3"
+                aria-describedby="TeamcityConfigurePage-field-3-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.appId as string}
+                      key={`target-app-${integrationAuthApp.appId as string}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No projects found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TeamcityConfigurePage-field-4">
+              Team City Build Config (Optional)
+            </FieldLabel>
+            <Select
+              value={targetBuildConfigId}
+              onValueChange={(val) => setTargetBuildConfigId(val)}
+              disabled={targetBuildConfigs.length === 0}
+            >
+              <SelectTrigger
+                id="TeamcityConfigurePage-field-4"
+                aria-describedby="TeamcityConfigurePage-field-4-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {targetBuildConfigs.length ? (
+                  targetBuildConfigs.map((buildConfig: any) => (
+                    <SelectItem
+                      value={buildConfig.buildConfigId}
+                      key={`target-build-config-${buildConfig.buildConfigId}`}
+                    >
+                      {buildConfig.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No build configs found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
             isDisabled={integrationAuthApps.length === 0}
+            variant="project"
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`target-app-${integrationAuthApp.appId as string}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <FormControl label="Team City Build Config (Optional)" className="px-6">
-          <Select
-            value={targetBuildConfigId}
-            onValueChange={(val) => setTargetBuildConfigId(val)}
-            className="w-full border border-mineshaft-500"
-            isDisabled={targetBuildConfigs.length === 0}
-          >
-            {targetBuildConfigs.length ? (
-              targetBuildConfigs.map((buildConfig: any) => (
-                <SelectItem
-                  value={buildConfig.buildConfigId}
-                  key={`target-build-config-${buildConfig.buildConfigId}`}
-                >
-                  {buildConfig.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No build configs found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-        >
-          Create Integration
-        </Button>
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (
@@ -238,12 +262,12 @@ export const TeamcityConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-foreground underline decoration-project underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

@@ -1,8 +1,11 @@
 import { PlusIcon } from "lucide-react";
 
+import {
+  CertificateAuthoritiesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -13,12 +16,13 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
   useProject
 } from "@app/context";
-import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
+import { CaStatus, CaType, useDeleteCa, useGetCaQuota, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
@@ -35,6 +39,24 @@ export const ExternalCaSection = () => {
     "deleteCa",
     "caStatus" // enable / disable
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
+  // maxCas covers every CA type, so an external CA is capped the same way an internal one is.
+  // maxInternalCas is deliberately not consulted here: it caps INTERNAL only.
+  const { data: caQuota } = useGetCaQuota();
+  const caLimit = caQuota?.certificateAuthorities;
+  const isAtCaLimit = typeof caLimit?.limit === "number" && caLimit.used >= caLimit.limit;
+
+  const handleCreateCa = () => {
+    if (isAtCaLimit) {
+      openUpgradeGate({
+        intent: CertificateAuthoritiesUpgradeIntent,
+        paywallKey: "cert-manager.external-ca"
+      });
+      return;
+    }
+    handlePopUpOpen("ca");
+  };
 
   const onRemoveCaSubmit = async (id: string, type: CaType) => {
     if (!currentProject?.id) return;
@@ -87,11 +109,7 @@ export const ExternalCaSection = () => {
             a={ProjectPermissionSub.CertificateAuthorities}
           >
             {(isAllowed) => (
-              <Button
-                variant="project"
-                onClick={() => handlePopUpOpen("ca")}
-                isDisabled={!isAllowed}
-              >
+              <Button variant="project" onClick={handleCreateCa} isDisabled={!isAllowed}>
                 <PlusIcon />
                 Create External CA
               </Button>
@@ -103,42 +121,44 @@ export const ExternalCaSection = () => {
         <ExternalCaTable handlePopUpOpen={handlePopUpOpen} />
       </CardContent>
       <ExternalCaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
         }?`}
-        subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
-        onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action will delete other CAs and certificates below it in your CA hierarchy."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemoveCaSubmit(
             (popUp?.deleteCa?.data as { caId: string })?.caId,
             (popUp?.deleteCa?.data as { type: CaType })?.type
           )
         }
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.caStatus.isOpen}
         title={`Are you sure you want to ${
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "enable"
             : "disable"
         } the CA ${(popUp?.caStatus?.data as { dn: string })?.dn || ""}?`}
-        subTitle={
+        description={
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "This action will allow the CA to start issuing certificates again."
             : "This action will prevent the CA from issuing new certificates."
         }
-        onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
-        buttonText="Proceed"
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
+        confirmLabel="Proceed"
+        confirmKey="confirm"
+        onConfirm={() =>
           onUpdateCaStatus(
             popUp?.caStatus?.data as { caId: string; type: CaType; status: CaStatus }
           )
         }
       />
+
+      {upgradeGate}
     </Card>
   );
 };

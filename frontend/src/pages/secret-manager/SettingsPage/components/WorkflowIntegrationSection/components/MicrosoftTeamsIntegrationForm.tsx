@@ -25,7 +25,7 @@ import {
   SelectValue,
   SheetClose,
   SheetFooter,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -387,7 +387,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }
                       Send a notification when a secret approval request is opened.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     variant="project"
                     checked={field.value}
                     onCheckedChange={field.onChange}
@@ -408,7 +408,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }
                       Send a notification when an access request is opened.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     variant="project"
                     checked={field.value}
                     onCheckedChange={field.onChange}

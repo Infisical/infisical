@@ -23,3 +23,14 @@ export type TOpenRouterConnectionConfig = DiscriminativePick<
 > & {
   orgId: string;
 };
+
+export type TOpenRouterWorkspace = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type TOpenRouterListWorkspacesResponse = {
+  data: TOpenRouterWorkspace[];
+  total_count: number;
+};

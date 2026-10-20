@@ -1,6 +1,9 @@
 import { AccessScope } from "@app/db/schemas";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
@@ -28,6 +31,8 @@ type TDeleteOrgMemberships = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export const deleteOrgMembershipsFn = async ({
@@ -42,8 +47,12 @@ export const deleteOrgMembershipsFn = async ({
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
   approvalPolicyDAL,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TDeleteOrgMemberships) => {
+  let sendPamCancellations = () => {};
+
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
     await assertWillRetainOrgAdmin({
       scopeOrgId: orgId,
@@ -154,9 +163,19 @@ export const deleteOrgMembershipsFn = async ({
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: membershipUserIds }, tx);
 
+    sendPamCancellations = await terminatePamSessionsForUsers({
+      orgIds: [orgId, ...childOrgs.map((el) => el.id)],
+      userIds: membershipUserIds,
+      pamSessionDAL,
+      gatewayV2Service,
+      tx
+    });
+
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
     return orgMemberships;
   });
+
+  sendPamCancellations();
 
   return deletedMemberships;
 };

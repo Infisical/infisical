@@ -8,6 +8,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -144,9 +145,9 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
             {filteredSyncs.map((sync) => (
               <TableRow key={sync.id} onClick={() => handleNavigateToSync(sync)}>
                 <TableCell>
-                  <img
+                  <ProviderIcon
                     alt={`${SECRET_SYNC_MAP[sync.destination].name} sync`}
-                    src={`/images/integrations/${SECRET_SYNC_MAP[sync.destination].image}`}
+                    icon={SECRET_SYNC_MAP[sync.destination].image}
                     className="h-5 w-5"
                   />
                 </TableCell>

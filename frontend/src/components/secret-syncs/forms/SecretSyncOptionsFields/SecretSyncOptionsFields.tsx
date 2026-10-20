@@ -23,7 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -131,6 +131,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
       AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsFields />;
       break;
     case SecretSync.CloudflarePages:
+    case SecretSync.CloudflareSecretsStore:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
     case SecretSync.Checkly:
@@ -151,9 +152,11 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.TravisCI:
     case SecretSync.Snowflake:
     case SecretSync.Rundeck:
+    case SecretSync.Portainer:
     case SecretSync.HasuraCloud:
     case SecretSync.Cloud66:
     case SecretSync.Daytona:
+    case SecretSync.Keeper:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     case SecretSync.Spacelift:
@@ -243,7 +246,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
                     are not in Infisical.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="disable-secret-deletion"
                   variant="project"
                   checked={value}

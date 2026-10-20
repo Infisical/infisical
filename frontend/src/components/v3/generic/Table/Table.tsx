@@ -1,23 +1,27 @@
 import * as React from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { cn } from "@app/components/v3/utils";
 
+import { Skeleton } from "../Skeleton";
+
 const Table = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"table"> & { containerClassName?: string }
->(({ className, containerClassName, ...props }, ref) => {
+  React.ComponentProps<"table"> & { containerClassName?: string; hasAttachedFooter?: boolean }
+>(({ className, containerClassName, hasAttachedFooter = false, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-slot="table-container"
       className={cn(
-        "relative thin-scrollbar w-full overflow-x-auto rounded-md border border-border bg-container",
+        "relative thin-scrollbar w-full min-w-0 overflow-x-auto rounded-md border border-border bg-container",
+        hasAttachedFooter && "rounded-b-none",
         containerClassName
       )}
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-max min-w-full caption-bottom text-start text-sm", className)}
         {...props}
       />
     </div>
@@ -26,23 +30,109 @@ const Table = React.forwardRef<
 
 Table.displayName = "Table";
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+function TableAttachedFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <thead
-      data-slot="table-header"
-      className={cn("text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+    <div
+      data-slot="table-attached-footer"
+      className={cn(
+        "flex min-h-10 items-center justify-center overflow-hidden rounded-b-md border border-t-0 border-border bg-container",
+        className
+      )}
       {...props}
     />
   );
 }
 
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
+function TableHeader({
+  className,
+  sticky = false,
+  ...props
+}: React.ComponentProps<"thead"> & { sticky?: boolean }) {
   return (
-    <tbody
-      data-slot="table-body"
-      className={cn("[&>tr:last-of-type]:border-b-0 [&>tr:last-of-type>td]:border-b-0", className)}
+    <thead
+      data-slot="table-header"
+      className={cn(
+        "text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent",
+        // collapsed borders are painted by the table and scroll away under a sticky header,
+        // so the header draws its bottom border as an inset shadow that moves with it
+        sticky &&
+          "sticky top-0 z-10 bg-container [&_th]:border-b-0 [&_th]:shadow-[inset_0_-1px_0_var(--color-border)] [&_tr]:border-b-0",
+        className
+      )}
       {...props}
     />
+  );
+}
+
+const TableBody = React.forwardRef<HTMLTableSectionElement, React.ComponentProps<"tbody">>(
+  ({ className, ...props }, ref) => {
+    return (
+      <tbody
+        ref={ref}
+        data-slot="table-body"
+        className={cn(
+          "[&>tr:last-of-type]:border-b-0 [&>tr:last-of-type>td]:border-b-0",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+
+TableBody.displayName = "TableBody";
+
+type TableVirtualRowProps = {
+  ref: (element: HTMLTableRowElement | null) => void;
+  "data-index": number;
+  "aria-rowindex": number;
+};
+
+function TableVirtualBody({
+  className,
+  count,
+  estimateRowHeight = 41,
+  children
+}: {
+  className?: string;
+  count: number;
+  estimateRowHeight?: number;
+  children: (index: number, rowProps: TableVirtualRowProps) => React.ReactNode;
+}) {
+  const bodyRef = React.useRef<HTMLTableSectionElement>(null);
+  const virtualizer = useVirtualizer({
+    count,
+    getScrollElement: () => bodyRef.current?.closest("[data-slot=table-container]") ?? null,
+    estimateSize: () => estimateRowHeight,
+    overscan: 10
+  });
+  const [headerRowCount, setHeaderRowCount] = React.useState(1);
+  React.useLayoutEffect(() => {
+    const table = bodyRef.current?.closest("table");
+    if (!table) return;
+    const headerRows = Array.from(table.tHead?.rows ?? []);
+    headerRows.forEach((row, index) => row.setAttribute("aria-rowindex", String(index + 1)));
+    table.setAttribute("aria-rowcount", String(headerRows.length + count));
+    setHeaderRowCount(headerRows.length);
+  }, [count]);
+  const virtualRows = virtualizer.getVirtualItems();
+  const padTop = virtualRows[0]?.start ?? 0;
+  const padBottom = virtualRows.length
+    ? virtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
+    : 0;
+
+  return (
+    <TableBody ref={bodyRef} className={className}>
+      {padTop > 0 && <tr aria-hidden style={{ height: padTop }} />}
+      {virtualRows.map((virtualRow) =>
+        children(virtualRow.index, {
+          ref: virtualizer.measureElement,
+          "data-index": virtualRow.index,
+          "aria-rowindex": headerRowCount + virtualRow.index + 1
+        })
+      )}
+      {padBottom > 0 && <tr aria-hidden style={{ height: padBottom }} />}
+    </TableBody>
   );
 }
 
@@ -155,10 +245,12 @@ function TableHeadLabel({
 function TableCell({
   className,
   isTruncatable,
+  isWrappable,
   variant = "default",
   ...props
 }: React.ComponentProps<"td"> & {
   isTruncatable?: boolean;
+  isWrappable?: boolean;
   variant?: TableColumnVariant;
 }) {
   return (
@@ -168,11 +260,28 @@ function TableCell({
       className={cn(
         "h-10 border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
+        isWrappable && "max-w-md wrap-anywhere whitespace-normal",
         variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
       {...props}
     />
+  );
+}
+
+function TableSkeletonRows({ columns, rows = 3 }: { columns: number; rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }, (_, row) => (
+        <TableRow key={row} data-slot="table-skeleton-row">
+          {Array.from({ length: columns }, (__, column) => (
+            <TableCell key={column}>
+              <Skeleton className="h-4 w-full" />
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </>
   );
 }
 
@@ -191,6 +300,7 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
 
 export {
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCaption,
   TableCell,
@@ -200,5 +310,8 @@ export {
   TableHeader,
   TableHeadLabel,
   TableRow,
-  type TableSortDirection
+  TableSkeletonRows,
+  type TableSortDirection,
+  TableVirtualBody,
+  type TableVirtualRowProps
 };

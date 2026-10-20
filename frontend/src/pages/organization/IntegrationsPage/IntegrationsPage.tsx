@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import {
-  AlertTitle,
+  AlertDescription,
   DismissableAlert,
   PageHeader,
   Tabs,
@@ -32,9 +32,9 @@ const AppConnectionsTab = withPermission(
         actionKey="app_connections_project_scope_banner_dismissed"
       >
         <InfoIcon />
-        <AlertTitle>
+        <AlertDescription>
           App connections can also be created and managed independently in projects now.
-        </AlertTitle>
+        </AlertDescription>
       </DismissableAlert>
       <AppConnectionsTable />
     </>
@@ -92,8 +92,8 @@ export const IntegrationsPage = () => {
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-8xl">
+      <div className="flex w-full justify-center bg-page text-foreground-inverse">
+        <div className="flex w-full max-w-8xl flex-col">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             title="Integrations"

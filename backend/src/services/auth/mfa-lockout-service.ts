@@ -7,6 +7,9 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { isMfaProofAccepted, TMfaAssurance } from "./auth-fns";
+import { MfaMethod } from "./auth-type";
+
 const PROGRESSIVE_DELAY_INTERVAL = 5;
 const PROGRESSIVE_DELAYS_IN_MINS = [5, 30, 60];
 
@@ -193,26 +196,27 @@ export const mfaLockoutServiceFactory = ({
     await keyStore.deleteItem(KeyStorePrefixes.UserStepUpMfaLockout(userId));
   };
 
-  // Records that a specific login SESSION just completed a full MFA login. A completed
-  // login proves a second factor at least as strong as any step-up challenge (it
-  // satisfies the org's required method, or is a recovery code that bypasses it), so
-  // within this window an MFA-management step-up on that same session is redundant. This
-  // is what lets a user who lost their only configured factor, and logged in via a
-  // recovery code, still reach their MFA settings to disable it or switch the preferred
-  // method. Keyed by userId + tokenVersionId (the session), NOT the user alone, so proving
-  // MFA in one session never authorizes another (older/stolen) session; the userId prefix
-  // namespaces the session id to its owner. Self-clears on TTL; if the window lapses,
-  // another login on that session re-opens it.
-  const recordRecentMfaAuth = async (userId: string, tokenVersionId: string) => {
+  // Marks that THIS login session just proved a second factor, and which one. Management
+  // step-ups on the same session skip the challenge while the marker lives, as long as the
+  // recorded factor is one they'd have asked for (isMfaProofAccepted). Recovery-code logins
+  // pass everywhere; that's how a user who lost their only factor still reaches MFA
+  // settings. Keyed by session, never by user alone, so one session's proof never unlocks
+  // an older or stolen one.
+  const recordRecentMfaAuth = async (userId: string, tokenVersionId: string, assurance: TMfaAssurance) => {
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.RecentMfaAuth(userId, tokenVersionId),
       KeyStoreTtls.RecentMfaAuthInSeconds,
-      "1"
+      assurance
     );
   };
 
-  const hasRecentMfaAuth = async (userId: string, tokenVersionId: string): Promise<boolean> => {
-    return Boolean(await keyStore.getItem(KeyStorePrefixes.RecentMfaAuth(userId, tokenVersionId)));
+  const hasRecentMfaAuth = async (
+    userId: string,
+    tokenVersionId: string,
+    acceptedMfaMethods: MfaMethod[]
+  ): Promise<boolean> => {
+    const assurance = await keyStore.getItem(KeyStorePrefixes.RecentMfaAuth(userId, tokenVersionId));
+    return isMfaProofAccepted(assurance, acceptedMfaMethods);
   };
 
   return {

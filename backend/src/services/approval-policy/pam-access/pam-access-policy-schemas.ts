@@ -1,4 +1,3 @@
-import picomatch from "picomatch";
 import { z } from "zod";
 
 import { ms } from "@app/lib/ms";
@@ -13,61 +12,16 @@ import {
   BaseUpdateApprovalPolicySchema
 } from "../approval-policy-schemas";
 
+export const PamAccessTypeSchema = z.enum(["session", "credential"]);
+
 // Inputs
 export const PamAccessPolicyInputsSchema = z.object({
-  resourceName: z.string().optional(),
-  accountName: z.string().optional()
+  folderId: z.string().uuid().optional(),
+  accountId: z.string().uuid(),
+  accessType: PamAccessTypeSchema.optional()
 });
 
-// Conditions
-const resourceNameGlob = z.string().refine(
-  (el) => {
-    try {
-      picomatch.parse([el]);
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  { message: "Invalid glob pattern for resource name" }
-);
-
-const accountNameGlob = z.string().refine(
-  (el) => {
-    try {
-      picomatch.parse([el]);
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  { message: "Invalid glob pattern for account name" }
-);
-
-export const PamAccessPolicyConditionsSchema = z
-  .object({
-    resourceNames: resourceNameGlob.array().optional(),
-    accountNames: accountNameGlob.array().optional()
-  })
-  .array();
-
-const MutatePamAccessPolicyConditionsSchema = z
-  .object({
-    resourceNames: resourceNameGlob.array().optional(),
-    accountNames: accountNameGlob.array().optional()
-  })
-  .refine(
-    (data) => {
-      // At least one condition type must be provided
-      const hasResourceNames = data.resourceNames && data.resourceNames.length > 0;
-      const hasAccountNames = data.accountNames && data.accountNames.length > 0;
-      return hasResourceNames || hasAccountNames;
-    },
-    {
-      message: "At least one condition type must be provided (resourceNames or accountNames)"
-    }
-  )
-  .array();
+export const PamAccessPolicyConditionsSchema = z.object({}).array();
 
 const DurationSchema = z.string().refine(
   (val) => {
@@ -87,31 +41,20 @@ export const PamAccessPolicyConstraintsSchema = z.object({
   })
 });
 
-// Request Data - Base schema for stored data (used by grants, etc.)
+// Request Data
 export const PamAccessPolicyRequestDataSchema = z.object({
-  accessDuration: DurationSchema,
-  resourceName: resourceNameGlob.optional(),
-  accountName: accountNameGlob.optional()
+  accountId: z.string().uuid(),
+  folderId: z.string().uuid(),
+  reason: z.string().trim().max(1024).optional(),
+  duration: DurationSchema,
+  accessType: PamAccessTypeSchema.optional()
 });
 
-// Schema with validation for creating requests
-const CreatePamAccessPolicyRequestDataSchema = z
-  .object({
-    accessDuration: DurationSchema,
-    resourceName: resourceNameGlob.optional(),
-    accountName: accountNameGlob.optional()
-  })
-  .refine(
-    (data) => {
-      // At least one identifier must be provided
-      const hasResourceName = Boolean(data.resourceName);
-      const hasAccountName = Boolean(data.accountName);
-      return hasResourceName || hasAccountName;
-    },
-    {
-      message: "At least one identifier must be provided (resourceName or accountName)"
-    }
-  );
+export const PamAccessGrantAttributesSchema = z.object({
+  accountId: z.string().uuid(),
+  folderId: z.string().uuid().nullable().optional(),
+  accessType: PamAccessTypeSchema.optional()
+});
 
 // Policy
 export const PamAccessPolicySchema = BaseApprovalPolicySchema.extend({
@@ -126,12 +69,12 @@ export const PamAccessPolicySchema = BaseApprovalPolicySchema.extend({
 });
 
 export const CreatePamAccessPolicySchema = BaseCreateApprovalPolicySchema.extend({
-  conditions: MutatePamAccessPolicyConditionsSchema,
+  conditions: PamAccessPolicyConditionsSchema,
   constraints: PamAccessPolicyConstraintsSchema
 });
 
 export const UpdatePamAccessPolicySchema = BaseUpdateApprovalPolicySchema.extend({
-  conditions: MutatePamAccessPolicyConditionsSchema.optional(),
+  conditions: PamAccessPolicyConditionsSchema.optional(),
   constraints: PamAccessPolicyConstraintsSchema.optional()
 });
 
@@ -144,12 +87,12 @@ export const PamAccessRequestSchema = BaseApprovalRequestSchema.extend({
 });
 
 export const CreatePamAccessRequestSchema = BaseCreateApprovalRequestSchema.extend({
-  requestData: CreatePamAccessPolicyRequestDataSchema
+  requestData: PamAccessPolicyRequestDataSchema
 });
 
 // Grants
 export const PamAccessRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({
-  attributes: PamAccessPolicyRequestDataSchema
+  attributes: PamAccessGrantAttributesSchema
 });
 
 // Check Policy Match Response

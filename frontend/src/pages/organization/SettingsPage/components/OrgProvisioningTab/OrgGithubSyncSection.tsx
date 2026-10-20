@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { GitBranch } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { GithubSyncUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -21,7 +21,7 @@ import {
   FieldGroup,
   FieldTitle,
   Skeleton,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import {
@@ -55,8 +55,6 @@ export const OrgGithubSyncSection = () => {
 
   const handleBulkSync = async () => {
     const result = await syncAllTeamsMutation.mutateAsync();
-    let message = "Successfully synced teams";
-
     const details = [];
     if (result.createdTeams.length > 0) {
       details.push(
@@ -74,22 +72,18 @@ export const OrgGithubSyncSection = () => {
       );
     }
 
-    if (details.length > 0) {
-      message += `. ${details.join(", ")}`;
+    if (result.errors && result.errors.length > 0) {
+      createNotification({
+        text: `GitHub team sync completed with warnings.${details.length > 0 ? ` ${details.join(", ")}.` : ""} ${result.errors.join(" ")}`,
+        type: "warning"
+      });
+      return;
     }
 
     createNotification({
-      text: message,
+      text: `GitHub teams synced.${details.length > 0 ? ` ${details.join(", ")}.` : ""}`,
       type: "success"
     });
-
-    if (result.errors && result.errors.length > 0) {
-      createNotification({
-        text: `Sync completed with ${result.errors.length} warnings. Check the console for details.`,
-        type: "warning"
-      });
-      console.warn("Sync errors:", result.errors);
-    }
   };
 
   return (
@@ -144,7 +138,7 @@ export const OrgGithubSyncSection = () => {
                     a={OrgPermissionSubjects.GithubOrgSync}
                   >
                     {(isAllowed) => (
-                      <Switch
+                      <Toggle
                         id="enable-sync"
                         variant="org"
                         checked={data.isActive}
@@ -195,11 +189,14 @@ export const OrgGithubSyncSection = () => {
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.org-github-sync"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to GitHub Organization Sync. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...GithubSyncUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

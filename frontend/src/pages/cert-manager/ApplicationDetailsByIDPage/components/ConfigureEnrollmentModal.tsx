@@ -13,8 +13,11 @@ import {
 } from "lucide-react";
 
 import { AppConnectionOption } from "@app/components/app-connections";
+import {
+  CertificateEnrollmentUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -56,13 +60,23 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useSubscription
+} from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { downloadFile } from "@app/helpers/download";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -118,7 +132,7 @@ const SectionCard = ({
     className={`rounded-md border border-border bg-foreground/[0.02] ${className ?? ""}`.trim()}
   >
     <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="text-sm font-normal text-foreground">{title}</h3>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </header>
     <div className="space-y-4 px-4 py-4">{children}</div>
@@ -301,7 +315,7 @@ const ApiPanel = ({
                 href="https://infisical.com/docs/api-reference/endpoints/certificates/create-certificate"
                 target="_blank"
                 rel="noreferrer"
-                className="font-medium text-primary-400"
+                className="font-medium text-project"
               >
                 View API reference
               </a>
@@ -321,7 +335,7 @@ const ApiPanel = ({
                   Automatically renew certificates issued via this profile before they expire.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 variant="project"
                 id="api-auto-renew"
                 checked={field.value}
@@ -527,7 +541,7 @@ const EstPanel = ({
                   Allow EST clients to skip server-certificate validation during enrollment.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 variant="project"
                 id="est-disable-bootstrap"
                 checked={field.value}
@@ -738,7 +752,7 @@ const AcmePanel = ({
                   <TooltipTrigger asChild>
                     {/* span wrapper lets the tooltip listen for hover on a disabled control */}
                     <span className="inline-flex">
-                      <Switch
+                      <Toggle
                         variant="project"
                         id="acme-skip-dns"
                         checked={field.value}
@@ -755,7 +769,7 @@ const AcmePanel = ({
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Switch
+                <Toggle
                   variant="project"
                   id="acme-skip-dns"
                   checked={field.value}
@@ -783,7 +797,7 @@ const AcmePanel = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-flex">
-                      <Switch
+                      <Toggle
                         variant="project"
                         id="acme-skip-eab"
                         checked={field.value}
@@ -801,7 +815,7 @@ const AcmePanel = ({
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Switch
+                <Toggle
                   variant="project"
                   id="acme-skip-eab"
                   checked={field.value}
@@ -1118,7 +1132,7 @@ const ScepPanel = ({
                       href={PkiDocsUrls.appConnections.microsoftIntune}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary-500 hover:text-primary-400"
+                      className="text-project hover:text-project"
                     >
                       setup guide
                     </a>{" "}
@@ -1221,7 +1235,7 @@ const ScepPanel = ({
                 </p>
               </div>
               {raCaSigningSupported && !isScepConfigured ? (
-                <Switch
+                <Toggle
                   variant="project"
                   id="scep-sign-ra-with-ca"
                   checked={field.value}
@@ -1231,7 +1245,7 @@ const ScepPanel = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div>
-                      <Switch
+                      <Toggle
                         variant="project"
                         id="scep-sign-ra-with-ca"
                         checked={raCaSigningSupported && field.value}
@@ -1260,7 +1274,7 @@ const ScepPanel = ({
                   Return the issuing CA certificate inline alongside the issued cert.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 variant="project"
                 id="scep-include-ca"
                 checked={field.value}
@@ -1281,7 +1295,7 @@ const ScepPanel = ({
                     Let clients renew using their existing certificate as authentication.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   variant="project"
                   id="scep-cert-renewal"
                   checked={field.value}
@@ -1392,6 +1406,9 @@ export const ConfigureEnrollmentModal = ({
   const [isDiscardOpen, setIsDiscardOpen] = useState(false);
   const [dirtyMethods, setDirtyMethods] = useState<Partial<Record<EnrollmentMethod, boolean>>>({});
 
+  const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
   const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
   const visibleMethods = ALL_ORDER.filter(
     (m) => configuredMethods.includes(m) || pendingMethods.includes(m)
@@ -1399,6 +1416,11 @@ export const ConfigureEnrollmentModal = ({
   const addableMethods = ALL_ORDER.filter(
     (m) => !configuredMethods.includes(m) && !pendingMethods.includes(m)
   );
+  // API and ACME are available on every plan.
+  const lockedMethods: Partial<Record<EnrollmentMethod, boolean>> = {
+    est: !subscription.pkiEst,
+    scep: !subscription.pkiScep
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -1428,6 +1450,18 @@ export const ConfigureEnrollmentModal = ({
   const handleAdd = (method: EnrollmentMethod) => {
     setPendingMethods((prev) => (prev.includes(method) ? prev : [...prev, method]));
     setActiveTab(method);
+  };
+
+  const handleAddMethod = (method: EnrollmentMethod) => {
+    if (!lockedMethods[method]) {
+      handleAdd(method);
+      return;
+    }
+
+    openUpgradeGate({
+      intent: CertificateEnrollmentUpgradeIntent,
+      paywallKey: `cert-manager.application-enrollment.${method}`
+    });
   };
 
   const handleCancelPending = (method: EnrollmentMethod) =>
@@ -1488,16 +1522,16 @@ export const ConfigureEnrollmentModal = ({
             <div className="flex items-center justify-between gap-2 border-b border-border">
               {visibleMethods.length > 0 ? (
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
-                  <TabList className="border-b-0">
+                  <TabsList variant="project" className="border-b-0">
                     {visibleMethods.map((m) => (
-                      <Tab key={m} value={m}>
+                      <TabsTrigger key={m} value={m}>
                         {METHOD_LABELS[m]}
                         {isUnsaved(m) && (
                           <span className="ml-1.5 text-xs text-muted">(unsaved)</span>
                         )}
-                      </Tab>
+                      </TabsTrigger>
                     ))}
-                  </TabList>
+                  </TabsList>
                 </Tabs>
               ) : (
                 <div />
@@ -1511,16 +1545,22 @@ export const ConfigureEnrollmentModal = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {addableMethods.map((m) => (
-                      <DropdownMenuItem key={m} onClick={() => handleAdd(m)}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{METHOD_LABELS[m]}</span>
-                          <span className="text-xs text-accent">
-                            <MethodDescription method={m} />
-                          </span>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
+                    {addableMethods.map((m) => {
+                      const isLocked = lockedMethods[m] ?? false;
+                      return (
+                        <DropdownMenuItem key={m} onClick={() => handleAddMethod(m)}>
+                          <div className="flex flex-col">
+                            <span className="flex items-center gap-2 font-medium">
+                              {METHOD_LABELS[m]}
+                              {isLocked && <Badge variant="info">Enterprise</Badge>}
+                            </span>
+                            <span className="text-xs text-accent">
+                              <MethodDescription method={m} />
+                            </span>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })}
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null}
@@ -1545,7 +1585,7 @@ export const ConfigureEnrollmentModal = ({
                 )}
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
                   {visibleMethods.includes("api") ? (
-                    <TabPanel value="api" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="api" className="data-[state=inactive]:hidden" forceMount>
                       <ApiPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1554,10 +1594,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("api")}
                         onDirtyChange={(d) => handleDirtyChange("api", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("est") ? (
-                    <TabPanel value="est" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="est" className="data-[state=inactive]:hidden" forceMount>
                       <EstPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1566,10 +1606,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("est")}
                         onDirtyChange={(d) => handleDirtyChange("est", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("acme") ? (
-                    <TabPanel value="acme" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="acme" className="data-[state=inactive]:hidden" forceMount>
                       <AcmePanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1578,10 +1618,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("acme")}
                         onDirtyChange={(d) => handleDirtyChange("acme", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("scep") ? (
-                    <TabPanel value="scep" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="scep" className="data-[state=inactive]:hidden" forceMount>
                       <ScepPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1592,7 +1632,7 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("scep")}
                         onDirtyChange={(d) => handleDirtyChange("scep", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                 </Tabs>
               </>
@@ -1620,6 +1660,7 @@ export const ConfigureEnrollmentModal = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {upgradeGate}
     </Dialog>
   );
 };

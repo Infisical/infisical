@@ -10,6 +10,7 @@ import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";
 
 export * from "./connection";
 export * from "./join";
+export * from "./org-tree";
 export * from "./prependTableNameToFindFilter";
 export * from "./select";
 
@@ -119,7 +120,7 @@ export type TOrmify<Tname extends keyof Tables> = {
     data: readonly Tables[Tname]["insert"][],
     onConflictField: keyof Tables[Tname]["base"] | Array<keyof Tables[Tname]["base"]>,
     tx?: Knex,
-    mergeColumns?: (keyof Knex.ResolveTableType<Knex.TableType<Tname>, "update">)[] | undefined
+    mergeColumns?: (keyof Knex.ResolveTableType<Knex.TableType<Tname>, "update">)[]
   ) => Promise<Tables[Tname]["base"][]>;
   updateById: (
     id: string,

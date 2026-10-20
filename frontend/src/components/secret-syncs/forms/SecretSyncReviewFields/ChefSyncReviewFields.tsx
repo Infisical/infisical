@@ -8,6 +8,7 @@ export const ChefSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Chef }>();
   const dataBagName = watch("destinationConfig.dataBagName");
   const dataBagItemName = watch("destinationConfig.dataBagItemName");
+  const shouldEncryptSecrets = watch("destinationConfig.shouldEncryptSecrets");
 
   return (
     <>
@@ -18,6 +19,10 @@ export const ChefSyncReviewFields = () => {
       <Detail>
         <DetailLabel>Data Bag Item</DetailLabel>
         <DetailValue>{dataBagItemName}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Encrypt Secrets</DetailLabel>
+        <DetailValue>{shouldEncryptSecrets ? "Yes" : "No"}</DetailValue>
       </Detail>
     </>
   );

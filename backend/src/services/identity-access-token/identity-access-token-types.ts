@@ -162,3 +162,5 @@ export type TRevocationDenyReason =
   | "auth-method"
   | "org-membership"
   | "org-membership-inactive";
+
+export const MAX_IDENTITY_ACCESS_TOKEN_TTL_SECONDS = 315_360_000; // 10 years

@@ -32,7 +32,7 @@ import { useScopeVariant } from "@app/hooks";
 import { TVenafiTppConnection, VenafiTppConnectionMethod } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -95,6 +95,8 @@ export const VenafiTppConnectionForm = ({ appConnection, onSubmit }: Props) => {
     watch,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
@@ -237,9 +239,15 @@ export const VenafiTppConnectionForm = ({ appConnection, onSubmit }: Props) => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
-                <FieldLabel>Password</FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                <FieldError errors={[error]} />
+                <FieldLabel htmlFor="app-connection-venafi-tpp-password">Password</FieldLabel>
+                <SecretInput
+                  aria-describedby={error ? "app-connection-venafi-tpp-password-error" : undefined}
+                  id="app-connection-venafi-tpp-password"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <FieldError id="app-connection-venafi-tpp-password-error" errors={[error]} />
               </Field>
             )}
           />

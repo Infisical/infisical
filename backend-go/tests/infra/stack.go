@@ -4,8 +4,10 @@ package infra
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"testing"
 
 	"github.com/testcontainers/testcontainers-go"
 
@@ -30,6 +32,45 @@ func (s *Stack) Redis() *RedisService       { return s.redis }
 func (s *Stack) NodeJS() *NodeJSService     { return s.nodejs }
 func (s *Stack) Config() *config.Config     { return s.cfg }
 func (s *Stack) DB() pg.DB                  { return s.db }
+
+// EnableLegacyAdditionalPrivileges flips the project flag that additional
+// privileges are gated on. New projects default to false and no route exposes
+// the column, so tests covering the legacy path set it directly. The previous
+// value is restored on cleanup, since some packages share one project fixture.
+func (s *Stack) EnableLegacyAdditionalPrivileges(t *testing.T, projectID string) {
+	t.Helper()
+	ctx := context.Background()
+
+	var previous bool
+	if err := s.db.Primary().QueryRow(ctx,
+		`SELECT "isLegacyAdditionalPrivilegesEnabled" FROM projects WHERE id = $1`, projectID,
+	).Scan(&previous); err != nil {
+		t.Fatalf("infra.EnableLegacyAdditionalPrivileges: reading project %s: %v", projectID, err)
+	}
+
+	if err := s.setLegacyAdditionalPrivileges(ctx, projectID, true); err != nil {
+		t.Fatalf("infra.EnableLegacyAdditionalPrivileges: %v", err)
+	}
+
+	t.Cleanup(func() {
+		if err := s.setLegacyAdditionalPrivileges(ctx, projectID, previous); err != nil {
+			t.Errorf("infra.EnableLegacyAdditionalPrivileges cleanup: %v", err)
+		}
+	})
+}
+
+func (s *Stack) setLegacyAdditionalPrivileges(ctx context.Context, projectID string, enabled bool) error {
+	tag, err := s.db.Primary().Exec(ctx,
+		`UPDATE projects SET "isLegacyAdditionalPrivilegesEnabled" = $2 WHERE id = $1`, projectID, enabled)
+	if err != nil {
+		return err
+	}
+	// A stale or wrong ID updates nothing and would surface later as a confusing 400.
+	if n := tag.RowsAffected(); n != 1 {
+		return fmt.Errorf("expected 1 row updated for project %s, got %d", projectID, n)
+	}
+	return nil
+}
 
 // Stop tears down all containers, the network, and closes the DB pool.
 func (s *Stack) Stop() {

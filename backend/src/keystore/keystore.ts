@@ -17,10 +17,9 @@ export const PgSqlLock = {
   KmsRootKeyInit: 2025,
   SanitizedSchemaGeneration: 2026,
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
-  OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
-  OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
+  CreateOrganization: (userId: string) => pgAdvisoryLockHashText(`create-organization:${userId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
@@ -31,16 +30,22 @@ export const PgSqlLock = {
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
   CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
+  CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
+  CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
-  LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
+  LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
+    pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
-  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
+  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
+  ExternalGroupOrgRoleMappingUpdate: (orgId: string) =>
+    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`),
+  AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -58,12 +63,22 @@ export const KeyStorePrefixes = {
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
-  AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
-  AppConnectionCommandLock: (connectionId: string) => `app-connection-command-mutex-${connectionId}` as const,
+  PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
+  AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
+    `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
+    `app-connection-command-mutex-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  AcmeDnsRecordLock: (connectionId: string, zoneId: string, recordName: string) =>
+    `acme-dns-record-mutex-${connectionId}-${zoneId.toLowerCase()}-${recordName.toLowerCase()}` as const,
+  LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,
+  LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
+    `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
+  StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
-  SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
-    `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
+  SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
+  SecretScanningDataSourceLock: (dataSourceId: string) =>
+    `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
@@ -80,9 +95,9 @@ export const KeyStorePrefixes = {
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   IdentityLastLoginDebounce: (identityId: string) => `identity-last-login-debounce:${identityId}` as const,
+  SpiffeKidMissRefresh: (configId: string) => `spiffe-kid-miss-refresh:${configId}` as const,
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
-  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
   // one node. Selection reads them for several gateways at once (one Lua script and two MGETs), and
   // cluster refuses a multi-key command whose keys span slots. They are small counters, so
@@ -153,8 +168,12 @@ export const KeyStorePrefixes = {
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
+  AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
+  // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
+  AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
+  OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
@@ -172,12 +191,27 @@ export const KeyStorePrefixes = {
   // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
   InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
+  // Braces are a Redis Cluster hash tag: the index zset and every member's payload key must land on
+  // one slot for the multi-key upsert/delete scripts.
+  WorkerHeartbeatIndex: (workerType: string) => `worker-heartbeat:{${workerType}}` as const,
+  WorkerHeartbeat: (workerType: string, instanceId: string) =>
+    `worker-heartbeat:{${workerType}}:${instanceId}` as const,
+
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
+  // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
+  LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
+  LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
+  AuditLogOrgSettings: (orgId: string) => `audit-log-settings-org-${orgId}` as const,
+  AuditLogProjectSettings: (orgId: string, projectId: string) =>
+    `audit-log-settings-project-${orgId}-${projectId}` as const,
+  AuditLogCollapseWindow: (key: string) => `audit-log-collapse-window-${key}` as const,
+  AuditLogCollapseCount: (key: string, windowStart: string) =>
+    `audit-log-collapse-count-${key}-${windowStart}` as const,
   // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
   LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
   // Single-flight guard so only one background revalidation runs per org per lock window.
@@ -186,6 +220,8 @@ export const KeyStorePrefixes = {
   LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
+  PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
+  PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,
   // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
@@ -200,10 +236,16 @@ export const KeyStorePrefixes = {
 
   // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
   NativeIntegrationDeprecationNotice: (orgId: string, period: string) =>
-    `native-integration-deprecation-notice:${orgId}:${period}` as const
+    `native-integration-deprecation-notice:${orgId}:${period}` as const,
+
+  LegacyPkiDeprecationNotice: (orgId: string, period: string) =>
+    `legacy-pki-deprecation-notice:${orgId}:${period}` as const
 };
 
 export const KeyStoreTtls = {
+  LdapDirectoryMachinesInSeconds: 60,
+  LdapHostLoginInSeconds: 3600,
+  LdapGuessedHostLoginInSeconds: 30,
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
@@ -231,7 +273,7 @@ export const KeyStoreTtls = {
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
   EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
   InsightsCacheInSeconds: 300, // 5 minutes
-  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
+  InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,
@@ -239,7 +281,11 @@ export const KeyStoreTtls = {
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 900, // 15 minutes
+  LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
+  AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
+  AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
+  OrgSecretScanningFindingsCountInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes
   // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
@@ -250,6 +296,9 @@ export const KeyStoreTtls = {
   // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
   LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
+  // Short: the count drifts high as certificates expire and low when an ungated path such as a
+  // discovery scan inserts rows, and only this expiry corrects either.
+  PkiCertificateQuotaCountInSeconds: 60,
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
@@ -260,9 +309,10 @@ export const KeyStoreTtls = {
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
-  GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
   SecretReplicationSuccessInSeconds: 10,
-  NativeIntegrationDeprecationNoticeInSeconds: 3888000 // 45 days - outlives one monthly cycle
+  NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
 };
 
 type TDeleteItems = {
@@ -308,6 +358,7 @@ export type TKeyStoreFactory = {
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
+  decrementIfExists: (key: string) => Promise<number | null>;
   claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
   incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
   probeDistinctMember: (key: string, member: string, expiryInSeconds: number) => Promise<boolean>;
@@ -324,7 +375,8 @@ export type TKeyStoreFactory = {
     id: string,
     fieldValue: Record<string, string>,
     maxLen?: number,
-    expiryInSeconds?: number
+    expiryInSeconds?: number,
+    isExactTrim?: boolean
   ) => Promise<string | null>;
   streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
   streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
@@ -354,12 +406,13 @@ export type TKeyStoreFactory = {
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
   // locks
-  acquireLock(
-    resources: string[],
-    duration: number,
-    settings?: Partial<Settings>
-  ): Promise<{ release: () => Promise<ExecutionResult> }>;
+  acquireLock(resources: string[], duration: number, settings?: Partial<Settings>): Promise<TKeyStoreLock>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
+};
+
+export type TKeyStoreLock = {
+  release: () => Promise<ExecutionResult>;
+  extend?: (duration: number) => Promise<TKeyStoreLock>;
 };
 
 const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {
@@ -494,6 +547,14 @@ export const keyStoreFactory = (
     return redis.call("DECR", KEYS[1])
   `;
 
+  // A plain DECR on a missing key creates it at -1 with no TTL, which then lives forever.
+  const DECREMENT_IF_EXISTS_SCRIPT = `
+    if redis.call("EXISTS", KEYS[1]) == 0 then
+      return false
+    end
+    return redis.call("DECR", KEYS[1])
+  `;
+
   const incrementByAndRefreshExpiryIfUnderLimit = async (
     key: string,
     limit: number,
@@ -512,6 +573,12 @@ export const keyStoreFactory = (
   const decrementByOrDelete = async (key: string): Promise<number> => {
     const result = await primaryRedis.eval(DECREMENT_OR_DELETE_SCRIPT, 1, key);
     return Number(result);
+  };
+
+  // Returns null when the key does not exist, leaving it absent.
+  const decrementIfExists = async (key: string): Promise<number | null> => {
+    const result = await primaryRedis.eval(DECREMENT_IF_EXISTS_SCRIPT, 1, key);
+    return result === null ? null : Number(result);
   };
 
   // Choosing and claiming has to be one round trip. Done as separate read and write calls, every
@@ -732,7 +799,10 @@ export const keyStoreFactory = (
     id: string,
     fieldValue: Record<string, string>,
     maxLen = 1_000_000,
-    expiryInSeconds?: number
+    expiryInSeconds?: number,
+    // With "~", Redis only trims whole internal blocks of about 100 entries, so a cap of 10 could still hold around
+    // 100. Small caps need exact trimming.
+    isExactTrim = false
   ) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
@@ -740,14 +810,15 @@ export const keyStoreFactory = (
     }
 
     if (!expiryInSeconds) {
-      return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+      return isExactTrim
+        ? primaryRedis.xadd(key, "MAXLEN", maxLen, id, ...args)
+        : primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
     }
 
-    const results = await primaryRedis
-      .multi()
-      .xadd(key, "MAXLEN", "~", maxLen, id, ...args)
-      .expire(key, expiryInSeconds)
-      .exec();
+    const pipeline = primaryRedis.multi();
+    if (isExactTrim) pipeline.xadd(key, "MAXLEN", maxLen, id, ...args);
+    else pipeline.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+    const results = await pipeline.expire(key, expiryInSeconds).exec();
 
     const [addError, entryId] = results?.[0] ?? [null, null];
     if (addError) throw addError;
@@ -830,6 +901,7 @@ export const keyStoreFactory = (
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
+    decrementIfExists,
     claimLeastLoaded,
     incrementByWithExpiry,
     probeDistinctMember,

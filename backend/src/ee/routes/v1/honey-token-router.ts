@@ -83,7 +83,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       response: {
         200: z.object({
           used: z.number(),
-          limit: z.number()
+          limit: z.number().nullish()
         })
       }
     },

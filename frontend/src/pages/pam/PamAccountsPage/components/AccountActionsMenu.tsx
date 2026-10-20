@@ -73,7 +73,6 @@ export const AccountActionsMenu = ({
   const isCredentialPending = credentialAccessStatus === PamAccessStatus.Pending;
   const needsCredentialApproval =
     requiresApproval && credentialAccessStatus !== PamAccessStatus.Granted;
-  const canRequestCredentials = hasApprovalConfig && !isCredentialPending;
 
   const availableTabs = PAM_ACCOUNT_TABS.filter(
     (tab) => (tab.value !== PamSheetTab.Rotation || isRotatable) && (!tab.action || can(tab.action))
@@ -108,15 +107,13 @@ export const AccountActionsMenu = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <div>
-                <DropdownMenuItem isDisabled={isPending} onClick={onRequestAccess}>
+                <DropdownMenuItem onClick={onRequestAccess}>
                   {isPending ? <Clock className="size-4" /> : <KeyRound className="size-4" />}
                   {isPending ? "Access Request Pending" : "Request Access"}
                 </DropdownMenuItem>
               </div>
             </TooltipTrigger>
-            {isPending && (
-              <TooltipContent side="left">Your request is awaiting approval</TooltipContent>
-            )}
+            {isPending && <TooltipContent side="left">View your pending request</TooltipContent>}
           </Tooltip>
         ) : (
           <Tooltip>
@@ -137,7 +134,7 @@ export const AccountActionsMenu = ({
               <TooltipTrigger asChild>
                 <div>
                   <DropdownMenuItem
-                    isDisabled={!canRequestCredentials}
+                    isDisabled={!hasApprovalConfig}
                     onClick={onRequestCredentialAccess}
                   >
                     {isCredentialPending ? (
@@ -149,11 +146,11 @@ export const AccountActionsMenu = ({
                   </DropdownMenuItem>
                 </div>
               </TooltipTrigger>
-              {!canRequestCredentials && (
+              {(isCredentialPending || !hasApprovalConfig) && (
                 <TooltipContent side="left">
-                  {isCredentialPending
-                    ? "Your request is awaiting approval"
-                    : "This folder has no approvers configured"}
+                  {!hasApprovalConfig
+                    ? "This folder has no approvers configured"
+                    : "View your pending request"}
                 </TooltipContent>
               )}
             </Tooltip>

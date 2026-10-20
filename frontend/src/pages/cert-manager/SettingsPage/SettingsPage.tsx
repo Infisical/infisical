@@ -2,60 +2,55 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { ProjectPermissionSub } from "@app/context";
+import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionHsmConnectorActions
 } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { AlertsTab } from "./components/AlertsTab";
 import { AppConnectionsTab } from "./components/AppConnectionsTab";
 import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
 import { HsmConnectorsTab } from "./components/HsmConnectorsTab";
 
 export const SettingsPage = () => {
-  const { orgId, projectId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
   const activeTab = search.selectedTab ?? "app-connections";
 
   return (
-    <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+    <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
       <Helmet>
         <title>Settings</title>
       </Helmet>
-      <div className="w-full max-w-8xl">
+      <div className="flex w-full max-w-8xl flex-col">
         <PageHeader
-          className="mb-6"
           scope={ProjectType.CertificateManager}
           title="Settings"
-          description="Configure app connections, HSM connectors, and cleanup rules."
+          description="Configure app connections, HSM connectors, cleanup rules, and alerts."
         />
 
         <Tabs
           value={activeTab}
           onValueChange={(v) =>
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
-              params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+              to: "/organizations/$orgId/cert-manager/settings",
+              params: { orgId: orgId ?? "" },
               search: { selectedTab: v }
             })
           }
         >
-          <TabList>
-            <Tab variant="project" value="app-connections">
-              App Connections
-            </Tab>
-            <Tab variant="project" value="hsm-connectors">
-              HSM Connectors
-            </Tab>
-            <Tab variant="project" value="cleanup">
-              Cleanup
-            </Tab>
-          </TabList>
+          <TabsList variant="project" aria-label="Certificate Manager settings sections">
+            <TabsTrigger value="app-connections">App Connections</TabsTrigger>
+            <TabsTrigger value="hsm-connectors">HSM Connectors</TabsTrigger>
+            <TabsTrigger value="cleanup">Cleanup</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
+          </TabsList>
 
-          <TabPanel value="app-connections">
+          <TabsContent value="app-connections">
             <ProjectPermissionCan
               renderGuardBanner
               I={ProjectPermissionAppConnectionActions.Read}
@@ -63,9 +58,9 @@ export const SettingsPage = () => {
             >
               <AppConnectionsTab />
             </ProjectPermissionCan>
-          </TabPanel>
+          </TabsContent>
 
-          <TabPanel value="hsm-connectors">
+          <TabsContent value="hsm-connectors">
             <ProjectPermissionCan
               renderGuardBanner
               I={ProjectPermissionHsmConnectorActions.Read}
@@ -73,11 +68,21 @@ export const SettingsPage = () => {
             >
               <HsmConnectorsTab />
             </ProjectPermissionCan>
-          </TabPanel>
+          </TabsContent>
 
-          <TabPanel value="cleanup">
+          <TabsContent value="cleanup">
             <CertificateCleanupTab />
-          </TabPanel>
+          </TabsContent>
+
+          <TabsContent value="alerts">
+            <ProjectPermissionCan
+              renderGuardBanner
+              I={ProjectPermissionActions.Read}
+              a={ProjectPermissionSub.PkiAlerts}
+            >
+              <AlertsTab />
+            </ProjectPermissionCan>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

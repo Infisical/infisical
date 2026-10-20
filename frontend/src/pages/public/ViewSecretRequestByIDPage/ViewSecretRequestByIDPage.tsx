@@ -167,7 +167,7 @@ export const ViewSecretRequestByIDPage = () => {
 
   if (isPending) {
     return (
-      <div className="h-screen w-screen bg-bunker-800">
+      <div className="h-screen w-screen bg-page">
         <PageLoader lottieClassName="w-34" />
       </div>
     );
@@ -233,7 +233,7 @@ export const ViewSecretRequestByIDPage = () => {
               color: brandingTheme?.textColor
             }}
           >
-            <h1 className="mb-1 text-lg font-semibold" style={{ color: brandingTheme?.textColor }}>
+            <h1 className="mb-1 text-lg font-normal" style={{ color: brandingTheme?.textColor }}>
               {step === "set-value" ? "Secret Request" : "Secret request shared"}
             </h1>
             {secretRequest?.request && (
@@ -250,7 +250,7 @@ export const ViewSecretRequestByIDPage = () => {
 
   // Default: Infisical auth page layout
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-bunker-800 px-4 text-foreground scheme-dark">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-page px-4 text-foreground scheme-dark">
       <AuthPageBackground />
       <Helmet>
         <title>Secret Request | Infisical</title>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { Button } from "../Button";
 import { Card, CardContent } from "../Card";
@@ -115,11 +115,13 @@ export const HorizontalOverflow: Story = {
     await userEvent.click(firstTab);
     await userEvent.keyboard("{End}");
 
-    await expect(finalTab).toHaveFocus();
-    await expect(finalTab).toHaveAttribute("data-state", "active");
-    await expect(finalTab.getBoundingClientRect().right).toBeLessThanOrEqual(
-      list.getBoundingClientRect().right + 1
-    );
+    await waitFor(async () => {
+      await expect(finalTab).toHaveFocus();
+      await expect(finalTab).toHaveAttribute("data-state", "active");
+      await expect(finalTab.getBoundingClientRect().right).toBeLessThanOrEqual(
+        list.getBoundingClientRect().right + 1
+      );
+    });
   }
 };
 
@@ -165,10 +167,12 @@ export const Controlled: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Select final tab" }));
 
-    await expect(finalTab).toHaveAttribute("data-state", "active");
-    await expect(finalTab.getBoundingClientRect().right).toBeLessThanOrEqual(
-      list.getBoundingClientRect().right + 1
-    );
+    await waitFor(async () => {
+      await expect(finalTab).toHaveAttribute("data-state", "active");
+      await expect(finalTab.getBoundingClientRect().right).toBeLessThanOrEqual(
+        list.getBoundingClientRect().right + 1
+      );
+    });
   }
 };
 
@@ -201,12 +205,16 @@ export const ManualActivation: Story = {
     await userEvent.click(overviewTab);
     await userEvent.keyboard("{ArrowRight}");
 
-    await expect(activityTab).toHaveFocus();
-    await expect(overviewTab).toHaveAttribute("aria-selected", "true");
-    await expect(activityTab).toHaveAttribute("aria-selected", "false");
+    await waitFor(async () => {
+      await expect(activityTab).toHaveFocus();
+      await expect(overviewTab).toHaveAttribute("aria-selected", "true");
+      await expect(activityTab).toHaveAttribute("aria-selected", "false");
+    });
 
     await userEvent.keyboard("{Enter}");
-    await expect(activityTab).toHaveAttribute("aria-selected", "true");
+    await waitFor(async () => {
+      await expect(activityTab).toHaveAttribute("aria-selected", "true");
+    });
   }
 };
 
@@ -240,8 +248,10 @@ export const Disabled: Story = {
     await userEvent.click(overviewTab);
     await userEvent.keyboard("{ArrowRight}");
 
-    await expect(settingsTab).toHaveFocus();
-    await expect(settingsTab).toHaveAttribute("aria-selected", "true");
+    await waitFor(async () => {
+      await expect(settingsTab).toHaveFocus();
+      await expect(settingsTab).toHaveAttribute("aria-selected", "true");
+    });
   }
 };
 

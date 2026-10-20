@@ -1,0 +1,196 @@
+---
+title: "Create Agent Vault sessions with the CLI"
+sidebarTitle: "Create sessions with the CLI"
+description: "Create a new session for each agent run with the Infisical CLI and a machine identity."
+---
+
+import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
+
+The Infisical CLI can create a new [session](/documentation/platform/agent-vault/sessions) each time an agent starts. The CLI authenticates as a [machine identity](/documentation/platform/identities/machine-identities), creates a session with an [access bundle](/documentation/platform/agent-vault/access-bundles), starts the agent, and revokes the session when the agent exits.
+
+This is useful if your agent runs from cron, in a container, in CI, or as a long-running service.
+
+<Tip>
+  If your own code starts the agents, or creates sessions for agents that run on other machines, such as an orchestrator that gives each container its own session, you can [create sessions with the API](/documentation/platform/agent-vault/sessions-api) instead.
+</Tip>
+
+## Prerequisites
+
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent calls
+- A running [proxy](/documentation/platform/agent-vault/proxies) that the agent's machine can reach
+- The [Infisical CLI](/cli/install) installed on the agent's machine
+- An agent command that runs without anyone at the terminal, such as `claude -p "<prompt>"` for Claude Code
+- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), or an Agent Vault admin who can complete [Step 1](#step-1-set-up-a-machine-identity) for you
+
+## Step 1: Set up a machine identity
+
+The CLI creates sessions as a machine identity, so that the agent's access doesn't depend on a person's account.
+
+<MachineIdentitySetup />
+
+<Note>
+  We recommend creating a machine identity for each agent and granting it only the access bundle that agent uses.
+
+  If you plan on using one machine identity to create sessions with different access bundles for different agents, you should [create sessions with the API](/documentation/platform/agent-vault/sessions-api) instead.
+</Note>
+
+## Step 2: Start the agent
+
+If the agent won't start without an API key, such as `ANTHROPIC_API_KEY` for Claude Code, set the key to a placeholder, such as `agent-vault`. The proxy replaces the placeholder with the real key from the service. If the service uses a [substitution](/documentation/platform/agent-vault/services#substitutions), set the key to the service's placeholder instead.
+
+On the agent's machine, set the machine identity's credentials and the proxy's address as environment variables, then start the agent with `infisical agent-vault run`:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323
+# If you self-host Infisical, also set the address of your instance
+export INFISICAL_DOMAIN=<your-instance-url>
+
+infisical agent-vault run --access-bundle <access-bundle-name> --ttl 2h -- <agent-command>
+```
+
+### Choose how long each session lasts
+
+Set `--ttl` a little longer than the longest run you expect:
+
+- If a run takes longer than the `--ttl`, the agent loses access to the APIs partway through the run
+- If the CLI can't revoke the session, such as when the machine shuts down mid-run, the session keeps working until the `--ttl` runs out (seven days if you leave out `--ttl`)
+
+### Pin the proxy's certificate
+
+The CLI downloads the proxy's certificate at the start of each run. If the agent's machine reaches the proxy over a network you don't fully control, add `--ca-fingerprint` with the proxy's fingerprint to the command, so the CLI only starts the agent if the certificate matches:
+
+```bash
+infisical agent-vault run --access-bundle <access-bundle-name> --ttl 2h --ca-fingerprint <fingerprint> -- <agent-command>
+```
+
+Copy the fingerprint from the **Certificate Authority** column on the **Proxies** page. If you [re-enroll the proxy](/documentation/platform/agent-vault/proxies#re-enroll-a-proxy), update the fingerprint.
+
+## Step 3: Run the agent automatically
+
+Put the command from [Step 2](#step-2-start-the-agent) wherever your agents start:
+
+<Tabs>
+  <Tab title="Schedule (cron)">
+    Store the environment variables in a file that only the job's user can read, such as `/etc/agent-vault/agent.env` with mode `0600`:
+
+    ```bash
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+    export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323
+    ```
+
+    Then load the file in the crontab entry. This entry runs the agent every 30 minutes:
+
+    ```bash
+    */30 * * * * . /etc/agent-vault/agent.env && infisical agent-vault run --access-bundle <access-bundle-name> --ttl 1h -- <agent-command>
+    ```
+  </Tab>
+  <Tab title="Service (systemd)">
+    For an agent that keeps running, such as a bot, a session has to last as long as the process. Instead of a session that never expires, restart the service on a schedule, so each restart gets a new session and revokes the old one.
+
+    Store the variables in `/etc/agent-vault/agent.env` with mode `0600`, without the `export` keyword, then create `/etc/systemd/system/agent.service`:
+
+    ```ini
+    [Unit]
+    Description=Agent through Infisical Agent Vault
+    After=network-online.target
+
+    [Service]
+    EnvironmentFile=/etc/agent-vault/agent.env
+    ExecStart=/usr/bin/infisical agent-vault run --access-bundle <access-bundle-name> --ttl 25h -- <agent-command>
+    Restart=always
+    RuntimeMaxSec=1d
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+    `RuntimeMaxSec=1d` restarts the service every day, and `--ttl 25h` gives each session an hour more than that. Start the service with `sudo systemctl enable --now agent`.
+  </Tab>
+  <Tab title="Container">
+    Install the CLI in the agent's image and start the agent through `infisical agent-vault run`. For an image based on Debian or Ubuntu:
+
+    ```dockerfile
+    RUN apt-get update && apt-get install -y curl \
+      && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+      && apt-get install -y infisical
+
+    ENTRYPOINT ["infisical", "agent-vault", "run", "--access-bundle", "<access-bundle-name>", "--ttl", "2h", "--"]
+    CMD ["<agent-command>"]
+    ```
+
+    Pass the environment variables when you start the container, such as from a file:
+
+    ```bash
+    docker run --env-file agent.env <agent-image>
+    ```
+
+    In Docker, an `--env-file` lists each variable as `NAME=value`, without the `export` keyword. When Docker stops the container, the CLI passes the stop signal to the agent and revokes the session after the agent exits.
+  </Tab>
+  <Tab title="CI (GitHub Actions)">
+    Store the client ID and client secret as [repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions), then start the agent in a job step:
+
+    ```yaml
+    - name: Install the Infisical CLI
+      run: |
+        curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+        sudo apt-get install -y infisical
+
+    - name: Run the agent
+      env:
+        INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.AGENT_VAULT_CLIENT_ID }}
+        INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.AGENT_VAULT_CLIENT_SECRET }}
+        INFISICAL_AGENT_VAULT_PROXY_ADDRESS: <proxy-host>:17323
+      run: infisical agent-vault run --access-bundle <access-bundle-name> --ttl 1h -- <agent-command>
+    ```
+
+    The CLI exits with the agent's exit code, so the step fails if the agent fails.
+
+    The runner has to reach the proxy. If the proxy is on a private network, run the job on a [self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners) in that network.
+  </Tab>
+</Tabs>
+
+To run agents on many machines, give every machine the same command and point them all at the same proxy. Each run gets its own session, so you can see and revoke each run separately on the **Sessions** page. You don't need a proxy for each machine.
+
+## Step 4: Verify it works
+
+After the agent runs, go to **Sessions** in Agent Vault and select **All Sessions**. Each run has its own session, with the machine identity's name in the **Identity** column. A session's **Status** is **Active** while the agent runs, and **Revoked** after the agent exits.
+
+If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), [view a session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made during that run.
+
+<Check>
+  Your agent now runs on its own with a new session each time, and each session ends when the agent exits.
+</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The job hangs or fails before the agent starts">
+    If the output mentions logging in, the CLI didn't find the machine identity's credentials and started an interactive login. Check that `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` are set in the job's environment. Cron starts jobs with an almost empty environment, so load the variables in the cron job, as the [cron example](#step-3-run-the-agent-automatically) shows.
+  </Accordion>
+  <Accordion title="The CLI fails with &quot;the proxy address is required&quot;">
+    Set `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`, or pass `--proxy <proxy-host>:17323`.
+  </Accordion>
+  <Accordion title="The CLI fails with &quot;No access bundle named ... is granted to you&quot;">
+    The machine identity doesn't have a grant on the access bundle, or the name in `--access-bundle` is wrong. Check the name on the **Access Bundles** page, and [grant the bundle](#step-1-set-up-a-machine-identity) to the machine identity.
+  </Accordion>
+  <Accordion title="The agent loses access to APIs partway through a run">
+    If the agent's requests start failing with a 403 from the proxy, such as `CONNECT tunnel failed, response 403`, the session expired before the agent finished. Set a longer `--ttl`.
+  </Accordion>
+  <Accordion title="A session stays Active after the agent stopped">
+    The CLI couldn't revoke the session, for example because the machine shut down or the process was killed with `SIGKILL`. [Revoke the session](/documentation/platform/agent-vault/sessions#revoke-a-session) on the **Sessions** page, or let it expire at the end of its `--ttl`.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Create sessions with the API" icon="key-round" href="/documentation/platform/agent-vault/sessions-api">
+    Create a session for each agent run from your own code.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/reference#agent-vault-run">
+    Every flag of `infisical agent-vault run`.
+  </Card>
+</CardGroup>

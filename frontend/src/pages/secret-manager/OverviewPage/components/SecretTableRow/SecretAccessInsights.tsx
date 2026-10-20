@@ -50,13 +50,13 @@ import {
   SheetHeader,
   SheetTitle,
   Skeleton,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -592,7 +592,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
       <div className="flex thin-scrollbar flex-col gap-4 overflow-y-auto p-4">
         <div className="flex items-center gap-2">
           <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
-            <Switch
+            <Toggle
               size="sm"
               variant="project"
               checked={showAllEntities}
@@ -716,7 +716,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                         <TooltipTrigger asChild>
                           <span className="inline-flex items-center gap-1">
                             {col.label}
-                            <TriangleAlertIcon className="size-3.5 text-yellow-500" />
+                            <TriangleAlertIcon className="size-3.5 text-warning" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>

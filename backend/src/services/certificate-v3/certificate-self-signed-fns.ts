@@ -13,6 +13,7 @@ import {
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { TResolvedCustomExtension } from "../certificate-common/certificate-extension-fns";
 import { generateSelfSignedCertificate } from "../certificate-common/certificate-issuance-utils";
 import {
   convertExtendedKeyUsageArrayToLegacy,
@@ -25,11 +26,13 @@ const createSelfSignedCertificateRecord = async ({
   certificateRequest,
   profile,
   originalCert,
+  customExtensions,
   certificateDAL,
   tx,
   isRenewal = false
 }: {
   selfSignedResult: Awaited<ReturnType<typeof generateSelfSignedCertificate>>;
+  customExtensions?: TResolvedCustomExtension[];
   certificateRequest: {
     commonName?: string;
     keyUsages?: CertKeyUsageType[];
@@ -80,7 +83,7 @@ const createSelfSignedCertificateRecord = async ({
         }
       : {};
 
-  const parsedFields = extractCertificateFields(selfSignedResult.certificate);
+  const parsedFields = extractCertificateFields(selfSignedResult.certificate, customExtensions);
 
   return certificateDAL.create(
     {
@@ -159,7 +162,8 @@ export const processSelfSignedCertificate = async ({
   projectDAL,
   tx,
   isRenewal = false,
-  existingKeyPair
+  existingKeyPair,
+  customExtensions
 }: {
   certificateRequest: {
     commonName?: string;
@@ -204,6 +208,7 @@ export const processSelfSignedCertificate = async ({
   tx: Parameters<TCertificateDALFactory["create"]>[1];
   isRenewal?: boolean;
   existingKeyPair?: CryptoKeyPair;
+  customExtensions?: TResolvedCustomExtension[];
 }) => {
   const projectId = originalCert?.projectId || profile?.projectId;
   if (!projectId) {
@@ -215,7 +220,8 @@ export const processSelfSignedCertificate = async ({
     policy,
     effectiveSignatureAlgorithm: effectiveAlgorithms.signatureAlgorithm,
     effectiveKeyAlgorithm: effectiveAlgorithms.keyAlgorithm,
-    existingKeyPair
+    existingKeyPair,
+    customExtensions
   });
 
   const certificateData = await createSelfSignedCertificateRecord({
@@ -223,6 +229,7 @@ export const processSelfSignedCertificate = async ({
     certificateRequest,
     profile,
     originalCert,
+    customExtensions,
     certificateDAL,
     tx,
     isRenewal

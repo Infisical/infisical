@@ -7,19 +7,24 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
-  FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
-  Input
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import {
   certKeyAlgorithms,
   certKeyAlgorithmToNameMap,
@@ -29,9 +34,7 @@ import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useUpdateKmipServer } from "@app/hooks/api/kmipServers";
 import { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
-const keyAlgorithmOptions = certKeyAlgorithms
-  .filter(({ value }) => !isPqcAlgorithm(value))
-  .map(({ value }) => ({ value, label: certKeyAlgorithmToNameMap[value] }));
+const keyAlgorithmOptions = certKeyAlgorithms.filter(({ value }) => !isPqcAlgorithm(value));
 
 const schema = z.object({
   hostnamesOrIps: z
@@ -42,22 +45,14 @@ const schema = z.object({
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 
-type FormData = z.infer<typeof schema>;
-
-type Props = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  kmipServer: TKmipServerWithAuthMethod;
-};
+const toFormDefaults = (kmipServer: TKmipServerWithAuthMethod): FormData => ({
+  hostnamesOrIps: kmipServer.hostnamesOrIps ?? "",
+  keyAlgorithm: (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048
+});
 
 export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: Props) => {
   const { mutateAsync: updateKmipServer, isPending } = useUpdateKmipServer();
-  const { isSubOrganization } = useOrganization();
-
-  const defaults: FormData = {
-    hostnamesOrIps: kmipServer.hostnamesOrIps ?? "",
-    keyAlgorithm: (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048
-  };
+  const scopeVariant = useScopeVariant();
 
   const {
     control,
@@ -66,11 +61,11 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
     formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: defaults
+    defaultValues: toFormDefaults(kmipServer)
   });
 
   useEffect(() => {
-    if (isOpen) reset(defaults);
+    if (isOpen) reset(toFormDefaults(kmipServer));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -87,13 +82,13 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
       });
       onOpenChange(false);
     } catch {
-      createNotification({ type: "error", text: "Failed to update certificate configuration" });
+      // MutationCache.onError already surfaces the API error.
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Certificate Configuration</DialogTitle>
           <DialogDescription>
@@ -101,67 +96,88 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
             apply them immediately.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Controller
             control={control}
             name="hostnamesOrIps"
             render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Hostnames or IPs</FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    isError={Boolean(error)}
-                    placeholder="kmip.example.com, 10.0.0.5"
-                  />
-                  <FieldError errors={[error]} />
-                </FieldContent>
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="kmip-server-cert-hostnames">
+                  Hostnames or IPs
+                  <span aria-hidden className="text-danger">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id="kmip-server-cert-hostnames"
+                  placeholder="kmip.example.com, 10.0.0.5"
+                  aria-required
+                  isError={Boolean(error)}
+                />
+                <FieldDescription>
+                  Comma-separated list of the hostnames or IPs that KMIP clients will use to reach
+                  this server. These become the server certificate&apos;s subject alternative names.
+                </FieldDescription>
+                <FieldError>{error?.message}</FieldError>
               </Field>
             )}
           />
           <Controller
             control={control}
             name="keyAlgorithm"
-            render={({ field }) => {
-              const selected =
-                keyAlgorithmOptions.find((o) => o.value === field.value) ?? keyAlgorithmOptions[0];
-              return (
-                <Field>
-                  <FieldLabel>Key Algorithm</FieldLabel>
-                  <FieldContent>
-                    <FilterableSelect
-                      value={selected}
-                      onChange={(opt) => {
-                        const next = opt as { value: CertKeyAlgorithm } | null;
-                        if (next) field.onChange(next.value);
-                      }}
-                      options={keyAlgorithmOptions}
-                      isSearchable={false}
-                      isClearable={false}
-                      getOptionLabel={(o) => o.label}
-                      getOptionValue={(o) => String(o.value)}
-                    />
-                  </FieldContent>
-                </Field>
-              );
-            }}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="kmip-server-cert-key-algorithm">Key algorithm</FieldLabel>
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger
+                    id="kmip-server-cert-key-algorithm"
+                    isError={Boolean(error)}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {keyAlgorithmOptions.map(({ value: algorithm }) => (
+                      <SelectItem value={algorithm} key={algorithm}>
+                        {certKeyAlgorithmToNameMap[algorithm]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  Key algorithm used to sign the server certificate.
+                </FieldDescription>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
           />
 
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
               type="submit"
-              variant={isSubOrganization ? "sub-org" : "org"}
+              variant={scopeVariant}
               isPending={isSubmitting || isPending}
               isDisabled={isSubmitting || isPending || !isDirty}
             >
-              Update
+              Update Certificate Configuration
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
+};
+
+type FormData = z.infer<typeof schema>;
+
+type Props = {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  kmipServer: TKmipServerWithAuthMethod;
 };

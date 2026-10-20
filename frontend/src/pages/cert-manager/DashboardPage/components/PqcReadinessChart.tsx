@@ -45,7 +45,7 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
   return (
     <Card className="flex h-auto w-full min-w-[280px] shrink-0 flex-col md:w-[320px]">
       <CardHeader className="pb-0">
-        <CardTitle className="text-base font-semibold">PQC Readiness</CardTitle>
+        <CardTitle className="text-base font-normal">PQC Readiness</CardTitle>
         <CardDescription className="text-xs">
           Post-quantum vs. classical key algorithms
         </CardDescription>

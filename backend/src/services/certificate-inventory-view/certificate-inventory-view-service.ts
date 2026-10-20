@@ -8,6 +8,7 @@ import { TPermissionServiceFactory } from "../../ee/services/permission/permissi
 import { ProjectPermissionActions, ProjectPermissionSub } from "../../ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "../../ee/services/permission/resource-permission";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "../certificate/certificate-dal";
+import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TCertificateInventoryViewDALFactory } from "./certificate-inventory-view-dal";
 import {
   TCreateInventoryViewDTO,
@@ -93,6 +94,7 @@ const SYSTEM_VIEWS: TSystemView[] = [
 
 type TCertificateInventoryViewServiceFactoryDep = {
   certificateInventoryViewDAL: TCertificateInventoryViewDALFactory;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
 
@@ -100,6 +102,7 @@ export type TCertificateInventoryViewServiceFactory = ReturnType<typeof certific
 
 export const certificateInventoryViewServiceFactory = ({
   certificateInventoryViewDAL,
+  pkiApplicationDAL,
   permissionService
 }: TCertificateInventoryViewServiceFactoryDep) => {
   const assertCanActOnView = async (
@@ -166,6 +169,12 @@ export const certificateInventoryViewServiceFactory = ({
     };
   };
 
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const createView = async ({
     projectId,
     applicationId,
@@ -200,7 +209,7 @@ export const certificateInventoryViewServiceFactory = ({
         isShared
       });
 
-      return view;
+      return { ...view, applicationName: await $resolveApplicationName(view.applicationId) };
     } catch (error) {
       if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
         throw new BadRequestError({
@@ -253,7 +262,7 @@ export const certificateInventoryViewServiceFactory = ({
         ...(isShared !== undefined && { isShared })
       });
 
-      return view;
+      return { ...view, applicationName: await $resolveApplicationName(view.applicationId) };
     } catch (error) {
       if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
         throw new BadRequestError({
@@ -290,7 +299,7 @@ export const certificateInventoryViewServiceFactory = ({
 
     await certificateInventoryViewDAL.deleteById(viewId);
 
-    return existing;
+    return { ...existing, applicationName: await $resolveApplicationName(existing.applicationId) };
   };
 
   return {

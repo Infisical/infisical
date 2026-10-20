@@ -1,25 +1,42 @@
+import { useEffect, useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleCheckIcon, CircleXIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { decodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import {
+  Badge,
   Button,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DiscardChangesAlertDialog,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
   Select,
+  SelectContent,
   SelectItem,
-  Switch,
+  SelectTrigger,
+  SelectValue,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
-import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { getAllowedSigningAlgorithms, getDefaultSigningAlgorithm } from "@app/helpers/kms";
+import { useDiscardChangesGuard } from "@app/hooks";
 import { SigningAlgorithm, TCmek, useCmekVerify } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
 
@@ -48,17 +65,24 @@ type Props = {
   cmek: TCmek;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, "cmek"> & {
+  cmekVerify: ReturnType<typeof useCmekVerify>;
+  onDirtyChange: (isDirty: boolean) => void;
+};
 
-const VerifyForm = ({ cmek }: FormProps) => {
-  const cmekVerify = useCmekVerify();
+const VerifyForm = ({ cmek, cmekVerify, onDirtyChange }: FormProps) => {
+  const fieldId = useId();
+  const formId = `${fieldId}-form`;
+  const { reset: resetVerifyResult } = cmekVerify;
+
+  useEffect(() => resetVerifyResult, [resetVerifyResult]);
 
   const {
     handleSubmit,
     register,
     watch,
     control,
-    formState: { isSubmitting, errors }
+    formState: { dirtyFields, isSubmitting, errors }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -90,142 +114,218 @@ const VerifyForm = ({ cmek }: FormProps) => {
 
   const signatureValid = cmekVerify.data?.signatureValid;
   const signingAlgorithm = cmekVerify.data?.signingAlgorithm;
+  const isDirty = Object.keys(dirtyFields).length > 0;
 
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
-    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
-    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
-    return a.toLowerCase().startsWith("ecdsa");
-  });
+  useEffect(() => {
+    onDirtyChange(isDirty && signatureValid === undefined);
+    return () => onDirtyChange(false);
+  }, [isDirty, onDirtyChange, signatureValid]);
+
+  const allowedSigningAlgorithms = getAllowedSigningAlgorithms(cmek);
 
   return (
-    <form onSubmit={handleSubmit(handleVerifyData)}>
-      {signatureValid !== undefined ? (
-        <div className="mb-6 flex flex-col gap-2">
-          <div className="flex items-center justify-between space-x-2">
-            <span className="text-sm opacity-60">Signature Status:</span>
-            <Tooltip
-              content={
-                signatureValid
-                  ? "The signature is valid. signature was created using the same signing algorithm and key as the one used to sign the data."
-                  : "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with."
-              }
-            >
-              <Badge variant={signatureValid ? "success" : "danger"}>
-                {signatureValid ? "Valid" : "Invalid"}
-              </Badge>
-            </Tooltip>
-          </div>
+    <>
+      <DialogBody>
+        <form id={formId} onSubmit={handleSubmit(handleVerifyData)}>
+          {signatureValid !== undefined ? (
+            <div className="mb-6 flex flex-col gap-2">
+              <div className="flex items-center justify-between space-x-2">
+                <span className="text-sm opacity-60">Signature Status:</span>
+                <Tooltip hoverable selectable={false} delayDuration={50}>
+                  <TooltipTrigger asChild>
+                    <Badge variant={signatureValid ? "success" : "danger"} tabIndex={0}>
+                      {signatureValid ? <CircleCheckIcon /> : <CircleXIcon />}
+                      {signatureValid ? "Valid" : "Invalid"}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs" sideOffset={5}>
+                    {signatureValid
+                      ? "The signature is valid. signature was created using the same signing algorithm and key as the one used to sign the data."
+                      : "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with."}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm opacity-60">Signing Algorithm:</span>
-            <Badge variant="info">{signingAlgorithm}</Badge>
-          </div>
-          <div className="mt-3">
-            <span className="text-sm opacity-60">Signature:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm break-words whitespace-pre-wrap">
-              {signature}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm opacity-60">Signing Algorithm:</span>
+                <Badge variant="info">{signingAlgorithm}</Badge>
+              </div>
+              <div className="mt-3">
+                <span className="text-sm opacity-60">Signature:</span>{" "}
+                <div className="rounded-md border border-border bg-container p-2 font-mono text-sm break-words whitespace-pre-wrap">
+                  {signature}
+                </div>
+              </div>
+              <div>
+                <span className="text-sm opacity-60">Data:</span>{" "}
+                <div className="rounded-md border border-border bg-container p-2 text-sm">
+                  {isBase64Encoded ? decodeBase64(data).toString() : data}
+                </div>
+              </div>
             </div>
-          </div>
-          <div>
-            <span className="text-sm opacity-60">Data:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm">
-              {isBase64Encoded ? decodeBase64(data).toString() : data}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          <FormControl
-            label="Data to Verify"
-            errorText={errors.data?.message}
-            isError={Boolean(errors.data)}
-          >
-            <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
-          </FormControl>
+          ) : (
+            <>
+              <Field className="mb-4" data-invalid={Boolean(errors.data)}>
+                <FieldLabel htmlFor={`${fieldId}-data`}>Data to Verify</FieldLabel>
+                <TextArea
+                  {...register("data")}
+                  rows={7}
+                  id={`${fieldId}-data`}
+                  isError={Boolean(errors.data)}
+                  aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}
+                />
+                <FieldError id={`${fieldId}-data-error`} errors={[errors.data]} />
+              </Field>
 
-          <FormControl
-            label="Signature of Data"
-            tooltipText="Must be base64-encoded, like the signature you received when you signed the data."
-            errorText={errors.signature?.message}
-            isError={Boolean(errors.signature)}
-          >
-            <TextArea
-              {...register("signature")}
-              className="max-h-80 min-h-40 max-w-full min-w-full"
-            />
-          </FormControl>
-
-          <div className="mb-6 flex w-full items-center justify-between gap-2">
-            <Controller
-              control={control}
-              name="signingAlgorithm"
-              render={({ field: { onChange, value } }) => (
-                <FormControl label="Signing Algorithm">
-                  <Select onValueChange={onChange} value={value} className="w-full">
-                    {allowedSigningAlgorithms.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a.replaceAll("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-
-            <Controller
-              control={control}
-              name="isBase64Encoded"
-              render={({ field: { onChange, value } }) => (
-                <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
-                  Data is Base64 encoded{" "}
-                  <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+              <Field className="mb-4" data-invalid={Boolean(errors.signature)}>
+                <div className="flex items-center gap-1">
+                  <FieldLabel htmlFor={`${fieldId}-signature`}>Signature of Data</FieldLabel>
+                  <Tooltip hoverable selectable={false} delayDuration={50}>
+                    <TooltipTrigger asChild>
+                      <IconButton variant="ghost" size="2xs" aria-label="About signature encoding">
+                        <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs" sideOffset={5}>
+                      Must be base64-encoded, like the signature you received when you signed the
+                      data.
+                    </TooltipContent>
                   </Tooltip>
-                </Switch>
-              )}
-            />
-          </div>
-        </>
-      )}
-      <div className="flex items-center">
-        {signatureValid === undefined && (
+                </div>
+                <TextArea
+                  {...register("signature")}
+                  rows={7}
+                  id={`${fieldId}-signature`}
+                  isError={Boolean(errors.signature)}
+                  aria-describedby={errors.signature ? `${fieldId}-signature-error` : undefined}
+                />
+                <FieldError id={`${fieldId}-signature-error`} errors={[errors.signature]} />
+              </Field>
+
+              <div className="mb-6 flex flex-col gap-2">
+                <Controller
+                  control={control}
+                  name="signingAlgorithm"
+                  render={({ field: { onChange, value } }) => (
+                    <Field className="mb-4" data-invalid={Boolean(errors.signingAlgorithm)}>
+                      <FieldLabel htmlFor={`${fieldId}-signing-algorithm`}>
+                        Signing Algorithm
+                      </FieldLabel>
+                      <Select onValueChange={onChange} value={value}>
+                        <SelectTrigger
+                          id={`${fieldId}-signing-algorithm`}
+                          className="w-full"
+                          isError={Boolean(errors.signingAlgorithm)}
+                          aria-describedby={
+                            errors.signingAlgorithm
+                              ? `${fieldId}-signing-algorithm-error`
+                              : undefined
+                          }
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {allowedSigningAlgorithms.map((a) => (
+                            <SelectItem key={a} value={a}>
+                              {a.replaceAll("_", " ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldError
+                        id={`${fieldId}-signing-algorithm-error`}
+                        errors={[errors.signingAlgorithm]}
+                      />
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="isBase64Encoded"
+                  render={({ field: { onChange, value } }) => (
+                    <Field orientation="horizontal">
+                      <Toggle
+                        id={`${fieldId}-encode-base-64`}
+                        checked={value}
+                        onCheckedChange={onChange}
+                      />
+                      <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
+                        Data is Base64 encoded
+                      </FieldLabel>
+                      <Tooltip hoverable selectable={false} delayDuration={50}>
+                        <TooltipTrigger asChild>
+                          <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
+                            <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                          </IconButton>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs" sideOffset={5}>
+                          Toggle this switch on if your data is already Base64 encoded to avoid
+                          redundant encoding.
+                        </TooltipContent>
+                      </Tooltip>
+                    </Field>
+                  )}
+                />
+              </div>
+            </>
+          )}
+        </form>
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose asChild>
           <Button
-            className="mr-4 w-44"
-            size="sm"
-            leftIcon={<FontAwesomeIcon icon={faFileSignature} />}
-            type="submit"
-            isLoading={isSubmitting}
+            variant={signatureValid === undefined ? "ghost" : "project"}
             isDisabled={isSubmitting}
-          >
-            Verify
-          </Button>
-        )}
-        <ModalClose asChild>
-          <Button
-            colorSchema={signatureValid === undefined ? "secondary" : "primary"}
-            variant={signatureValid === undefined ? "plain" : undefined}
           >
             {signatureValid !== undefined ? "Close" : "Cancel"}
           </Button>
-        </ModalClose>
-      </div>
-    </form>
+        </DialogClose>
+        {signatureValid === undefined && (
+          <Button
+            className="w-44"
+            size="sm"
+            variant="project"
+            type="submit"
+            form={formId}
+            isPending={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            <FontAwesomeIcon icon={faFileSignature} />
+            Verify
+          </Button>
+        )}
+      </DialogFooter>
+    </>
   );
 };
 
 export const CmekVerifyModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+  const cmekVerify = useCmekVerify();
+  const [isDirty, setIsDirty] = useState(false);
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Verify Signature"
-        subTitle={
-          <>
-            Verify a signature using <span className="font-bold">{cmek?.name}</span>.
-          </>
-        }
-      >
-        <VerifyForm cmek={cmek} />
-      </ModalContent>
-    </Modal>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => (open ? onOpenChange(true) : requestDiscard())}>
+        <DialogContent isPending={cmekVerify.isPending}>
+          <DialogHeader>
+            <DialogTitle>Verify Signature</DialogTitle>
+            <DialogDescription>
+              Verify a signature using <span className="font-bold">{cmek?.name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <VerifyForm cmek={cmek} cmekVerify={cmekVerify} onDirtyChange={setIsDirty} />
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Verification Data?"
+        description="Your unsent verification data and signature will be lost."
+      />
+    </>
   );
 };

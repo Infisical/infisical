@@ -23,12 +23,11 @@ export type OneShotOptions = {
   relayPort: number;
   username: string;
   database?: string;
+  // A dialect the gateway serves over HTTP rather than a wire protocol reads its target from here
+  connectionDetails: Record<string, unknown>;
 };
 
-export type ControllerParams = {
-  relayPort: number;
-  username: string;
-  database?: string;
+export type ControllerParams = OneShotOptions & {
   sessionId: string;
   connectionId: string;
   sendResponse: (msg: TDataExplorerServerMessage) => void;
@@ -58,7 +57,8 @@ export const createDataExplorerSessionHandler = (config: TDataExplorerDialectCon
     const oneShotOpts: OneShotOptions = {
       relayPort,
       username: credentials.username,
-      database: connectionDetails.database
+      database: connectionDetails.database,
+      connectionDetails: params.connectionDetails
     };
 
     await verifyReachability(oneShotOpts);
@@ -98,9 +98,7 @@ export const createDataExplorerSessionHandler = (config: TDataExplorerDialectCon
       controllers.set(connectionId, null);
       try {
         const controller = await createController({
-          relayPort,
-          username: credentials.username,
-          database: connectionDetails.database,
+          ...oneShotOpts,
           sessionId,
           connectionId,
           sendResponse,

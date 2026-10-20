@@ -17,8 +17,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import {
   PamAccountType,
@@ -94,7 +94,7 @@ const ToggleField = ({
           <FieldLabel htmlFor={name} className="mb-0">
             {label}
           </FieldLabel>
-          <Switch id={name} variant="pam" checked={field.value} onCheckedChange={field.onChange} />
+          <Toggle id={name} variant="pam" checked={field.value} onCheckedChange={field.onChange} />
         </div>
       </Field>
     )}
@@ -190,6 +190,19 @@ export const HOST_RANGE_SOURCES = {
     configKey: "hosts",
     allowCidr: false,
     targetsPlaceholder: "192.168.1.10, db-primary.internal",
+    targetsDescription:
+      "IP addresses or hostnames of the instances to scan, one per line or comma-separated. CIDR ranges are not supported."
+  },
+  [PamDiscoveryType.MsSQL]: {
+    accountType: PamAccountType.MsSQL,
+    placeholder: "Select SQL Server accounts",
+    description:
+      "Accounts must use SQL Server authentication and hold VIEW ANY DEFINITION or ALTER ANY LOGIN to see every login. The account's database and TLS settings are reused for the connection.",
+    warning:
+      "The account password is sent to every instance scanned, including any you don't control. Only list hosts you trust.",
+    configKey: "hosts",
+    allowCidr: false,
+    targetsPlaceholder: "192.168.1.10, sql-primary.internal",
     targetsDescription:
       "IP addresses or hostnames of the instances to scan, one per line or comma-separated. CIDR ranges are not supported."
   }

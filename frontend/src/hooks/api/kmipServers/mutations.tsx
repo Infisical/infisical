@@ -61,9 +61,14 @@ export const useUpdateKmipServer = () => {
       );
       return data;
     },
-    onSuccess: (_, { kmipServerId }) => {
+    onSuccess: (_, { kmipServerId, authMethod }) => {
       queryClient.invalidateQueries({ queryKey: kmipServerQueryKeys.byId(kmipServerId) });
       queryClient.invalidateQueries({ queryKey: kmipServerQueryKeys.list() });
+      // Changing the auth method deletes the server's token-auth record, so any minted enrollment
+      // command is no longer valid.
+      if (authMethod !== undefined) {
+        queryClient.setQueryData(kmipServerQueryKeys.enrollment(kmipServerId), null);
+      }
     }
   });
 };
@@ -91,6 +96,7 @@ export const useRevokeKmipServerAccess = () => {
     onSuccess: (_, { kmipServerId }) => {
       queryClient.invalidateQueries({ queryKey: kmipServerQueryKeys.byId(kmipServerId) });
       queryClient.invalidateQueries({ queryKey: kmipServerQueryKeys.list() });
+      queryClient.setQueryData(kmipServerQueryKeys.enrollment(kmipServerId), null);
     }
   });
 };

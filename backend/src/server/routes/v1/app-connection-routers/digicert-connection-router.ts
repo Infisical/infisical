@@ -92,7 +92,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
         organizationId: z.coerce.number().int().positive()
       }),
       querystring: z.object({
-        productNameId: z.string().trim().min(1)
+        productNameId: z.string().trim().min(1).max(64)
       }),
       response: {
         200: z.object({
@@ -126,7 +126,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
         organizationId: z.coerce.number().int().positive()
       }),
       querystring: z.object({
-        productNameId: z.string().trim().min(1)
+        productNameId: z.string().trim().min(1).max(64)
       }),
       response: {
         200: z

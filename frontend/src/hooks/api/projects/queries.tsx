@@ -33,6 +33,7 @@ import {
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
   TMyPendingProjectAccessRequestsResponse,
+  TProjectNavigation,
   TSearchProjectsDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
@@ -140,6 +141,19 @@ export const useGetUserProjectsByType = (type: ProjectType) =>
     queryKey: [...projectKeys.getAllUserProjects(), type],
     queryFn: () => fetchUserWorkspaces(false, type),
     select: (projects) => projects.slice(0, 100)
+  });
+
+export const useGetAccessibleProjectsWithSubOrgs = (orgId: string) =>
+  useQuery({
+    queryKey: projectKeys.getAccessibleProjectsWithSubOrgs(orgId),
+    queryFn: async ({ signal }) => {
+      const { data } = await apiRequest.get<{ projects: TProjectNavigation[] }>(
+        "/api/v1/projects/accessible-with-sub-orgs",
+        { signal }
+      );
+      return data.projects;
+    },
+    enabled: Boolean(orgId)
   });
 
 export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>

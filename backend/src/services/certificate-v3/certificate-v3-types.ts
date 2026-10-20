@@ -1,13 +1,16 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertificateRequestStatus,
   CertKeyAlgorithm,
   CertKeyUsageType,
   CertSignatureAlgorithm,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 
 export type TIssueCertificateFromProfileDTO = {
@@ -37,10 +40,12 @@ export type TIssueCertificateFromProfileDTO = {
       isCA: boolean;
       pathLength?: number;
     };
+    customExtensions?: TRequestCustomExtension[];
   };
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
   applicationId?: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertificateFromProfileDTO = {
@@ -60,6 +65,9 @@ export type TSignCertificateFromProfileDTO = {
   };
   applicationId?: string;
   acmeOrderId?: string;
+  auditLogInfo?: AuditLogInfo;
+  issuanceOperation?: CertificateIssuanceOperation;
+  originalCertificateId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
@@ -90,14 +98,18 @@ export type TOrderCertificateFromProfileDTO = {
     country?: string;
     state?: string;
     locality?: string;
+    customExtensions?: TRequestCustomExtension[];
   };
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
   applicationId?: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCertificateIssuanceResponse = {
   status: CertificateRequestStatus;
+  applicationId?: string | null;
+  applicationName?: string | null;
   certificateRequestId: string;
   projectId: string;
   profileName: string;
@@ -158,6 +170,11 @@ export type TRenewalAttributes = {
     isCA: boolean;
     pathLength?: number;
   };
+  customExtensions?: Array<{
+    oid: string;
+    value?: string;
+    critical?: boolean;
+  }>;
 };
 
 export type TRenewCertificateDTO = {
@@ -167,6 +184,7 @@ export type TRenewCertificateDTO = {
   renewalKeySource?: CertificateRenewalKeySource;
   csr?: string;
   attributes?: TRenewalAttributes;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateRenewalConfigDTO = {
@@ -179,12 +197,16 @@ export type TDisableRenewalConfigDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRenewalConfigResponse = {
+  applicationId?: string | null;
+  applicationName?: string | null;
   projectId: string;
   renewBeforeDays: number;
   commonName: string;
 };
 
 export type TDisableRenewalResponse = {
+  applicationId?: string | null;
+  applicationName?: string | null;
   projectId: string;
   commonName: string;
 };

@@ -92,7 +92,13 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       const githubOauthAccessToken = req.cookies[INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN];
       if (githubOauthAccessToken) {
         await server.services.githubOrgSync
-          .syncUserGroups(req.body.organizationId, tokens.user.id, githubOauthAccessToken)
+          .syncUserGroups({
+            orgId: req.body.organizationId,
+            userId: tokens.user.id,
+            username: tokens.user.username,
+            accessToken: githubOauthAccessToken,
+            auditLogInfo: req.auditLogInfo
+          })
           .finally(() => {
             void res.setCookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, "", {
               httpOnly: true,

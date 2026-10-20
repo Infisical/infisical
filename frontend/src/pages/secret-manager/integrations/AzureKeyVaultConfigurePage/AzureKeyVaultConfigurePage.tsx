@@ -4,12 +4,20 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -85,7 +93,6 @@ export const AzureKeyVaultConfigurePage = () => {
           initialSyncBehavior
         }
       });
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
@@ -99,70 +106,92 @@ export const AzureKeyVaultConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return integrationAuth && workspace && selectedSourceEnvironment ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Azure Key Vault Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`azure-key-vault-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl
-          label="Vault URI"
-          errorText={vaultBaseUrlErrorText}
-          isError={vaultBaseUrlErrorText !== ""}
-        >
-          <Input
-            placeholder="https://example.vault.azure.net"
-            value={vaultBaseUrl}
-            onChange={(e) => setVaultBaseUrl(e.target.value)}
-          />
-        </FormControl>
-        <FormControl label="Initial Sync Behavior">
-          <Select
-            value={initialSyncBehavior}
-            onValueChange={(e) => setInitialSyncBehavior(e as IntegrationSyncBehavior)}
-            className="w-full"
-          >
-            {initialSyncBehaviors.map((b) => {
-              return (
-                <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
-                  {b.label}
-                </SelectItem>
-              );
-            })}
-          </Select>
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-        >
-          Create Integration
-        </Button>
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Azure Key Vault Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field className="mt-4" data-invalid={false}>
+            <FieldLabel htmlFor="azurekeyvault-project-environment">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
+            >
+              <SelectTrigger className="w-full" id="azurekeyvault-project-environment">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {workspace?.environments.map((sourceEnvironment) => (
+                  <SelectItem
+                    value={sourceEnvironment.slug}
+                    key={`azure-key-vault-environment-${sourceEnvironment.slug}`}
+                  >
+                    {sourceEnvironment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field data-invalid={false}>
+            <FieldLabel htmlFor="azurekeyvault-secrets-path">Secrets Path</FieldLabel>
+            <Input
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+              id="azurekeyvault-secrets-path"
+            />
+          </Field>
+          <Field data-invalid={vaultBaseUrlErrorText !== ""}>
+            <FieldLabel htmlFor="azurekeyvault-vault-uri">Vault URI</FieldLabel>
+            <Input
+              placeholder="https://example.vault.azure.net"
+              value={vaultBaseUrl}
+              onChange={(e) => setVaultBaseUrl(e.target.value)}
+              id="azurekeyvault-vault-uri"
+              isError={vaultBaseUrlErrorText !== ""}
+              aria-describedby={
+                vaultBaseUrlErrorText !== "" ? "azurekeyvault-vault-uri-error" : undefined
+              }
+            />
+            {vaultBaseUrlErrorText !== "" && (
+              <FieldError id="azurekeyvault-vault-uri-error">{vaultBaseUrlErrorText}</FieldError>
+            )}
+          </Field>
+          <Field data-invalid={false}>
+            <FieldLabel htmlFor="azurekeyvault-initial-sync-behavior">
+              Initial Sync Behavior
+            </FieldLabel>
+            <Select
+              value={initialSyncBehavior}
+              onValueChange={(e) => setInitialSyncBehavior(e as IntegrationSyncBehavior)}
+            >
+              <SelectTrigger className="w-full" id="azurekeyvault-initial-sync-behavior">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {initialSyncBehaviors.map((b) => {
+                  return (
+                    <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
+                      {b.label}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="outline">
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (

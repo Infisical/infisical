@@ -1,4 +1,4 @@
-import { Fragment, ReactNode, useEffect } from "react";
+import { Fragment, ReactNode, useCallback } from "react";
 import { Helmet } from "react-helmet";
 import {
   FingerprintIcon,
@@ -9,8 +9,11 @@ import {
   RefreshCwIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { PageHeader } from "@app/components/v2";
+import {
+  SecretAccessInsightsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   ProjectPermissionInsightsActions,
   ProjectPermissionSub,
@@ -22,7 +25,7 @@ import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissi
 import { withProjectPermission } from "@app/hoc";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useGetInsightsCounts } from "@app/hooks/api/secretInsights/queries";
-import { usePopUp } from "@app/hooks/usePopUp";
+import { InsightsUpgradePreview } from "@app/pages/organization/SecretInsightsPage/components";
 
 import {
   AuditReportsCard,
@@ -38,18 +41,18 @@ export const InsightsPage = withProjectPermission(
     const { subscription } = useSubscription();
     const { currentProject, projectId } = useProject();
     const { permission } = useProjectPermission();
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+    const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
-    const { data: counts } = useGetInsightsCounts(
-      { projectId },
-      { enabled: Boolean(subscription?.secretAccessInsights) }
-    );
+    const hasInsightsPlan = Boolean(subscription?.secretAccessInsights);
 
-    useEffect(() => {
-      if (subscription && !subscription.secretAccessInsights) {
-        handlePopUpOpen("upgradePlan");
-      }
-    }, [subscription]);
+    const { data: counts } = useGetInsightsCounts({ projectId }, { enabled: hasInsightsPlan });
+
+    const handleUpgrade = useCallback(() => {
+      openUpgradeGate({
+        intent: SecretAccessInsightsUpgradeIntent,
+        paywallKey: "secret-manager.insights"
+      });
+    }, [openUpgradeGate]);
 
     const canReadHoneyTokens = permission.can(
       ProjectPermissionHoneyTokenActions.Read,
@@ -126,27 +129,27 @@ export const InsightsPage = withProjectPermission(
           {headerStats.length > 0 && renderStatStrip("hidden justify-end dashboard:flex")}
         </PageHeader>
         {headerStats.length > 0 && renderStatStrip("mb-6 flex justify-start dashboard:hidden")}
-        <InsightsSummaryCards />
-        <div className="mt-6">
-          <AuditReportsCard />
-        </div>
-        <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.3fr_1fr]">
-          <div className="flex flex-col gap-6">
-            <DuplicatedSecretsCard />
-            <CalendarCard />
-          </div>
-          <div className="flex flex-col gap-6">
-            <SecretAccessChart />
-            <AuthMethodChart />
-          </div>
-        </div>
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => {
-            handlePopUpToggle("upgradePlan", isOpen);
-          }}
-          text="Your current plan does not include access to secret insights. To unlock this feature, please upgrade your Infisical plan."
-        />
+        {hasInsightsPlan ? (
+          <>
+            <InsightsSummaryCards />
+            <div className="mt-6">
+              <AuditReportsCard />
+            </div>
+            <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.3fr_1fr]">
+              <div className="flex flex-col gap-6">
+                <DuplicatedSecretsCard />
+                <CalendarCard />
+              </div>
+              <div className="flex flex-col gap-6">
+                <SecretAccessChart />
+                <AuthMethodChart />
+              </div>
+            </div>
+          </>
+        ) : (
+          <InsightsUpgradePreview onUpgrade={handleUpgrade} />
+        )}
+        {upgradeGate}
       </>
     );
   },

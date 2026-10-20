@@ -80,10 +80,9 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
 
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/pki-collections/$collectionId",
+        to: "/organizations/$orgId/cert-manager/pki-collections/$collectionId",
         params: {
           orgId: currentOrg.id,
-          projectId,
           collectionId
         }
       });
@@ -120,7 +119,12 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="My Certificate Collection" />
+                <Input
+                  {...field}
+                  placeholder="My Certificate Collection"
+                  autoComplete="off"
+                  name="pki-collection-name"
+                />
               </FormControl>
             )}
           />

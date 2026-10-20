@@ -48,11 +48,11 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { getProjectLabel } from "@app/helpers/project";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   canModifyByGrantConditions,
   getIdentityAssignPrivilegesConditions
@@ -66,6 +66,7 @@ type Props = {
 };
 
 export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDetails }: Props) => {
+  const scopeVariant = useScopeVariant();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege",
@@ -74,7 +75,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   const { permission } = useProjectPermission();
   const identityId = identityMembershipDetails?.identity?.id;
   const { projectId, currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const projectLabel = getProjectLabel(currentProject?.type);
 
   const { mutateAsync: deletePrivilege } = useDeleteIdentityProjectAdditionalPrivilege();
 
@@ -117,9 +118,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager
-              ? "Certificate Manager Additional Privileges"
-              : "Project Additional Privileges"}
+            {`${projectLabel} Additional Privileges`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
           </CardTitle>
           <CardDescription>Assign one-off policies to this machine identity</CardDescription>
@@ -308,7 +307,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                     const isEditDisabled = !isAllowed || !canModifyIdentityPrivileges;
                     const button = (
                       <Button
-                        variant="project"
+                        variant={scopeVariant}
                         size="xs"
                         onClick={() => {
                           handlePopUpOpen("modifyPrivilege");

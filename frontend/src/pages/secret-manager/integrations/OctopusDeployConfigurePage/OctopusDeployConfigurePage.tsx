@@ -9,12 +9,18 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FilterableSelect,
-  FormControl,
+  Combobox,
+  Field,
+  FieldError,
+  FieldLabel,
+  FieldSeparator,
+  SecretPathInput,
   Spinner
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthApps } from "@app/hooks/api";
@@ -169,97 +175,123 @@ export const OctopusDeployConfigurePage = () => {
       onSubmit={handleSubmit(onSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
-      <Card className="max-w-4xl rounded-md p-8 pt-4">
-        <CardTitle className="text-center">
-          <SiOctopusdeploy size="1.2rem" className="mr-2 mb-1 inline-block" />
-          Octopus Deploy Integration
-        </CardTitle>
-        <div className="grid grid-cols-2 gap-4">
+      <Card className="w-full max-w-4xl">
+        <CardHeader>
+          <CardTitle>
+            <SiOctopusdeploy size="1.2rem" />
+            Octopus Deploy Integration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4">
           <Controller
             control={control}
             name="sourceEnvironment"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Project Environment"
-              >
-                <FilterableSelect
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-1">
+                  Project Environment
+                </FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-1"
+                  aria-describedby="OctopusDeployConfigurePage-field-1-feedback"
+                  isError={Boolean(error)}
                   getOptionValue={(option) => option.slug}
                   value={value}
                   getOptionLabel={(option) => option.name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   options={currentProject?.environments}
+                  isClearable={false}
+                  includeMissingSelectedOptions={false}
                   placeholder="Select a project environment"
                   isDisabled={!currentProject?.environments.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-1-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="secretPath"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl isError={Boolean(error)} label="Secrets Path">
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-2">Secrets Path</FieldLabel>
                 <SecretPathInput
+                  id="OctopusDeployConfigurePage-field-2"
+                  aria-describedby="OctopusDeployConfigurePage-field-2-feedback"
+                  isError={Boolean(error)}
                   placeholder="/"
                   environment={sourceEnv?.slug}
                   value={value}
                   onChange={onChange}
                 />
-              </FormControl>
+              </Field>
             )}
           />
-          <div className="col-span-2 flex w-full flex-row items-center pb-2">
-            <div className="w-full border-t border-mineshaft-500" />
-            <span className="mx-2 text-xs whitespace-nowrap text-mineshaft-400">Sync To</span>
-            <div className="w-full border-t border-mineshaft-500" />
-          </div>
+          <FieldSeparator className="col-span-2">Sync To</FieldSeparator>
           <Controller
             control={control}
             name="targetSpace"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Octopus Deploy Space"
-              >
-                <FilterableSelect
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-3">
+                  Octopus Deploy Space
+                </FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-3"
+                  aria-describedby="OctopusDeployConfigurePage-field-3-feedback"
+                  isError={Boolean(error)}
                   getOptionValue={(option) => option.Id}
                   value={value}
                   getOptionLabel={(option) => option.Name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   options={octopusDeploySpaces}
+                  isClearable={false}
+                  includeMissingSelectedOptions={false}
                   placeholder={
                     octopusDeploySpaces?.length ? "Select a space..." : "No spaces found..."
                   }
                   isDisabled={!octopusDeploySpaces?.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-3-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="targetResource"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                className="capitalize"
-                label={`Octopus Deploy ${currentScope}`}
-              >
-                <FilterableSelect
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-4">{`Octopus Deploy ${currentScope}`}</FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-4"
+                  aria-describedby="OctopusDeployConfigurePage-field-4-feedback"
+                  isError={Boolean(error)}
                   getOptionValue={(option) => option.appId!}
                   value={value}
                   getOptionLabel={(option) => option.name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   options={octopusDeployResources}
+                  isClearable={false}
+                  includeMissingSelectedOptions={false}
                   placeholder={
                     octopusDeployResources?.length ? "Select a project..." : "No projects found..."
                   }
                   isDisabled={!octopusDeployResources?.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-4-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
 
@@ -267,20 +299,23 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetEnvironments"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Octopus Deploy Environments"
-                isOptional
-              >
-                <FilterableSelect
-                  isMulti
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-5">
+                  Octopus Deploy Environments
+                  <span className="text-xs text-accent italic">- Optional</span>
+                </FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-5"
+                  aria-describedby="OctopusDeployConfigurePage-field-5-feedback"
+                  isError={Boolean(error)}
+                  multiple
                   getOptionValue={(option) => option.Name}
                   value={value}
                   getOptionLabel={(option) => option.Name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   isLoading={isOctopusDeployScopeValuesLoading}
                   options={octopusDeployScopeValues?.Environments}
+                  includeMissingSelectedOptions={false}
                   placeholder={
                     octopusDeployScopeValues?.Environments?.length
                       ? "Select environments..."
@@ -288,27 +323,35 @@ export const OctopusDeployConfigurePage = () => {
                   }
                   isDisabled={!octopusDeployScopeValues?.Environments?.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-5-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="targetRoles"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Octopus Deploy Target Tags"
-                isOptional
-              >
-                <FilterableSelect
-                  isMulti
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-6">
+                  Octopus Deploy Target Tags
+                  <span className="text-xs text-accent italic">- Optional</span>
+                </FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-6"
+                  aria-describedby="OctopusDeployConfigurePage-field-6-feedback"
+                  isError={Boolean(error)}
+                  multiple
                   getOptionValue={(option) => option.Name}
                   value={value}
                   getOptionLabel={(option) => option.Name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   isLoading={isOctopusDeployScopeValuesLoading}
                   options={octopusDeployScopeValues?.Roles}
+                  includeMissingSelectedOptions={false}
                   placeholder={
                     octopusDeployScopeValues?.Roles?.length
                       ? "Select target tags..."
@@ -316,27 +359,35 @@ export const OctopusDeployConfigurePage = () => {
                   }
                   isDisabled={!octopusDeployScopeValues?.Roles?.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-6-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="targetMachines"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Octopus Deploy Targets"
-                isOptional
-              >
-                <FilterableSelect
-                  isMulti
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-7">
+                  Octopus Deploy Targets
+                  <span className="text-xs text-accent italic">- Optional</span>
+                </FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-7"
+                  aria-describedby="OctopusDeployConfigurePage-field-7-feedback"
+                  isError={Boolean(error)}
+                  multiple
                   getOptionValue={(option) => option.Name}
                   value={value}
                   getOptionLabel={(option) => option.Name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   isLoading={isOctopusDeployScopeValuesLoading}
                   options={octopusDeployScopeValues?.Machines}
+                  includeMissingSelectedOptions={false}
                   placeholder={
                     octopusDeployScopeValues?.Machines?.length
                       ? "Select targets..."
@@ -344,27 +395,35 @@ export const OctopusDeployConfigurePage = () => {
                   }
                   isDisabled={!octopusDeployScopeValues?.Machines?.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-7-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="targetProcesses"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Octopus Deploy Processes"
-                isOptional
-              >
-                <FilterableSelect
-                  isMulti
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-8">
+                  Octopus Deploy Processes
+                  <span className="text-xs text-accent italic">- Optional</span>
+                </FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-8"
+                  aria-describedby="OctopusDeployConfigurePage-field-8-feedback"
+                  isError={Boolean(error)}
+                  multiple
                   getOptionValue={(option) => option.Name}
                   value={value}
                   getOptionLabel={(option) => option.Name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   isLoading={isOctopusDeployScopeValuesLoading}
                   options={octopusDeployScopeValues?.Processes}
+                  includeMissingSelectedOptions={false}
                   placeholder={
                     octopusDeployScopeValues?.Processes?.length
                       ? "Select processes..."
@@ -372,27 +431,35 @@ export const OctopusDeployConfigurePage = () => {
                   }
                   isDisabled={!octopusDeployScopeValues?.Processes?.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-8-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="targetActions"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Octopus Deploy Deployment Steps"
-                isOptional
-              >
-                <FilterableSelect
-                  isMulti
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-9">
+                  Octopus Deploy Deployment Steps
+                  <span className="text-xs text-accent italic">- Optional</span>
+                </FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-9"
+                  aria-describedby="OctopusDeployConfigurePage-field-9-feedback"
+                  isError={Boolean(error)}
+                  multiple
                   getOptionValue={(option) => option.Name}
                   value={value}
                   getOptionLabel={(option) => option.Name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   isLoading={isOctopusDeployScopeValuesLoading}
                   options={octopusDeployScopeValues?.Actions}
+                  includeMissingSelectedOptions={false}
                   placeholder={
                     octopusDeployScopeValues?.Actions?.length
                       ? "Select deployment steps..."
@@ -400,27 +467,35 @@ export const OctopusDeployConfigurePage = () => {
                   }
                   isDisabled={!octopusDeployScopeValues?.Actions?.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-9-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="targetChannels"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Octopus Deploy Channels"
-                isOptional
-              >
-                <FilterableSelect
-                  isMulti
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployConfigurePage-field-10">
+                  Octopus Deploy Channels
+                  <span className="text-xs text-accent italic">- Optional</span>
+                </FieldLabel>
+                <Combobox
+                  id="OctopusDeployConfigurePage-field-10"
+                  aria-describedby="OctopusDeployConfigurePage-field-10-feedback"
+                  isError={Boolean(error)}
+                  multiple
                   getOptionValue={(option) => option.Name}
                   value={value}
                   getOptionLabel={(option) => option.Name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   isLoading={isOctopusDeployScopeValuesLoading}
                   options={octopusDeployScopeValues?.Channels}
+                  includeMissingSelectedOptions={false}
                   placeholder={
                     octopusDeployScopeValues?.Channels?.length
                       ? "Select channels..."
@@ -428,19 +503,25 @@ export const OctopusDeployConfigurePage = () => {
                   }
                   isDisabled={!octopusDeployScopeValues?.Channels?.length}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployConfigurePage-field-10-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
-        </div>
-        <Button
-          type="submit"
-          colorSchema="primary"
-          className="mt-4"
-          isLoading={createIntegration.isPending}
-          isDisabled={createIntegration.isPending || !octopusDeployResources?.length}
-        >
-          Create Integration
-        </Button>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            type="submit"
+            isPending={createIntegration.isPending}
+            isDisabled={createIntegration.isPending || !octopusDeployResources?.length}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </form>
   );

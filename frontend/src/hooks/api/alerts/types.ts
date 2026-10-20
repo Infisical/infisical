@@ -1,12 +1,43 @@
 import { z } from "zod";
 
+import { UpgradeIntent } from "@app/components/license/UpgradeGate";
+import { CertSource } from "@app/hooks/api/certificates/enums";
+
 export enum AlertResourceType {
-  IdentityAuthentication = "identity.authentication"
+  IdentityAuthentication = "identity.authentication",
+  PamFolder = "pam.folder",
+  SecretReminder = "secret.reminder",
+  AuditLogStream = "audit-log.stream"
 }
 
 export enum AlertEventType {
-  IdentityAuthenticationExpiry = "identity.authentication.expiry"
+  IdentityAuthenticationExpiry = "identity.authentication.expiry",
+  IdentityAuthMethodChanged = "identity.authentication.auth-method-changed",
+  PamAccessRequested = "pam.folder.access-requested",
+  PamAccessRequestApproved = "pam.folder.access-request-approved",
+  PamAccessRequestDenied = "pam.folder.access-request-denied",
+  PamAccessRequestBypassed = "pam.folder.access-request-bypassed",
+  AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed"
 }
+
+export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
+  [AlertResourceType.IdentityAuthentication]: [
+    AlertEventType.IdentityAuthenticationExpiry,
+    AlertEventType.IdentityAuthMethodChanged
+  ],
+  [AlertResourceType.PamFolder]: [
+    AlertEventType.PamAccessRequested,
+    AlertEventType.PamAccessRequestApproved,
+    AlertEventType.PamAccessRequestDenied,
+    AlertEventType.PamAccessRequestBypassed
+  ],
+  // Reminder alerts are edited from the secret's reminder form, not the generic alert form.
+  [AlertResourceType.SecretReminder]: [],
+  [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed]
+};
+
+// Resource types whose provider accepts plain email addresses as email channel recipients
+export const ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES: string[] = [AlertResourceType.PamFolder];
 
 export enum AlertChannelType {
   Email = "email",
@@ -15,20 +46,129 @@ export enum AlertChannelType {
   PagerDuty = "pagerduty"
 }
 
+export enum WebhookAuthType {
+  Bearer = "bearer",
+  Basic = "basic",
+  Header = "header"
+}
+
+export const WEBHOOK_AUTH_FIELDS: Record<
+  WebhookAuthType,
+  {
+    label: string;
+    description: string;
+    name?: { field: "basicUsername" | "authHeaderName"; label: string; placeholder: string };
+    secret: {
+      field: "authCredentials" | "basicPassword" | "authHeaderValue";
+      label: string;
+      hasSaved: "hasAuthCredentials" | "hasBasicPassword" | "hasAuthHeaderValue";
+    };
+  }
+> = {
+  [WebhookAuthType.Bearer]: {
+    label: "Bearer Token",
+    description: "Sends the token as Authorization: Bearer <token>.",
+    secret: { field: "authCredentials", label: "Token", hasSaved: "hasAuthCredentials" }
+  },
+  [WebhookAuthType.Basic]: {
+    label: "Basic Auth",
+    description: "Sends the username and password as Authorization: Basic <credentials>.",
+    name: { field: "basicUsername", label: "Username", placeholder: "Username" },
+    secret: { field: "basicPassword", label: "Password", hasSaved: "hasBasicPassword" }
+  },
+  [WebhookAuthType.Header]: {
+    label: "API Key",
+    description: "Sends the key in the header you name, such as X-API-Key.",
+    name: { field: "authHeaderName", label: "Header name", placeholder: "X-API-Key" },
+    secret: { field: "authHeaderValue", label: "API key", hasSaved: "hasAuthHeaderValue" }
+  }
+};
+
 export enum AlertPrincipalType {
   User = "user",
-  Group = "group"
+  Group = "group",
+  Email = "email",
+  ProjectMembers = "project-members"
+}
+
+export enum AlertRunStatus {
+  Success = "success",
+  Partial = "partial",
+  Failed = "failed"
+}
+
+export enum CertificateAlertResourceType {
+  Application = "cert-manager.application",
+  CertificateManager = "cert-manager",
+  Signer = "cert-manager.signer"
+}
+
+export enum CertificateApplicationAlertEventType {
+  Expiry = "cert-manager.application.certificate.expiry",
+  Issuance = "cert-manager.application.certificate.issuance",
+  Renewal = "cert-manager.application.certificate.renewal",
+  Revocation = "cert-manager.application.certificate.revocation"
+}
+
+export enum SignerAlertEventType {
+  CertificateExpiry = "cert-manager.signer.certificate.expiry"
+}
+
+export type TCertificateAlertEventType =
+  | CertificateApplicationAlertEventType
+  | SignerAlertEventType;
+
+export enum CertificateManagerAlertEventType {
+  Expiry = "cert-manager.certificate.expiry",
+  Issuance = "cert-manager.certificate.issuance",
+  Renewal = "cert-manager.certificate.renewal",
+  Revocation = "cert-manager.certificate.revocation"
 }
 
 export const MIN_ALERT_BEFORE_DAYS = 1;
 export const MAX_ALERT_BEFORE_DAYS = 90;
+export const MAX_CERTIFICATE_ALERT_BEFORE_DAYS = 365;
+export const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
-  [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication"
+  [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
+  [AlertResourceType.PamFolder]: "PAM Folder",
+  [AlertResourceType.SecretReminder]: "Secret Reminder",
+  [AlertResourceType.AuditLogStream]: "Audit Log Stream"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
-  [AlertEventType.IdentityAuthenticationExpiry]: "Expiration"
+  [AlertEventType.IdentityAuthenticationExpiry]: "Credential Expiration",
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth Method Change",
+  [AlertEventType.PamAccessRequested]: "Access Requested",
+  [AlertEventType.PamAccessRequestApproved]: "Request Approved",
+  [AlertEventType.PamAccessRequestDenied]: "Request Denied",
+  [AlertEventType.PamAccessRequestBypassed]: "Break-Glass Used",
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure"
+};
+
+export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
+  [AlertEventType.IdentityAuthenticationExpiry]:
+    "Notify a set number of days before a Universal Auth client secret or Token Auth access token expires.",
+  [AlertEventType.IdentityAuthMethodChanged]:
+    "Notify whenever an auth method is added, updated, or removed, or one of its credentials is created, updated, or revoked.",
+  [AlertEventType.PamAccessRequested]:
+    "Notify when someone requests access to an account in this folder.",
+  [AlertEventType.PamAccessRequestApproved]:
+    "Notify when an access request in this folder is approved.",
+  [AlertEventType.PamAccessRequestDenied]:
+    "Notify when an access request in this folder is denied.",
+  [AlertEventType.PamAccessRequestBypassed]:
+    "Notify when someone uses break-glass to access an account in this folder without approval.",
+  [AlertEventType.AuditLogStreamDeliveryFailed]:
+    "Notify when an external log stream fails to deliver audit log events after all retries."
+};
+
+// Channel types a plan doesn't include, and the paywall shown when one is picked.
+export type TAlertChannelPaywall = {
+  lockedChannelTypes: AlertChannelType[];
+  intent: UpgradeIntent;
+  paywallKey: string;
 };
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {
@@ -52,6 +192,8 @@ export type TAlertChannelEmbedded = {
   recipients: TAlertChannelRecipient[];
 };
 
+export type TAlertFilterValue = { id: string; name: string | null };
+
 export type TAlert = {
   id: string;
   name: string;
@@ -59,11 +201,20 @@ export type TAlert = {
   resourceType: string;
   resourceId: string | null;
   eventType: string;
-  condition: { alertBefore?: string; dailyReminder?: boolean } | null;
+  condition: {
+    alertBefore?: string;
+    dailyReminder?: boolean;
+    applicationIds?: string[];
+    profileIds?: string[];
+    sources?: CertSource[];
+  } | null;
   enabled: boolean;
   orgId: string;
   projectId: string | null;
+  resourceName: string | null;
+  filters?: Record<string, TAlertFilterValue[]>;
   channels: TAlertChannelEmbedded[];
+  lastRun: { timestamp: string; status: AlertRunStatus } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -99,6 +250,7 @@ export type TTestAlertChannelDTO = {
   resourceType: string;
   resourceId?: string | null;
   projectId?: string | null;
+  alertId?: string;
   channelId?: string;
   channelType: AlertChannelType;
   config?: Record<string, unknown>;
@@ -120,6 +272,17 @@ export type TUpdateAlertDTO = {
   channels?: TAlertChannelInput[];
 };
 
+const normalizeWebhookUrl = (url?: string) => {
+  try {
+    return new URL(url ?? "").href;
+  } catch {
+    return url ?? "";
+  }
+};
+
+export const isWebhookUrlChanged = (channel: { id?: string; url?: string; savedUrl?: string }) =>
+  Boolean(channel.id) && normalizeWebhookUrl(channel.url) !== normalizeWebhookUrl(channel.savedUrl);
+
 export const channelFormSchema = z
   .object({
     id: z.string().optional(),
@@ -129,6 +292,21 @@ export const channelFormSchema = z
     webhookUrl: z.string().optional(),
     url: z.string().optional(),
     signingSecret: z.string().optional(),
+    signingSecretEnabled: z.boolean().optional(),
+    authType: z.nativeEnum(WebhookAuthType).optional(),
+    authCredentials: z.string().optional(),
+    basicUsername: z.string().optional(),
+    basicPassword: z.string().optional(),
+    authHeaderName: z.string().optional(),
+    authHeaderValue: z.string().optional(),
+    headers: z
+      .array(
+        z.object({
+          key: z.string().trim().min(1, "Header name is required"),
+          value: z.string().min(1, "Header value is required")
+        })
+      )
+      .default([]),
     integrationKey: z.string().optional(),
     recipients: z
       .array(
@@ -140,7 +318,11 @@ export const channelFormSchema = z
       .default([]),
     hasWebhookUrl: z.boolean().optional(),
     hasSigningSecret: z.boolean().optional(),
-    hasIntegrationKey: z.boolean().optional()
+    hasAuthCredentials: z.boolean().optional(),
+    hasBasicPassword: z.boolean().optional(),
+    hasAuthHeaderValue: z.boolean().optional(),
+    hasIntegrationKey: z.boolean().optional(),
+    savedUrl: z.string().optional()
   })
   .superRefine((channel, ctx) => {
     const isNew = !channel.id;
@@ -163,11 +345,27 @@ export const channelFormSchema = z
           });
         }
         break;
-      case AlertChannelType.Webhook:
-        if (!channel.url) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["url"], message: "URL is required" });
+      case AlertChannelType.Webhook: {
+        const requireField = (field: keyof typeof channel, message: string, isSaved?: boolean) => {
+          if (channel[field] || (isSaved && !isNew)) return;
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message });
+        };
+
+        requireField("url", "URL is required");
+        if (channel.signingSecretEnabled) {
+          requireField("signingSecret", "Signing secret is required", channel.hasSigningSecret);
+        }
+        if (channel.authType) {
+          const { name, secret } = WEBHOOK_AUTH_FIELDS[channel.authType];
+          if (name) requireField(name.field, `${name.label} is required`);
+          requireField(
+            secret.field,
+            `${secret.label} is required`,
+            channel[secret.hasSaved] && !isWebhookUrlChanged(channel)
+          );
         }
         break;
+      }
       case AlertChannelType.PagerDuty:
         if ((isNew || !channel.hasIntegrationKey) && !channel.integrationKey) {
           ctx.addIssue({
@@ -184,19 +382,35 @@ export const channelFormSchema = z
 
 export type TChannelForm = z.infer<typeof channelFormSchema>;
 
-export const alertFormSchema = z.object({
+// The part of an alert form the shared channel fields read and write.
+export type TChannelsForm = { channels: TChannelForm[] };
+
+const alertFormBaseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
   description: z.string().max(1000).optional(),
   resourceType: z.nativeEnum(AlertResourceType),
   eventType: z.nativeEnum(AlertEventType),
-  alertBeforeDays: z
-    .number({ invalid_type_error: "Enter a number" })
-    .int("Must be a whole number")
-    .min(MIN_ALERT_BEFORE_DAYS, `Must be at least ${MIN_ALERT_BEFORE_DAYS} day`)
-    .max(MAX_ALERT_BEFORE_DAYS, `Must be at most ${MAX_ALERT_BEFORE_DAYS} days`),
+  // Only the expiry event reads these; validated in superRefine so a hidden field can't block submit.
+  alertBeforeDays: z.number().or(z.nan()),
   dailyReminder: z.boolean().default(false),
   enabled: z.boolean().default(true),
   channels: z.array(channelFormSchema).min(1, "At least one channel is required")
+});
+
+const alertBeforeDaysIssue = (days: number): string | null => {
+  if (Number.isNaN(days)) return "Enter a number";
+  if (!Number.isInteger(days)) return "Must be a whole number";
+  if (days < MIN_ALERT_BEFORE_DAYS) return `Must be at least ${MIN_ALERT_BEFORE_DAYS} day`;
+  if (days > MAX_ALERT_BEFORE_DAYS) return `Must be at most ${MAX_ALERT_BEFORE_DAYS} days`;
+  return null;
+};
+
+export const alertFormSchema = alertFormBaseSchema.superRefine((form, ctx) => {
+  if (form.eventType !== AlertEventType.IdentityAuthenticationExpiry) return;
+  const message = alertBeforeDaysIssue(form.alertBeforeDays);
+  if (message) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["alertBeforeDays"], message });
+  }
 });
 
 export type TAlertForm = z.infer<typeof alertFormSchema>;

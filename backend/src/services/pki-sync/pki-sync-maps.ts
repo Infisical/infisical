@@ -11,6 +11,8 @@ export const PKI_SYNC_NAME_MAP: Record<PkiSync, string> = {
   [PkiSync.GcpCertificateManager]: "GCP Certificate Manager",
   [PkiSync.CloudflareCustomCertificate]: "Cloudflare Custom SSL Certificate",
   [PkiSync.NetScaler]: "NetScaler",
+  [PkiSync.PaloAltoNetworks]: "Palo Alto Networks",
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: "Palo Alto Networks SSL/TLS Profile",
   [PkiSync.F5BigIp]: "F5 BIG-IP",
   [PkiSync.KempLoadMaster]: "Kemp LoadMaster",
   [PkiSync.LinuxServer]: "Linux Server",
@@ -27,9 +29,21 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.GcpCertificateManager]: AppConnection.GCP,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
+  [PkiSync.PaloAltoNetworks]: AppConnection.PaloAltoNetworks,
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: AppConnection.PaloAltoNetworks,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
   [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
   [PkiSync.LinuxServer]: AppConnection.SSH,
   [PkiSync.WindowsServer]: AppConnection.WinRM,
   [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
 };
+
+const PKI_SYNC_ADDITIONAL_CONNECTION_MAP: Partial<Record<PkiSync, AppConnection[]>> = {
+  [PkiSync.LinuxServer]: [AppConnection.LDAP],
+  [PkiSync.WindowsServer]: [AppConnection.LDAP]
+};
+
+export const getPkiSyncConnectionApps = (destination: PkiSync): AppConnection[] => [
+  PKI_SYNC_CONNECTION_MAP[destination],
+  ...(PKI_SYNC_ADDITIONAL_CONNECTION_MAP[destination] ?? [])
+];

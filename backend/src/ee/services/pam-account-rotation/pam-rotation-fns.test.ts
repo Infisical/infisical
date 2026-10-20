@@ -14,10 +14,11 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 describe("isRotatableAccountType", () => {
-  test("accepts the three SQL types", () => {
+  test("accepts the SQL types", () => {
     expect(isRotatableAccountType(PamAccountType.Postgres)).toBe(true);
     expect(isRotatableAccountType(PamAccountType.MySQL)).toBe(true);
     expect(isRotatableAccountType(PamAccountType.MsSQL)).toBe(true);
+    expect(isRotatableAccountType(PamAccountType.OracleDB)).toBe(true);
   });
 
   test("accepts Windows local and domain accounts", () => {

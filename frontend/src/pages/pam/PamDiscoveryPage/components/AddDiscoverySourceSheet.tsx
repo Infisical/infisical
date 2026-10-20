@@ -22,6 +22,7 @@ import {
   FieldLabel,
   GatewayPicker,
   Input,
+  ProviderIcon,
   RadioGroup,
   RadioGroupItem,
   Sheet,
@@ -107,6 +108,8 @@ const NameField = ({ control }: { control: Control<{ name: string }> }) => (
             placeholder="e.g. corp-servers"
             isError={!!fieldState.error}
             {...field}
+            autoComplete="off"
+            name="pam-discovery-source-name"
           />
           <FieldError>{fieldState.error?.message}</FieldError>
         </FieldContent>
@@ -340,8 +343,8 @@ const TypeSelectorStep = ({
         {types.map((type) => (
           <FieldLabel key={type.type} htmlFor={`discovery-type-${type.type}`} variant="pam">
             <Field orientation="horizontal" className="items-center gap-3">
-              <img
-                src={`/images/integrations/${type.icon}`}
+              <ProviderIcon
+                icon={type.icon}
                 alt={type.name}
                 className="size-7 shrink-0 rounded-sm"
               />

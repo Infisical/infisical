@@ -1,13 +1,32 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { ChevronLeft, SlidersHorizontal } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
-import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/project";
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem
+} from "@app/components/v3";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useProject
+} from "@app/context";
+import {
+  hasIntermediateProjectsView,
+  hasProjectTemplates,
+  isOrgScopedProduct,
+  projectTypeToUrlSlug
+} from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 
+import { AgentVaultNav } from "./AgentVaultNav";
 import { CertManagerNav } from "./CertManagerNav";
 import { KmsNav } from "./KmsNav";
 import { PamNav } from "./PamNav";
@@ -17,8 +36,8 @@ import {
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
+  getSecretScanningSettingsSubmenu,
   PROJECT_ACCESS_CONTROL_SUBMENU,
-  SECRET_SCANNING_SETTINGS_SUBMENU,
   SM_SETTINGS_SUBMENU
 } from "./submenus";
 import { ProjectSubmenuView } from "./SubmenuViews";
@@ -33,7 +52,8 @@ const PROJECT_NAV_COMPONENT: Record<
   [ProjectType.KMS]: KmsNav,
   [ProjectType.CertificateManager]: CertManagerNav,
   [ProjectType.PAM]: PamNav,
-  [ProjectType.SecretScanning]: SecretScanningNav
+  [ProjectType.SecretScanning]: SecretScanningNav,
+  [ProjectType.AgentVault]: AgentVaultNav
 };
 
 // --- Project nav wrapper ---
@@ -43,6 +63,7 @@ export const ProjectNav = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const { pathname, search: locationSearch } = useLocation();
   const navigate = useNavigate();
+  const { permission } = useOrgPermission();
   const isLegacyView = (locationSearch as { legacy?: string })?.legacy === "true";
   const hasApplicationContext = Boolean(
     (locationSearch as { applicationName?: string })?.applicationName
@@ -50,11 +71,20 @@ export const ProjectNav = () => {
   const isFromRootRequests = (locationSearch as { from?: string })?.from === "root-requests";
   const hasSignerContext = Boolean((locationSearch as { signerId?: string })?.signerId);
   const intermediateAvailable = hasIntermediateProjectsView(currentProject.type);
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg.id, {
+    enabled: currentProject.type === ProjectType.SecretScanning
+  });
+  const hasMultipleSecretScanningProjects = Boolean(secretScanningInstance?.isMultiInstance);
   let projectLabel: string;
   if (intermediateAvailable) projectLabel = "Projects";
   else if (isSubOrganization) projectLabel = "Sub-Organization";
   else projectLabel = "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
+  // Products with a projects listing link Product Settings from there; the rest link it here.
+  const showProductSettings =
+    !intermediateAvailable &&
+    hasProjectTemplates(currentProject.type) &&
+    permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
   // scott: we currently have to use this flaky inclusion for routes/nested routes because we haven't
   // been consistent in using a route structure that reflects nested pages; once we refactor we can switch
@@ -72,6 +102,7 @@ export const ProjectNav = () => {
     if (isLegacyView || hasApplicationContext || isFromRootRequests || hasSignerContext)
       return null;
     if (isCertManager && (isOnAccessControl || pathname.includes("/discovery"))) return null;
+    if (isOnAccessControl && currentProject.type === ProjectType.AgentVault) return null;
     // PAM navigation is handled separately by PamNav.
     if (currentProject.type === ProjectType.PAM) return null;
     // Secret manager renders access control as in-page tabs (no secondary submenu).
@@ -81,7 +112,7 @@ export const ProjectNav = () => {
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
-      return SECRET_SCANNING_SETTINGS_SUBMENU;
+      return getSecretScanningSettingsSubmenu(hasMultipleSecretScanningProjects);
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
     return null;
@@ -91,22 +122,22 @@ export const ProjectNav = () => {
 
   useEffect(() => {
     setActiveSubmenu(getInitialProjectSubmenu());
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, hasMultipleSecretScanningProjects]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
     const typePath = PROJECT_TYPE_PATH[currentProject.type];
-    const isPam = currentProject.type === ProjectType.PAM;
+    const isOrgScoped = isOrgScopedProduct(currentProject.type);
     // Already on this submenu's page (e.g. after collapsing via the "< back" button):
     // re-navigating to the same URL would push a duplicate history entry, so just re-expand.
-    const submenuPath = isPam
-      ? `/organizations/${currentOrg.id}/pam/${submenu.pathSuffix}`
+    const submenuPath = isOrgScoped
+      ? `/organizations/${currentOrg.id}/${typePath}/${submenu.pathSuffix}`
       : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}/${submenu.pathSuffix}`;
     if (pathname === submenuPath || pathname.startsWith(`${submenuPath}/`)) return;
     navigate({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: isPam
-        ? (`/organizations/$orgId/pam/${submenu.pathSuffix}` as any)
+      to: isOrgScoped
+        ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
         : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       params: { orgId: currentOrg.id, projectId: currentProject.id } as any,
@@ -130,12 +161,13 @@ export const ProjectNav = () => {
       ) : (
         <motion.div
           key="main"
+          className="flex flex-1 flex-col"
           initial={{ x: -30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -30, opacity: 0 }}
           transition={{ duration: 0.11, ease: "easeOut" }}
         >
-          <SidebarGroup>
+          <SidebarGroup className="flex-1">
             <SidebarGroupLabel asChild>
               <button
                 className="cursor-pointer hover:bg-foreground/[0.025]"
@@ -164,6 +196,24 @@ export const ProjectNav = () => {
               </button>
             </SidebarGroupLabel>
             <NavComponent onSubmenuOpen={handleSubmenuOpen} />
+            {showProductSettings && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton size="lg" asChild closeOnMobile tooltip="Product Settings">
+                    <Link
+                      to="/organizations/$orgId/projects/product-settings/$type"
+                      params={{
+                        orgId: currentOrg.id,
+                        type: projectTypeToUrlSlug(currentProject.type)
+                      }}
+                    >
+                      <SlidersHorizontal className="size-4" />
+                      <span>Product Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            )}
           </SidebarGroup>
         </motion.div>
       )}

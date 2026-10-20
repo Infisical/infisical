@@ -1,12 +1,23 @@
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { removeTrailingSlash } from "@app/helpers/string";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
@@ -55,80 +66,79 @@ export const OctopusDeployAuthorizePage = () => {
       <Helmet>
         <title>Authorize Octopus Deploy Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After adding your credentials, you will be prompted to set up an integration for a particular environment and secret path."
-        >
-          <div className="flex flex-row items-center">
-            <div className="inline-flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Octopus Deploy.png"
-                height={30}
-                width={30}
-                alt="Octopus Deploy logo"
-              />
-            </div>
-            <span className="ml-1.5">Octopus Deploy Integration</span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/octopus-deploy"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img
+              src="/images/integrations/Octopus Deploy.png"
+              height={30}
+              width={30}
+              alt="Octopus Deploy logo"
+            />
+            Octopus Deploy Integration
+            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/octopus-deploy" />
+          </CardTitle>
+          <CardDescription>
+            After adding your credentials, you will be prompted to set up an integration for a
+            particular environment and secret path.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Controller
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployAuthorizePage-field-1">
+                  Octopus Deploy Instance URL
+                </FieldLabel>
+                <Input
+                  id="OctopusDeployAuthorizePage-field-1"
+                  aria-describedby="OctopusDeployAuthorizePage-field-1-feedback"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={onChange}
+                  placeholder="https://xxxx.octopus.app"
                 />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <Controller
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              label="Octopus Deploy Instance URL"
-              errorText={error?.message}
-              isError={Boolean(error)}
-              className="px-6"
-            >
-              <Input value={value} onChange={onChange} placeholder="https://xxxx.octopus.app" />
-            </FormControl>
-          )}
-          name="instanceUrl"
-          control={control}
-        />
-        <Controller
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              label="Octopus Deploy API Key"
-              errorText={error?.message}
-              isError={Boolean(error)}
-              className="px-6"
-            >
-              <Input
-                value={value}
-                onChange={onChange}
-                placeholder="API-XXXXXXXXXXXXXXXXXXXXXXXX"
-                type="password"
-              />
-            </FormControl>
-          )}
-          name="apiKey"
-          control={control}
-        />
-        <Button
-          type="submit"
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isLoading={isPending}
-          isDisabled={isPending}
-        >
-          Connect to Octopus Deploy
-        </Button>
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployAuthorizePage-field-1-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
+            )}
+            name="instanceUrl"
+            control={control}
+          />
+          <Controller
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="OctopusDeployAuthorizePage-field-2">
+                  Octopus Deploy API Key
+                </FieldLabel>
+                <Input
+                  id="OctopusDeployAuthorizePage-field-2"
+                  aria-describedby="OctopusDeployAuthorizePage-field-2-feedback"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={onChange}
+                  placeholder="API-XXXXXXXXXXXXXXXXXXXXXXXX"
+                  type="password"
+                />
+                {Boolean(error) && (
+                  <FieldError id="OctopusDeployAuthorizePage-field-2-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
+            )}
+            name="apiKey"
+            control={control}
+          />
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button type="submit" isPending={isPending} isDisabled={isPending} variant="project">
+            Connect to Octopus Deploy
+          </Button>
+        </CardFooter>
       </Card>
     </form>
   );

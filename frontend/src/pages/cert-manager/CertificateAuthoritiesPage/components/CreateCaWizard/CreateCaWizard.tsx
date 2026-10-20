@@ -10,13 +10,16 @@ import {
   DocumentationLinkBadge,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useSubscription } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useCreateCa } from "@app/hooks/api/ca";
 import { CaStatus, CaType, InternalCaType } from "@app/hooks/api/ca/enums";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
@@ -53,9 +56,12 @@ const DEFAULT_VALUES: CaWizardForm = {
   commonName: "",
   keySource: CertKeySource.Infisical,
   hsmConnectorId: null,
+  appConnectionId: null,
+  region: null,
   keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
   notAfter: getDateTenYearsFromToday(),
   maxPathLength: "-1",
+  isOcspEnabled: false,
   disableManagedCrlDistributionPointUrl: false,
   crlDistributionPointUrls: []
 };
@@ -63,7 +69,15 @@ const DEFAULT_VALUES: CaWizardForm = {
 const STEP_FIELDS: (keyof CaWizardForm)[][] = [
   ["name", "type"],
   ["commonName", "organization", "ou", "country", "province", "locality"],
-  ["keySource", "hsmConnectorId", "keyAlgorithm", "notAfter", "maxPathLength"],
+  [
+    "keySource",
+    "hsmConnectorId",
+    "appConnectionId",
+    "region",
+    "keyAlgorithm",
+    "notAfter",
+    "maxPathLength"
+  ],
   ["crlDistributionPointUrls"]
 ];
 
@@ -81,14 +95,25 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
     [hsmConnectors]
   );
 
+  const { currentProject } = useProject();
+  const { data: awsConnections = [], isPending: isAwsConnectionsLoading } =
+    useListAvailableAppConnections(AppConnection.AWS, currentProject.id, {
+      enabled: isOpen && Boolean(subscription?.pkiAwsKmsSigning)
+    });
+
+  const buildDefaultValues = (): CaWizardForm => ({
+    ...DEFAULT_VALUES,
+    isOcspEnabled: Boolean(subscription?.pkiOcsp)
+  });
+
   const form = useForm<CaWizardForm>({
     resolver: zodResolver(caWizardSchema),
-    defaultValues: DEFAULT_VALUES
+    defaultValues: buildDefaultValues()
   });
 
   const reset = () => {
     setStep(0);
-    form.reset(DEFAULT_VALUES);
+    form.reset(buildDefaultValues());
   };
 
   const handleClose = (open: boolean) => {
@@ -118,10 +143,15 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
             values.keySource === CertKeySource.Hsm
               ? (values.hsmConnectorId ?? undefined)
               : undefined,
+          ...(values.keySource === CertKeySource.AwsKms && {
+            appConnectionId: values.appConnectionId ?? undefined,
+            region: values.region ?? undefined
+          }),
           maxPathLength: Number(values.maxPathLength),
           ...(isRoot ? { notAfter: values.notAfter } : {}),
           crlDistributionPointUrls: values.crlDistributionPointUrls.map(({ value }) => value),
-          disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl
+          disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl,
+          isOcspEnabled: values.isOcspEnabled
         }
       });
 
@@ -156,7 +186,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+      <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -164,13 +194,13 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
                 <ShieldIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
+                <div className="flex items-center gap-x-2 text-label">
                   Create Internal CA
                   <DocumentationLinkBadge href={PkiDocsUrls.ca.internal} />
                 </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <p className="text-sm leading-4 text-muted">
                   A private Certificate Authority hosted by Infisical, with its signing key managed
-                  by Infisical or kept in your HSM.
+                  by Infisical, kept in your HSM, or kept in AWS KMS.
                 </p>
               </div>
             </div>
@@ -205,7 +235,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
 
             <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
                 <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
               </div>
 
@@ -216,6 +246,8 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
                   form={form}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
+                  awsConnectionOptions={awsConnections}
+                  isAwsConnectionsLoading={isAwsConnectionsLoading}
                 />
               )}
               {step === 3 && <DistributionStep form={form} />}
@@ -237,7 +269,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-muted" />
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
@@ -252,7 +284,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
                 {ctaLabel}
               </Button>
             </div>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>

@@ -7,7 +7,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
@@ -40,7 +40,7 @@ export const SyncSwitchField = ({
               <Label htmlFor={id}>{label}</Label>
               <FieldDescription>{description}</FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id={id}
               variant="project"
               checked={(value as boolean | undefined) ?? defaultChecked}

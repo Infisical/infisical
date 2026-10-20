@@ -6,7 +6,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -29,7 +29,7 @@ export const TriggerDevSyncOptionsFields = () => {
                 in Trigger.dev.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id="trigger-dev-secret"
               variant="project"
               checked={value ?? true}

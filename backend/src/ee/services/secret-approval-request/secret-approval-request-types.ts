@@ -1,5 +1,16 @@
-import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecrets } from "@app/db/schemas";
+import { Knex } from "knex";
+
+import {
+  TImmutableDBKeys,
+  TSecretApprovalPolicies,
+  TSecretApprovalRequests,
+  TSecretApprovalRequestsSecrets,
+  TSecretApprovalRequestsSecretsInsert,
+  TSecretApprovalRequestsSecretsV2Insert,
+  TSecretFolders
+} from "@app/db/schemas";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -71,12 +82,47 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
   commitMessage?: string;
   policy: TSecretApprovalPolicies;
   updateMode?: SecretUpdateMode;
+  folder?: Pick<TSecretFolders, "id" | "envId">;
   data: {
     [SecretOperations.Create]?: TApprovalCreateSecretV2Bridge[];
     [SecretOperations.Update]?: TApprovalUpdateSecretV2Bridge[];
     [SecretOperations.Delete]?: { secretKey: string }[];
   };
 } & TProjectPermission;
+
+export type TSecretApprovalRequestCommitV2 = Omit<
+  TSecretApprovalRequestsSecretsV2Insert,
+  "requestId" | "secretChangeId"
+> & {
+  tagIds?: string[];
+};
+
+export type TCreateSecretApprovalRequestV2BridgeDTO = {
+  policy: Pick<TSecretApprovalPolicies, "id">;
+  folderId: string;
+  actor: ActorType;
+  actorId: string;
+  commits: TSecretApprovalRequestCommitV2[];
+  isReplicated?: boolean;
+  commitMessage?: string;
+};
+
+export type TSecretApprovalRequestCommit = Omit<TSecretApprovalRequestsSecretsInsert, "requestId">;
+
+export type TCreateSecretApprovalRequestDTO = Omit<
+  TCreateSecretApprovalRequestV2BridgeDTO,
+  "commits" | "commitMessage"
+> & {
+  commits: TSecretApprovalRequestCommit[];
+};
+
+export type TCreateSecretApprovalSideEffectsDTO = {
+  secretApprovalRequest: Pick<TSecretApprovalRequests, "id" | "policyId"> & { commits: { id: string }[] };
+  environment: string;
+  secretPath: string;
+  secretKeys: string[];
+  tx?: Knex;
+} & Omit<TProjectPermission, "actorAuthMethod">;
 
 export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type JSX, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -99,7 +99,12 @@ export const FolderForm = ({
           <Field>
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
-              <Input {...field} placeholder="Type your folder name" />
+              <Input
+                {...field}
+                placeholder="Type your folder name"
+                autoComplete="off"
+                name="folder-name"
+              />
             </FieldContent>
             {error && <FieldError>{error.message}</FieldError>}
           </Field>

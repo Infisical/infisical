@@ -1,3 +1,5 @@
+import { BadRequestError } from "@app/lib/errors";
+
 import { CaCapability, CaType } from "./certificate-authority-enums";
 
 export const CERTIFICATE_AUTHORITIES_TYPE_MAP: Record<CaType, string> = {
@@ -16,7 +18,8 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
   [CaType.INTERNAL]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.ACME]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.REVOKE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
   [CaType.AZURE_AD_CS]: [
@@ -24,11 +27,17 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
     CaCapability.RENEW_CERTIFICATES
     // Note: REVOKE_CERTIFICATES intentionally omitted - not supported by ADCS connector
   ],
-  [CaType.ADCS]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.REVOKE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
+  [CaType.ADCS]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.REVOKE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
+  ],
   [CaType.AWS_PCA]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.DIGICERT]: [
     CaCapability.ISSUE_CERTIFICATES,
@@ -72,3 +81,11 @@ export const CERTIFICATE_AUTHORITIES_EXTERNAL_ISSUANCE_MAP: Record<CaType, boole
 
 export const caUsesExternalIssuanceQueue = (caType: CaType): boolean =>
   CERTIFICATE_AUTHORITIES_EXTERNAL_ISSUANCE_MAP[caType] ?? false;
+
+export const assertCaSupportsCustomExtensions = (caType: CaType, count: number): void => {
+  if (!count || caSupportsCapability(caType, CaCapability.CUSTOM_EXTENSIONS)) return;
+
+  throw new BadRequestError({
+    message: `${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType] ?? caType} certificate authorities cannot carry custom extensions, but this request resolved ${count} of them. Update the certificate profile.`
+  });
+};

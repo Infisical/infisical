@@ -1,0 +1,674 @@
+import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
+
+import {
+  AccessScope,
+  ActionProjectType,
+  ProjectMembershipRole,
+  RESOURCE_SCOPE,
+  ResourceType,
+  TMemberships
+} from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TGenericPermission } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { AgentVaultIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
+
+import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
+import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
+
+type TAgentVaultMembershipServiceFactoryDep = {
+  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers" | "findAvailableActors">;
+  membershipDAL: Pick<TMembershipDALFactory, "insertMany" | "find" | "transaction" | "delete">;
+  identityDAL: Pick<TIdentityDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "insertMany" | "delete">;
+  groupDAL: Pick<TGroupDALFactory, "find">;
+  projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
+  userDAL: Pick<TUserDALFactory, "find">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+};
+
+export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
+
+export type TListAgentVaultProductMembersDTO = {
+  projectId: string;
+  ctx: TGenericPermission;
+};
+
+export type TListAgentVaultMembersDTO = {
+  projectId: string;
+  actorType?: AgentVaultMemberType;
+  search?: string;
+  limit: number;
+  offset: number;
+  ctx: TGenericPermission;
+};
+
+export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
+
+type TAgentVaultNamedActor = TAgentVaultActorRef & { identifier: string };
+
+export type TAgentVaultMemberIds = {
+  userIds: string[];
+  groupIds: string[];
+  machineIdentityIds: string[];
+};
+
+export type TAddAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
+  projectId: string;
+  emails: string[];
+  role: ProjectMembershipRole.Admin | ProjectMembershipRole.Member;
+  ctx: TGenericPermission;
+};
+
+export type TUpdateAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
+  projectId: string;
+  role: string;
+  ctx: TGenericPermission;
+};
+
+export type TRevokeAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
+  projectId: string;
+  ctx: TGenericPermission;
+};
+
+// actorName is for the audit body; the response schemas do not select it.
+type TAgentVaultAuditedActor = TAgentVaultActorRef & { actorName?: TAgentVaultActorName };
+
+type TAgentVaultWrittenMember = TAgentVaultAuditedActor & {
+  role: string;
+  addedAt: Date;
+};
+
+type TAgentVaultMemberWriteResult<TMember> = Promise<{
+  members: TMember[];
+  skipped: TAgentVaultNamedActor[];
+}>;
+
+const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member];
+
+const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
+
+type TActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
+
+const ACTOR_COLUMN: Record<AgentVaultMemberType, TActorColumn> = {
+  [AgentVaultMemberType.User]: "actorUserId",
+  [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
+  [AgentVaultMemberType.Group]: "actorGroupId"
+};
+
+const isSelf = (actor: TAgentVaultActorRef, ctx: TGenericPermission) =>
+  (actor.type === AgentVaultMemberType.User && ctx.actor === ActorType.USER && actor.id === ctx.actorId) ||
+  (actor.type === AgentVaultMemberType.MachineIdentity && ctx.actor === ActorType.IDENTITY && actor.id === ctx.actorId);
+
+export const agentVaultMembershipServiceFactory = ({
+  agentVaultMemberDAL,
+  membershipDAL,
+  identityDAL,
+  membershipRoleDAL,
+  groupDAL,
+  projectAccessRequestDAL,
+  userDAL,
+  userAliasDAL,
+  orgDAL,
+  permissionService,
+  usageMeteringService
+}: TAgentVaultMembershipServiceFactoryDep) => {
+  const getActorPermission = (projectId: string, ctx: TGenericPermission) =>
+    permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.AgentVault
+    });
+
+  const checkProductAdmin = async (projectId: string, ctx: TGenericPermission) => {
+    const { hasRole } = await getActorPermission(projectId, ctx);
+    if (!hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only Agent Vault admins can perform this action" });
+    }
+  };
+
+  type TProjectPermission = Awaited<ReturnType<typeof getActorPermission>>["permission"];
+
+  const canReadActorType = (permission: TProjectPermission, type: AgentVaultMemberType) => {
+    if (type === AgentVaultMemberType.User) {
+      return permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+    }
+    if (type === AgentVaultMemberType.Group) {
+      return permission.can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+    }
+    return permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+  };
+
+  const assertCanReadActorType = (permission: TProjectPermission, type: AgentVaultMemberType) => {
+    const forbidden = ForbiddenError.from(permission);
+    if (type === AgentVaultMemberType.User) {
+      forbidden.throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+      return;
+    }
+    if (type === AgentVaultMemberType.Group) {
+      forbidden.throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+      return;
+    }
+    forbidden.throwUnlessCan(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+  };
+
+  const listProductMembers = async ({
+    projectId,
+    actorType,
+    search,
+    limit,
+    offset,
+    ctx
+  }: TListAgentVaultMembersDTO) => {
+    const { permission } = await getActorPermission(projectId, ctx);
+
+    const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
+    const readable = asked.filter((type) => canReadActorType(permission, type));
+    if (!readable.length) assertCanReadActorType(permission, asked[0]);
+
+    return agentVaultMemberDAL.findProductMembers({
+      projectId,
+      orgId: ctx.actorOrgId,
+      actorTypes: readable,
+      search,
+      limit,
+      offset
+    });
+  };
+
+  const listAvailableProductMembers = async ({
+    projectId,
+    actorType,
+    search,
+    limit,
+    offset,
+    ctx
+  }: TListAgentVaultMembersDTO) => {
+    await checkProductAdmin(projectId, ctx);
+
+    // checkProductAdmin reads hasRole, which does not intersect a delegated token's scopes. The CASL
+    // check below is what narrows an OAuth token holding less than the admin it acts for.
+    const { permission } = await getActorPermission(projectId, ctx);
+    const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
+    const readable = asked.filter((type) => canReadActorType(permission, type));
+    if (!readable.length) assertCanReadActorType(permission, asked[0]);
+
+    return agentVaultMemberDAL.findAvailableActors({
+      projectId,
+      orgId: ctx.actorOrgId,
+      actorTypes: readable,
+      search,
+      limit,
+      offset
+    });
+  };
+
+  const assertValidRole = (role: string) => {
+    if (!VALID_PRODUCT_ROLES.includes(role)) {
+      throw new BadRequestError({
+        message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
+      });
+    }
+  };
+
+  const actorKey = (actor: TAgentVaultActorRef) => `${actor.type}:${actor.id}`;
+
+  const named = (actors: { type: AgentVaultMemberType; id: string }[], type: AgentVaultMemberType) =>
+    actors.filter((actor) => actor.type === type).map((actor) => actor.id);
+
+  const resolveNamedActors = async (
+    { userIds, groupIds, machineIdentityIds, emails }: TAgentVaultMemberIds & { emails?: string[] },
+    orgId: string
+  ) => {
+    const byKey = new Map<string, TAgentVaultNamedActor>();
+    const add = (type: AgentVaultMemberType, id: string, identifier: string) => {
+      const key = `${type}:${id}`;
+      if (!byKey.has(key)) byKey.set(key, { type, id, identifier });
+    };
+
+    userIds.forEach((id) => add(AgentVaultMemberType.User, id, id));
+    groupIds.forEach((id) => add(AgentVaultMemberType.Group, id, id));
+    machineIdentityIds.forEach((id) => add(AgentVaultMemberType.MachineIdentity, id, id));
+
+    if (emails?.length) {
+      const usersByEmail = await userDAL.find({ $in: { username: emails } });
+      const userByEmail = new Map(usersByEmail.map((user) => [user.username, user]));
+
+      // The invite this accompanies resolves IdP identifiers through SSO aliases, so this half has to as well.
+      const unmatched = emails.filter((email) => !userByEmail.has(email));
+      if (unmatched.length) {
+        const org = await orgDAL.findById(orgId);
+        const { resolved, ambiguousIdentifiers } = await resolveUsersBySsoExternalId({
+          identifiers: unmatched,
+          orgId,
+          rootOrgId: org?.rootOrgId,
+          userAliasDAL,
+          userDAL
+        });
+
+        if (ambiguousIdentifiers.length) {
+          throw new BadRequestError({
+            message: `Identifier(s) ${ambiguousIdentifiers
+              .map((el) => `'${el}'`)
+              .join(
+                ", "
+              )} match more than one SSO account in this organization. Use the user's email address instead, or contact support to resolve the duplicate.`
+          });
+        }
+
+        resolved.forEach((user, identifier) => userByEmail.set(identifier, user));
+      }
+
+      const unresolved = emails.filter((email) => !userByEmail.has(email));
+      if (unresolved.length) {
+        throw new BadRequestError({
+          message: `Cannot add ${unresolved
+            .map((el) => `'${el}'`)
+            .join(", ")} to Agent Vault because they are not a member of this organization. Invite them first.`
+        });
+      }
+
+      emails.forEach((email) => add(AgentVaultMemberType.User, userByEmail.get(email)!.id, email));
+    }
+
+    return [...byKey.values()];
+  };
+
+  const resolveActorNames = (actors: TAgentVaultActorRef[]) =>
+    resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, actors);
+
+  // resolveSession refuses an actor with no active org membership, so one added without it could never mint.
+  const assertActorsAreAddable = async (actors: TAgentVaultNamedActor[], orgId: string, projectId: string) => {
+    const groupIds = named(actors, AgentVaultMemberType.Group);
+    const machineIdentityIds = named(actors, AgentVaultMemberType.MachineIdentity);
+    const userIds = named(actors, AgentVaultMemberType.User);
+
+    // An org reaches a group or an identity through an org-scope membership row, not by owning the row:
+    // that is how a sub-org is given one of its parent's, and how the generic project membership path
+    // decides the same question. Reading orgId off the group or identity refuses every linked one.
+    const orgScoped = (column: TActorColumn, ids: string[]) =>
+      ids.length
+        ? membershipDAL.find({ scope: AccessScope.Organization, scopeOrgId: orgId, $in: { [column]: ids } })
+        : [];
+
+    const [groupMemberships, identityMemberships, userMemberships, identities] = await Promise.all([
+      orgScoped("actorGroupId", groupIds),
+      orgScoped("actorIdentityId", machineIdentityIds),
+      orgScoped("actorUserId", userIds),
+      machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds } }) : []
+    ]);
+
+    // A row of the actor's own, not one it inherits from a group. An actor that reaches the org only
+    // through a group is meant to reach Agent Vault the same way, by the group being a member, so it is
+    // never granted a membership here. Authentication is separate and still resolves it through groups.
+    const activeIds = (memberships: TMemberships[], column: TActorColumn) =>
+      new Set(memberships.filter((membership) => membership.isActive).map((membership) => membership[column]));
+
+    const userMemberIds = activeIds(userMemberships, "actorUserId");
+    const identityMemberIds = activeIds(identityMemberships, "actorIdentityId");
+
+    // Active, so a deactivated group cannot be restored to Agent Vault by adding it again.
+    const foundGroups = activeIds(groupMemberships, "actorGroupId");
+    const missingGroups = groupIds.filter((id) => !foundGroups.has(id));
+    if (missingGroups.length) {
+      throw new NotFoundError({ message: `Group(s) ${missingGroups.map((el) => `'${el}'`).join(", ")} not found` });
+    }
+
+    // Keyed on the membership, so an identity in another org stays a 404 rather than reaching the
+    // active-member check below, which would confirm it exists.
+    const foundIdentities = new Set(identityMemberships.map((membership) => membership.actorIdentityId));
+    const identityById = new Map(identities.map((identity) => [identity.id, identity]));
+    const missingIdentities = machineIdentityIds.filter((id) => !foundIdentities.has(id));
+    if (missingIdentities.length) {
+      throw new NotFoundError({
+        message: `Machine identity(s) ${missingIdentities.map((el) => `'${el}'`).join(", ")} not found`
+      });
+    }
+
+    // An identity created inside another product still carries an org-scope NoAccess membership, so the
+    // org check below passes for it. Only Agent Vault's own identities and unscoped org ones belong here.
+    const foreign = machineIdentityIds.filter((id) => {
+      const projectOfIdentity = identityById.get(id)?.projectId;
+      return projectOfIdentity && projectOfIdentity !== projectId;
+    });
+    if (foreign.length) {
+      throw new BadRequestError({
+        message: `Machine identity(s) ${foreign
+          .map((el) => `'${el}'`)
+          .join(", ")} belong to another project and cannot be given access to Agent Vault`
+      });
+    }
+
+    // Status is not required: an org invite that has not been accepted still gets project access
+    // everywhere else on the platform, and resolveSession refuses the actor until it is. isActive is the
+    // real gate, so a deactivated member is still refused.
+    //
+    // The two refusals are separated because the remedy differs, and this runs on a role change as well as
+    // an add, so neither message may name one of them.
+    const deactivated: TAgentVaultNamedActor[] = [];
+    const strangers: TAgentVaultNamedActor[] = [];
+    actors.forEach((actor) => {
+      const isUser = actor.type === AgentVaultMemberType.User;
+      if (!isUser && actor.type !== AgentVaultMemberType.MachineIdentity) return;
+      if ((isUser ? userMemberIds : identityMemberIds).has(actor.id)) return;
+
+      const column = isUser ? "actorUserId" : "actorIdentityId";
+      const hasRow = (isUser ? userMemberships : identityMemberships).some((row) => row[column] === actor.id);
+      (hasRow ? deactivated : strangers).push(actor);
+    });
+
+    if (deactivated.length || strangers.length) {
+      // Names only for the deactivated, who are in this org. The lookup is not org-scoped, so resolving a
+      // stranger would hand back another tenant's email, and tell a real id apart from a made-up one.
+      const nameByKey = await resolveActorNames(deactivated);
+      const listOf = (refused: TAgentVaultNamedActor[]) =>
+        refused.map((actor) => `'${nameByKey.get(actorKey(actor))?.name ?? actor.identifier}'`).join(", ");
+
+      // Both, when a batch holds both: fixing one and retrying to discover the other is a wasted round
+      // trip, and a bulk change is where that hurts.
+      const reasons: string[] = [];
+      if (deactivated.length) {
+        const one = deactivated.length === 1;
+        reasons.push(
+          `${listOf(deactivated)} ${one ? "is" : "are"} deactivated in this organization. Reactivate ${
+            one ? "them" : "those members"
+          } before changing their Agent Vault access.`
+        );
+      }
+      if (strangers.length) {
+        reasons.push(
+          `${listOf(strangers)} ${
+            strangers.length === 1 ? "is not a member" : "are not members"
+          } of this organization. Invite them to the organization first.`
+        );
+      }
+
+      throw new BadRequestError({ message: reasons.join(" ") });
+    }
+  };
+
+  const findMembershipsForActors = async (projectId: string, actors: TAgentVaultActorRef[], tx?: Knex) => {
+    const byActor = new Map<string, TMemberships>();
+
+    await Promise.all(
+      ALL_ACTOR_TYPES.map(async (type) => {
+        const ids = named(actors, type);
+        if (!ids.length) return;
+        const rows = await membershipDAL.find(
+          {
+            scope: AccessScope.Project,
+            scopeProjectId: projectId,
+            $in: { [ACTOR_COLUMN[type]]: ids }
+          },
+          { tx }
+        );
+        rows.forEach((row) => {
+          const id = row[ACTOR_COLUMN[type]];
+          if (id) byActor.set(`${type}:${id}`, row);
+        });
+      })
+    );
+
+    return byActor;
+  };
+
+  const addProductMembers = async ({
+    projectId,
+    role,
+    ctx,
+    emails,
+    ...ids
+  }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
+    await checkProductAdmin(projectId, ctx);
+    assertValidRole(role);
+
+    const actors = await resolveNamedActors({ ...ids, emails }, ctx.actorOrgId);
+    await assertActorsAreAddable(actors, ctx.actorOrgId, projectId);
+
+    const nameByKey = await resolveActorNames(actors);
+
+    const written = await membershipDAL.transaction(async (tx) => {
+      const existing = await findMembershipsForActors(projectId, actors, tx);
+      const skipped = actors.filter((actor) => existing.has(actorKey(actor)));
+      const toCreate = actors.filter((actor) => !existing.has(actorKey(actor)));
+      if (!toCreate.length) return { created: [], skipped };
+
+      const memberships = await membershipDAL.insertMany(
+        toCreate.map((actor) => ({
+          scope: AccessScope.Project,
+          scopeOrgId: ctx.actorOrgId,
+          scopeProjectId: projectId,
+          [ACTOR_COLUMN[actor.type]]: actor.id,
+          isActive: true
+        })),
+        tx
+      );
+
+      await membershipRoleDAL.insertMany(
+        memberships.map((membership) => ({ membershipId: membership.id, role })),
+        tx
+      );
+
+      const addedUserIds = named(toCreate, AgentVaultMemberType.User);
+      if (addedUserIds.length) {
+        await projectAccessRequestDAL.delete({ projectId, $in: { requesterUserId: addedUserIds } }, tx);
+      }
+
+      const membershipByActor = new Map(
+        memberships.map((membership) => {
+          const type = ALL_ACTOR_TYPES.find((el) => membership[ACTOR_COLUMN[el]])!;
+          return [`${type}:${membership[ACTOR_COLUMN[type]]!}`, membership];
+        })
+      );
+
+      return {
+        created: toCreate.map((actor) => {
+          const membership = membershipByActor.get(actorKey(actor))!;
+          return {
+            type: actor.type,
+            id: actor.id,
+            role,
+            addedAt: membership.createdAt,
+            actorName: nameByKey.get(actorKey(actor))
+          };
+        }),
+        skipped
+      };
+    });
+
+    if (written.created.length) usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    return { members: written.created, skipped: written.skipped };
+  };
+
+  const updateProductMemberRoles = async ({
+    projectId,
+    role,
+    ctx,
+    ...ids
+  }: TUpdateAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
+    await checkProductAdmin(projectId, ctx);
+    assertValidRole(role);
+
+    const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
+
+    if (actors.some((actor) => isSelf(actor, ctx))) {
+      throw new ForbiddenRequestError({ message: "You cannot change your own role" });
+    }
+
+    // Promotion only: a deactivated member must not be made an admin, but taking admin away from one has
+    // to work without reactivating them first.
+    if (role === ProjectMembershipRole.Admin) {
+      await assertActorsAreAddable(actors, ctx.actorOrgId, projectId);
+    }
+
+    const nameByKey = await resolveActorNames(actors);
+
+    const written = await membershipDAL.transaction(async (tx) => {
+      // Before the roles are read, not only around the admin count: two changes for one member that both
+      // read the old role would each insert their own, leaving the member with two roles.
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+      const existing = await findMembershipsForActors(projectId, actors, tx);
+      const held = actors.filter((actor) => existing.has(actorKey(actor)));
+      const heldMembershipIds = held.map((actor) => existing.get(actorKey(actor))!.id);
+
+      const currentRoles = heldMembershipIds.length
+        ? await membershipRoleDAL.find({ $in: { membershipId: heldMembershipIds } }, { tx })
+        : [];
+      const alreadyInRole = new Set(
+        heldMembershipIds.filter((membershipId) => {
+          const roles = currentRoles.filter((el) => el.membershipId === membershipId);
+          return roles.length === 1 && roles[0].role === role;
+        })
+      );
+
+      // Skipped covers both a non-member and a member already in the role, so neither writes an audit event.
+      const toChange = held.filter((actor) => !alreadyInRole.has(existing.get(actorKey(actor))!.id));
+      const skipped = actors.filter((actor) => !toChange.includes(actor));
+      if (!toChange.length) return { updated: [], skipped };
+
+      const membershipIds = toChange.map((actor) => existing.get(actorKey(actor))!.id);
+
+      // One check for the whole batch: per actor, two admins each pass on the other still standing.
+      if (role !== ProjectMembershipRole.Admin) {
+        await assertWillRetainProjectAdmin({
+          scopeProjectId: projectId,
+          excludeMembershipIds: membershipIds,
+          productLabel: "Agent Vault",
+          tx
+        });
+      }
+
+      await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
+      await membershipRoleDAL.insertMany(
+        membershipIds.map((membershipId) => ({ membershipId, role })),
+        tx
+      );
+
+      return {
+        updated: toChange.map((actor) => ({
+          type: actor.type,
+          id: actor.id,
+          role,
+          addedAt: existing.get(actorKey(actor))!.createdAt,
+          actorName: nameByKey.get(actorKey(actor))
+        })),
+        skipped
+      };
+    });
+
+    return { members: written.updated, skipped: written.skipped };
+  };
+
+  const revokeProductMembers = async ({
+    projectId,
+    ctx,
+    ...ids
+  }: TRevokeAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultAuditedActor> => {
+    await checkProductAdmin(projectId, ctx);
+
+    const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
+
+    // Naming yourself is a mistake, not a no-op: skipping it would let an admin believe they had left.
+    if (actors.some((actor) => isSelf(actor, ctx))) {
+      throw new ForbiddenRequestError({ message: "You cannot remove your own access" });
+    }
+
+    // An identity scoped to this project exists only to be an Agent Vault member. Detaching it would leave
+    // a live identity no screen can reach: this tab lists by membership, and the org list hides scoped ones.
+    const machineIdentityIds = named(actors, AgentVaultMemberType.MachineIdentity);
+    if (machineIdentityIds.length) {
+      const owned = (await identityDAL.find({ $in: { id: machineIdentityIds }, projectId })).map((el) => el.id);
+      if (owned.length) {
+        throw new BadRequestError({
+          message: `Machine identity(s) ${owned
+            .map((el) => `'${el}'`)
+            .join(", ")} are managed by Agent Vault. Delete the identity instead of removing its access`
+        });
+      }
+    }
+
+    const nameByKey = await resolveActorNames(actors);
+
+    const written = await membershipDAL.transaction(async (tx) => {
+      const existing = await findMembershipsForActors(projectId, actors, tx);
+      const skipped = actors.filter((actor) => !existing.has(actorKey(actor)));
+      const held = actors.filter((actor) => existing.has(actorKey(actor)));
+      if (!held.length) return { removed: [], skipped };
+
+      const membershipIds = held.map((actor) => existing.get(actorKey(actor))!.id);
+
+      // One check for the whole batch: per actor, two admins each pass on the other still standing.
+      await assertWillRetainProjectAdmin({
+        scopeProjectId: projectId,
+        excludeMembershipIds: membershipIds,
+        productLabel: "Agent Vault",
+        tx
+      });
+
+      await Promise.all(
+        ALL_ACTOR_TYPES.map(async (type) => {
+          const typeIds = named(held, type);
+          if (!typeIds.length) return;
+          await membershipDAL.delete(
+            {
+              scope: RESOURCE_SCOPE,
+              scopeProjectId: projectId,
+              scopeResourceType: ResourceType.AgentVaultAccessBundle,
+              $in: { [ACTOR_COLUMN[type]]: typeIds }
+            },
+            tx
+          );
+        })
+      );
+
+      // membership_roles cascades on the membership FK, so the roles go with these rows.
+      await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
+
+      return {
+        removed: held.map((actor) => ({
+          type: actor.type,
+          id: actor.id,
+          actorName: nameByKey.get(actorKey(actor))
+        })),
+        skipped
+      };
+    });
+
+    if (written.removed.length) usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    return { members: written.removed, skipped: written.skipped };
+  };
+  return {
+    listProductMembers,
+    listAvailableProductMembers,
+    addProductMembers,
+    updateProductMemberRoles,
+    revokeProductMembers
+  };
+};

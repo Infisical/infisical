@@ -37,6 +37,7 @@ export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.Dy
         status?: string | null | undefined;
         config?: unknown;
         statusDetails?: string | null | undefined;
+        encryptedLeaseData?: Buffer | null | undefined;
       }
     | undefined
   >;
@@ -47,11 +48,11 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
 
   const countLeasesForDynamicSecret = async (dynamicSecretId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
-        .count("*")
+      const doc = (await (tx || db.replicaNode())(TableName.DynamicSecretLease)
+        .count("* as count")
         .where({ dynamicSecretId })
-        .first();
-      return parseInt(doc || "0", 10);
+        .first()) as { count: string | number } | undefined;
+      return parseInt(String(doc?.count ?? "0"), 10);
     } catch (error) {
       throw new DatabaseError({ error, name: "DynamicSecretCountLeases" });
     }

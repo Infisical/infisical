@@ -18,9 +18,9 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { getProjectLabel } from "@app/helpers/project";
 import { useTimedReset } from "@app/hooks";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { GroupRoles } from "@app/pages/project/AccessControlPage/components/GroupsTab/components/GroupsSection/GroupRoles";
 
 type Props = {
@@ -30,7 +30,7 @@ type Props = {
 export const GroupDetailsSection = ({ groupMembership }: Props) => {
   const { group } = groupMembership;
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const projectLabel = getProjectLabel(currentProject?.type);
 
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -38,7 +38,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
   });
 
   return (
-    <Card className="w-full lg:max-w-[24rem]">
+    <Card className="w-full @4xl:max-w-[24rem] @4xl:shrink-0">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>Group details</CardDescription>
@@ -72,7 +72,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>{isCertManager ? "Certificate Manager Role" : "Project Role"}</DetailLabel>
+            <DetailLabel>{`${projectLabel} Role`}</DetailLabel>
             <DetailValue>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
@@ -90,9 +90,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>
-              {isCertManager ? "Joined certificate manager" : "Joined project"}
-            </DetailLabel>
+            <DetailLabel>{`Joined ${projectLabel.toLowerCase()}`}</DetailLabel>
             <DetailValue>{format(groupMembership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>

@@ -32,6 +32,7 @@ export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "
       secretPath?: string | undefined;
       secretKey?: string | undefined;
       eventType?: EventType[] | undefined;
+      excludeEventType?: EventType[] | undefined;
       eventMetadata?: Record<string, string> | undefined;
       pamScope?: TPamAuditLogScope | undefined;
     },
@@ -90,6 +91,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
       secretPath,
       secretKey,
       eventType,
+      excludeEventType,
       eventMetadata,
       pamScope
     },
@@ -206,6 +208,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
       // Filter by event types
       if (eventType?.length) {
         void sqlQuery.whereIn("eventType", eventType);
+      }
+
+      if (excludeEventType?.length) {
+        void sqlQuery.whereNotIn("eventType", excludeEventType);
       }
 
       // we timeout long running queries to prevent DB resource issues (2 minutes)

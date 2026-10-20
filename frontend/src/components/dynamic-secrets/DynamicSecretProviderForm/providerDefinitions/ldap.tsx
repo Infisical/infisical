@@ -20,7 +20,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { useCanUseProjectAppConnectionImport } from "@app/hooks";
@@ -145,7 +145,7 @@ const LdapFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                   error={error?.message}
                 />
               </FieldContent>
-              <Switch
+              <Toggle
                 ref={field.ref}
                 checked={field.value}
                 onBlur={field.onBlur}

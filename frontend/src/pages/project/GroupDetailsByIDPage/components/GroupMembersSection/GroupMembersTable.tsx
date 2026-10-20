@@ -27,12 +27,14 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { supportsAssumePrivileges } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useListGroupMembers } from "@app/hooks/api/groups/queries";
@@ -51,7 +53,10 @@ type Props = {
 };
 
 export const GroupMembersTable = ({ groupMembership }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
+  const { currentProject } = useProject();
+  const canAssumePrivileges = supportsAssumePrivileges(currentProject.type);
   const {
     search,
     setSearch,
@@ -142,7 +147,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              variant={memberTypeFilter.length ? "project" : "outline"}
+              variant={memberTypeFilter.length ? scopeVariant : "outline"}
               aria-label="Filter group members"
             >
               <FilterIcon />
@@ -193,9 +198,11 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                 />
               </TableHead>
               <TableHead>Joined Group</TableHead>
-              <TableHead className="w-5">
-                <span className="sr-only">Actions</span>
-              </TableHead>
+              {canAssumePrivileges && (
+                <TableHead className="w-5">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -211,9 +218,11 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-4" />
-                    </TableCell>
+                    {canAssumePrivileges && (
+                      <TableCell>
+                        <Skeleton className="h-4 w-4" />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               : groupMemberships?.members?.map((userGroupMembership) => {
@@ -221,6 +230,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                     <GroupMembershipUserRow
                       key={`user-group-membership-${userGroupMembership.id}`}
                       user={userGroupMembership}
+                      canAssumePrivileges={canAssumePrivileges}
                       onAssumePrivileges={(userId) =>
                         handlePopUpOpen("assumePrivileges", {
                           actorId: userId,
@@ -232,6 +242,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                     <GroupMembershipIdentityRow
                       key={`identity-group-membership-${userGroupMembership.id}`}
                       identity={userGroupMembership}
+                      canAssumePrivileges={canAssumePrivileges}
                       onAssumePrivileges={(identityId) =>
                         handlePopUpOpen("assumePrivileges", {
                           actorId: identityId,

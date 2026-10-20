@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect } from "react";
 
 type AppConnectionFormContextValue = {
   /**
@@ -6,6 +6,8 @@ type AppConnectionFormContextValue = {
    * have to thread a prop through every form and the ~130 render sites in AppConnectionForm.
    */
   onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
+  layout?: "sheet" | "dialog";
 };
 
 const AppConnectionFormContext = createContext<AppConnectionFormContextValue>({
@@ -15,3 +17,11 @@ const AppConnectionFormContext = createContext<AppConnectionFormContextValue>({
 export const AppConnectionFormProvider = AppConnectionFormContext.Provider;
 
 export const useAppConnectionForm = () => useContext(AppConnectionFormContext);
+
+export const useAppConnectionFormDirtyState = (isDirty: boolean) => {
+  const { onDirtyChange } = useAppConnectionForm();
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+};

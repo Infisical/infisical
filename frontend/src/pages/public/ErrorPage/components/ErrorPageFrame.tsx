@@ -92,9 +92,7 @@ export const ErrorPageFrame = ({
     <div
       ref={containerRef}
       className={`relative flex items-center justify-center p-4 ${
-        isFullScreen
-          ? "min-h-screen bg-linear-to-tr from-card via-bunker-900 to-card"
-          : "min-h-full"
+        isFullScreen ? "min-h-screen bg-linear-to-tr from-card via-page-deep to-card" : "min-h-full"
       }`}
     >
       {helmetTitle && (
@@ -111,7 +109,7 @@ export const ErrorPageFrame = ({
               {badgeIcon}
               {badgeText}
             </Badge>
-            <h1 className="text-3xl font-semibold text-foreground">{heading}</h1>
+            <h1 className="text-3xl font-normal text-foreground">{heading}</h1>
             <p className="max-w-md text-sm leading-relaxed text-accent">{description}</p>
             <div className="flex flex-wrap items-center gap-2.5">{actions}</div>
             <p className="text-xs text-muted">
@@ -127,15 +125,15 @@ export const ErrorPageFrame = ({
                 className="underline underline-offset-4 hover:text-foreground"
                 target="_blank"
                 rel="noopener noreferrer"
-                href="https://infisical.com/slack"
+                href="https://community.infisical.com"
               >
-                join us on Slack
+                join the community forum
               </a>
               .
             </p>
           </div>
         </div>
-        <div className="flex flex-col border-t border-border bg-bunker-800/50 lg:border-t-0 lg:border-l">
+        <div className="flex flex-col border-t border-border bg-page/50 lg:border-t-0 lg:border-l">
           <div className="flex items-center justify-between gap-2 border-b border-border py-4 pr-5 pl-6">
             <div className="flex items-center gap-2.5 text-muted">
               <ActivityIcon className="size-4" />

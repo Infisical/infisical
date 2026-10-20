@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AlertTriangle, Info, ShieldCheck } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { SsoEnforcementUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -30,7 +30,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -46,6 +46,13 @@ enum EnforceAuthType {
   GOOGLE = "google",
   OIDC = "oidc"
 }
+
+const upgradeDescriptions: Record<string, string> = {
+  "enforce SAML SSO": "Require SAML single sign-on for organization members.",
+  "enforce Google OAuth": "Require Google sign-in for organization members.",
+  "OIDC SSO": "Authenticate organization members with OIDC single sign-on.",
+  "Admin SSO Bypass": "Allow organization admins to sign in without single sign-on."
+};
 
 export const OrgGeneralAuthSection = ({
   isSamlConfigured,
@@ -135,7 +142,7 @@ export const OrgGeneralAuthSection = ({
 
     if (type === EnforceAuthType.SAML) {
       if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "enforce SAML SSO" });
+        handlePopUpOpen("upgradePlan", { featureName: "enforce SAML SSO", planName: "Pro" });
         return;
       }
 
@@ -160,7 +167,10 @@ export const OrgGeneralAuthSection = ({
 
     if (type === EnforceAuthType.GOOGLE) {
       if (!subscription?.enforceGoogleSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "enforce Google OAuth" });
+        handlePopUpOpen("upgradePlan", {
+          featureName: "enforce Google OAuth",
+          planName: "Advanced"
+        });
         return;
       }
 
@@ -182,7 +192,7 @@ export const OrgGeneralAuthSection = ({
       });
     } else if (type === EnforceAuthType.OIDC) {
       if (!subscription?.oidcSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "OIDC SSO", isEnterpriseFeature: true });
+        handlePopUpOpen("upgradePlan", { featureName: "OIDC SSO", planName: "Enterprise" });
         return;
       }
 
@@ -212,7 +222,7 @@ export const OrgGeneralAuthSection = ({
     try {
       if (!currentOrg?.id) return;
       if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "Admin SSO Bypass" });
+        handlePopUpOpen("upgradePlan", { featureName: "Admin SSO Bypass", planName: "Pro" });
         return;
       }
 
@@ -260,7 +270,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-saml-auth"
                     variant="org"
                     checked={currentOrg?.authEnforced ?? false}
@@ -286,7 +296,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-oidc-auth"
                     variant="org"
                     checked={currentOrg?.authEnforced ?? false}
@@ -313,7 +323,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-google-sso"
                     variant="org"
                     checked={currentOrg?.googleSsoAuthEnforced ?? false}
@@ -369,7 +379,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="allow-admin-bypass"
                     variant="org"
                     checked={currentOrg?.bypassOrgAuthEnabled ?? false}
@@ -383,11 +393,17 @@ export const OrgGeneralAuthSection = ({
         </CardContent>
       </Card>
 
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.org-general-auth"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName ?? "enforce SAML SSO"}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...SsoEnforcementUpgradeIntent,
+          description:
+            upgradeDescriptions[popUp.upgradePlan.data?.featureName ?? ""] ??
+            SsoEnforcementUpgradeIntent.description,
+          isEnterpriseFeature: popUp.upgradePlan.data?.planName === "Enterprise"
+        }}
       />
 
       <Dialog
@@ -437,7 +453,7 @@ export const OrgGeneralAuthSection = ({
                   issues with their {enforcementLabel} provider.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="bypass-enabled-modal"
                 variant="org"
                 checked={bypassEnabledInModal}

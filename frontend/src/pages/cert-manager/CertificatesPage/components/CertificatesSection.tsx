@@ -2,7 +2,6 @@ import { ImportIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -13,6 +12,7 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -29,7 +29,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
-import { CertificateImportModal } from "./CertificateImportModal";
+import { CertificateImportSheet } from "./CertificateImportSheet";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
 import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
@@ -185,7 +185,7 @@ export const CertificatesSection = ({
           applicationId={applicationId}
           applicationName={applicationName}
         />
-        <CertificateImportModal
+        <CertificateImportSheet
           popUp={popUp}
           handlePopUpToggle={handlePopUpToggle}
           applicationId={applicationId}
@@ -212,14 +212,15 @@ export const CertificatesSection = ({
           handlePopUpToggle={handlePopUpToggle}
           applicationName={applicationName}
         />
-        <DeleteActionModal
+        <ConfirmationAlertDialog
           isOpen={popUp.deleteCertificate.isOpen}
           title={`Are you sure you want to remove the certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
           }?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
+          description="This action cannot be undone."
+          onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
+          confirmKey="confirm"
+          onConfirm={() =>
             onRemoveCertificateSubmit(
               (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
             )

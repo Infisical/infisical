@@ -3,6 +3,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PlusIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
+import {
+  CertificateDiscoveryUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HoverCard, HoverCardContent, HoverCardTrigger, Tag } from "@app/components/v2";
 import {
@@ -37,7 +41,8 @@ import {
 import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub,
-  useOrganization
+  useOrganization,
+  useSubscription
 } from "@app/context";
 import {
   PkiDiscoveryScanStatus,
@@ -67,11 +72,25 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
 
+  const { subscription } = useSubscription();
+
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "createJob",
     "editJob",
     "deleteJob"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
+  const handleCreateJob = () => {
+    if (!subscription.pkiDiscovery) {
+      openUpgradeGate({
+        intent: CertificateDiscoveryUpgradeIntent,
+        paywallKey: "cert-manager.discovery-jobs"
+      });
+      return;
+    }
+    handlePopUpOpen("createJob");
+  };
 
   const { data, isPending } = useListPkiDiscoveries({
     projectId,
@@ -139,7 +158,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             <HoverCardTrigger>
               <Tag>+{remainingPorts.length}</Tag>
             </HoverCardTrigger>
-            <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-3">
+            <HoverCardContent className="border border-border-cool bg-surface-raised p-3">
               <div className="flex flex-wrap gap-1">
                 {remainingPorts.map((port) => (
                   <Tag key={port}>{port}</Tag>
@@ -166,11 +185,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             a={ProjectPermissionSub.PkiDiscovery}
           >
             {(isAllowed) => (
-              <Button
-                variant="project"
-                onClick={() => handlePopUpOpen("createJob")}
-                isDisabled={!isAllowed}
-              >
+              <Button variant="project" onClick={handleCreateJob} isDisabled={!isAllowed}>
                 <PlusIcon />
                 Add Job
               </Button>
@@ -229,10 +244,9 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                     className="cursor-pointer"
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId",
+                        to: "/organizations/$orgId/cert-manager/discovery/$discoveryId",
                         params: {
                           orgId: currentOrg.id,
-                          projectId,
                           discoveryId: discovery.id
                         }
                       })
@@ -350,6 +364,8 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
         onConfirm={handleDelete}
         discoveryName={(popUp.deleteJob.data as TPkiDiscovery)?.name || ""}
       />
+
+      {upgradeGate}
     </Card>
   );
 };

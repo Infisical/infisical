@@ -29,9 +29,7 @@ export const PersonalSettingsPage = () => {
       </Link>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="grid gap-1">
-          <h1 className="font-alliance text-2xl font-semibold text-foreground">
-            Personal Settings
-          </h1>
+          <h1 className="font-alliance text-2xl font-normal text-foreground">Personal Settings</h1>
           <p className="text-sm text-muted">
             Manage your profile, authentication, and active sessions.
           </p>

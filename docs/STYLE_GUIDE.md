@@ -4,26 +4,26 @@ This guide defines how to write user-facing documentation for Infisical.
 
 ## Quick summary
 
-1. **Provide context** — Explain what and why before how. Don't assume prior knowledge.
-2. **Write for users** — No implementation details. Users care about outcomes, not internals.
-3. **Cross-reference** — Link concepts that are essential for understanding.
-4. **Use Mintlify components** — Steps, Tabs, Cards, Accordions, callouts, diagrams.
-5. **Write clearly** — Active voice, specific verbs, concise sentences, sparing em dashes.
-6. **Keep pages focused** — One purpose per page.
-7. **Maintain flow** — New content should connect naturally with existing content.
-8. **State prerequisites** — Tell readers what they need before they start.
-9. **Be consistent** — Use the same terms throughout.
-10. **Structure by purpose** — Guides, concepts, overviews, and references have different shapes.
-11. **Use sentence case** — Write page titles, sidebar titles, and headings in sentence case.
-12. **Rewrite the sentences** — Say it once, in your own voice. Read every sentence out loud.
-13. **Bold is for UI** — Bold marks buttons, menus, and fields. Use "select", not "click" or "tap".
-14. **Run the linter** — `make lint-docs-branch` checks the mechanical rules in this guide.
+1. **Provide context:** Explain what a feature is and why readers would use it before explaining how to use it.
+2. **Write for users:** Describe what users can do and what happens, not how Infisical is built. Leave out facts the reader won't act on.
+3. **Cross-reference:** Link every concept a reader needs to know to understand the page.
+4. **Use Mintlify components:** Steps, Tabs, Cards, Accordions, callouts, and diagrams.
+5. **Write clearly:** Write plain technical English. Say exactly what you mean, with active voice, specific verbs, and few em dashes.
+6. **Keep pages focused:** Give each page one purpose, give each topic in a section its own heading, and lay out separate facts so the reader can see where each one starts.
+7. **Maintain flow:** Connect new content to the content around it.
+8. **State prerequisites:** Tell readers what they need before they start.
+9. **Be consistent:** Use the same term for the same thing on every page.
+10. **Structure by purpose:** Guides, concept pages, overviews, and reference pages each need a different structure.
+11. **Use sentence case:** Write page titles, sidebar titles, and headings in sentence case.
+12. **Rewrite the sentences:** Say each thing once, in your own words. Read every sentence out loud.
+13. **Bold is for UI:** Use bold only for buttons, menus, and fields. Use "select", not "click" or "tap". Format only what the reader needs to pick out.
+14. **Run the linter:** `make lint-docs-branch` checks the rules in this guide that a pattern can match.
 
 ---
 
 ## 1. Provide context for new users
 
-Don't assume the reader already knows what a feature is or why it matters. Every page should orient a new user before diving into details.
+Don't assume the reader already knows what a feature does or why they'd use it. Every page should explain what the feature is before it goes into details.
 
 **Start with the "what" and "why":**
 
@@ -31,17 +31,17 @@ Don't assume the reader already knows what a feature is or why it matters. Every
 - Why would someone use it?
 - When is it relevant?
 
-Then move to the "how."
+Then explain the "how."
 
-**Bad:** Jumping straight into configuration steps without explaining what the feature does.
+**Bad:** Starting with configuration steps without explaining what the feature does.
 
-**Good:** A brief opening paragraph that explains what this is and why it matters, then the steps.
+**Good:** A short opening paragraph that explains what the feature is and why it matters, followed by the steps.
 
-If a reader lands on the page with no prior context, they should be able to understand what they're looking at within the first few sentences.
+If a reader opens the page without knowing anything about the feature, the first few sentences should tell them what the page covers.
 
 ### Audience callouts
 
-If a page is intended for a specific audience (admins vs. end users, product admins vs. application admins), say so at the top with an `<Info>` callout:
+If a page is written for a specific audience (admins vs. end users, product admins vs. application admins), say so at the top of the page with an `<Info>` callout:
 
 ```mdx
 <Info>
@@ -51,46 +51,45 @@ If a page is intended for a specific audience (admins vs. end users, product adm
 </Info>
 ```
 
-This helps readers quickly know if they're in the right place.
-
-### "When to use" sections
-
-For pages that describe one approach among several (e.g., ACME vs. EST vs. SCEP), include a "When to use" section that helps readers decide if this is the right choice:
-
-```mdx
-## When to use ACME enrollment
-
-<CardGroup cols={2}>
-  <Card title="Web Servers" icon="server">
-    Nginx, Apache, Tomcat with Certbot.
-  </Card>
-  <Card title="Kubernetes" icon="dharmachakra">
-    Use cert-manager to issue certificates.
-  </Card>
-</CardGroup>
-```
-
-This makes it easier for readers to quickly assess whether to continue reading or look elsewhere.
+An audience callout tells readers right away whether the page is meant for them.
 
 ---
 
 ## 2. Write for users, not implementers
 
-Documentation should be readable and understandable by someone who has never seen our codebase.
+Write every page so that readers understand it even if they've never seen the Infisical codebase.
 
-**The test:** Would a user who has never seen our code understand this? If the answer is no, rewrite it.
+**The test:** If a user had never seen the Infisical code, would they understand this sentence? If the answer is no, rewrite the sentence.
 
-Users care about what they can do and what happens — not how we built it. Don't expose implementation details like API endpoints, database schemas, internal service names, or "how it works under the hood" explanations.
+Describe what users can do and what happens when they do it, not how Infisical is built. Leave out implementation details such as internal API endpoints, database schemas, internal service names, and explanations of how a feature works internally.
 
 **Exception:** Architecture docs (`*/architecture.mdx`) can explain system design.
+
+### Leave out what the reader won't act on
+
+A fact can be true, and even interesting, and still not belong on the page. Every extra fact makes the reader work harder to find the ones they need. Before you add a fact, ask what the reader would do differently after reading it. If the answer is nothing, leave the fact out.
+
+Facts that usually fail this test:
+
+- How a feature works step by step, when the reader only needs the result
+- Details of the UI that the reader can see for themselves, such as how many icons a column shows
+- Warnings about mistakes the steps don't lead the reader to make
+- Answers to questions the reader doesn't have, such as which response code an endpoint returns on a page about something else
+- Facts that another section or page already covers (link to it instead)
+
+If a fact only matters to some readers, such as readers on an older plan or with an unusual setup, put it in a callout next to where those readers will run into it, or in a troubleshooting section.
+
+**Instead of:** Three steps that describe how Infisical counts repeated permission denials within a minute and when it writes a summary event.
+
+**Write:** If the same denial repeats within a minute, Infisical records it once, then records one summary event with the number of repeats in `suppressedRepeats`.
 
 ---
 
 ## 3. Cross-reference core concepts
 
-When you reference a concept that is core to understanding the page, link to its documentation. If a reader wouldn't understand the page without knowing what that concept means, link it.
+If a reader needs to know what a concept means to understand the page, link the concept to its documentation.
 
-Link on the first mention of a concept on the page — not every time it appears. After the first linked mention, readers know what it is and can scroll back if needed.
+Link a concept the first time the page mentions the concept, not every time. Readers who need the link again can scroll back to the first mention.
 
 ```mdx
 <!-- Good: Gateway is core to understanding this page -->
@@ -104,30 +103,71 @@ Permissions are set at the folder level.
 [Learn more about Folders →](/documentation/platform/pam/folders/overview)
 ```
 
+### Link instead of pointing
+
+Don't refer readers to content "above" or "below". Link to the section instead, whether the section is on the same page or another page, so readers don't have to scroll to find the section you mean.
+
+**Instead of:** These limits differ from the Infisical Cloud limits above.
+
+**Write:** These limits differ from the [Infisical Cloud limits](#limits-on-infisical-cloud).
+
+### Say how, whenever you say someone can do something
+
+If you tell the reader they can do something, link to the instructions for doing it. If no page has those instructions and the steps are short, write the steps on the page.
+
+**Instead of:** An admin can change these limits.
+
+**Write:** A super admin can change these limits in the [Server Console](/documentation/platform/admin-panel/server-admin).
+
+### Refer to endpoints by what they do, and link them
+
+In a sentence, describe what an endpoint does and link to the endpoint's reference page. Use the method and path only in code blocks. Link every endpoint you mention, even an endpoint you mention only in passing.
+
+**Instead of:** Call `POST /api/v1/auth/universal-auth/login` with the client ID and client secret.
+
+**Write:** Call [the login endpoint for Universal Auth](/api-reference/endpoints/universal-auth/login) with the client ID and client secret.
+
 ---
 
 ## 4. Use Mintlify components
 
-Take full advantage of Mintlify's component library rather than relying on plain markdown. Components make documentation more scannable, interactive, and easier to navigate.
+Use a Mintlify component instead of plain Markdown wherever a component fits the content. Components make pages easier to scan and navigate.
 
 ### Procedures
 
-Use `<Steps>` when readers need to complete a discrete, ordered procedure, especially a sequence of actions in the Infisical UI:
+Use `<Steps>` for a procedure the reader completes in order, such as a sequence of actions in the Infisical UI. Leave out the `title` prop, and start each step with the action the reader takes:
 
 ```mdx
 <Steps>
-  <Step title="Create a folder">
-    Go to **Settings → Folders** and click **Create**.
+  <Step>
+    Go to **Settings** > **Folders** and select **Create**.
   </Step>
-  <Step title="Configure permissions">Assign roles to users or groups.</Step>
+  <Step>
+    Assign roles to users or groups.
+  </Step>
 </Steps>
 ```
 
-A longer guide should use headings such as `## Step 1: Configure in Infisical` to organize its major stages, with `<Steps>` nested within a stage where numbered actions improve clarity.
+If a guide has more than one stage, give each stage a heading in the form `## Step 1: Configure in Infisical`, and put the actions for that stage in a `<Steps>` block under the heading:
+
+```mdx
+## Step 1: Create a machine identity
+
+<Steps>
+  <Step>
+    In your organization, go to **Access Control** > **Machine Identities**, then select **Create**.
+  </Step>
+  <Step>
+    Enter a **Name**, pick a **Role**, and select **Create**.
+  </Step>
+</Steps>
+```
+
+Take button names, tab names, and the order of screens from the current product, not from an older docs page. Button names, tab names, and the order of screens change between releases, so if you copy a guide from another guide, the copy repeats any mistakes in the older guide.
 
 ### Alternative approaches
 
-Use `<Tabs>` when there are multiple ways to accomplish something:
+Use `<Tabs>` when the reader can complete a task in more than one way:
 
 ```mdx
 <Tabs>
@@ -138,7 +178,7 @@ Use `<Tabs>` when there are multiple ways to accomplish something:
 
 ### Callouts
 
-Use callouts to highlight important information:
+Use a callout for information the reader shouldn't miss:
 
 ```mdx
 <Note>Important context that applies to a specific part of the page.</Note>
@@ -147,11 +187,11 @@ Use callouts to highlight important information:
 <Info>Additional context that's good to know.</Info>
 ```
 
-Don't use callouts for page-level prerequisites. Put them under a `## Prerequisites` heading instead.
+List page-level prerequisites under a `## Prerequisites` heading, not in a callout.
 
 ### Navigation
 
-Use `<Card>` and `<CardGroup>` to guide readers to related pages:
+Use `<Card>` and `<CardGroup>` to link to related pages:
 
 ```mdx
 <CardGroup cols={2}>
@@ -166,7 +206,7 @@ Use `<Card>` and `<CardGroup>` to guide readers to related pages:
 
 ### Diagrams and visuals
 
-Use diagrams when explaining technical concepts with multiple connecting pieces. Visuals help readers understand relationships, data flows, and architecture far better than text alone.
+Use a diagram to explain how several components connect. A diagram shows relationships, data flows, and architecture more clearly than text alone.
 
 **Good candidates for diagrams:**
 
@@ -174,20 +214,20 @@ Use diagrams when explaining technical concepts with multiple connecting pieces.
 - Request/response flows
 - Authentication or authorization flows
 - Architecture overviews
-- Anything with multiple steps happening across different systems
+- A process with steps that run on different systems
 
-Mintlify supports [Mermaid diagrams](https://mermaid.js.org/) inline, or you can include images.
+You can write a diagram inline with [Mermaid](https://mermaid.js.org/) or include the diagram as an image.
 
 ### Frequently asked questions
 
-Use `<AccordionGroup>` with `<Accordion>` for FAQ sections. FAQs are valuable — they address common questions, edge cases, and "but what about..." scenarios without cluttering the main content.
+Use `<AccordionGroup>` with `<Accordion>` for FAQ sections. An FAQ answers common questions and covers edge cases without adding them to the main content of the page.
 
 **Consider adding FAQs when:**
 
-- A feature has common gotchas or misconceptions
+- Readers commonly misunderstand how a feature behaves
 - Users often ask the same questions
-- There are edge cases that don't fit the main flow
-- The "how it works" has nuances worth explaining
+- An edge case doesn't fit into the main steps
+- A feature behaves in a way that needs more explanation than the main content gives
 
 ```mdx
 <AccordionGroup>
@@ -200,31 +240,34 @@ Use `<AccordionGroup>` with `<Accordion>` for FAQ sections. FAQs are valuable �
 </AccordionGroup>
 ```
 
-FAQs make documentation easier to scan — readers can jump straight to their question instead of hunting through paragraphs.
+An FAQ lets readers go straight to their question instead of searching through paragraphs.
 
 ### Code examples
 
-Include code examples only when they genuinely help understanding — not to make documentation look technical or comprehensive. A well-placed example clarifies; too many examples overwhelm.
+Include a code example only when the example helps the reader understand or complete the task, not to make the page look thorough. Too many examples make a page harder to follow.
 
 **When to include code:**
 
 - The syntax isn't obvious from the description alone
 - Readers need something copy-pasteable to get started
-- Showing expected output helps verify success
+- Showing the expected output helps readers confirm the command worked
 
 **When to skip code:**
 
-- The UI walkthrough is sufficient
-- The concept is better explained in prose
-- Adding code would just repeat what's already clear
+- The UI steps are enough on their own
+- Prose explains the concept better than code
+- The code would repeat what the text already says
 
 **When you do include code:**
 
-- Make it copy-pasteable — no `$` prompts that break pasting
+- Make the code copy-pasteable (no `$` prompts, which break pasting)
 - Use obvious placeholders: `<your-api-key>`, `<project-id>`, not `abc123` or `foo`
 - Use realistic values where possible (actual domain names, plausible configs)
-- Show expected output when it helps readers verify they did it right
-- Keep examples minimal — show what's needed, not everything possible
+- Show the expected output when the output helps readers confirm the command worked
+- Keep examples short, showing only what the task needs
+- If a code block is longer than 25 lines, make it expandable by adding `expandable` after the language, as in `` ```json expandable ``, so the block doesn't push the rest of the page down
+- Check that every endpoint in an example exists, accepts the credential the example sends (if an endpoint only accepts user sessions, it rejects a machine identity token), and has a reference page with content
+- Pick endpoints that work for every reader of the page; a getting-started example shouldn't call an endpoint that only works for one product unless the page is about that product
 
 ```bash
 # Good: obvious placeholder, minimal, copy-pasteable
@@ -243,30 +286,30 @@ curl -X POST https://app.infisical.com/api/v1/secrets \
 
 ### Other components
 
-Mintlify offers many more components — use whatever best serves the reader's understanding.
+Mintlify has more components than this section lists. Use any component that makes the content easier to understand.
 
 ---
 
 ## 5. Write clearly and directly
 
-Documentation should read like instructions from a knowledgeable colleague: direct, specific, and easy to follow.
+Write the way a colleague who knows the product would give you instructions: directly, specifically, and in an order you can follow.
 
 - Prefer active voice over passive
 - Use specific verbs over vague ones
 - Keep sentences and paragraphs concise
-- Explain jargon on first use
+- Explain jargon the first time you use it
 
 ### Don't give human verbs to things that aren't human
 
-A path, a policy, or a property doesn't say, know, understand, or want anything. Name the actor and the behavior.
+A path, a policy, or a property can't say, know, understand, or want anything. Name who or what performs the action, and describe the action.
 
 **Instead of:** A grant on `/payments` says nothing about `/payments/keys`.
 
-**Write:** If you have a role on `/payments`, that role does not automatically apply to `/payments/keys`.
+**Write:** If you have a role on `/payments`, that role doesn't automatically apply to `/payments/keys`.
 
 ### Say what a thing is, in one clause
 
-Define a field or a concept plainly. If a second clause has to explain the first, the first clause isn't doing any work.
+Define a field or a concept in one plain clause. If you need a second clause to explain the first clause, rewrite the first clause so it says what the field or concept is.
 
 **Instead of:** The `scope` property defines the boundary within which a grant is considered valid.
 
@@ -274,7 +317,7 @@ Define a field or a concept plainly. If a second clause has to explain the first
 
 ### Say it once
 
-Cut sentences that restate the previous sentence in new words. Keep the one that carries new information.
+If a sentence repeats the previous sentence in different words, delete whichever of the two sentences adds less information.
 
 **Instead of:** Access is granted per folder. Each folder carries its own access list. Because access is defined at the folder level, permissions on one folder do not carry over to another.
 
@@ -282,33 +325,51 @@ Cut sentences that restate the previous sentence in new words. Keep the one that
 
 ### Keep pronouns next to what they refer to
 
-If a reader has to scan backwards to work out what "it" or "they" points at, repeat the noun. Repeating a word costs less than a reparse.
+If a reader has to look back to find out what "it" or "they" refers to, repeat the noun instead. A repeated word is easier to read than a sentence the reader has to parse twice.
 
 **Instead of:** Add the service token to the project, then open the environment settings and confirm that it is active.
 
 **Write:** Add the service token to the project, then open the environment settings and confirm the token is active.
 
+**Instead of:** Whether they're passed as query parameters or in the request body depends on the endpoint.
+
+**Write:** Depending on the endpoint, `offset` and `limit` are passed either as query parameters or in the request body.
+
 ### Give every transitive verb its object
 
-A verb like request, create, return, send, or apply has to say what. Drop the object and the reader has to guess, and the gap often marks a detail the writer had not settled yet.
+Verbs like request, create, return, send, and apply need an object that says what is requested, created, returned, sent, or applied. Without the object, the reader has to guess. If the object is missing, the writer often hadn't decided that detail yet.
 
 **Instead of:** You create the service in your Infisical dashboard, and the agent requests.
 
 **Write:** You create the service in your Infisical dashboard, and the agent requests credentials for it.
 
-This usually happens to a sentence that was edited after it was written, losing its tail. Read the second half of every long sentence on its own and check that each verb in it has something to act on.
+An object usually goes missing when someone edits a sentence and cuts off the end of the sentence. Read the second half of every long sentence on its own, and check that each verb in that half has an object.
 
 ### Lead with the behavior, not a label for it
 
-Calling something an exception, a special case, or a caveat tells the reader to brace without telling them what for. State the behavior first.
+Calling something an exception, a special case, or a caveat warns the reader that something is different without saying what is different. Describe the behavior instead.
 
 **Instead of:** Folder access is the exception.
 
 **Write:** Folder access doesn't inherit. A role on a parent folder gives no access to the folders inside it.
 
+### Write conditions as "if" clauses
+
+If a sentence applies only in some cases, state the case in an "if" clause. Don't put the condition inside a made-up subject, such as "a secret that already exists" or "a reader who opens the page". With a made-up subject, the reader has to work out that the sentence is a condition, and has to read a long noun phrase before reaching the verb.
+
+**Instead of:** A secret that already exists in the schema stays owned by the role that created it.
+
+**Write:** If a secret already exists in the schema, it stays owned by the role that created it.
+
+**Instead of:** An endpoint that only accepts user sessions rejects a machine identity token.
+
+**Write:** If an endpoint only accepts user sessions, it rejects a machine identity token.
+
+A clause like "that already exists" is fine when it says which thing you mean instead of stating a condition, as in "Select the role that owns the secrets."
+
 ### Split mid-sentence detours
 
-A clause wedged into the middle of a sentence makes the eye jump back to pick up the thread. Split the sentence, or move the condition to the front.
+A clause in the middle of a sentence interrupts the sentence, and the reader has to go back to find where the main clause left off. Split the sentence into two sentences, or move the clause to the start of the sentence.
 
 **Instead of:** The menu adds temporary access and once a grant exists removes folder access.
 
@@ -316,25 +377,102 @@ A clause wedged into the middle of a sentence makes the eye jump back to pick up
 
 ### Name what actually happens
 
-Replace an abstract construction with the system, the input, and the result. Abstraction hides whether the writer knew the mechanism.
+Instead of an abstract phrase, say which system does what, with which input, and what the result is. An abstract phrase can hide the fact that the writer didn't know how the feature works.
 
 **Instead of:** Permissions are evaluated against the resource hierarchy.
 
 **Write:** Infisical checks the exact folder path you asked for, and only that path.
 
+### Say exactly what you mean
+
+This is technical documentation. Write plain, literal English. A reader has to translate a metaphor or a figurative verb into what actually happens before they can act on the sentence. Always say exactly what you mean outright.
+
+**Instead of:** Use the API to drive every resource and wire Infisical into your tooling.
+
+**Write:** The API supports every action available in the Infisical dashboard.
+
+**Instead of:** The rest sit between those two: they trade something the caller already has for an access token.
+
+**Write:** OIDC, JWT, LDAP, TLS certificate, and SPIFFE Auth accept a credential from a trusted external system, such as an OIDC identity token or a client certificate.
+
+### Name the exact subject
+
+Name the specific thing you're describing, not a broader category that includes it. If you write "a resource" or "an instance", the reader has to work out which resource or instance you mean.
+
+**Instead of:** A resource's version is only incremented for breaking changes.
+
+**Write:** Each endpoint path is versioned independently.
+
+### Say what a qualifier refers to
+
+Words like "default", "built-in", "underlying", and "standard" only make sense with the thing they refer to: a default for what? built into what? If the sentence doesn't name that thing, the reader has to guess. Replacing one of these words with another doesn't fix the sentence. Name the thing, or describe the thing directly.
+
+**Instead of:** If you self-host Infisical, the built-in defaults apply.
+
+**Write:** If you self-host Infisical, no rate limits are enforced on the API by default.
+
+### Use common words
+
+Use a word every reader knows instead of a word only specialists use. If a technical term is the only accurate word, explain the term or link to a page that explains the term.
+
+**Instead of:** Prepend the base URL to the path. Apply throttling at your ingress or reverse proxy.
+
+**Write:** The full URL is the base URL followed by the path. You'll need to configure an external rate limiter.
+
+### Don't invent terms
+
+Use the name that the product, the protocol, or everyday English already has for something. Made-up phrases such as "worked example" or "response envelope" are confusing.
+
+**Instead of:** This page shows one worked example.
+
+**Write:** This page includes an example of {x}.
+
+### Make sentences unambiguous
+
+Readers decide what each word is doing (subject, verb, or object) as soon as they read it, and only go back when the rest of the sentence stops making sense. Many words in technical writing can be either a noun or a verb, such as log, change, access, flag, request, record, list, return, update, use, scan, sync, set, report, run, and cache. If one of these words sits where both readings fit, the reader can pick the wrong one and has to reread the sentence.
+
+Most of these problems come from leaving out small words. Words like "the", "a", "that", "which", "to", and "is" tell the reader the role of the word that follows. They're the first words to go when someone shortens a sentence. A clear sentence is better than a short one.
+
+The problem can show up anywhere in a sentence:
+
+| Problem | Instead of | Write |
+| --- | --- | --- |
+| A verb reads as part of the subject | Secret scanning flags leaks in your commits. ("Secret scanning flags" reads as the subject, and "leaks" as the verb) | When secret scanning finds a secret in a commit, it flags the commit. |
+| A noun reads as the verb | Infisical logs access to every secret. ("Infisical logs" reads as the subject, and "access" as the verb) | Each time someone reads a secret, Infisical adds an event to the audit log. |
+| A verb reads as the object of the verb before it | Changing how a machine identity authenticates changes who can act as it. (The identity seems to authenticate some changes) | When someone adds or removes an auth method, they change who can authenticate as the machine identity. |
+| A noun and the verb after it read as one phrase | Any endpoint that returns a list of resources paginates its response. ("Resources paginates" reads as one phrase) | If an endpoint returns multiple items, it splits them into pages. |
+| The first word reads as an instruction | List endpoints return one page of results per request. (The sentence starts like an instruction to list endpoints) | If an endpoint returns a list, each request gets one page of results. |
+| A missing "that" makes the sentence seem to end early | Select the role permissions apply to. (The sentence starts like an instruction to select "the role permissions") | Select the role that the permissions apply to. |
+
+These examples aren't a complete list. Any word that can play more than one role can cause this problem, in any position in a sentence, and the problem can come from other kinds of words too. Read every sentence one word at a time, and at each word, check whether more than one reading fits so far. If more than one does, add a small word that settles the role, or reorder the sentence. Don't keep a sentence until it has only one possible reading.
+
+### Address the reader only to add information
+
+Don't add asides to the reader that make a sentence friendlier without adding information.
+
+**Instead of:** The response includes `totalCount`, so you know when to stop.
+
+**Write:** The response includes `totalCount`, which you can use to tell when you've read every page.
+
+Do address the reader when the reader's situation decides whether a sentence applies to them. If you write the condition about the reader ("If you self-host Infisical"), readers can tell right away whether the sentence applies to them. If you write the same condition about an abstract noun ("On a self-hosted instance"), readers have to work out whether the condition includes them.
+
+**Instead of:** On a self-hosted or dedicated instance, replace the host.
+
+**Write:** If you self-host Infisical, replace the host with the address of your instance.
+
 ### Use contractions
 
-Write "it's", "don't", "you'll", and "can't". Full forms read stiff and slow the sentence down for no gain.
+Write "it's", "don't", "you'll", and "can't". Full forms sound stiff and make sentences longer without adding anything.
 
 **Instead of:** It is not possible to recover a deleted secret. You will need to create it again.
 
 **Write:** You can't recover a deleted secret, so you'll need to create it again.
 
-Vale flags the common full forms as suggestions.
+Vale reports the common full forms as errors.
 
 ### Read it out loud
 
-Read every sentence out loud before you submit it. If you wouldn't say it to a colleague standing next to you, rewrite it. This one test catches most of the rules above.
+Read every sentence out loud before you submit the page. If you wouldn't say a sentence that way to a colleague standing next to you, rewrite the sentence. Most sentences that break a rule in this section also fail this test.
 
 **Instead of:** Access removal is reflected within the propagation window.
 
@@ -371,51 +509,113 @@ sidebarTitle: "Docker Quickstart"
 
 ### Don't overuse em dashes
 
-Reach for a comma, colon, parentheses, or a full stop first. An occasional em dash is fine, but several in a paragraph, or one in most sentences, means the punctuation is doing the work that sentence structure should.
+Use a comma, a colon, parentheses, or a period before you use an em dash. An occasional em dash is fine. If a paragraph has several em dashes, or most of its sentences have one, restructure the sentences instead of adding more punctuation.
 
 ---
 
 ## 6. Keep pages focused
 
-Each page should have a clear, single purpose. Keep related workflows together when readers benefit from seeing them in one place. For example, an integration guide can cover several delivery methods and related configuration such as Docker Compose as long as every section serves the same integration goal.
+Give each page one purpose. Keep related workflows on the same page when readers need to see the workflows together. For example, an integration guide can cover several delivery methods and related configuration, such as Docker Compose, as long as every section helps the reader set up that integration.
 
-Use `<Tabs>` for alternative methods when readers choose one path. Use headings for related extensions that readers may complete after the primary workflow. Split a page when its sections serve genuinely different purposes, not merely because the page is long.
+Use `<Tabs>` for alternative methods when readers pick only one of the methods. Use headings for related tasks that readers might complete after the main workflow. Split a page when its sections have different purposes, not just because the page is long.
 
 **Signs a page should be split:**
 
 - Readers have to scroll past content that isn't relevant to them
 - The table of contents has more than 5-6 top-level sections
-- Different audiences have unrelated goals (e.g., admins configuring infrastructure vs. end users consuming it)
+- Different audiences have unrelated goals (for example, admins configuring infrastructure vs. end users consuming it)
 
 **Better structure:**
 
 - One page for the concept overview
 - Separate pages for each workflow or use case
 - A dedicated page for reference material (configuration options, API fields)
-- Troubleshooting as its own page if it's substantial
+- A separate troubleshooting page if the troubleshooting content is long
 
 Short, focused pages are easier to navigate, easier to link to, and easier to maintain.
+
+### Break up long sections
+
+Readers scan a page for the part they need. If a section has several paragraphs in a row, the reader has to read all of them to find the one that answers their question.
+
+This is worst when each paragraph is about a different topic. The section's heading names only one of those topics, so a reader who scans the headings for one of the others won't find it.
+
+Don't put two paragraphs about different topics under one heading, and don't put more than two paragraphs in a row under one heading even if they're about the same topic. A single paragraph that covers several topics has the same problem, so give each topic its own paragraph first. Then split the section up:
+
+- Give each topic in the section its own heading
+- Turn a set of parallel items, such as options, cases, or roles, into a list or a table
+- Turn a paragraph that has more than one action into `<Steps>`
+- Move a fix that only some readers need into a troubleshooting section
+
+Don't split further than the content needs. Each heading and list is one more thing for the eye to sort out, so a heading over two lines of text costs the reader more than it helps them. If cutting content leaves a section that short, merge it into the section around it.
+
+If a step in a guide covers two tasks, give each task its own `###` heading under the step.
+
+Don't use callouts to break up a section. A callout marks content the reader shouldn't miss, and two callouts in a row are as hard to scan as two paragraphs.
+
+**Instead of:** A section about permission denials with a list of the fields a denial event records, then a paragraph about which organizations can record denials, then a paragraph about how Infisical summarizes repeated denials.
+
+**Write:** The list of fields, then a heading for which organizations can record denials and a heading for repeated denials.
+
+**Instead of:** A code block, then a paragraph that explains one line of the code, a paragraph about why the settings go in that file, and three callouts about cases that apply to only some readers.
+
+**Write:** The code block with a comment on the line that needs one, a sentence that says which values to replace, and the three cases in the troubleshooting section.
+
+### Don't pack separate facts into a paragraph
+
+A paragraph works when each sentence builds on the one before it, so the reader has to read them in order anyway. Most paragraphs in reference and setup content aren't like that. They're a run of separate facts: a requirement, what the reader sees if they don't meet it, how to check, and how to fix it. In a paragraph, every fact looks the same, so the reader has to read every sentence to find the one they came for.
+
+To test a paragraph, check whether you could move most of its sentences around without changing what the paragraph says. If you could, the sentences are separate facts, and the reader needs to see where each one starts:
+
+- Say the main point in the first sentence, so a reader can stop there if that's all they need
+- Put facts that are alternatives or cases of the same thing, such as the symptoms of one problem, in a bulleted list
+- Put events that happen in order in a numbered list, in the order they happen
+- Give the action the reader takes its own line, or put it in `<Steps>`, after the facts that lead to it
+- Cut the facts the reader won't act on (see "Leave out what the reader won't act on" in section 2)
+
+Splitting a section under more headings doesn't fix this problem. A dense paragraph under its own heading is still a dense paragraph.
+
+**Instead of:**
+
+> Denials are only recorded for organizations on the new privilege system. If your organization still uses legacy privilege management, the **Authorization** toggle is disabled, and an API request that turns the `authorization` class on is rejected with a `400` response that says so. The `shouldUseNewPrivilegeSystem` field in the settings response tells you which system your organization is on. To upgrade, go to **Access Control** in your organization and select **Learn More & Upgrade**.
+
+**Write:**
+
+> Infisical only records denials for organizations on the new privilege system. If your organization still uses legacy privilege management, you can't turn the `authorization` class on:
+>
+> - In Infisical, the **Authorization** toggle is disabled
+> - Through the API, a request to turn the class on fails with a `400` response
+>
+> To upgrade, go to **Access Control** in your organization and select **Learn More & Upgrade**.
 
 ---
 
 ## 7. Maintain flow when editing
 
-When adding or modifying content on an existing page, make sure it fits naturally with what comes before and after. Don't just insert content — connect it.
+When you add or change content on an existing page, make sure the new content follows from the section before it and leads into the section after it. Don't insert content without connecting the content to the text around it.
 
 **Check that:**
 
-- The page still reads coherently from top to bottom
-- New sections follow logically from previous ones
-- Transitions make sense (readers shouldn't feel jarred)
-- The overall narrative or structure isn't broken
+- The page still reads in order from top to bottom
+- Each new section follows from the section before it
+- Readers can follow the move from each section to the next
+- The order of sections on the page still makes sense
 
-If new content doesn't fit the existing flow, consider whether it belongs on this page at all, or whether the page structure needs to be reorganized.
+If new content doesn't fit the page's existing order, decide whether the content belongs on this page, or whether the page needs to be reorganized.
+
+### Order sections the way a reader looks for them
+
+Put each section where a reader will look for it. Keep sections that cover the same topic from different angles next to each other, and put content that applies to all of those sections after the whole group, not between two of the sections. Put each callout in the section the callout applies to.
+
+**Instead of:** Cloud limits, then what happens when a request is rate limited, then self-hosted limits, with a note about Cloud plans at the bottom of the self-hosted section.
+
+**Write:** Cloud limits with the note about Cloud plans, then self-hosted limits, then what happens when a request is rate limited.
 
 ---
 
 ## 8. State prerequisites explicitly
 
-If a page assumes something is already set up — a Gateway deployed, permissions granted, a CLI installed — state it at the top. Readers shouldn't get stuck halfway through because they missed an unstated requirement.
+If a page assumes something is already set up, such as a deployed Gateway, granted permissions, or an installed CLI, list that requirement at the top of the page. Otherwise, readers can get stuck halfway through the steps because of a requirement the page didn't mention.
 
 Use a `## Prerequisites` section before the main content, even when the list is short:
 
@@ -426,17 +626,33 @@ Use a `## Prerequisites` section before the main content, even when the list is 
 - A [Gateway](/documentation/platform/gateways/overview) that can reach your database
 ```
 
-Don't put page-level prerequisites in `<Info>` or other callouts. Reserve `<Note>` for requirement details that apply to a specific step rather than the whole page.
+Don't put page-level prerequisites in `<Info>` or other callouts. Use `<Note>` only for a requirement that applies to one step, not to the whole page.
+
+**Make each prerequisite something the reader can check before they start.** At the top of the page, the reader hasn't read the steps yet. If a prerequisite depends on the steps, the reader can't check it.
+
+**Instead of:** A role with the permissions required by the endpoints called in this guide
+
+**Write:** A role that grants read access to secrets, such as **Viewer**
+
+**Ask for the least access that works, and cover the kinds of access readers actually have.** Many readers aren't organization admins. If the task also works with project-level access, say so and give the project-level steps too.
+
+**Instead of:** An Infisical organization where you have the **Admin** role
+
+**Write:** The [Admin role](/documentation/platform/access-controls/role-based-access-controls) on either your Infisical organization or a project in the organization
+
+**Link each prerequisite** to a page where the reader can get the prerequisite or learn what the prerequisite is.
+
+**Include setup that a beginner won't have done yet.** If a quickstart needs a resource that most first-time readers don't have yet, such as a machine identity, create the resource in the steps instead of listing it as a prerequisite.
 
 ---
 
 ## 9. Use consistent terminology
 
-Use the same terms throughout the documentation. Don't switch between synonyms for the same concept — it confuses readers and makes searching harder.
+Use the same term for a concept on every page. Switching between synonyms for the same concept confuses readers and makes search results less useful.
 
 **Examples:**
 
-- Pick "secret" or "credential" and stick with it in context
+- Pick "secret" or "credential" and use the same word throughout a page
 - Don't mix "folder" and "directory" interchangeably
 - Don't call something a "project" in one place and a "workspace" in another
 
@@ -446,15 +662,27 @@ If Infisical has a specific term for something, use that term consistently.
 
 ## 10. Page structure
 
-Structure depends on what the page is for. Don't force every page into the same template.
+Choose a page's structure based on what the page is for. Pages with different purposes need different sections.
 
 **All pages need:**
 
 - Frontmatter with a `title` and a `description`
-- An opening that orients the reader
+- An opening that tells the reader what the page covers
 
-`sidebarTitle` is optional. Add one when the page title is too long for the sidebar or reads
-poorly out of context; otherwise the title is used.
+`sidebarTitle` is optional. Add a `sidebarTitle` when the page title is too long for the sidebar or
+doesn't make sense on its own in the sidebar. Without a `sidebarTitle`, the sidebar shows the page title.
+
+**Headings name the topic in words a newcomer recognizes.** Readers often scan the headings before anything else on a page. If a heading is built around a code or a term the reader doesn't know yet, the heading won't help the reader find the section they need.
+
+**Instead of:** `## 429 response`
+
+**Write:** `## Exceeding rate limits (429 response)`
+
+**Name groups for what they contain.** When items fall into categories, give each category a name that describes its items. "Other" tells the reader nothing, so find what the remaining items have in common and name the group after that.
+
+**Instead of:** Universal Auth, Cloud providers, Other methods
+
+**Write:** Infisical-issued credentials, Cloud providers, External identity
 
 **How-to / Guide pages:**
 
@@ -464,47 +692,46 @@ poorly out of context; otherwise the title is used.
 
 **Concept pages:**
 
-- Explanation of what it is and why it matters
-- How components relate to each other
+- An explanation of what the concept is and why it matters
+- How the components relate to each other
 - Links to related concepts and guides
 
 **Overview / Landing pages:**
 
-- Brief intro
-- Navigation cards to sub-pages
+- A short introduction
+- Navigation cards that link to the section's pages
 
-A landing page that heads a whole section has a further job: it should let a reader
-understand what the section contains without reading the sidebar. Mirror the section's
-structure on the page.
+A landing page at the top of a docs section also needs to show readers what the section
+contains, so readers don't have to read the sidebar to find out. Organize the landing page the
+same way the section's sidebar is organized.
 
-- Open with one or two sentences saying what the section is for. Not a definition of the
-  product, just what a reader will find here.
-- Cover every group in that section's sidebar. How much you expand each one depends on the
-  group:
-  - **One card for the group** when its pages are steps or reference for a single topic. The
-    card points at the group's entry point and the description says what the group is for.
-    Networking does this: one card for Gateways, one for Relays.
-  - **A card per page** when the pages are parallel choices the reader picks between, and
-    seeing all the options is the point. Self-hosting does this for deployment platforms,
-    where a reader is scanning for the one they already run.
-- Give each group its own `##` heading, using the same name as the sidebar, once a section
-  has enough groups that a single card group would run long. A short section can carry them
-  all in one `<CardGroup>` with no headings at all.
-- Card titles should match their sidebar labels so a card and its destination read the same.
-- Put deeper explanation below the cards, not above them. Someone who arrived to navigate
-  should not have to scroll past a concept page to find the links.
-- Detail that only some readers want, such as the reasoning behind a choice, belongs in an
-  `<Accordion>` so it does not push the cards down the page.
+- Start with one or two sentences about what readers will find in the section, not a
+  definition of the product
+- Cover every group in the section's sidebar, in one of two ways depending on the group:
+  - **One card for the group** when the group's pages are steps or reference material for a
+    single topic; the card links to the group's first page, and the card description says what
+    the group covers (for example, Networking has one card for Gateways and one for Relays)
+  - **A card per page** when the pages are alternatives the reader chooses between and the
+    reader needs to see every option (for example, Self-hosting has a card for each deployment
+    platform so readers can find the platform they already use)
+- If the section has enough groups that one `<CardGroup>` would be too long, give each group a
+  `##` heading with the same name the sidebar uses; a short section can put all its cards in
+  one `<CardGroup>` with no headings
+- Use each page's sidebar label as the title of the card that links to the page
+- Put longer explanations after the cards, so readers looking for a link don't have to scroll
+  past the explanations to find it
+- Put detail that only some readers want, such as the reasons behind a choice, in an
+  `<Accordion>` so the detail doesn't push the cards down the page
 
-See `self-hosting/overview`, `documentation/platform/gateways/overview`, and
-`documentation/platform/identities/overview` for the pattern.
+For examples of landing pages, see `self-hosting/overview`,
+`documentation/platform/gateways/overview`, and `documentation/platform/identities/overview`.
 
 **Reference pages:**
 
 - Structured information (tables, field descriptions)
 - Examples where helpful
 
-Use the structure that best serves the reader for that type of content.
+Use whichever structure makes the page's type of content easiest to read.
 
 ---
 
@@ -512,17 +739,31 @@ Use the structure that best serves the reader for that type of content.
 
 ### Bold is for UI, never emphasis
 
-Bold marks something the reader has to find on screen: a button, a menu item, a tab, or a field name. If the prose needs bold to land, rewrite the prose.
+Use bold only for something the reader has to find on screen: a button, a menu item, a tab, or a field name. If a sentence seems to need bold to make its point, rewrite the sentence.
 
-A bold label that opens a list item or a paragraph is a label rather than emphasis, so `**Prerequisites:**` is fine. An inline `**Note**:` prefix is not. Use a `<Note>` callout instead.
+You can bold a label at the start of a list item or a paragraph, such as `**Prerequisites:**`, because a label isn't emphasis. Don't start a sentence with a bold `**Note**:` prefix. Use a `<Note>` callout instead.
 
 **Instead of:** This is **important**: rotation only applies to **active** secrets.
 
 **Write:** Rotation only applies to active secrets. Select **Save** to apply the change.
 
+### Format only what the reader needs to pick out
+
+Bold text, code spans, and links each make the reader's eye stop. If most lines in a section have formatted text, nothing stands out, and the section is tiring to read.
+
+- Use code formatting for text the reader types or reads in code, such as commands, field names, and values they send to the API
+- If a concept also has an API value, use the plain word in prose, and save the code-formatted value for code examples, tables, and API instructions
+- Use bold only for UI labels the reader has to find, as described in "Bold is for UI, never emphasis"
+
+If nearly every line in a section has formatted text, check whether the reader needs each one.
+
+**Instead of:** You can turn the `authentication` and `authorization` classes on or off. The `management` and `data-access` classes are always recorded.
+
+**Write:** You can turn authentication and authorization events on or off. Management and data access events are always recorded.
+
 ### Format UI labels as bold, not quotes or code
 
-A button, tab, or field name goes in bold. Quotes and code spans are for code, paths, keystrokes, and literal values.
+Put button, tab, and field names in bold. Use quotes and code spans only for code, paths, keystrokes, and literal values.
 
 **Instead of:** Click 'Submit', then navigate to `Personal Settings`.
 
@@ -530,46 +771,58 @@ A button, tab, or field name goes in bold. Quotes and code spans are for code, p
 
 ### Select, not click or tap
 
-Use "select" for any interaction with a control. It covers mouse, touch, and keyboard, and assumes nothing about the reader's device. Gestures with no "select" equivalent keep their own verbs: `right-click` and `double-click`.
+Use "select" for any interaction with a control. "Select" applies to a mouse, a touchscreen, and a keyboard, so the word doesn't assume which device the reader uses. For gestures that "select" can't describe, use `right-click` and `double-click`.
 
 **Instead of:** Click the three dot menu, then tap **Add temporary access**.
 
 **Write:** Select the three dot menu, then select **Add temporary access**.
 
+### No periods at the end of bullet points
+
+End every bullet point without a period. Keep each bullet to one sentence or phrase. If a bullet needs two sentences, combine the two sentences with a parenthesis, or turn the list into a paragraph.
+
+**Instead of:**
+
+- `offset`: the number of items to skip. Defaults to `0`.
+
+**Write:**
+
+- `offset`: the number of items to skip (defaults to `0`)
+
 ---
 
 ## 12. What Vale enforces
 
-Some of this guide is checked by [Vale](https://vale.sh). Run `make lint-docs-branch` from
-the repository root before opening a documentation pull request, or `make lint-docs` to check
-every page. The `Check docs style` CI check runs the same rules over the files the pull request
-touched.
+[Vale](https://vale.sh) checks some of the rules in this guide. Run `make lint-docs-branch` from
+the repository root before you open a documentation pull request, or run `make lint-docs` to
+check every page. The `Check docs style` CI check runs the same rules on the files a pull request
+changes.
 
-Vale cannot see prose indented inside components, which is a large share of this repo. A clean
-run is not evidence that a nested page was checked. See `docs/CONTRIBUTING.MD` for the detail.
+Vale doesn't check text indented inside components, and much of the text in this repository is
+indented that way. If Vale reports no problems on a page with nested components, Vale may not
+have checked the nested text. `docs/CONTRIBUTING.MD` describes this limit in more detail.
 
-Vale covers the mechanical rules only: sentence case in headings and in the `title` and
-`sidebarTitle` fields, consistent product and vendor spellings, spelling against a curated
-vocabulary, `$` prompts in code blocks, placeholder names like `foo`, more than two em
-dashes in one paragraph, "click" and "tap" where the verb should be "select", and the full
-forms of common contractions. The `description` frontmatter field is not checked
-automatically -- watch for it in review.
+Vale checks only the rules that a pattern can match: sentence case in headings and in the
+`title` and `sidebarTitle` fields, consistent product and vendor spellings, spelling against a
+list of approved words, `$` prompts in code blocks, placeholder names like `foo`, more than two
+em dashes in one paragraph, "click" and "tap" where the verb should be "select", and the full
+forms of common contractions. Vale doesn't check the `description` frontmatter field, so check
+the description yourself when you review a page.
 
-Two of those rules do not fail the run yet. `Infisical.UIActions` reports at warning level and
-`Infisical.Contractions` at suggestion level, because the existing pages carry several hundred
-of each and a blocking rule would fail every pull request that touches them. Both are on their
-way to error level once the corpus is clean, so fix them on the pages you touch. Read the
-printed output, not just the exit code.
+Every rule except the em dash rule reports at error level, so the run fails if any other rule
+reports a problem, including "click" and "tap" and the full forms of contractions. The em dash rule
+reports at warning level and doesn't change the exit code, so read the output Vale prints, not
+just the exit code.
 
-Nothing checks the two bolding rules in section 11. Whether a given noun is a button that
-should be bold, or prose that should not, needs a reader who knows the product.
+No automated check covers the two bold rules in section 11. Only a reviewer who knows the
+product can tell whether a word is the name of a button that should be bold.
 
-Everything else here -- providing context, writing for users, cross-referencing, choosing the
-right component, page structure, and every sentence-level rule in section 5 -- is a judgment
-call that only a reviewer can make. A clean Vale run means nothing was mechanically wrong, not
-that the page is good.
+The rest of this guide needs a reviewer's judgment: providing context, writing for users,
+cross-referencing, choosing the right component, page structure, and every sentence-level rule
+in section 5. If Vale reports no problems, the page has no mistakes that a pattern can find, but
+the page can still break every other rule in this guide.
 
-Run the `docs-style` skill to get the judgment half checked as well.
+To check the rules that Vale can't, run the `docs-style` skill.
 
-See `docs/CONTRIBUTING.MD` for how to invoke that skill, add a word to the vocabulary, enforce
-a new spelling, or suppress a rule where Vale is wrong.
+For how to run the skill, add a word to the list of approved words, enforce a new spelling, or
+turn off a rule on a line where Vale is wrong, see `docs/CONTRIBUTING.MD`.

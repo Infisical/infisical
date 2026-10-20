@@ -1,6 +1,7 @@
 /* eslint-disable no-continue */
 import { NetlifyPublicAPI } from "@app/services/app-connection/netlify/netlify-connection-public-client";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -33,7 +34,8 @@ export const NetlifySyncFns = {
     return map;
   },
 
-  async syncSecrets(secretSync: TNetlifySyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TNetlifySyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
@@ -113,7 +115,8 @@ export const NetlifySyncFns = {
     }
   },
 
-  async removeSecrets(secretSync: TNetlifySyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TNetlifySyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const config = secretSync.destinationConfig;
 
     const baseParams = {

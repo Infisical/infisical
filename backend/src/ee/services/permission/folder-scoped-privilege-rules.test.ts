@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
+import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { NotFoundError } from "@app/lib/errors";
 
 import { FOLDER_SCOPED_DENY_RULES } from "./folder-roles";
@@ -376,5 +377,63 @@ describe("filterOverriddenFolderScopedDenyRules", () => {
     expect(denyActionsFor(listTier, ProjectPermissionSub.Commits).sort()).toEqual(
       [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback].sort()
     );
+  });
+});
+
+// The boundary reads an ability literally, with no notion of CASL's last-match-wins, so the deny half
+// of a folder grant used to make its own holder look barred from the path the grant opens.
+describe("folder-scoped privilege boundary", () => {
+  // How `$folderScopedGrantAbilities` presents a target's grant: the denies are dropped because the
+  // boundary walks the subset's rules as if each were a grant.
+  const grantAbility = (privileges: TProjectFolderScopedPrivilege[]) =>
+    createMongoAbility<ProjectPermissionSet>(
+      buildFolderScopedPrivilegeRules(privileges).filter((rule) => !rule.inverted),
+      { conditionsMatcher }
+    );
+
+  test("a grant does not bound out an identical grant", () => {
+    const actor = abilityFor(memberRoles, [privilege()]);
+
+    expect(validatePermissionBoundary(actor, grantAbility([privilege()]))).toEqual({ isValid: true });
+  });
+
+  test("equal access holds on the list tier, whose denies are only partly re-allowed", () => {
+    const actor = abilityFor(memberRoles, [privilege({ role: SecretFolderRole.List })]);
+
+    expect(validatePermissionBoundary(actor, grantAbility([privilege({ role: SecretFolderRole.List })]))).toEqual({
+      isValid: true
+    });
+  });
+
+  test("a lower tier cannot bound a higher one at the same path", () => {
+    const actor = abilityFor(memberRoles, [privilege({ role: SecretFolderRole.Read })]);
+
+    expect(validatePermissionBoundary(actor, grantAbility([privilege({ role: SecretFolderRole.Edit })])).isValid).toBe(
+      false
+    );
+  });
+
+  test("a grant on another path does not bound one at the granted path", () => {
+    const actor = abilityFor(viewerRoles, [privilege({ secretPath: "/x" })]);
+
+    expect(validatePermissionBoundary(actor, grantAbility([privilege({ secretPath: "/a/b" })])).isValid).toBe(false);
+  });
+
+  // The deny half still has to strip the base role at the granted path: a member reads every path
+  // except the one their grant narrows to list-only.
+  test("a grant still strips what the base role would have allowed at the granted path", () => {
+    const actor = abilityFor(memberRoles, [privilege({ role: SecretFolderRole.List })]);
+    const target = createMongoAbility<ProjectPermissionSet>(
+      [
+        {
+          action: ProjectPermissionSecretActions.ReadValue,
+          subject: ProjectPermissionSub.Secrets,
+          conditions: { environment: "dev", secretPath: "/a/b" }
+        }
+      ] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+      { conditionsMatcher }
+    );
+
+    expect(validatePermissionBoundary(actor, target).isValid).toBe(false);
   });
 });

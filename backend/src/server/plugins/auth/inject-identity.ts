@@ -7,7 +7,7 @@ import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import {
   ActorType,
@@ -16,6 +16,7 @@ import {
   AuthModeJwtTokenPayload,
   AuthTokenType,
   MfaMethod,
+  TAgentVaultProxyAccessTokenJwtPayload,
   TGatewayAccessTokenJwtPayload,
   TKmipServerAccessTokenJwtPayload,
   TRelayAccessTokenJwtPayload
@@ -112,6 +113,16 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: null;
       token: TKmipServerAccessTokenJwtPayload;
+    }
+  | {
+      authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN;
+      actor: ActorType.AGENT_VAULT_PROXY;
+      agentVaultProxyId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TAgentVaultProxyAccessTokenJwtPayload;
     };
 
 // A first-party session and a delegated OAuth token have the same auth shape, so a handler that only
@@ -199,6 +210,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
         token: decodedToken as TKmipServerAccessTokenJwtPayload,
         actor: ActorType.KMIP_SERVER
+      } as const;
+    case AuthTokenType.AGENT_VAULT_PROXY_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN,
+        token: decodedToken as TAgentVaultProxyAccessTokenJwtPayload,
+        actor: ActorType.AGENT_VAULT_PROXY
       } as const;
     default:
       return { authMode: null, token: null } as const;
@@ -311,17 +328,8 @@ export const injectIdentity = fp(
           break;
         }
         case AuthMode.OAUTH: {
-          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } = await server.services.authToken
-            .fnValidateJwtIdentity(token)
-            .catch((err) => {
-              if (err instanceof NotFoundError) {
-                throw new UnauthorizedError({
-                  name: "InvalidToken",
-                  message: "Access token is no longer valid. Obtain a new one."
-                });
-              }
-              throw err;
-            });
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
+            await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
           if (token.delegation !== OauthDelegationMode.Full) {
@@ -496,6 +504,38 @@ export const injectIdentity = fp(
             authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
             actor,
             kmipServerId: token.kmipServerId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
+          };
+          break;
+        }
+        case AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN: {
+          const proxy = await server.services.agentVaultProxy.getProxyForAuth(token.agentVaultProxyId);
+
+          // The tokenVersion check is the only kill switch for an issued proxy token, so no proxy route may skip it.
+          if (!proxy || proxy.tokenVersion !== token.tokenVersion) {
+            throw new UnauthorizedError({
+              name: "ProxyTokenRejected",
+              message: "Agent Vault proxy token has been revoked"
+            });
+          }
+
+          if (proxy.orgId !== token.orgId) {
+            throw new UnauthorizedError({
+              name: "ProxyTokenRejected",
+              message: "Agent Vault proxy token org mismatch"
+            });
+          }
+
+          requestContext.set(RequestContextKey.OrgId, token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN,
+            actor,
+            agentVaultProxyId: token.agentVaultProxyId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
             parentOrgId: token.orgId,

@@ -454,13 +454,16 @@ const createPostgresSecretRotation = async (
 };
 
 describe("Secret Rotations", async () => {
+  // The rotation databases are addressed by compose service name on the shared test network
+  // (docker-compose.e2e-dbs.yml), not by loopback and a published port. The suite runs inside a
+  // container, where loopback is the container itself, so the published ports are unreachable.
   const testCases = [
     {
       type: SecretRotationType.MySQL,
       name: "MySQL (8.4.6) Secret Rotation",
       dbCredentials: {
         database: "mysql-test",
-        host: "127.0.0.1",
+        host: "mysql-8.4.6",
         username: "root",
         password: "mysql-test",
         port: 3306
@@ -483,10 +486,10 @@ describe("Secret Rotations", async () => {
       name: "MySQL (8.0.29) Secret Rotation",
       dbCredentials: {
         database: "mysql-test",
-        host: "127.0.0.1",
+        host: "mysql-8.0.29",
         username: "root",
         password: "mysql-test",
-        port: 3307
+        port: 3306
       },
       secretMapping: {
         username: formatSqlUsername("MYSQL_USERNAME"),
@@ -506,10 +509,10 @@ describe("Secret Rotations", async () => {
       name: "MySQL (5.7.31) Secret Rotation",
       dbCredentials: {
         database: "mysql-test",
-        host: "127.0.0.1",
+        host: "mysql-5.7.31",
         username: "root",
         password: "mysql-test",
-        port: 3308
+        port: 3306
       },
       secretMapping: {
         username: formatSqlUsername("MYSQL_USERNAME"),
@@ -529,7 +532,7 @@ describe("Secret Rotations", async () => {
       name: "OracleDB (23.8) Secret Rotation",
       dbCredentials: {
         database: "FREEPDB1",
-        host: "127.0.0.1",
+        host: "oracle-db-23.8",
         username: "system",
         password: "pdb-password",
         port: 1521
@@ -576,10 +579,10 @@ describe("Secret Rotations", async () => {
       name: "Postgres (17) Secret Rotation",
       dbCredentials: {
         database: "postgres-test",
-        host: "127.0.0.1",
+        host: "postgres-17",
         username: "postgres-test",
         password: "postgres-test",
-        port: 5433
+        port: 5432
       },
       secretMapping: {
         username: formatSqlUsername("POSTGRES_USERNAME"),
@@ -599,10 +602,10 @@ describe("Secret Rotations", async () => {
       name: "Postgres (16) Secret Rotation",
       dbCredentials: {
         database: "postgres-test",
-        host: "127.0.0.1",
+        host: "postgres-16",
         username: "postgres-test",
         password: "postgres-test",
-        port: 5434
+        port: 5432
       },
       secretMapping: {
         username: formatSqlUsername("POSTGRES_USERNAME"),
@@ -622,10 +625,10 @@ describe("Secret Rotations", async () => {
       name: "Postgres (10.12) Secret Rotation",
       dbCredentials: {
         database: "postgres-test",
-        host: "127.0.0.1",
+        host: "postgres-10.12",
         username: "postgres-test",
         password: "postgres-test",
-        port: 5435
+        port: 5432
       },
       secretMapping: {
         username: formatSqlUsername("POSTGRES_USERNAME"),

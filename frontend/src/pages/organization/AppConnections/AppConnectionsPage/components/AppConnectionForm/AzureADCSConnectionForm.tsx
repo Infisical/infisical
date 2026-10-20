@@ -18,12 +18,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -188,8 +188,14 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field className="mb-4">
                     <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                    <FieldError errors={[error]} />
+                    <SecretInput
+                      aria-describedby={error ? "password-error" : undefined}
+                      id="password"
+                      isError={Boolean(error)}
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                    />
+                    <FieldError id="password-error" errors={[error]} />
                   </Field>
                 )}
               />
@@ -233,7 +239,8 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         self-signed certificates.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
+                      aria-invalid={Boolean(error)}
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
                       checked={sslEnabled ? value : false}

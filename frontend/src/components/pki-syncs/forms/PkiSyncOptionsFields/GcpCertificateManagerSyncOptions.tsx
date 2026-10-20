@@ -10,7 +10,7 @@ import {
   IconButton,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
@@ -103,7 +103,7 @@ export const GcpCertificateManagerSyncOptions = () => {
               labels Infisical sets.
             </FieldDescription>
           </FieldContent>
-          <Switch
+          <Toggle
             id="gcp-configure-labels"
             variant="project"
             checked={Array.isArray(labels)}

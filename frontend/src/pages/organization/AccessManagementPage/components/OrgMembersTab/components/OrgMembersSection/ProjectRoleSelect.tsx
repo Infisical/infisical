@@ -1,4 +1,5 @@
 import { Combobox } from "@app/components/v3";
+import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import { useGetProjectRoles } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -41,6 +42,10 @@ export const CERT_MANAGER_ROLES = [
   }
 ];
 
+export const AGENT_VAULT_ROLES = AGENT_VAULT_PRODUCT_ROLE_OPTIONS.map(
+  ({ value, label, description }) => ({ slug: value, name: label, description })
+);
+
 export const PAM_ROLES = [
   {
     slug: "admin",
@@ -60,7 +65,7 @@ export const getSingleSelectedProjectId = (selectedProjects: { id: string }[]) =
 type Props = {
   inputId?: string;
   value?: TProjectRoleOption | null;
-  onChange: (value: TProjectRoleOption) => void;
+  onChange: (value: TProjectRoleOption | null) => void;
   isError?: boolean;
   selectedProjects: { id: string }[];
   fixedRoles?: TProjectRoleOption[];

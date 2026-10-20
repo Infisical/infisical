@@ -4,7 +4,21 @@ import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -34,8 +48,6 @@ export const ChecklyAuthorizePage = () => {
         accessToken
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/checkly/create",
         params: {
@@ -48,6 +60,8 @@ export const ChecklyAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -56,61 +70,55 @@ export const ChecklyAuthorizePage = () => {
       <Helmet>
         <title>Authorize Checkly Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After adding your API key, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Checkly.png"
-                height={30}
-                width={30}
-                alt="Checkly logo"
-              />
-            </div>
-            <span className="ml-2.5">Checkly Integration </span>
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://infisical.com/docs/integrations/cloud/checkly"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img src="/images/integrations/Checkly.png" height={30} width={30} alt="Checkly logo" />
+            <span>Checkly Integration</span>
+          </CardTitle>
+          <CardDescription>
+            After adding your API key, you will be prompted to set up an integration for a
+            particular Infisical project and environment.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://infisical.com/docs/integrations/cloud/checkly"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
                 Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <FormControl
-          label="Checkly API key"
-          errorText={accessTokenErrorText}
-          isError={accessTokenErrorText !== ""}
-          className="mx-6"
-        >
-          <Input
-            placeholder=""
-            value={accessToken}
-            type="password"
-            autoComplete="new-password"
-            onChange={(e) => setAccessToken(e.target.value)}
-          />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isFullWidth={false}
-          isLoading={isLoading}
-        >
-          Connect to Checkly
-        </Button>
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field data-invalid={accessTokenErrorText !== ""}>
+            <FieldLabel htmlFor="checkly-checkly-api-key">Checkly API key</FieldLabel>
+            <Input
+              placeholder=""
+              value={accessToken}
+              type="password"
+              autoComplete="new-password"
+              onChange={(e) => setAccessToken(e.target.value)}
+              id="checkly-checkly-api-key"
+              isError={accessTokenErrorText !== ""}
+              aria-describedby={
+                accessTokenErrorText !== "" ? "checkly-checkly-api-key-error" : undefined
+              }
+            />
+            {accessTokenErrorText !== "" && (
+              <FieldError id="checkly-checkly-api-key-error">{accessTokenErrorText}</FieldError>
+            )}
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
+            Connect to Checkly
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

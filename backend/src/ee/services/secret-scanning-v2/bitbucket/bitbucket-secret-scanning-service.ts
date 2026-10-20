@@ -6,15 +6,12 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import {
-  TBitbucketDataSource,
-  TBitbucketDataSourceCredentials,
-  TBitbucketPushEvent
-} from "./bitbucket-secret-scanning-types";
+import { BitbucketDataSourceConfigSchema } from "./bitbucket-secret-scanning-schemas";
+import { TBitbucketDataSourceCredentials, TBitbucketPushEvent } from "./bitbucket-secret-scanning-types";
 
 export const bitbucketSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
-  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">,
+  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
   const handlePushEvent = async (
@@ -31,10 +28,10 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    const dataSource = (await secretScanningV2DAL.dataSources.findOne({
+    const dataSource = await secretScanningV2DAL.dataSources.findOne({
       id: payload.dataSourceId,
       type: SecretScanningDataSource.Bitbucket
-    })) as TBitbucketDataSource | undefined;
+    });
 
     if (!dataSource) {
       logger.error(
@@ -43,12 +40,17 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    const {
-      isAutoScanEnabled,
-      config: { includeRepos },
-      encryptedCredentials,
-      projectId
-    } = dataSource;
+    const parsedConfig = BitbucketDataSourceConfigSchema.safeParse(dataSource.config);
+
+    if (!parsedConfig.success) {
+      logger.error(
+        parsedConfig.error,
+        `secretScanningV2PushEvent: Bitbucket - Invalid data source config [dataSourceId=${dataSource.id}] [workspaceUuid=${repository.workspace.uuid}]`
+      );
+      return;
+    }
+
+    const { encryptedCredentials, projectId } = dataSource;
 
     if (!encryptedCredentials) {
       logger.info(
@@ -84,24 +86,11 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    if (!isAutoScanEnabled) {
-      logger.info(
-        `secretScanningV2PushEvent: Bitbucket - ignoring due to auto scan disabled [dataSourceId=${dataSource.id}] [workspaceUuid=${repository.workspace.uuid}]`
-      );
-      return;
-    }
-
-    if (includeRepos.includes("*") || includeRepos.includes(repository.full_name)) {
-      await secretScanningV2Queue.queueResourceDiffScan({
-        dataSourceType: SecretScanningDataSource.Bitbucket,
-        payload,
-        dataSourceId: dataSource.id
-      });
-    } else {
-      logger.info(
-        `secretScanningV2PushEvent: Bitbucket - ignoring due to repository not being present in config [workspaceUuid=${repository.workspace.uuid}] [dataSourceId=${dataSource.id}]`
-      );
-    }
+    await secretScanningV2Queue.handleResourcePushEvent({
+      dataSource,
+      dataSourceType: SecretScanningDataSource.Bitbucket,
+      payload
+    });
   };
 
   return {

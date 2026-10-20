@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
@@ -15,16 +15,18 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Button,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
@@ -34,11 +36,13 @@ import {
   TSecretSync,
   useCreateSecretSync,
   useDuplicateDestinationCheck,
+  useRecursiveConflictsCheck,
   useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
-import { SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
+import { getSecretSyncDestinationConfig, SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
 import {
@@ -52,7 +56,10 @@ type Props = {
   onComplete: (secretSync: TSecretSync) => void;
   destination: SecretSync;
   onCancel: () => void;
+  onDirtyChange: (isDirty: boolean) => void;
   initialFormData?: Partial<TSecretSyncForm>;
+  initialFormDataIsDirty?: boolean;
+  startOnDestination?: boolean;
 };
 
 type FormTab = {
@@ -145,7 +152,10 @@ export const CreateSecretSyncForm = ({
   destination,
   onComplete,
   onCancel,
-  initialFormData
+  onDirtyChange,
+  initialFormData,
+  initialFormDataIsDirty = Boolean(initialFormData),
+  startOnDestination = Boolean(initialFormData)
 }: Props) => {
   const createSecretSync = useCreateSecretSync();
   const { currentProject } = useProject();
@@ -154,10 +164,8 @@ export const CreateSecretSyncForm = ({
   const formTabs = getFormTabs(destination, destinationName);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmBackToProvidersOpen, setConfirmBackToProvidersOpen] = useState(false);
 
-  // scoot: right now we only do this when creating a connection so we know index 1
-  const [selectedTabIndex, setSelectedTabIndex] = useState(initialFormData ? 1 : 0);
+  const [selectedTabIndex, setSelectedTabIndex] = useState(startOnDestination ? 1 : 0);
 
   const { syncOption } = useSecretSyncOption(destination);
 
@@ -174,10 +182,25 @@ export const CreateSecretSyncForm = ({
       },
       ...initialFormData
     } as Partial<TSecretSyncForm>,
+    // Step validation uses trigger(), which does not put the form into its submitted state.
+    // Validate changes from the start so a field's error clears as soon as it is corrected.
+    mode: "onChange",
     reValidateMode: "onChange"
   });
 
   const { handleSubmit, trigger, control, watch, formState } = formMethods;
+  const hasUnsavedChanges = formState.isDirty || initialFormDataIsDirty;
+  const {
+    confirmDiscard,
+    isDiscardDialogOpen,
+    requestDiscard: requestCancel,
+    setIsDiscardDialogOpen
+  } = useDiscardChangesGuard({ isDirty: hasUnsavedChanges, onDiscard: onCancel });
+
+  useEffect(() => {
+    onDirtyChange(hasUnsavedChanges);
+    return () => onDirtyChange(false);
+  }, [hasUnsavedChanges, onDirtyChange]);
 
   const onSubmit = async ({ environment, connection, ...formData }: TSecretSyncForm) => {
     try {
@@ -200,11 +223,7 @@ export const CreateSecretSyncForm = ({
 
   const handlePrev = () => {
     if (selectedTabIndex === 0) {
-      if (formState.isDirty) {
-        setConfirmBackToProvidersOpen(true);
-        return;
-      }
-      onCancel();
+      requestCancel();
       return;
     }
 
@@ -216,7 +235,7 @@ export const CreateSecretSyncForm = ({
     projectId: currentProject?.id || "",
     connectionId: watch("connection")?.id,
     enabled: true,
-    destinationConfig: watch("destinationConfig")
+    destinationConfig: getSecretSyncDestinationConfig(destination, watch("destinationConfig"))
   });
 
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
@@ -226,18 +245,35 @@ export const CreateSecretSyncForm = ({
     initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination &&
     !disableSecretDeletion &&
     !keySchema;
+  const importsFromDestination =
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource ||
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeDestination;
+
+  const { conflicts: recursiveConflicts } = useRecursiveConflictsCheck({
+    destination,
+    projectId: currentProject?.id || "",
+    environment: watch("environment")?.slug,
+    secretPath: watch("secretPath"),
+    keySchema,
+    includeAllSubFolders:
+      Boolean(watch("syncOptions.includeAllSubFolders")) && !importsFromDestination
+  });
 
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
-  const isCreateButtonDisabled =
-    isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations;
+  const isSourceStep = selectedTabIndex === 0;
+  const isNextButtonDisabled =
+    (isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations) ||
+    (isSourceStep && recursiveConflicts.length > 0);
 
   const handleNext = async () => {
     if (isFinalStep) {
       setShowConfirmation(true);
       return;
     }
+
+    if (isSourceStep && recursiveConflicts.length > 0) return;
 
     const isValid = await isStepValid(selectedTabIndex);
 
@@ -250,11 +286,7 @@ export const CreateSecretSyncForm = ({
     // Provider step (index 0) jumps directly back to the provider selection screen,
     // regardless of which form tab the user is currently on.
     if (stepperIndex === 0) {
-      if (formState.isDirty) {
-        setConfirmBackToProvidersOpen(true);
-        return;
-      }
-      onCancel();
+      requestCancel();
       return;
     }
 
@@ -266,6 +298,10 @@ export const CreateSecretSyncForm = ({
       setSelectedTabIndex(targetTab);
       return;
     }
+
+    // The Source step (index 0) is always behind a forward jump, since targetTab > selectedTabIndex
+    // here, so a conflict there must block the jump the same way it blocks handleNext.
+    if (recursiveConflicts.length > 0) return;
 
     let canJump = true;
     for (let i = selectedTabIndex; i < targetTab; i += 1) {
@@ -314,7 +350,7 @@ export const CreateSecretSyncForm = ({
 
           <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-foreground">{currentTab.title}</h2>
+              <h2 className="text-lg font-normal text-foreground">{currentTab.title}</h2>
               <p className="mt-1 text-sm text-muted">{currentTab.subtitle}</p>
             </div>
 
@@ -336,7 +372,7 @@ export const CreateSecretSyncForm = ({
                             automatically. Turn off to only sync manually.
                           </FieldDescription>
                         </FieldContent>
-                        <Switch
+                        <Toggle
                           id="auto-sync-enabled"
                           variant="project"
                           checked={value}
@@ -381,8 +417,8 @@ export const CreateSecretSyncForm = ({
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-          <span className="text-xs text-muted">{formState.isDirty ? "Unsaved changes" : ""}</span>
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
+          <span className="text-xs text-muted">{hasUnsavedChanges ? "Unsaved changes" : ""}</span>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted">
               Step {displayedStepNumber} of {totalSteps}
@@ -390,11 +426,11 @@ export const CreateSecretSyncForm = ({
             <Button variant="outline" onClick={handlePrev}>
               Back
             </Button>
-            <Button variant="project" onClick={handleNext} isDisabled={isCreateButtonDisabled}>
+            <Button variant="project" onClick={handleNext} isDisabled={isNextButtonDisabled}>
               {isFinalStep ? "Create Sync" : "Continue"}
             </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
       <AlertDialog
         open={showConfirmation}
@@ -435,25 +471,13 @@ export const CreateSecretSyncForm = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={confirmBackToProvidersOpen} onOpenChange={setConfirmBackToProvidersOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <AlertTriangleIcon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Discard Sync Setup?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your progress configuring this sync will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={onCancel}>
-              Discard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Sync Setup?"
+        description="Your progress configuring this sync will be lost."
+      />
     </FormProvider>
   );
 };

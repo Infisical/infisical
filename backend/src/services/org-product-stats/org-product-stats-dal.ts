@@ -176,6 +176,85 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countSecretScanningFindingsForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.SecretScanningFinding)
+        .join(
+          TableName.SecretScanningResource,
+          `${TableName.SecretScanningFinding}.resourceId`,
+          `${TableName.SecretScanningResource}.id`
+        )
+        .join(
+          TableName.SecretScanningDataSource,
+          `${TableName.SecretScanningResource}.dataSourceId`,
+          `${TableName.SecretScanningDataSource}.id`
+        )
+        .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.SecretScanning)
+        .count(`${TableName.SecretScanningFinding}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountSecretScanningFindingsForOrg" });
+    }
+  };
+
+  const countAgentVaultAccessBundlesForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.AgentVaultAccessBundle)
+        .join(TableName.Project, `${TableName.AgentVaultAccessBundle}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.AgentVault)
+        .count(`${TableName.AgentVaultAccessBundle}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountAgentVaultAccessBundlesForOrg" });
+    }
+  };
+
+  const countAgentVaultServicesForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.AgentVaultService)
+        .join(
+          TableName.AgentVaultAccessBundle,
+          `${TableName.AgentVaultService}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .join(TableName.Project, `${TableName.AgentVaultAccessBundle}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.AgentVault)
+        .count(`${TableName.AgentVaultService}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountAgentVaultServicesForOrg" });
+    }
+  };
+
+  const countAgentVaultProxiesForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.AgentVaultProxy)
+        .join(TableName.Project, `${TableName.AgentVaultProxy}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.AgentVault)
+        .count(`${TableName.AgentVaultProxy}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountAgentVaultProxiesForOrg" });
+    }
+  };
+
   const countPamAccountTemplatesForOrg = async (orgId: string, tx?: Knex) => {
     try {
       const result = (await (tx || db.replicaNode())(TableName.PamAccountTemplate)
@@ -239,9 +318,13 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     countKmipClientsForOrg,
     countDataSourcesForOrg,
     countSecretScanningResourcesForOrg,
+    countSecretScanningFindingsForOrg,
     countPamAccountsForOrg,
     countPamAccountTemplatesForOrg,
     countPamFoldersForOrg,
+    countAgentVaultAccessBundlesForOrg,
+    countAgentVaultServicesForOrg,
+    countAgentVaultProxiesForOrg,
     countProjectsByTypeForOrg
   };
 };

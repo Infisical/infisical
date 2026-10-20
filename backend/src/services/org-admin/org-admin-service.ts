@@ -1,9 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";
+import { AgentVaultIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
@@ -22,6 +24,7 @@ type TOrgAdminServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
 export type TOrgAdminServiceFactory = ReturnType<typeof orgAdminServiceFactory>;
@@ -33,7 +36,8 @@ export const orgAdminServiceFactory = ({
   smtpService,
   notificationService,
   membershipUserDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  usageMeteringService
 }: TOrgAdminServiceFactoryDep) => {
   const listOrgProjects = async ({
     actor,
@@ -123,6 +127,11 @@ export const orgAdminServiceFactory = ({
 
     if (isExistingMember) {
       return { isExistingMember: true, membership: updatedMembership };
+    }
+
+    // Agent Vault's project starts empty and admins join through here, so this is where its seat count moves.
+    if (project.type === ProjectType.AgentVault) {
+      usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     }
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);

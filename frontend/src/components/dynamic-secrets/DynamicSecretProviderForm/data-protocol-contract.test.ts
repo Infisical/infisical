@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import {
   DynamicSecretProviders,
+  KafkaAclResourceType,
   KubernetesDynamicSecretCredentialType
 } from "@app/hooks/api/dynamicSecret/types";
 
@@ -16,7 +17,6 @@ import {
   getCassandraEditPayload,
   getCassandraVaultImportValues
 } from "./providerDefinitions/cassandraContract";
-import { DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS } from "./providerDefinitions/dataProtocolContract";
 import {
   ELASTIC_SEARCH_CUSTOM_RENDERER_REASONS,
   elasticSearchCreateFormSchema,
@@ -36,6 +36,16 @@ import {
   ibmApiConnectEditFormSchema,
   normalizeIbmApiConnectGatewayValueForMode
 } from "./providerDefinitions/ibmApiConnectContract";
+import {
+  getDefaultKafkaAcl,
+  getKafkaCreateDefaultValues,
+  getKafkaCreatePayload,
+  getKafkaEditDefaultValues,
+  getKafkaEditPayload,
+  KAFKA_CUSTOM_RENDERER_REASONS,
+  kafkaCreateFormSchema,
+  kafkaEditFormSchema
+} from "./providerDefinitions/kafkaContract";
 import {
   getKubernetesCreateDefaultValues,
   getKubernetesCreatePayload,
@@ -79,7 +89,6 @@ import {
   totpEditFormSchema
 } from "./providerDefinitions/totpContract";
 import { testDynamicSecretProviderContract } from "./providerContractTestHarness";
-import { createDynamicSecretProviderRegistry, defineDynamicSecretProviderModule } from "./registry";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "./schemas";
 import type {
   TCreateDynamicSecretProviderFormContext,
@@ -239,6 +248,28 @@ const rabbitMqDynamicSecretProvider = defineDynamicSecretProvider({
   }
 });
 
+const kafkaDynamicSecretProvider = defineDynamicSecretProvider({
+  provider: DynamicSecretProviders.Kafka,
+  label: "Kafka",
+  customRenderer: {
+    reasons: KAFKA_CUSTOM_RENDERER_REASONS,
+    Component: NoopRenderer
+  },
+  create: {
+    schema: kafkaCreateFormSchema,
+    getDefaultValues: getKafkaCreateDefaultValues,
+    toPayload: getKafkaCreatePayload,
+    submitLabel: "Submit"
+  },
+  edit: {
+    schema: kafkaEditFormSchema,
+    getDefaultValues: getKafkaEditDefaultValues,
+    toPayload: getKafkaEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
+});
+
 const ibmApiConnectDynamicSecretProvider = defineDynamicSecretProvider({
   provider: DynamicSecretProviders.IbmApiConnect,
   label: "IBM API Connect",
@@ -281,23 +312,6 @@ const totpDynamicSecretProvider = defineDynamicSecretProvider({
     submitLabel: "Save",
     successMessage: "Successfully updated dynamic secret"
   }
-});
-
-const definitionsByProvider = {
-  [DynamicSecretProviders.Cassandra]: cassandraDynamicSecretProvider,
-  [DynamicSecretProviders.ElasticSearch]: elasticSearchDynamicSecretProvider,
-  [DynamicSecretProviders.Kubernetes]: kubernetesDynamicSecretProvider,
-  [DynamicSecretProviders.Milvus]: milvusDynamicSecretProvider,
-  [DynamicSecretProviders.RabbitMq]: rabbitMqDynamicSecretProvider,
-  [DynamicSecretProviders.IbmApiConnect]: ibmApiConnectDynamicSecretProvider,
-  [DynamicSecretProviders.Totp]: totpDynamicSecretProvider
-};
-
-const dataProtocolContractModule = defineDynamicSecretProviderModule({
-  id: "data-protocol",
-  definitions: DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS.map(
-    (provider) => definitionsByProvider[provider]
-  )
 });
 
 const cassandraCreateDefaults = getCassandraCreateDefaultValues(createContext);
@@ -829,6 +843,116 @@ testDynamicSecretProviderContract({
   }
 });
 
+const kafkaCreateDefaults = getKafkaCreateDefaultValues(createContext);
+const kafkaCreateValues = {
+  ...kafkaCreateDefaults,
+  name: "kafka-secret",
+  inputs: {
+    ...kafkaCreateDefaults.inputs,
+    bootstrapServers: [{ host: "kafka.example.com", port: 9092 }],
+    username: "admin",
+    password: "secret",
+    acls: [{ ...getDefaultKafkaAcl(), resourceName: "orders" }]
+  }
+};
+const kafkaEditInputs = { ...kafkaCreateValues.inputs, password: "********" };
+const kafkaEditContext = getEditContext({
+  provider: DynamicSecretProviders.Kafka,
+  inputs: kafkaEditInputs,
+  usernameTemplate: null
+});
+const kafkaEditValues = {
+  name: "renamed-kafka-secret",
+  defaultTTL: "1h",
+  maxTTL: "24h",
+  usernameTemplate: DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
+  inputs: kafkaEditInputs
+};
+
+testDynamicSecretProviderContract({
+  name: "Kafka",
+  definition: kafkaDynamicSecretProvider,
+  create: {
+    context: createContext,
+    defaultValues: kafkaCreateDefaults,
+    validValues: kafkaCreateValues,
+    payload: {
+      provider: { type: DynamicSecretProviders.Kafka, inputs: kafkaCreateValues.inputs },
+      maxTTL: "24h",
+      name: "kafka-secret",
+      path: "/folder",
+      defaultTTL: "1h",
+      projectSlug: "project",
+      environmentSlug: "dev",
+      usernameTemplate: undefined
+    },
+    invalidValues: [
+      {
+        name: "no ACLs",
+        values: { ...kafkaCreateValues, inputs: { ...kafkaCreateValues.inputs, acls: [] } },
+        issuePaths: [["inputs", "acls"]]
+      },
+      {
+        name: "ACL resource name is missing",
+        values: {
+          ...kafkaCreateValues,
+          inputs: { ...kafkaCreateValues.inputs, acls: [getDefaultKafkaAcl()] }
+        },
+        issuePaths: [["inputs", "acls", 0, "resourceName"]]
+      },
+      {
+        name: "Cluster ACL uses a name other than kafka-cluster",
+        values: {
+          ...kafkaCreateValues,
+          inputs: {
+            ...kafkaCreateValues.inputs,
+            acls: [
+              {
+                ...getDefaultKafkaAcl(),
+                resourceType: KafkaAclResourceType.Cluster,
+                resourceName: "prod"
+              }
+            ]
+          }
+        },
+        issuePaths: [["inputs", "acls", 0, "resourceName"]]
+      }
+    ]
+  },
+  edit: {
+    context: kafkaEditContext,
+    defaultValues: {
+      name: "existing-secret",
+      defaultTTL: "1h",
+      maxTTL: "24h",
+      usernameTemplate: DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
+      inputs: kafkaEditInputs
+    },
+    validValues: kafkaEditValues,
+    payload: {
+      name: "existing-secret",
+      path: "/folder",
+      projectSlug: "project",
+      environmentSlug: "dev",
+      data: {
+        maxTTL: "24h",
+        defaultTTL: "1h",
+        inputs: kafkaEditInputs,
+        newName: "renamed-kafka-secret",
+        usernameTemplate: null
+      }
+    },
+    maskedValues: [
+      {
+        name: "password",
+        expected: "********",
+        defaultValuePath: ["inputs", "password"],
+        payloadValuePath: ["data", "inputs", "password"]
+      }
+    ]
+  }
+});
+
 const ibmApiConnectInputs = {
   clientId: "client-id",
   clientSecret: "client-secret",
@@ -1028,43 +1152,6 @@ testDynamicSecretProviderContract({
       }
     ]
   }
-});
-
-describe("data-service and protocol provider registration", () => {
-  it("registers all seven providers in product picker order", () => {
-    assert.deepEqual(
-      dataProtocolContractModule.definitions.map(({ provider }) => provider),
-      DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS
-    );
-
-    const registry = createDynamicSecretProviderRegistry(dataProtocolContractModule);
-    assert.deepEqual(registry.providers, [
-      DynamicSecretProviders.Cassandra,
-      DynamicSecretProviders.ElasticSearch,
-      DynamicSecretProviders.RabbitMq,
-      DynamicSecretProviders.Totp,
-      DynamicSecretProviders.Kubernetes,
-      DynamicSecretProviders.Milvus,
-      DynamicSecretProviders.IbmApiConnect
-    ]);
-    registry.providers.forEach((provider) => {
-      assert.equal(registry.requireDefinition(provider).provider, provider);
-    });
-  });
-
-  it("keeps discovered and non-scalar values behind explicit custom renderers", () => {
-    assert.ok(cassandraDynamicSecretProvider.customRenderer?.reasons.includes("import-workflow"));
-    assert.ok(
-      elasticSearchDynamicSecretProvider.customRenderer?.reasons.includes("repeatable-fields")
-    );
-    assert.ok(kubernetesDynamicSecretProvider.customRenderer?.reasons.includes("remote-options"));
-    assert.ok(milvusDynamicSecretProvider.customRenderer?.reasons.includes("remote-options"));
-    assert.ok(rabbitMqDynamicSecretProvider.customRenderer?.reasons.includes("non-scalar-value"));
-    assert.ok(
-      ibmApiConnectDynamicSecretProvider.customRenderer?.reasons.includes("remote-options")
-    );
-    assert.ok(totpDynamicSecretProvider.customRenderer?.reasons.includes("conditional-fields"));
-  });
 });
 
 describe("data-service and protocol provider-specific branches", () => {

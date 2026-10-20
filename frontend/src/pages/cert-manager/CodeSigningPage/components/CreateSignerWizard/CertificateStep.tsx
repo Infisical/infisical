@@ -32,10 +32,7 @@ type CertificateStepProps = {
 };
 
 export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateStepProps) => {
-  const { orgId, projectId } = useParams({ strict: false }) as {
-    orgId?: string;
-    projectId?: string;
-  };
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
 
   const selectedCaId = form.watch("caId");
   const selectedCa = caOptions.find((o) => o.id === selectedCaId) ?? null;
@@ -115,13 +112,13 @@ export const CertificateStep = ({ form, caOptions, isCasLoading }: CertificateSt
               />
               <FieldDescription>
                 The CA that issues the certificate.
-                {!isCasLoading && caOptions.length === 0 && orgId && projectId && (
+                {!isCasLoading && caOptions.length === 0 && orgId && (
                   <>
                     {" "}
                     <Link
                       to={ROUTE_PATHS.CertManager.CertificateAuthoritiesPage.path}
-                      params={{ orgId, projectId }}
-                      className="text-primary underline hover:text-primary/80"
+                      params={{ orgId }}
+                      className="text-project underline hover:text-project/80"
                     >
                       Create one first.
                     </Link>

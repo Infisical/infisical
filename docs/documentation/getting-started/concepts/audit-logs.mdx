@@ -4,7 +4,11 @@ sidebarTitle: "Audit logs"
 description: "Understand how Infisical logs activity and supports external audit streaming."
 ---
 
-Infisical records a detailed audit trail of actions across the platform — providing deep visibility into access, changes, and usage for security and compliance purposes.
+<Card title="Audit logs docs" icon="clipboard-list" href="/documentation/platform/audit-logs">
+  Every event Infisical records, how to filter and inspect them, and how to stream them to a SIEM.
+</Card>
+
+Infisical records a detailed audit trail of actions across the platform, providing deep visibility into access, changes, and usage for security and compliance purposes.
 
 Every interaction with Infisical resources generates an audit event. These events are immutable and include metadata such as the actor, event type, affected resources, timestamp, IP address, and client source.
 
@@ -13,16 +17,17 @@ Audit logs enable teams to:
 - Monitor access and changes to secrets, certificates, and infrastructure.
 - Investigate incidents with full context around who did what, when, and how.
 - Meet compliance and governance requirements with structured activity records.
+- Filter events by actor, project, environment, secret path, secret key, or event metadata. See [Filtering audit logs](/documentation/platform/audit-logs#filtering-audit-logs) for common recipes.
 
 To learn more, refer to the [audit logs documentation](/documentation/platform/audit-logs).
 
 ## Log coverage
 
-Infisical tracks dozens of event types across the platform — including secret access, permission changes, certificate issuance, SSH session activity, and identity management.
+Infisical tracks hundreds of event types across the platform, including secret access, permission changes, certificate issuance, privileged access sessions, and identity management.
 
 Each audit entry includes structured fields that make it easy to search, filter, and correlate across systems. For example:
 
-- Event Type: Action that occurred (e.g., `create-secret`, `issue-ssh-cert`).
+- Event Type: Action that occurred (e.g., `create-secret`, `issue-cert`).
 - Actor: Who performed the action (user or machine identity).
 - Resource: What was affected (e.g., project, secret, certificate).
 - Context: IP address, user agent, permissions, and more.

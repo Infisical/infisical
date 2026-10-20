@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import net from "node:net";
 
 import type WebSocket from "ws";
@@ -6,31 +5,33 @@ import type WebSocket from "ws";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import {
-  createGatewayConnection,
-  createRelayConnection,
-  destroyGatewayTunnel,
-  setupRelayServer
-} from "@app/lib/gateway-v2/gateway-v2";
+import { setupGatewayProxy, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
+import {
+  PAM_CANCELLATION_FLUSH_TIMEOUT_MS,
+  PamAccessMethod,
+  PamSessionEndReason,
+  PamSessionStatus
+} from "../pam/pam-enums";
 import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -38,8 +39,10 @@ import {
   extractGatewayTarget,
   getAccountAccessibilityIssues,
   PamAccountAccessibilityIssue,
-  resolveSelectedHost
+  resolveSelectedHost,
+  webAccessUnavailableReason
 } from "../pam-account/pam-account-schemas";
+import { assertUserStillActiveInOrg } from "../pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { reportPamSessionEnded } from "../pam-session/pam-session-fns";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
@@ -66,8 +69,16 @@ type TPamWebAccessServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "create" | "endSessionById" | "activateSession" | "countActiveWebSessions" | "endExpiredWebSessions" | "updateById"
+    | "create"
+    | "endSessionById"
+    | "activateSession"
+    | "countActiveWebSessions"
+    | "endExpiredWebSessions"
+    | "isSessionTerminated"
+    | "updateById"
+    | "transaction"
   >;
+  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "runWithPoolFailover">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -76,7 +87,7 @@ type TPamWebAccessServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -114,6 +125,7 @@ export const pamWebAccessServiceFactory = ({
   userDAL,
   mfaSessionService,
   orgDAL,
+  membershipDAL,
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
@@ -223,6 +235,12 @@ export const pamWebAccessServiceFactory = ({
     enforceRecordingConfig(account);
 
     const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+
+    const webAccessBlocked = webAccessUnavailableReason(account.accountType as PamAccountType, connectionDetails);
+    if (webAccessBlocked) {
+      throw new BadRequestError({ message: webAccessBlocked });
+    }
+
     const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
 
     const trimmedReason = reason?.trim() || null;
@@ -326,12 +344,8 @@ export const pamWebAccessServiceFactory = ({
     let session: { id: string; accountId?: string | null } | null = null;
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;
-    let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
-    let relayCerts: {
-      relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-      gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-      relayHost: string;
-    } | null = null;
+    let proxyServer: { port: number; cleanup: () => Promise<void> } | null = null;
+    let sessionGatewayDetails: TGatewayV2ConnectionDetails | null = null;
     let expiryTimer: ReturnType<typeof setTimeout> | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -360,13 +374,13 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      if (relayServer) {
+      if (proxyServer) {
         try {
-          await relayServer.cleanup();
+          await proxyServer.cleanup();
         } catch (err) {
           logger.debug(err, "Error closing relay server");
         } finally {
-          relayServer = null;
+          proxyServer = null;
         }
       }
 
@@ -400,34 +414,29 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      if (relayCerts) {
-        const certs = relayCerts;
-        relayCerts = null;
+      if (sessionGatewayDetails) {
+        const details = sessionGatewayDetails;
+        sessionGatewayDetails = null;
         void (async () => {
-          let relayConn: net.Socket | null = null;
-          let cancelConn: net.Socket | null = null;
-          const tunnelId = crypto.randomBytes(4).toString("hex");
           try {
-            relayConn = await createRelayConnection({
-              relayHost: certs.relayHost,
-              clientCertificate: certs.relay.clientCertificate,
-              clientPrivateKey: certs.relay.clientPrivateKey,
-              serverCertificateChain: certs.relay.serverCertificateChain,
-              tunnelId
-            });
-            cancelConn = await createGatewayConnection(
-              relayConn,
-              certs.gateway,
-              GatewayProxyProtocol.PamSessionCancellation,
-              tunnelId
+            await withGatewayV2Proxy(
+              (port) =>
+                new Promise<void>((resolve, reject) => {
+                  // The ALPN signal is the connection itself, so the tunnel must outlive the forward.
+                  const cancelSocket = net.connect(port, "127.0.0.1", () => {
+                    cancelSocket.end();
+                  });
+                  cancelSocket.setTimeout(PAM_CANCELLATION_FLUSH_TIMEOUT_MS, () => {
+                    cancelSocket.destroy();
+                    resolve();
+                  });
+                  cancelSocket.on("close", () => resolve());
+                  cancelSocket.on("error", reject);
+                }),
+              { ...details, protocol: GatewayProxyProtocol.PamSessionCancellation }
             );
-            cancelConn.end();
           } catch (err) {
             logger.debug(err, "Session cancellation signal failed (best-effort)");
-          } finally {
-            // end() leaves the inner TLS session reading the gateway's close_notify through
-            // relayConn, so the transport must not be destroyed first.
-            destroyGatewayTunnel({ relayConn, gatewayConn: cancelConn });
           }
         })();
       }
@@ -503,6 +512,11 @@ export const pamWebAccessServiceFactory = ({
       }
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+      // Re-checked here: the account can lose its HTTP port between ticket issue and connect.
+      const webAccessBlocked = webAccessUnavailableReason(account.accountType as PamAccountType, rawConnectionDetails);
+      if (webAccessBlocked) {
+        throw new BadRequestError({ message: webAccessBlocked });
+      }
       const gatewayTarget = await extractGatewayTarget(account.accountType as PamAccountType, rawConnectionDetails);
       const targetHost = selectedHost || gatewayTarget.host;
       const credentials = await decrypt(projectId, account.encryptedCredentials);
@@ -511,23 +525,30 @@ export const pamWebAccessServiceFactory = ({
       const sessionDurationMs = sessionDurationCapMs;
       const expiresAt = new Date(Date.now() + sessionDurationMs);
 
-      session = await pamSessionDAL.create({
-        status: PamSessionStatus.Starting,
-        accessMethod: PamAccessMethod.Web,
-        expiresAt,
-        accountName,
-        accountType: account.accountType,
-        actorEmail,
-        actorIp,
-        actorName,
-        actorUserAgent,
-        projectId,
-        accountId: account.id,
-        userId,
-        gatewayId: effectiveGatewayId,
-        reason: accessReason?.trim() || null,
-        folderName: account.folderName,
-        selectedHost: targetHost
+      session = await pamSessionDAL.transaction(async (tx) => {
+        await assertUserStillActiveInOrg({ orgId, userId, membershipDAL, orgDAL, tx });
+
+        return pamSessionDAL.create(
+          {
+            status: PamSessionStatus.Starting,
+            accessMethod: PamAccessMethod.Web,
+            expiresAt,
+            accountName,
+            accountType: account.accountType,
+            actorEmail,
+            actorIp,
+            actorName,
+            actorUserAgent,
+            projectId,
+            accountId: account.id,
+            userId,
+            gatewayId: effectiveGatewayId,
+            reason: accessReason?.trim() || null,
+            folderName: account.folderName,
+            selectedHost: targetHost
+          },
+          tx
+        );
       });
 
       const createdSession = session;
@@ -541,7 +562,7 @@ export const pamWebAccessServiceFactory = ({
           poolId: account.gatewayPoolId ?? account.templateGatewayPoolId
         },
         async (gatewayId) => {
-          const attemptCerts = await gatewayV2Service.getPAMConnectionDetails({
+          const attemptGatewayDetails = await gatewayV2Service.getPAMConnectionDetails({
             gatewayId,
             sessionId: createdSession.id,
             accountType: handlerEntry.gatewayAccountType,
@@ -552,18 +573,20 @@ export const pamWebAccessServiceFactory = ({
               id: userId,
               type: ActorType.USER,
               name: user?.email ?? ""
-            }
+            },
+            // The platform opens this tunnel itself, so no client version gates the transport.
+            clientSupportsDirect: true
           });
 
-          if (!attemptCerts) {
+          if (!attemptGatewayDetails) {
             throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
           }
 
           return {
-            certs: attemptCerts,
-            server: await setupRelayServer({
+            gatewayDetails: attemptGatewayDetails,
+            server: await setupGatewayProxy({
               protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
-              ...attemptCerts,
+              ...attemptGatewayDetails,
               longLived: true,
               eager: true
             })
@@ -571,8 +594,8 @@ export const pamWebAccessServiceFactory = ({
         }
       );
 
-      const { certs } = attempt.result;
-      relayServer = attempt.result.server;
+      const { gatewayDetails } = attempt.result;
+      proxyServer = attempt.result.server;
 
       // The tunnel is open from here rather than from whenever the session handler first dials, so
       // a socket that closed during setup has to be caught: its "close" fired before the listener
@@ -588,11 +611,7 @@ export const pamWebAccessServiceFactory = ({
         await pamSessionDAL.updateById(createdSession.id, { gatewayId: attempt.gatewayId });
       }
 
-      relayCerts = {
-        relayHost: certs.relayHost,
-        relay: certs.relay,
-        gateway: certs.gateway
-      };
+      sessionGatewayDetails = gatewayDetails;
 
       const isNearSessionExpiry = () => Date.now() >= expiresAt.getTime() - 30_000;
 
@@ -605,7 +624,7 @@ export const pamWebAccessServiceFactory = ({
 
       const ctx: TSessionContext = {
         socket,
-        relayPort: relayServer.port,
+        relayPort: proxyServer.port,
         resourceName: account.name,
         sessionId: session.id,
         sendMessage: boundSendMessage,
@@ -676,6 +695,18 @@ export const pamWebAccessServiceFactory = ({
         if (socket.readyState === socket.OPEN) {
           socket.ping();
         }
+
+        void (async () => {
+          const sessionId = session?.id;
+          if (!sessionId || cleanedUp) return;
+          try {
+            if (!(await pamSessionDAL.isSessionTerminated(sessionId)) || cleanedUp) return;
+            await cleanup();
+            sendSessionEndAndClose(socket, SessionEndReason.Terminated);
+          } catch (err) {
+            logger.error(err, `Failed to check session termination [sessionId=${sessionId}]`);
+          }
+        })();
       }, WS_PING_INTERVAL_MS);
 
       socket.on("message", () => {

@@ -7,15 +7,26 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import {
+  Badge,
   Button,
   Card,
-  CardBody,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
+  ProviderIcon,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -88,59 +99,65 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
       <Helmet>
         <title>Authorize AWS Parameter Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center">
-              <img
-                src="/images/integrations/Amazon Web Services.png"
-                height={35}
-                width={35}
-                alt="AWS logo"
-              />
-            </div>
-            <span className="ml-1.5">AWS Parameter Store Integration </span>
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://infisical.com/docs/integrations/cloud/aws-parameter-store"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <ProviderIcon icon="Amazon Web Services.png" height={35} width={35} alt="AWS logo" />
+            <span>AWS Parameter Store Integration</span>
+          </CardTitle>
+          <CardDescription>
+            After adding the details below, you will be prompted to set up an integration for a
+            particular Infisical project and environment.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://infisical.com/docs/integrations/cloud/aws-parameter-store"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
                 Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <CardBody>
-          <form onSubmit={handleSubmit(handleFormSubmit)}>
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col gap-5">
+          <CardContent>
             <Controller
               control={control}
               name="type"
               defaultValue={AwsAuthType.AccessKey}
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Authentication Mode"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="awsparameterstore-type">Authentication Mode</FieldLabel>
                   <Select
                     defaultValue={field.value}
-                    {...field}
                     onValueChange={(e) => onChange(e)}
-                    className="w-full"
+                    name={field.name}
+                    disabled={field.disabled}
+                    value={field.value}
                   >
-                    <SelectItem value={AwsAuthType.AccessKey}>Access Key</SelectItem>
-                    <SelectItem value={AwsAuthType.AssumeRole}>AWS Assume Role</SelectItem>
+                    <SelectTrigger
+                      className="w-full"
+                      id="awsparameterstore-type"
+                      isError={Boolean(error)}
+                      aria-describedby={error ? "awsparameterstore-type-error" : undefined}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={AwsAuthType.AccessKey}>Access Key</SelectItem>
+                      <SelectItem value={AwsAuthType.AssumeRole}>AWS Assume Role</SelectItem>
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  {Boolean(error) && (
+                    <FieldError id="awsparameterstore-type-error">{error?.message}</FieldError>
+                  )}
+                </Field>
               )}
             />
             {formAwsAuthTypeField === AwsAuthType.AccessKey ? (
@@ -149,31 +166,48 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
                   control={control}
                   name="accessKey"
                   render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Access Key ID"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Input placeholder="" {...field} />
-                    </FormControl>
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="awsparameterstore-accesskey">Access Key ID</FieldLabel>
+                      <Input
+                        placeholder=""
+                        {...field}
+                        id="awsparameterstore-accesskey"
+                        isError={Boolean(error)}
+                        aria-describedby={error ? "awsparameterstore-accesskey-error" : undefined}
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="awsparameterstore-accesskey-error">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
                   )}
                 />
                 <Controller
                   control={control}
                   name="accessSecretKey"
                   render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Secret Access Key"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="awsparameterstore-accesssecretkey">
+                        Secret Access Key
+                      </FieldLabel>
                       <Input
                         type="password"
                         autoComplete="new-password"
                         placeholder=""
                         {...field}
+                        id="awsparameterstore-accesssecretkey"
+                        isError={Boolean(error)}
+                        aria-describedby={
+                          error ? "awsparameterstore-accesssecretkey-error" : undefined
+                        }
                       />
-                    </FormControl>
+                      {Boolean(error) && (
+                        <FieldError id="awsparameterstore-accesssecretkey-error">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
                   )}
                 />
               </>
@@ -182,27 +216,33 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
                 control={control}
                 name="iamRoleArn"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="IAM Role ARN For Role Assumption"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Input placeholder="" {...field} />
-                  </FormControl>
+                  <Field className="mb-4" data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="awsparameterstore-iamrolearn">
+                      IAM Role ARN For Role Assumption
+                    </FieldLabel>
+                    <Input
+                      placeholder=""
+                      {...field}
+                      id="awsparameterstore-iamrolearn"
+                      isError={Boolean(error)}
+                      aria-describedby={error ? "awsparameterstore-iamrolearn-error" : undefined}
+                    />
+                    {Boolean(error) && (
+                      <FieldError id="awsparameterstore-iamrolearn-error">
+                        {error?.message}
+                      </FieldError>
+                    )}
+                  </Field>
                 )}
               />
             )}
-            <Button
-              type="submit"
-              colorSchema="primary"
-              variant="outline_bg"
-              className="mt-2 mr-6 mb-6 ml-auto w-min"
-              isLoading={formState.isSubmitting}
-            >
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button type="submit" isPending={formState.isSubmitting} variant="project">
               Connect to AWS Parameter Store
             </Button>
-          </form>
-        </CardBody>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   );

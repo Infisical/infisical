@@ -4,6 +4,7 @@ import { addSeconds, formatISO } from "date-fns";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
+import { getTabCertManagerProjectIdForRequest } from "@app/helpers/certManagerActiveProject";
 import { fetchAuthToken } from "@app/hooks/api/auth/refresh";
 import {
   getAuthToken,
@@ -31,6 +32,27 @@ const getAuthorizationHeader = (config?: AxiosRequestConfig) => {
 };
 
 apiRequest.interceptors.request.use((config) => {
+  const tabProjectId = getTabCertManagerProjectIdForRequest(config.url);
+  const body = config.data as { projectId?: unknown } | undefined;
+  const { params } = config;
+  const namesProject =
+    (params instanceof URLSearchParams
+      ? params.has("projectId")
+      : Boolean((params as { projectId?: unknown } | undefined)?.projectId)) ||
+    Boolean(config.url?.includes("projectId=")) ||
+    (typeof body === "object" && body !== null && "projectId" in body);
+  if (tabProjectId && !namesProject) {
+    if (params instanceof URLSearchParams) {
+      const nextParams = new URLSearchParams(params);
+      nextParams.set("projectId", tabProjectId);
+      // eslint-disable-next-line no-param-reassign
+      config.params = nextParams;
+    } else {
+      // eslint-disable-next-line no-param-reassign
+      config.params = { ...params, projectId: tabProjectId };
+    }
+  }
+
   // Skip auto-injection if the caller already set an Authorization header
   if (getAuthorizationHeader(config)) return config;
 
@@ -42,12 +64,12 @@ apiRequest.interceptors.request.use((config) => {
     if (mfaTempToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${mfaTempToken}`;
-    } else if (signupTempToken) {
-      // eslint-disable-next-line no-param-reassign
-      config.headers.Authorization = `Bearer ${signupTempToken}`;
     } else if (token) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (signupTempToken) {
+      // eslint-disable-next-line no-param-reassign
+      config.headers.Authorization = `Bearer ${signupTempToken}`;
     }
   }
 
@@ -67,7 +89,11 @@ export const isTokenExpiredError = (data?: { message?: string; error?: string } 
 
   if (typeof data === "string") {
     const lower = data.toLowerCase();
-    return lower.includes("token expired") || lower.includes("stalesession");
+    return (
+      lower.includes("token expired") ||
+      lower.includes("stalesession") ||
+      lower.includes("session is no longer valid")
+    );
   }
 
   if (data.error === "TokenError") return data.message?.toLowerCase() === TOKEN_EXPIRED_MESSAGE;
@@ -75,7 +101,11 @@ export const isTokenExpiredError = (data?: { message?: string; error?: string } 
   if (data.error) return false;
 
   const lower = data.message?.toLowerCase() || "";
-  return lower.includes("token expired") || lower.includes("stalesession");
+  return (
+    lower.includes("token expired") ||
+    lower.includes("stalesession") ||
+    lower.includes("session is no longer valid")
+  );
 };
 
 apiRequest.interceptors.response.use(

@@ -1,17 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
+import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  Field,
+  FieldError,
+  FieldLabel,
+  SecretPathInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
-// import { RadioGroup } from "@app/components/v2/RadioGroup";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -53,7 +69,7 @@ export const HerokuConfigurePage = () => {
 
   const selectedSourceEnvironment = watch("selectedSourceEnvironment");
 
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   // const { mutateAsync: mutateAsyncEnv } = useCreateWsEnvironment();
 
   const integrationAuthId = useSearch({
@@ -66,8 +82,6 @@ export const HerokuConfigurePage = () => {
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });
-
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -83,8 +97,6 @@ export const HerokuConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -96,7 +108,6 @@ export const HerokuConfigurePage = () => {
         }
       });
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -117,149 +128,194 @@ export const HerokuConfigurePage = () => {
       <Helmet>
         <title>Set Up Heroku Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Select which environment or folder in Infisical you want to sync to Heroku's environment variables."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center">
+      <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>
               <img src="/images/integrations/Heroku.png" height={30} width={30} alt="Heroku logo" />
-            </div>
-            <span className="ml-2">Heroku Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/heroku"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6">
-          <Controller
-            control={control}
-            name="selectedSourceEnvironment"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Project Environment"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {currentProject?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`source-environment-${sourceEnvironment.slug}`}
-                    >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue=""
-            name="secretPath"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Secrets Path" isError={Boolean(error)} errorText={error?.message}>
-                <SecretPathInput
-                  {...field}
-                  placeholder="/"
-                  environment={selectedSourceEnvironment}
-                />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="targetApp"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => {
-              return (
-                <FormControl label="Heroku App" errorText={error?.message} isError={Boolean(error)}>
+              Heroku Integration
+              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/heroku" />
+            </CardTitle>
+            <CardDescription>
+              Select which environment or folder in Infisical you want to sync to Heroku&apos;s
+              environment variables.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Controller
+              control={control}
+              name="selectedSourceEnvironment"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HerokuConfigurePage-field-1">Project Environment</FieldLabel>
                   <Select
-                    {...field}
-                    onValueChange={(e) => {
-                      if (e === "") return;
-                      onChange(e);
-                    }}
-                    className="w-full"
+                    defaultValue={field.value}
+                    value={field.value}
+                    name={field.name}
+                    onValueChange={(e) => onChange(e)}
                   >
-                    {integrationAuthApps.length > 0 ? (
-                      integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectTrigger
+                      id="HerokuConfigurePage-field-1"
+                      aria-describedby="HerokuConfigurePage-field-1-feedback"
+                      isError={Boolean(error)}
+                      className="w-full"
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentProject?.environments.map((sourceEnvironment) => (
                         <SelectItem
-                          value={String(integrationAuthApp.name as string)}
-                          key={`target-app-${String(integrationAuthApp.appId)}`}
+                          value={sourceEnvironment.slug}
+                          key={`source-environment-${sourceEnvironment.slug}`}
                         >
-                          {integrationAuthApp.name}
+                          {sourceEnvironment.name}
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" key="target-app-none">
-                        No apps found
-                      </SelectItem>
-                    )}
+                      ))}
+                    </SelectContent>
                   </Select>
-                </FormControl>
-              );
-            }}
-          />
-          <Controller
-            control={control}
-            name="initialSyncBehavior"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Initial Sync Behavior"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select {...field} onValueChange={(e) => onChange(e)} className="w-full">
-                  {initialSyncBehaviors.map((b) => {
-                    return (
-                      <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
-                        {b.label}
-                      </SelectItem>
-                    );
-                  })}
-                </Select>
-              </FormControl>
-            )}
-          />
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            className="mt-2 mb-6 ml-auto"
-            size="sm"
-            type="submit"
-            isLoading={isLoading}
-            isDisabled={integrationAuthApps.length === 0}
-          >
-            Create Integration
-          </Button>
-        </form>
-      </Card>
+                  {Boolean(error) && (
+                    <FieldError id="HerokuConfigurePage-field-1-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
+              name="secretPath"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HerokuConfigurePage-field-2">Secrets Path</FieldLabel>
+                  <SecretPathInput
+                    id="HerokuConfigurePage-field-2"
+                    aria-describedby="HerokuConfigurePage-field-2-feedback"
+                    isError={Boolean(error)}
+                    {...field}
+                    placeholder="/"
+                    environment={selectedSourceEnvironment}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="HerokuConfigurePage-field-2-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="targetApp"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                return (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="HerokuConfigurePage-field-3">Heroku App</FieldLabel>
+                    <Select
+                      value={field.value}
+                      name={field.name}
+                      onValueChange={(e) => {
+                        if (e === "") return;
+                        onChange(e);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="HerokuConfigurePage-field-3"
+                        aria-describedby="HerokuConfigurePage-field-3-feedback"
+                        isError={Boolean(error)}
+                        className="w-full"
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {integrationAuthApps.length > 0 ? (
+                          integrationAuthApps.map((integrationAuthApp) => (
+                            <SelectItem
+                              value={String(integrationAuthApp.name as string)}
+                              key={`target-app-${String(integrationAuthApp.appId)}`}
+                            >
+                              {integrationAuthApp.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" key="target-app-none">
+                            No apps found
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {Boolean(error) && (
+                      <FieldError id="HerokuConfigurePage-field-3-feedback">
+                        {error?.message}
+                      </FieldError>
+                    )}
+                  </Field>
+                );
+              }}
+            />
+            <Controller
+              control={control}
+              name="initialSyncBehavior"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HerokuConfigurePage-field-4">
+                    Initial Sync Behavior
+                  </FieldLabel>
+                  <Select value={field.value} name={field.name} onValueChange={(e) => onChange(e)}>
+                    <SelectTrigger
+                      id="HerokuConfigurePage-field-4"
+                      aria-describedby="HerokuConfigurePage-field-4-feedback"
+                      isError={Boolean(error)}
+                      className="w-full"
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {initialSyncBehaviors.map((b) => {
+                        return (
+                          <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
+                            {b.label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {Boolean(error) && (
+                    <FieldError id="HerokuConfigurePage-field-4-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+          </CardContent>
+          <CardFooter className="justify-end border-t pt-4">
+            <Button
+              size="sm"
+              type="submit"
+              isPending={isLoading}
+              isDisabled={integrationAuthApps.length === 0}
+              variant="project"
+            >
+              Create Integration
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
       {/* {integrationType === "App" && <>
-      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+      <div className="mt-6 w-full max-w-md border-t border-border-faint" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground-secondary" />{" "}
+          <span className="text-md ml-3 text-foreground">Pro Tip</span>
         </div>
-        <span className="mt-4 text-sm text-mineshaft-300">
+        <span className="mt-4 text-sm text-label">
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in Heroku with secrets from Infisical.
         </span>
@@ -278,12 +334,12 @@ export const HerokuConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-foreground underline decoration-project underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

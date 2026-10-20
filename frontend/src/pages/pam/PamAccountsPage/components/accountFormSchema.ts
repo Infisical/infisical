@@ -24,15 +24,35 @@ export const accountFormSchema = z.object({
 
 export type TAccountFormValues = z.infer<typeof accountFormSchema>;
 
-const defaultForField = (field: TPamFieldDescriptor): unknown => {
-  if (field.defaultValue !== undefined) return field.defaultValue;
+const emptyForField = (field: TPamFieldDescriptor): unknown => {
   if (field.widget === PamFieldWidget.Boolean) return false;
   if (field.widget === PamFieldWidget.Select) return field.options?.[0]?.value ?? "";
   return "";
 };
 
+const defaultForField = (field: TPamFieldDescriptor): unknown =>
+  field.defaultValue !== undefined ? field.defaultValue : emptyForField(field);
+
 export const buildDefaultFieldValues = (fields: TPamFieldDescriptor[]): Record<string, unknown> =>
   Object.fromEntries(fields.map((field) => [field.key, defaultForField(field)]));
+
+// Defaults are for new accounts; seeding them on edit invents stored values.
+export const buildEditFieldValues = (
+  fields: TPamFieldDescriptor[],
+  existing: Record<string, unknown> = {}
+): Record<string, unknown> =>
+  Object.fromEntries(
+    fields.map((field) => [field.key, existing[field.key] ?? emptyForField(field)])
+  );
+
+// Absent keys must stay absent: zod's .default() fires on undefined, not "".
+export const omitUnsetAbsentFields = (
+  values: Record<string, unknown>,
+  existing: Record<string, unknown> = {}
+): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(values).filter(([key, value]) => value !== "" || existing[key] !== undefined)
+  );
 
 export const buildEditCredentialValues = (
   fields: TPamFieldDescriptor[],
@@ -41,7 +61,7 @@ export const buildEditCredentialValues = (
   Object.fromEntries(
     fields.map((field) => {
       if (field.secret) return [field.key, UNCHANGED_PASSWORD_SENTINEL];
-      return [field.key, existing[field.key] ?? defaultForField(field)];
+      return [field.key, existing[field.key] ?? emptyForField(field)];
     })
   );
 

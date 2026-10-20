@@ -4,7 +4,24 @@ import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -36,8 +53,6 @@ export const AzureDevopsAuthorizePage = () => {
         accessToken: btoa(`:${apiKey}`) // This is a base64 encoding of the API key without any username
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-devops/create",
         params: {
@@ -50,6 +65,8 @@ export const AzureDevopsAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -58,67 +75,95 @@ export const AzureDevopsAuthorizePage = () => {
       <Helmet>
         <title>Authorize Azure DevOps Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center">
-              <img
-                src="/images/integrations/Microsoft Azure.png"
-                height={35}
-                width={35}
-                alt="Azure DevOps logo"
-              />
-            </div>
-            <span className="ml-1.5">Azure DevOps Integration </span>
-            <a
-              target="_blank"
-              href="https://infisical.com/docs/integrations/cloud/azure-devops"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img
+              src="/images/integrations/Microsoft Azure.png"
+              height={35}
+              width={35}
+              alt="Azure DevOps logo"
+            />
+            <span>Azure DevOps Integration</span>
+          </CardTitle>
+          <CardDescription>
+            After adding the details below, you will be prompted to set up an integration for a
+            particular Infisical project and environment.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                target="_blank"
+                href="https://infisical.com/docs/integrations/cloud/azure-devops"
+                rel="noopener noreferrer"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
                 Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>{" "}
-        <FormControl
-          className="px-6"
-          label="Azure DevOps API Token"
-          errorText={apiKeyErrorText}
-          isError={apiKeyErrorText !== ""}
-        >
-          <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-        </FormControl>
-        <FormControl
-          className="px-6"
-          label="Azure DevOps Organization Name"
-          tooltipText="This is the slug of the organization. An example would be 'my-acme-org'"
-          errorText={apiKeyErrorText}
-          isError={apiKeyErrorText !== ""}
-        >
-          <Input
-            placeholder=""
-            value={devopsOrgName}
-            onChange={(e) => setDevopsOrgName(e.target.value)}
-          />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isLoading={isLoading}
-        >
-          Connect to Azure DevOps
-        </Button>
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          {" "}
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="azuredevops-azure-devops-api-token">
+              Azure DevOps API Token
+            </FieldLabel>
+            <Input
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              id="azuredevops-azure-devops-api-token"
+              isError={apiKeyErrorText !== ""}
+              aria-describedby={
+                apiKeyErrorText !== "" ? "azuredevops-azure-devops-api-token-error" : undefined
+              }
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="azuredevops-azure-devops-api-token-error">
+                {apiKeyErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="azuredevops-azure-devops-organization-name">
+              Azure DevOps Organization Name
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" aria-label="More information">
+                    ?
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  This is the slug of the organization. An example would be &apos;my-acme-org&apos;
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <Input
+              placeholder=""
+              value={devopsOrgName}
+              onChange={(e) => setDevopsOrgName(e.target.value)}
+              id="azuredevops-azure-devops-organization-name"
+              isError={apiKeyErrorText !== ""}
+              aria-describedby={
+                apiKeyErrorText !== ""
+                  ? "azuredevops-azure-devops-organization-name-error"
+                  : undefined
+              }
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="azuredevops-azure-devops-organization-name-error">
+                {apiKeyErrorText}
+              </FieldError>
+            )}
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
+            Connect to Azure DevOps
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

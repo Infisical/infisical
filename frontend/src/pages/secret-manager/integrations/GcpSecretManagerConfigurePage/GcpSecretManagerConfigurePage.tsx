@@ -1,30 +1,45 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
+import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { z } from "zod";
 
 import {
   Button,
   Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DocumentationLinkBadge,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
+  SecretPathInput,
   Select,
+  SelectContent,
   SelectItem,
-  Switch,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Toggle
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -178,273 +193,341 @@ export const GcpSecretManagerConfigurePage = () => {
       })}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="w-full max-w-lg">
         <Helmet>
           <title>Set Up GCP Secret Manager Integration</title>
         </Helmet>
-        <CardTitle
-          className="mb-2 px-6 text-left text-xl"
-          subTitle="Select which environment or folder in Infisical you want to sync to GCP Secret Manager."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Google Cloud Platform.png"
-                height={30}
-                width={30}
-                alt="GCP logo"
-              />
-            </div>
-            <span className="ml-1.5">GCP Secret Manager Integration </span>
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <Tabs defaultValue={TabSections.Connection} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-mineshaft-600">
-              <Tab value={TabSections.Connection}>Connection</Tab>
-              <Tab value={TabSections.Options}>Options</Tab>
-            </div>
-          </TabList>
-          <TabPanel value={TabSections.Connection}>
-            <motion.div
-              key="panel-1"
-              transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: 30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 30 }}
-            >
-              <Controller
-                control={control}
-                name="selectedSourceEnvironment"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Project Environment"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full"
-                    >
-                      {currentProject?.environments.map((sourceEnvironment) => (
-                        <SelectItem
-                          value={sourceEnvironment.slug}
-                          key={`source-environment-${sourceEnvironment.slug}`}
-                        >
-                          {sourceEnvironment.name}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="secretPath"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Secrets Path"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <SecretPathInput
-                      {...field}
-                      environment={selectedSourceEnvironment}
-                      placeholder="/"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="targetAppId"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      label="GCP Project"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
+        <CardHeader>
+          <CardTitle>
+            <img
+              src="/images/integrations/Google Cloud Platform.png"
+              height={30}
+              width={30}
+              alt="GCP logo"
+            />
+            GCP Secret Manager Integration
+            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager" />
+          </CardTitle>
+          <CardDescription>
+            Select which environment or folder in Infisical you want to sync to GCP Secret Manager.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue={TabSections.Connection}>
+            <TabsList variant="project">
+              <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+              <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+            </TabsList>
+            <TabsContent value={TabSections.Connection}>
+              <motion.div
+                key="panel-1"
+                className="flex flex-col gap-4"
+                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 30 }}
+              >
+                <Controller
+                  control={control}
+                  name="selectedSourceEnvironment"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="GcpSecretManagerConfigurePage-field-1">
+                        Project Environment
+                      </FieldLabel>
                       <Select
-                        {...field}
-                        onValueChange={(e) => {
-                          if (e === "") return;
-                          onChange(e);
-                        }}
-                        className="w-full"
+                        defaultValue={field.value}
+                        value={field.value}
+                        name={field.name}
+                        onValueChange={(e) => onChange(e)}
                       >
-                        {integrationAuthApps.length > 0 ? (
-                          integrationAuthApps.map((integrationAuthApp) => (
+                        <SelectTrigger
+                          id="GcpSecretManagerConfigurePage-field-1"
+                          aria-describedby="GcpSecretManagerConfigurePage-field-1-feedback"
+                          isError={Boolean(error)}
+                          className="w-full"
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currentProject?.environments.map((sourceEnvironment) => (
                             <SelectItem
-                              value={String(integrationAuthApp.appId as string)}
-                              key={`target-app-${String(integrationAuthApp.appId)}`}
+                              value={sourceEnvironment.slug}
+                              key={`source-environment-${sourceEnvironment.slug}`}
                             >
-                              {integrationAuthApp.name}
+                              {sourceEnvironment.name}
                             </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" key="target-app-none">
-                            No projects found
-                          </SelectItem>
-                        )}
+                          ))}
+                        </SelectContent>
                       </Select>
-                    </FormControl>
-                  );
-                }}
-              />
-            </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.Options}>
-            <motion.div
-              key="panel-1"
-              transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: -30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 30 }}
-            >
-              <Controller
-                control={control}
-                name="secretPrefix"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Secret Prefix"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="INFISICAL_" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="secretSuffix"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Secret Suffix"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="_INFISICAL" />
-                  </FormControl>
-                )}
-              />
-              <div className="mt-8 mb-[2.36rem]">
+                      {Boolean(error) && (
+                        <FieldError id="GcpSecretManagerConfigurePage-field-1-feedback">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  defaultValue=""
+                  name="secretPath"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="GcpSecretManagerConfigurePage-field-2">
+                        Secrets Path
+                      </FieldLabel>
+                      <SecretPathInput
+                        id="GcpSecretManagerConfigurePage-field-2"
+                        aria-describedby="GcpSecretManagerConfigurePage-field-2-feedback"
+                        isError={Boolean(error)}
+                        {...field}
+                        environment={selectedSourceEnvironment}
+                        placeholder="/"
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="GcpSecretManagerConfigurePage-field-2-feedback">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="targetAppId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                    return (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="GcpSecretManagerConfigurePage-field-3">
+                          GCP Project
+                        </FieldLabel>
+                        <Select
+                          value={field.value}
+                          name={field.name}
+                          onValueChange={(e) => {
+                            if (e === "") return;
+                            onChange(e);
+                          }}
+                        >
+                          <SelectTrigger
+                            id="GcpSecretManagerConfigurePage-field-3"
+                            aria-describedby="GcpSecretManagerConfigurePage-field-3-feedback"
+                            isError={Boolean(error)}
+                            className="w-full"
+                            ref={field.ref}
+                            onBlur={field.onBlur}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {integrationAuthApps.length > 0 ? (
+                              integrationAuthApps.map((integrationAuthApp) => (
+                                <SelectItem
+                                  value={String(integrationAuthApp.appId as string)}
+                                  key={`target-app-${String(integrationAuthApp.appId)}`}
+                                >
+                                  {integrationAuthApp.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="none" key="target-app-none">
+                                No projects found
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {Boolean(error) && (
+                          <FieldError id="GcpSecretManagerConfigurePage-field-3-feedback">
+                            {error?.message}
+                          </FieldError>
+                        )}
+                      </Field>
+                    );
+                  }}
+                />
+              </motion.div>
+            </TabsContent>
+            <TabsContent value={TabSections.Options}>
+              <motion.div
+                key="panel-1"
+                className="flex flex-col gap-4"
+                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, translateX: -30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 30 }}
+              >
+                <Controller
+                  control={control}
+                  name="secretPrefix"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="GcpSecretManagerConfigurePage-field-4">
+                        Secret Prefix
+                      </FieldLabel>
+                      <Input
+                        id="GcpSecretManagerConfigurePage-field-4"
+                        aria-describedby="GcpSecretManagerConfigurePage-field-4-feedback"
+                        isError={Boolean(error)}
+                        {...field}
+                        placeholder="INFISICAL_"
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="GcpSecretManagerConfigurePage-field-4-feedback">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="secretSuffix"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="GcpSecretManagerConfigurePage-field-5">
+                        Secret Suffix
+                      </FieldLabel>
+                      <Input
+                        id="GcpSecretManagerConfigurePage-field-5"
+                        aria-describedby="GcpSecretManagerConfigurePage-field-5-feedback"
+                        isError={Boolean(error)}
+                        {...field}
+                        placeholder="_INFISICAL"
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="GcpSecretManagerConfigurePage-field-5-feedback">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
                 <Controller
                   control={control}
                   name="shouldLabel"
                   render={({ field: { onChange, value } }) => (
-                    <Switch
-                      id="label-gcp"
-                      onCheckedChange={(isChecked) => onChange(isChecked)}
-                      isChecked={value}
-                    >
-                      Label in GCP Secret Manager
-                    </Switch>
+                    <Field orientation="horizontal">
+                      <FieldLabel htmlFor="label-gcp">Label in GCP Secret Manager</FieldLabel>
+                      <Toggle
+                        id="label-gcp"
+                        onCheckedChange={(isChecked) => onChange(isChecked)}
+                        checked={value}
+                      />
+                    </Field>
                   )}
                 />
-              </div>
-              {shouldLabel && (
-                <div className="mt-8">
-                  <Controller
-                    control={control}
-                    name="labelName"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Label Name"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input {...field} placeholder="managed-by" />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="labelValue"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Label Name"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                      >
-                        <Input {...field} placeholder="infisical" />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-              )}
-            </motion.div>
-          </TabPanel>
-        </Tabs>
-        <Button
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mr-6 mb-8 ml-auto w-min"
-          size="sm"
-          type="submit"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-        >
-          Create Integration
-        </Button>
+                {shouldLabel && (
+                  <div className="flex flex-col gap-4">
+                    <Controller
+                      control={control}
+                      name="labelName"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error)}>
+                          <FieldLabel htmlFor="GcpSecretManagerConfigurePage-field-6">
+                            Label Name
+                          </FieldLabel>
+                          <Input
+                            id="GcpSecretManagerConfigurePage-field-6"
+                            aria-describedby="GcpSecretManagerConfigurePage-field-6-feedback"
+                            isError={Boolean(error)}
+                            {...field}
+                            placeholder="managed-by"
+                          />
+                          {Boolean(error) && (
+                            <FieldError id="GcpSecretManagerConfigurePage-field-6-feedback">
+                              {error?.message}
+                            </FieldError>
+                          )}
+                        </Field>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="labelValue"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error)}>
+                          <FieldLabel htmlFor="GcpSecretManagerConfigurePage-field-7">
+                            Label Name
+                          </FieldLabel>
+                          <Input
+                            id="GcpSecretManagerConfigurePage-field-7"
+                            aria-describedby="GcpSecretManagerConfigurePage-field-7-feedback"
+                            isError={Boolean(error)}
+                            {...field}
+                            placeholder="infisical"
+                          />
+                          {Boolean(error) && (
+                            <FieldError id="GcpSecretManagerConfigurePage-field-7-feedback">
+                              {error?.message}
+                            </FieldError>
+                          )}
+                        </Field>
+                      )}
+                    />
+                  </div>
+                )}
+              </motion.div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            size="sm"
+            type="submit"
+            isPending={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
-      {/* <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
-      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
+      {/* <div className="border-t border-border-faint w-full max-w-md mt-6"/>
+      <div className="flex flex-col bg-surface-raised border border-border-control w-full p-4 max-w-lg mt-6 rounded-md">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/>
-          <span className="ml-3 text-md text-mineshaft-100">Pro Tip</span>
+          <FontAwesomeIcon icon={faCircleInfo} className="text-foreground-secondary text-xl"/>
+          <span className="ml-3 text-md text-foreground">Pro Tip</span>
         </div>
-        <span className="text-mineshaft-300 text-sm mt-4">
+        <span className="text-label text-sm mt-4">
           After creating an integration, your secrets will start syncing immediately.
 
           To avoid overwriting existing secrets in GCP Secret Manager, you may consider adding a secret prefix/suffix and/or enabling labeling in the options tab.
         </span>
       </div> */}
-      <Modal
-        isOpen={popUp.confirmIntegration?.isOpen}
+      <Dialog
+        open={popUp.confirmIntegration?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("confirmIntegration", isOpen)}
       >
-        <ModalContent
-          title="Heads Up"
-          footerContent={
-            <div className="flex items-center space-x-2">
-              <Button onClick={() => onFormSubmit(popUp.confirmIntegration?.data as FormData)}>
-                Continue Anyway
-              </Button>
-              <Button
-                onClick={() => handlePopUpClose("confirmIntegration")}
-                variant="outline_bg"
-                colorSchema="secondary"
-              >
+        <DialogContent isPending={isLoading}>
+          <DialogHeader>
+            <DialogTitle>Heads Up</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p>You&apos;re about to overwrite any existing secrets in GCP Secret Manager.</p>
+            <p className="mt-4">
+              To avoid this behavior, you may consider adding a secret prefix/suffix or enabling
+              labeling in the options tab.
+            </p>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button onClick={() => handlePopUpClose("confirmIntegration")} variant="ghost">
                 Cancel
               </Button>
-            </div>
-          }
-        >
-          <p>You&apos;re about to overwrite any existing secrets in GCP Secret Manager.</p>
-          <p className="mt-4">
-            To avoid this behavior, you may consider adding a secret prefix/suffix or enabling
-            labeling in the options tab.
-          </p>
-        </ModalContent>
-      </Modal>
+            </DialogClose>
+            <Button
+              onClick={() => onFormSubmit(popUp.confirmIntegration?.data as FormData)}
+              variant="project"
+              isPending={isLoading}
+            >
+              Continue Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
@@ -459,12 +542,12 @@ export const GcpSecretManagerConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-foreground underline decoration-project underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

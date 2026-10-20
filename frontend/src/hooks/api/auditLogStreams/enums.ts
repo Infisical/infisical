@@ -25,5 +25,6 @@ export enum AuditLogStreamProduct {
   KMS = "kms",
   SecretScanning = "secret-scanning",
   PAM = "pam",
+  AgentVault = "agent-vault",
   Organization = "organization"
 }

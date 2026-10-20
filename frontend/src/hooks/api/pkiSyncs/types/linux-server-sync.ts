@@ -7,11 +7,15 @@ export type TLinuxServerPkiSync = TRootPkiSync & {
   destination: PkiSync.LinuxServer;
   destinationConfig: {
     destinationPath: string;
+    host?: string;
+    port?: number;
   };
   syncOptions: TRootPkiSync["syncOptions"] & {
     exportFormat?: PkiSyncExportFormat;
     pemCertificateExtension?: PemCertificateExtension;
     combineCertificateChain?: boolean;
+    keystoreAlias?: string;
+    includeTruststore?: boolean;
     includePrivateKey?: boolean;
     fileMode?: string;
     privateKeyFileMode?: string;
@@ -21,7 +25,7 @@ export type TLinuxServerPkiSync = TRootPkiSync & {
     postSyncCommand?: string | null;
   };
   connection: {
-    app: AppConnection.SSH;
+    app: AppConnection;
     name: string;
     id: string;
   };

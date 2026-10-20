@@ -9,7 +9,7 @@ const discoveryPageSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/"
 )({
   component: DiscoveryPage,
   validateSearch: zodValidator(discoveryPageSearchSchema),

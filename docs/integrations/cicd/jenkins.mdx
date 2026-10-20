@@ -14,7 +14,7 @@ Prerequisites:
 - Set up and add secrets to [Infisical](https://app.infisical.com).
 - Create a [machine identity](/documentation/platform/identities/machine-identities) (Recommended), or a service token in Infisical.
 - You have a working Jenkins installation with the [credentials plugin](https://plugins.jenkins.io/credentials/) installed.
-- You have the [Infisical CLI](/cli/overview) installed on your Jenkins executor nodes or container images.
+- You have the [Infisical CLI](/cli/install) installed on your Jenkins executor nodes or container images.
 
 <Tabs>
 
@@ -80,7 +80,7 @@ Prerequisites:
     ![Add Infisical secret](../../images/integrations/jenkins/plugin/add-infisical-secret.png)
 
     You need to select which secrets that should be pulled into Jenkins.
-    You start by specifying a [folder path from Infisical](https://infisical.com/docs/documentation/platform/folder#comparing-folders). The root path is simply `/`. You also need to select wether or not you want to [include imports](https://infisical.com/docs/documentation/platform/secret-reference#secret-imports). Now you can add secrets the secret keys that you want to pull from Infisical into Jenkins. If you want to add multiple secrets, press the "Add key/value pair".
+    You start by specifying a [folder path from Infisical](https://infisical.com/docs/documentation/platform/folder#comparing-folders). The root path is simply `/`. You also need to select whether or not you want to [include imports](https://infisical.com/docs/documentation/platform/secret-reference#secret-imports). Now you can add secrets the secret keys that you want to pull from Infisical into Jenkins. If you want to add multiple secrets, press the "Add key/value pair".
 
     If you wish to pull secrets from multiple paths, you can press the "Add an Infisical secret" button at the bottom, and configure a new set of secrets to pull.
 
@@ -201,7 +201,7 @@ Prerequisites:
     The example command below will print the secrets using the service token passed as a credential. When done, click  **Save**.
 
     ```
-    infisical secrets --env=dev --path=/
+    infisical sm secrets --env=dev --path=/
     ```
 
     ![Jenkins step 11](../../images/integrations/jenkins/jenkins_11.png)
@@ -209,7 +209,7 @@ Prerequisites:
     Finally, click **Build Now** from the navigation sidebar to run your new job.
 
     <Info>
-      Running into issues? Join Infisical's [community Slack](https://infisical.com/slack) for quick support.
+      Running into issues? Join the [Infisical community forum](https://community.infisical.com) for quick support.
     </Info>
 
 
@@ -238,13 +238,13 @@ Prerequisites:
         stages {
             stage('Run Infisical') {
                 steps {
-                    sh("infisical secrets --env=dev --path=/")
+                    sh("infisical sm secrets --env=dev --path=/")
 
                     // doesn't work
-                    // sh("docker run --rm test-container infisical secrets")
+                    // sh("docker run --rm test-container infisical sm secrets")
 
                     // works
-                    // sh("docker run -e INFISICAL_TOKEN=${INFISICAL_TOKEN} --rm test-container infisical secrets --env=dev --path=/")
+                    // sh("docker run -e INFISICAL_TOKEN=${INFISICAL_TOKEN} --rm test-container infisical sm secrets --env=dev --path=/")
 
                     // doesn't work
                     // sh("docker-compose up -d")

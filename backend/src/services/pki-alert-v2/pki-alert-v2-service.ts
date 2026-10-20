@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
@@ -24,6 +25,7 @@ import { sendEmailNotificationWithRetry } from "./pki-alert-v2-channel-email-fns
 import { sendPagerDutyNotificationWithRetry } from "./pki-alert-v2-channel-pagerduty-fns";
 import { sendSlackNotificationWithRetry, validateSlackWebhookUrl } from "./pki-alert-v2-channel-slack-fns";
 import { sendWebhookNotification } from "./pki-alert-v2-channel-webhook-fns";
+import { LEGACY_ALERT_WRITES_BLOCKED } from "./pki-alert-v2-constants";
 import { TAlertWithChannels, TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
 import {
@@ -72,6 +74,7 @@ type TPkiAlertV2ServiceFactoryDep = {
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -87,6 +90,7 @@ export const pkiAlertV2ServiceFactory = ({
   pkiAlertChannelDAL,
   pkiAlertHistoryDAL,
   permissionService,
+  licenseService,
   smtpService,
   kmsService,
   notificationService,
@@ -94,6 +98,15 @@ export const pkiAlertV2ServiceFactory = ({
   projectDAL,
   pkiApplicationDAL
 }: TPkiAlertV2ServiceFactoryDep) => {
+  const $assertLegacyAlertWritesAllowed = () => {
+    if (LEGACY_ALERT_WRITES_BLOCKED) {
+      throw new BadRequestError({
+        message:
+          "Legacy PKI alerts can no longer be created or edited. Use the alerts API (/api/v1/alerts) or the Alerting section of an application instead. Existing legacy alerts can still be viewed and deleted."
+      });
+    }
+  };
+
   const $assertCanActOnAlert = async (
     action: ProjectPermissionActions,
     projectId: string,
@@ -166,6 +179,7 @@ export const pkiAlertV2ServiceFactory = ({
       enabled: alert.enabled ?? true,
       projectId: alert.projectId,
       applicationId: alert.applicationId ?? null,
+      applicationName: alert.applicationName ?? null,
       channels: (alert.channels || []).map((channel) => {
         const config = decryptChannelConfig<TChannelConfig>(channel, decryptor);
 
@@ -223,6 +237,8 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateAlertV2DTO): Promise<TAlertV2Response> => {
+    $assertLegacyAlertWritesAllowed();
+
     if (!applicationId) {
       throw new BadRequestError({
         message: "Alerts must be created inside an Application. Open the Application's Alerts tab and click Add Alert."
@@ -235,6 +251,16 @@ export const pkiAlertV2ServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
+
+    const nonEmailChannel = channels.find((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
+    if (nonEmailChannel) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.pkiEnterpriseAlerting) {
+        throw new BadRequestError({
+          message: `Failed to create alert with a ${nonEmailChannel.channelType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
+        });
+      }
+    }
 
     if (eventType === PkiAlertEventType.EXPIRATION && !alertBefore) {
       throw new BadRequestError({ message: "alertBefore is required for expiration alerts" });
@@ -384,6 +410,8 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateAlertV2DTO): Promise<TAlertV2Response> => {
+    $assertLegacyAlertWritesAllowed();
+
     let alert = await pkiAlertV2DAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
     if (applicationId && alert.applicationId !== applicationId) {
@@ -410,6 +438,23 @@ export const pkiAlertV2ServiceFactory = ({
         parseTimeToPostgresInterval(alertBefore);
       } catch (error) {
         throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
+      }
+    }
+
+    // An update replaces the channel set wholesale, so creation-only gating would let an org save an
+    // email-only alert and patch Slack into it. Keeping the types it already has stays allowed.
+    const addedChannelTypes = channels?.filter((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
+    if (addedChannelTypes?.length) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.pkiEnterpriseAlerting) {
+        const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId);
+        const existingTypes = new Set(existingChannels.map((channel) => channel.channelType));
+        const newChannel = addedChannelTypes.find((channel) => !existingTypes.has(channel.channelType));
+        if (newChannel) {
+          throw new BadRequestError({
+            message: `Failed to add a ${newChannel.channelType} channel to this alert due to plan restriction. Upgrade plan to alert on channels other than email.`
+          });
+        }
       }
     }
 
@@ -867,9 +912,12 @@ export const pkiAlertV2ServiceFactory = ({
 
     const matchingPerCert = await Promise.all(
       certificateIds.map((certId) =>
+        // The event is queued right after the certificate commits, and an empty match ends the job
+        // for good, so a lagging replica would silently drop the notification.
         pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
           certificateId: certId,
-          ...applicationScope
+          ...applicationScope,
+          readFromPrimary: true
         })
       )
     );

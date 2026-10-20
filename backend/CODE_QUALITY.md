@@ -11,6 +11,7 @@ Expect it to grow as we find more worth checking.
 - [Paginate external API calls](#paginate-external-api-calls)
 - [Do not create deadlock conditions](#do-not-create-deadlock-conditions)
 - [Intuitive API interfaces](#intuitive-api-interfaces)
+- [Audit log events admins can read](#audit-log-events-admins-can-read)
 - [License checks](#license-checks)
 
 ---
@@ -260,6 +261,27 @@ alternative, and let the author confirm the deviation is intentional. An intenti
 deviation is fine and should be noted in a comment on the route so the next person does
 not read it as an accident. An unintentional one is much cheaper to catch now than after
 customers are calling it.
+
+---
+
+## Audit Log Events Admins Can Read
+
+An audit log event is read by an admin investigating an incident, in a UI that renders the
+`metadata` body as raw JSON, or in their own SIEM.
+
+**Name the field after what it identifies.** `requestId` on an event that carries an
+approval request's id sends the reader looking for a certificate request that does not
+match. Prefer `approvalRequestId`.
+
+**Record the outcome, not just the attempt.** A handler that logs the same event whether the
+operation succeeded, failed, or is awaiting approval produces a log that cannot answer
+"did this happen?". Where a service returns a status, put it in the metadata, and only emit
+result fields (a new id, a serial number) when the result actually exists.
+
+**Renaming, retyping, or removing a field on an existing event is a breaking change.** These
+bodies go to customer SIEMs unchanged, so a field that switches from string to number, or
+disappears, silently breaks rules built on it. Adding a field is safe; changing one needs a
+deliberate call.
 
 ---
 

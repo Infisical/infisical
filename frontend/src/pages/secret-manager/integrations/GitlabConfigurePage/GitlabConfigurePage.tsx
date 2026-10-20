@@ -5,26 +5,42 @@ import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { z } from "zod";
 
 import {
+  Badge,
   Button,
   Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
+  SecretPathInput,
   Select,
+  SelectContent,
   SelectItem,
-  Switch,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Toggle
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -73,9 +89,7 @@ type FormData = z.infer<typeof schema>;
 
 export const GitlabConfigurePage = () => {
   const navigate = useNavigate();
-  const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "confirmIntegration"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["confirmIntegration"] as const);
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
@@ -173,7 +187,6 @@ export const GitlabConfigurePage = () => {
         }
       });
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -186,6 +199,7 @@ export const GitlabConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -212,336 +226,444 @@ export const GitlabConfigurePage = () => {
       <Helmet>
         <title>Set Up GitLab Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Select which environment or folder in Infisical you want to sync to GitLab's environment variables."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/GitLab.png" height={28} width={28} alt="Gitlab logo" />
-            </div>
-            <span className="ml-2.5">GitLab Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cicd/gitlab"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img src="/images/integrations/GitLab.png" height={28} width={28} alt="Gitlab logo" />
+            <span>GitLab Integration</span>
+          </CardTitle>
+          <CardDescription>
+            Select which environment or folder in Infisical you want to sync to GitLab&apos;s
+            environment variables.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                href="https://infisical.com/docs/integrations/cicd/gitlab"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
                 Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
-              </div>
-            </a>
-          </div>
-        </CardTitle>
-        <Tabs defaultValue={TabSections.Connection} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-mineshaft-600">
-              <Tab value={TabSections.Connection}>Connection</Tab>
-              <Tab value={TabSections.Options}>Options</Tab>
-            </div>
-          </TabList>
-          <TabPanel value={TabSections.Connection}>
-            <motion.div
-              key="panel-1"
-              transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: 30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 30 }}
-            >
-              <Controller
-                control={control}
-                name="selectedSourceEnvironment"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Project Environment"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full"
-                    >
-                      {currentProject?.environments.map((sourceEnvironment) => (
-                        <SelectItem
-                          value={sourceEnvironment.slug}
-                          key={`source-environment-${sourceEnvironment.slug}`}
-                        >
-                          {sourceEnvironment.name}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="secretPath"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Secrets Path"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <SecretPathInput
-                      {...field}
-                      placeholder="/"
-                      environment={selectedSourceEnvironment}
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="targetEntity"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="GitLab Integration Type"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Select {...field} onValueChange={(e) => onChange(e)} className="w-full">
-                      {gitLabEntities.map((entity) => {
-                        return (
-                          <SelectItem value={entity.value} key={`target-entity-${entity.value}`}>
-                            {entity.name}
-                          </SelectItem>
-                        );
-                      })}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              {targetEntity === "group" && targetTeamId && (
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Tabs defaultValue={TabSections.Connection}>
+            <TabsList variant="project">
+              <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+              <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+            </TabsList>
+            <TabsContent value={TabSections.Connection}>
+              <motion.div
+                key="panel-1"
+                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 30 }}
+              >
                 <Controller
                   control={control}
-                  name="targetTeamId"
+                  name="selectedSourceEnvironment"
                   render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      label="GitLab Group"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Select {...field} onValueChange={(e) => onChange(e)} className="w-full">
-                        {integrationAuthTeams.length > 0 ? (
-                          integrationAuthTeams.map((integrationAuthTeam) => (
-                            <SelectItem
-                              value={String(integrationAuthTeam.id as string)}
-                              key={`target-team-${String(integrationAuthTeam.id)}`}
-                            >
-                              {integrationAuthTeam.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" key="target-team-none">
-                            No groups found
-                          </SelectItem>
-                        )}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              )}
-              <Controller
-                control={control}
-                name="targetAppId"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      label="GitLab Project"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="gitlab-selectedsourceenvironment">
+                        Project Environment
+                      </FieldLabel>
                       <Select
-                        {...field}
-                        onValueChange={(e) => {
-                          if (e === "") return;
-                          onChange(e);
-                        }}
-                        className="w-full"
+                        defaultValue={field.value}
+                        onValueChange={(e) => onChange(e)}
+                        name={field.name}
+                        disabled={field.disabled}
+                        value={field.value}
                       >
-                        {integrationAuthApps.length > 0 ? (
-                          integrationAuthApps.map((integrationAuthApp) => (
+                        <SelectTrigger
+                          className="w-full"
+                          id="gitlab-selectedsourceenvironment"
+                          isError={Boolean(error)}
+                          aria-describedby={
+                            error ? "gitlab-selectedsourceenvironment-error" : undefined
+                          }
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currentProject?.environments.map((sourceEnvironment) => (
                             <SelectItem
-                              value={String(integrationAuthApp.appId as string)}
-                              key={`target-app-${String(integrationAuthApp.appId)}`}
+                              value={sourceEnvironment.slug}
+                              key={`source-environment-${sourceEnvironment.slug}`}
                             >
-                              {integrationAuthApp.name}
+                              {sourceEnvironment.name}
                             </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" key="target-app-none">
-                            No projects found
-                          </SelectItem>
-                        )}
+                          ))}
+                        </SelectContent>
                       </Select>
-                    </FormControl>
-                  );
-                }}
-              />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="targetEnvironment"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="GitLab Environment Scope (Optional)"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="*" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="initialSyncBehavior"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Initial Sync Behavior"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Select
-                      defaultValue={field.value}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full border border-mineshaft-500"
-                      dropdownContainerClassName="max-w-full"
-                    >
-                      {initialSyncBehaviors.map((b) => {
-                        return (
-                          <SelectItem
-                            value={b.value}
-                            key={`sync-behavior-${b.value}`}
+                      {Boolean(error) && (
+                        <FieldError id="gitlab-selectedsourceenvironment-error">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  defaultValue=""
+                  name="secretPath"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="gitlab-secretpath">Secrets Path</FieldLabel>
+                      <SecretPathInput
+                        {...field}
+                        placeholder="/"
+                        environment={selectedSourceEnvironment}
+                        id="gitlab-secretpath"
+                        isError={Boolean(error)}
+                        aria-describedby={error ? "gitlab-secretpath-error" : undefined}
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="gitlab-secretpath-error">{error?.message}</FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="targetEntity"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="gitlab-targetentity">GitLab Integration Type</FieldLabel>
+                      <Select
+                        onValueChange={(e) => onChange(e)}
+                        name={field.name}
+                        disabled={field.disabled}
+                        value={field.value}
+                      >
+                        <SelectTrigger
+                          className="w-full"
+                          id="gitlab-targetentity"
+                          isError={Boolean(error)}
+                          aria-describedby={error ? "gitlab-targetentity-error" : undefined}
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {gitLabEntities.map((entity) => {
+                            return (
+                              <SelectItem
+                                value={entity.value}
+                                key={`target-entity-${entity.value}`}
+                              >
+                                {entity.name}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {Boolean(error) && (
+                        <FieldError id="gitlab-targetentity-error">{error?.message}</FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+                {targetEntity === "group" && targetTeamId && (
+                  <Controller
+                    control={control}
+                    name="targetTeamId"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <Field className="mb-4" data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="gitlab-targetteamid">GitLab Group</FieldLabel>
+                        <Select
+                          onValueChange={(e) => onChange(e)}
+                          name={field.name}
+                          disabled={field.disabled}
+                          value={field.value}
+                        >
+                          <SelectTrigger
                             className="w-full"
+                            id="gitlab-targetteamid"
+                            isError={Boolean(error)}
+                            aria-describedby={error ? "gitlab-targetteamid-error" : undefined}
+                            ref={field.ref}
+                            onBlur={field.onBlur}
                           >
-                            {b.label}
-                          </SelectItem>
-                        );
-                      })}
-                    </Select>
-                  </FormControl>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {integrationAuthTeams.length > 0 ? (
+                              integrationAuthTeams.map((integrationAuthTeam) => (
+                                <SelectItem
+                                  value={String(integrationAuthTeam.id as string)}
+                                  key={`target-team-${String(integrationAuthTeam.id)}`}
+                                >
+                                  {integrationAuthTeam.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="none" key="target-team-none">
+                                No groups found
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {Boolean(error) && (
+                          <FieldError id="gitlab-targetteamid-error">{error?.message}</FieldError>
+                        )}
+                      </Field>
+                    )}
+                  />
                 )}
-              />
-            </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.Options}>
-            <motion.div
-              key="panel-1"
-              transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: -30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 30 }}
-              className="pb-57"
-            >
-              <div className="ml-1">
                 <Controller
                   control={control}
-                  name="shouldMaskSecrets"
-                  render={({ field: { onChange, value } }) => (
-                    <Switch
-                      id="should-mask-secrets"
-                      onCheckedChange={(isChecked) => onChange(isChecked)}
-                      isChecked={value}
-                    >
-                      <div className="max-w-md">
-                        Mark Infisical secrets in Gitlab as &apos;Masked&apos; secrets
-                      </div>
-                    </Switch>
-                  )}
+                  name="targetAppId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                    return (
+                      <Field className="mb-4" data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="gitlab-targetappid">GitLab Project</FieldLabel>
+                        <Select
+                          onValueChange={(e) => {
+                            if (e === "") return;
+                            onChange(e);
+                          }}
+                          name={field.name}
+                          disabled={field.disabled}
+                          value={field.value}
+                        >
+                          <SelectTrigger
+                            className="w-full"
+                            id="gitlab-targetappid"
+                            isError={Boolean(error)}
+                            aria-describedby={error ? "gitlab-targetappid-error" : undefined}
+                            ref={field.ref}
+                            onBlur={field.onBlur}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {integrationAuthApps.length > 0 ? (
+                              integrationAuthApps.map((integrationAuthApp) => (
+                                <SelectItem
+                                  value={String(integrationAuthApp.appId as string)}
+                                  key={`target-app-${String(integrationAuthApp.appId)}`}
+                                >
+                                  {integrationAuthApp.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="none" key="target-app-none">
+                                No projects found
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {Boolean(error) && (
+                          <FieldError id="gitlab-targetappid-error">{error?.message}</FieldError>
+                        )}
+                      </Field>
+                    );
+                  }}
                 />
-              </div>
-              <div className="mt-4 mb-5 ml-1">
                 <Controller
                   control={control}
-                  name="shouldProtectSecrets"
-                  render={({ field: { onChange, value } }) => (
-                    <Switch
-                      id="should-protect-secrets"
-                      onCheckedChange={(isChecked) => onChange(isChecked)}
-                      isChecked={value}
-                    >
-                      Mark Infisical secrets in Gitlab as &apos;Protected&apos; secrets
-                    </Switch>
+                  defaultValue=""
+                  name="targetEnvironment"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="gitlab-targetenvironment">
+                        GitLab Environment Scope (Optional)
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        placeholder="*"
+                        id="gitlab-targetenvironment"
+                        isError={Boolean(error)}
+                        aria-describedby={error ? "gitlab-targetenvironment-error" : undefined}
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="gitlab-targetenvironment-error">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
                   )}
                 />
-              </div>
-              <Controller
-                control={control}
-                name="secretPrefix"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Secret Prefix"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="INFISICAL_" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="secretSuffix"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Secret Suffix"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="_INFISICAL" />
-                  </FormControl>
-                )}
-              />
-            </motion.div>
-          </TabPanel>
-        </Tabs>
-        <Button
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mr-6 mb-8 ml-auto w-min"
-          size="sm"
-          type="submit"
-          isLoading={isLoading}
-          isDisabled={targetAppIdValue === "none"}
-        >
-          Create Integration
-        </Button>
+                <Controller
+                  control={control}
+                  name="initialSyncBehavior"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="gitlab-initialsyncbehavior">
+                        Initial Sync Behavior
+                      </FieldLabel>
+                      <Select defaultValue={field.value} onValueChange={(e) => onChange(e)}>
+                        <SelectTrigger
+                          className="w-full"
+                          id="gitlab-initialsyncbehavior"
+                          isError={Boolean(error)}
+                          aria-describedby={error ? "gitlab-initialsyncbehavior-error" : undefined}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {initialSyncBehaviors.map((b) => {
+                            return (
+                              <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
+                                {b.label}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {Boolean(error) && (
+                        <FieldError id="gitlab-initialsyncbehavior-error">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+              </motion.div>
+            </TabsContent>
+            <TabsContent value={TabSections.Options}>
+              <motion.div
+                key="panel-1"
+                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, translateX: -30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 30 }}
+                className="pb-57"
+              >
+                <div className="ml-1">
+                  <Controller
+                    control={control}
+                    name="shouldMaskSecrets"
+                    render={({ field: { onChange, value } }) => (
+                      <Field orientation="horizontal">
+                        <FieldLabel htmlFor="should-mask-secrets">
+                          <div className="max-w-md">
+                            Mark Infisical secrets in Gitlab as &apos;Masked&apos; secrets
+                          </div>
+                        </FieldLabel>
+                        <Toggle
+                          id="should-mask-secrets"
+                          onCheckedChange={(isChecked) => onChange(isChecked)}
+                          checked={value}
+                          variant="project"
+                        />
+                      </Field>
+                    )}
+                  />
+                </div>
+                <div className="mt-4 mb-5 ml-1">
+                  <Controller
+                    control={control}
+                    name="shouldProtectSecrets"
+                    render={({ field: { onChange, value } }) => (
+                      <Field orientation="horizontal">
+                        <FieldLabel htmlFor="should-protect-secrets">
+                          Mark Infisical secrets in Gitlab as &apos;Protected&apos; secrets
+                        </FieldLabel>
+                        <Toggle
+                          id="should-protect-secrets"
+                          onCheckedChange={(isChecked) => onChange(isChecked)}
+                          checked={value}
+                          variant="project"
+                        />
+                      </Field>
+                    )}
+                  />
+                </div>
+                <Controller
+                  control={control}
+                  name="secretPrefix"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="gitlab-secretprefix">Secret Prefix</FieldLabel>
+                      <Input
+                        {...field}
+                        placeholder="INFISICAL_"
+                        id="gitlab-secretprefix"
+                        isError={Boolean(error)}
+                        aria-describedby={error ? "gitlab-secretprefix-error" : undefined}
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="gitlab-secretprefix-error">{error?.message}</FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="secretSuffix"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="gitlab-secretsuffix">Secret Suffix</FieldLabel>
+                      <Input
+                        {...field}
+                        placeholder="_INFISICAL"
+                        id="gitlab-secretsuffix"
+                        isError={Boolean(error)}
+                        aria-describedby={error ? "gitlab-secretsuffix-error" : undefined}
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="gitlab-secretsuffix-error">{error?.message}</FieldError>
+                      )}
+                    </Field>
+                  )}
+                />
+              </motion.div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button
+            size="sm"
+            type="submit"
+            isPending={isLoading}
+            isDisabled={targetAppIdValue === "none"}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
-      <Modal
-        isOpen={popUp.confirmIntegration?.isOpen}
+      <Dialog
+        open={popUp.confirmIntegration?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("confirmIntegration", isOpen)}
       >
-        <ModalContent
-          title="Heads Up"
-          footerContent={
-            <div className="flex items-center space-x-2">
-              <Button onClick={() => onFormSubmit(popUp.confirmIntegration?.data as FormData)}>
-                Continue Anyway
-              </Button>
-              <Button
-                onClick={() => handlePopUpClose("confirmIntegration")}
-                variant="outline_bg"
-                colorSchema="secondary"
-              >
-                Cancel
-              </Button>
-            </div>
-          }
-        >
-          <p>You&apos;re about to overwrite any existing secrets in GitLab.</p>
-          <p className="mt-4">
-            To avoid this behavior, you may consider adding a secret prefix/suffix in the options
-            tab.
-          </p>
-        </ModalContent>
-      </Modal>
+        <DialogContent isPending={isLoading}>
+          <DialogHeader>
+            <DialogTitle>Heads Up</DialogTitle>
+            <DialogDescription asChild>
+              <div>
+                <p>You&apos;re about to overwrite any existing secrets in GitLab.</p>
+                <p className="mt-4">
+                  To avoid this behavior, you may consider adding a secret prefix/suffix in the
+                  options tab.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={() => onFormSubmit(popUp.confirmIntegration?.data as FormData)}
+              variant="project"
+              isPending={isLoading}
+            >
+              Continue Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
@@ -556,12 +678,12 @@ export const GitlabConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-foreground underline decoration-project underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

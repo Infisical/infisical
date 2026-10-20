@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
+import { CertificateSyncsUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
 import {
   Button,
@@ -13,6 +14,7 @@ import {
   DocumentationLinkBadge,
   PageLoader
 } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
@@ -27,6 +29,20 @@ type Props = { applicationId: string; applicationName: string; projectId: string
 
 export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId }: Props) => {
   const [isAddSyncOpen, setIsAddSyncOpen] = useState(false);
+  const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
+  // Every sync destination is enterprise, so refuse here rather than after the destination picker.
+  const handleAddSync = () => {
+    if (!subscription.pkiSyncs) {
+      openUpgradeGate({
+        intent: CertificateSyncsUpgradeIntent,
+        paywallKey: "cert-manager.application-syncs"
+      });
+      return;
+    }
+    setIsAddSyncOpen(true);
+  };
 
   const { data, isPending } = useListPkiSyncs(projectId, {
     enabled: Boolean(projectId),
@@ -56,11 +72,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
           other destinations.
         </CardDescription>
         <CardAction>
-          <Button
-            variant="outline"
-            onClick={() => setIsAddSyncOpen(true)}
-            isDisabled={!canCreateSync}
-          >
+          <Button variant="outline" onClick={handleAddSync} isDisabled={!canCreateSync}>
             <PlusIcon />
             Add Sync
           </Button>
@@ -78,6 +90,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
         onOpenChange={setIsAddSyncOpen}
         applicationId={applicationId}
       />
+      {upgradeGate}
     </Card>
   );
 };
