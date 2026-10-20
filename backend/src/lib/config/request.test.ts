@@ -45,7 +45,7 @@ describe("createRequestClient", () => {
     try {
       const { port } = server.address() as AddressInfo;
       const err = (await client
-        .get(`http://127.0.0.1:${port}/`, { timeout: 5000 })
+        .get(`http://127.0.0.1:${port}/`, { timeout: 5000, proxy: false })
         .catch((e: unknown) => e)) as AxiosError;
       expect(err.message).toBe("Request failed with status code 500");
       expect(err.response?.status).toBe(500);
