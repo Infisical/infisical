@@ -12,6 +12,12 @@ import { actorContext } from "./agent-vault-router-fns";
 
 const MAX_DELEGATION_SUBJECTS = 100;
 
+// Without an example, the docs show all-members, the first value, next to users and groups, which only a selected
+// delegation names.
+const DelegationScopeSchema = z
+  .nativeEnum(AgentVaultDelegationScope)
+  .describe(JSON.stringify({ description: AGENT_VAULT.DELEGATION.scope, example: AgentVaultDelegationScope.Selected }));
+
 const DelegationUserSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.userId),
   username: z.string().describe(AGENT_VAULT.DELEGATION.username),
@@ -34,7 +40,7 @@ const DelegationSchema = z.object({
       name: z.string().describe(AGENT_VAULT.DELEGATION.machineIdentityName)
     })
     .describe(AGENT_VAULT.DELEGATION.machineIdentity),
-  scope: z.nativeEnum(AgentVaultDelegationScope).describe(AGENT_VAULT.DELEGATION.scope),
+  scope: DelegationScopeSchema,
   users: DelegationUserSchema.array().describe(AGENT_VAULT.DELEGATION.users),
   groups: DelegationGroupSchema.array().describe(AGENT_VAULT.DELEGATION.groups),
   createdAt: z.date(),
@@ -147,7 +153,8 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       params: machineIdentityParams,
       body: z
         .object({
-          scope: z.nativeEnum(AgentVaultDelegationScope).describe(AGENT_VAULT.DELEGATION.scope),
+          scope: DelegationScopeSchema,
+          // Without examples, the docs show both lists empty, which a selected delegation can't be.
           userIds: z
             .string()
             .uuid()
@@ -155,7 +162,12 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
             .max(MAX_DELEGATION_SUBJECTS)
             .default([])
             .transform((ids) => [...new Set(ids)])
-            .describe(AGENT_VAULT.DELEGATION.userIds),
+            .describe(
+              JSON.stringify({
+                description: AGENT_VAULT.DELEGATION.userIds,
+                example: ["3c90c3cc-0d44-4b50-8888-8dd25736052a"]
+              })
+            ),
           groupIds: z
             .string()
             .uuid()
@@ -163,7 +175,12 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
             .max(MAX_DELEGATION_SUBJECTS)
             .default([])
             .transform((ids) => [...new Set(ids)])
-            .describe(AGENT_VAULT.DELEGATION.groupIds)
+            .describe(
+              JSON.stringify({
+                description: AGENT_VAULT.DELEGATION.groupIds,
+                example: ["7b1e4f2a-9c3d-4a6b-8e5f-1d2c3b4a5e6f"]
+              })
+            )
         })
         .superRefine((val, ctx) => {
           const named = val.userIds.length + val.groupIds.length;
