@@ -22,7 +22,6 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -42,7 +41,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { PageHeader } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3";
 import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import {
   ProjectPermissionCertificateActions,
@@ -297,12 +296,13 @@ export const PkiTemplateListPage = () => {
                       />
                     )}
                 </TableContainer>
-                <DeleteActionModal
+                <ConfirmationAlertDialog
                   isOpen={popUp.deleteTemplate.isOpen}
+                  description="This action is irreversible."
                   title="Are you sure you want to remove the PKI Template?"
-                  onChange={(isOpen) => handlePopUpToggle("deleteTemplate", isOpen)}
-                  deleteKey="confirm"
-                  onDeleteApproved={() => onRemovePkiSubscriberSubmit()}
+                  onOpenChange={(isOpen) => handlePopUpToggle("deleteTemplate", isOpen)}
+                  confirmKey="confirm"
+                  onConfirm={() => onRemovePkiSubscriberSubmit()}
                 />
               </div>
             </div>

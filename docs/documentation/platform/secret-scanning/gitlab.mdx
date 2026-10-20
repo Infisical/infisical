@@ -1,58 +1,61 @@
 ---
 title: "GitLab secret scanning"
 sidebarTitle: "GitLab"
-description: "Learn how to configure secret scanning for GitLab."
+icon: "/images/platform/secret-scanning/icons/gitlab.svg"
+description: "Scan one GitLab project, or the projects in a group."
 ---
+
+To scan your GitLab projects for leaked secrets, create a GitLab [data source](/documentation/platform/secret-scanning/scan-repositories) in Infisical.
 
 ## Prerequisites
 
-- Create a [GitLab Connection](/integrations/app-connections/gitlab) with Secret Scanning permissions
+- A [GitLab Connection](/integrations/app-connections/gitlab) with secret scanning permissions
 
 ## Create a GitLab data source in Infisical
 
 <Steps>
   <Step>
-    Navigate to your Secret Scanning Project's Dashboard and select the **Add Data Source** button.
+    Go to **Secret Scanning** > **Data Sources** and select **Add Data Source**.
     ![Secret Scanning Dashboard](/images/platform/secret-scanning/github/github-data-source-step-1.png)
   </Step>
   <Step>
-    Select the **GitLab** option.
+    Select **GitLab**.
     ![Select GitLab](/images/platform/secret-scanning/gitlab/step-2.png)
   </Step>
   <Step>
-    Configure which workspace and repositories you would like to scan. Then select **Next**.
+    Select the connection to use and the GitLab project or group to scan, then select **Next**.
     ![Data Source Configuration](/images/platform/secret-scanning/gitlab/step-3.png)
 
-    - **GitLab Connection** - the connection that has access to the repositories you want to scan.
-    - **Scope** - the GitLab scope to scan secrets in.
-        - **Project** - scan an individual GitLab project.
-        - **Group** - scan one or more projects belonging to a GitLab group.
-    - **Scan Repositories** - when using **Group Scope**, select which repositories you would like to scan.
-        - **All Repositories** - Infisical will scan all repositories associated with your connection.
-        - **Select Repositories** - Infisical will scan the selected repositories.
-    - **Auto-Scan Enabled** - whether Infisical should automatically perform a scan when a push is made to configured repositories.
+    - **GitLab Connection**: The connection that can access the projects you want to scan
+    - **Scope**: Whether Infisical scans one GitLab project or the projects in a GitLab group
+        - **Project**: Scan the project you select in **Project**
+        - **Group**: Scan projects in the group you select in **Group**
+    - **Scan Projects**: If **Scope** is **Group**, which of the group's projects Infisical scans
+        - **All Projects**: Every project in the group
+        - **Select Projects**: Only the projects you select in **Include Projects**
+    - **Auto-Scan Enabled**: Whether Infisical scans each new push to the projects
   </Step>
   <Step>
-    Give your data source a name and description (optional). Then select **Next**.
+    Enter a name and, optionally, a description for the data source, then select **Next**.
     ![Data Source Details](/images/platform/secret-scanning/gitlab/step-4.png)
 
-    - **Name** - the name of the data source. Must be slug-friendly.
-    - **Description** (optional) - a description of this data source.
+    - **Name**: A name that contains only lowercase letters, numbers, and hyphens
+    - **Description** (optional): A description of the data source
   </Step>
   <Step>
-    Review your data source, then select **Create Data Source**.
+    Review the data source, then select **Create Data Source**.
     ![Data Source Review](/images/platform/secret-scanning/gitlab/step-5.png)
   </Step>
   <Step>
-    Your **GitLab Data Source** is now available and will begin a historical scan if **Auto-Scan** is enabled.
+    The data source appears in **Data Sources**. If auto-scan is enabled, Infisical starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of every project.
     ![Data Source Created](/images/platform/secret-scanning/gitlab/step-6.png)
   </Step>
   <Step>
-    You can view repositories and scan results by selecting your data source.
+    To see the data source's projects and scan history, select the data source.
     ![Data Source Page](/images/platform/secret-scanning/gitlab/step-7.png)
   </Step>
   <Step>
-    In addition, you can review any findings from the **Findings Page**.
+    To review the secrets the scans found, go to **Findings**. To learn what each finding contains and how to change its status, see [Findings](/documentation/platform/secret-scanning/findings).
     ![Findings Page](/images/platform/secret-scanning/gitlab/step-8.png)
   </Step>
 </Steps>

@@ -5,9 +5,45 @@ import { Select as SelectPrimitive } from "radix-ui";
 import { twMerge } from "tailwind-merge";
 
 import { cn } from "../../utils";
+import { useOverlayPopupRegistration } from "../../utils/overlay-layer";
 
-function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+const SelectPopupContext = React.createContext<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  escapeEvents: WeakSet<KeyboardEvent>;
+} | null>(null);
+
+function Select({
+  open: controlledOpen,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const escapeEvents = React.useRef(new WeakSet<KeyboardEvent>());
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (controlledOpen === undefined) setUncontrolledOpen(nextOpen);
+      onOpenChange?.(nextOpen);
+    },
+    [controlledOpen, onOpenChange]
+  );
+  const contextValue = React.useMemo(
+    () => ({ open, onOpenChange: handleOpenChange, escapeEvents: escapeEvents.current }),
+    [open, handleOpenChange]
+  );
+
+  return (
+    <SelectPopupContext.Provider value={contextValue}>
+      <SelectPrimitive.Root
+        data-slot="select"
+        {...props}
+        open={open}
+        onOpenChange={handleOpenChange}
+      />
+    </SelectPopupContext.Provider>
+  );
 }
 
 function SelectScrollUpButton({
@@ -112,10 +148,32 @@ function SelectContent({
   align = "center",
   collisionPadding = 8,
   portalContainer,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content> & {
   portalContainer?: React.ComponentProps<typeof SelectPrimitive.Portal>["container"];
 }) {
+  const select = React.useContext(SelectPopupContext);
+  const handleEscapeKeyDown = React.useCallback(
+    (event: KeyboardEvent) => {
+      if (select?.escapeEvents.has(event)) return false;
+      select?.escapeEvents.add(event);
+      onEscapeKeyDown?.(event);
+      return !event.defaultPrevented;
+    },
+    [select, onEscapeKeyDown]
+  );
+  const handleRegisteredEscape = React.useCallback(
+    (event: KeyboardEvent) => {
+      if (handleEscapeKeyDown(event)) select?.onOpenChange(false);
+    },
+    [select, handleEscapeKeyDown]
+  );
+  const markPopupDismissEvent = useOverlayPopupRegistration(
+    select?.open ?? false,
+    handleRegisteredEscape
+  );
+
   return (
     <SelectPrimitive.Portal container={portalContainer}>
       <SelectPrimitive.Content
@@ -130,6 +188,9 @@ function SelectContent({
         position={position}
         align={align}
         collisionPadding={collisionPadding}
+        onEscapeKeyDown={(event) => {
+          if (handleEscapeKeyDown(event)) markPopupDismissEvent(event);
+        }}
         {...props}
       >
         <SelectScrollUpButton />

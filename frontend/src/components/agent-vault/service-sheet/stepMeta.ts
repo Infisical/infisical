@@ -16,7 +16,7 @@ type StepMeta = {
 };
 
 const VARIABLE_TIP =
-  "To use one of this bundle's variables, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place.";
+  "To use a variable, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place.";
 
 export const SERVICE_STEPS: StepMeta[] = [
   {

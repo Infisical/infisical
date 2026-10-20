@@ -4,7 +4,7 @@ import { useOrganization } from "@app/context";
 import { getOrgScopedProductFromPath } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-export type ScopeVariant = "org" | "project" | "sub-org" | "av";
+export type ScopeVariant = "org" | "project" | "sub-org" | "av" | "ss";
 
 /**
  * Returns the scope-coloured variant to pass to v3 components (Button, TabsList, IconButton, etc.) so
@@ -18,6 +18,7 @@ export const useScopeVariant = (): ScopeVariant => {
 
   const orgScopedProduct = getOrgScopedProductFromPath(pathname);
   if (orgScopedProduct === ProjectType.AgentVault) return "av";
+  if (orgScopedProduct === ProjectType.SecretScanning) return "ss";
   if (projectId || orgScopedProduct === ProjectType.CertificateManager) return "project";
   if (isSubOrganization) return "sub-org";
   return "org";

@@ -212,6 +212,7 @@ const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
 
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.SecretScanning]: "Secret Scanning",
   [ProjectType.PAM]: "Privileged Access Manager",
   [ProjectType.AgentVault]: "Agent Vault"
 };

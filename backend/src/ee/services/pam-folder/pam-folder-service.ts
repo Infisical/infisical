@@ -20,6 +20,7 @@ import {
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -30,6 +31,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamFolderCallerAccess, PamProductRole, PamResourceRole } from "../pam/pam-enums";
 import { getResourceIdsWithActions, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { PAM_FOLDER_RESOURCE_TYPE } from "../pam-access-request/pam-access-request-events";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import {
@@ -63,6 +65,7 @@ type TPamFolderServiceFactoryDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
 export type TPamFolderServiceFactory = ReturnType<typeof pamFolderServiceFactory>;
@@ -76,7 +79,8 @@ export const pamFolderServiceFactory = ({
   userDAL,
   userGroupMembershipDAL,
   notificationService,
-  smtpService
+  smtpService,
+  alertService
 }: TPamFolderServiceFactoryDep) => {
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
@@ -292,6 +296,10 @@ export const pamFolderServiceFactory = ({
       }
 
       await pamAccessRequestService.cleanupFolderResources(folderId, tx);
+      await alertService.deleteAlertsForDeletedResource(
+        { resourceType: PAM_FOLDER_RESOURCE_TYPE, resourceId: folderId },
+        tx
+      );
 
       return pamFolderDAL.deleteById(folderId, tx);
     });

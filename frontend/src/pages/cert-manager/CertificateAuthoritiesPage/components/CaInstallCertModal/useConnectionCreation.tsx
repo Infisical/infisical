@@ -57,6 +57,7 @@ export const useConnectionCreation = (
       <>
         <AppConnectionForm
           app={app}
+          layout="dialog"
           projectId={currentProject.id}
           projectType={currentProject.type}
           onDirtyChange={setIsDirty}

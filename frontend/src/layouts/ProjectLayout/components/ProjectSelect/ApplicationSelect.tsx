@@ -15,6 +15,7 @@ import {
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useDebounce } from "@app/hooks/useDebounce";
 import {
+  NavbarBlock,
   NavbarSwitcher,
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
@@ -65,7 +66,7 @@ const ApplicationSelectInner = ({
   };
 
   return (
-    <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
+    <NavbarBlock className="min-w-16">
       <NavbarSwitcher
         open={open}
         onOpenChange={(nextOpen) => {
@@ -134,7 +135,7 @@ const ApplicationSelectInner = ({
           </Command>
         </NavbarSwitcherContent>
       </NavbarSwitcher>
-    </div>
+    </NavbarBlock>
   );
 };
 

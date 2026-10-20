@@ -169,6 +169,10 @@ func (h *Handle) Image() Image                         { return h.image }
 // BaseURL is the API root. Almost always External: the Go test process calls it.
 func (h *Handle) BaseURL(m infra.Mode) string { return h.Endpoint(m).URL("http") }
 
+// SiteURL is the SITE_URL the server was started with: the SAML audience, and the
+// origin of every redirect it builds. Not reachable from the test process.
+func (h *Handle) SiteURL() string { return h.BaseURL(infra.Internal) }
+
 // Logs is what a failure dumps. Under a Shared profile one instance serves every
 // parallel tenant, so a caller filters by org id rather than printing all of it.
 func (h *Handle) Logs(ctx context.Context) (string, error) { return h.c.Logs(ctx) }

@@ -223,8 +223,14 @@ export const oauthStatusLabel = (form: TOAuthFormState, service?: TAgentVaultSer
   return stored ? OAUTH_STATUS_LABELS[stored.status] : "Not authorized";
 };
 
-/** `variableKeys` stays undefined while the list loads, so only the shape of a reference is checked. */
-export const buildServiceSchema = (service?: TAgentVaultService | null, variableKeys?: string[]) =>
+/**
+ * Missing keys are read when the form validates rather than when the schema is built, since they arrive as each
+ * lookup answers. A key still being checked passes here; the API refuses it on save if it doesn't exist.
+ */
+export const buildServiceSchema = (
+  service?: TAgentVaultService | null,
+  getMissingKeys?: () => ReadonlySet<string>
+) =>
   z
     .object({
       serviceType: z.nativeEnum(AgentVaultServiceType),
@@ -457,10 +463,10 @@ export const buildServiceSchema = (service?: TAgentVaultService | null, variable
         }
       });
 
-      const variableKeySet = variableKeys ? new Set(variableKeys) : undefined;
+      const missingKeys = getMissingKeys?.();
       const addReferenceIssue = (value: string | undefined, path: (string | number)[]) => {
         if (!value || value === UNCHANGED_SECRET) return;
-        const message = variableReferenceError(value, variableKeySet);
+        const message = variableReferenceError(value, missingKeys);
         if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
       };
 

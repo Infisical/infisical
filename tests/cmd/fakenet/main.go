@@ -16,6 +16,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
@@ -34,6 +35,7 @@ func main() {
 	srv := fakenet.New(
 		github.Service,
 		license.Service,
+		oidcidp.Service,
 	)
 
 	mail := smtp.New(func(domain string) fakenet.Emitter { return srv.Emitter(smtp.Host, domain) })
@@ -41,7 +43,7 @@ func main() {
 		log.Fatalf("fakenet: smtp listener: %v", err)
 	}
 
-	go func() { log.Fatalf("fakenet: %v", fakenet.ServeDNS(":53", selfIP)) }()
+	go func() { log.Fatalf("fakenet: %v", srv.ServeDNS(":53", selfIP)) }()
 
 	go func() {
 		log.Fatalf("fakenet: admin listener: %v", http.ListenAndServe(":8080", srv.Admin(ca)))

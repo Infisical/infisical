@@ -17,7 +17,7 @@ import { DiscriminativePick } from "@app/types";
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { AdcsConnectionForm } from "./AdcsConnectionForm";
 import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
-import { AppConnectionFormProvider } from "./AppConnectionFormContext";
+import { AppConnectionFormProvider, useAppConnectionForm } from "./AppConnectionFormContext";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
@@ -80,6 +80,7 @@ import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
 import { PaloAltoNetworksConnectionForm } from "./PaloAltoNetworksConnectionForm";
+import { PortainerConnectionForm } from "./PortainerConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { PowerDnsConnectionForm } from "./PowerDnsConnectionForm";
 import { QoveryConnectionForm } from "./QoveryConnectionForm";
@@ -87,6 +88,7 @@ import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
 import { RundeckConnectionForm } from "./RundeckConnectionForm";
+import { S3CompatibleConnectionForm } from "./S3CompatibleConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
@@ -178,6 +180,7 @@ type UpdateFormProps = FormProps & {
 };
 
 const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps) => {
+  const { layout } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const createAppConnection = useCreateAppConnection();
@@ -283,6 +286,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <UltraDNSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Spacelift:
         return <SpaceliftConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.S3Compatible:
+        return <S3CompatibleConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureDNS:
         return <AzureDNSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Bitbucket:
@@ -381,6 +386,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
         return <RundeckConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Portainer:
+        return <PortainerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
@@ -410,9 +417,12 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
       )}
       <div
         className={
+          // eslint-disable-next-line no-nested-ternary
           pendingFormData
             ? "hidden"
-            : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
+            : layout === "dialog"
+              ? undefined
+              : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
         }
       >
         {renderForm()}
@@ -422,6 +432,7 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
 };
 
 const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
+  const { layout } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const updateAppConnection = useUpdateAppConnection();
@@ -586,6 +597,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <UltraDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Spacelift:
         return <SpaceliftConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.S3Compatible:
+        return <S3CompatibleConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.AzureDNS:
         return <AzureDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Bitbucket:
@@ -676,6 +689,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:
         return <RundeckConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Portainer:
+        return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
@@ -715,9 +730,12 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       )}
       <div
         className={
+          // eslint-disable-next-line no-nested-ternary
           pendingFormData
             ? "hidden"
-            : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
+            : layout === "dialog"
+              ? undefined
+              : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
         }
       >
         {renderForm()}
@@ -729,6 +747,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
 type Props = {
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  layout?: "sheet" | "dialog";
   projectId?: string;
   projectType?: ProjectType;
 } & Pick<FormProps, "onComplete"> &
@@ -739,13 +758,17 @@ type Props = {
 export const AppConnectionForm = ({
   onCancel,
   onDirtyChange,
+  layout = "sheet",
   projectId,
   projectType,
   ...props
 }: Props) => {
   const { app, appConnection } = props;
 
-  const contextValue = useMemo(() => ({ onCancel, onDirtyChange }), [onCancel, onDirtyChange]);
+  const contextValue = useMemo(
+    () => ({ onCancel, onDirtyChange, layout }),
+    [onCancel, onDirtyChange, layout]
+  );
 
   return (
     <AppConnectionFormProvider value={contextValue}>

@@ -1,18 +1,58 @@
 ---
 title: "Secret scanning"
-description: "Learn how to detect and respond to exposed secrets in code."
-sidebarTitle: "Secrets Scanning"
+description: "Find secrets that were committed to your code, either on your own machine or in your GitHub, GitLab, and Bitbucket repositories."
+sidebarTitle: "Secret Scanning"
 icon: "radar"
 ---
 
-Infisical Secret Scanning helps teams detect leaked credentials — such as API keys, database passwords, and tokens — across source code and developer systems. It allows organizations to proactively catch exposed secrets before they can be exploited, and respond quickly when incidents occur.
+Infisical Secret Scanning helps you find credentials, such as API keys, database passwords, and tokens, that were committed to source code.
 
-Secret Scanning works across both cloud-connected repositories and local developer environments. It integrates with data sources like [GitHub](/documentation/platform/secret-scanning/github), [GitLab](/documentation/platform/secret-scanning/gitlab), and [Bitbucket](/documentation/platform/secret-scanning/bitbucket) to monitor repositories for exposed secrets in real time, and provides a CLI ([`infisical scan`](/cli/reference#scan)) for scanning local directories, Git history, or CI pipelines before changes are pushed.
+You can scan code on your own machine (or in CI) using the Infisical CLI, or connect your GitHub, GitLab, and Bitbucket repositories so that Infisical scans them and records each secret it finds.
 
-Core capabilities include:
+<Tip>
+To learn how Infisical scans your secrets, check out the [Concepts](/documentation/platform/secret-scanning/concepts/secret-scanning) page.
+</Tip>
 
-- Integrated Scanning Across Environments: Monitor secrets in real time across connected repositories like GitHub, GitLab, and Bitbucket, or scan locally using the infisical scan CLI.
-- Detection Engine: Identify potential secrets using pattern matching, entropy analysis, and custom rules tailored to your codebase and workflows.
-- Flexible Scan Modes: Run historical scans manually or configure automatic realtime scans triggered by new commits. CLI scans support Git history, file directories, or staged changes in CI pipelines.
-- Findings and Lifecycle Management: Track detected secrets with context like file path, commit hash, and scanning rule. Findings can be resolved, ignored, or marked as false positives — with full visibility into scan results over time.
-- Custom Configuration and Noise Reduction: Fine-tune scanning behavior with custom patterns, ignore rules (betterleaks:allow, .infisicalignore), entropy thresholds, and excluded paths to reduce false positives.
+## Scanning locally
+
+Scan your code with the Infisical CLI before you push it:
+
+<CardGroup cols={2}>
+  <Card title="Scan with the CLI" icon="terminal" href="/documentation/platform/secret-scanning/scan-locally">
+    Scan a Git repository's history or a directory for leaked secrets with `infisical scan`.
+  </Card>
+  <Card title="Pre-commit hook" icon="git-commit-horizontal" href="/documentation/platform/secret-scanning/pre-commit-hook">
+    Prevent secrets from getting committed with a pre-commit hook that runs `infisical scan`.
+  </Card>
+  <Card title="Ignore findings" icon="eye-off" href="/documentation/platform/secret-scanning/ignore-findings">
+    Stop `infisical scan` from reporting secrets you've decided are safe to commit.
+  </Card>
+  <Card title="Configuration" icon="settings" href="/documentation/platform/secret-scanning/local-configuration">
+    Add your own detection rules to `infisical scan` and skip secrets you've decided are safe.
+  </Card>
+</CardGroup>
+
+## Scanning repositories
+
+Connect your repositories to Infisical, review the secrets it finds, and configure the rules it scans with:
+
+<CardGroup cols={3}>
+  <Card title="GitHub" icon="/images/platform/secret-scanning/icons/github.svg" href="/documentation/platform/secret-scanning/github">
+    Scan the repositories a GitHub Radar connection can access.
+  </Card>
+  <Card title="GitLab" icon="/images/platform/secret-scanning/icons/gitlab.svg" href="/documentation/platform/secret-scanning/gitlab">
+    Scan one GitLab project, or the projects in a group.
+  </Card>
+  <Card title="Bitbucket" icon="/images/platform/secret-scanning/icons/bitbucket.svg" href="/documentation/platform/secret-scanning/bitbucket">
+    Scan the repositories in a Bitbucket workspace.
+  </Card>
+</CardGroup>
+
+<CardGroup>
+<Card title="Findings" icon="search" href="/documentation/platform/secret-scanning/findings">
+    Review the secrets Infisical finds in your repositories.
+  </Card>
+  <Card title="Configuration" icon="settings" href="/documentation/platform/secret-scanning/configuration">
+    Add your own detection rules and skip secrets you've decided are safe.
+  </Card>
+</CardGroup>

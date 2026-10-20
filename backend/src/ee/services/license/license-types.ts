@@ -102,7 +102,7 @@ export type TFeatureSet = {
   kmip: false;
   gateway: false;
   gatewayPool: false;
-  pamSlackNotifications: boolean;
+  pamEnterpriseAlerting: boolean;
   secretScanning: false;
   enterpriseSecretSyncs: false;
   enterpriseAppConnections: false;
@@ -126,6 +126,7 @@ export type TFeatureSet = {
   // withholds it on cloud.
   caCrl: boolean;
   pkiOcsp: false;
+  pkiAwsKmsSigning: false;
   pkiEnterpriseCaIntegrations: false;
   pkiExternalIntermediateCa: false;
   pkiDiscovery: false;

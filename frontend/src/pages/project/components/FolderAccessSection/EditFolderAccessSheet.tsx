@@ -146,7 +146,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
         </div>
       </div>
 
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>

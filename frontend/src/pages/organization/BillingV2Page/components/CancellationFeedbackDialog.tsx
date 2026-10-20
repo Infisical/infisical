@@ -14,11 +14,14 @@ import {
   AlertDialogTitle,
   Button,
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Label,
   RadioGroup,
-  RadioGroupItem
+  RadioGroupItem,
+  TextArea
 } from "@app/components/v3";
 import { analytics, AnalyticsEvent, type BillingCancellationAction } from "@app/lib/analytics";
 
@@ -35,6 +38,8 @@ const CANCELLATION_REASONS = [
   { value: "other", label: "Other" }
 ] as const;
 
+const COMMENT_MAX_LENGTH = 500;
+
 type CancellationReason = (typeof CANCELLATION_REASONS)[number]["value"];
 
 const formSchema = z.object({
@@ -44,7 +49,11 @@ const formSchema = z.object({
       ...CancellationReason[]
     ],
     { message: "Select a reason to continue." }
-  )
+  ),
+  comment: z
+    .string()
+    .trim()
+    .max(COMMENT_MAX_LENGTH, `Keep your comment under ${COMMENT_MAX_LENGTH} characters.`)
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -88,10 +97,11 @@ export const CancellationFeedbackDialog = ({
     handleSubmit,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: { comment: "" }
   });
 
-  const onSubmit = async ({ reason }: FormData) => {
+  const onSubmit = async ({ reason, comment }: FormData) => {
     try {
       await onConfirm();
     } catch {
@@ -101,7 +111,8 @@ export const CancellationFeedbackDialog = ({
     analytics.captureForOrganization(AnalyticsEvent.BillingCancellationReasonSubmitted, orgId, {
       action,
       productId,
-      reason
+      reason,
+      ...(comment && { comment })
     });
     onConfirmed();
   };
@@ -153,6 +164,36 @@ export const CancellationFeedbackDialog = ({
                   })}
                 </RadioGroup>
                 <FieldError>{fieldState.error?.message}</FieldError>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="comment"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel htmlFor="cancellation-comment">Comment (optional)</FieldLabel>
+                <FieldContent>
+                  <TextArea
+                    {...field}
+                    id="cancellation-comment"
+                    aria-describedby="cancellation-comment-hint"
+                    rows={3}
+                    maxLength={COMMENT_MAX_LENGTH}
+                    disabled={isSubmitting}
+                    placeholder="Tell us what would have made you stay"
+                    isError={Boolean(fieldState.error)}
+                  />
+                  <FieldDescription className="flex justify-between gap-4">
+                    <span id="cancellation-comment-hint">
+                      Don&apos;t include secrets, credentials, or personal data.
+                    </span>
+                    <span className="tabular-nums">
+                      {field.value.length}/{COMMENT_MAX_LENGTH}
+                    </span>
+                  </FieldDescription>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
               </Field>
             )}
           />

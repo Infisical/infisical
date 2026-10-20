@@ -173,6 +173,7 @@ Each entry in the `certificates` list accepts the following parameters:
 | `file-output.chain.path` | Optional | The path to store the certificate chain |
 | `file-output.chain.permission` | Optional (defaults to `0600`) | The octal file permissions for the chain file (e.g. `0644`) |
 | `file-output.chain.omit-root` | Optional (defaults to `true`) | Whether to exclude the root CA certificate from the written chain |
+| `file-output.combine-certificate-chain` | Optional (defaults to `false`) | Whether to write the certificate followed by its chain to `certificate.path` as a single full-chain file. When `true`, `chain.path` is ignored and `chain.omit-root` still applies. See [Full-chain certificate file](#full-chain-certificate-file) |
 | `lifecycle.renew-before-expiry` | Optional (auto-renewal is disabled if not set) | How long before expiration the agent should renew the certificate (e.g. `14d`). Must be shorter than the certificate's TTL |
 | `lifecycle.replace-on-renewals` | Optional (defaults to `false`) | Only valid with `certificate-id`. Whether the agent should deliver the most recent renewal of that certificate instead of the certificate itself |
 | `lifecycle.status-check-interval` | Optional (defaults to `10s`) | How frequently the agent checks certificate status and renewal needs |
@@ -351,6 +352,46 @@ certificates:
         command: "systemctl reload nginx && logger 'Certificate renewed'"
         timeout: 30
 ```
+
+### Full-chain certificate file
+
+Some web servers and proxies, such as NGINX, expect the certificate and its intermediate chain in one file. With `combine-certificate-chain: true`, the agent writes the certificate followed by the chain to `certificate.path` on issuance and on every renewal. No concatenation script is needed.
+
+```yaml expandable
+version: v2
+
+infisical:
+  address: "https://app.infisical.com"
+
+auth:
+  type: "universal-auth"
+  config:
+    client-id: "/etc/infisical/client-id"
+    client-secret: "/etc/infisical/client-secret"
+
+certificates:
+  - application-name: "web-services"
+    profile-name: "web-server"
+    attributes:
+      common-name: "api.example.com"
+      ttl: "30d"
+    lifecycle:
+      renew-before-expiry: "14d"
+      status-check-interval: "6h"
+    file-output:
+      combine-certificate-chain: true
+      private-key:
+        path: "/etc/ssl/private/api.example.com.key"
+        permission: "0600"
+      certificate:
+        path: "/etc/ssl/certs/api.example.com.fullchain.pem"
+        permission: "0644"
+```
+
+- Point the server's certificate setting at the combined file and its key setting at the private key (`ssl_certificate` and `ssl_certificate_key` in NGINX)
+- Reload the server after issuance and renewal with [post-event hooks](#post-event-hooks)
+- The root CA is left out of the file by default (set `file-output.chain.omit-root: false` to include it)
+- On restart, the agent rewrites the file and runs `on-issuance` only when the file differs from the current certificate and chain (for example, after the option is turned on for an existing leaf-only file)
 
 ### Tracking an existing certificate
 

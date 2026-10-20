@@ -128,6 +128,10 @@ On the host where the agent runs, paste the command you copied in the previous s
 
 <AgentLaunchCommand />
 
+<Tip>
+  Instead of passing `--session-token` and `--proxy`, you can set the [`INFISICAL_AGENT_VAULT_SESSION_TOKEN` and `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` environment variables](/cli/reference#agent-vault-run).
+</Tip>
+
 The CLI adds the proxy's certificate authority to the agent process' trusted CAs and starts the agent with its HTTP traffic routed through the proxy. Any calls to services in your access bundle leave the proxy with the real credential attached, while calls to any other host go out normally.
 
 <Note>

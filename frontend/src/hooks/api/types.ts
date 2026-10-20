@@ -40,6 +40,7 @@ export enum ApiErrorTypes {
   ValidationError = "ValidationFailure",
   PermissionBoundaryError = "PermissionBoundaryError",
   BadRequestError = "BadRequest",
+  ConflictError = "Conflict",
   UnauthorizedError = "UnauthorizedError",
   ForbiddenError = "PermissionDenied",
   CustomForbiddenError = "ForbiddenError",

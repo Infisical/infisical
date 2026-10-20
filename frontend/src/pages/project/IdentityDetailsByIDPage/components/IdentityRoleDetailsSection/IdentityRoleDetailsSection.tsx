@@ -54,7 +54,7 @@ import {
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -78,6 +78,7 @@ export const IdentityRoleDetailsSection = ({
   identityMembershipDetails,
   isMembershipDetailsLoading
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
@@ -144,7 +145,8 @@ export const IdentityRoleDetailsSection = ({
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
   // Products where the underlying project is an internal detail the user never sees
-  const isStandaloneProduct = isCertManager || isPam;
+  const isSecretScanning = currentProject?.type === ProjectType.SecretScanning;
+  const isStandaloneProduct = isCertManager || isPam || isSecretScanning;
   // PAM has a single built-in product role edited from its own Access Control page; the generic
   // multi-role editor (custom roles, temporary access) doesn't apply, so the card is read-only here.
   const isRoleEditable = !isPam;
@@ -375,7 +377,7 @@ export const IdentityRoleDetailsSection = ({
                         const isEditDisabled = !isAllowed || !canModifyIdentityRoles;
                         const button = (
                           <Button
-                            variant="project"
+                            variant={scopeVariant}
                             size="xs"
                             onClick={() => {
                               handlePopUpOpen("modifyRole");

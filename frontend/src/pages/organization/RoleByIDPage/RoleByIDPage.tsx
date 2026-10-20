@@ -8,7 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -181,7 +181,7 @@ export const Page = () => {
         </div>
       )}
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteOrgRole.isOpen}
         title={`Are you sure you want to delete the organization role ${data?.name ?? ""}?`}
         description="This action is irreversible."

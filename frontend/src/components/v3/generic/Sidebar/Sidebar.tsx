@@ -36,13 +36,21 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-type SidebarScope = "org" | "sub-org" | "project" | "pam" | "agent-vault" | "admin";
+type SidebarScope =
+  | "org"
+  | "sub-org"
+  | "project"
+  | "pam"
+  | "agent-vault"
+  | "secret-scanning"
+  | "admin";
 
 // Products that own a colour repoint the shared --color-project variable rather than adding a parallel
 // set of scope classes.
 const SIDEBAR_SCOPE_COLOR_OVERRIDE: Partial<Record<SidebarScope, Record<string, string>>> = {
   pam: { "--color-project": "#ed3453" },
-  "agent-vault": { "--color-project": "var(--color-product-av)" }
+  "agent-vault": { "--color-project": "var(--color-product-av)" },
+  "secret-scanning": { "--color-project": "var(--color-product-ss)" }
 };
 
 const SidebarScopeContext = React.createContext<SidebarScope>("org");
@@ -203,7 +211,10 @@ function Sidebar({
               data-mobile="true"
               className={cn(
                 "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground in-data-[theme=light]:bg-none [&>button]:hidden",
-                (scope === "project" || scope === "pam" || scope === "agent-vault") &&
+                (scope === "project" ||
+                  scope === "pam" ||
+                  scope === "agent-vault" ||
+                  scope === "secret-scanning") &&
                   "from-project/5",
                 scope === "sub-org" && "from-sub-org/5",
                 scope === "org" && "from-org/5",
@@ -240,7 +251,10 @@ function Sidebar({
             className={cn(
               "flex h-full flex-col overflow-hidden border-r border-border-soft bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear in-data-[theme=light]:bg-none",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
-              (scope === "project" || scope === "pam" || scope === "agent-vault") &&
+              (scope === "project" ||
+                scope === "pam" ||
+                scope === "agent-vault" ||
+                scope === "secret-scanning") &&
                 "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
               scope === "org" && "from-org/5",
@@ -597,8 +611,7 @@ function SidebarCollapsibleGroup({
         expandedHeader
       )}
       <div
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {...(!isCollapsed && !open ? { inert: "" as any } : {})}
+        inert={!isCollapsed && !open}
         className={cn(
           "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out",
           isCollapsed || open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
@@ -654,6 +667,7 @@ const sidebarMenuButtonVariants = cva(
         project: "data-active:border-l-project data-active:[&_svg]:text-project",
         pam: "data-active:border-l-project data-active:[&_svg]:text-project",
         "agent-vault": "data-active:border-l-project data-active:[&_svg]:text-project",
+        "secret-scanning": "data-active:border-l-project data-active:[&_svg]:text-project",
         admin: "data-active:border-l-admin data-active:[&_svg]:text-admin"
       }
     },

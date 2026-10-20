@@ -350,9 +350,145 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   margin-bottom: 0;
 }
 
+.ifx-steps__panels {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.ifx-steps__panel {
+  padding: 0 0 0.5rem;
+  border: 0;
+  background: none;
+  font-size: 0.8125rem;
+  color: #6f6f6f;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.ifx-steps__panel:hover {
+  color: #171718;
+}
+
+.ifx-steps__panel--active {
+  color: #171718;
+  border-bottom-color: #171718;
+}
+
+.dark .ifx-steps__panels {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .ifx-steps__panel:hover,
+.dark .ifx-steps__panel--active {
+  color: #f4f4f4;
+}
+
+.dark .ifx-steps__panel--active {
+  border-bottom-color: #f4f4f4;
+}
+
+.ifx-steps__prose {
+  display: flex;
+  flex-direction: column;
+  height: 11rem;
+  font-size: 0.9375rem;
+  color: #171718;
+  line-height: 1.55;
+}
+
+.ifx-prompt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background-color: var(--ifx-surface);
+  border: 1px solid var(--ifx-line);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--ifx-text-dim);
+}
+
+.ifx-prompt__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0.75rem 3rem 0.75rem 0.875rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  --ifx-prompt-fade-top: 0px;
+  --ifx-prompt-fade-bottom: 0px;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--ifx-prompt-fade-top),
+    black calc(100% - var(--ifx-prompt-fade-bottom)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--ifx-prompt-fade-top),
+    black calc(100% - var(--ifx-prompt-fade-bottom)),
+    transparent
+  );
+}
+
+.ifx-prompt__p {
+  margin: 0 0 0.5rem;
+}
+
+.ifx-prompt__p:last-child {
+  margin-bottom: 0;
+}
+
+.ifx-prompt__code {
+  padding: 0.05rem 0.3rem;
+  background-color: var(--ifx-control-line);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  color: var(--ifx-text-dim);
+}
+
+.ifx-prompt__copy {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  color: var(--ifx-muted);
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.ifx-prompt__copy:hover {
+  color: var(--ifx-control-text-hover);
+  background-color: var(--ifx-hover-fill);
+}
+
+.ifx-steps__prose p {
+  margin: 0 0 0.625rem;
+}
+
+.dark .ifx-steps__prose {
+  color: #dfdfdf;
+}
+
 .ifx-steps__list {
   margin: 0;
   padding: 0;
+  min-height: 11rem;
   list-style: none;
 }
 
@@ -455,6 +591,34 @@ a.ifx-steps__label:hover {
   margin-top: 0.5rem;
   background-color: var(--ifx-surface);
   border: 1px solid var(--ifx-line);
+}
+
+.ifx-steps__cmd--block {
+  position: relative;
+}
+
+.ifx-steps__cmd--block .ifx-steps__code {
+  max-height: 6rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding-right: 2.5rem;
+}
+
+.ifx-steps__cmd--block .ifx-steps__copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2rem;
+  height: 2rem;
+  border-left: 0;
+  border-bottom: 1px solid #ebebeb;
+  background-color: rgba(251, 251, 250, 0.92);
+}
+
+.dark .ifx-steps__cmd--block .ifx-steps__copy {
+  background-color: rgba(23, 23, 24, 0.92);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
 }
 
 .ifx-steps__code {
@@ -797,12 +961,12 @@ a.ifx-card__title:hover .ifx-card__chevron {
   .ifx-home__hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 27rem);
     column-gap: 5rem;
-    align-items: center;
+    align-items: start;
     padding: 1.5rem 0;
   }
 
   .ifx-home__hero-aside {
-    align-self: stretch;
+    padding-top: 1.25rem;
   }
 
   .ifx-stack {
@@ -2412,6 +2576,32 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 .cli-cmd__description [data-as="p"] + [data-as="p"],
 .cli-cmd__description p + p {
+  margin-top: 0.875rem;
+}
+
+/* The CLI page sits outside Mintlify's prose styles, so lists keep the reset that hides their markers. */
+.cli-cmd__description ul,
+.cli-cmd__description ol {
+  margin: 0.875rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.cli-cmd__description ul {
+  list-style: disc;
+}
+
+.cli-cmd__description ol {
+  list-style: decimal;
+}
+
+.cli-cmd__description li + li {
+  margin-top: 0.25rem;
+}
+
+.cli-cmd__description ul + [data-as="p"],
+.cli-cmd__description ul + p,
+.cli-cmd__description ol + [data-as="p"],
+.cli-cmd__description ol + p {
   margin-top: 0.875rem;
 }
 

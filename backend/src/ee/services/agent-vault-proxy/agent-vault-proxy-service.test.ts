@@ -28,7 +28,6 @@ const SERVER_URL = "https://mcp.linear.app/mcp";
 const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServiceRow => ({
   id: SERVICE_ID,
   name: "linear",
-  accessBundleId: "22222222-2222-4222-8222-222222222222",
   accessBundleName: "bundle",
   type: AgentVaultServiceType.Mcp,
   hostPattern: "mcp.linear.app",
