@@ -13,7 +13,6 @@ import {
 const plan = (overrides: Partial<OfflineUsagePlan> = {}): OfflineUsagePlan => ({
   slug: SubscriptionPlanTypes.Enterprise,
   identityLimit: null as unknown as number,
-  maxCas: null,
   maxInternalCas: null,
   maxCertificates: null,
   maxWildcardCertificates: null,
@@ -49,12 +48,11 @@ describe("resolveOfflineLimit", () => {
     expect(resolveOfflineLimit(D.Identities, plan({ enforceIdentityLimit: true }))).toBeNull();
   });
 
-  it("uses maxInternalCas for internal CAs, falling back to maxCas only when it is tighter", () => {
+  it("pairs the internal-CA count with maxInternalCas only, never the all-types maxCas", () => {
     expect(resolveOfflineLimit(D.InternalCas, plan({ maxInternalCas: 10 }))).toBe(10);
-    expect(resolveOfflineLimit(D.InternalCas, plan({ maxCas: 1 }))).toBe(1);
-    // Both set: the backend honours the larger as the all-types cap, so maxInternalCas binds.
-    expect(resolveOfflineLimit(D.InternalCas, plan({ maxCas: 3, maxInternalCas: 10 }))).toBe(10);
-    expect(resolveOfflineLimit(D.InternalCas, plan({ maxCas: 10, maxInternalCas: 3 }))).toBe(3);
+    expect(
+      resolveOfflineLimit(D.InternalCas, { ...plan(), maxCas: 1 } as OfflineUsagePlan)
+    ).toBeNull();
     expect(resolveOfflineLimit(D.InternalCas, plan())).toBeNull();
   });
 
@@ -74,7 +72,6 @@ describe("resolveOfflineLimit", () => {
     const capped = plan({
       identityLimit: 1,
       enforceIdentityLimit: true,
-      maxCas: 1,
       maxInternalCas: 1,
       maxCertificates: 1,
       maxWildcardCertificates: 1

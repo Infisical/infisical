@@ -397,9 +397,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Every CA type across the org tree (orgId null: the whole instance). Counting all types rather than
-  // INTERNAL + ACME behaves identically, since tiers that set maxCas cannot create the others
-  // (pkiEnterpriseCaIntegrations blocks them) and is simpler.
+  // Every CA type across the org tree (orgId null: the whole instance): maxCas caps internal, ACME and
+  // external CAs together. ACME CAs need no extra entitlement; external ones need
+  // pkiEnterpriseCaIntegrations.
   const countCasByOrgId = async (orgId: string | null, tx?: Knex) => {
     try {
       const query = (tx || db.replicaNode())(TableName.CertificateAuthority)

@@ -62,7 +62,6 @@ export type OfflineUsagePlan = Pick<
   | "slug"
   | "identityLimit"
   | "enforceIdentityLimit"
-  | "maxCas"
   | "maxInternalCas"
   | "maxCertificates"
   | "maxWildcardCertificates"
@@ -70,12 +69,6 @@ export type OfflineUsagePlan = Pick<
 >;
 
 const asCap = (value: number | null | undefined) => (typeof value === "number" ? value : null);
-
-const effectiveMaxCas = (plan: OfflineUsagePlan) => {
-  const maxCas = asCap(plan.maxCas);
-  const maxInternalCas = asCap(plan.maxInternalCas);
-  return maxCas !== null && maxInternalCas !== null ? Math.max(maxCas, maxInternalCas) : maxCas;
-};
 
 export const resolveOfflineLimit = (
   key: BillingV2BreakdownDimension,
@@ -85,12 +78,8 @@ export const resolveOfflineLimit = (
     case BillingV2BreakdownDimension.Identities:
       if (plan.slug === SubscriptionPlanTypes.Enterprise && !plan.enforceIdentityLimit) return null;
       return plan.identityLimit || null;
-    case BillingV2BreakdownDimension.InternalCas: {
-      const caps = [asCap(plan.maxInternalCas), effectiveMaxCas(plan)].filter(
-        (cap): cap is number => cap !== null
-      );
-      return caps.length > 0 ? Math.min(...caps) : null;
-    }
+    case BillingV2BreakdownDimension.InternalCas:
+      return asCap(plan.maxInternalCas);
     case BillingV2BreakdownDimension.ActiveCerts:
       return asCap(plan.maxCertificates);
     case BillingV2BreakdownDimension.WildcardCerts:
