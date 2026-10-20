@@ -87,7 +87,7 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 
 - In `onBehalfOf`, set either `userEmail` or `userId`, not both
 - In `accessBundles`, name a bundle that both the user and the machine identity can use
-- `ttl` defaults to `1h` and can be at most `24h`, so `never` isn't allowed
+- `ttl` defaults to `1h`, instead of the `7d` default for other sessions
 
 Start the agent with the session token from the response, and revoke the session when the agent finishes, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
 
@@ -140,9 +140,6 @@ When the machine identity creates the session, Infisical writes an audit event w
   </Accordion>
   <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to '...'&quot;">
     The access bundle isn't granted to the user. [Grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the user, or name a bundle the user already has.
-  </Accordion>
-  <Accordion title="Creating the session fails with &quot;A session started on behalf of a user lasts at most 24h&quot;">
-    Set `ttl` to `24h` or less. If the agent runs longer than a day, create a new session before the old one expires, as [Choose how long a session lasts](/documentation/platform/agent-vault/sessions-api#choose-how-long-a-session-lasts) describes.
   </Accordion>
 </AccordionGroup>
 

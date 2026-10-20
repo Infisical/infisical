@@ -150,8 +150,9 @@ is one
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
 - **The user's session permission is checked with `can()`, not thrown through CASL**, since a CASL denial would be
   recorded against the identity making the request.
-- **TTL defaults to 1h and caps at 24h, and `never` is refused**: the user didn't start the session and may not know
-  it exists. The route's `ttl` is optional rather than defaulted because the default depends on `onBehalfOf`.
+- **TTL defaults to 1h, with no maximum for now**: the user didn't start the session and may not know it exists, so a
+  cap probably belongs here too, but any TTL is allowed for now, `never` included. The route's `ttl` is optional rather
+  than defaulted because the default depends on `onBehalfOf`.
 - **The acting identity holds the session alongside the user**: the identity's list, get, revoke and session log
   reads match `actingIdentityId` as well as `identityId` (`isSessionOwnedBy`, the session DAL's actor filter).
 - **Coverage reads group membership without `isPending`**, the way the permission engine grants access through a

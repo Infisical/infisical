@@ -39,10 +39,9 @@ export const AGENT_VAULT_SESSION_TTL_NEVER = "never";
 // Past roughly 1e8 days the expiry overflows Date and Postgres rejects the row as a 500. A century is
 // far beyond any real lifetime and keeps the message honest; "never" exists for no expiry at all.
 export const AGENT_VAULT_SESSION_MAX_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
-// The user an on-behalf-of session acts for didn't start it and may not know it exists, so it is short by default
-// and never outlives a day.
+// The user an on-behalf-of session acts for didn't start it and may not know it exists, so it is short by default.
+// It should probably have a maximum too, but for now any TTL is allowed, never included.
 export const AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL = "1h";
-export const AGENT_VAULT_ON_BEHALF_OF_SESSION_MAX_TTL = "24h";
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
@@ -170,17 +169,8 @@ export const agentVaultSessionServiceFactory = ({
     return { user, identifier, accessBundleIds: reachability.accessBundleIds };
   };
 
-  const resolveSessionTtl = (ttl: string | undefined, isOnBehalfOf: boolean) => {
-    if (!isOnBehalfOf) return ttl ?? AGENT_VAULT_SESSION_DEFAULT_TTL;
-
-    const resolved = ttl ?? AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL;
-    if (resolved === AGENT_VAULT_SESSION_TTL_NEVER || ms(resolved) > ms(AGENT_VAULT_ON_BEHALF_OF_SESSION_MAX_TTL)) {
-      throw new BadRequestError({
-        message: `A session started on behalf of a user lasts at most ${AGENT_VAULT_ON_BEHALF_OF_SESSION_MAX_TTL}. Set ttl to ${AGENT_VAULT_ON_BEHALF_OF_SESSION_MAX_TTL} or less.`
-      });
-    }
-    return resolved;
-  };
+  const resolveSessionTtl = (ttl: string | undefined, isOnBehalfOf: boolean) =>
+    ttl ?? (isOnBehalfOf ? AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL : AGENT_VAULT_SESSION_DEFAULT_TTL);
 
   const mintSession = async ({
     projectId,

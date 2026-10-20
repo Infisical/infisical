@@ -4728,7 +4728,7 @@ export const AGENT_VAULT = {
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
-    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d. A session started on behalf of a user defaults to 1h and lasts at most 24h, so never isn't allowed for it.",
+    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
     onBehalfOf:
       "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. Name the user by userId or by userEmail, not both.",
     onBehalfOfUserId: "The ID of the user to start the session on behalf of.",

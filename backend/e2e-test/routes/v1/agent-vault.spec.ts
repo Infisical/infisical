@@ -4124,7 +4124,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a session on a user's behalf lasts an hour unless asked, and never more than a day", async () => {
+    test("a session on a user's behalf lasts an hour unless asked", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle(`obo-ttl-${Date.now()}`);
       const bot = await createMemberIdentity(`obo-ttl-bot-${Date.now()}`);
@@ -4138,15 +4138,13 @@ describe("Agent Vault V1 Router", async () => {
         expect(byDefault.statusCode).toBe(200);
         expect(hoursFromNow(byDefault.json().session.expiresAt as string)).toBeCloseTo(1, 1);
 
-        expect((await mintFor(bot, { userId: alice.userId }, bundle.name, "24h")).statusCode).toBe(200);
-        for (const ttl of ["25h", "never"]) {
-          // eslint-disable-next-line no-await-in-loop
-          const refused = await mintFor(bot, { userId: alice.userId }, bundle.name, ttl);
-          expect(refused.statusCode).toBe(400);
-          expect(refused.json().message).toBe(
-            "A session started on behalf of a user lasts at most 24h. Set ttl to 24h or less."
-          );
-        }
+        // There's no maximum for now, never included.
+        const longer = await mintFor(bot, { userId: alice.userId }, bundle.name, "25h");
+        expect(longer.statusCode).toBe(200);
+        expect(hoursFromNow(longer.json().session.expiresAt as string)).toBeCloseTo(25, 1);
+        const unending = await mintFor(bot, { userId: alice.userId }, bundle.name, "never");
+        expect(unending.statusCode).toBe(200);
+        expect(unending.json().session.expiresAt).toBeNull();
 
         // A session the identity starts for itself keeps the usual default.
         const own = await bot.as("POST", sessionsUrl, { accessBundles: [bundle.name] });
