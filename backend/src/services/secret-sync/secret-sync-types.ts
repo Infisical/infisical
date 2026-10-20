@@ -585,7 +585,6 @@ export type TTriggerSecretSyncImportSecretsByIdDTO = {
 
 export type TQueueSecretSyncRemoveSecretsByIdDTO = {
   syncId: string;
-  failedToAcquireLockCount?: number;
   auditLogInfo?: AuditLogInfo;
   deleteSyncOnComplete?: boolean;
 };
