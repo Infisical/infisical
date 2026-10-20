@@ -109,9 +109,8 @@ const buildDAL = (opts?: { returning?: unknown[]; updated?: number; selected?: u
 };
 
 describe("event outbox dal", () => {
-  // Postgres can't infer a partial unique index from a bare column list, so the conflict target has to
-  // repeat the predicate or it's a 42P10 at runtime.
-  test("insertEvents ignores a conflict on the partial idempotency index", async () => {
+  // An emitter that derives its event id (eg a reminder occurrence) relies on this to drop a retry.
+  test("insertEvents ignores an event the consumer already has", async () => {
     const { dal, calls, tx } = buildDAL();
 
     await dal.insertEvents(
@@ -127,7 +126,7 @@ describe("event outbox dal", () => {
       tx
     );
 
-    expect(calls.onConflict[0]).toBe('("consumer", "idempotencyKey") WHERE "idempotencyKey" IS NOT NULL');
+    expect(calls.onConflict[0]).toEqual(["consumer", "eventId"]);
     expect(calls.ignored).toBe(1);
   });
 

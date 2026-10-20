@@ -778,21 +778,24 @@ at-least-once delivery of a domain event registers next to it.
 
 **Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
 `TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]`
-(the row minus its lock, attempt, and status columns) and return `TEventConsumerResult` with an
+(the CloudEvents envelope from the Event Standards and Versioning ADR) and return `TEventConsumerResult` with an
 `EventResultStatus`. Names with "outbox" in them (the DAL, queue, cron jobs, metrics,
 `EventOutboxStatus`, `TOutboxFlushKey`) describe the mechanism and stay inside the module and its
 wiring. A dependency field for the emitter is `eventEmitter`, not `eventOutboxService`.
 
-**Emitting:** `eventEmitter.emit(event, tx)`. Pass the transaction of the write the event describes, so the event is exactly as durable as that write. Omit `tx` only when there is no such write left to be atomic with (for example after it already committed); the insert then runs on its own.
+**Emitting:** `eventEmitter.emit(events, tx)`. Pass the transaction of the write the event describes, so the event is exactly as durable as that write. Omit `tx` only when there is no such write left to be atomic with (for example after it already committed); the insert then runs on its own.
 
 ```ts
 await someDAL.transaction(async (tx) => {
   const request = await approvalRequestDAL.create({ ... }, tx);
   await eventEmitter.emit(
-    {
-      eventType: "approval.workflow.request_opened",
-      payload: { orgId, projectId, resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
-    },
+    [
+      {
+        id: crypto.randomUUID(),
+        type: "approval.workflow.request_opened",
+        data: { orgId, projectId, resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
+      }
+    ],
     tx
   );
 });
@@ -802,17 +805,19 @@ await someDAL.transaction(async (tx) => {
   anything for this resource is decided in the worker; a row nobody wanted is marked `Delivered` and
   pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
   adding a read to the emit path.
-- A malformed event is dropped, not thrown: a bad key, a payload over 16KB, or a payload a consumer's
-  `payloadSchema` rejects (that consumer's row only) is logged and counted on
-  `infisical.event_outbox.dropped.count`, and the caller's write carries on. It is a bug at the emit
-  site, and failing a secret write over it is worse than the lost event. All three checks run before any
-  DB access, so the transaction is untouched. The insert itself is not caught: a swallowed insert failure
-  hands the caller a poisoned transaction (`25P02` on its next statement).
-- `emitMany(events, tx)` writes a batch in one go (eg one event per secret in a bulk write), in chunks
-  of 1000 rows to stay under Postgres's bind parameter limit. Every event gets one `eventId` (UUID),
-  shared by all its consumers' rows; `TEvent.id` is the consumer's row, `TEvent.eventId` the occurrence.
-  `eventId` is nullable, because a pod on the previous release writes rows without it during a rolling
-  deploy.
+- A malformed event throws, and fails the caller's write with it: an id that is not a UUID, a bad
+  type, `data` over 16KB, or `data` a consumer's `dataSchema` rejects is logged, counted on
+  `infisical.event_outbox.rejected.count`, and thrown before any DB access. Committing the write
+  without its event would break the guarantee that consumers hear about every change. The insert itself
+  is not caught either: a swallowed insert failure hands the caller a poisoned transaction (`25P02` on
+  its next statement).
+- `emit` writes a batch in one go (eg one event per secret in a bulk write), in chunks of 1000 rows to
+  stay under Postgres's bind parameter limit.
+- Every event carries its UUID `id` from the moment it is built, and every consumer's row for it stores
+  it as `eventId`. A consumer reports its results by that id. `(consumer, eventId)` is unique, so an
+  emitter that needs a retry dropped derives the id instead of generating it (the secret reminder uses
+  `uuid` v5 over the reminder and the date). `eventId` is nullable only in the table, because a pod on
+  the previous release writes rows without it during a rolling deploy; `claimBatch` gives those rows one.
 
 **How delivery works:**
 
@@ -836,7 +841,7 @@ await someDAL.transaction(async (tx) => {
   the fence protects the bookkeeping but delivery stays at-least-once.
 - **The envelope carries only what the outbox queries on.** `consumer`, `eventType`, and the retry and
   lock columns. Which tenant and resource an event concerns lives in `payload` under a shape the
-  consumer's `payloadSchema` declares, and that schema is where it is validated (the alert consumer
+  consumer's `dataSchema` declares, and that schema is where it is validated (the alert consumer
   requires `orgId` as a UUID). The outbox never groups, filters or indexes on any of it, so don't add a
   tenant or resource column back for a query nothing runs.
 - **Discovery only looks at consumers registered in this process.** A row for any other name has nowhere
@@ -857,8 +862,8 @@ await someDAL.transaction(async (tx) => {
   don't add a partition key back until a consumer needs one: no consumer today depends on the order two
   events for one resource arrive in, and each event is idempotent on its own through alert history.
 - **Delivery is at-least-once.** `commitResults` is retried in-process, since by then the consumer has
-  already sent; what's left is narrowed by the consumer's own delivery records and by the emitter's
-  `idempotencyKey`.
+  already sent; what's left is narrowed by the consumer's own delivery records and by an emitter that
+  derives its event id.
 
 **Watch `infisical.event_outbox.oldest_pending_age`.** It catches a dead relay, a wedged consumer and a
 stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, labelled by consumer, so a
@@ -866,7 +871,7 @@ new consumer gets them for free.
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
 `triggerType: AlertTriggerType.Event`, implement `findEventTargets`, and emit with
-`payload: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
+`data: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
 provider's. A
 `resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
 emit site shows up in the logs on its first event.
@@ -877,19 +882,10 @@ service emits inside each transition's transaction (PAM folder alerts use it).
 **New events follow the Event Standards and Versioning ADR (CloudEvents 1.0).** Define them with
 `defineEvent` (`event-outbox/event-definition.ts`), which names the event
 `com.infisical.<domain>.<entity>.<action>.v<version>` and throws at module load on a name that breaks the
-convention. A consumer uses the definition's `data` schema as its `payloadSchema`. `toCloudEvent` builds
-the CloudEvents envelope from a delivered `TEvent` for anything that leaves the backend. The events
-emitted before the ADR (eg `identity.authentication.auth-method-changed`) keep their names.
-
-**Secret, folder and import changes emit `com.infisical.secrets.{secret,folder,secret-import}.modified.v1`**
-(definitions in `secret-v2-bridge/secret-events.ts`, `secret-folder/secret-folder-events.ts`,
-`secret-import/secret-import-events.ts`). Secrets emit from inside `fnSecretBulkInsert`,
-`fnSecretBulkUpdate` and `fnSecretBulkDelete`, whose required `eventEmitter` and `eventScope` parameters
-make the type checker list every caller, so a new caller cannot skip the emit. A write to `secrets_v2`
-that bypasses those functions (eg a raw DAL `delete`) must emit with `emitSecretsModified` itself, in the
-same transaction. Only shared secrets emit. The e2e suite registers a recording consumer for these events
-(`e2e-test/fakes/event-outbox-registry.ts`), so `e2e-test/routes/v4/secret-events.spec.ts` can read what a
-write emitted.
+convention. Emit one with `SomeEventV1.emit(eventEmitter, data, tx)`, or `build` several and pass them to
+`eventEmitter.emit` together. A consumer uses the definition's `data` schema as its `dataSchema`. The
+events emitted before the ADR (eg `identity.authentication.auth-method-changed`) keep their names, and
+their `source` comes from the first segment of the name.
 
 **The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
 event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)

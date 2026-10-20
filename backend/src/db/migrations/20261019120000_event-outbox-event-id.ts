@@ -2,23 +2,35 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
-// One id per event, shared by every consumer's row, so the same occurrence can be recognised across
-// consumers and handed out as the CloudEvents `id`. The row `id` is per consumer and can't serve.
-// Nullable with no default: a pod still running the previous release inserts without it during a rolling
-// deploy, and NOT NULL would fail that insert along with the write it belongs to. Those rows are pruned
-// within a day.
-export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.EventOutbox, "eventId")) return;
+const EVENT_ID_INDEX = `${TableName.EventOutbox}_event_id_idx`;
 
-  await knex.schema.alterTable(TableName.EventOutbox, (t) => {
-    t.uuid("eventId");
-  });
+// The CloudEvents `id`, shared by every consumer's row for one event. It replaces `idempotencyKey`: an
+// emitter that needs a retry deduplicated derives the id instead of passing a key. Both stay for one
+// release, because a pod still on the previous release inserts into `idempotencyKey` and names its
+// unique index in ON CONFLICT during a rolling deploy; dropping either would fail that insert along with
+// the write it belongs to. For the same reason `eventId` is nullable with no default: `claimBatch` gives
+// those rows one.
+export async function up(knex: Knex): Promise<void> {
+  if (!(await knex.schema.hasColumn(TableName.EventOutbox, "eventId"))) {
+    await knex.schema.alterTable(TableName.EventOutbox, (t) => {
+      t.uuid("eventId");
+    });
+  }
+
+  // Not partial, so ON CONFLICT can name the columns. NULLs never conflict, so rows without an id
+  // still insert.
+  await knex.schema.raw(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "${EVENT_ID_INDEX}"
+    ON "${TableName.EventOutbox}" ("consumer", "eventId")
+  `);
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasColumn(TableName.EventOutbox, "eventId"))) return;
+  await knex.schema.raw(`DROP INDEX IF EXISTS "${EVENT_ID_INDEX}"`);
 
-  await knex.schema.alterTable(TableName.EventOutbox, (t) => {
-    t.dropColumn("eventId");
-  });
+  if (await knex.schema.hasColumn(TableName.EventOutbox, "eventId")) {
+    await knex.schema.alterTable(TableName.EventOutbox, (t) => {
+      t.dropColumn("eventId");
+    });
+  }
 }

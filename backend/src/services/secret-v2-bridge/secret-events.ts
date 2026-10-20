@@ -40,4 +40,4 @@ export const emitSecretsModified = (
   scope: TSecretEventScope,
   secrets: { id: string; type: string }[],
   tx?: Knex
-): Promise<void> => eventEmitter.emitMany(secretModifiedEvents(scope, secrets), tx);
+): Promise<void> => eventEmitter.emit(secretModifiedEvents(scope, secrets), tx);

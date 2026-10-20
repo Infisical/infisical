@@ -330,7 +330,7 @@ export const secretFolderServiceFactory = ({
         }
 
         createdFolders.push({ folderId: doc.id, secretPath: folderWithFullPath.path });
-        await eventEmitter.emitMany(
+        await eventEmitter.emit(
           createdFolders.map((createdFolder) =>
             FolderModifiedEventV1.build({ ...createdFolder, projectId, environment })
           ),
@@ -484,7 +484,7 @@ export const secretFolderServiceFactory = ({
           }
 
           if (doc.name !== folder.name) {
-            await eventEmitter.emitMany(
+            await eventEmitter.emit(
               [folder.name, doc.name].map((folderName) =>
                 FolderModifiedEventV1.build({
                   folderId: doc.id,
@@ -631,7 +631,7 @@ export const secretFolderServiceFactory = ({
       }
 
       if (newFolderWithPath.path !== oldFolderWithPath.path) {
-        await eventEmitter.emitMany(
+        await eventEmitter.emit(
           [oldFolderWithPath.path, newFolderWithPath.path].map((folderPath) =>
             FolderModifiedEventV1.build({ folderId: doc.id, projectId, environment: env.slug, secretPath: folderPath })
           ),
@@ -893,13 +893,14 @@ export const secretFolderServiceFactory = ({
         tx
       );
 
-      await eventEmitter.emit(
-        FolderModifiedEventV1.build({
+      await FolderModifiedEventV1.emit(
+        eventEmitter,
+        {
           folderId: doc.id,
           projectId,
           environment,
           secretPath: path.posix.join(parentFolder.path, doc.name)
-        }),
+        },
         tx
       );
       return doc;
@@ -1407,7 +1408,7 @@ export const secretFolderServiceFactory = ({
             tx
           );
           createdFolderPaths.push({ folderId: doc.id, secretPath: pathWithFolder });
-          await eventEmitter.emitMany(
+          await eventEmitter.emit(
             createdFolderPaths.map((createdFolder) =>
               FolderModifiedEventV1.build({ ...createdFolder, projectId, environment })
             ),
@@ -1599,13 +1600,14 @@ export const secretFolderServiceFactory = ({
             );
           }
 
-          await eventEmitter.emit(
-            FolderModifiedEventV1.build({
+          await FolderModifiedEventV1.emit(
+            eventEmitter,
+            {
               folderId: doc.id,
               projectId,
               environment,
               secretPath: path.posix.join(parentFolder.path, doc.name)
-            }),
+            },
             tx
           );
 
@@ -2037,7 +2039,7 @@ export const secretFolderServiceFactory = ({
         description: entry.description
       }));
       const createdFolders = await folderDAL.insertMany(newFolderRows, tx);
-      await eventEmitter.emitMany(
+      await eventEmitter.emit(
         plan.map((entry) =>
           FolderModifiedEventV1.build({
             folderId: entry.newFolderId,
@@ -2130,13 +2132,14 @@ export const secretFolderServiceFactory = ({
       // removing only the source root removes the entire subtree. the source is always fully emptied here: a
       // subtree governed by a source approval policy was rejected up front, so no secret is left pending.
       const [deletedRoot] = await folderDAL.delete({ id: sourceFolder.id }, tx);
-      await eventEmitter.emit(
-        FolderModifiedEventV1.build({
+      await FolderModifiedEventV1.emit(
+        eventEmitter,
+        {
           folderId: deletedRoot.id,
           projectId,
           environment: sourceEnvironment,
           secretPath: sourceFolderPath
-        }),
+        },
         tx
       );
       const latestVersions = await folderVersionDAL.findLatestFolderVersions([deletedRoot.id], tx);

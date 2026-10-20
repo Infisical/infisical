@@ -20,9 +20,9 @@ const secretEventsRecorder: IEventConsumer = {
   name: SECRET_EVENTS_RECORDER,
   // The definitions' own schemas, so an emit site that builds a bad payload is dropped here exactly as
   // it would be for a real consumer, and the spec waiting for its row fails.
-  payloadSchema: z.union([RECORDED_EVENTS[0].data, RECORDED_EVENTS[1].data, RECORDED_EVENTS[2].data]),
+  dataSchema: z.union([RECORDED_EVENTS[0].data, RECORDED_EVENTS[1].data, RECORDED_EVENTS[2].data]),
   subscribesTo: (eventType) => RECORDED_EVENTS.some((definition) => definition.type === eventType),
-  handle: async (events) => events.map((event) => ({ id: String(event.id), status: EventResultStatus.Delivered }))
+  handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }))
 };
 
 export const eventOutboxRegistryFactory: typeof RealEventOutboxRegistry.eventOutboxRegistryFactory = () => {

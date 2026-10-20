@@ -996,7 +996,7 @@ export const fnUpdateSecretLinkedReferences = async ({
   if (updatedFolderIds.length > 0) {
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
 
-    await eventEmitter.emitMany(
+    await eventEmitter.emit(
       folderPaths.flatMap((folder) =>
         folder
           ? secretModifiedEvents(
@@ -1415,7 +1415,7 @@ export const fnUpdateMovedSecretReferences = async ({
   if (updatedFolderIds.length > 0) {
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
 
-    await eventEmitter.emitMany(
+    await eventEmitter.emit(
       folderPaths.flatMap((folder) =>
         folder
           ? secretModifiedEvents(

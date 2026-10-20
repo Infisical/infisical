@@ -322,7 +322,7 @@ describe("expandSecretReferencesGroupedByPath", () => {
 });
 
 describe("fnSecretBulkDelete", () => {
-  const emitMany = vi.fn().mockResolvedValue(undefined);
+  const emit = vi.fn().mockResolvedValue(undefined);
 
   test("removes the reminder of every deleted shared secret, whatever the legacy repeat-days column holds", async () => {
     const removeSecretReminder = vi.fn().mockResolvedValue(undefined);
@@ -344,7 +344,7 @@ describe("fnSecretBulkDelete", () => {
       secretQueueService: { removeSecretReminder },
       folderCommitService: { createCommit: vi.fn() },
       secretVersionDAL: { findLatestVersionMany: vi.fn().mockResolvedValue({}) },
-      eventEmitter: { emitMany },
+      eventEmitter: { emit },
       eventScope: { projectId: "proj-1", environment: "dev", secretPath: "/" }
     } as never);
 
@@ -372,15 +372,16 @@ describe("fnSecretBulkDelete", () => {
       secretQueueService: { removeSecretReminder: vi.fn() },
       folderCommitService: { createCommit: vi.fn() },
       secretVersionDAL: { findLatestVersionMany: vi.fn().mockResolvedValue({}) },
-      eventEmitter: { emitMany },
+      eventEmitter: { emit },
       eventScope: { projectId: "proj-1", environment: "dev", secretPath: "/app" }
     } as never);
 
-    expect(emitMany).toHaveBeenLastCalledWith(
+    expect(emit).toHaveBeenLastCalledWith(
       [
         {
-          eventType: "com.infisical.secrets.secret.modified.v1",
-          payload: { secretId: "secret-1", projectId: "proj-1", environment: "dev", secretPath: "/app" }
+          id: expect.any(String),
+          type: "com.infisical.secrets.secret.modified.v1",
+          data: { secretId: "secret-1", projectId: "proj-1", environment: "dev", secretPath: "/app" }
         }
       ],
       tx

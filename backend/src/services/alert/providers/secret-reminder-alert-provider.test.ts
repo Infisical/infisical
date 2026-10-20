@@ -104,10 +104,9 @@ describe("secret reminder alert provider", () => {
     let emitted: Record<string, unknown> | undefined;
     await emitSecretReminderDue(
       {
-        emit: async (event) => {
-          emitted = event.payload;
-        },
-        emitMany: async () => {}
+        emit: async ([event]) => {
+          emitted = event.data;
+        }
       },
       {
         orgId: "org-1",

@@ -1,17 +1,16 @@
-import crypto from "node:crypto";
-
 import { Knex } from "knex";
 
-import { TEventOutbox } from "@app/db/schemas";
+import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
-  EventOutboxDropReason,
-  recordEventOutboxDroppedMetric,
+  EventOutboxRejectReason,
   recordEventOutboxExhaustedMetric,
-  recordEventOutboxLagMetric
+  recordEventOutboxLagMetric,
+  recordEventOutboxRejectedMetric
 } from "@app/lib/telemetry/metrics";
 
-import { TEventOutboxDALFactory, TOutboxInsertRow } from "./event-outbox-dal";
+import { eventSource } from "./event-definition";
+import { TClaimedOutboxRow, TEventOutboxDALFactory, TOutboxInsertRow } from "./event-outbox-dal";
 import { TEventOutboxRegistry } from "./event-outbox-registry";
 import {
   computeBackoffMs,
@@ -26,6 +25,7 @@ import {
   MAX_OUTBOX_PAYLOAD_BYTES,
   OUTBOX_CLAIM_BATCH_SIZE,
   STALE_CLAIM_THRESHOLD_MS,
+  TEvent,
   TEventConsumerResult,
   TEventInput,
   TOutboxFlushKey
@@ -73,6 +73,15 @@ const withTimeout = async <T>(promise: Promise<T>, ms: number, makeError: () => 
   }
 };
 
+const toEvent = (row: TClaimedOutboxRow): TEvent => ({
+  specversion: "1.0",
+  id: row.eventId,
+  source: eventSource(row.eventType),
+  type: row.eventType,
+  time: new Date(row.occurredAt).toISOString(),
+  data: row.payload
+});
+
 const formatIssues = (issues: { path: (string | number)[]; message: string }[]) =>
   issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ");
 
@@ -103,70 +112,68 @@ export type TEventOutboxServiceFactoryDep = {
 export type TEventOutboxServiceFactory = ReturnType<typeof eventOutboxServiceFactory>;
 
 export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry }: TEventOutboxServiceFactoryDep) => {
-  // A malformed event is dropped, logged and counted, never thrown: it is a bug at the emit site, and
-  // failing the caller's write over it would turn a missed notification into a failed secret update.
-  // Every check runs before any DB access, so a drop leaves the caller's transaction untouched.
-  const $drop = (eventType: string, reason: EventOutboxDropReason, detail: string, consumer?: string) => {
+  // A malformed event is a bug at the emit site. Throwing fails the caller's transaction, and the
+  // business write with it, because committing the write without its event would break the guarantee
+  // that consumers hear about every change. Every check runs before any DB access.
+  const $reject = (type: string, reason: EventOutboxRejectReason, detail: string, consumer?: string): never => {
     logger.error(
-      `event-outbox: dropped event [eventType=${eventType}] [reason=${reason}]${consumer ? ` [consumer=${consumer}]` : ""}: ${detail}`
+      `event-outbox: rejected event [type=${type}] [reason=${reason}]${consumer ? ` [consumer=${consumer}]` : ""}: ${detail}`
     );
-    recordEventOutboxDroppedMetric({ eventType, reason, consumer });
-    return [];
+    recordEventOutboxRejectedMetric({ eventType: type, reason, consumer });
+    throw new InternalServerError({
+      message:
+        "Infisical could not record an event for this change, so the change was not saved. Contact support and include the request ID."
+    });
   };
 
-  const $buildRows = (event: TEventInput, eventId: string): TOutboxInsertRow[] => {
+  const $buildRows = (event: TEventInput): TOutboxInsertRow[] => {
     const parsed = EventInputSchema.safeParse(event);
     if (!parsed.success) {
-      return $drop(event.eventType, EventOutboxDropReason.InvalidEvent, formatIssues(parsed.error.issues));
+      return $reject(event.type, EventOutboxRejectReason.InvalidEvent, formatIssues(parsed.error.issues));
     }
     const validated = parsed.data;
 
-    const payloadBytes = Buffer.byteLength(JSON.stringify(validated.payload), "utf8");
-    if (payloadBytes > MAX_OUTBOX_PAYLOAD_BYTES) {
-      return $drop(
-        validated.eventType,
-        EventOutboxDropReason.PayloadTooLarge,
-        `payload is ${payloadBytes} bytes, over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit; the outbox carries identifiers, not documents`
+    const dataBytes = Buffer.byteLength(JSON.stringify(validated.data), "utf8");
+    if (dataBytes > MAX_OUTBOX_PAYLOAD_BYTES) {
+      return $reject(
+        validated.type,
+        EventOutboxRejectReason.DataTooLarge,
+        `data is ${dataBytes} bytes, over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit; the outbox carries identifiers, not documents`
       );
     }
 
-    const occurredAt = validated.occurredAt ?? new Date();
+    const occurredAt = validated.time ?? new Date();
 
-    return eventOutboxRegistry.subscribersOf(validated.eventType).flatMap((consumer) => {
-      const payload = consumer.payloadSchema.safeParse(validated.payload);
-      if (!payload.success) {
-        return $drop(
-          validated.eventType,
-          EventOutboxDropReason.PayloadRejected,
-          formatIssues(payload.error.issues),
+    return eventOutboxRegistry.subscribersOf(validated.type).map((consumer) => {
+      const data = consumer.dataSchema.safeParse(validated.data);
+      if (!data.success) {
+        return $reject(
+          validated.type,
+          EventOutboxRejectReason.DataRejected,
+          formatIssues(data.error.issues),
           consumer.name
         );
       }
 
-      return [
-        {
-          consumer: consumer.name,
-          eventId,
-          eventType: validated.eventType,
-          payload: validated.payload,
-          idempotencyKey: validated.idempotencyKey ?? null,
-          occurredAt
-        }
-      ];
+      return {
+        consumer: consumer.name,
+        eventId: validated.id,
+        eventType: validated.type,
+        payload: validated.data,
+        occurredAt
+      };
     });
   };
 
   // Pass the caller's `tx` so the rows commit with the business write; omit it only when there is no
   // business write to be atomic with. A failed insert is not caught: swallowing it would leave the
   // caller with a poisoned transaction.
-  const emitMany = async (events: TEventInput[], tx?: Knex): Promise<void> => {
-    const rows = events.flatMap((event) => $buildRows(event, crypto.randomUUID()));
+  const emit = async (events: TEventInput[], tx?: Knex): Promise<void> => {
+    const rows = events.flatMap($buildRows);
     if (rows.length === 0) return;
 
     await eventOutboxDAL.insertEvents(rows, tx);
   };
-
-  const emit = (event: TEventInput, tx?: Knex): Promise<void> => emitMany([event], tx);
 
   const $commitWithRetry = async (
     { consumer }: TOutboxFlushKey,
@@ -189,11 +196,11 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   };
 
   const $applyResults = async (
-    rows: TEventOutbox[],
+    rows: TClaimedOutboxRow[],
     lockToken: string,
     results: TEventConsumerResult[]
   ): Promise<void> => {
-    const byId = new Map(results.map((result) => [result.id, result]));
+    const byEventId = new Map(results.map((result) => [result.id, result]));
     const now = Date.now();
 
     const delivered: { id: string }[] = [];
@@ -204,8 +211,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     for (const row of rows) {
       const id = String(row.id);
       // No result means unaccounted for, not delivered.
-      const result = byId.get(id) ?? {
-        id,
+      const result = byEventId.get(row.eventId) ?? {
         status: EventResultStatus.Retry,
         error: "Consumer returned no result for this event"
       };
@@ -260,7 +266,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   const $handleClaimed = async (
     consumer: IEventConsumer,
     key: TOutboxFlushKey,
-    claimed: TEventOutbox[],
+    claimed: TClaimedOutboxRow[],
     lockToken: string
   ): Promise<TEventConsumerResult[]> => {
     const ids = claimed.map((row) => String(row.id));
@@ -272,7 +278,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
 
     try {
       return await withTimeout(
-        consumer.handle(claimed),
+        consumer.handle(claimed.map(toEvent)),
         CONSUMER_HANDLE_TIMEOUT_MS,
         () => new ConsumerHandleTimeoutError(key.consumer, CONSUMER_HANDLE_TIMEOUT_MS)
       );
@@ -285,7 +291,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       } else {
         logger.error(error, `event-outbox: consumer '${key.consumer}' threw while handling a batch`);
       }
-      return claimed.map((row) => ({ id: String(row.id), status: EventResultStatus.Retry, error: message }));
+      return claimed.map((row) => ({ id: row.eventId, status: EventResultStatus.Retry, error: message }));
     } finally {
       clearInterval(heartbeat);
     }
@@ -371,5 +377,5 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  return { emit, emitMany, drain, sweepStaleClaims, pruneTerminalRows };
+  return { emit, drain, sweepStaleClaims, pruneTerminalRows };
 };

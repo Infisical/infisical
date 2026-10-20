@@ -11,9 +11,12 @@ import { computeBackoffMs, EventOutboxStatus, TOutboxFlushKey } from "./event-ou
 
 export type TEventOutboxDALFactory = ReturnType<typeof eventOutboxDALFactory>;
 
+// A claim always carries an eventId, even on a row written without one (see claimBatch).
+export type TClaimedOutboxRow = TEventOutbox & { eventId: string };
+
 export type TOutboxClaim = {
   lockToken: string;
-  rows: TEventOutbox[];
+  rows: TClaimedOutboxRow[];
 };
 
 export type TOutboxInsertRow = {
@@ -21,12 +24,11 @@ export type TOutboxInsertRow = {
   eventId: string;
   eventType: string;
   payload: unknown;
-  idempotencyKey?: string | null;
   occurredAt: Date;
 };
 
-// Postgres caps a statement at 65535 bind parameters, and a row takes seven, so a bulk secret write
-// emitting one event per secret would otherwise fail the whole write past ~9k secrets.
+// Postgres caps a statement at 65535 bind parameters, and a row takes five, so a bulk secret write
+// emitting one event per secret would otherwise fail the whole write past ~13k secrets.
 const INSERT_BATCH_SIZE = 1000;
 
 export const eventOutboxDALFactory = (db: TDbClient) => {
@@ -39,11 +41,10 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
           .insert(
             chunk.map((row) => ({
               ...row,
-              payload: JSON.stringify(row.payload),
-              idempotencyKey: row.idempotencyKey ?? null
+              payload: JSON.stringify(row.payload)
             }))
           )
-          .onConflict(db.raw('("consumer", "idempotencyKey") WHERE "idempotencyKey" IS NOT NULL'))
+          .onConflict(["consumer", "eventId"])
           .ignore();
       }
     } catch (error) {
@@ -69,7 +70,9 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
   };
 
   // One statement on purpose so the row locks only live as long as the UPDATE. The fresh lockToken is
-  // how extendClaims and commitResults tell this claim apart from a later one on the same rows.
+  // how extendClaims and commitResults tell this claim apart from a later one on the same rows. A pod on
+  // the previous release writes rows without an eventId during a rolling deploy, so the claim gives
+  // them one; consumers rely on every event having an id.
   const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TOutboxClaim> => {
     const lockToken = crypto.randomUUID();
     try {
@@ -86,11 +89,16 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             .forUpdate()
             .skipLocked();
         })
-        .update({ status: EventOutboxStatus.Processing, lockedAt: db.fn.now(), lockToken })
+        .update({
+          status: EventOutboxStatus.Processing,
+          lockedAt: db.fn.now(),
+          lockToken,
+          eventId: db.raw('COALESCE("eventId", gen_random_uuid())')
+        })
         .returning("*");
 
       // RETURNING order is arbitrary, and handle() is promised id order.
-      const rows = (claimed as unknown as TEventOutbox[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+      const rows = (claimed as unknown as TClaimedOutboxRow[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
       return { lockToken, rows };
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: claimBatch" });

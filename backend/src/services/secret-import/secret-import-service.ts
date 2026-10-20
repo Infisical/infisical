@@ -264,8 +264,9 @@ export const secretImportServiceFactory = ({
         );
       }
 
-      await eventEmitter.emit(
-        SecretImportModifiedEventV1.build({ secretImportId: doc.id, projectId, environment, secretPath: folder.path }),
+      await SecretImportModifiedEventV1.emit(
+        eventEmitter,
+        { secretImportId: doc.id, projectId, environment, secretPath: folder.path },
         tx
       );
       return doc;
@@ -457,8 +458,9 @@ export const secretImportServiceFactory = ({
         tx
       );
 
-      await eventEmitter.emit(
-        SecretImportModifiedEventV1.build({ secretImportId: doc.id, projectId, environment, secretPath: folder.path }),
+      await SecretImportModifiedEventV1.emit(
+        eventEmitter,
+        { secretImportId: doc.id, projectId, environment, secretPath: folder.path },
         tx
       );
       return doc;
@@ -515,13 +517,14 @@ export const secretImportServiceFactory = ({
             tx
           );
           await folderDAL.deleteById(replicatedFolder.id, tx);
-          await eventEmitter.emit(
-            FolderModifiedEventV1.build({
+          await FolderModifiedEventV1.emit(
+            eventEmitter,
+            {
               folderId: replicatedFolder.id,
               projectId,
               environment,
               secretPath: replicatedFolder.path
-            }),
+            },
             tx
           );
         }
@@ -530,8 +533,9 @@ export const secretImportServiceFactory = ({
         await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, 1, tx);
       }
 
-      await eventEmitter.emit(
-        SecretImportModifiedEventV1.build({ secretImportId: doc.id, projectId, environment, secretPath: folder.path }),
+      await SecretImportModifiedEventV1.emit(
+        eventEmitter,
+        { secretImportId: doc.id, projectId, environment, secretPath: folder.path },
         tx
       );
 

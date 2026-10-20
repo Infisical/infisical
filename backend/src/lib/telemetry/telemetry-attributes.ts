@@ -26,7 +26,7 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "event_outbox.consumer",
   "event_outbox.status",
   "event_outbox.event_type",
-  "event_outbox.drop_reason",
+  "event_outbox.reject_reason",
   "scim.operation",
   "sso.provider",
   "sso.action",

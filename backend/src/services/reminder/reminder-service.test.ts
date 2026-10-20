@@ -35,8 +35,7 @@ const buildService = (opts: {
   orphanBatches?: string[][];
 }) => {
   const log: string[] = [];
-  const emitted: Array<{ eventType: string; idempotencyKey?: string; payload: Record<string, unknown>; tx: unknown }> =
-    [];
+  const emitted: Array<{ id: string; type: string; data: Record<string, unknown>; tx: unknown }> = [];
   const updates: Array<{ id: string; nextReminderDate: Date; tx: unknown }> = [];
   const deletes: Array<{ id: string; tx: unknown }> = [];
   const reaped: string[][] = [];
@@ -69,12 +68,11 @@ const buildService = (opts: {
       }
     },
     eventEmitter: {
-      emit: async (
-        event: { eventType: string; idempotencyKey?: string; payload: Record<string, unknown> },
-        tx: unknown
-      ) => {
-        if (opts.emitFails?.(event.payload.resourceId as string)) throw new Error("outbox insert failed");
-        emitted.push({ ...event, tx });
+      emit: async (events: { id: string; type: string; data: Record<string, unknown> }[], tx: unknown) => {
+        events.forEach((event) => {
+          if (opts.emitFails?.(event.data.resourceId as string)) throw new Error("outbox insert failed");
+          emitted.push({ ...event, tx });
+        });
       }
     },
     alertService: {
@@ -105,9 +103,8 @@ describe("reminder dispatch", () => {
 
     expect(emitted).toHaveLength(1);
     expect(emitted[0]).toMatchObject({
-      eventType: SECRET_REMINDER_DUE_EVENT,
-      idempotencyKey: `${SECRET_REMINDER_DUE_EVENT}:rem-1:2026-10-10`,
-      payload: {
+      type: SECRET_REMINDER_DUE_EVENT,
+      data: {
         orgId: "org-1",
         projectId: "proj-1",
         resourceType: SECRET_REMINDER_RESOURCE_TYPE,
@@ -121,6 +118,25 @@ describe("reminder dispatch", () => {
     expect(updates).toEqual([
       { id: "rem-1", nextReminderDate: new Date("2026-11-09T00:00:00.000Z"), tx: emitted[0].tx }
     ]);
+  });
+
+  // A cron retry after a partial run must be the same event, so the outbox drops it.
+  test("gives one occurrence of a reminder the same event id every time it is emitted", async () => {
+    const first = buildService({ due: [reminder()] });
+    const retry = buildService({ due: [reminder()] });
+    const otherDate = buildService({ due: [reminder({ nextReminderDate: new Date("2026-10-09T00:00:00.000Z") })] });
+    const otherReminder = buildService({ due: [reminder({ id: "rem-2" })] });
+
+    await first.service.dispatchDueReminders({ now });
+    await retry.service.dispatchDueReminders({ now });
+    await otherDate.service.dispatchDueReminders({ now });
+    await otherReminder.service.dispatchDueReminders({ now });
+
+    expect(first.emitted[0].id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(retry.emitted[0].id).toBe(first.emitted[0].id);
+    expect(otherDate.emitted[0].data.occurrenceDate).toBe("2026-10-09");
+    expect(otherDate.emitted[0].id).not.toBe(first.emitted[0].id);
+    expect(otherReminder.emitted[0].id).not.toBe(first.emitted[0].id);
   });
 
   test("deletes a one-time reminder once its event is emitted", async () => {
@@ -139,7 +155,7 @@ describe("reminder dispatch", () => {
     await service.dispatchDueReminders({ now });
 
     expect(emitted).toHaveLength(1);
-    expect(emitted[0].payload.occurrenceDate).toBe("2026-10-05");
+    expect(emitted[0].data.occurrenceDate).toBe("2026-10-05");
     expect(updates[0].nextReminderDate).toEqual(new Date("2026-10-11T00:00:00.000Z"));
   });
 
@@ -150,7 +166,7 @@ describe("reminder dispatch", () => {
     });
     await service.dispatchDueReminders({ now });
 
-    expect(emitted.map((event) => event.payload.resourceId)).toEqual(["secret-2"]);
+    expect(emitted.map((event) => event.data.resourceId)).toEqual(["secret-2"]);
     expect(updates.map((update) => update.id)).toEqual(["rem-2"]);
   });
 

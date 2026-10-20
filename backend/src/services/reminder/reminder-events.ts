@@ -1,11 +1,15 @@
 import { Knex } from "knex";
 import RE2 from "re2";
+import { v5 as uuidv5 } from "uuid";
 import { z } from "zod";
 
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 export const SECRET_REMINDER_RESOURCE_TYPE = "secret.reminder";
 export const SECRET_REMINDER_DUE_EVENT = "secret.reminder.due";
+
+// Namespaces the event ids derived below, so they can't collide with ids derived the same way elsewhere.
+const SECRET_REMINDER_DUE_EVENT_ID_NAMESPACE = "18460d3b-7d67-44a8-a6fb-1f84f78f29c4";
 
 export const SecretReminderDuePayloadSchema = z.object({
   note: z.string().max(1024).nullish(),
@@ -30,21 +34,24 @@ export const emitSecretReminderDue = (
   tx: Knex
 ): Promise<void> =>
   eventEmitter.emit(
-    {
-      eventType: SECRET_REMINDER_DUE_EVENT,
-      // A cron retry after a partial run must not send the same occurrence twice. Keyed on the reminder
-      // rather than the secret, so a reminder deleted and set again for a date that already fired still sends.
-      idempotencyKey: `${SECRET_REMINDER_DUE_EVENT}:${reminderId}:${occurrenceDate}`,
-      payload: {
-        orgId,
-        projectId,
-        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-        resourceId: secretId,
-        targetIds: [secretId],
-        note: note ?? null,
-        repeatDays: repeatDays ?? null,
-        occurrenceDate
+    [
+      {
+        // Derived rather than random, so a cron retry after a partial run is the same event and the outbox
+        // drops it. Derived from the reminder rather than the secret, so a reminder deleted and set again
+        // for a date that already fired still sends.
+        id: uuidv5(`${reminderId}:${occurrenceDate}`, SECRET_REMINDER_DUE_EVENT_ID_NAMESPACE),
+        type: SECRET_REMINDER_DUE_EVENT,
+        data: {
+          orgId,
+          projectId,
+          resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+          resourceId: secretId,
+          targetIds: [secretId],
+          note: note ?? null,
+          repeatDays: repeatDays ?? null,
+          occurrenceDate
+        }
       }
-    },
+    ],
     tx
   );

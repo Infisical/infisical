@@ -392,13 +392,14 @@ export const secretReplicationServiceFactory = ({
                   },
                   tx
                 );
-                await eventEmitter.emit(
-                  FolderModifiedEventV1.build({
+                await FolderModifiedEventV1.emit(
+                  eventEmitter,
+                  {
                     folderId: createdFolder.id,
                     projectId,
                     environment: destinationFolder.environmentSlug,
                     secretPath: destinationReplicationFolderPath
-                  }),
+                  },
                   tx
                 );
                 return createdFolder;

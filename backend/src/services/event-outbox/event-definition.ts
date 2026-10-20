@@ -1,7 +1,10 @@
+import crypto from "node:crypto";
+
+import { Knex } from "knex";
 import RE2 from "re2";
 import { z } from "zod";
 
-import { TEvent, TEventInput } from "./event-outbox-types";
+import { TEventEmitter, TEventInput } from "./event-outbox-types";
 
 // The naming and envelope rules from the Event Standards and Versioning ADR, which adopts CloudEvents
 // 1.0: an event is named com.infisical.<domain>.<entity>.<action>.v<version>, every segment
@@ -34,45 +37,23 @@ export const defineEvent = <TData extends z.AnyZodObject>({
   }
 
   const type = `com.infisical.${domain}.${entity}.${action}.v${version}`;
+  const build = (eventData: z.input<TData>): TEventInput => ({ id: crypto.randomUUID(), type, data: eventData });
 
   return {
     type,
-    source: `urn:infisical:${domain}`,
     data,
-    build: (payload: z.input<TData>): TEventInput => ({ eventType: type, payload })
+    build,
+    emit: (eventEmitter: TEventEmitter, eventData: z.input<TData>, tx?: Knex): Promise<void> =>
+      eventEmitter.emit([build(eventData)], tx)
   };
 };
 
 export type TEventDefinition<TData extends z.AnyZodObject> = ReturnType<typeof defineEvent<TData>>;
 
-// The CloudEvents 1.0 envelope with the ADR's constraints. Consumers inside the backend read `TEvent`;
-// this is the shape an event takes when it leaves the backend (eg a customer webhook).
-export type TCloudEvent<TData> = {
-  specversion: "1.0";
-  id: string;
-  source: string;
-  type: string;
-  time: string;
-  data: TData;
-};
-
-export const toCloudEvent = <TData extends z.AnyZodObject>(
-  definition: TEventDefinition<TData>,
-  event: TEvent
-): TCloudEvent<z.infer<TData>> => {
-  if (event.eventType !== definition.type) {
-    throw new Error(`Event '${event.eventType}' cannot be read as '${definition.type}'`);
-  }
-  if (!event.eventId) {
-    throw new Error(`Event '${event.id}' was recorded without an eventId, by a release that predates it`);
-  }
-
-  return {
-    specversion: "1.0",
-    id: event.eventId,
-    source: definition.source,
-    type: definition.type,
-    time: new Date(event.occurredAt).toISOString(),
-    data: definition.data.parse(event.payload)
-  };
+// `urn:infisical:<domain>`. Events named before the ADR (eg `identity.authentication.auth-method-changed`)
+// have no domain segment, so their first segment stands in for it.
+export const eventSource = (type: string): string => {
+  const segments = type.split(".");
+  const domain = type.startsWith("com.infisical.") ? segments[2] : segments[0];
+  return `urn:infisical:${domain}`;
 };

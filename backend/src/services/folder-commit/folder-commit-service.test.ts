@@ -97,8 +97,7 @@ describe("folderCommitServiceFactory", () => {
   };
 
   const mockEventEmitter = {
-    emit: vi.fn().mockResolvedValue(undefined),
-    emitMany: vi.fn().mockResolvedValue(undefined)
+    emit: vi.fn().mockResolvedValue(undefined)
   };
 
   const mockFolderDAL = {

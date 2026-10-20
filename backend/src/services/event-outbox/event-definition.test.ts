@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { defineEvent, toCloudEvent } from "./event-definition";
-import { EventInputSchema } from "./event-outbox-types";
+import { defineEvent, eventSource } from "./event-definition";
+import { EventInputSchema, TEventInput } from "./event-outbox-types";
 
 const ExampleEvent = defineEvent({
   domain: "secrets",
@@ -12,20 +12,42 @@ const ExampleEvent = defineEvent({
 });
 
 describe("defineEvent", () => {
-  test("names the event and its source by the ADR convention", () => {
+  test("names the event by the ADR convention", () => {
     expect(ExampleEvent.type).toBe("com.infisical.secrets.secret-import.modified.v2");
-    expect(ExampleEvent.source).toBe("urn:infisical:secrets");
   });
 
-  // The outbox validates every emitted key; a definition must never produce one it drops.
-  test("builds an input the outbox accepts", () => {
+  // The outbox validates every emitted event; a definition must never produce one it rejects.
+  test("builds an input the outbox accepts, with a UUID of its own", () => {
     const input = ExampleEvent.build({ secretImportId: "import-1" });
 
     expect(input).toEqual({
-      eventType: "com.infisical.secrets.secret-import.modified.v2",
-      payload: { secretImportId: "import-1" }
+      id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+      type: "com.infisical.secrets.secret-import.modified.v2",
+      data: { secretImportId: "import-1" }
     });
     expect(EventInputSchema.safeParse(input).success).toBe(true);
+    expect(ExampleEvent.build({ secretImportId: "import-1" }).id).not.toBe(input.id);
+  });
+
+  test("emits the built event through the emitter, inside the caller's tx", async () => {
+    const calls: { events: TEventInput[]; tx: unknown }[] = [];
+    const tx = { sentinel: true } as never;
+
+    await ExampleEvent.emit(
+      {
+        emit: async (events, emitTx) => {
+          calls.push({ events, tx: emitTx });
+        }
+      },
+      { secretImportId: "import-1" },
+      tx
+    );
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].tx).toBe(tx);
+    expect(calls[0].events).toEqual([
+      expect.objectContaining({ type: ExampleEvent.type, data: { secretImportId: "import-1" } })
+    ]);
   });
 
   test.each([
@@ -53,33 +75,12 @@ describe("defineEvent", () => {
   });
 });
 
-describe("toCloudEvent", () => {
-  const event = {
-    id: 42,
-    eventId: "550e8400-e29b-41d4-a716-446655440000",
-    eventType: ExampleEvent.type,
-    payload: { secretImportId: "import-1" },
-    occurredAt: new Date("2026-08-20T17:42:31.000Z")
-  };
-
-  test("maps the stored event onto the CloudEvents envelope", () => {
-    expect(toCloudEvent(ExampleEvent, event)).toEqual({
-      specversion: "1.0",
-      id: "550e8400-e29b-41d4-a716-446655440000",
-      source: "urn:infisical:secrets",
-      type: "com.infisical.secrets.secret-import.modified.v2",
-      time: "2026-08-20T17:42:31.000Z",
-      data: { secretImportId: "import-1" }
-    });
+describe("eventSource", () => {
+  test("is the domain of an event named by the ADR convention", () => {
+    expect(eventSource(ExampleEvent.type)).toBe("urn:infisical:secrets");
   });
 
-  test("refuses an event recorded without an eventId", () => {
-    expect(() => toCloudEvent(ExampleEvent, { ...event, eventId: null })).toThrow("without an eventId");
-  });
-
-  test("refuses an event of another type", () => {
-    expect(() =>
-      toCloudEvent(ExampleEvent, { ...event, eventType: "com.infisical.secrets.secret.modified.v1" })
-    ).toThrow("cannot be read as");
+  test("is the first segment of an event named before the ADR", () => {
+    expect(eventSource("identity.authentication.auth-method-changed")).toBe("urn:infisical:identity");
   });
 });

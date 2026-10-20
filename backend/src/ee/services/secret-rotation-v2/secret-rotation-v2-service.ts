@@ -1212,7 +1212,7 @@ export const secretRotationV2ServiceFactory = ({
         );
 
         // Moved in place, so each secret keeps its id and is modified at both locations.
-        await eventEmitter.emitMany(
+        await eventEmitter.emit(
           [
             ...secretModifiedEvents(
               { projectId, environment: environment.slug, secretPath: folder.path },

@@ -1468,7 +1468,7 @@ export const folderCommitServiceFactory = ({
       }
 
       if (parentLocation) {
-        await eventEmitter.emitMany(
+        await eventEmitter.emit(
           unique(modifiedFolders, (folder) => `${folder.folderId}:${folder.secretPath}`).map((folder) =>
             FolderModifiedEventV1.build({ ...folder, projectId, environment: parentLocation.environmentSlug })
           ),
