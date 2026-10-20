@@ -64,7 +64,8 @@ const POLICY = {
   enforcementLevel: "hard",
   allowedSelfApprovals: true,
   bypassers: [] as { type: string; id: string }[],
-  userApprovers: [{ userId: "approver-1" }]
+  userApprovers: [{ userId: "approver-1" }],
+  environments: [{ id: "env-1", slug: "dev", name: "Development" }]
 };
 const REVIEW_CREATED_AT = new Date("2026-02-01");
 const APPROVAL_REQUEST = {
@@ -944,6 +945,21 @@ describe("secretChangeGlobalRequestBridge mergeSecretChangeRequest", () => {
     await expect(merge(service)).rejects.toThrow(
       new BadRequestError({ message: "The policy associated with this secret approval request has been deleted." })
     );
+  });
+
+  test("refuses a request whose folder's environment the policy no longer covers", async () => {
+    const { service, deps } = buildService({
+      policy: { ...POLICY, environments: [{ id: "env-2", slug: "staging", name: "Staging" }] },
+      requestSteps: [stepWith({ approvals: approvedBy("approver-1") })]
+    });
+
+    await expect(merge(service)).rejects.toThrow(
+      new BadRequestError({
+        message: "The policy associated with this secret approval request is not linked to the environment."
+      })
+    );
+    expect(applySecretApprovalCommitsV2Bridge).not.toHaveBeenCalled();
+    expect(deps.secretChangeGlobalRequestBridgeDAL.updateById).not.toHaveBeenCalled();
   });
 
   test("forbids a user who is neither admin, requester nor an eligible approver", async () => {
