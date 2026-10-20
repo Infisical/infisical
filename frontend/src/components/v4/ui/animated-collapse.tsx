@@ -66,7 +66,7 @@ export const AnimatedCollapse = React.forwardRef<
       className={cn(styles.collapse, className)}
       hidden={!present && !open}
       aria-hidden={!open || undefined}
-      {...(!open ? { inert: "" } : {})}
+      {...(!open ? { inert: true } : {})}
       initial={false}
       animate={{ height: expanded ? "auto" : 0, marginBlockStart: expanded ? 0 : -gap }}
       transition={travel}

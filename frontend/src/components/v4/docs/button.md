@@ -145,7 +145,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../../components/v4/ui/button";
 export default function Example() {
     const [pending, setPending] = useState(false);
-    const timer = useRef<ReturnType<typeof setTimeout>>();
+    const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
     useEffect(() => () => clearTimeout(timer.current), []);
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">

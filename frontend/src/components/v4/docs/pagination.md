@@ -140,7 +140,7 @@ export default function PaginationExamples() {
     const [size, setSize] = React.useState(25);
     const [shown, setShown] = React.useState(1);
     const [loading, setLoading] = React.useState(false);
-    const timer = React.useRef<ReturnType<typeof setTimeout>>();
+    const timer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
     React.useEffect(() => () => clearTimeout(timer.current), []);
     return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">

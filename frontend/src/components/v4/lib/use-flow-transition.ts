@@ -20,7 +20,7 @@ export const useFlowTransition = (index: number) => {
     index,
     direction: "forward"
   });
-  const intendedDirection = useRef<"forward" | "back">();
+  const intendedDirection = useRef<"forward" | "back" | undefined>(undefined);
   if (travel.index !== index) {
     setTravel({
       index,

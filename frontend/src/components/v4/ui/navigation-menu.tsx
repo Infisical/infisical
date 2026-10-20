@@ -281,7 +281,7 @@ const NavigationMenuViewport = React.forwardRef<
           data-side="bottom"
           data-v4-shared-viewport=""
           data-orientation={context?.orientation ?? "horizontal"}
-          {...(!open ? { inert: "", "aria-hidden": true } : {})}
+          {...(!open ? { inert: true, "aria-hidden": true } : {})}
           style={viewportStyle}
           className={cn(menu.surface, menu.navViewport, menu.motion, className)}
           {...props}

@@ -74,7 +74,7 @@ export function FileTree({
   const [focused, setFocused] = React.useState<string | null>(null);
   const open = expanded ?? ownExpanded;
   const current = selected === undefined ? ownSelected : selected;
-  const revealedSelection = React.useRef<string | null>();
+  const revealedSelection = React.useRef<string | null>(undefined);
   React.useEffect(() => {
     if (revealedSelection.current === current) return;
     const ancestors = selectedAncestors(items, current);

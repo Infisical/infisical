@@ -9,7 +9,7 @@ export default function PaginationExamples() {
   const [size, setSize] = React.useState(25);
   const [shown, setShown] = React.useState(1);
   const [loading, setLoading] = React.useState(false);
-  const timer = React.useRef<ReturnType<typeof setTimeout>>();
+  const timer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
   React.useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <ExampleStack>

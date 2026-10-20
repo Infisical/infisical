@@ -6,7 +6,7 @@ import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
 export default function Example() {
   const [pending, setPending] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <ExampleGrid width="compact">

@@ -31,12 +31,12 @@ type Shared = {
   disabled?: boolean;
   invalid?: boolean;
   searchable?: boolean;
-  anchorRef?: React.RefObject<HTMLElement>;
+  anchorRef?: React.RefObject<HTMLElement | null>;
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   renderValue?: (selected: readonly MultiSelectOption[]) => React.ReactNode;
-  trigger?: React.ReactElement;
+  trigger?: React.ReactElement<React.ButtonHTMLAttributes<HTMLElement>>;
   size?: "sm" | "md";
   align?: "start" | "center" | "end";
   side?: "top" | "right" | "bottom" | "left";
