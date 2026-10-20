@@ -431,7 +431,7 @@ export function SecretAccessInsights({
   secretKey,
   environment,
   secretPath,
-  defaultView = "table"
+  defaultView = "graph"
 }: Props) {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();

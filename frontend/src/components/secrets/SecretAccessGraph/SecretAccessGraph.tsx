@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
 
 import { IconButton } from "@app/components/v3";
+import { useTheme } from "@app/components/v3/platform/ThemeProvider";
 
 import { buildAccessGraph, TAccessGraphInput } from "./buildAccessGraph";
 import { BandLabelNode, LaneEdge, ReaderNode, SecretNode } from "./nodes";
@@ -51,6 +52,7 @@ const connectedTo = (nodeId: string, edges: Edge[]) => {
 };
 
 const SecretAccessGraphContent = ({ input }: Props) => {
+  const { resolvedTheme } = useTheme();
   const {
     nodes: builtNodes,
     edges: builtEdges,
@@ -118,6 +120,8 @@ const SecretAccessGraphContent = ({ input }: Props) => {
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         onPaneClick={() => setFocusedId(undefined)}
+        // Themes React Flow's own chrome, the attribution included, to match the app.
+        colorMode={resolvedTheme}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         proOptions={{ hideAttribution: false }}
