@@ -796,21 +796,21 @@ export function SecretAccessInsights({
           <ButtonGroup>
             <Button
               size="xs"
-              variant={view === "table" ? "project" : "outline"}
-              aria-pressed={view === "table"}
-              onClick={() => setView("table")}
-            >
-              <TableIcon />
-              Table
-            </Button>
-            <Button
-              size="xs"
               variant={view === "graph" ? "project" : "outline"}
               aria-pressed={view === "graph"}
               onClick={() => setView("graph")}
             >
               <NetworkIcon />
               Graph
+            </Button>
+            <Button
+              size="xs"
+              variant={view === "table" ? "project" : "outline"}
+              aria-pressed={view === "table"}
+              onClick={() => setView("table")}
+            >
+              <TableIcon />
+              Table
             </Button>
           </ButtonGroup>
           {view === "table" && (
