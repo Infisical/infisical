@@ -14,9 +14,7 @@ export const CloudflareWorkersSyncDestinationSchema = BaseSecretSyncSchema().mer
         .min(1, "Script ID is required")
         .max(64)
         .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "Invalid script ID format"),
-      variableType: z
-        .nativeEnum(CloudflareWorkersVariableType)
-        .default(CloudflareWorkersVariableType.Secret)
+      variableType: z.nativeEnum(CloudflareWorkersVariableType).optional()
     })
   })
 );

@@ -30,7 +30,7 @@ export const CloudflarePagesSyncOptionsFields = () => {
       defaultValue={CloudflarePagesVariableType.Secret}
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field className="mb-4">
-          <FieldLabel htmlFor="cloudflare-pages-variable-type">Variable type</FieldLabel>
+          <FieldLabel htmlFor="cloudflare-pages-variable-type">Variable Type</FieldLabel>
           <FieldContent>
             <Select value={value} onValueChange={onChange}>
               <SelectTrigger
