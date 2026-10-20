@@ -37,6 +37,7 @@ import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-a
 import { ActorType } from "@app/services/auth/auth-type";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
+import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";
 import {
   collectSecretAccessPolicyGroupIds,
   collectSecretAccessRequestUserIds,
@@ -407,6 +408,10 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     actorAuthMethod
   }: TReviewSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
+    const delegatedRequest = await delegatedApprovalService.getRequestByRequestId(request.id);
+    if (delegatedRequest) {
+      throw new BadRequestError({ message: externallyReviewedAccessRequestMessage(requestId) });
+    }
     if (!request.policyId) {
       throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
     }

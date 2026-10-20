@@ -31,7 +31,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("status", 50).notNullable();
       t.binary("encryptedCallbackToken").nullable();
       t.text("statusReason").nullable();
-      t.string("providerRequestId").nullable();
+      t.string("providerRequestId").nullable().index();
 
       t.timestamps(true, true, true);
     });

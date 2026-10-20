@@ -7,6 +7,7 @@ import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-po
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
 
+import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";
 import { secretAccessApprovalGlobalRequestBridgeServiceFactory } from "./secret-access-approval-global-request-bridge-service";
 
 const pendingRequest = {
@@ -122,6 +123,36 @@ describe("secretAccessApprovalGlobalRequestBridge.cancelAccessApprovalRequest", 
     });
 
     await expect(cancelAs(service, "requester")).rejects.toThrow("Only pending requests can be cancelled");
+    expect(updateById).not.toHaveBeenCalled();
+  });
+});
+
+describe("secretAccessApprovalGlobalRequestBridge.reviewAccessApprovalRequest", () => {
+  const reviewAs = (service: ReturnType<typeof createService>["service"], status: ApprovalStatus) =>
+    service.reviewAccessApprovalRequest({
+      requestId: "req-1",
+      status,
+      actor: ActorType.USER,
+      actorId: "reviewer",
+      actorOrgId: "org-1",
+      actorAuthMethod: AuthMethod.EMAIL
+    });
+
+  test("refuses to approve a request reviewed in an external approval system", async () => {
+    const { service, updateById } = createService();
+
+    await expect(reviewAs(service, ApprovalStatus.APPROVED)).rejects.toThrow(
+      externallyReviewedAccessRequestMessage("req-1")
+    );
+    expect(updateById).not.toHaveBeenCalled();
+  });
+
+  test("refuses to reject a request reviewed in an external approval system", async () => {
+    const { service, updateById } = createService();
+
+    await expect(reviewAs(service, ApprovalStatus.REJECTED)).rejects.toThrow(
+      externallyReviewedAccessRequestMessage("req-1")
+    );
     expect(updateById).not.toHaveBeenCalled();
   });
 });
