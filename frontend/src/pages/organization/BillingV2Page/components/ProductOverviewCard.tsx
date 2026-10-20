@@ -262,15 +262,10 @@ const UsageDistribution = ({
   } else {
     const total = breakdown.scopedCount;
     const topScopes = [...breakdown.scopes].sort((a, b) => b.count - a.count).slice(0, 5);
-    const subOrgShades = ["bg-sub-org/85", "bg-sub-org/60", "bg-sub-org/40", "bg-sub-org/25"];
-    let subOrgIndex = 0;
-    const shaded = topScopes.map((entry) => {
-      const shade = entry.isRoot
-        ? "bg-org/85"
-        : subOrgShades[Math.min(subOrgIndex, subOrgShades.length - 1)];
-      if (!entry.isRoot) subOrgIndex += 1;
-      return { entry, shade };
-    });
+    const shaded = topScopes.map((entry) => ({
+      entry,
+      shade: entry.isRoot ? "bg-org/85" : "bg-sub-org/85"
+    }));
     const rootCount = breakdown.scopes
       .filter((entry) => entry.isRoot)
       .reduce((sum, entry) => sum + entry.count, 0);
