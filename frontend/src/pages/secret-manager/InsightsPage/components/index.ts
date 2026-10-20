@@ -6,6 +6,6 @@ export { CalendarLegend } from "./CalendarLegend";
 export { DuplicatedSecretsCard } from "./DuplicatedSecretsCard";
 export { InsightsSummaryCards } from "./InsightsSummaryCards";
 export { SecretAccessChart } from "./SecretAccessChart";
-export { SecretExposureCard } from "./SecretExposureCard";
 export type { CalendarEvent } from "./types";
+export { UnusedAccessCard } from "./UnusedAccessCard";
 // export { WorldMap } from "./WorldMap";

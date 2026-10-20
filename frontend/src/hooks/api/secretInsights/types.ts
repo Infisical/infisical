@@ -1,4 +1,3 @@
-import { OrderByDirection } from "../generic/types";
 import { IdentityAuthMethod } from "../identities/enums";
 
 export type TCalendarRotation = {
@@ -80,32 +79,57 @@ export type TSecretExposure = {
   drivers: { kind: SecretExposureDriver; points: number; label: string }[];
 };
 
-export enum SecretExposureOrderBy {
-  SecretKey = "secretKey",
-  Environment = "environment",
-  SecretPath = "secretPath"
+export enum UnusedAccessPrincipalType {
+  User = "user",
+  Identity = "identity",
+  Group = "group"
 }
 
-export type TGetSecretExposureDTO = {
+// A user, group or machine identity that can read secrets it has not read in the tracked period.
+export type TUnusedAccessPrincipal = {
+  principalType: UnusedAccessPrincipalType;
+  principalId: string;
+  name: string;
+  // Groups only.
+  memberCount: number | null;
+  entitledCount: number;
+  unreadCount: number;
+  environments: string[];
+  lastReadAt: string | null;
+  accessVia: string[];
+};
+
+export type TGetUnusedAccessDTO = {
   projectId: string;
   offset: number;
   limit: number;
-  orderBy?: SecretExposureOrderBy;
-  orderDirection?: OrderByDirection;
+  search?: string;
 };
 
-export type TExposedSecret = TSecretExposureCounts & {
+export type TGetUnusedAccessResponse = {
+  principals: TUnusedAccessPrincipal[];
+  totalCount: number;
+  trackingStartedAt: string;
+  preliminaryUntil: string;
+  remainingTtl: number;
+};
+
+export type TGetUnusedAccessPrincipalDTO = {
+  projectId: string;
+  principalType: UnusedAccessPrincipalType;
+  principalId: string;
+};
+
+export type TUnusedSecret = {
   secretKey: string;
   environment: string;
   secretPath: string;
-  exposure: TSecretExposure;
 };
 
-export type TGetSecretExposureResponse = {
-  secrets: TExposedSecret[];
-  totalCount: number;
+export type TGetUnusedAccessPrincipalResponse = {
+  principal: TUnusedAccessPrincipal;
+  secrets: TUnusedSecret[];
   unlistedCount: number;
-  bands: Record<SecretExposureBand, number>;
   trackingStartedAt: string;
   preliminaryUntil: string;
   remainingTtl: number;

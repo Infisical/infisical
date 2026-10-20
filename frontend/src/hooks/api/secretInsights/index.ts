@@ -14,8 +14,9 @@ export {
   // useGetSecretAccessLocations,
   useGetSecretAccessVolume,
   useGetSecretBlindIndexStatus,
-  useGetSecretExposure,
-  useGetSecretsDuplication
+  useGetSecretsDuplication,
+  useGetUnusedAccess,
+  useGetUnusedAccessPrincipal
 } from "./queries";
 export type {
   TAccessLocation,
@@ -24,7 +25,6 @@ export type {
   TCalendarRotation,
   TDuplicatedSecretEntry,
   TDuplicatedSecretGroup,
-  TExposedSecret,
   TGetAuthMethodDistributionDTO,
   TGetAuthMethodDistributionResponse,
   TGetCalendarInsightsDTO,
@@ -36,10 +36,12 @@ export type {
   TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
   TGetSecretAccessVolumeResponse,
-  TGetSecretExposureDTO,
-  TGetSecretExposureResponse,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
+  TGetUnusedAccessDTO,
+  TGetUnusedAccessPrincipalDTO,
+  TGetUnusedAccessPrincipalResponse,
+  TGetUnusedAccessResponse,
   TOrgAuthMethodUsage,
   TOrgDuplicatedSecretEntry,
   TOrgDuplicatedSecretGroup,
@@ -54,6 +56,8 @@ export type {
   TSecretAccessVolumeDay,
   TSecretExposure,
   TSecretExposureCounts,
-  TSecretValueMatch
+  TSecretValueMatch,
+  TUnusedAccessPrincipal,
+  TUnusedSecret
 } from "./types";
-export { SecretExposureBand, SecretExposureDriver, SecretExposureOrderBy } from "./types";
+export { SecretExposureBand, SecretExposureDriver, UnusedAccessPrincipalType } from "./types";

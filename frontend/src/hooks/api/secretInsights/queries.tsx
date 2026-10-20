@@ -20,10 +20,12 @@ import {
   TGetSecretAccessVolumeResponse,
   TGetSecretBlindIndexStatusDTO,
   TGetSecretBlindIndexStatusResponse,
-  TGetSecretExposureDTO,
-  TGetSecretExposureResponse,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
+  TGetUnusedAccessDTO,
+  TGetUnusedAccessPrincipalDTO,
+  TGetUnusedAccessPrincipalResponse,
+  TGetUnusedAccessResponse,
   TOrgAuthMethodUsage,
   TOrgProjectsInsights,
   TOrgSecretAccessVolume,
@@ -37,8 +39,10 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "calendar-events", params] as const,
   accessVolume: (params: TGetSecretAccessVolumeDTO) =>
     [...secretInsightsKeys.all(), "access-volume", params] as const,
-  secretExposure: (params: TGetSecretExposureDTO) =>
-    [...secretInsightsKeys.all(), "secret-exposure", params] as const,
+  unusedAccess: (params: TGetUnusedAccessDTO) =>
+    [...secretInsightsKeys.all(), "unused-access", params] as const,
+  unusedAccessPrincipal: (params: TGetUnusedAccessPrincipalDTO) =>
+    [...secretInsightsKeys.all(), "unused-access-principal", params] as const,
   // accessLocations: (params: TGetSecretAccessLocationsDTO) =>
   //   [...secretInsightsKeys.all(), "access-locations", params] as const,
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
@@ -127,24 +131,24 @@ export const useGetSecretAccessVolume = (
   });
 };
 
-export const useGetSecretExposure = (
-  params: TGetSecretExposureDTO,
+export const useGetUnusedAccess = (
+  params: TGetUnusedAccessDTO,
   options?: Omit<
     UseQueryOptions<
-      TGetSecretExposureResponse,
+      TGetUnusedAccessResponse,
       unknown,
-      TGetSecretExposureResponse,
-      ReturnType<typeof secretInsightsKeys.secretExposure>
+      TGetUnusedAccessResponse,
+      ReturnType<typeof secretInsightsKeys.unusedAccess>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: secretInsightsKeys.secretExposure(params),
+    queryKey: secretInsightsKeys.unusedAccess(params),
     queryFn: async () => {
       const { projectId, ...query } = params;
-      const res = await apiRequest.get<Omit<TGetSecretExposureResponse, "remainingTtl">>(
-        `/api/v1/insights/${projectId}/secrets/exposure`,
+      const res = await apiRequest.get<Omit<TGetUnusedAccessResponse, "remainingTtl">>(
+        `/api/v1/insights/${projectId}/secrets/unused-access`,
         { params: query }
       );
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
@@ -153,6 +157,32 @@ export const useGetSecretExposure = (
     staleTime: (query) => cachedInsightsRefreshMs(query.state.data),
     refetchInterval: (query) => cachedInsightsRefreshMs(query.state.data),
     placeholderData: (previousData) => previousData,
+    ...options
+  });
+};
+
+export const useGetUnusedAccessPrincipal = (
+  params: TGetUnusedAccessPrincipalDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetUnusedAccessPrincipalResponse,
+      unknown,
+      TGetUnusedAccessPrincipalResponse,
+      ReturnType<typeof secretInsightsKeys.unusedAccessPrincipal>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.unusedAccessPrincipal(params),
+    queryFn: async () => {
+      const res = await apiRequest.get<Omit<TGetUnusedAccessPrincipalResponse, "remainingTtl">>(
+        `/api/v1/insights/${params.projectId}/secrets/unused-access/${params.principalType}/${params.principalId}`
+      );
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
+    },
+    staleTime: (query) => cachedInsightsRefreshMs(query.state.data),
     ...options
   });
 };
