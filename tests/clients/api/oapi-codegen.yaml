@@ -7,6 +7,8 @@ generate:
   client: true
 
 output-options:
+  overlay:
+    path: clients/api/overlay.yaml
   # Only what the suite calls. Add an id here when a test reaches for a new endpoint.
   #
   # The route must also be in the spec, which needs OPENAPI_FULL_SPEC *and* a
@@ -35,6 +37,7 @@ output-options:
     - createMachineIdentity
     - createProjectMachineIdentity
     - createProjectIdentityMembership
+    - createProjectRole
     - listProjectMachineIdentities
     - createGitHubAppConnection
     - createGitHubSecretSync
@@ -59,6 +62,7 @@ output-options:
     - deleteManySecretsV4
     - getSecretReferencesV4
     - getSecretReferenceTreeV4
+    - listProjectSecretsDetails
     - createSecretFolder
     - createSecretTag
     - createSecretImport

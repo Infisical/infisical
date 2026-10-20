@@ -1,0 +1,104 @@
+---
+title: "Generate and verify MACs"
+description: "Use message authentication codes to check that data hasn't changed."
+---
+
+A message authentication code (MAC) shows that data hasn't changed since the MAC was generated, and that whoever generated it had access to the key. To generate a MAC, send your data to Infisical with a Generate/Verify MAC key. To check the data later, send the data and the MAC back with the same key.
+
+The key's algorithm, such as HMAC-SHA-256, decides the MAC algorithm, so you don't pick one for each request.
+
+## Prerequisites
+
+- A [Generate/Verify MAC key](/documentation/platform/kms/keys#create-a-key)
+- The **Member** role to follow the UI steps, or the **Cryptographic Operator** role to follow the API steps (see [Who can use a key](/documentation/platform/kms/keys#who-can-use-a-key))
+
+## Generate a MAC
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview**, select the options menu on the key's row, then select **Generate MAC**.
+      </Step>
+      <Step>
+        Enter your data in **Data to Authenticate**. If your data is already Base64 encoded, turn on **Data is Base64 encoded**.
+      </Step>
+      <Step>
+        Select **Generate MAC**, then copy the MAC from **Message Authentication Code**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Base64 encode your data, then call [the generate MAC endpoint](/api-reference/endpoints/kms/mac/generate-mac) with the key's ID:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id>/generate-mac \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "data": "SGVsbG8sIFdvcmxkIQ=="
+      }'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+
+    The response contains the Base64-encoded MAC:
+
+    ```json
+    {
+      "mac": "<base64-encoded-mac>",
+      "keyId": "<key-id>",
+      "macAlgorithm": "HMAC_SHA_256"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Verify a MAC
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview**, select the options menu on the row of the key that generated the MAC, then select **Verify MAC**.
+      </Step>
+      <Step>
+        Enter the data in **Data to Verify** and the MAC in **Message Authentication Code**. If your data is already Base64 encoded, turn on **Data is Base64 encoded**.
+      </Step>
+      <Step>
+        Select **Verify MAC**. **MAC Status** shows **Valid** if the MAC matches the data, and **Invalid** if it doesn't.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Call [the verify MAC endpoint](/api-reference/endpoints/kms/mac/verify-mac) with the ID of the key that generated the MAC:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id>/verify-mac \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "data": "SGVsbG8sIFdvcmxkIQ==",
+        "mac": "<base64-encoded-mac>"
+      }'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+
+    In the response, `macValid` is `true` if the MAC matches the data:
+
+    ```json
+    {
+      "macValid": true,
+      "keyId": "<key-id>",
+      "macAlgorithm": "HMAC_SHA_256"
+    }
+    ```
+  </Tab>
+</Tabs>

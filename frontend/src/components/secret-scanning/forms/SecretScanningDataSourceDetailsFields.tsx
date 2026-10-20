@@ -2,8 +2,10 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
+  FieldGroup,
   FieldLabel,
   Input,
   TextArea
@@ -15,28 +17,26 @@ export const SecretScanningDataSourceDetailsFields = () => {
   const { control } = useFormContext<TSecretScanningDataSourceForm>();
 
   return (
-    <>
-      <p className="mb-4 text-sm text-label-secondary">
-        Provide a name and description for this Data Source.
-      </p>
+    <FieldGroup>
       <Controller
         render={({ field, fieldState: { error } }) => (
-          <Field className="mb-4" data-invalid={Boolean(error)}>
+          <Field data-invalid={Boolean(error)}>
             <FieldLabel htmlFor="secret-scanning-data-source-name">Name</FieldLabel>
-            <Input
-              {...field}
-              id="secret-scanning-data-source-name"
-              autoFocus
-              placeholder="my-data-source"
-              autoComplete="off"
-              name="secret-scanning-data-source-name"
-              aria-invalid={Boolean(error)}
-              aria-describedby={`secret-scanning-data-source-name-help${error ? " secret-scanning-data-source-name-error" : ""}`}
-            />
-            <FieldDescription id="secret-scanning-data-source-name-help">
-              Must be slug-friendly
-            </FieldDescription>
-            <FieldError id="secret-scanning-data-source-name-error">{error?.message}</FieldError>
+            <FieldContent>
+              <Input
+                {...field}
+                id="secret-scanning-data-source-name"
+                autoFocus
+                placeholder="acme-org"
+                autoComplete="off"
+                isError={Boolean(error)}
+                aria-describedby="secret-scanning-data-source-name-help"
+              />
+              <FieldDescription id="secret-scanning-data-source-name-help">
+                Shown in the data source list, findings, and audit logs. Must be slug-friendly.
+              </FieldDescription>
+              <FieldError errors={[error]} />
+            </FieldContent>
           </Field>
         )}
         control={control}
@@ -44,28 +44,26 @@ export const SecretScanningDataSourceDetailsFields = () => {
       />
       <Controller
         render={({ field, fieldState: { error } }) => (
-          <Field className="mb-4" data-invalid={Boolean(error)}>
+          <Field data-invalid={Boolean(error)}>
             <FieldLabel htmlFor="secret-scanning-data-source-description">
-              Description <span className="text-muted">(optional)</span>
+              Description (Optional)
             </FieldLabel>
-            <TextArea
-              {...field}
-              id="secret-scanning-data-source-description"
-              value={field.value ?? ""}
-              placeholder="Provide a description for this data source..."
-              className="resize-none!"
-              rows={4}
-              aria-invalid={Boolean(error)}
-              aria-describedby={error ? "secret-scanning-data-source-description-error" : undefined}
-            />
-            <FieldError id="secret-scanning-data-source-description-error">
-              {error?.message}
-            </FieldError>
+            <FieldContent>
+              <TextArea
+                {...field}
+                id="secret-scanning-data-source-description"
+                value={field.value ?? ""}
+                placeholder="Describe what this data source scans..."
+                rows={4}
+                aria-invalid={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
           </Field>
         )}
         control={control}
         name="description"
       />
-    </>
+    </FieldGroup>
   );
 };

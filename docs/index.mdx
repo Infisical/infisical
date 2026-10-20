@@ -5,7 +5,7 @@ description: "Learn how to use Infisical to manage secrets, certificates, and se
 mode: custom
 ---
 
-import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeSteps, Mark } from "/snippets/home.jsx";
+import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeSteps, Mark, AGENT_PROMPT, PromptBlock } from "/snippets/home.jsx";
 
 <div className="ifx-home">
 
@@ -19,16 +19,27 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
   }
   aside={
     <HomeSteps
-      steps={[
+      panels={[
         {
-          tabs: [
-            { label: "macOS", command: "brew install infisical/get-cli/infisical" },
-            { label: "Windows", command: "winget install infisical" },
-            { label: "Debian/Ubuntu", command: "curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash && sudo apt-get update && sudo apt-get install -y infisical" },
-            { label: "npm", command: "npm install -g @infisical/cli" }
-          ]
+          label: "AI prompt",
+          content: (
+              <PromptBlock text={AGENT_PROMPT} />
+          )
         },
-        { label: "Inject your secrets.", href: "/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" }
+        {
+          label: "CLI",
+          steps: [
+            {
+              tabs: [
+                { label: "macOS", command: "brew install infisical/get-cli/infisical" },
+                { label: "Windows", command: "winget install infisical" },
+                { label: "Debian/Ubuntu", command: "curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash && sudo apt-get update && sudo apt-get install -y infisical" },
+                { label: "npm", command: "npm install -g @infisical/cli" }
+              ]
+            },
+            { label: "Inject your secrets.", href: "/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" }
+          ]
+        }
       ]}
     />
   }

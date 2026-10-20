@@ -519,12 +519,12 @@ const RuleFormContent = ({
         </div>
 
         {/* Footer */}
-        <SheetFooter className="border-t">
-          <Button variant="project" type="submit">
-            {isEditing ? "Save Changes" : "Create Rule"}
-          </Button>
+        <SheetFooter className="justify-end border-t">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
+          </Button>
+          <Button variant="project" type="submit">
+            {isEditing ? "Save Changes" : "Create Rule"}
           </Button>
         </SheetFooter>
       </form>

@@ -54,6 +54,7 @@ export const ProjectIdentityDetailsSection = ({
   const projectsHidden = hidesProjects(currentProject?.type);
   const isPam = currentProject?.type === ProjectType.PAM;
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
+  const isSecretScanning = currentProject?.type === ProjectType.SecretScanning;
 
   let productLabel = "Project";
   if (projectsHidden) {
@@ -150,7 +151,10 @@ export const ProjectIdentityDetailsSection = ({
                     {isSubOrgIdentity ? "Sub-" : ""}Organization
                   </Badge>
                 ) : (
-                  <Badge variant={isAgentVault ? "av" : "project"}>
+                  <Badge
+                    // eslint-disable-next-line no-nested-ternary
+                    variant={isAgentVault ? "av" : isSecretScanning ? "ss" : "project"}
+                  >
                     {isAgentVault ? <VaultIcon /> : <ProjectIcon />}
                     {productLabel}
                   </Badge>

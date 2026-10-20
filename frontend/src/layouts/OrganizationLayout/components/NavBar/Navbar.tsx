@@ -410,7 +410,7 @@ export const Navbar = () => {
             <div
               className={twMerge(
                 "flex h-full min-w-0 items-center overflow-hidden border-border-soft pr-2 pl-4 transition-all duration-300 ease-in-out",
-                isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 max-w-96"
+                isProjectScope ? "mr-2 max-w-52 border-r" : "mr-4 max-w-96"
               )}
             >
               <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
@@ -444,12 +444,14 @@ export const Navbar = () => {
                     <span className="truncate">
                       {isSubOrganization ? currentOrg?.name : rootOrg?.name}
                     </span>
-                    <Badge
-                      variant={isSubOrganization ? "sub-org" : "org"}
-                      className="hidden lg:inline-flex"
-                    >
-                      {isSubOrganization ? "Sub-Organization" : "Organization"}
-                    </Badge>
+                    {!isProjectScope && (
+                      <Badge
+                        variant={isSubOrganization ? "sub-org" : "org"}
+                        className="hidden lg:inline-flex"
+                      >
+                        {isSubOrganization ? "Sub" : "Org"}
+                      </Badge>
+                    )}
                   </button>
                   {subscription.cardDeclined && !isProjectScope && !isSubOrganization && (
                     <Tooltip>

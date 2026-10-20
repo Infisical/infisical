@@ -86,7 +86,16 @@ export const RegionSelect = ({ compact }: RegionSelectProps) => {
   const location = useLocation();
 
   const handleRegionSelect = (value: string) => {
-    window.location.assign(`https://${value}.infisical.com/${location.pathname}`);
+    const currentSearch = new URLSearchParams(window.location.search);
+    const trialSearch = new URLSearchParams(
+      ["product", "plan", "cycle"].flatMap((key) => {
+        const param = currentSearch.get(key);
+        return param ? [[key, param]] : [];
+      })
+    ).toString();
+    window.location.assign(
+      `https://${value}.infisical.com/${location.pathname}${trialSearch ? `?${trialSearch}` : ""}`
+    );
   };
 
   const shouldDisplay =

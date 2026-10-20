@@ -27,7 +27,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectLabel, hidesProjects } from "@app/helpers/project";
-import { useDebounce } from "@app/hooks";
+import { useDebounce, useScopeVariant } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
   useGetProjectRoles,
@@ -53,6 +53,7 @@ type Props = {
 // TODO: update backend to support adding multiple roles at once
 
 const Content = ({ onClose }: { onClose: () => void }) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const productLabel = getProjectLabel(currentProject?.type);
@@ -146,7 +147,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="project" type="button" isPending isDisabled>
+          <Button variant={scopeVariant} type="button" isPending isDisabled>
             Add
           </Button>
         </DialogFooter>
@@ -256,7 +257,12 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         <Button variant="ghost" type="button" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          variant={scopeVariant}
+          type="submit"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Add
         </Button>
       </DialogFooter>

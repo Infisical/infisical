@@ -4,7 +4,7 @@ description: "Configure how the Infisical CLI interacts with your directory."
 ---
 
 <Warning>
-  `.infisical.yaml` replaces `.infisical.json`, which is deprecated. The CLI still reads `.infisical.json`, so directories that have one keep working without any changes. To move to the new format, [convert it to `.infisical.yaml`](/cli/project-config-migration).
+  `.infisical.yaml` replaces `.infisical.json`, which is deprecated. The CLI still reads `.infisical.json`. Starting with version 0.44.3, the CLI also creates `.infisical.yaml` with the same settings the first time a command reads `.infisical.json`. To finish moving to the new format, see [Migrate to .infisical.yaml](/cli/project-config-migration).
 </Warning>
 
 `.infisical.yaml` links a directory to an [Infisical project](/documentation/platform/project). When you run a command such as [`infisical sm run`](/cli/reference#sm-run) or [`infisical sm secrets`](/cli/reference#sm-secrets) in that directory, the CLI reads the project from the file, so you don't have to pass [`--projectId`](/cli/reference#sm-run--flag-projectid).

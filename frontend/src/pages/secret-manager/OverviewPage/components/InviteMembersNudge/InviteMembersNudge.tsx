@@ -11,15 +11,15 @@ import {
   Card,
   CardDescription,
   CardTitle,
+  EmailInput,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  IconButton,
-  Input
+  IconButton
 } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission } from "@app/context";
-import { emailListSchema, parseEmailList } from "@app/helpers/email";
+import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
 import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -32,7 +32,7 @@ import { useFloatingBarClearance } from "./useFloatingBarClearance";
 const SUCCESS_AUTO_DISMISS_MS = 3000;
 
 const inviteMembersNudgeFormSchema = z.object({
-  emails: emailListSchema
+  emails: emailListSchema({ max: MAX_INVITE_EMAILS, isRequired: true })
 });
 
 export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false }: Props) => {
@@ -73,7 +73,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
     formState: { isSubmitting }
   } = useForm<TInviteMembersNudgeForm>({
     resolver: zodResolver(inviteMembersNudgeFormSchema),
-    defaultValues: { emails: "" }
+    defaultValues: { emails: [] }
   });
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
@@ -137,10 +137,9 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
       return;
     }
 
-    const usernames = parseEmailList(emails);
-    if (usernames.length) {
+    if (emails.length) {
       await addUserToProject({
-        usernames,
+        usernames: emails,
         orgId: currentOrg.id,
         projectId: currentProject.id,
         projectType: currentProject.type,
@@ -150,7 +149,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
 
     analytics.captureForOrganization(AnalyticsEvent.SecretsActivationModalMembersInvited, orgId, {
       ...baseEventProps,
-      invitedCount: usernames.length
+      invitedCount: emails.length
     });
 
     createNotification({
@@ -242,17 +241,17 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
                 <Controller
                   control={control}
                   name="emails"
-                  render={({ field, fieldState: { error } }) => (
+                  render={({ field: { value, onChange, ref }, fieldState: { error } }) => (
                     <Field>
                       <FieldLabel htmlFor="invite-members-nudge-emails">Emails</FieldLabel>
-                      <Input
+                      <EmailInput
+                        ref={ref}
                         id="invite-members-nudge-emails"
-                        type="text"
-                        autoComplete="off"
+                        value={value}
+                        onValueChange={onChange}
                         isError={Boolean(error)}
-                        disabled={!canSubmit}
+                        isDisabled={!canSubmit}
                         placeholder="email@example.com, email2@example.com"
-                        {...field}
                       />
                       <FieldDescription>{roleDescription}</FieldDescription>
                       <FieldError>{error?.message}</FieldError>
