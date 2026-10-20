@@ -145,6 +145,7 @@ export const Switcher = ({
         className={className}
         align={align}
         side={side}
+        data-v4-switcher=""
         style={{ width, padding: 0 }}
         aria-label={label}
         onOpenAutoFocus={(event) => {
@@ -203,7 +204,10 @@ export const Switcher = ({
                         )}
                       </span>
                       {option.meta && (
-                        <span className={option.metaMono ? "ml-auto font-mono" : "ml-auto"}>
+                        <span
+                          data-switcher-meta=""
+                          className={option.metaMono ? "ml-auto font-mono" : "ml-auto"}
+                        >
                           {option.meta}
                         </span>
                       )}

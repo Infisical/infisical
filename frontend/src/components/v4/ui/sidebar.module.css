@@ -473,7 +473,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--v4-space-8);
-  padding: var(--v4-space-4) var(--v4-space-4) var(--v4-space-4) var(--v4-space-8);
+  min-height: var(--v4-space-40);
+  padding: var(--v4-space-4) var(--v4-space-12);
   color: var(--v4-ink);
 }
 .userRow {
@@ -481,8 +482,8 @@
   align-items: center;
   gap: var(--v4-space-8);
   width: 100%;
-  margin-top: var(--v4-space-4);
-  padding: var(--v4-space-8);
+  margin-top: 0;
+  padding: var(--v4-space-8) var(--v4-space-12);
   border: 0;
   border-top: 1px solid var(--v4-line-soft);
   background: transparent;
@@ -492,7 +493,27 @@
   cursor: pointer;
 }
 .userRow:hover {
-  background: var(--v4-segment-hover);
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover, var(--v4-opacity-hover)), transparent);
+}
+.userRow [data-slot="identity"] [data-slot="avatar"],
+.account [data-slot="avatar"] {
+  background: var(--v4-ink);
+  color: var(--v4-on-ink);
+}
+.userRow [data-slot="identity"] [data-slot="avatar"]::after,
+.account [data-slot="avatar"]::after {
+  border-color: transparent;
+}
+.userRow [data-slot="identity"] [data-slot="avatar"] > *,
+.account [data-slot="avatar"] > * {
+  background: transparent;
+  color: inherit;
+}
+.userRow [data-slot="identity"] > div > :first-child {
+  font-weight: 600;
+}
+.userRow [data-slot="identity"] > div > :last-child {
+  color: var(--v4-muted);
 }
 .userRow:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);

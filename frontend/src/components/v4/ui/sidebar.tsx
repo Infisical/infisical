@@ -616,11 +616,14 @@ export const Sidebar = ({
                         }}
                       >
                         {themeOptions.map((option) => (
-                          <Tooltip key={option.value} content={option.label}>
-                            <ToggleGroupItem value={option.value} aria-label={option.label}>
-                              <Icon name={option.icon} size={14} />
-                            </ToggleGroupItem>
-                          </Tooltip>
+                          <ToggleGroupItem
+                            key={option.value}
+                            value={option.value}
+                            aria-label={option.label}
+                            title={option.label}
+                          >
+                            <Icon name={option.icon} size={14} />
+                          </ToggleGroupItem>
                         ))}
                       </ToggleGroup>
                     </div>

@@ -321,6 +321,49 @@
 .v4 .v4-switcher-footer {
   border-top: 1px solid var(--v4-line);
 }
+/* Switcher popovers (sidebar account, breadcrumb switcher): one shared 12px inset, 40px rows, edge-to-edge rules. */
+.v4 [data-v4-switcher] [cmdk-list] {
+  --v4-menu-icon-slot: 0px;
+  padding: 0 0 var(--v4-space-4);
+}
+.v4 [data-v4-switcher] [cmdk-group-heading] {
+  margin: 0;
+  padding: var(--v4-space-12) var(--v4-space-12) var(--v4-space-4);
+  border-top: 0;
+  color: var(--v4-muted);
+  text-transform: uppercase;
+  font-family: var(--v4-type-eyebrow-font-family);
+  font-size: var(--v4-type-eyebrow-font-size);
+  line-height: var(--v4-type-eyebrow-line-height);
+  font-weight: var(--v4-type-eyebrow-font-weight);
+  letter-spacing: var(--v4-type-eyebrow-letter-spacing);
+}
+.v4 [data-v4-switcher] [cmdk-item][cmdk-item] {
+  min-height: var(--v4-space-40);
+  padding-inline: var(--v4-space-12);
+  border-radius: 0;
+}
+.v4 [data-v4-switcher] [cmdk-item][data-current][data-current] {
+  background-color: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
+  font-weight: 600;
+}
+.v4[data-theme="dark"] [data-v4-switcher] [cmdk-item][data-current][data-current],
+.v4 [data-theme="dark"] [data-v4-switcher] [cmdk-item][data-current][data-current] {
+  background-color: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover-dark), transparent);
+}
+.v4 [data-v4-switcher] [cmdk-item]:not(:has([data-switcher-meta])) > span.inline-flex:last-child {
+  margin-inline-start: auto;
+}
+.v4 [data-v4-switcher] [data-switcher-meta] {
+  color: var(--v4-muted);
+  font-weight: var(--v4-type-body-font-weight);
+}
+.v4 [data-v4-switcher] [cmdk-separator][cmdk-separator] {
+  margin: var(--v4-space-4) 0;
+}
+.v4 [data-v4-switcher] .v4-switcher-footer {
+  padding: 0;
+}
 .v4 .v4-switcher-description {
   display: block;
   color: var(--v4-muted);
