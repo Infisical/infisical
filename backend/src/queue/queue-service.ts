@@ -28,7 +28,7 @@ import {
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
-import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
+import { buildRedisFromConfig, createThrottledRedisErrorLogger, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
 import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
@@ -946,6 +946,11 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     worker.on("active", (job) => {
       logger.debug({ queue: name, job: job.name, jobId: job.id }, "Queue job picked up by a worker");
     });
+
+    // The worker's own blocking connection is a duplicate with no listeners, and BullMQ only reports its
+    // errors (and run-loop errors) through this event.
+    const workerErrorLogger = createThrottledRedisErrorLogger(`queue-worker:${name}`, "Queue worker error");
+    worker.on("error", (err) => workerErrorLogger.log(err));
 
     workerContainer[name] = worker;
   };

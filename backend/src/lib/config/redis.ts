@@ -35,14 +35,13 @@ const getRedisErrorKey = (err: Error) => {
 };
 
 /**
- * Attaches throttled, named connection logging to a client. Call this on any client not built by
- * `buildRedisFromConfig`. Specifically `duplicate()`d clients, since `duplicate()` copies options but not listeners.
+ * Logs at most one line per error key (and node) every REDIS_ERROR_LOG_THROTTLE_MS, with a count of the
+ * repeats it held back. `reset` clears the window, for a client that has just reconnected.
  */
-export const attachConnectionLogging = (client: Redis | Cluster, name: string) => {
+export const createThrottledRedisErrorLogger = (name: string, label = "Redis connection error") => {
   const throttleByErrorKey = new Map<string, { lastLoggedAt: number; suppressedCount: number }>();
-  let isDown = false;
 
-  const logConnectionError = (err: Error, nodeAddress?: string) => {
+  const log = (err: Error, nodeAddress?: string) => {
     const errorKey = getRedisErrorKey(err);
     // Nodes are bucketed separately so one failing node can't absorb another's line. Still bounded,
     // unlike keying on err.message, since a cluster has a fixed node count.
@@ -59,9 +58,20 @@ export const attachConnectionLogging = (client: Redis | Cluster, name: string) =
     throttleByErrorKey.set(throttleKey, { lastLoggedAt: now, suppressedCount: 0 });
     logger.error(
       { err, redisClient: name, redisErrorKey: errorKey, redisNode: nodeAddress, suppressedCount },
-      `Redis connection error [client=${name}] [error=${errorKey}]${nodeAddress ? ` [node=${nodeAddress}]` : ""} [suppressedCount=${suppressedCount}] [message=${err.message}]`
+      `${label} [client=${name}] [error=${errorKey}]${nodeAddress ? ` [node=${nodeAddress}]` : ""} [suppressedCount=${suppressedCount}] [message=${err.message}]`
     );
   };
+
+  return { log, reset: () => throttleByErrorKey.clear() };
+};
+
+/**
+ * Attaches throttled, named connection logging to a client. Call this on any client not built by
+ * `buildRedisFromConfig`. Specifically `duplicate()`d clients, since `duplicate()` copies options but not listeners.
+ */
+export const attachConnectionLogging = (client: Redis | Cluster, name: string) => {
+  const { log: logConnectionError, reset } = createThrottledRedisErrorLogger(name);
+  let isDown = false;
 
   client.on("error", (err: Error) => logConnectionError(err));
 
@@ -75,7 +85,7 @@ export const attachConnectionLogging = (client: Redis | Cluster, name: string) =
 
   client.on("ready", () => {
     // Must clear, otherwise stale timestamps would throttle the first error of the next outage.
-    throttleByErrorKey.clear();
+    reset();
 
     // Skip the initial connect; only a recovery is worth a line.
     if (!isDown) return;
