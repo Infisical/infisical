@@ -814,10 +814,11 @@ await someDAL.transaction(async (tx) => {
 - `emit` writes a batch in one go (eg one event per secret in a bulk write), in chunks of 1000 rows to
   stay under Postgres's bind parameter limit.
 - Every event carries its UUID `id` from the moment it is built, and every consumer's row for it stores
-  it as `eventId`. A consumer reports its results by that id. `(consumer, eventId)` is unique, so an
-  emitter that needs a retry dropped derives the id instead of generating it (the secret reminder uses
-  `uuid` v5 over the reminder and the date). `eventId` is nullable only in the table, because a pod on
-  the previous release writes rows without it during a rolling deploy; `claimBatch` gives those rows one.
+  it as `eventId`. A consumer reports its results by that id, so `(consumer, eventId)` is unique and a
+  repeated insert is dropped. Generate ids with `crypto.randomUUID()` (`defineEvent`'s `build` does):
+  deriving one from the entity and a date silently drops a legitimate repeat (eg a reminder moved back
+  onto a date it already fired on). `eventId` is nullable only in the table, because a pod on the
+  previous release writes rows without it during a rolling deploy; `claimBatch` gives those rows one.
 
 **How delivery works:**
 
@@ -862,8 +863,7 @@ await someDAL.transaction(async (tx) => {
   don't add a partition key back until a consumer needs one: no consumer today depends on the order two
   events for one resource arrive in, and each event is idempotent on its own through alert history.
 - **Delivery is at-least-once.** `commitResults` is retried in-process, since by then the consumer has
-  already sent; what's left is narrowed by the consumer's own delivery records and by an emitter that
-  derives its event id.
+  already sent; what's left is narrowed by the consumer's own delivery records.
 
 **Watch `infisical.event_outbox.oldest_pending_age`.** It catches a dead relay, a wedged consumer and a
 stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, labelled by consumer, so a

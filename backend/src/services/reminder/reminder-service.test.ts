@@ -121,22 +121,17 @@ describe("reminder dispatch", () => {
   });
 
   // A cron retry after a partial run must be the same event, so the outbox drops it.
-  test("gives one occurrence of a reminder the same event id every time it is emitted", async () => {
+  // The outbox drops an event id a consumer already has, so a reminder moved back onto a date it already
+  // fired on would never send again if its id were derived from the reminder and the date.
+  test("gives every firing its own event id, even for a date the reminder already fired on", async () => {
     const first = buildService({ due: [reminder()] });
-    const retry = buildService({ due: [reminder()] });
-    const otherDate = buildService({ due: [reminder({ nextReminderDate: new Date("2026-10-09T00:00:00.000Z") })] });
-    const otherReminder = buildService({ due: [reminder({ id: "rem-2" })] });
+    const movedBack = buildService({ due: [reminder()] });
 
     await first.service.dispatchDueReminders({ now });
-    await retry.service.dispatchDueReminders({ now });
-    await otherDate.service.dispatchDueReminders({ now });
-    await otherReminder.service.dispatchDueReminders({ now });
+    await movedBack.service.dispatchDueReminders({ now });
 
-    expect(first.emitted[0].id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-    expect(retry.emitted[0].id).toBe(first.emitted[0].id);
-    expect(otherDate.emitted[0].data.occurrenceDate).toBe("2026-10-09");
-    expect(otherDate.emitted[0].id).not.toBe(first.emitted[0].id);
-    expect(otherReminder.emitted[0].id).not.toBe(first.emitted[0].id);
+    expect(first.emitted[0].id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(movedBack.emitted[0].id).not.toBe(first.emitted[0].id);
   });
 
   test("deletes a one-time reminder once its event is emitted", async () => {

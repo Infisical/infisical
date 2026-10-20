@@ -4,9 +4,8 @@ import { TableName } from "../schemas";
 
 const EVENT_ID_INDEX = `${TableName.EventOutbox}_event_id_idx`;
 
-// The CloudEvents `id`, shared by every consumer's row for one event. It replaces `idempotencyKey`: an
-// emitter that needs a retry deduplicated derives the id instead of passing a key. Both stay for one
-// release, because a pod still on the previous release inserts into `idempotencyKey` and names its
+// The CloudEvents `id`, shared by every consumer's row for one event. It replaces `idempotencyKey`. Both
+// stay for one release, because a pod still on the previous release inserts into `idempotencyKey` and names its
 // unique index in ON CONFLICT during a rolling deploy; dropping either would fail that insert along with
 // the write it belongs to. For the same reason `eventId` is nullable with no default: `claimBatch` gives
 // those rows one.

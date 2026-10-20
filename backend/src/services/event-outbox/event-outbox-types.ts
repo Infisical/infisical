@@ -46,8 +46,8 @@ const keySchema = z
     "Must be lowercase and dot-namespaced, e.g. 'pki.certificate.issued'"
   );
 
-// `id` is the CloudEvents id. It is fixed when the event is built rather than at insert, so an emitter
-// that needs a retry to be recognised as the same event can derive it (eg a reminder occurrence).
+// `id` is the CloudEvents id. It is set when the event is built, so every consumer's row for the event
+// carries the same one.
 export const EventInputSchema = z.object({
   id: z.string().uuid(),
   type: keySchema,

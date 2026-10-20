@@ -1,15 +1,13 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 import RE2 from "re2";
-import { v5 as uuidv5 } from "uuid";
 import { z } from "zod";
 
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 export const SECRET_REMINDER_RESOURCE_TYPE = "secret.reminder";
 export const SECRET_REMINDER_DUE_EVENT = "secret.reminder.due";
-
-// Namespaces the event ids derived below, so they can't collide with ids derived the same way elsewhere.
-const SECRET_REMINDER_DUE_EVENT_ID_NAMESPACE = "18460d3b-7d67-44a8-a6fb-1f84f78f29c4";
 
 export const SecretReminderDuePayloadSchema = z.object({
   note: z.string().max(1024).nullish(),
@@ -36,10 +34,10 @@ export const emitSecretReminderDue = (
   eventEmitter.emit(
     [
       {
-        // Derived rather than random, so a cron retry after a partial run is the same event and the outbox
-        // drops it. Derived from the reminder rather than the secret, so a reminder deleted and set again
-        // for a date that already fired still sends.
-        id: uuidv5(`${reminderId}:${occurrenceDate}`, SECRET_REMINDER_DUE_EVENT_ID_NAMESPACE),
+        // Random, not derived from the reminder and date. The dispatch transaction already stops one run from
+        // firing an occurrence twice, and a derived id would make the outbox drop a reminder the user moved
+        // back onto a date it already fired on.
+        id: crypto.randomUUID(),
         type: SECRET_REMINDER_DUE_EVENT,
         data: {
           orgId,

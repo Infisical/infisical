@@ -109,7 +109,7 @@ const buildDAL = (opts?: { returning?: unknown[]; updated?: number; selected?: u
 };
 
 describe("event outbox dal", () => {
-  // An emitter that derives its event id (eg a reminder occurrence) relies on this to drop a retry.
+  // Results are keyed by event id, so a consumer must never hold two rows for one event.
   test("insertEvents ignores an event the consumer already has", async () => {
     const { dal, calls, tx } = buildDAL();
 
