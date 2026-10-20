@@ -65,7 +65,7 @@ type TRowHoverActions = {
   rowHoverProps: {
     tabIndex?: number;
     onMouseEnter: (e: MouseEvent<HTMLElement>) => void;
-    onMouseLeave: () => void;
+    onMouseLeave: (e: MouseEvent<HTMLElement>) => void;
     onFocus: (e: FocusEvent<HTMLElement>) => void;
     onBlur: (e: FocusEvent<HTMLElement>) => void;
   };
@@ -95,6 +95,10 @@ export const useRowHoverActions = ({
   const [shouldRenderActions, setShouldRenderActions] = useState(false);
   const [isGroupEnabled, setIsGroupEnabled] = useState(false);
   const hasRenderedActionsRef = useRef(false);
+  // The row element itself, captured from whichever of its own events last fired. The hook hands
+  // out props rather than a ref, so this is the only way to ask the DOM about the row without
+  // making every row component thread one through.
+  const rowElementRef = useRef<HTMLElement | null>(null);
   // "Ever mounted" gates the fade-out timer; "still mounted" gates the one-frame withhold below.
   const isActionBarMountedRef = useRef(false);
   const hasHoverPointer = useHasHoverPointer();
@@ -145,6 +149,16 @@ export const useRowHoverActions = ({
     if (!hasRenderedActionsRef.current) return undefined;
 
     const timeout = setTimeout(() => {
+      // Coming back from a popover or sheet this row rendered, the pointer crosses out of a node
+      // that is not a DOM descendant and into the row, and React sends no fresh enter because the
+      // two are neighbours in its own tree. The row is genuinely hovered and will never be told
+      // so. At release time the DOM still knows, so ask it rather than wait for an event that is
+      // not coming.
+      if (rowElementRef.current?.matches(":hover")) {
+        setIsHovered(true);
+        return;
+      }
+
       isActionBarMountedRef.current = false;
       setShouldRenderActions(false);
     }, ACTION_BAR_TRANSITION_MS);
@@ -161,16 +175,21 @@ export const useRowHoverActions = ({
       // to a node that is not a DOM descendant the row never sees it: the bar stays mounted for
       // the life of the page on a row the user is not on.
       onMouseEnter: (e: MouseEvent<HTMLElement>) => {
+        rowElementRef.current = e.currentTarget;
         if (!e.currentTarget.contains(e.target as Node)) return;
         setIsHovered(true);
       },
-      onMouseLeave: () => setIsHovered(false),
+      onMouseLeave: (e: MouseEvent<HTMLElement>) => {
+        rowElementRef.current = e.currentTarget;
+        setIsHovered(false);
+      },
       // React's synthetic focus bubbles through portals, so focus landing in a popover this row
       // renders would otherwise mark the row focused. That node is not a DOM descendant, so when
       // the popover closes without handing focus back the row never sees a matching onBlur and
       // stays active for the life of the page, holding its bar mounted. The popover-open flags
       // each row keeps are what hold the bar while a popover is genuinely in use.
       onFocus: (e: FocusEvent<HTMLElement>) => {
+        rowElementRef.current = e.currentTarget;
         if (!e.currentTarget.contains(e.target)) return;
         setIsFocusWithin(true);
       },
