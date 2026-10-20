@@ -1,7 +1,5 @@
 import { Edge, Node } from "@xyflow/react";
 
-import { TSecretExposure } from "@app/hooks/api/secretInsights/types";
-
 export type TAccessGraphActorType = "user" | "identity";
 
 export type TAccessGraphReader = {
@@ -29,7 +27,6 @@ export type TAccessGraphSecret = {
   key: string;
   environment: string;
   secretPath: string;
-  exposure?: TSecretExposure;
 };
 
 export type TAccessGraphInput = {
@@ -53,7 +50,7 @@ export type TLaneEdgeData = { centerX: number };
 
 export const NODE_WIDTH = 240;
 const READER_NODE_HEIGHT = 74;
-const SECRET_NODE_HEIGHT = 104;
+const SECRET_NODE_HEIGHT = 64;
 const BAND_LABEL_HEIGHT = 36;
 const HEADER_GAP = 8;
 const COLUMN_GAP = 160;

@@ -30,7 +30,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TSecretReadActivityDALFactory } from "./secret-read-activity-dal";
 import {
-  calculateExposureScore,
   classifySecretReads,
   computeSecretReach,
   coversWholeWindow,
@@ -285,8 +284,7 @@ export const secretReadActivityServiceFactory = ({
 
   // How each secret stands, from everyone who can read its value today: unused access is judged on the
   // non-admins among them, since admins can read everything by design; ghost readers are readers in the window
-  // who are not among them at all, so their access was since removed; and the exposure score is computed from
-  // those counts. Groups are judged on their own too: a group's access to a secret is unused when none of its
+  // who are not among them at all, so their access was since removed. Groups are judged on their own too: a group's access to a secret is unused when none of its
   // members read it. Until a project has a full window of reads, it is judged on the reads since tracking began.
   const $loadSecretSummarizer = async (projectId: string, orgId: string, windowStart: Date) => {
     const [
@@ -370,10 +368,10 @@ export const secretReadActivityServiceFactory = ({
         ).values()
       ];
       const entitledKeys = new Set(entitled.map((actor) => `${actor.actorType}:${actor.id}`));
-      // Admins can read everything by design, so a secret is not exposed to them: they are left out of the counts and
-      // the score, though their reads still show, and a read of theirs is never a ghost's.
-      const exposedTo = entitled.filter((actor) => !adminActorIds.has(actor.id));
-      const unread = exposedTo.filter(
+      // Admins can read everything by design, so they are left out of the counts, though their reads still show,
+      // and a read of theirs is never a ghost's.
+      const nonAdmins = entitled.filter((actor) => !adminActorIds.has(actor.id));
+      const unread = nonAdmins.filter(
         (actor) =>
           !reads.has(`${actor.actorType}:${actor.id}`) &&
           coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), judgedFrom)
@@ -389,16 +387,11 @@ export const secretReadActivityServiceFactory = ({
       );
       return {
         entitled,
-        exposedTo,
+        nonAdmins,
         unread,
         ghostReaders,
         entitledGroups,
-        unreadGroups,
-        exposure: calculateExposureScore({
-          entitledCount: exposedTo.length,
-          unreadCount: unread.length,
-          ghostReaderCount: ghostReaders.length
-        })
+        unreadGroups
       };
     };
     return {
@@ -454,7 +447,7 @@ export const secretReadActivityServiceFactory = ({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
       });
     }
-    const { entitled, exposedTo, unread, ghostReaders, exposure } = summarize(activity);
+    const { entitled, nonAdmins, unread, ghostReaders } = summarize(activity);
     const unreadKeys = new Set(unread.map((reader) => `${reader.actorType}:${reader.id}`));
 
     // A ghost reader may have left the project or been deleted since, and a reader who has the value through a
@@ -489,10 +482,9 @@ export const secretReadActivityServiceFactory = ({
           accessChangedAt: accessChangedAtByActorId.get(reader.id) ?? null
         })
       ),
-      entitledCount: exposedTo.length,
+      entitledCount: nonAdmins.length,
       unreadCount: unread.length,
       ghostReaderCount: ghostReaders.length,
-      exposure,
       ghostReaders: ghostReaders.map((read) => ({
         ...read,
         actorName: actorNames.get(`${read.actorType}:${read.actorId}`) ?? null
@@ -569,7 +561,7 @@ export const secretReadActivityServiceFactory = ({
       projectId,
       orgId,
       (activity, summary) => {
-        summary.exposedTo.forEach((actor) => {
+        summary.nonAdmins.forEach((actor) => {
           statOf(toPrincipalType(actor.actorType), actor.id).entitledCount += 1;
         });
         summary.unread.forEach((actor) => markUnread(toPrincipalType(actor.actorType), actor.id, activity));

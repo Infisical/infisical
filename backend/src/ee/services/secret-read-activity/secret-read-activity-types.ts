@@ -92,40 +92,6 @@ export type TReadActivityScope = {
   secret?: Omit<TGetSecretReadActivityDTO, "projectId">;
 };
 
-// How a secret stands: everyone who can read its value today, admins included; the non-admins among them with
-// no read in the window; and the readers in the window who can no longer read it, so they still know the value.
-export type TSecretExposureCounts = {
-  entitledCount: number;
-  unreadCount: number;
-  ghostReaderCount: number;
-};
-
-export enum SecretExposureBand {
-  Low = "low",
-  Elevated = "elevated",
-  High = "high",
-  Critical = "critical"
-}
-
-export enum SecretExposureDriver {
-  Readers = "readers",
-  GhostReaders = "ghost-readers",
-  UnusedAccess = "unused-access"
-}
-
-export type TSecretExposureDriver = {
-  kind: SecretExposureDriver;
-  // Whole points, adding up to the score, so the arithmetic shown beside the number is exact.
-  points: number;
-  label: string;
-};
-
-export type TSecretExposure = {
-  score: number;
-  band: SecretExposureBand;
-  drivers: TSecretExposureDriver[];
-};
-
 // A reader who can read the value today, and whether they count as unused access: no read, with the secret and
 // their access both older than the judged period. When they do not, the other fields say why.
 export type TEntitledReader = {

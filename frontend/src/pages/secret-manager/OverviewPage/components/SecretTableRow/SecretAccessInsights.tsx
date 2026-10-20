@@ -620,7 +620,7 @@ export function SecretAccessInsights({
     });
     const readers = [...directReaders, ...groupOnlyReaders];
     return {
-      secret: { key: secretKey, environment, secretPath, exposure: readActivity?.exposure },
+      secret: { key: secretKey, environment, secretPath },
       readers,
       // Every group that grants the value is drawn, including one whose members also have it directly.
       groups: groups.map((group) => ({

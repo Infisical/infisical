@@ -1148,21 +1148,15 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   membership creation, role or privilege creation, edit or expiry) both predate `judgedFrom`. Which secrets a
   change opened up is not recorded, so any access change restarts the window, including an edit to the rules of
   a custom role the reader holds. The per-secret sheet shows the plain fact
-  instead: a read, "No reads", or "No reads yet" with the reason. Each card row also carries three counts for its secret,
-  derived from sets the computation already holds: `entitledCount` (everyone who can read the value today,
-  project admins left out, since a secret is not exposed to someone who can read everything by design),
-  `unreadCount` (those among them with no read in the window) and
-  `ghostReaderCount` (readers in the window who can no longer read it, so they still know the value).
-- **Exposure score.** `calculateExposureScore` (`secret-read-activity-fns.ts`) turns those three counts into a 0
-  to 100 score with Low, Elevated, High and Critical bands and whole-point drivers that add up to it (readers up
-  to 45 on a log scale saturating at 40, ghost readers up to 30 saturating at 4, unused access up to 25 by
-  share). It is the blast radius prototype's three read-activity terms rescaled; the terms that would need new
-  queries (syncs, rotation age, cross-project destinations) are deliberately left out. The score, the graph and the ghost readers live only in the secret's access sheet
-  (`GET /secrets/:name/read-activity`), which also returns, for every reader who can read the value, whether they
-  count as unused access and why not (`isAdmin`, `accessChangedAt` after `judgedFrom`, or a secret newer than it),
-  and names each ghost reader from the project's members, else from the user or identity row, else null.
+  instead: a read, "No reads", or "No reads yet" with the reason.
+- **The access sheet.** The graph lives only in the secret's access sheet (`GET /secrets/:name/read-activity`).
+  That endpoint returns, for every reader who can read the value, whether they count as unused access and why not
+  (`isAdmin`, `accessChangedAt` after `judgedFrom`, or a secret newer than it), plus three counts: `entitledCount`
+  (non-admins who can read the value today), `unreadCount` (those among them counted as unused access) and
+  `ghostReaderCount`. It also returns the ghost readers (readers in the window who can no longer read it, named
+  from the project's members, else from the user or identity row, else null), which the UI does not show.
 - **The Insights card is per principal.** `$loadSecretSummarizer` is the one place a secret's readers, unread
-  readers, ghost readers and score are derived, used by both the per-secret endpoint and the project computation.
+  readers and ghost readers are derived, used by both the per-secret endpoint and the project computation.
   The computation (`$computeUnusedAccess`) walks every secret once and tallies, per user, machine identity and
   group, how many secrets it can read and how many it has not read, the environments involved, its latest read,
   and how it has the access (roles, additional privileges, groups; custom roles by name, the one lookup beyond the

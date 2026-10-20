@@ -1408,22 +1408,6 @@ export const SECRETS = {
   }
 } as const;
 
-export const SECRET_EXPOSURE = {
-  score:
-    "The exposure score, from 0 to 100, built from how many can read the value, how many who can no longer read it still know it, and how many who can read it never do.",
-  band: "The band the score falls in: low (0 to 29), elevated (30 to 59), high (60 to 84) or critical (85 to 100).",
-  drivers: "What makes up the score, largest first. The points add up to the score.",
-  driverKind:
-    "Which term the driver is: readers (up to 45 points), ghost-readers (up to 30 points) or unused-access (up to 25 points).",
-  driverPoints: "The whole points this term contributed to the score.",
-  driverLabel: "The term in words, with its counts.",
-  entitledCount:
-    "How many users and machine identities can read this secret's value today. Project admins are left out: they can read everything by design, so the secret is not exposed to them.",
-  unreadCount: "How many of those have not read it in the last 30 days.",
-  ghostReaderCount:
-    "How many users and machine identities read this secret in the last 30 days but can no longer read it today, for example after leaving the project. They still know the value."
-};
-
 export const RAW_SECRETS = {
   LIST: {
     expand: "Whether or not to expand secret references.",
@@ -1531,7 +1515,10 @@ export const RAW_SECRETS = {
     actorType: "Whether the reader is a user or a machine identity.",
     actorId: "The ID of the user or machine identity.",
     lastReadAt: "When the reader last read the secret, as the first read of that day.",
-    exposure: "The secret's exposure score, computed from the counts in this response.",
+    entitledCount:
+      "How many users and machine identities can read the secret's value today, project admins left out since they can read everything by design.",
+    unreadCount: "How many of those count as unused access.",
+    ghostReaderCount: "How many ghost readers the secret has.",
     ghostReaders:
       "The users and machine identities that read the secret since trackedSince but can no longer read it today, for example after leaving the project. They still know the value.",
     ghostReaderName:

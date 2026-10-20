@@ -51,34 +51,6 @@ export type TGetSecretAccessVolumeDTO = {
   projectId: string;
 };
 
-// How a secret stands: everyone who can read its value today, admins included; the non-admins among them with
-// no read in the last 30 days; and the readers who can no longer read it, so they still know the value.
-export type TSecretExposureCounts = {
-  entitledCount: number;
-  unreadCount: number;
-  ghostReaderCount: number;
-};
-
-export enum SecretExposureBand {
-  Low = "low",
-  Elevated = "elevated",
-  High = "high",
-  Critical = "critical"
-}
-
-export enum SecretExposureDriver {
-  Readers = "readers",
-  GhostReaders = "ghost-readers",
-  UnusedAccess = "unused-access"
-}
-
-export type TSecretExposure = {
-  score: number;
-  band: SecretExposureBand;
-  // Whole points that add up to the score, largest first.
-  drivers: { kind: SecretExposureDriver; points: number; label: string }[];
-};
-
 export enum UnusedAccessPrincipalType {
   User = "user",
   Identity = "identity",

@@ -54,10 +54,8 @@ export type {
   TSearchSecretsByValueResponse,
   TSecretAccessVolumeActor,
   TSecretAccessVolumeDay,
-  TSecretExposure,
-  TSecretExposureCounts,
   TSecretValueMatch,
   TUnusedAccessPrincipal,
   TUnusedSecret
 } from "./types";
-export { SecretExposureBand, SecretExposureDriver, UnusedAccessPrincipalType } from "./types";
+export { UnusedAccessPrincipalType } from "./types";

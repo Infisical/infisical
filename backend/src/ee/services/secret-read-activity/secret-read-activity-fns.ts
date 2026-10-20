@@ -5,12 +5,8 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { buildFolderIdMap, buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import {
-  SecretExposureBand,
-  SecretExposureDriver,
   SecretReadObjectType,
   TReachSecret,
-  TSecretExposure,
-  TSecretExposureCounts,
   TSecretLastRead,
   TSecretLocation,
   TSecretReach,
@@ -130,65 +126,4 @@ export const classifySecretReads = (
   record(SecretReadObjectType.SecretUnexpanded, reach.secretId);
   reach.folderIds.forEach((folderId) => record(SecretReadObjectType.Folder, folderId));
   return activity;
-};
-
-const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
-
-// Counts grow long-tailed: going from 2 to 12 readers matters far more than going from 40 to 50.
-const logScale = (value: number, saturateAt: number) => clamp01(Math.log2(value + 1) / Math.log2(saturateAt + 1));
-
-const pluralize = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
-
-// A score from 0 to 100 built from the three facts read activity gives: how many can read the value, how many
-// who no longer can still know it, and how many of those who can never do. The weights follow the blast radius
-// prototype's proportions for the same three terms, rescaled to add up to 100.
-export const calculateExposureScore = ({
-  entitledCount,
-  unreadCount,
-  ghostReaderCount
-}: TSecretExposureCounts): TSecretExposure => {
-  const terms = [
-    {
-      kind: SecretExposureDriver.Readers,
-      points: 45 * logScale(entitledCount, 40),
-      label: `${pluralize(entitledCount, "user or machine identity", "users and machine identities")} can read the value`
-    },
-    {
-      kind: SecretExposureDriver.GhostReaders,
-      points: 30 * clamp01(ghostReaderCount / 4),
-      label: `${pluralize(ghostReaderCount, "ghost reader", "ghost readers")} can no longer read it but still ${
-        ghostReaderCount === 1 ? "knows" : "know"
-      } the value`
-    },
-    {
-      kind: SecretExposureDriver.UnusedAccess,
-      points: 25 * (entitledCount ? unreadCount / entitledCount : 0),
-      label: `${unreadCount} of ${entitledCount} ${unreadCount === 1 ? "has" : "have"} not read it in ${SECRET_READ_ACTIVITY_WINDOW_DAYS} days`
-    }
-  ];
-  const score = Math.round(terms.reduce((total, term) => total + term.points, 0));
-
-  // Whole numbers that add up to exactly the score, by largest remainder: rounding each term on its own comes
-  // out a point off the total often enough to look like a bug.
-  const contributing = terms.filter((term) => term.points > 0).sort((a, b) => b.points - a.points);
-  const points = contributing.map((term) => Math.floor(term.points));
-  let remainder = score - points.reduce((total, value) => total + value, 0);
-  contributing
-    .map((term, index) => ({ index, fraction: term.points - points[index] }))
-    .sort((a, b) => b.fraction - a.fraction)
-    .forEach(({ index }) => {
-      if (remainder <= 0) return;
-      points[index] += 1;
-      remainder -= 1;
-    });
-  const drivers = contributing
-    .map((term, index) => ({ kind: term.kind, points: points[index], label: term.label }))
-    .filter((driver) => driver.points > 0);
-
-  let band = SecretExposureBand.Low;
-  if (score >= 85) band = SecretExposureBand.Critical;
-  else if (score >= 60) band = SecretExposureBand.High;
-  else if (score >= 30) band = SecretExposureBand.Elevated;
-
-  return { score, band, drivers };
 };

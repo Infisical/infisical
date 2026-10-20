@@ -10,7 +10,6 @@ import {
 import { format } from "date-fns";
 import { HardDriveIcon, KeyIcon, UserIcon, UsersIcon } from "lucide-react";
 
-import { SecretExposureBadge } from "@app/components/secrets/SecretExposureScore";
 import { formatReadDay } from "@app/components/secrets/SecretReadStatusBadge";
 import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
@@ -119,11 +118,6 @@ export const SecretNode = ({ data }: NodeProps & { data: TSecretNodeData }) => {
       <p className="truncate text-xs text-muted">
         {secret.environment} · {secret.secretPath}
       </p>
-      {secret.exposure && (
-        <div className="mt-1 flex items-center gap-1.5 border-t border-secret/25 pt-1.5 text-xs text-muted">
-          Exposure <SecretExposureBadge exposure={secret.exposure} />
-        </div>
-      )}
       <Handle type="target" position={Position.Left} className={hiddenHandle} />
     </div>
   );

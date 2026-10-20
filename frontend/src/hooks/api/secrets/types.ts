@@ -2,7 +2,6 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { Reminder } from "@app/hooks/api/reminders/types";
 
 import { PendingAction } from "../secretFolders/types";
-import { TSecretExposure, TSecretExposureCounts } from "../secretInsights/types";
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
@@ -163,7 +162,7 @@ export type TGetSecretAccessListDTO = {
 
 export type TGetSecretReadActivityDTO = Omit<TGetSecretAccessListDTO, "includeAllEntities">;
 
-export type TSecretReadActivity = TSecretExposureCounts & {
+export type TSecretReadActivity = {
   trackedSince: string;
   // The start of the period unused access is judged on; a reader counts only once the secret and their
   // access both predate it.
@@ -181,7 +180,10 @@ export type TSecretReadActivity = TSecretExposureCounts & {
     isAdmin: boolean;
     accessChangedAt: string | null;
   }[];
-  exposure: TSecretExposure;
+  // Non-admins who can read the value, how many of them count as unused access, and the ghost readers.
+  entitledCount: number;
+  unreadCount: number;
+  ghostReaderCount: number;
   ghostReaders: {
     actorType: "user" | "identity";
     actorId: string;
