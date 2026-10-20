@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionMemberActions,
@@ -225,7 +225,7 @@ const Page = withPermission(
             </div>
           </>
         )}
-        <DeleteConfirmDialog
+        <ConfirmationAlertDialog
           isOpen={popUp.removeMember.isOpen}
           title={`Are you sure you want to remove member with username ${
             (popUp?.removeMember?.data as { username: string })?.username || ""
@@ -239,7 +239,7 @@ const Page = withPermission(
             )
           }
         />
-        <DeleteConfirmDialog
+        <ConfirmationAlertDialog
           isOpen={popUp.deactivateMember.isOpen}
           title={`Are you sure you want to deactivate member with username ${
             (popUp?.deactivateMember?.data as { username: string })?.username || ""

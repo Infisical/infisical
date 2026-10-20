@@ -37,7 +37,7 @@
 
 ## Introduction
 
-**[Infisical](https://infisical.com)** is the open source security infrastructure platform that teams use for secrets, certificates, and privileged access management.
+**[Infisical](https://infisical.com)** is the open source security infrastructure platform that teams use for secrets, certificates, privileged access management, and AI agent access.
 
 We're on a mission to make security tooling more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
 
@@ -56,7 +56,6 @@ Centralize your application secrets and configuration across every environment, 
 - **[Infisical Kubernetes Operator](https://infisical.com/docs/documentation/guides/kubernetes-operator)**: Deliver secrets to your Kubernetes workloads and automatically reload deployments.
 - **[Infisical Agent](https://infisical.com/docs/integrations/platforms/infisical-agent)**: Inject secrets into applications without modifying any code logic.
 - **[Honey Tokens](https://infisical.com/docs/documentation/platform/honey-tokens/overview)**: Plant decoy credentials alongside your real secrets that act as tripwires, instantly alerting your team the moment an attacker tries to use them.
-- **[Agent Vault](https://github.com/Infisical/agent-vault)**: Broker AI agent access to external APIs so agents never hold real credentials. Outbound requests route through a proxy that injects secrets before forwarding, eliminating credential exfiltration risk from prompt injection.
 
 ### Certificate Management
 
@@ -86,6 +85,15 @@ Manage and secure access to critical infrastructure like databases and servers w
 - **[Session Recording](https://infisical.com/docs/documentation/platform/pam/sessions/session-recording)**: Capture and replay privileged sessions for audit and compliance, with AI session insights to surface risky activity.
 - **[Credential Rotation](https://infisical.com/docs/documentation/platform/pam/product-reference/credential-rotation/overview)**: Automatically rotate the underlying credentials for managed resources so static secrets never leave Infisical.
 - **[Web Access](https://infisical.com/docs/documentation/platform/pam/accounts/overview)**: Connect to SSH, PostgreSQL, Redis, and Windows RDP resources directly from the browser.
+
+### Agent Vault
+
+Give AI agents access to the APIs they call, like LLM providers, GitHub, and Slack, without ever handing them a real credential.
+
+- **[Agent Vault](https://infisical.com/docs/documentation/platform/agent-vault/overview)**: Agents send requests through a proxy that attaches the real credential at the network boundary, so a prompt-injected agent has no secret to leak. Works with any agent, including [Claude Code](https://infisical.com/docs/documentation/platform/agent-vault/guides/claude-code), [Codex](https://infisical.com/docs/documentation/platform/agent-vault/guides/codex), [OpenCode](https://infisical.com/docs/documentation/platform/agent-vault/guides/opencode), and [agents you build yourself](https://infisical.com/docs/documentation/platform/agent-vault/guides/custom-agent).
+- **[Access Bundles](https://infisical.com/docs/documentation/platform/agent-vault/access-bundles)**: Group the [services](https://infisical.com/docs/documentation/platform/agent-vault/services) an agent can call, each with its host, authentication method, and credential.
+- **[Sessions](https://infisical.com/docs/documentation/platform/agent-vault/sessions)**: Issue time-bound grants scoped to one access bundle, from the [CLI](https://infisical.com/docs/documentation/platform/agent-vault/sessions-cli) for cron jobs, containers, and CI, or from the [API](https://infisical.com/docs/documentation/platform/agent-vault/sessions-api) for each run of your own code.
+- **[Session Logs](https://infisical.com/docs/documentation/platform/agent-vault/session-logs)**: Keep an encrypted record of every request an agent makes, stored in your own Amazon S3 bucket.
 
 ### General Platform:
 

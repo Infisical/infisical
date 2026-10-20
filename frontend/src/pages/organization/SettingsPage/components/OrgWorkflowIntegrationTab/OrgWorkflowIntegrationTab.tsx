@@ -45,7 +45,7 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   fetchSlackReinstallUrl,
   useCheckMicrosoftTeamsIntegrationInstallationStatus,
@@ -75,6 +75,7 @@ const renderStatus = (status: WorkflowIntegrationStatus) => {
 
 export const OrgWorkflowIntegrationTab = withPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWorkflowIntegration",
       "integrationDetails",
@@ -171,7 +172,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
             <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
               {(isAllowed) => (
                 <Button
-                  variant="org"
+                  variant={scopeVariant}
                   size="sm"
                   onClick={() => {
                     handlePopUpOpen("addWorkflowIntegration");

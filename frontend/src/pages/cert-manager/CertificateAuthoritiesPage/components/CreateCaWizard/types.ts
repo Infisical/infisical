@@ -1,13 +1,34 @@
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
+import { CertKeySource } from "@app/hooks/api/signers";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 
-export const HSM_SUPPORTED_CA_KEY_ALGORITHMS: readonly CertKeyAlgorithm[] = [
-  CertKeyAlgorithm.RSA_2048,
-  CertKeyAlgorithm.RSA_4096,
-  CertKeyAlgorithm.ECDSA_P256,
-  CertKeyAlgorithm.ECDSA_P384
-];
+export const KEY_SOURCE_SUPPORTED_CA_KEY_ALGORITHMS: Partial<
+  Record<CertKeySource, readonly CertKeyAlgorithm[]>
+> = {
+  [CertKeySource.Hsm]: [
+    CertKeyAlgorithm.RSA_2048,
+    CertKeyAlgorithm.RSA_4096,
+    CertKeyAlgorithm.ECDSA_P256,
+    CertKeyAlgorithm.ECDSA_P384
+  ],
+  [CertKeySource.AwsKms]: [
+    CertKeyAlgorithm.RSA_2048,
+    CertKeyAlgorithm.RSA_3072,
+    CertKeyAlgorithm.RSA_4096,
+    CertKeyAlgorithm.ECDSA_P256,
+    CertKeyAlgorithm.ECDSA_P384,
+    CertKeyAlgorithm.ECDSA_P521,
+    CertKeyAlgorithm.ML_DSA_44,
+    CertKeyAlgorithm.ML_DSA_65,
+    CertKeyAlgorithm.ML_DSA_87
+  ]
+};
+
+export const isKeyAlgorithmSupportedByKeySource = (
+  keySource: CertKeySource,
+  keyAlgorithm: CertKeyAlgorithm
+) => KEY_SOURCE_SUPPORTED_CA_KEY_ALGORITHMS[keySource]?.includes(keyAlgorithm) ?? true;
 
 export type HsmConnectorOption = { id: string; name: string; slotLabel: string };
 
@@ -49,7 +70,7 @@ export const STEPS: WizardStep[] = [
     subtitle: "Choose where the signing key is generated and how long the CA is valid.",
     rightLabel: "KEY & VALIDITY",
     rightDescription:
-      "Pick the key source: Infisical generates and manages the keypair, or HSM keeps the keypair inside your own Hardware Security Module and performs every signature there. Root CAs are self-signed immediately, so their validity and path length are set here.",
+      "Pick the key source: Infisical generates and manages the keypair, HSM keeps it inside your own Hardware Security Module, and AWS KMS creates it in your AWS account. With HSM and AWS KMS, every signature is performed there. Root CAs are self-signed immediately, so their validity and path length are set here.",
     docsUrl: PkiDocsUrls.ca.internal
   },
   {

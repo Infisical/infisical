@@ -9,14 +9,13 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Tooltip
 } from "@app/components/v2";
-import { PageHeader } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3";
 import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -144,14 +143,15 @@ const Page = () => {
         </div>
       )}
       <PkiSubscriberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiSubscriber.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to remove the PKI subscriber: ${
           (popUp?.deletePkiSubscriber?.data as { name: string })?.name || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemoveSubscriberSubmit(
             (popUp?.deletePkiSubscriber?.data as { subscriberName: string })?.subscriberName
           )

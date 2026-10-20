@@ -119,7 +119,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     if (isS3Backend && (!recordingConnectionId || !resolvedS3Config)) {
       throw new BadRequestError({
-        message: "S3 storage backend requires an AWS connection and valid S3 bucket configuration"
+        message:
+          "S3 storage backend requires an AWS or S3-Compatible Storage connection and valid S3 bucket configuration"
       });
     }
 

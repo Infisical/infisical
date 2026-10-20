@@ -201,6 +201,9 @@ export const INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
   PkiSync.PaloAltoNetworksSslTlsProfile
 ];
 
+export const PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE =
+  "Palo Alto Networks needs each certificate's private key. Certificates without one, such as those issued from a CSR generated outside Infisical, are skipped.";
+
 export const isPaloAltoNetworksPkiSync = (destination?: PkiSync) =>
   destination === PkiSync.PaloAltoNetworks || destination === PkiSync.PaloAltoNetworksSslTlsProfile;
 

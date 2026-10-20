@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
@@ -253,7 +253,7 @@ export const MembersTab = () => {
 
       <InviteMemberModal isOpen={isInviteOpen} onOpenChange={setIsInviteOpen} />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={!!memberToRemove}
         onOpenChange={(isOpen) => {
           if (!isOpen) setMemberToRemove(null);

@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteConfirmDialog } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { useDeleteAgentVaultAccessBundle } from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundle } from "@app/hooks/api/agentVault/types";
 
@@ -26,7 +26,7 @@ export const DeleteAccessBundleDialog = ({ accessBundle, onOpenChange, onDeleted
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={Boolean(accessBundle)}
       onOpenChange={onOpenChange}
       title={`Delete "${accessBundle?.name}"`}
