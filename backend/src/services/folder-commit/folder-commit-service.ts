@@ -6,7 +6,6 @@ import { Knex } from "knex";
 
 import {
   ActionProjectType,
-  SecretType,
   TSecretFolders,
   TSecretFolderVersions,
   TSecretV2TagJunctionInsert,
@@ -1053,7 +1052,7 @@ export const folderCommitServiceFactory = ({
     tx?: Knex
   ) => {
     const commitChanges = [];
-    const modifiedSecretIds: string[] = [];
+    const modifiedSecrets: { id: string; type: string }[] = [];
     const folder = await folderDAL.findById(folderId, tx);
     if (!folder) {
       return [];
@@ -1103,7 +1102,7 @@ export const folderCommitServiceFactory = ({
               }
             ];
             await secretV2BridgeDAL.insertMany(newSecret, tx);
-            modifiedSecretIds.push(change.id);
+            modifiedSecrets.push({ id: change.id, type: secretVersion.type });
 
             const metadata: { key: string; value?: string; encryptedValue?: string }[] = Array.isArray(
               secretVersion.metadata
@@ -1168,7 +1167,7 @@ export const folderCommitServiceFactory = ({
 
         case "update":
           {
-            modifiedSecretIds.push(change.id);
+            modifiedSecrets.push({ id: change.id, type: secretVersion.type });
             await secretV2BridgeDAL.updateById(
               change.id,
               {
@@ -1265,7 +1264,7 @@ export const folderCommitServiceFactory = ({
         // Delete case remains unchanged
         case "delete":
           await secretV2BridgeDAL.deleteById(change.id, tx);
-          modifiedSecretIds.push(change.id);
+          modifiedSecrets.push({ id: change.id, type: secretVersion.type });
           commitChanges.push({
             type: ChangeType.DELETE,
             secretVersionId: change.versionId
@@ -1277,14 +1276,13 @@ export const folderCommitServiceFactory = ({
       }
     }
 
-    if (modifiedSecretIds.length) {
+    if (modifiedSecrets.length) {
       const [folderLocation] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folderId], tx);
       if (folderLocation) {
-        // Folder commits only record shared secrets, so everything restored here is shared.
         await emitSecretsModified(
           eventEmitter,
           { projectId: folder.projectId, environment: folderLocation.environmentSlug, secretPath: folderLocation.path },
-          modifiedSecretIds.map((id) => ({ id, type: SecretType.Shared })),
+          modifiedSecrets,
           tx
         );
       }

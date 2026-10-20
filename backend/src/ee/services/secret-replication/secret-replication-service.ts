@@ -69,7 +69,7 @@ type TSecretReplicationServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "updateById" | "findByFolderIds" | "findByIds">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
-    "findSecretPathByFolderIds" | "findBySecretPath" | "create" | "findOne" | "findByManySecretPath"
+    "findSecretPathByFolderIds" | "findBySecretPath" | "create" | "findOne" | "findByManySecretPath" | "transaction"
   >;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "find" | "insertMany">;
   secretVersionV2TagBridgeDAL: Pick<TSecretVersionV2TagDALFactory, "find" | "insertMany">;
@@ -380,20 +380,29 @@ export const secretReplicationServiceFactory = ({
               isReserved: true
             });
             if (!destinationReplicationFolder) {
-              destinationReplicationFolder = await folderDAL.create({
-                parentId: destinationFolder.id,
-                name: destinationReplicationFolderName,
-                envId: destinationFolder.envId,
-                isReserved: true
+              // One transaction, so a folder never exists without its event: a retry finds the folder and
+              // would not emit again.
+              destinationReplicationFolder = await folderDAL.transaction(async (tx) => {
+                const createdFolder = await folderDAL.create(
+                  {
+                    parentId: destinationFolder.id,
+                    name: destinationReplicationFolderName,
+                    envId: destinationFolder.envId,
+                    isReserved: true
+                  },
+                  tx
+                );
+                await eventEmitter.emit(
+                  FolderModifiedEventV1.build({
+                    folderId: createdFolder.id,
+                    projectId,
+                    environment: destinationFolder.environmentSlug,
+                    secretPath: destinationReplicationFolderPath
+                  }),
+                  tx
+                );
+                return createdFolder;
               });
-              await eventEmitter.emit(
-                FolderModifiedEventV1.build({
-                  folderId: destinationReplicationFolder.id,
-                  projectId,
-                  environment: destinationFolder.environmentSlug,
-                  secretPath: destinationReplicationFolderPath
-                })
-              );
             }
             const destinationReplicationFolderId = destinationReplicationFolder.id;
             const replicationEventScope = {

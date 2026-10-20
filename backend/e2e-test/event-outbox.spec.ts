@@ -54,6 +54,21 @@ describe("event outbox (postgres)", () => {
     expect(await rowsFor(`${CONSUMER}-other`)).toHaveLength(1);
   });
 
+  // A bulk write emits one row per secret, past the 1000-row chunk insertEvents splits on.
+  test("insertEvents writes a batch larger than one chunk in the caller's transaction", async () => {
+    await insert(Array.from({ length: 1001 }, () => makeRow()));
+
+    expect(await rowsFor()).toHaveLength(1001);
+  });
+
+  test("insertEvents keeps nothing from a batch whose second chunk fails", async () => {
+    const rows = Array.from({ length: 1001 }, () => makeRow());
+    rows[1000] = makeRow({ eventId: "not-a-uuid" });
+
+    await expect(insert(rows)).rejects.toThrow();
+    expect(await rowsFor()).toHaveLength(0);
+  });
+
   test("claimBatch hands each row to exactly one concurrent claimer, in id order", async () => {
     await insert(Array.from({ length: 6 }, () => makeRow()));
 

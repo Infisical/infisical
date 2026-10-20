@@ -444,10 +444,13 @@ export const honeyTokenServiceFactory = ({
 
     const { projectId } = honeyToken;
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
-    if (!folderWithEnv) {
-      throw new NotFoundError({ message: `Folder of honey token with ID "${honeyTokenId}" not found` });
-    }
-    const eventScope = { projectId, environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
+    // No folder resolves while the environment is pending deletion, and update and revoke must still work
+    // then. The empty scope fails the event schema, so that event is dropped rather than misrouted.
+    const eventScope = {
+      projectId,
+      environment: folderWithEnv?.environmentSlug ?? "",
+      secretPath: folderWithEnv?.path ?? "/"
+    };
     const { permission: updatePermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -643,10 +646,13 @@ export const honeyTokenServiceFactory = ({
 
     const { projectId } = honeyToken;
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
-    if (!folderWithEnv) {
-      throw new NotFoundError({ message: `Folder of honey token with ID "${honeyTokenId}" not found` });
-    }
-    const eventScope = { projectId, environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
+    // No folder resolves while the environment is pending deletion, and update and revoke must still work
+    // then. The empty scope fails the event schema, so that event is dropped rather than misrouted.
+    const eventScope = {
+      projectId,
+      environment: folderWithEnv?.environmentSlug ?? "",
+      secretPath: folderWithEnv?.path ?? "/"
+    };
     const { permission: revokePermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
