@@ -11,7 +11,7 @@
       "path": "src/components/v4/ui/menu-content.tsx",
       "type": "registry:file",
       "target": "src/components/v4/ui/menu-content.tsx",
-      "content": "import * as React from \"react\";\n\nimport { Kbd } from \"./kbd\";\n\nimport menu from \"./menu.module.css\";\n\nexport const menuRowContent = (children: React.ReactNode) =>\n  React.Children.map(children, (child) =>\n    typeof child === \"string\" || typeof child === \"number\" ? (\n      <span className={menu.title}>{child}</span>\n    ) : (\n      child\n    )\n  );\n\nexport const menuShortcutContent = (children: React.ReactNode) =>\n  typeof children === \"string\" ? <Kbd size=\"sm\">{children}</Kbd> : children;\n"
+      "content": "import * as React from \"react\";\n\nimport { Kbd } from \"./kbd\";\n\nimport menu from \"./menu.module.css\";\n\nexport const menuRowContent = (children: React.ReactNode) =>\n  React.isValidElement(children)\n    ? children\n    : React.Children.map(children, (child) =>\n        typeof child === \"string\" || typeof child === \"number\" ? (\n          <span className={menu.title}>{child}</span>\n        ) : (\n          child\n        )\n      );\n\nexport const menuShortcutContent = (children: React.ReactNode) =>\n  typeof children === \"string\" ? <Kbd size=\"sm\">{children}</Kbd> : children;\n"
     },
     {
       "path": "src/components/v4/ui/menu.module.css",

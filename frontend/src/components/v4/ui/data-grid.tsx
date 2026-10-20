@@ -204,7 +204,8 @@ export function DataGrid<Row>({
     field.setSelectionRange(field.value.length, field.value.length);
   }, [edit?.cell.rowId, edit?.cell.columnId]);
   React.useEffect(() => {
-    if (!busy && edit && input.current && document.activeElement !== input.current)
+    const active = document.activeElement;
+    if (!busy && edit && input.current && (!active || active === document.body))
       input.current.focus();
   }, [busy]);
   React.useEffect(() => {
