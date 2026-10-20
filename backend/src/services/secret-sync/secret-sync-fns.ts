@@ -28,7 +28,6 @@ import {
   TPreSaveTransformSyncOptionsFn,
   TPreSaveTransformSyncOptionsParams,
   TSecretMap,
-  TSecretSync,
   TSecretSyncListItem,
   TSecretSyncWithCredentials,
   TSyncSecretsResult
@@ -757,9 +756,12 @@ const MAX_MESSAGE_LENGTH = 1024;
 // Cloudflare Workers variables are written as the Worker's full binding list, so two syncs writing to one
 // Worker at the same time would each drop what the other just wrote. Every write job on a Worker shares one
 // lock; other destinations only need the per-sync lock.
-export const getSecretSyncWriteLockKeys = (
-  secretSync: Pick<TSecretSync, "id" | "destination" | "connectionId" | "destinationConfig">
-) => {
+export const getSecretSyncWriteLockKeys = (secretSync: {
+  id: string;
+  destination: string;
+  connectionId: string;
+  destinationConfig: unknown;
+}) => {
   const keys: string[] = [KeyStorePrefixes.SecretSyncLock(secretSync.id)];
 
   if (secretSync.destination === SecretSync.CloudflareWorkers) {
