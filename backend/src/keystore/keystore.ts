@@ -61,6 +61,8 @@ export const KeyStorePrefixes = {
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  CloudflareWorkerSyncLock: (connectionId: string, scriptId: string) =>
+    `secret-sync-cloudflare-worker-mutex-${connectionId}-${scriptId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>

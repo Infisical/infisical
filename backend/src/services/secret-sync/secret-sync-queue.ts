@@ -42,7 +42,12 @@ import {
   SecretSyncInitialSyncBehavior
 } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
+import {
+  enterpriseSyncCheck,
+  getSecretSyncWriteLockKeys,
+  parseSyncErrorMessage,
+  SecretSyncFns
+} from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { buildSyncPayload, getAncestorPaths } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
@@ -1233,7 +1238,9 @@ export const secretSyncQueueFactory = ({
 
     try {
       lock = await keyStore.acquireLock(
-        [KeyStorePrefixes.SecretSyncLock(syncId)],
+        job.name === QueueJobs.SecretSyncImportSecrets
+          ? [KeyStorePrefixes.SecretSyncLock(syncId)]
+          : getSecretSyncWriteLockKeys(secretSync),
         // scott: not sure on this duration; syncs can take excessive amounts of time so we need to keep it locked,
         // but should always release below...
         5 * 60 * 1000
