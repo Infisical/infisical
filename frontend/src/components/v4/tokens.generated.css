@@ -102,6 +102,7 @@
   --v4-select: #eeede6;
   --v4-line-soft: #ebeae5;
   --v4-line: #e1e0db;
+  --v4-frame-line: #d6d5cf;
   --v4-control: #b0b0a9;
   --v4-faint: #8e9291;
   --v4-muted: #565654;
@@ -278,6 +279,7 @@
   --v4-select: #262626;
   --v4-line-soft: #1b1c1d;
   --v4-line: #262729;
+  --v4-frame-line: #2e2f31;
   --v4-control: #37393c;
   --v4-faint: #8e9291;
   --v4-muted: #b0b0a9;
