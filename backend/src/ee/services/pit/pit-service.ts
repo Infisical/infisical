@@ -34,6 +34,7 @@ import { shouldApplyPolicy } from "../secret-approval-policy/secret-approval-pol
 import { TSecretApprovalPolicyServiceFactory } from "../secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "../secret-approval-request/secret-approval-request-service";
 import { TCreateSecretApprovalSideEffectsDTO } from "../secret-approval-request/secret-approval-request-types";
+import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 
 type TPitServiceFactoryDep = {
   folderCommitService: TFolderCommitServiceFactory;
@@ -685,6 +686,21 @@ export const pitServiceFactory = ({
           )}. You can disable this requirement in project settings`
         });
       }
+    }
+
+    // Secret detection is skipped for writes made inside a caller's transaction (the change request and
+    // createManySecret below), so it runs here first. updateManySecret scans the direct updates itself.
+    const secretsToScan = [
+      ...(changes.secrets?.create ?? []),
+      ...(shouldApplyPolicy(policy, actor) ? (changes.secrets?.update ?? []).filter((el) => el.secretValue) : [])
+    ];
+    if (secretsToScan.length) {
+      await scanSecretPolicyViolations(
+        projectId,
+        secretPath,
+        secretsToScan.map((el) => ({ secretKey: el.secretKey, secretValue: el.secretValue as string })),
+        project.secretDetectionIgnoreValues || []
+      );
     }
 
     // Notifying approvers reaches Slack, Teams and SMTP, so it waits until the request has committed
