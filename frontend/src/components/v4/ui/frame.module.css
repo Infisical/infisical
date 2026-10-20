@@ -10,6 +10,19 @@
 .frame:has(> .frameHead) {
   padding-top: 0;
 }
+.frame:has(> .frameFoot) {
+  padding-bottom: 0;
+}
+.frameFoot.frameFoot {
+  min-height: var(--v4-space-40);
+  padding: var(--v4-space-8) var(--v4-space-12);
+  border: 0;
+  color: var(--v4-muted);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+}
 .frameHead {
   display: flex;
   align-items: center;

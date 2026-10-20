@@ -65,7 +65,7 @@ Exports: Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 
 ## Behavior
 
-- Card offers framed and plain shells, a flush body and named title/description/media/action/footer slots. Framed (the default) is a tint frame with no border: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. Its radius is radius-panel minus that pad, so the corners stay concentric in soft mode and are square in square mode. Plain is a single surface with one line border and no frame. Title, description, body and footer share one text column; media hangs to its left and the action centres on the title line.
+- Card offers framed and plain shells, a flush body and named title/description/action/footer slots. Framed (the default) is a tint frame with no border: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. Its radius is radius-panel minus that pad, so the corners stay concentric in soft mode and are square in square mode. Plain is a single surface with one line border and no frame. The header band holds labels only: the title, with optional badges in it and an action. It never holds a framed icon or media tile; put those in the body. A footerPlacement of frame moves the footer out of the inner surface into a matching band of the frame below it, for a stats or status row under the content. Title, description, body and footer share one text column, and the action centres on the title line.
 
 ## Accessibility
 
@@ -126,6 +126,11 @@ export default function Example() {
           </div>
         </Card>
       </div><figcaption className="text-muted-foreground text-xs">{"framed, no header, with footer"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <Card footer="412 secrets in 3 environments, 5 rotations due" footerPlacement="frame">
+          Read access to staging, scoped to the payments project.
+        </Card>
+      </div><figcaption className="text-muted-foreground text-xs">{"framed footer"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <Card variant="plain">
           <CardHeader>

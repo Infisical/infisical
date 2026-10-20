@@ -27,6 +27,11 @@ export default function Example() {
           </div>
         </Card>
       </ExampleCell>
+      <ExampleCell align="stretch" label="framed footer">
+        <Card footer="412 secrets in 3 environments, 5 rotations due" footerPlacement="frame">
+          Read access to staging, scoped to the payments project.
+        </Card>
+      </ExampleCell>
       <ExampleCell align="stretch" label="plain">
         <Card variant="plain">
           <CardHeader>

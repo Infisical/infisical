@@ -15,8 +15,8 @@ const Card = React.forwardRef<
     title?: React.ReactNode;
     description?: string;
     action?: React.ReactNode;
-    media?: React.ReactNode;
     footer?: React.ReactNode;
+    footerPlacement?: "inset" | "frame";
     flush?: boolean;
   }
 >(
@@ -28,8 +28,8 @@ const Card = React.forwardRef<
       title,
       description,
       action,
-      media,
       footer,
+      footerPlacement = "inset",
       flush = false,
       children,
       ...props
@@ -40,7 +40,6 @@ const Card = React.forwardRef<
       title !== undefined ||
       description !== undefined ||
       action !== undefined ||
-      media !== undefined ||
       footer !== undefined;
     return (
       <div
@@ -60,10 +59,9 @@ const Card = React.forwardRef<
         <FramedContext.Provider value={variant !== "plain"}>
           {convenience ? (
             <>
-              {(title !== undefined || description !== undefined || action || media) && (
+              {(title !== undefined || description !== undefined || action) && (
                 <CardHeader>
                   <div className={controlStyles.cardTitleGroup}>
-                    {media && <span className={controlStyles.cardMedia}>{media}</span>}
                     <div className={controlStyles.cardCopy}>
                       {title !== undefined && <CardTitle>{title}</CardTitle>}
                       {description !== undefined && (
@@ -75,7 +73,9 @@ const Card = React.forwardRef<
                 </CardHeader>
               )}
               <CardContent>{children}</CardContent>
-              {footer !== undefined && <CardFooter>{footer}</CardFooter>}
+              {footer !== undefined && (
+                <CardFooter placement={footerPlacement}>{footer}</CardFooter>
+              )}
             </>
           ) : (
             children
@@ -168,14 +168,20 @@ CardContent.displayName = "CardContent";
 
 const CardFooter = React.forwardRef<
   React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<"div"> & { placement?: "inset" | "frame" }
+>(({ className, placement = "inset", ...props }, ref) => {
   const framed = React.useContext(FramedContext);
+  const band = framed && placement === "frame";
   return (
     <div
       ref={ref}
       data-slot="card-footer"
-      className={cn(controlStyles.cardFooter, framed && frameStyles.frameInset, className)}
+      data-placement={band ? "frame" : undefined}
+      className={cn(
+        controlStyles.cardFooter,
+        framed && (band ? frameStyles.frameFoot : frameStyles.frameInset),
+        className
+      )}
       {...props}
     />
   );
