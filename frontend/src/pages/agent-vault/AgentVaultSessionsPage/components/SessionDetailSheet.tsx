@@ -26,7 +26,6 @@ import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { SessionExpiry } from "./SessionExpiry";
-import { SessionLabel } from "./SessionLabel";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
@@ -178,9 +177,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
                 {session.label && (
                   <Detail className="min-w-0 border-t border-border px-4 py-3">
                     <DetailLabel>Label</DetailLabel>
-                    <DetailValue className="min-w-0">
-                      <SessionLabel label={session.label} />
-                    </DetailValue>
+                    <DetailValue className="min-w-0 break-words">{session.label}</DetailValue>
                   </Detail>
                 )}
               </div>
