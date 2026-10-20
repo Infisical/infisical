@@ -11,7 +11,11 @@ let root: Root;
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   vi.useFakeTimers();
-  vi.stubGlobal("matchMedia", () => ({ matches: false }));
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => {},
+    removeEventListener: () => {}
+  }));
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
     window.setTimeout(() => callback(0), 0)
   );
@@ -110,7 +114,11 @@ it("opens from a native focusable control and excludes closed content while reta
 });
 
 it("settles reduced-motion changes immediately and accepts another toggle during opening", async () => {
-  vi.stubGlobal("matchMedia", () => ({ matches: true }));
+  vi.stubGlobal("matchMedia", () => ({
+    matches: true,
+    addEventListener: () => {},
+    removeEventListener: () => {}
+  }));
   await render(<DocDisclosure title="Usage and rules">Guidance</DocDisclosure>);
   const { trigger, content } = disclosure();
   await React.act(async () => trigger.click());

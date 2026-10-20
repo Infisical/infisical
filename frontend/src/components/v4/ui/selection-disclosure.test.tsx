@@ -81,7 +81,11 @@ it("mounts lazy children once and preserves their DOM and React state after exit
   expect(collapse?.hidden).toBe(false);
 });
 it("finishes reduced-motion disclosure changes without waiting for a timer", async () => {
-  vi.stubGlobal("matchMedia", () => ({ matches: true }));
+  vi.stubGlobal("matchMedia", () => ({
+    matches: true,
+    addEventListener: () => {},
+    removeEventListener: () => {}
+  }));
   await render(<AnimatedCollapse open>Content</AnimatedCollapse>);
   await render(<AnimatedCollapse open={false}>Content</AnimatedCollapse>);
   expect(document.querySelector<HTMLElement>('[data-slot="animated-collapse"]')?.hidden).toBe(true);
