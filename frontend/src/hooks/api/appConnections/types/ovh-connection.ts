@@ -3,7 +3,7 @@ import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-con
 
 export enum OVHConnectionMethod {
   Certificate = "certificate",
-  Token = "token"
+  Token = "bearer-token"
 }
 
 export type TOvhConnection = TRootAppConnection & { app: AppConnection.OVH } & (
