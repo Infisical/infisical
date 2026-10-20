@@ -3316,10 +3316,6 @@ export const SecretSyncs = {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
     },
-    CLOUDFLARE_WORKERS: {
-      syncNonSecretBindings:
-        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings. Only applies when variableType is secret_text or omitted."
-    },
     SPACELIFT: {
       writeOnly:
         "Whether secrets should be marked as secret in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API."
@@ -3509,7 +3505,7 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
       variableType:
-        "The type of variable to sync secrets as: secret_text (the default for new syncs), plain_text or json. Infisical converts a secret or variable of the same name to this type, except that with syncNonSecretBindings on, existing plaintext and JSON variables keep their type. Infisical only deletes variables of this type. Syncs created before this option existed have no type and skip keys that already exist as plaintext or JSON variables."
+        "The type of variable to sync secrets as: secret_text (default), plain_text or json. Infisical converts a secret or variable of the same name to this type and only deletes variables of this type."
     },
     CLOUDFLARE_SECRETS_STORE: {
       storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",

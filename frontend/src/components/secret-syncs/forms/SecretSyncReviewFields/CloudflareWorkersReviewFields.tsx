@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
@@ -11,28 +11,14 @@ export const CloudflareWorkersSyncOptionsReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.CloudflareWorkers }
   >();
 
-  const [{ syncNonSecretBindings }, variableType = CloudflareWorkersVariableType.Secret] = watch([
-    "syncOptions",
-    "destinationConfig.variableType"
-  ]);
+  const variableType =
+    watch("destinationConfig.variableType") ?? CloudflareWorkersVariableType.Secret;
 
   return (
-    <>
-      <Detail>
-        <DetailLabel>Variable Type</DetailLabel>
-        <DetailValue>{CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS[variableType]}</DetailValue>
-      </Detail>
-      {variableType === CloudflareWorkersVariableType.Secret && (
-        <Detail>
-          <DetailLabel>Sync Plaintext and JSON Variables</DetailLabel>
-          <DetailValue>
-            <Badge variant={syncNonSecretBindings ? "success" : "danger"}>
-              {syncNonSecretBindings ? "Enabled" : "Disabled"}
-            </Badge>
-          </DetailValue>
-        </Detail>
-      )}
-    </>
+    <Detail>
+      <DetailLabel>Variable Type</DetailLabel>
+      <DetailValue>{CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS[variableType]}</DetailValue>
+    </Detail>
   );
 };
 

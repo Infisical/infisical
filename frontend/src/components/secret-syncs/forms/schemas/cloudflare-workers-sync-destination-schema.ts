@@ -4,11 +4,7 @@ import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
 
-export const CloudflareWorkersSyncDestinationSchema = BaseSecretSyncSchema(
-  z.object({
-    syncNonSecretBindings: z.boolean().optional().default(false)
-  })
-).merge(
+export const CloudflareWorkersSyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({
     destination: z.literal(SecretSync.CloudflareWorkers),
     destinationConfig: z.object({
@@ -18,7 +14,9 @@ export const CloudflareWorkersSyncDestinationSchema = BaseSecretSyncSchema(
         .min(1, "Script ID is required")
         .max(64)
         .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "Invalid script ID format"),
-      variableType: z.nativeEnum(CloudflareWorkersVariableType).optional()
+      variableType: z
+        .nativeEnum(CloudflareWorkersVariableType)
+        .default(CloudflareWorkersVariableType.Secret)
     })
   })
 );

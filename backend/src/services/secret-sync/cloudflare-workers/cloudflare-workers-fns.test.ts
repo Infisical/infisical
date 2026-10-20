@@ -95,31 +95,29 @@ describe("CloudflareWorkersSyncFns", () => {
     expect(patch).not.toHaveBeenCalled();
   });
 
-  it("converts a same-name text variable into a secret when Secret is chosen", async () => {
-    stubWorker([
-      { type: "plain_text", name: "API_URL", text: "old" },
-      { type: "kv_namespace", name: "CACHE" }
-    ]);
+  it.each([CloudflareWorkersVariableType.Secret, undefined])(
+    "with type %s, converts a same-name text variable into a secret and leaves other text variables alone",
+    async (variableType) => {
+      stubWorker([
+        { type: "plain_text", name: "API_URL", text: "old" },
+        { type: "plain_text", name: "OTHER", text: "keep" },
+        { type: "kv_namespace", name: "CACHE" }
+      ]);
 
-    await CloudflareWorkersSyncFns.syncSecrets(
-      syncWith(CloudflareWorkersVariableType.Secret),
-      payloadOf({ API_URL: "new" })
-    );
+      await CloudflareWorkersSyncFns.syncSecrets(syncWith(variableType), payloadOf({ API_URL: "new", NEW_KEY: "v" }));
 
-    expect(patch).toHaveBeenCalledTimes(1);
-    expect(await patchedBindings()).toEqual([
-      { type: "secret_text", name: "API_URL", text: "new" },
-      { type: "kv_namespace", name: "CACHE" }
-    ]);
-  });
-
-  it("keeps skipping same-name text variables for syncs saved without a type", async () => {
-    stubWorker([{ type: "plain_text", name: "API_URL", text: "old" }]);
-
-    await CloudflareWorkersSyncFns.syncSecrets(syncWith(), payloadOf({ API_URL: "new" }));
-
-    expect(patch).not.toHaveBeenCalled();
-  });
+      expect(patch).toHaveBeenCalledTimes(2);
+      expect(await patchedBindings()).toEqual([
+        { type: "secret_text", name: "API_URL", text: "new" },
+        { type: "plain_text", name: "OTHER", text: "keep" },
+        { type: "kv_namespace", name: "CACHE" }
+      ]);
+      expect(patch.mock.calls[1][0]).toMatch(/\/secrets-bulk$/);
+      expect(patch.mock.calls[1][1]).toEqual({
+        secrets: { NEW_KEY: { name: "NEW_KEY", text: "v", type: "secret_text" } }
+      });
+    }
+  );
 
   it("removes only variables of the sync's type", async () => {
     stubWorker([
