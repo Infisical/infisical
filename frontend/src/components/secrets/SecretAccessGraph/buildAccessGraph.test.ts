@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 
 import {
   buildAccessGraph,
-  groupNodeId,
   readerNodeId,
   SECRET_NODE_ID,
   TAccessGraphInput
@@ -24,7 +23,7 @@ const input: TAccessGraphInput = {
       name: "ci",
       type: "identity",
       isDirect: false,
-      groupIds: ["devs"],
+      groupIds: ["devs", "ops"],
       unreadSince: "2026-09-19T00:00:00.000Z"
     },
     { id: "newcomer", name: "newcomer", type: "identity", isDirect: true, groupIds: [] },
@@ -35,9 +34,20 @@ const input: TAccessGraphInput = {
       isDirect: true,
       groupIds: ["devs"],
       lastReadAt: "2026-10-01T00:00:00.000Z"
+    },
+    {
+      id: "root",
+      name: "admin@example.com",
+      type: "user",
+      isDirect: true,
+      groupIds: [],
+      isAdmin: true
     }
   ],
-  groups: [{ id: "devs", name: "devs", memberCount: 2 }],
+  groups: [
+    { id: "devs", name: "devs", memberCount: 2 },
+    { id: "ops", name: "ops", memberCount: 1 }
+  ],
   ghosts: [{ id: "gone", name: null, type: "identity", lastReadAt: "2026-10-10T00:00:00.000Z" }],
   hasReadActivity: true,
   trackedSince: "2026-09-19T00:00:00.000Z"
@@ -46,93 +56,72 @@ const input: TAccessGraphInput = {
 describe("buildAccessGraph", () => {
   const { nodes, edges } = buildAccessGraph(input);
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const readerNode = (type: "user" | "identity", id: string) =>
+    nodeById.get(readerNodeId({ type, id }))!;
 
-  test("lays readers, groups and the secret out in three columns with ghosts under the readers", () => {
-    const reader = nodeById.get(readerNodeId({ type: "user", id: "alice" }));
-    const group = nodeById.get(groupNodeId({ id: "devs" }));
-    const secret = nodeById.get(SECRET_NODE_ID);
-    const ghost = nodeById.get("ghost-identity-gone");
-    expect(reader && group && secret && ghost).toBeTruthy();
-    expect(reader!.position.x).toBeLessThan(group!.position.x);
-    expect(group!.position.x).toBeLessThan(secret!.position.x);
-    expect(ghost!.position.x).toBe(reader!.position.x);
-    expect(ghost!.position.y).toBeGreaterThan(
-      Math.max(...input.readers.map((entry) => nodeById.get(readerNodeId(entry))!.position.y))
+  test("lays readers and the secret out in two columns with ghosts under the readers, and no group boxes", () => {
+    const secret = nodeById.get(SECRET_NODE_ID)!;
+    const ghost = nodeById.get("ghost-identity-gone")!;
+    expect(readerNode("user", "alice").position.x).toBeLessThan(secret.position.x);
+    expect(ghost.position.x).toBe(readerNode("user", "alice").position.x);
+    expect(ghost.position.y).toBeGreaterThan(
+      Math.max(...input.readers.map((entry) => readerNode(entry.type, entry.id).position.y))
     );
+    expect(
+      nodes.every((node) => ["reader", "secret", "ghost", "bandLabel"].includes(node.type ?? ""))
+    ).toBe(true);
   });
 
-  test("puts unused access first, then readers too new to judge, then the ones who have read", () => {
-    const readerYs = input.readers.map((entry) => [
-      entry.id,
-      nodeById.get(readerNodeId(entry))!.position.y
-    ]);
-    const sorted = [...readerYs].sort((a, b) => Number(a[1]) - Number(b[1])).map(([id]) => id);
-    expect(sorted).toEqual(["ci", "newcomer", "alice", "bob"]);
+  test("puts unused access first, then readers too new to judge, then readers, then admins", () => {
+    const order = [...input.readers]
+      .sort((a, b) => readerNode(a.type, a.id).position.y - readerNode(b.type, b.id).position.y)
+      .map((entry) => entry.id);
+    expect(order).toEqual(["ci", "newcomer", "alice", "bob", "root"]);
   });
 
-  test("draws every path a reader has: direct to the secret, and through each group", () => {
-    const edgeOf = (source: string) => edges.filter((edge) => edge.source === source);
-    expect(edgeOf(readerNodeId({ type: "user", id: "alice" })).map((edge) => edge.target)).toEqual([
-      SECRET_NODE_ID
-    ]);
-    expect(edgeOf(readerNodeId({ type: "user", id: "bob" })).map((edge) => edge.target)).toEqual([
-      SECRET_NODE_ID,
-      groupNodeId({ id: "devs" })
-    ]);
-    expect(edgeOf(readerNodeId({ type: "identity", id: "ci" })).map((edge) => edge.target)).toEqual(
-      [groupNodeId({ id: "devs" })]
-    );
-    expect(edgeOf(groupNodeId({ id: "devs" })).map((edge) => edge.target)).toEqual([
-      SECRET_NODE_ID
-    ]);
-    expect(edgeOf("ghost-identity-gone")).toEqual([]);
+  test("gives every reader one line to the secret, and names every group on the node", () => {
+    input.readers.forEach((entry) => {
+      const lines = edges.filter((edge) => edge.source === readerNodeId(entry));
+      expect(lines.map((edge) => edge.target)).toEqual([SECRET_NODE_ID]);
+    });
+    expect(readerNode("identity", "ci").data.groupNames).toEqual(["devs", "ops"]);
+    expect(readerNode("user", "bob").data.groupNames).toEqual(["devs"]);
+    expect(readerNode("user", "alice").data.groupNames).toEqual([]);
+    expect(edges.some((edge) => edge.source.startsWith("ghost-"))).toBe(false);
   });
 
-  test("dashes the edge of a reader with no reads, and no edge when read activity is unknown", () => {
-    const unread = edges.find(
-      (edge) => edge.source === readerNodeId({ type: "identity", id: "ci" })
-    );
-    const read = edges.find((edge) => edge.source === readerNodeId({ type: "user", id: "alice" }));
-    expect(unread?.style?.strokeDasharray).toBe("5 5");
-    expect(read?.style?.strokeDasharray).toBeUndefined();
+  test("bends each line in its own lane, in the gap before the secret", () => {
+    const secret = nodeById.get(SECRET_NODE_ID)!;
+    const alice = readerNode("user", "alice");
+    const readersRight = alice.position.x + Number(alice.width);
+    const secretCenter = secret.position.y + Number(secret.height) / 2;
+    const lines = edges.map((edge) => {
+      const source = nodeById.get(edge.source)!;
+      return {
+        above: source.position.y + Number(source.height) / 2 <= secretCenter,
+        centerX: (edge.data as { centerX: number }).centerX
+      };
+    });
+    // Lines from above and from below may share a lane: their vertical runs never overlap.
+    [true, false].forEach((above) => {
+      const lanes = lines.filter((line) => line.above === above).map((line) => line.centerX);
+      expect(new Set(lanes).size).toBe(lanes.length);
+    });
+    lines.forEach(({ centerX }) => {
+      expect(centerX).toBeGreaterThan(readersRight);
+      expect(centerX).toBeLessThan(secret.position.x);
+    });
+    expect(edges.every((edge) => edge.type === "lane")).toBe(true);
+  });
+
+  test("dashes the line of a reader with no reads; admins and unknown activity get plain lines", () => {
+    const lineOf = (type: "user" | "identity", id: string) =>
+      edges.find((edge) => edge.source === readerNodeId({ type, id }));
+    expect(lineOf("identity", "ci")?.style?.strokeDasharray).toBe("5 5");
+    expect(lineOf("user", "alice")?.style?.strokeDasharray).toBeUndefined();
+    expect(lineOf("user", "root")?.style?.strokeDasharray).toBeUndefined();
 
     const unknown = buildAccessGraph({ ...input, hasReadActivity: false });
     expect(unknown.edges.every((edge) => edge.style?.strokeDasharray === undefined)).toBe(true);
-  });
-
-  test("draws admins last, with a plain edge whether or not they read", () => {
-    const withAdmin = buildAccessGraph({
-      ...input,
-      readers: [
-        ...input.readers,
-        {
-          id: "root",
-          name: "admin@example.com",
-          type: "user",
-          isDirect: true,
-          groupIds: [],
-          isAdmin: true
-        }
-      ]
-    });
-    const readerYs = withAdmin.nodes
-      .filter((node) => node.type === "reader")
-      .sort((a, b) => a.position.y - b.position.y)
-      .map((node) => node.id);
-    expect(readerYs[readerYs.length - 1]).toBe(readerNodeId({ type: "user", id: "root" }));
-    const adminEdge = withAdmin.edges.find(
-      (edge) => edge.source === readerNodeId({ type: "user", id: "root" })
-    );
-    expect(adminEdge?.target).toBe(SECRET_NODE_ID);
-    expect(adminEdge?.style?.strokeDasharray).toBeUndefined();
-  });
-
-  test("drops the group column when no reader depends on a group", () => {
-    const direct = buildAccessGraph({ ...input, readers: [input.readers[0]], groups: [] });
-    const withGroups = buildAccessGraph(input);
-    const secretX = (graph: ReturnType<typeof buildAccessGraph>) =>
-      graph.nodes.find((node) => node.id === SECRET_NODE_ID)!.position.x;
-    expect(secretX(direct)).toBeLessThan(secretX(withGroups));
-    expect(direct.nodes.some((node) => node.type === "group")).toBe(false);
   });
 });

@@ -54,40 +54,34 @@ export type TReaderNodeData = {
   reader: TAccessGraphReader;
   groupNames: string[];
   hasReadActivity: boolean;
-  trackedSince?: string;
 };
 
-export type TGroupNodeData = { group: TAccessGraphGroup };
 export type TSecretNodeData = { secret: TAccessGraphSecret };
 export type TGhostNodeData = { ghost: TAccessGraphGhost };
 export type TBandLabelNodeData = { label: string; detail: string; tone?: "neutral" | "warning" };
+export type TLaneEdgeData = { centerX: number };
 
-export const NODE_WIDTH = 208;
-const READER_NODE_HEIGHT = 84;
-const GROUP_NODE_HEIGHT = 64;
+export const NODE_WIDTH = 240;
+const READER_NODE_HEIGHT = 74;
 const SECRET_NODE_HEIGHT = 104;
-const GHOST_NODE_HEIGHT = 76;
+const GHOST_NODE_HEIGHT = 74;
 const BAND_LABEL_HEIGHT = 36;
-const BAND_GAP = 20;
+const BAND_GAP = 24;
 const HEADER_GAP = 8;
-// Three columns plus their gaps fit the sheet without horizontal panning.
-const COLUMN_GAP = 96;
-const ROW_GAP = 16;
+const COLUMN_GAP = 160;
+const ROW_GAP = 14;
 const MARGIN = 24;
 const COLUMN_TOP = MARGIN + BAND_LABEL_HEIGHT + HEADER_GAP;
+// Where the first line bends before the secret, and how far apart parallel bends are.
+const LANE_INSET = 24;
+const MAX_LANE_STEP = 10;
 
 export const SECRET_NODE_ID = "secret";
 export const readerNodeId = (reader: Pick<TAccessGraphReader, "type" | "id">) =>
   `reader-${reader.type}-${reader.id}`;
-export const groupNodeId = (group: Pick<TAccessGraphGroup, "id">) => `group-${group.id}`;
 
 const columnHeight = (count: number, height: number) =>
   count ? count * height + (count - 1) * ROW_GAP : 0;
-
-// Centres a column of `count` nodes against the tallest one. Positions are exact, so the canvas is sized to
-// the content and nothing has to be fitted after the nodes are measured.
-const centredOffset = (count: number, height: number, tallest: number) =>
-  COLUMN_TOP + Math.max(0, (tallest - columnHeight(count, height)) / 2);
 
 const stackColumn = (offset: number, height: number) => (index: number) =>
   offset + index * (height + ROW_GAP);
@@ -119,19 +113,41 @@ const readerEdgeStyle = (reader: TAccessGraphReader, hasReadActivity: boolean) =
   return { stroke: "var(--color-muted)", strokeWidth: 1, strokeDasharray: "5 5", opacity: 0.45 };
 };
 
+// Each line bends in its own vertical lane before the secret. The reader farthest above (or below) the
+// secret bends closest to it, so no line's horizontal run crosses another's bend. Lines from above and from
+// below can share a lane: their vertical runs never overlap.
+const assignLanes = (
+  sources: { edgeId: string; y: number }[],
+  targetY: number,
+  targetX: number
+) => {
+  const centerXByEdgeId = new Map<string, number>();
+  const place = (side: typeof sources) => {
+    const step = Math.min(MAX_LANE_STEP, (COLUMN_GAP - 2 * LANE_INSET) / Math.max(1, side.length));
+    [...side]
+      .sort((a, b) => Math.abs(b.y - targetY) - Math.abs(a.y - targetY))
+      .forEach((source, index) => {
+        centerXByEdgeId.set(source.edgeId, targetX - LANE_INSET - index * step);
+      });
+  };
+  place(sources.filter((source) => source.y <= targetY));
+  place(sources.filter((source) => source.y > targetY));
+  return centerXByEdgeId;
+};
+
 export const buildAccessGraph = ({
   secret,
   readers,
   groups,
   ghosts,
-  hasReadActivity,
-  trackedSince
+  hasReadActivity
 }: TAccessGraphInput) => {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
+  const groupNameById = new Map(groups.map((group) => [group.id, group.name]));
 
-  // Unused access first, then readers too new to judge, then the ones who have read, then admins: the first
-  // group is what the viewer is here to find.
+  // Unused access first, then readers too new to judge, then the ones who have read, then admins: the
+  // first group is what the viewer is here to find.
   const rankOf = (reader: TAccessGraphReader) => {
     if (reader.isAdmin) return 3;
     if (!hasReadActivity) return 0;
@@ -141,44 +157,33 @@ export const buildAccessGraph = ({
   const orderedReaders = [...readers].sort(
     (a, b) => rankOf(a) - rankOf(b) || a.name.localeCompare(b.name)
   );
-  const groupById = new Map(groups.map((group) => [group.id, group]));
 
-  const secretColumnX = MARGIN + (NODE_WIDTH + COLUMN_GAP) * (groups.length ? 2 : 1);
-  const groupColumnX = MARGIN + NODE_WIDTH + COLUMN_GAP;
-
-  const tallestColumn = Math.max(
-    columnHeight(orderedReaders.length, READER_NODE_HEIGHT),
-    columnHeight(groups.length, GROUP_NODE_HEIGHT),
-    SECRET_NODE_HEIGHT
-  );
-  const readerOffset = centredOffset(orderedReaders.length, READER_NODE_HEIGHT, tallestColumn);
-  const groupOffset = centredOffset(groups.length, GROUP_NODE_HEIGHT, tallestColumn);
-  const secretOffset = COLUMN_TOP + (tallestColumn - SECRET_NODE_HEIGHT) / 2;
-  const readerY = stackColumn(readerOffset, READER_NODE_HEIGHT);
-  const groupY = stackColumn(groupOffset, GROUP_NODE_HEIGHT);
+  const secretColumnX = MARGIN + NODE_WIDTH + COLUMN_GAP;
+  const readerY = stackColumn(COLUMN_TOP, READER_NODE_HEIGHT);
+  const readerCenterY = (index: number) => readerY(index) + READER_NODE_HEIGHT / 2;
+  const readersBottom = COLUMN_TOP + columnHeight(orderedReaders.length, READER_NODE_HEIGHT);
+  // The secret sits level with the middle of the readers.
+  const secretY = Math.max(COLUMN_TOP, (COLUMN_TOP + readersBottom - SECRET_NODE_HEIGHT) / 2);
 
   nodes.push(
-    bandLabelNode("band-readers", MARGIN, readerOffset, {
+    bandLabelNode("band-readers", MARGIN, COLUMN_TOP, {
       label: `Can read · ${orderedReaders.length}`,
-      detail: "can read the value today"
-    }),
-    bandLabelNode("band-secret", secretColumnX, secretOffset, {
-      label: "Secret",
-      detail: "the value they read"
+      detail: "users and machine identities, directly or through a group"
     })
   );
-  if (groups.length) {
-    nodes.push(
-      bandLabelNode("band-groups", groupColumnX, groupOffset, {
-        label: `Groups · ${groups.length}`,
-        detail: "grant the access"
-      })
-    );
-  }
 
+  // Every reader has one line to the secret; how they have the value, directly or through which groups, is
+  // written on the reader rather than drawn, which keeps the lines from crossing.
+  const lanes = assignLanes(
+    orderedReaders.map((reader, index) => ({
+      edgeId: `edge-${readerNodeId(reader)}-secret`,
+      y: readerCenterY(index)
+    })),
+    secretY + SECRET_NODE_HEIGHT / 2,
+    secretColumnX
+  );
   orderedReaders.forEach((reader, index) => {
     const nodeId = readerNodeId(reader);
-    const viaGroups = reader.groupIds.flatMap((groupId) => groupById.get(groupId) ?? []);
     nodes.push({
       id: nodeId,
       type: "reader",
@@ -187,50 +192,25 @@ export const buildAccessGraph = ({
       height: READER_NODE_HEIGHT,
       data: {
         reader,
-        groupNames: viaGroups.map((group) => group.name),
-        hasReadActivity,
-        trackedSince
+        groupNames: reader.groupIds.flatMap((groupId) => groupNameById.get(groupId) ?? []),
+        hasReadActivity
       } satisfies TReaderNodeData
     });
-
-    const style = readerEdgeStyle(reader, hasReadActivity);
-    // Every path that gives the reader the value is drawn: straight to the secret for their own grant, and
-    // through each group that grants it too, so removing one path visibly leaves the others.
-    if (reader.isDirect || !viaGroups.length) {
-      edges.push({ id: `edge-${nodeId}-secret`, source: nodeId, target: SECRET_NODE_ID, style });
-    }
-    viaGroups.forEach((group) => {
-      edges.push({
-        id: `edge-${nodeId}-${groupNodeId(group)}`,
-        source: nodeId,
-        target: groupNodeId(group),
-        style
-      });
-    });
-  });
-
-  groups.forEach((group, index) => {
-    const nodeId = groupNodeId(group);
-    nodes.push({
-      id: nodeId,
-      type: "group",
-      position: { x: groupColumnX, y: groupY(index) },
-      width: NODE_WIDTH,
-      height: GROUP_NODE_HEIGHT,
-      data: { group } satisfies TGroupNodeData
-    });
+    const edgeId = `edge-${nodeId}-secret`;
     edges.push({
-      id: `edge-${nodeId}-secret`,
+      id: edgeId,
       source: nodeId,
       target: SECRET_NODE_ID,
-      style: { stroke: "var(--color-accent)", strokeWidth: 1.5, opacity: 0.5 }
+      type: "lane",
+      style: readerEdgeStyle(reader, hasReadActivity),
+      data: { centerX: lanes.get(edgeId) ?? secretColumnX - LANE_INSET } satisfies TLaneEdgeData
     });
   });
 
   nodes.push({
     id: SECRET_NODE_ID,
     type: "secret",
-    position: { x: secretColumnX, y: secretOffset },
+    position: { x: secretColumnX, y: secretY },
     width: NODE_WIDTH,
     height: SECRET_NODE_HEIGHT,
     data: { secret } satisfies TSecretNodeData
@@ -238,18 +218,13 @@ export const buildAccessGraph = ({
 
   // No edges from here on: a ghost reader has no current path to the secret, and drawing one would say
   // they can still read the value.
-  const firstGhostY =
-    readerOffset +
-    columnHeight(orderedReaders.length, READER_NODE_HEIGHT) +
-    BAND_GAP +
-    BAND_LABEL_HEIGHT +
-    HEADER_GAP;
+  const firstGhostY = readersBottom + BAND_GAP + BAND_LABEL_HEIGHT + HEADER_GAP;
   const ghostY = stackColumn(firstGhostY, GHOST_NODE_HEIGHT);
   if (ghosts.length) {
     nodes.push(
       bandLabelNode("band-ghosts", MARGIN, firstGhostY, {
         label: `Ghost readers · ${ghosts.length}`,
-        detail: "no path to the secret",
+        detail: "read it, but have no path to it now",
         tone: "warning"
       })
     );
@@ -267,9 +242,11 @@ export const buildAccessGraph = ({
   }
 
   const contentHeight =
-    (ghosts.length
-      ? firstGhostY + columnHeight(ghosts.length, GHOST_NODE_HEIGHT)
-      : COLUMN_TOP + tallestColumn) + MARGIN;
+    Math.max(
+      readersBottom,
+      secretY + SECRET_NODE_HEIGHT,
+      ghosts.length ? firstGhostY + columnHeight(ghosts.length, GHOST_NODE_HEIGHT) : 0
+    ) + MARGIN;
   const contentWidth = secretColumnX + NODE_WIDTH + MARGIN;
 
   return { nodes, edges, contentHeight, contentWidth };

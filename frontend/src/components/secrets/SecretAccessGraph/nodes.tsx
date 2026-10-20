@@ -1,18 +1,33 @@
-import { Handle, NodeProps, Position } from "@xyflow/react";
+import {
+  BaseEdge,
+  Edge,
+  EdgeProps,
+  getSmoothStepPath,
+  Handle,
+  NodeProps,
+  Position
+} from "@xyflow/react";
 import { format } from "date-fns";
+import { HardDriveIcon, KeyIcon, UserIcon } from "lucide-react";
 
 import { SecretExposureBadge } from "@app/components/secrets/SecretExposureScore";
 import { formatReadDay } from "@app/components/secrets/SecretReadStatusBadge";
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 
 import {
   TAccessGraphActorType,
   TBandLabelNodeData,
   TGhostNodeData,
-  TGroupNodeData,
+  TLaneEdgeData,
   TReaderNodeData,
   TSecretNodeData
 } from "./buildAccessGraph";
+
+const TYPE_ICON: Record<TAccessGraphActorType, typeof UserIcon> = {
+  user: UserIcon,
+  identity: HardDriveIcon
+};
 
 const TYPE_LABEL: Record<TAccessGraphActorType, string> = {
   user: "user",
@@ -21,18 +36,36 @@ const TYPE_LABEL: Record<TAccessGraphActorType, string> = {
 
 const hiddenHandle = "!opacity-0";
 
-const describeAccessPath = (isDirect: boolean, groupNames: string[]) => {
-  if (!groupNames.length) return "Direct access";
-  const groups = groupNames.join(", ");
-  return isDirect ? `Direct · via ${groups}` : `Via ${groups}`;
+// How the reader has the value, on one line whatever the number of groups: the first group by name, the rest
+// as a count that stays visible however long that name is, and every group listed on hover.
+const AccessPath = ({ isDirect, groupNames }: { isDirect: boolean; groupNames: string[] }) => {
+  if (!groupNames.length) return <span className="truncate text-xs text-muted">Direct access</span>;
+  const [first, ...rest] = groupNames;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
+          <span className="truncate">
+            {isDirect ? "Direct · via" : "Via"} {first}
+          </span>
+          {rest.length > 0 && <span className="shrink-0">+{rest.length} more</span>}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-72">
+        {isDirect ? "Direct access, and through " : "Through "}
+        {groupNames.length === 1 ? "the group" : "the groups"} {groupNames.join(", ")}
+      </TooltipContent>
+    </Tooltip>
+  );
 };
 
 export const ReaderNode = ({ data }: NodeProps & { data: TReaderNodeData }) => {
   const { reader, groupNames, hasReadActivity } = data;
-  // An admin is never counted as unused access, so their node stays solid whether or not they read.
-  const hasReads = Boolean(reader.lastReadAt) || Boolean(reader.isAdmin);
+  const TypeIcon = TYPE_ICON[reader.type];
+  // A reader with no read is drawn dashed, like their line; an admin is never counted, so stays solid.
+  const isUnread = hasReadActivity && !reader.lastReadAt && !reader.isAdmin;
 
-  // Three states once read activity is known: read, unused access, or too new to judge; admins are never judged.
+  // Read, unused access, or too new to judge; admins are never judged.
   let status: { text: string; tone: string } | undefined;
   if (hasReadActivity) {
     if (reader.lastReadAt) {
@@ -55,47 +88,21 @@ export const ReaderNode = ({ data }: NodeProps & { data: TReaderNodeData }) => {
   return (
     <div
       className={cn(
-        "flex h-full w-full cursor-pointer flex-col gap-1 rounded-md border px-2.5 py-2",
-        hasReads || !hasReadActivity
-          ? "border-border bg-card"
-          : "border-dashed border-border bg-transparent"
+        "flex h-full w-full cursor-pointer flex-col justify-center gap-1 rounded-md border px-3",
+        isUnread ? "border-dashed border-border bg-container" : "border-border bg-card"
       )}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <p
-          className={cn(
-            "truncate font-mono text-xs",
-            hasReads || !hasReadActivity ? "text-foreground" : "text-accent"
-          )}
-        >
-          {reader.name}
-        </p>
-        <span className="shrink-0 text-xs text-muted">
-          {TYPE_LABEL[reader.type]}
-          {reader.isAdmin && " · admin"}
-        </span>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <TypeIcon className="size-3.5 shrink-0 text-muted" aria-label={TYPE_LABEL[reader.type]} />
+        <p className="truncate text-xs font-medium text-foreground">{reader.name}</p>
+        {reader.isAdmin && (
+          <Badge variant="neutral" className="ml-auto shrink-0">
+            Admin
+          </Badge>
+        )}
       </div>
       {status && <span className={cn("truncate text-xs", status.tone)}>{status.text}</span>}
-      <span className="mt-auto truncate text-xs text-muted">
-        {describeAccessPath(reader.isDirect, groupNames)}
-      </span>
-      <Handle type="source" position={Position.Right} className={hiddenHandle} />
-    </div>
-  );
-};
-
-export const GroupNode = ({ data }: NodeProps & { data: TGroupNodeData }) => {
-  const { group } = data;
-  return (
-    <div className="flex h-full w-full flex-col gap-1 rounded-md border border-border bg-card px-2.5 py-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="truncate font-mono text-xs text-foreground">{group.name}</p>
-        <span className="shrink-0 text-xs text-muted">group</span>
-      </div>
-      <span className="mt-auto truncate text-xs text-muted">
-        {group.memberCount} {group.memberCount === 1 ? "member" : "members"} can read the value
-      </span>
-      <Handle type="target" position={Position.Left} className={hiddenHandle} />
+      <AccessPath isDirect={reader.isDirect} groupNames={groupNames} />
       <Handle type="source" position={Position.Right} className={hiddenHandle} />
     </div>
   );
@@ -104,14 +111,16 @@ export const GroupNode = ({ data }: NodeProps & { data: TGroupNodeData }) => {
 export const SecretNode = ({ data }: NodeProps & { data: TSecretNodeData }) => {
   const { secret } = data;
   return (
-    <div className="flex h-full w-full flex-col gap-1 rounded-md border border-secret/50 bg-secret/10 px-2.5 py-2">
-      <span className="text-xs text-accent">Secret</span>
-      <p className="truncate font-mono text-sm text-foreground">{secret.key}</p>
-      <p className="truncate font-mono text-xs text-accent">
-        {secret.secretPath} · {secret.environment}
+    <div className="flex h-full w-full flex-col justify-center gap-1 rounded-md border border-secret/50 bg-secret/10 px-3">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <KeyIcon className="size-3.5 shrink-0 text-secret" aria-label="secret" />
+        <p className="truncate font-mono text-sm text-foreground">{secret.key}</p>
+      </div>
+      <p className="truncate text-xs text-muted">
+        {secret.environment} · {secret.secretPath}
       </p>
       {secret.exposure && (
-        <div className="mt-auto flex items-center gap-1.5 border-t border-secret/25 pt-1.5 text-xs text-muted">
+        <div className="mt-1 flex items-center gap-1.5 border-t border-secret/25 pt-1.5 text-xs text-muted">
           Exposure <SecretExposureBadge exposure={secret.exposure} />
         </div>
       )}
@@ -124,23 +133,24 @@ export const SecretNode = ({ data }: NodeProps & { data: TSecretNodeData }) => {
 // them to the secret, and an edge would say otherwise.
 export const GhostNode = ({ data }: NodeProps & { data: TGhostNodeData }) => {
   const { ghost } = data;
+  const TypeIcon = TYPE_ICON[ghost.type];
   return (
-    <div className="flex h-full w-full flex-col gap-1 rounded-md border border-warning/40 bg-warning/5 px-2.5 py-2">
-      <div className="flex items-baseline justify-between gap-2">
+    <div className="flex h-full w-full flex-col justify-center gap-1 rounded-md border border-warning/40 bg-warning/5 px-3">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <TypeIcon className="size-3.5 shrink-0 text-muted" aria-label={TYPE_LABEL[ghost.type]} />
         <p
           className={cn(
-            "truncate font-mono text-xs",
+            "truncate text-xs font-medium",
             ghost.name ? "text-foreground" : "text-muted italic"
           )}
         >
           {ghost.name ?? `Deleted ${TYPE_LABEL[ghost.type]}`}
         </p>
-        <span className="shrink-0 text-xs text-muted">{TYPE_LABEL[ghost.type]}</span>
       </div>
       <span className="truncate text-xs text-warning">
-        {ghost.name ? "Access removed" : "Deleted"} · still knows the value
+        {ghost.name ? "Access removed" : "Deleted"}, still knows the value
       </span>
-      <span className="mt-auto truncate text-xs text-accent">
+      <span className="truncate text-xs text-muted">
         Read {formatReadDay(ghost.lastReadAt).toLowerCase()}
       </span>
     </div>
@@ -153,7 +163,7 @@ export const BandLabelNode = ({ data }: NodeProps & { data: TBandLabelNodeData }
     <span
       className={cn(
         "text-xs font-medium",
-        data.tone === "warning" ? "text-warning" : "text-accent"
+        data.tone === "warning" ? "text-warning" : "text-foreground"
       )}
     >
       {data.label}
@@ -161,3 +171,28 @@ export const BandLabelNode = ({ data }: NodeProps & { data: TBandLabelNodeData }
     <span className="text-xs text-muted">{data.detail}</span>
   </div>
 );
+
+// A right-angled line whose vertical run sits at the lane the layout gave it, so lines into the same node
+// run side by side instead of on top of each other or through the nodes in between.
+export const LaneEdge = ({
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style,
+  data
+}: EdgeProps<Edge<TLaneEdgeData>>) => {
+  const [path] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    centerX: data?.centerX,
+    borderRadius: 8
+  });
+  return <BaseEdge path={path} style={style} />;
+};

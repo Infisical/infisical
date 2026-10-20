@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Background,
   BackgroundVariant,
-  ConnectionLineType,
   Edge,
   Node,
   NodeMouseHandler,
@@ -18,15 +17,16 @@ import { MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { IconButton } from "@app/components/v3";
 
 import { buildAccessGraph, TAccessGraphInput } from "./buildAccessGraph";
-import { BandLabelNode, GhostNode, GroupNode, ReaderNode, SecretNode } from "./nodes";
+import { BandLabelNode, GhostNode, LaneEdge, ReaderNode, SecretNode } from "./nodes";
 
 const NODE_TYPES = {
   reader: ReaderNode,
-  group: GroupNode,
   secret: SecretNode,
   ghost: GhostNode,
   bandLabel: BandLabelNode
 };
+
+const EDGE_TYPES = { lane: LaneEdge };
 
 const DIMMED_OPACITY = 0.2;
 
@@ -34,8 +34,7 @@ type Props = {
   input: TAccessGraphInput;
 };
 
-// Everything reachable from a node along its edges, both ways: a reader lights up its group and the
-// secret, a group lights up its members and the secret.
+// Everything reachable from a node along its edges, both ways: a reader lights up the secret.
 const connectedTo = (nodeId: string, edges: Edge[]) => {
   const reached = new Set([nodeId]);
   const walk = (from: string, direction: "source" | "target") => {
@@ -102,9 +101,9 @@ const SecretAccessGraphContent = ({ input }: Props) => {
     [edges, focused]
   );
 
-  // Selecting a reader or group focuses its path; selecting it again, or anything else, clears the focus.
+  // Selecting a reader focuses its line; selecting it again, or anything else, clears the focus.
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
-    const isFocusable = node.type === "reader" || node.type === "group";
+    const isFocusable = node.type === "reader";
     setFocusedId((current) => (isFocusable && current !== node.id ? node.id : undefined));
   }, []);
 
@@ -121,8 +120,7 @@ const SecretAccessGraphContent = ({ input }: Props) => {
         onNodeClick={onNodeClick}
         onPaneClick={() => setFocusedId(undefined)}
         nodeTypes={NODE_TYPES}
-        connectionLineType={ConnectionLineType.SmoothStep}
-        defaultEdgeOptions={{ type: "smoothstep" }}
+        edgeTypes={EDGE_TYPES}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={false}
         nodesConnectable={false}
@@ -180,8 +178,8 @@ export const SecretAccessGraph = ({ input }: Props) => (
     </div>
     <p className="text-xs text-muted">
       {input.hasReadActivity
-        ? `Solid lines are reads since ${input.trackedSince ? format(new Date(input.trackedSince), "PP") : "tracking began"}, dashed lines are access with no reads yet. Select a reader or group to follow its path.`
-        : "Read activity is not visible for your role, so the lines only show who can read the value. Select a reader or group to follow its path."}
+        ? `Solid lines are reads since ${input.trackedSince ? format(new Date(input.trackedSince), "PP") : "tracking began"}, dashed lines are access with no reads yet. Select a reader to highlight their line.`
+        : "Read activity is not visible for your role, so the lines only show who can read the value. Select a reader to highlight their line."}
     </p>
   </ReactFlowProvider>
 );
