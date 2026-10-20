@@ -44,7 +44,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   enterpriseSyncCheck,
-  getSharedDestinationLockKey,
+  getSecretSyncWriteLockKeys,
   parseSyncErrorMessage,
   SecretSyncFns
 } from "@app/services/secret-sync/secret-sync-fns";
@@ -160,9 +160,6 @@ const getRequeueDelay = (failureCount?: number) => {
   if (!failureCount) return jitter;
   return REQUEUE_MS + jitter;
 };
-
-const SECRET_SYNC_LOCK_DURATION_MS = 5 * 60 * 1000;
-const SHARED_LOCK_RETRY_DELAY_MS = 2000;
 
 export const secretSyncQueueFactory = ({
   queueService,
@@ -1241,10 +1238,12 @@ export const secretSyncQueueFactory = ({
 
     try {
       lock = await keyStore.acquireLock(
-        [KeyStorePrefixes.SecretSyncLock(syncId)],
+        job.name === QueueJobs.SecretSyncImportSecrets
+          ? [KeyStorePrefixes.SecretSyncLock(syncId)]
+          : getSecretSyncWriteLockKeys(secretSync),
         // scott: not sure on this duration; syncs can take excessive amounts of time so we need to keep it locked,
         // but should always release below...
-        SECRET_SYNC_LOCK_DURATION_MS
+        5 * 60 * 1000
       );
     } catch (e) {
       logger.info(`SecretSync Failed to acquire lock [syncId=${syncId}] [job=${job.name}]`);
@@ -1252,28 +1251,6 @@ export const secretSyncQueueFactory = ({
       await $handleAcquireLockFailure(job as SecretSyncActionJob);
 
       return;
-    }
-
-    // Jobs that write to a destination other syncs share wait for each other, up to the lock's own lifetime, so
-    // a sibling sync delays this job rather than failing it.
-    const sharedLockKey =
-      job.name === QueueJobs.SecretSyncImportSecrets ? undefined : getSharedDestinationLockKey(secretSync);
-    let sharedLock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-
-    if (sharedLockKey) {
-      try {
-        sharedLock = await keyStore.acquireLock([sharedLockKey], SECRET_SYNC_LOCK_DURATION_MS, {
-          retryCount: SECRET_SYNC_LOCK_DURATION_MS / SHARED_LOCK_RETRY_DELAY_MS,
-          retryDelay: SHARED_LOCK_RETRY_DELAY_MS
-        });
-      } catch (e) {
-        logger.info(`SecretSync Failed to acquire shared destination lock [syncId=${syncId}] [job=${job.name}]`);
-
-        await lock.release();
-        await $handleAcquireLockFailure(job as SecretSyncActionJob);
-
-        return;
-      }
     }
 
     let admittedConnectionSlot = false;
@@ -1313,7 +1290,6 @@ export const secretSyncQueueFactory = ({
         await $releaseConnectionConcurrency(connectionId);
       }
 
-      await sharedLock?.release();
       await lock.release();
     }
   });
