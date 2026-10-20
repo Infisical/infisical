@@ -178,8 +178,14 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
-                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                  <FieldError errors={[error]} />
+                  <SecretInput
+                    aria-describedby={error ? "private-key-error" : undefined}
+                    id="private-key"
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  <FieldError id="private-key-error" errors={[error]} />
                 </Field>
               )}
             />
@@ -201,8 +207,14 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
-                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                  <FieldError errors={[error]} />
+                  <SecretInput
+                    aria-describedby={error ? "certificate-error" : undefined}
+                    id="certificate"
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  <FieldError id="certificate-error" errors={[error]} />
                 </Field>
               )}
             />
@@ -225,8 +237,14 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                <FieldError errors={[error]} />
+                <SecretInput
+                  aria-describedby={error ? "token-error" : undefined}
+                  id="token"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <FieldError id="token-error" errors={[error]} />
               </Field>
             )}
           />
