@@ -480,11 +480,11 @@ export const appConnections = [
     category: "DevOps Tools",
   }, 
   {
-    name: "OVH",
+    name: "OVHcloud",
     slug: "ovh",
     path: "/integrations/app-connections/ovh",
     description:
-      "Learn how to connect OVH Cloud to pull secrets from OVH Secret Manager to Infisical.",
+      "Learn how to connect OVHcloud to pull secrets from OVHcloud Secret Manager to Infisical.",
     category: "Cloud Providers",
   },
   {
