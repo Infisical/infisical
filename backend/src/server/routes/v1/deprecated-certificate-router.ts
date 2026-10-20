@@ -6,6 +6,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
+import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -655,10 +656,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
       }),
       body: z.object({
-        password: z
-          .string()
-          .min(6, "Password must be at least 6 characters long")
-          .describe("Password for the keystore (minimum 6 characters)"),
+        password: Pkcs12PasswordSchema.describe(CERTIFICATES.EXPORT_PKCS12.password),
         alias: z.string().min(1, "Alias is required").describe("Alias for the certificate in the keystore")
       }),
       response: {

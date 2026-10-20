@@ -2344,6 +2344,13 @@ export const CERTIFICATES = {
     serialNumberRes: "The serial number of the certificate.",
     privateKey: "The private key of the certificate."
   },
+  EXPORT_PKCS12: {
+    password:
+      "Password to protect the PKCS#12 keystore with. Must be 14 to 100 characters, contain a letter, a number and a special character, have no more than 3 repeated consecutive characters, and contain no escape characters (newline, tab, carriage return or backslash).",
+    alias: "Friendly name for the certificate inside the keystore.",
+    keystore:
+      "The PKCS#12 keystore (.p12) as binary data, containing the certificate, its chain and its private key, encrypted with the given password."
+  },
   IMPORT: {
     projectSlug: "Slug of the project to import the certificate into.",
     certificatePem: "The PEM-encoded leaf certificate.",

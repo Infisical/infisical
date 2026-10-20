@@ -16,6 +16,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fakes/servicenow"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
@@ -36,6 +37,7 @@ func main() {
 		github.Service,
 		license.Service,
 		servicenow.Service,
+		oidcidp.Service,
 	)
 
 	mail := smtp.New(func(domain string) fakenet.Emitter { return srv.Emitter(smtp.Host, domain) })

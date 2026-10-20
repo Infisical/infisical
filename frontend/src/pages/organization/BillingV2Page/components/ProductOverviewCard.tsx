@@ -262,15 +262,16 @@ const UsageDistribution = ({
   } else {
     const total = breakdown.scopedCount;
     const topScopes = [...breakdown.scopes].sort((a, b) => b.count - a.count).slice(0, 5);
-    const subOrgShades = ["bg-sub-org/85", "bg-sub-org/60", "bg-sub-org/40", "bg-sub-org/25"];
-    let subOrgIndex = 0;
-    const shaded = topScopes.map((entry) => {
-      const shade = entry.isRoot
-        ? "bg-org/85"
-        : subOrgShades[Math.min(subOrgIndex, subOrgShades.length - 1)];
-      if (!entry.isRoot) subOrgIndex += 1;
-      return { entry, shade };
-    });
+    const shaded = topScopes.map((entry) => ({
+      entry,
+      shade: entry.isRoot ? "bg-org/85" : "bg-sub-org/85"
+    }));
+    const rootCount = breakdown.scopes
+      .filter((entry) => entry.isRoot)
+      .reduce((sum, entry) => sum + entry.count, 0);
+    const subOrgCount = breakdown.scopes
+      .filter((entry) => !entry.isRoot)
+      .reduce((sum, entry) => sum + entry.count, 0);
     const projects = breakdown.hasProjectDetail
       ? breakdown.scopes
           .flatMap((entry) => entry.projects.map((project) => ({ ...project, org: entry.name })))
@@ -280,13 +281,15 @@ const UsageDistribution = ({
     body = (
       <>
         <div className="flex h-2 w-full gap-0.5 overflow-hidden rounded-xs bg-border">
-          {shaded.map(({ entry, shade }) => (
+          {rootCount > 0 && (
+            <span className="h-full bg-org/85" style={{ width: `${(rootCount / total) * 100}%` }} />
+          )}
+          {subOrgCount > 0 && (
             <span
-              key={entry.orgId}
-              className={cn("h-full", shade)}
-              style={{ width: `${(entry.count / total) * 100}%` }}
+              className="h-full bg-sub-org/85"
+              style={{ width: `${(subOrgCount / total) * 100}%` }}
             />
-          ))}
+          )}
         </div>
         <div className="flex flex-col gap-2.5">
           {shaded.map(({ entry, shade }) => (
