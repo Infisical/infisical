@@ -760,7 +760,7 @@ export const getSecretSyncWriteLockKeys = (secretSync: {
   id: string;
   destination: string;
   connectionId: string;
-  destinationConfig: unknown;
+  destinationConfig?: unknown;
 }) => {
   const keys: string[] = [KeyStorePrefixes.SecretSyncLock(secretSync.id)];
 
