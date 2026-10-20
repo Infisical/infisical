@@ -6,6 +6,7 @@ import {
   checkProtectedResource,
   discoverOauthServer,
   isOauthScopeToken,
+  MAX_OAUTH_SCOPES,
   parseBearerChallenge,
   protectedResourceMetadataUrls,
   selectScopes
@@ -23,18 +24,28 @@ vi.mock("@app/lib/logger", async () => ({
 type TStubServer = {
   challenge?: string | null;
   probeThrows?: boolean;
+  getThrows?: boolean;
+  // Requests that never answer, as a hung server's would.
+  hang?: boolean;
   json: Record<string, unknown>;
 };
 
-const stubHttp = ({ challenge = null, probeThrows = false, json }: TStubServer) => {
+const stubHttp = ({ challenge = null, probeThrows = false, getThrows = false, hang = false, json }: TStubServer) => {
   const fetched: string[] = [];
+  const never = () =>
+    new Promise<never>(() => {
+      /* never settles */
+    });
   const http: TOauthHttpClient = {
     probe: async () => {
+      if (hang) return never();
       if (probeThrows) throw new Error("connect ECONNREFUSED");
       return { status: 401, wwwAuthenticate: challenge };
     },
     get: async (url) => {
       fetched.push(url);
+      if (hang) return never();
+      if (getThrows) throw new Error("getaddrinfo ENOTFOUND");
       return url in json
         ? { status: 200, contentType: "application/json", body: JSON.stringify(json[url]) }
         : { status: 404, contentType: "text/plain", body: "not found" };
@@ -259,11 +270,15 @@ describe("discovering an MCP server's authorization server", () => {
       scopes: ["read", "write"],
       issParameterSupported: true,
       tokenEndpointAuthMethodsSupported: ["client_secret_basic", "client_secret_post", "none"],
-      compatibility: []
+      compatibility: [],
+      oauthAdvertised: true
     });
+    // Each group is asked at once; the challenge's URL is one of the well-known ones, so it isn't asked twice.
     expect(fetched).toEqual([
       "https://mcp.linear.app/.well-known/oauth-protected-resource/mcp",
-      "https://mcp.linear.app/.well-known/oauth-authorization-server"
+      "https://mcp.linear.app/.well-known/oauth-protected-resource",
+      "https://mcp.linear.app/.well-known/oauth-authorization-server",
+      "https://mcp.linear.app/.well-known/openid-configuration"
     ]);
   });
 
@@ -292,7 +307,7 @@ describe("discovering an MCP server's authorization server", () => {
     expect(discovery.registrationEndpoint).toBeNull();
     expect(discovery.scopes).toEqual(["repo", "read:org", "offline_access"]);
     expect(discovery.resource).toBe("https://api.githubcopilot.com/mcp/");
-    expect(fetched[1]).toBe("https://github.com/.well-known/oauth-authorization-server/login/oauth");
+    expect(fetched).toContain("https://github.com/.well-known/oauth-authorization-server/login/oauth");
   });
 
   test("without a challenge, the well-known locations are tried in order", async () => {
@@ -423,8 +438,78 @@ describe("discovering an MCP server's authorization server", () => {
       }
     });
     const discovery = await discoverOauthServer(unadvertised.http, "https://mcp.example.com/mcp");
-    expect(omitted).toBeDefined();
     expect(discovery.compatibility).toContain(AgentVaultOauthCompatibility.PkceUnadvertised);
+  });
+
+  test("a challenge URL that answers wins over a well-known URL that also does", async () => {
+    const { http, fetched } = stubHttp({
+      challenge: 'Bearer resource_metadata="https://meta.example.com/prm"',
+      json: {
+        "https://meta.example.com/prm": {
+          resource: "https://mcp.example.com/mcp",
+          authorization_servers: ["https://auth-from-challenge.example.com"]
+        },
+        "https://mcp.example.com/.well-known/oauth-protected-resource/mcp": {
+          resource: "https://mcp.example.com/mcp",
+          authorization_servers: ["https://auth-well-known.example.com"]
+        },
+        "https://auth-from-challenge.example.com/.well-known/oauth-authorization-server": {
+          ...LINEAR_AS,
+          issuer: "https://auth-from-challenge.example.com"
+        },
+        "https://auth-from-challenge.example.com/.well-known/openid-configuration": {
+          ...LINEAR_AS,
+          issuer: "https://auth-from-challenge.example.com",
+          authorization_endpoint: "https://auth-from-challenge.example.com/second"
+        }
+      }
+    });
+
+    const discovery = await discoverOauthServer(http, "https://mcp.example.com/mcp");
+    expect(discovery.issuer).toBe("https://auth-from-challenge.example.com");
+    expect(discovery.authorizationEndpoint).toBe(LINEAR_AS.authorization_endpoint);
+    expect(fetched).toContain("https://meta.example.com/prm");
+  });
+
+  test("a server where nothing answers is unreachable, so the URL is what to check", async () => {
+    const { http } = stubHttp({ probeThrows: true, getThrows: true, json: {} });
+    await expect(discoverOauthServer(http, "https://mcp.typo.example.com/mcp")).rejects.toThrow(
+      "Couldn't reach 'mcp.typo.example.com'. Check the server URL and that the server is online."
+    );
+  });
+
+  test("a server that answers without any OAuth signal is not advertised, but still gets guessed endpoints", async () => {
+    const { http } = stubHttp({ challenge: null, json: {} });
+    const discovery = await discoverOauthServer(http, "https://mcp.example.com/mcp");
+    expect(discovery.oauthAdvertised).toBe(false);
+    expect(discovery.endpointsGuessed).toBe(true);
+  });
+
+  test("a Bearer challenge alone counts as advertising OAuth", async () => {
+    const { http } = stubHttp({ challenge: 'Bearer realm="mcp"', json: {} });
+    expect((await discoverOauthServer(http, "https://mcp.example.com/mcp")).oauthAdvertised).toBe(true);
+  });
+
+  test("a server that hangs fails within the discovery budget, saying it took too long", async () => {
+    const { http } = stubHttp({ hang: true, json: {} });
+    await expect(discoverOauthServer(http, "https://mcp.example.com/mcp", 20)).rejects.toThrow(
+      "Couldn't set up OAuth for 'mcp.example.com': it took too long to respond. Check that the server is online, then try again."
+    );
+  });
+
+  test("a server asking for more scopes than the cap is refused with the count", async () => {
+    const { http } = stubHttp({
+      json: {
+        "https://mcp.example.com/.well-known/oauth-protected-resource": {
+          resource: "https://mcp.example.com/mcp",
+          authorization_servers: ["https://mcp.example.com"],
+          scopes_supported: Array.from({ length: MAX_OAUTH_SCOPES + 1 }, (_, index) => `scope:${index}`)
+        }
+      }
+    });
+    await expect(discoverOauthServer(http, "https://mcp.example.com/mcp")).rejects.toThrow(
+      `it asks for ${MAX_OAUTH_SCOPES + 1} OAuth scopes, more than the ${MAX_OAUTH_SCOPES} Infisical supports.`
+    );
   });
 
   test("an authorization server with a plain-http token endpoint is rejected", async () => {

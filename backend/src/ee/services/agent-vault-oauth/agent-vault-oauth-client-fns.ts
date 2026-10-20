@@ -38,7 +38,7 @@ const SUPPORTED_AUTH_METHODS = Object.values(AgentVaultOauthClientAuthMethod) as
 // RFC 6749 appendix A.1 and A.2: both are VSCHAR. The ID is stored in jsonb and sent in the authorize URL, and the
 // secret is form-encoded into the token request, which throws on a lone surrogate.
 export const OAUTH_CLIENT_CREDENTIAL_PATTERN = new RE2(/^[\x20-\x7e]+$/);
-export const MAX_CLIENT_ID_LENGTH = 512;
+export const MAX_CLIENT_ID_LENGTH = 2048;
 export const MAX_CLIENT_SECRET_LENGTH = 4096;
 
 const parseRegistration = (body: string): TOauthClient | null => {
@@ -78,8 +78,9 @@ const parseRegistration = (body: string): TOauthClient | null => {
   };
 };
 
-// RFC 7591. Some servers reject metadata fields they don't know, so a refusal is retried once with only the
-// fields every server has to accept.
+// RFC 7591. Servers must ignore metadata fields they don't understand, so the only one a strict server can refuse
+// is `application_type` (an OIDC registration value); a refusal is retried once without it. `grant_types` stays,
+// or a strict server registers authorization_code only and every refresh fails with unauthorized_client.
 export const registerOauthClient = async ({
   http,
   serverUrl,
@@ -94,14 +95,11 @@ export const registerOauthClient = async ({
   const minimal = {
     client_name: AGENT_VAULT_OAUTH_CLIENT_NAME,
     redirect_uris: [redirectUri],
-    token_endpoint_auth_method: AgentVaultOauthClientAuthMethod.None
-  };
-  const full = {
-    ...minimal,
-    application_type: "web",
+    token_endpoint_auth_method: AgentVaultOauthClientAuthMethod.None,
     grant_types: [AGENT_VAULT_OAUTH_GRANT_TYPE, "refresh_token"],
     response_types: ["code"]
   };
+  const full = { ...minimal, application_type: "web" };
 
   let lastStatus: number | null = null;
   let lastReason = "";

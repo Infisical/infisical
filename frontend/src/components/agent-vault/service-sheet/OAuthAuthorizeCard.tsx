@@ -1,10 +1,13 @@
 import { Fragment, ReactNode, useId, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { format } from "date-fns";
-import { CheckIcon, CircleAlertIcon, CircleXIcon, InfoIcon } from "lucide-react";
+import { CheckIcon, CircleAlertIcon, CircleXIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   CopyButton,
@@ -165,17 +168,24 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
   );
   const stored = storedOAuthCredential(service, serverUrl);
 
-  const { state, isClientRequired, redirectUri, registrationError, authorize, cancel } =
-    useOAuthAuthorize({
-      onAuthorized: (authorization) => {
-        setValue("oauthAuthorizedUrl", trimmedUrl, { shouldDirty: true });
-        setValue("oauthScopes", authorization.scopes, { shouldDirty: true });
-        setValue("oauthAuthorizationId", authorization.id, {
-          shouldDirty: true,
-          shouldValidate: true
-        });
-      }
-    });
+  const {
+    state,
+    isClientRequired,
+    isOAuthAdvertised,
+    redirectUri,
+    registrationError,
+    authorize,
+    cancel
+  } = useOAuthAuthorize({
+    onAuthorized: (authorization) => {
+      setValue("oauthAuthorizedUrl", trimmedUrl, { shouldDirty: true });
+      setValue("oauthScopes", authorization.scopes, { shouldDirty: true });
+      setValue("oauthAuthorizationId", authorization.id, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
+    }
+  });
 
   const isWaiting = state.status === "starting" || state.status === "pending";
   const wantsOwnApp = isClientRequired || isUsingOwnApp;
@@ -349,7 +359,18 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
 
           {isOwnApp && (
             <div className="flex flex-col gap-4">
-              {isClientRequired && (
+              {isClientRequired && !isOAuthAdvertised && (
+                <Alert variant="warning">
+                  <TriangleAlertIcon />
+                  <AlertTitle>{host} doesn&apos;t look like it uses OAuth</AlertTitle>
+                  <AlertDescription>
+                    It answered, but sent no OAuth challenge and serves no OAuth metadata. Check the
+                    server URL. If the server does use OAuth, enter your OAuth app&apos;s client ID
+                    and secret below.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isClientRequired && isOAuthAdvertised && (
                 <p className="text-xs text-muted">
                   {registrationError
                     ? `${host} didn't accept automatic setup, so use your own OAuth app.`
@@ -385,7 +406,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
                     <Input
                       {...register("oauthClientId")}
                       id={clientIdInputId}
-                      maxLength={512}
+                      maxLength={2048}
                       autoComplete="off"
                       spellCheck={false}
                       isError={Boolean(errors.oauthClientId)}
@@ -400,7 +421,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
                       type="password"
                       {...register("oauthClientSecret")}
                       id={clientSecretInputId}
-                      maxLength={1024}
+                      maxLength={4096}
                       autoComplete="new-password"
                       isError={Boolean(errors.oauthClientSecret)}
                     />

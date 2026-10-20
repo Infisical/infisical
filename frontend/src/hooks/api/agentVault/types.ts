@@ -346,6 +346,8 @@ export type TCreateAgentVaultOAuthAuthorizationDTO = {
 
 export type TCreateAgentVaultOAuthAuthorizationResponse = {
   registrationRequired: boolean;
+  // False when the server answered but advertises no OAuth, which usually means a wrong URL.
+  oauthAdvertised: boolean;
   redirectUri: string;
   // Why the server's registration endpoint refused Infisical; null when it simply has none.
   registrationError: string | null;

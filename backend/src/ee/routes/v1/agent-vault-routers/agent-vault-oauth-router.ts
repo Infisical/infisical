@@ -63,6 +63,7 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       response: {
         200: z.object({
           registrationRequired: z.boolean().describe(AGENT_VAULT.OAUTH.registrationRequired),
+          oauthAdvertised: z.boolean().describe(AGENT_VAULT.OAUTH.oauthAdvertised),
           redirectUri: z.string().describe(AGENT_VAULT.OAUTH.redirectUri),
           registrationError: z.string().nullable().describe(AGENT_VAULT.OAUTH.registrationError),
           authorization: z

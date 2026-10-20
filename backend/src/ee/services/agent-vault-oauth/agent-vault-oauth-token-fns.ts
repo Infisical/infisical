@@ -6,7 +6,12 @@ import RE2 from "re2";
 import { sanitizeUrlForLog } from "@app/lib/logger";
 
 import { AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
-import { describeServer, splitScopes, stripTrailingSlash } from "./agent-vault-oauth-discovery-fns";
+import {
+  describeServer,
+  OFFLINE_ACCESS_SCOPE,
+  splitScopes,
+  stripTrailingSlash
+} from "./agent-vault-oauth-discovery-fns";
 import { TOauthHttpClient } from "./agent-vault-oauth-http-fns";
 import {
   AGENT_VAULT_OAUTH_GRANT_TYPE,
@@ -60,6 +65,8 @@ export const buildAuthorizeUrl = ({
   url.searchParams.set("state", state);
   if (resource) url.searchParams.set("resource", resource);
   if (scopes.length) url.searchParams.set("scope", scopes.join(" "));
+  // OIDC Core section 11: a server must ignore offline_access without it, and issue no refresh token.
+  if (scopes.includes(OFFLINE_ACCESS_SCOPE)) url.searchParams.set("prompt", "consent");
   return url.toString();
 };
 

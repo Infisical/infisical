@@ -262,11 +262,11 @@ export const buildServiceSchema = (
       oauthClientId: z
         .string()
         .trim()
-        .max(512, "A client ID can be at most 512 characters.")
+        .max(2048, "A client ID can be at most 2048 characters.")
         .optional(),
       oauthClientSecret: z
         .string()
-        .max(1024, "A client secret can be at most 1024 characters.")
+        .max(4096, "A client secret can be at most 4096 characters.")
         .optional(),
       methods: z.array(z.nativeEnum(AgentVaultHttpMethod)),
       pathPrefixes: z

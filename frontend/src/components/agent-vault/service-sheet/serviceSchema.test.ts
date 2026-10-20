@@ -208,7 +208,7 @@ describe("buildServiceSchema with OAuth", () => {
 
   it("validates manual client credentials in the service form", () => {
     const result = buildServiceSchema(storedOAuthService()).safeParse(
-      mcpForm({ oauthClientId: "x".repeat(513), oauthClientSecret: "x".repeat(1025) })
+      mcpForm({ oauthClientId: "x".repeat(2049), oauthClientSecret: "x".repeat(4097) })
     );
     expect(result.error?.issues.map((issue) => issue.path.join("."))).toEqual([
       "oauthClientId",

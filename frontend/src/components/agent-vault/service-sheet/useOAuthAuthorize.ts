@@ -38,6 +38,7 @@ export const useOAuthAuthorize = ({
   const [isClientRequired, setIsClientRequired] = useState(false);
   const [redirectUri, setRedirectUri] = useState<string | null>(null);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [isOAuthAdvertised, setIsOAuthAdvertised] = useState(true);
   const [pendingAuthorization, setPendingAuthorization] = useState<{
     id: string;
     attempt: number;
@@ -122,6 +123,7 @@ export const useOAuthAuthorize = ({
         .then(
           ({
             registrationRequired,
+            oauthAdvertised,
             redirectUri: uri,
             registrationError: reason,
             authorization: createdAuthorization
@@ -132,6 +134,7 @@ export const useOAuthAuthorize = ({
               setIsClientRequired(true);
               setRedirectUri(uri);
               setRegistrationError(reason);
+              setIsOAuthAdvertised(oauthAdvertised);
               setState({ status: "idle" });
               return;
             }
@@ -153,5 +156,13 @@ export const useOAuthAuthorize = ({
     setState({ status: "idle" });
   }, [stop]);
 
-  return { state, isClientRequired, redirectUri, registrationError, authorize, cancel };
+  return {
+    state,
+    isClientRequired,
+    isOAuthAdvertised,
+    redirectUri,
+    registrationError,
+    authorize,
+    cancel
+  };
 };

@@ -6,6 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
 import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
+import { MAX_OAUTH_SCOPES } from "../agent-vault-oauth/agent-vault-oauth-discovery-fns";
 
 export type TAgentVaultServiceDALFactory = ReturnType<typeof agentVaultServiceDALFactory>;
 
@@ -85,6 +86,8 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
 
   // The union is taken in the UPDATE, against the row being written: two reports for the same token both pass a
   // compare on the sealed credential, so a union computed from what each one read would let the last erase the other.
+  // Servers usually list every scope a call needs, so scopes already granted are skipped, and a report naming only
+  // those writes nothing. The list stops growing at MAX_OAUTH_SCOPES, since this row is read on every resolve.
   const addRequiredScopes = async (
     {
       id,
@@ -96,14 +99,20 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
   ): Promise<Pick<TAgentVaultServices, "id" | "hostPattern" | "config" | "credentialConfig"> | undefined> => {
     try {
       const stored = `COALESCE("credentialConfig"->'requiredScopes', '[]'::jsonb)`;
+      const granted = `COALESCE("credentialConfig"->'grantedScopes', '[]'::jsonb)`;
+      const reported = JSON.stringify([...new Set(requiredScopes)]);
       const [row] = await (tx || db)(TableName.AgentVaultService)
         .where({ id, encryptedCredential: expectedEncryptedCredential, credentialType: AgentVaultCredentialType.OAuth })
         .whereRaw(`"credentialConfig"->>'accessTokenHash' = ?`, [rejectedTokenHash])
         .whereRaw(`"credentialConfig"->>'status' IS DISTINCT FROM ?`, [AgentVaultOauthStatus.NeedsReauthorization])
+        .whereRaw(
+          `EXISTS (SELECT 1 FROM jsonb_array_elements_text(?::jsonb) AS reported(scope) WHERE NOT ${granted} @> jsonb_build_array(reported.scope))`,
+          [reported]
+        )
         .update({
           credentialConfig: db.raw(
-            `COALESCE("credentialConfig", '{}'::jsonb) || jsonb_build_object('status', ?::text, 'requiredScopes', ${stored} || COALESCE((SELECT jsonb_agg(reported.scope ORDER BY reported.ord) FROM jsonb_array_elements_text(?::jsonb) WITH ORDINALITY AS reported(scope, ord) WHERE NOT ${stored} @> jsonb_build_array(reported.scope)), '[]'::jsonb))`,
-            [AgentVaultOauthStatus.NeedsAdditionalScopes, JSON.stringify([...new Set(requiredScopes)])]
+            `COALESCE("credentialConfig", '{}'::jsonb) || jsonb_build_object('status', ?::text, 'requiredScopes', ${stored} || COALESCE((SELECT jsonb_agg(added.scope ORDER BY added.ord) FROM (SELECT reported.scope, reported.ord, row_number() OVER (ORDER BY reported.ord) AS position FROM jsonb_array_elements_text(?::jsonb) WITH ORDINALITY AS reported(scope, ord) WHERE NOT ${stored} @> jsonb_build_array(reported.scope) AND NOT ${granted} @> jsonb_build_array(reported.scope)) AS added WHERE added.position <= ?::int - jsonb_array_length(${stored})), '[]'::jsonb))`,
+            [AgentVaultOauthStatus.NeedsAdditionalScopes, reported, MAX_OAUTH_SCOPES]
           )
         })
         .returning(["id", "hostPattern", "config", "credentialConfig"]);

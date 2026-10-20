@@ -350,6 +350,7 @@ export const agentVaultOauthServiceFactory = ({
         // Either way the fix is the same, an admin-entered client, so the caller is asked for one.
         return {
           registrationRequired: true,
+          oauthAdvertised: discovery.oauthAdvertised,
           redirectUri: callbackUri,
           registrationError: discovery.endpointsGuessed
             ? null
@@ -361,7 +362,13 @@ export const agentVaultOauthServiceFactory = ({
         };
       }
     } else {
-      return { registrationRequired: true, redirectUri: callbackUri, registrationError: null, authorization: null };
+      return {
+        registrationRequired: true,
+        oauthAdvertised: discovery.oauthAdvertised,
+        redirectUri: callbackUri,
+        registrationError: null,
+        authorization: null
+      };
     }
 
     const storedScopes = stored ? [...new Set([...stored.config.grantedScopes, ...stored.config.requiredScopes])] : [];
@@ -410,6 +417,7 @@ export const agentVaultOauthServiceFactory = ({
 
     return {
       registrationRequired: false,
+      oauthAdvertised: discovery.oauthAdvertised,
       redirectUri: callbackUri,
       registrationError: null,
       authorization: {

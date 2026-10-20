@@ -16,6 +16,7 @@ import {
   AgentVaultOauthStatus,
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
+import { MAX_OAUTH_SCOPES } from "./agent-vault-oauth-discovery-fns";
 import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-fns";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
@@ -211,19 +212,23 @@ const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> 
         });
         const row = rows.get(id);
         const stored = row?.credentialConfig as TAgentVaultOauthConfig | undefined;
+        const granted = stored?.grantedScopes ?? [];
+        const missing = [...new Set(requiredScopes)].filter((scope) => !granted.includes(scope));
         if (
           !row?.encryptedCredential?.equals(expectedEncryptedCredential) ||
           row.credentialType !== AgentVaultCredentialType.OAuth ||
           stored?.accessTokenHash !== rejectedTokenHash ||
-          stored.status === AgentVaultOauthStatus.NeedsReauthorization
+          stored.status === AgentVaultOauthStatus.NeedsReauthorization ||
+          !missing.length
         ) {
           return undefined;
         }
         const existing = stored.requiredScopes ?? [];
+        const added = missing.filter((scope) => !existing.includes(scope));
         row.credentialConfig = {
           ...stored,
           status: AgentVaultOauthStatus.NeedsAdditionalScopes,
-          requiredScopes: [...existing, ...[...new Set(requiredScopes)].filter((scope) => !existing.includes(scope))]
+          requiredScopes: [...existing, ...added.slice(0, Math.max(0, MAX_OAUTH_SCOPES - existing.length))]
         };
         return {
           id,
@@ -328,6 +333,7 @@ describe("starting an authorization", () => {
     });
     expect(await createAuthorization(env)).toEqual({
       registrationRequired: true,
+      oauthAdvertised: true,
       redirectUri: REDIRECT_URI,
       registrationError: null,
       authorization: null
@@ -341,6 +347,7 @@ describe("starting an authorization", () => {
     const result = await createAuthorization(env);
     expect(result).toEqual({
       registrationRequired: true,
+      oauthAdvertised: true,
       redirectUri: REDIRECT_URI,
       registrationError:
         "Couldn't set up OAuth for 'mcp.linear.app': its registration endpoint refused to register Infisical as a client (Redirect URI not allowed). Enter the client ID and secret of your own OAuth app instead.",
@@ -1103,6 +1110,41 @@ describe("refreshing a service's token", () => {
       requiredScopes: ["write", "admin", "write"]
     });
     expect(config().requiredScopes).toEqual(["admin", "write"]);
+  });
+
+  test("a scope report skips scopes already granted, and changes nothing when only those are named", async () => {
+    await env.service.reportMissingScopes({
+      serviceId: SERVICE_ID,
+      hostPattern: DESTINATION.hostPattern,
+      rejectedTokenHash: hashAccessToken("old-access"),
+      requiredScopes: ["read"]
+    });
+    expect(config().status).toBe(AgentVaultOauthStatus.Connected);
+    expect(config().requiredScopes).toEqual([]);
+
+    await env.service.reportMissingScopes({
+      serviceId: SERVICE_ID,
+      hostPattern: DESTINATION.hostPattern,
+      rejectedTokenHash: hashAccessToken("old-access"),
+      requiredScopes: ["read", "admin"]
+    });
+    expect(config().status).toBe(AgentVaultOauthStatus.NeedsAdditionalScopes);
+    expect(config().requiredScopes).toEqual(["admin"]);
+  });
+
+  test("required scopes stop growing at the cap", async () => {
+    const report = (prefix: string) =>
+      env.service.reportMissingScopes({
+        serviceId: SERVICE_ID,
+        hostPattern: DESTINATION.hostPattern,
+        rejectedTokenHash: hashAccessToken("old-access"),
+        requiredScopes: Array.from({ length: 50 }, (_, index) => `${prefix}:${index}`)
+      });
+    await report("a");
+    await report("b");
+    await report("c");
+    expect(config().requiredScopes).toHaveLength(MAX_OAUTH_SCOPES);
+    expect(config().requiredScopes).not.toContain("c:0");
   });
 
   test("a scope report for a service that moved is a 409 and changes nothing", async () => {

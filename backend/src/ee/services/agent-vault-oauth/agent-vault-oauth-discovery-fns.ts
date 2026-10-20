@@ -7,6 +7,12 @@ import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-f
 import { AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
 
 export const OFFLINE_ACCESS_SCOPE = "offline_access";
+// The spec sets no limit. Slack, the largest real server found, lists 30; this only stops a buggy or hostile
+// server from making every authorization store and send an enormous scope list.
+export const MAX_OAUTH_SCOPES = 100;
+// Each request has its own 10 second timeout, so without an overall budget a server that hangs could hold the
+// request past a 60 second gateway.
+const DISCOVERY_BUDGET_MS = 25_000;
 
 export type TOauthDiscovery = {
   issuer: string;
@@ -21,6 +27,9 @@ export type TOauthDiscovery = {
   issParameterSupported: boolean;
   tokenEndpointAuthMethodsSupported: string[] | null;
   compatibility: AgentVaultOauthCompatibility[];
+  // False when the server answered but sent no Bearer challenge and serves no OAuth metadata, which usually
+  // means the URL is wrong. Old servers can still work with an admin-entered client, so it only warns.
+  oauthAdvertised: boolean;
 };
 
 export const describeServer = (serverUrl: string) => {
@@ -103,12 +112,14 @@ const parseJsonObject = (response: TOauthHttpResponse): Record<string, unknown> 
   }
 };
 
-const fetchJson = async (http: TOauthHttpClient, url: string) => {
+type TFetchedJson = { answered: boolean; json: Record<string, unknown> | null };
+
+const fetchJson = async (http: TOauthHttpClient, url: string): Promise<TFetchedJson> => {
   try {
-    return parseJsonObject(await http.get(url));
+    return { answered: true, json: parseJsonObject(await http.get(url)) };
   } catch {
     logger.info(`agentVaultOauth: metadata fetch failed [url=${sanitizeUrlForLog(url)}]`);
-    return null;
+    return { answered: false, json: null };
   }
 };
 
@@ -208,27 +219,41 @@ export const selectScopes = ({
   return [...new Set([...scopes, ...offline])];
 };
 
-export const discoverOauthServer = async (http: TOauthHttpClient, serverUrl: string): Promise<TOauthDiscovery> => {
+const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOauthDiscovery> => {
   const compatibility = new Set<AgentVaultOauthCompatibility>();
+  let answered = false;
 
-  let challenge: Record<string, string> | null = null;
-  try {
-    challenge = parseBearerChallenge((await http.probe(serverUrl)).wwwAuthenticate);
-  } catch {
-    // The challenge only says where to look first; the well-known locations below still apply.
-    logger.info(`agentVaultOauth: MCP server probe failed [server=${describeServer(serverUrl)}]`);
+  // The probe and the well-known locations are asked at once; the challenge only says where to look first.
+  const wellKnownUrls = protectedResourceMetadataUrls(serverUrl);
+  const [challenge, wellKnown] = await Promise.all([
+    http.probe(serverUrl).then(
+      (response) => {
+        answered = true;
+        return parseBearerChallenge(response.wwwAuthenticate);
+      },
+      () => {
+        logger.info(`agentVaultOauth: MCP server probe failed [server=${describeServer(serverUrl)}]`);
+        return null;
+      }
+    ),
+    Promise.all(wellKnownUrls.map(async (url) => [url, await fetchJson(http, url)] as const))
+  ]);
+  const fetched = new Map<string, TFetchedJson>(wellKnown);
+  const orderedUrls = protectedResourceMetadataUrls(serverUrl, challenge?.resource_metadata);
+  const challengeUrl = orderedUrls.find((url) => !fetched.has(url));
+  if (challengeUrl) fetched.set(challengeUrl, await fetchJson(http, challengeUrl));
+  if ([...fetched.values()].some((result) => result.answered)) answered = true;
+
+  if (!answered) {
+    throw new BadRequestError({
+      message: `Couldn't reach '${describeServer(serverUrl)}'. Check the server URL and that the server is online.`
+    });
   }
 
-  let protectedResource: Record<string, unknown> | null = null;
-  // eslint-disable-next-line no-restricted-syntax
-  for (const url of protectedResourceMetadataUrls(serverUrl, challenge?.resource_metadata)) {
-    // eslint-disable-next-line no-await-in-loop
-    const candidate = await fetchJson(http, url);
-    if (candidate && Array.isArray(candidate.authorization_servers)) {
-      protectedResource = candidate;
-      break;
-    }
-  }
+  const protectedResource =
+    orderedUrls
+      .map((url) => fetched.get(url)?.json)
+      .find((candidate) => candidate && Array.isArray(candidate.authorization_servers)) ?? null;
 
   let resource = serverUrl;
   let issuer = new URL(serverUrl).origin;
@@ -247,19 +272,21 @@ export const discoverOauthServer = async (http: TOauthHttpClient, serverUrl: str
     compatibility.add(AgentVaultOauthCompatibility.NoProtectedResourceMetadata);
   }
 
-  let metadata: Record<string, unknown> | null = null;
-  // eslint-disable-next-line no-restricted-syntax
-  for (const url of authorizationServerMetadataUrls(issuer)) {
-    // eslint-disable-next-line no-await-in-loop
-    metadata = await fetchJson(http, url);
-    if (metadata) break;
-  }
+  const metadataResults = await Promise.all(authorizationServerMetadataUrls(issuer).map((url) => fetchJson(http, url)));
+  const metadata = metadataResults.map((result) => result.json).find(Boolean) ?? null;
 
   const scopes = selectScopes({
     challengeScope: challenge?.scope,
     scopesSupported: protectedResource?.scopes_supported,
     authorizationServerScopes: metadata?.scopes_supported
   });
+  if (scopes.length > MAX_OAUTH_SCOPES) {
+    throw oauthSetupError(
+      serverUrl,
+      `it asks for ${scopes.length} OAuth scopes, more than the ${MAX_OAUTH_SCOPES} Infisical supports.`
+    );
+  }
+  const oauthAdvertised = Boolean(challenge || protectedResource || metadata);
 
   if (!metadata) {
     compatibility.add(AgentVaultOauthCompatibility.NoAuthorizationServerMetadata);
@@ -275,7 +302,8 @@ export const discoverOauthServer = async (http: TOauthHttpClient, serverUrl: str
       scopes,
       issParameterSupported: false,
       tokenEndpointAuthMethodsSupported: null,
-      compatibility: [...compatibility]
+      compatibility: [...compatibility],
+      oauthAdvertised
     };
   }
 
@@ -317,6 +345,28 @@ export const discoverOauthServer = async (http: TOauthHttpClient, serverUrl: str
     tokenEndpointAuthMethodsSupported: Array.isArray(authMethods)
       ? authMethods.filter((method): method is string => typeof method === "string")
       : null,
-    compatibility: [...compatibility]
+    compatibility: [...compatibility],
+    oauthAdvertised
   };
+};
+
+export const discoverOauthServer = async (
+  http: TOauthHttpClient,
+  serverUrl: string,
+  budgetMs = DISCOVERY_BUDGET_MS
+): Promise<TOauthDiscovery> => {
+  let timer: NodeJS.Timeout | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      logger.info(`agentVaultOauth: discovery timed out [server=${describeServer(serverUrl)}]`);
+      reject(
+        oauthSetupError(serverUrl, "it took too long to respond. Check that the server is online, then try again.")
+      );
+    }, budgetMs);
+  });
+  try {
+    return await Promise.race([discover(http, serverUrl), deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
 };

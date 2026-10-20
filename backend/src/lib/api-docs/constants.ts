@@ -4569,6 +4569,8 @@ export const AGENT_VAULT = {
       "True when the server can't register Infisical as a client by itself. Send `clientId` (and `clientSecret`) of your own OAuth app.",
     redirectUri:
       "The redirect URI Infisical sends to the authorization server. Register your own OAuth app with this exact value.",
+    oauthAdvertised:
+      "False when the MCP server answered but sent no OAuth challenge and serves no OAuth metadata. The server URL may be wrong; a server that does use OAuth can still be connected with your own client ID and secret.",
     registrationError:
       "Why the server's registration endpoint refused to register Infisical, when it did. Null when the server has no registration endpoint, or when registration wasn't needed.",
     status: "`pending` until the authorization server redirects back, then `authorized` or `failed`.",
