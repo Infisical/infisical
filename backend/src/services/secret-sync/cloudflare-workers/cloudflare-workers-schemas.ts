@@ -30,11 +30,19 @@ const CloudflareWorkersSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.variableType)
 });
 
+const CloudflareWorkersSyncAdditionalOptionsSchema = z.object({
+  syncNonSecretBindings: z
+    .boolean()
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_WORKERS.syncNonSecretBindings)
+});
+
 const CloudflareWorkersSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
 export const CloudflareWorkersSyncSchema = BaseSecretSyncSchema(
   SecretSync.CloudflareWorkers,
-  CloudflareWorkersSyncOptionsConfig
+  CloudflareWorkersSyncOptionsConfig,
+  CloudflareWorkersSyncAdditionalOptionsSchema
 )
   .extend({
     destination: z.literal(SecretSync.CloudflareWorkers),
@@ -44,9 +52,11 @@ export const CloudflareWorkersSyncSchema = BaseSecretSyncSchema(
 
 export const CreateCloudflareWorkersSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.CloudflareWorkers,
-  CloudflareWorkersSyncOptionsConfig
+  CloudflareWorkersSyncOptionsConfig,
+  CloudflareWorkersSyncAdditionalOptionsSchema
 ).extend({
-  // Syncs created before the type existed have none and sync as secrets, so it stays optional elsewhere.
+  // New syncs default to Secret. The type stays optional elsewhere because syncs created before it existed
+  // have none, and they keep skipping same-name plaintext and JSON variables.
   destinationConfig: CloudflareWorkersSyncDestinationConfigSchema.extend({
     variableType: z
       .nativeEnum(CloudflareWorkersVariableType)
@@ -57,7 +67,8 @@ export const CreateCloudflareWorkersSyncSchema = GenericCreateSecretSyncFieldsSc
 
 export const UpdateCloudflareWorkersSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.CloudflareWorkers,
-  CloudflareWorkersSyncOptionsConfig
+  CloudflareWorkersSyncOptionsConfig,
+  CloudflareWorkersSyncAdditionalOptionsSchema
 ).extend({
   destinationConfig: CloudflareWorkersSyncDestinationConfigSchema.optional()
 });
