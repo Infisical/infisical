@@ -65,6 +65,7 @@ type TRowHoverActions = {
   rowHoverProps: {
     tabIndex?: number;
     onMouseEnter: (e: MouseEvent<HTMLElement>) => void;
+    onMouseMove: (e: MouseEvent<HTMLElement>) => void;
     onMouseLeave: (e: MouseEvent<HTMLElement>) => void;
     onFocus: (e: FocusEvent<HTMLElement>) => void;
     onBlur: (e: FocusEvent<HTMLElement>) => void;
@@ -179,6 +180,16 @@ export const useRowHoverActions = ({
         if (!e.currentTarget.contains(e.target as Node)) return;
         setIsHovered(true);
       },
+      // The enter that would announce the pointer coming back from a popover or sheet this row
+      // rendered never arrives, because React treats the two as neighbours in its own tree. The
+      // release path below re-derives once, but only at the moment the hold drops, which for a
+      // popover that takes focus is while the pointer is still inside it. The first move over the
+      // row is the one signal that always arrives, whenever the pointer actually returns.
+      onMouseMove: (e: MouseEvent<HTMLElement>) => {
+        rowElementRef.current = e.currentTarget;
+        if (isHovered || !e.currentTarget.contains(e.target as Node)) return;
+        setIsHovered(true);
+      },
       onMouseLeave: (e: MouseEvent<HTMLElement>) => {
         rowElementRef.current = e.currentTarget;
         setIsHovered(false);
@@ -199,7 +210,7 @@ export const useRowHoverActions = ({
         setIsFocusWithin(false);
       }
     }),
-    [needsRowTabStop]
+    [needsRowTabStop, isHovered]
   );
 
   return {
