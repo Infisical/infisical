@@ -75,7 +75,8 @@ export const UnusedAccessCard = () => {
     }
 
     if (totalCount === 0) {
-      let description = "Every identity has read the secrets it can access in the last 30 days.";
+      // Recent access and new secrets are not judged yet, so this cannot claim everything was read.
+      let description = "No identity has gone 30 days without reading a secret it can access.";
       if (debouncedSearch) {
         description = "No user, group or machine identity with unused access matches your search.";
       } else if (!isJudging) {
