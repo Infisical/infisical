@@ -24,6 +24,7 @@ import {
   CertKeySource,
   SignerKeyAlgorithm,
   TSigner,
+  useImportSignerCertificate,
   useReissueSignerCertificate,
   useUpdateSigner
 } from "@app/hooks/api/signers";
@@ -59,6 +60,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const cas = useListCasByProjectId();
   const updateSigner = useUpdateSigner();
   const reissueCertificate = useReissueSignerCertificate();
+  const importCertificate = useImportSignerCertificate();
   const { subscription } = useSubscription();
   const { data: hsmConnectors = [], isPending: isHsmConnectorsLoading } = useListHsmConnectors({
     enabled: Boolean(subscription?.hsm)
@@ -239,27 +241,28 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       const nextRenew = cert.certificateRenewBeforeDays ?? null;
       const renewChanged = nextRenew !== currentRenew;
 
-      if (shouldReissue) {
+      if (usingExistingCertificate) {
+        await importCertificate.mutateAsync({
+          signerId: signer.id,
+          caId: cert.caId,
+          externalOrderId: cert.externalOrderId ?? "",
+          certificate: {
+            hsmConnectorId: cert.hsmConnectorId ?? "",
+            hsmKeyLabel: cert.hsmKeyLabel,
+            hsmKeyId: cert.hsmKeyId || undefined
+          },
+          certificateRenewBeforeDays: renewChanged ? nextRenew : undefined
+        });
+      } else if (shouldReissue) {
         await reissueCertificate.mutateAsync({
           signerId: signer.id,
           caId: cert.caId,
           commonName: !isFromExternalOrder && subjectChanged ? cert.commonName : undefined,
           certificateTtlDays:
             !isFromExternalOrder && subjectChanged ? cert.certificateTtlDays : undefined,
-          keyAlgorithm:
-            !usingExistingCertificate && (keySourceChanged || keyAlgorithmChanged)
-              ? cert.keyAlgorithm
-              : undefined,
-          certificate: (() => {
-            if (usingExistingCertificate) {
-              return {
-                keySource: CertKeySource.Hsm,
-                hsmConnectorId: cert.hsmConnectorId ?? undefined,
-                hsmKeyLabel: cert.hsmKeyLabel,
-                hsmKeyId: cert.hsmKeyId || undefined
-              };
-            }
-            return keySourceChanged || keyAlgorithmChanged
+          keyAlgorithm: keySourceChanged || keyAlgorithmChanged ? cert.keyAlgorithm : undefined,
+          certificate:
+            keySourceChanged || keyAlgorithmChanged
               ? {
                   keySource: cert.keySource,
                   hsmConnectorId:
@@ -267,13 +270,10 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                       ? (cert.hsmConnectorId ?? undefined)
                       : undefined
                 }
-              : undefined;
-          })(),
+              : undefined,
           externalConfiguration: (() => {
             if (cert.externalOrderId) {
-              return usingExistingCertificate
-                ? { importFromExternalOrderId: cert.externalOrderId }
-                : { reissueFromExternalOrderId: cert.externalOrderId };
+              return { reissueFromExternalOrderId: cert.externalOrderId };
             }
             if (isAdcs) {
               return { template: cert.adcsTemplate?.trim() || undefined };
@@ -283,12 +283,13 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
         });
       }
 
-      if (nameChanged || descChanged || renewChanged) {
+      const renewSavedByImport = usingExistingCertificate && renewChanged;
+      if (nameChanged || descChanged || (renewChanged && !renewSavedByImport)) {
         await updateSigner.mutateAsync({
           signerId: signer.id,
           name: nameChanged ? basics.name : undefined,
           description: descChanged ? basics.description || null : undefined,
-          certificateRenewBeforeDays: renewChanged ? nextRenew : undefined
+          certificateRenewBeforeDays: renewChanged && !renewSavedByImport ? nextRenew : undefined
         });
       }
 

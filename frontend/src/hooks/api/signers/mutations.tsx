@@ -14,6 +14,7 @@ import {
   TDeleteSignerDTO,
   TDisableSignerDTO,
   TEnableSignerDTO,
+  TImportSignerCertificateDTO,
   TPreApproveSigningDTO,
   TReissueSignerCertificateDTO,
   TRemoveSignerGroupDTO,
@@ -129,16 +130,31 @@ export const useReissueSignerCertificate = () => {
       );
       return data;
     },
-    onSuccess: (signer, { externalConfiguration }) => {
+    onSuccess: (signer) => {
       queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
-      createNotification({
-        text: externalConfiguration?.importFromExternalOrderId
-          ? "Signer switched to the order's certificate"
-          : "Certificate re-issue scheduled",
-        type: "success"
-      });
+      createNotification({ text: "Certificate re-issue scheduled", type: "success" });
+    }
+  });
+};
+
+export const useImportSignerCertificate = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TSigner, object, TImportSignerCertificateDTO>({
+    mutationFn: async ({ signerId, ...body }) => {
+      const { data } = await apiRequest.post<TSigner>(
+        `/api/v1/cert-manager/signers/${signerId}/certificate/import`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (signer) => {
+      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
+      createNotification({ text: "Signer switched to the order's certificate", type: "success" });
     }
   });
 };

@@ -8,6 +8,7 @@ export {
   useDeleteSigner,
   useDisableSigner,
   useEnableSigner,
+  useImportSignerCertificate,
   usePreApproveSigning,
   useReissueSignerCertificate,
   useRemoveSignerGroupMember,

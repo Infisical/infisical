@@ -9,7 +9,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import {
-  refineSignerCertificateInput,
+  ExternalOrderIdSchema,
+  HSM_REISSUE_KEY_ALGORITHMS,
   SignerCertificateInputSchema,
   SignerExternalConfigurationSchema,
   SignerIdParamsSchema,
@@ -33,12 +34,30 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
           commonName: z.string().trim().min(1).max(256).optional(),
           certificateTtlDays: z.number().int().min(1).max(3650).optional(),
           keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
-          certificate: SignerCertificateInputSchema.extend({
-            keySource: z.enum([CertKeySource.Infisical, CertKeySource.Hsm])
-          }).optional(),
-          externalConfiguration: SignerExternalConfigurationSchema.optional()
+          certificate: SignerCertificateInputSchema.pick({ hsmConnectorId: true })
+            .extend({ keySource: z.enum([CertKeySource.Infisical, CertKeySource.Hsm]) })
+            .optional(),
+          externalConfiguration: SignerExternalConfigurationSchema.omit({ importFromExternalOrderId: true })
+            .strict()
+            .optional()
         })
-        .superRefine(refineSignerCertificateInput),
+        .superRefine((data, ctx) => {
+          if (data.certificate?.keySource !== CertKeySource.Hsm) return;
+          if (!data.certificate.hsmConnectorId) {
+            ctx.addIssue({
+              code: "custom",
+              message: `hsmConnectorId is required when keySource = '${CertKeySource.Hsm}'`,
+              path: ["certificate", "hsmConnectorId"]
+            });
+          }
+          if (!data.keyAlgorithm || !HSM_REISSUE_KEY_ALGORITHMS.includes(data.keyAlgorithm)) {
+            ctx.addIssue({
+              code: "custom",
+              message: `keyAlgorithm must be one of ${HSM_REISSUE_KEY_ALGORITHMS.join(", ")} when keySource = '${CertKeySource.Hsm}'`,
+              path: ["keyAlgorithm"]
+            });
+          }
+        }),
       response: { 200: PkiSignersSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -52,7 +71,6 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
         actorOrgId: req.permission.orgId
       });
 
-      const isImport = Boolean(req.body.externalConfiguration?.importFromExternalOrderId);
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: signer.projectId,
@@ -62,14 +80,79 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             signerId: signer.id,
             name: signer.name,
             caId: req.body.caId,
-            commonName: isImport ? (signer.commonName ?? undefined) : req.body.commonName,
-            keyAlgorithm: isImport ? (signer.keyAlgorithm ?? undefined) : req.body.keyAlgorithm,
-            ...(isImport ? { certificateId: signer.certificateId } : {}),
+            commonName: req.body.commonName,
+            keyAlgorithm: req.body.keyAlgorithm,
             keySource: req.body.certificate?.keySource,
             hsmConnectorId: req.body.certificate?.hsmConnectorId,
-            hsmKeyLabel: req.body.certificate?.hsmKeyLabel,
-            hsmKeyId: req.body.certificate?.hsmKeyId,
             externalConfiguration: req.body.externalConfiguration
+          }
+        }
+      });
+
+      return signer;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/certificate/import",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "importSignerCertificate",
+      tags: [ApiDocsTags.PkiSigners],
+      description:
+        "Switch the signer to the certificate already issued in an existing DigiCert order, signing with that certificate's private key on the HSM. DigiCert does not reissue or revoke anything.",
+      params: SignerIdParamsSchema,
+      body: z.object({
+        caId: z.string().uuid().describe("The DigiCert certificate authority the order belongs to."),
+        externalOrderId: ExternalOrderIdSchema.describe("The DigiCert order whose certificate the signer will use."),
+        certificate: SignerCertificateInputSchema.pick({
+          hsmConnectorId: true,
+          hsmKeyLabel: true,
+          hsmKeyId: true
+        }).required({ hsmConnectorId: true, hsmKeyLabel: true }),
+        certificateRenewBeforeDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(30)
+          .nullable()
+          .optional()
+          .describe(
+            "Days before expiry to renew the certificate with the same HSM key. Must be less than the certificate's validity. Omit to keep the signer's current setting, or set to null to turn renewal off."
+          )
+      }),
+      response: { 200: PkiSignersSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const signer = await server.services.pkiSigner.importCertificate({
+        signerId: req.params.signerId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: signer.projectId,
+        event: {
+          type: EventType.IMPORT_PKI_SIGNER_CERTIFICATE,
+          metadata: {
+            signerId: signer.id,
+            name: signer.name,
+            caId: req.body.caId,
+            externalOrderId: req.body.externalOrderId,
+            certificateId: signer.certificateId,
+            commonName: signer.commonName ?? undefined,
+            keyAlgorithm: signer.keyAlgorithm ?? undefined,
+            hsmConnectorId: req.body.certificate.hsmConnectorId,
+            hsmKeyLabel: req.body.certificate.hsmKeyLabel,
+            hsmKeyId: req.body.certificate.hsmKeyId,
+            certificateRenewBeforeDays: signer.certificateRenewBeforeDays
           }
         }
       });

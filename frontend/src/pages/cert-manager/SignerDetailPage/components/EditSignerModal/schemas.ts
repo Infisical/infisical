@@ -72,6 +72,7 @@ export const createCertificateSchema = (currentKey: TCurrentSignerKey) =>
       (data) =>
         data.certificateRenewBeforeDays == null ||
         data.certificateTtlDays == null ||
+        Boolean(data.externalOrderId) ||
         data.certificateRenewBeforeDays < data.certificateTtlDays,
       {
         message: "Renew before must be less than the certificate validity (days).",

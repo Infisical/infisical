@@ -55,6 +55,7 @@ export const certificateSchema = z
   .refine(
     (data) =>
       data.certificateRenewBeforeDays == null ||
+      Boolean(data.externalOrderId) ||
       data.certificateRenewBeforeDays < data.certificateTtlDays,
     {
       message: "Renew before must be less than the certificate validity (days).",

@@ -12,7 +12,7 @@ export const SignerIdParamsSchema = z.object({ signerId: z.string().uuid() });
 
 export const SignerRequestParamsSchema = SignerIdParamsSchema.extend({ requestId: z.string().uuid() });
 
-const ExternalOrderIdSchema = z.string().trim().min(1).max(32);
+export const ExternalOrderIdSchema = z.string().trim().min(1).max(32);
 
 export const SignerExternalConfigurationSchema = z.object({
   caType: z
@@ -45,7 +45,7 @@ export const SignerCertificateInputSchema = z.object({
   hsmKeyLabel: HsmKeyLabelSchema.refine((v) => RE_NO_NEWLINES.test(v), "Key label must not contain newline characters")
     .optional()
     .describe(
-      "The label of an existing private key on the HSM. Only used with externalConfiguration.importFromExternalOrderId. If more than one private key in the HSM Connector's slot has this label, also set hsmKeyId."
+      "The label of the certificate's private key on the HSM. Only used when using an existing DigiCert certificate. If more than one private key in the HSM Connector's slot has this label, also set hsmKeyId."
     ),
   hsmKeyId: z
     .string()
@@ -79,6 +79,11 @@ export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly CertKeyAlgorithm[] = [
   CertKeyAlgorithm.RSA_4096,
   CertKeyAlgorithm.ECDSA_P256,
   CertKeyAlgorithm.ECDSA_P384
+];
+
+export const HSM_REISSUE_KEY_ALGORITHMS: readonly CertKeyAlgorithm[] = [
+  ...HSM_SUPPORTED_KEY_ALGORITHMS,
+  CertKeyAlgorithm.RSA_3072
 ];
 
 export const refineSignerCertificateInput = (

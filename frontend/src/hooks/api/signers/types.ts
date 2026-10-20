@@ -396,6 +396,14 @@ export type TReissueSignerCertificateDTO = {
   externalConfiguration?: TSignerExternalConfiguration;
 };
 
+export type TImportSignerCertificateDTO = {
+  signerId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
+  certificateRenewBeforeDays?: number | null;
+};
+
 export type TEnableSignerDTO = { signerId: string };
 export type TDisableSignerDTO = { signerId: string };
 

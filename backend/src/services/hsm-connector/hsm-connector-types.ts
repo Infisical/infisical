@@ -69,7 +69,7 @@ export type THsmConnectorSanitized = {
 };
 
 export type THsmConnectorKey = {
-  label: string;
+  keyLabel: string;
   keyId: string;
   keyAlgorithm: string;
 };

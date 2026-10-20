@@ -334,7 +334,7 @@ export const digiCertCodeSigningFns = ({
     return { pemBundle, certificate };
   };
 
-  const prepareCodeSigningCertificate = async ({
+  const prepareCodeSigningCertificateImport = async ({
     caId,
     orderId,
     digicertCertificateId,
@@ -435,9 +435,9 @@ export const digiCertCodeSigningFns = ({
   };
 
   const downloadCodeSigningCertificate = async (
-    args: Parameters<typeof prepareCodeSigningCertificate>[0]
+    args: Parameters<typeof prepareCodeSigningCertificateImport>[0]
   ): Promise<{ certificateId: string; certificatePem: string }> => {
-    const prepared = await prepareCodeSigningCertificate(args);
+    const prepared = await prepareCodeSigningCertificateImport(args);
     if (!prepared.insert) {
       return { certificateId: prepared.existingCertificateId, certificatePem: prepared.certificatePem };
     }
@@ -462,7 +462,7 @@ export const digiCertCodeSigningFns = ({
     assertCodeSigningOrderReusable,
     getCodeSigningOrderStatus,
     fetchIssuedCodeSigningCertificate,
-    prepareCodeSigningCertificate,
+    prepareCodeSigningCertificateImport,
     downloadCodeSigningCertificate
   };
 };

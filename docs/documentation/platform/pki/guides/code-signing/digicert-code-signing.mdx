@@ -62,7 +62,7 @@ If the key doesn't match the certificate, the request fails and nothing changes.
     To switch an existing signer to the certificate, follow the same steps in **Edit Signer**.
   </Tab>
   <Tab title="API">
-    On [Create Signer](/api-reference/endpoints/code-signing/signers/create) or [Reissue](/api-reference/endpoints/code-signing/signers/reissue-certificate), set `externalConfiguration.importFromExternalOrderId` to the order ID and `certificate.hsmKeyLabel` to the key's label. If more than one private key in the slot has that label, also set `certificate.hsmKeyId` to the key's hex-encoded `CKA_ID`:
+    To create a signer that uses the certificate, call [the endpoint that creates a signer](/api-reference/endpoints/code-signing/signers/create) with `externalConfiguration.importFromExternalOrderId` set to the order ID and `certificate.hsmKeyLabel` set to the key's label. If more than one private key in the slot has that label, also set `certificate.hsmKeyId` to the key's hex-encoded `CKA_ID`:
 
     ```json
     {
@@ -77,6 +77,8 @@ If the key doesn't match the certificate, the request fails and nothing changes.
       }
     }
     ```
+
+    To switch an existing signer to the certificate, call [the endpoint that imports a certificate into a signer](/api-reference/endpoints/code-signing/signers/import-certificate) with the order ID in `externalOrderId` and the same `certificate` fields, without `keySource`.
   </Tab>
 </Tabs>
 

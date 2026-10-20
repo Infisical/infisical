@@ -143,6 +143,14 @@ export type TReissueCertificateDTO = {
   externalConfiguration?: TSignerExternalConfigurationInput;
 } & TActorPermission;
 
+export type TImportCertificateDTO = {
+  signerId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
+  certificateRenewBeforeDays?: number | null;
+} & TActorPermission;
+
 export type TExportCertificateDTO = {
   signerId: string;
 } & TActorPermission;

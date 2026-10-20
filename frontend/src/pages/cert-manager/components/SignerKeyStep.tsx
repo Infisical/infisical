@@ -301,8 +301,7 @@ export const SignerKeyStep = ({
                       <InfoIcon className="h-3.5 w-3.5 text-muted" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      When off, a new key is generated on the HSM and DigiCert replaces the
-                      certificate in this order.
+                      When off, DigiCert issues a new certificate into this order.
                     </TooltipContent>
                   </Tooltip>
                 </div>
