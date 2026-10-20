@@ -29,7 +29,7 @@ To scan your GitLab projects for leaked secrets, create a GitLab [data source](/
     - **GitLab Connection**: The connection that can access the projects you want to scan
     - **Group** (optional): The GitLab group whose projects the data source covers. If you leave it empty, the data source covers every project the connection can read, including your own.
 
-    You can't change the connection or the group after you create the data source.
+    You can't change the connection or the group after you create the data source. Each connection can be used by only one data source, so to scan two GitLab groups, create a separate GitLab connection for each.
   </Step>
   <Step>
     Choose when Infisical scans the data source's projects, then select **Continue**.
