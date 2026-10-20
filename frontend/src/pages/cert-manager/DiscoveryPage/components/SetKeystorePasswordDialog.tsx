@@ -64,8 +64,13 @@ export const SetKeystorePasswordDialog = ({
     onOpenChange(false);
   };
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && updateInstallation.isPending) return;
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isChange ? "Change Password" : "Set Password"}</DialogTitle>
@@ -106,7 +111,12 @@ export const SetKeystorePasswordDialog = ({
             </FieldDescription>
           </Field>
           <DialogFooter className="mt-6">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              isDisabled={updateInstallation.isPending}
+            >
               Cancel
             </Button>
             <Button

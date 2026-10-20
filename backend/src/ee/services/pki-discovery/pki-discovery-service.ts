@@ -113,12 +113,15 @@ export const pkiDiscoveryServiceFactory = ({
   const $validateLinuxServerTarget = async (
     targetConfig: TPkiDiscoveryTargetConfig,
     projectId: string,
-    actor: OrgServiceActor
+    actor: OrgServiceActor,
+    existingConnectionIds?: string[]
   ): Promise<TLinuxServerTargetConfig> => {
     const config = $parseTargetConfig<TLinuxServerTargetConfig>(LinuxServerTargetConfigSchema, targetConfig);
+    const alreadyValidated = new Set(existingConnectionIds);
+    const newConnectionIds = config.connectionIds.filter((connectionId) => !alreadyValidated.has(connectionId));
     const limit = pLimit(CONNECTION_VALIDATION_CONCURRENCY);
     const connections = await Promise.all(
-      config.connectionIds.map((connectionId) =>
+      newConnectionIds.map((connectionId) =>
         limit(() =>
           appConnectionService.validateAppConnectionUsageById(AppConnection.SSH, { connectionId, projectId }, actor)
         )
@@ -147,19 +150,21 @@ export const pkiDiscoveryServiceFactory = ({
     targetConfig,
     hasGateway,
     projectId,
-    actor
+    actor,
+    existingConnectionIds
   }: {
     discoveryType: PkiDiscoveryType;
     targetConfig: TPkiDiscoveryTargetConfig;
     hasGateway: boolean;
     projectId: string;
     actor: OrgServiceActor;
+    existingConnectionIds?: string[];
   }): Promise<TPkiDiscoveryTargetConfig> => {
     switch (discoveryType) {
       case PkiDiscoveryType.Network:
         return $validateNetworkTarget(targetConfig, hasGateway);
       case PkiDiscoveryType.LinuxServer:
-        return $validateLinuxServerTarget(targetConfig, projectId, actor);
+        return $validateLinuxServerTarget(targetConfig, projectId, actor, existingConnectionIds);
       default:
         throw new BadRequestError({ message: `Unsupported discovery type: ${discoveryType as string}` });
     }
@@ -329,13 +334,19 @@ export const pkiDiscoveryServiceFactory = ({
 
     $assertJobGatewayAllowed(discoveryType, Boolean(gatewayId || gatewayPoolId));
 
+    const existingConnectionIds =
+      discoveryType === PkiDiscoveryType.LinuxServer
+        ? (discovery.targetConfig as TLinuxServerTargetConfig).connectionIds
+        : undefined;
+
     const validatedTargetConfig = targetConfig
       ? await $validateTarget({
           discoveryType,
           targetConfig,
           hasGateway: effectiveHasGateway,
           projectId: discovery.projectId,
-          actor: orgActor
+          actor: orgActor,
+          existingConnectionIds
         })
       : undefined;
 
