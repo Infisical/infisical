@@ -73,6 +73,10 @@ describe("toCloudEvent", () => {
     });
   });
 
+  test("refuses an event recorded without an eventId", () => {
+    expect(() => toCloudEvent(ExampleEvent, { ...event, eventId: null })).toThrow("without an eventId");
+  });
+
   test("refuses an event of another type", () => {
     expect(() =>
       toCloudEvent(ExampleEvent, { ...event, eventType: "com.infisical.secrets.secret.modified.v1" })

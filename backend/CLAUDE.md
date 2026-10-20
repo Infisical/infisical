@@ -811,6 +811,8 @@ await someDAL.transaction(async (tx) => {
 - `emitMany(events, tx)` writes a batch in one go (eg one event per secret in a bulk write), in chunks
   of 1000 rows to stay under Postgres's bind parameter limit. Every event gets one `eventId` (UUID),
   shared by all its consumers' rows; `TEvent.id` is the consumer's row, `TEvent.eventId` the occurrence.
+  `eventId` is nullable, because a pod on the previous release writes rows without it during a rolling
+  deploy.
 
 **How delivery works:**
 

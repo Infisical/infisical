@@ -217,15 +217,23 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     projectId: string,
     folderIds: string[],
     tx?: Knex,
-    { readFromPrimary = false }: { readFromPrimary?: boolean } = {}
+    {
+      readFromPrimary = false,
+      includePendingDeletion = false
+    }: { readFromPrimary?: boolean; includePendingDeletion?: boolean } = {}
   ) => {
     const conn = tx || (readFromPrimary ? db : db.replicaNode());
+    // An environment pending deletion is hidden from every read, but a caller still acting on a resource
+    // inside it (eg revoking a honey token during the grace period) needs its real location.
+    const excludePendingDeletion = (qb: Knex.QueryBuilder) => {
+      if (!includePendingDeletion) void qb.whereNull(`${TableName.Environment}.deleteAfter`);
+    };
     try {
       const targetFolders = await conn(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereIn(`${TableName.SecretFolder}.id`, folderIds)
         .where(`${TableName.Environment}.projectId`, projectId)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .where(excludePendingDeletion)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("slug").withSchema(TableName.Environment).as("environmentSlug"),
@@ -243,7 +251,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
           .whereIn(`${TableName.SecretFolder}.id`, folderIds)
           .where(`${TableName.Environment}.projectId`, projectId)
-          .whereNull(`${TableName.Environment}.deleteAfter`)
+          .where(excludePendingDeletion)
       );
 
       const idMap = buildFolderIdMap(allEnvFolders);

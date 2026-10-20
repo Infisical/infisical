@@ -63,6 +63,9 @@ export const toCloudEvent = <TData extends z.AnyZodObject>(
   if (event.eventType !== definition.type) {
     throw new Error(`Event '${event.eventType}' cannot be read as '${definition.type}'`);
   }
+  if (!event.eventId) {
+    throw new Error(`Event '${event.id}' was recorded without an eventId, by a release that predates it`);
+  }
 
   return {
     specversion: "1.0",
