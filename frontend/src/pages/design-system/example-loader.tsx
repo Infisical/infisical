@@ -19,7 +19,7 @@ type ExampleLoader = () => Promise<{ default: ComponentType }>;
 
 const modules: Readonly<Record<string, ExampleLoader>> = import.meta.glob<{
   default: ComponentType;
-}>("./examples/**/*.tsx");
+}>(["./examples/**/*.tsx", "!./examples/**/*.{test,spec}.tsx"]);
 const loaded = new Map<string, ComponentType>();
 const failedImports = new Set<string>();
 

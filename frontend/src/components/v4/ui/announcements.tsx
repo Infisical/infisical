@@ -63,6 +63,9 @@ export const Announcements = ({
   const [direction, setDirection] = React.useState(1);
   const reduced = useReducedMotion();
   const next = React.useRef<HTMLButtonElement | null>(null);
+  const opener = React.useRef<HTMLElement | null>(null);
+  if (isOpen && !opener.current && typeof document !== "undefined")
+    opener.current = document.activeElement as HTMLElement | null;
   const item = items[current];
   const last = current === items.length - 1;
   const seen = React.useRef(onSeen);
@@ -89,6 +92,12 @@ export const Announcements = ({
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           next.current?.focus();
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!opener.current?.isConnected) return;
+          event.preventDefault();
+          opener.current.focus();
+          opener.current = null;
         }}
         onKeyDown={(event) => {
           if (event.key === "ArrowRight") go(current + 1);

@@ -169,6 +169,7 @@ const Button = React.forwardRef<
           {iconRight && !(loading && iconOnly) && <Icon name={iconRight} size={iconSize} />}
         </>
       );
+      if (loadingProp === undefined && !icon && !iconRight && !iconOnly) return label;
       if (loadingProp === undefined || iconOnly)
         return (
           <>
