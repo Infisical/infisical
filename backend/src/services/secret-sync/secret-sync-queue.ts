@@ -162,7 +162,6 @@ const getRequeueDelay = (failureCount?: number) => {
 };
 
 const SECRET_SYNC_LOCK_DURATION_MS = 5 * 60 * 1000;
-const SHARED_LOCK_RETRY_DELAY_MS = 2000;
 
 export const secretSyncQueueFactory = ({
   queueService,
@@ -356,6 +355,7 @@ export const secretSyncQueueFactory = ({
 
   const queueSecretSyncRemoveSecretsById = async (payload: TQueueSecretSyncRemoveSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncRemoveSecrets, payload, {
+      delay: getRequeueDelay(payload.failedToAcquireLockCount),
       attempts: 1,
       removeOnComplete: true,
       removeOnFail: true,
@@ -1162,6 +1162,13 @@ export const secretSyncQueueFactory = ({
         break;
       }
       case QueueJobs.SecretSyncRemoveSecrets: {
+        const { failedToAcquireLockCount = 0, ...rest } = job.data as TQueueSecretSyncRemoveSecretsByIdDTO;
+
+        if (failedToAcquireLockCount < REQUEUE_LIMIT) {
+          await queueSecretSyncRemoveSecretsById({ ...rest, failedToAcquireLockCount: failedToAcquireLockCount + 1 });
+          return;
+        }
+
         const secretSync = await secretSyncDAL.updateById(syncId, {
           removeStatus: SecretSyncStatus.Failed,
           lastRemoveMessage:
@@ -1254,18 +1261,15 @@ export const secretSyncQueueFactory = ({
       return;
     }
 
-    // Jobs that write to a destination other syncs share wait for each other, up to the lock's own lifetime, so
-    // a sibling sync delays this job rather than failing it.
+    // Jobs that write to a destination other syncs share take turns. A job that finds it busy goes back on
+    // the delayed queue, like a job that finds its own lock busy, so it never blocks this consumer.
     const sharedLockKey =
       job.name === QueueJobs.SecretSyncImportSecrets ? undefined : getSharedDestinationLockKey(secretSync);
     let sharedLock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
 
     if (sharedLockKey) {
       try {
-        sharedLock = await keyStore.acquireLock([sharedLockKey], SECRET_SYNC_LOCK_DURATION_MS, {
-          retryCount: SECRET_SYNC_LOCK_DURATION_MS / SHARED_LOCK_RETRY_DELAY_MS,
-          retryDelay: SHARED_LOCK_RETRY_DELAY_MS
-        });
+        sharedLock = await keyStore.acquireLock([sharedLockKey], SECRET_SYNC_LOCK_DURATION_MS);
       } catch (e) {
         logger.info(`SecretSync Failed to acquire shared destination lock [syncId=${syncId}] [job=${job.name}]`);
 
