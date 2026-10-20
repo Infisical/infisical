@@ -593,6 +593,7 @@ export enum EventType {
   ADD_GROUP_TO_PROJECT = "add-group-to-project",
   UPDATE_GROUP_PROJECT_MEMBERSHIP = "update-group-project-membership",
   REMOVE_GROUP_FROM_PROJECT = "remove-group-from-project",
+  REVOKE_ORG_PROJECT_ACCESS = "revoke-org-project-access",
 
   GET_PROJECT_TEMPLATES = "get-project-templates",
   GET_PROJECT_TEMPLATE = "get-project-template",
@@ -2930,6 +2931,19 @@ interface UnlinkGroupFromSubOrgEvent {
   metadata: {
     groupId: string;
     groupName: string;
+  };
+}
+
+// Logged by the org access reconcile consumer after the fact, so the actor is the platform and the
+// cause lives in reason and groupId.
+interface RevokeOrgProjectAccessEvent {
+  type: EventType.REVOKE_ORG_PROJECT_ACCESS;
+  metadata: {
+    userId?: string;
+    identityId?: string;
+    projectIds: string[];
+    reason: string;
+    groupId?: string;
   };
 }
 
@@ -8730,6 +8744,7 @@ export type Event =
   | LinkGroupToSubOrgEvent
   | UpdateGroupOrgMembershipEvent
   | UnlinkGroupFromSubOrgEvent
+  | RevokeOrgProjectAccessEvent
   | AddUserToGroupEvent
   | RemoveUserFromGroupEvent
   | AddIdentityToGroupEvent

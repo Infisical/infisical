@@ -1104,7 +1104,8 @@ describe("User folder access CRUD", () => {
         membershipGroupDAL: membershipGroupDALFactory(testDb),
         projectKeyDAL: projectKeyDALFactory(testDb),
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-        alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb)
+        alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb),
+        eventEmitter: { emit: async () => {} }
       };
 
       const username = `folder-reap-${alphaNumericNanoId(8)}@example.com`;

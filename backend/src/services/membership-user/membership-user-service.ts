@@ -24,6 +24,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
@@ -63,7 +64,7 @@ import { newProjectMembershipUserFactory } from "./project/project-membership-us
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction" | "find">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction" | "find" | "findActorsWithOrgAccess">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;
   permissionService: Pick<
@@ -95,6 +96,7 @@ type TMembershipUserServiceFactoryDep = {
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -123,7 +125,8 @@ export const membershipUserServiceFactory = ({
   usageMeteringService,
   alertChannelRecipientDAL,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  eventEmitter
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -608,7 +611,8 @@ export const membershipUserServiceFactory = ({
           approvalPolicyDAL,
           alertChannelRecipientDAL,
           pamSessionDAL,
-          gatewayV2Service
+          gatewayV2Service,
+          eventEmitter
         });
         return doc;
       }

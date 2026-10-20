@@ -737,7 +737,8 @@ describe("Identity folder access CRUD", () => {
         identityDAL: identityDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
-        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb)
+        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
+        eventEmitter: { emit: async () => {} }
       };
 
       const [identity] = await testDb(TableName.Identity)

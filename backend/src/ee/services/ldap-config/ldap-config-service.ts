@@ -35,6 +35,7 @@ import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -80,13 +81,20 @@ type TLdapConfigServiceFactoryDep = {
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
+    | "createMembership"
+    | "updateMembershipById"
+    | "findMembership"
+    | "findOrgById"
+    | "findOne"
+    | "updateById"
+    | "lockActorsForOrgAccess"
   >;
   groupDAL: Pick<TGroupDALFactory, "find" | "findOne">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  eventEmitter: TEventEmitter;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   userGroupMembershipDAL: Pick<
@@ -128,6 +136,7 @@ export const ldapConfigServiceFactory = ({
   membershipRoleDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
+  eventEmitter,
   projectDAL,
   projectBotDAL,
   userGroupMembershipDAL,
@@ -730,6 +739,7 @@ export const ldapConfigServiceFactory = ({
               additionalPrivilegeDAL,
               usageMeteringService,
               alertChannelRecipientDAL,
+              eventEmitter,
               tx
             });
           }

@@ -16,6 +16,7 @@ import {
   TOrganizationsInsert,
   TUserEncryptionKeys
 } from "@app/db/schemas";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseError } from "@app/lib/errors";
 import { groupBy, sanitizeSqlLikeString, unique } from "@app/lib/fn";
 import {
@@ -40,6 +41,17 @@ interface CountResult {
 }
 
 const SCIM_USER_ALIAS = "scim_user_alias";
+
+export type TOrgAccessActors = {
+  userIds: Set<string>;
+  identityIds: Set<string>;
+};
+
+export type TOrphanedProjectActor = {
+  actorUserId: string | null;
+  actorIdentityId: string | null;
+  scopeOrgId: string;
+};
 
 export const orgDALFactory = (db: TDbClient) => {
   const orgOrm = ormify(db, TableName.Organization);
@@ -1183,6 +1195,115 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Which of the given actors still reach the org: a direct org row of any status, or a group that holds
+  // one. Same rule as findEffectiveOrgMembership minus isActive, which the token layer enforces.
+  const findActorsWithOrgAccess = async (
+    { orgId, userIds, identityIds }: { orgId: string; userIds: string[]; identityIds: string[] },
+    tx?: Knex
+  ): Promise<TOrgAccessActors> => {
+    try {
+      const conn = tx || db.replicaNode();
+      const orgRows = () =>
+        conn(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .where(`${TableName.Membership}.scopeOrgId`, orgId);
+
+      const reaching = async (
+        ids: string[],
+        actorColumn: "actorUserId" | "actorIdentityId",
+        groupTable: TableName.UserGroupMembership | TableName.IdentityGroupMembership,
+        groupActorColumn: "userId" | "identityId"
+      ) => {
+        if (!ids.length) return new Set<string>();
+        const direct = (await orgRows()
+          .whereIn(`${TableName.Membership}.${actorColumn}`, ids)
+          .select(db.ref(actorColumn).withSchema(TableName.Membership).as("actorId"))) as { actorId: string }[];
+        const viaGroup = (await orgRows()
+          .join(groupTable, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
+          .whereIn(`${groupTable}.${groupActorColumn}`, ids)
+          .select(db.ref(groupActorColumn).withSchema(groupTable).as("actorId"))) as { actorId: string }[];
+        return new Set([...direct, ...viaGroup].map((row) => row.actorId));
+      };
+
+      return {
+        userIds: await reaching(userIds, "actorUserId", TableName.UserGroupMembership, "userId"),
+        identityIds: await reaching(identityIds, "actorIdentityId", TableName.IdentityGroupMembership, "identityId")
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindActorsWithOrgAccess" });
+    }
+  };
+
+  // (actor, org) pairs with a project row in an org the actor no longer reaches. Ghost users are the
+  // project bots and never hold an org row, so they are skipped.
+  const findOrphanedProjectActors = async ({ limit }: { limit: number }, tx?: Knex) => {
+    try {
+      const conn = tx || db.replicaNode();
+      const m = TableName.Membership;
+
+      const noDirectOrgRow = (actorColumn: "actorUserId" | "actorIdentityId") =>
+        conn
+          .select(conn.raw("1"))
+          .from(`${m} as direct`)
+          .where("direct.scope", AccessScope.Organization)
+          .whereRaw("?? = ??", [`direct.${actorColumn}`, `${m}.${actorColumn}`])
+          .whereRaw("?? = ??", ["direct.scopeOrgId", `${m}.scopeOrgId`]);
+
+      const noGroupOrgRow = (
+        groupTable: TableName.UserGroupMembership | TableName.IdentityGroupMembership,
+        groupActorColumn: "userId" | "identityId",
+        actorColumn: "actorUserId" | "actorIdentityId"
+      ) =>
+        conn
+          .select(conn.raw("1"))
+          .from(groupTable)
+          .join(`${m} as viaGroup`, "viaGroup.actorGroupId", `${groupTable}.groupId`)
+          .where("viaGroup.scope", AccessScope.Organization)
+          .whereRaw("?? = ??", [`${groupTable}.${groupActorColumn}`, `${m}.${actorColumn}`])
+          .whereRaw("?? = ??", ["viaGroup.scopeOrgId", `${m}.scopeOrgId`]);
+
+      const userRows = (await conn(m)
+        .join(TableName.Users, `${TableName.Users}.id`, `${m}.actorUserId`)
+        .where(`${m}.scope`, AccessScope.Project)
+        .where(`${TableName.Users}.isGhost`, false)
+        .whereNotExists(noDirectOrgRow("actorUserId"))
+        .whereNotExists(noGroupOrgRow(TableName.UserGroupMembership, "userId", "actorUserId"))
+        .distinct(db.ref("actorUserId").withSchema(m), db.ref("scopeOrgId").withSchema(m))
+        .limit(limit)) as { actorUserId: string; scopeOrgId: string }[];
+
+      const identityRows = (await conn(m)
+        .where(`${m}.scope`, AccessScope.Project)
+        .whereNotNull(`${m}.actorIdentityId`)
+        .whereNotExists(noDirectOrgRow("actorIdentityId"))
+        .whereNotExists(noGroupOrgRow(TableName.IdentityGroupMembership, "identityId", "actorIdentityId"))
+        .distinct(db.ref("actorIdentityId").withSchema(m), db.ref("scopeOrgId").withSchema(m))
+        .limit(limit)) as { actorIdentityId: string; scopeOrgId: string }[];
+
+      return [
+        ...userRows.map((row) => ({ actorUserId: row.actorUserId, actorIdentityId: null, scopeOrgId: row.scopeOrgId })),
+        ...identityRows.map((row) => ({
+          actorUserId: null,
+          actorIdentityId: row.actorIdentityId,
+          scopeOrgId: row.scopeOrgId
+        }))
+      ] as TOrphanedProjectActor[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOrphanedProjectActors" });
+    }
+  };
+
+  // Serializes group additions with the reconcile consumer on the same actor, so a path granted between
+  // its access check and its deletes cannot be reaped. Sorted to avoid deadlocks.
+  const lockActorsForOrgAccess = async (actorIds: string[], tx: Knex) => {
+    try {
+      for await (const actorId of [...new Set(actorIds)].sort()) {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgAccessReconcile(actorId)]);
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "LockActorsForOrgAccess" });
+    }
+  };
+
   return withTransaction(db, {
     ...orgOrm,
     findOrgByProjectId,
@@ -1205,6 +1326,9 @@ export const orgDALFactory = (db: TDbClient) => {
     findEffectiveOrgMembership,
     findEffectiveOrgMemberships,
     findActiveEffectiveOrgMembershipsByUserId,
+    findActorsWithOrgAccess,
+    findOrphanedProjectActors,
+    lockActorsForOrgAccess,
     findMembershipWithScimFilter,
     countMembershipWithScimFilter,
     createMembership,

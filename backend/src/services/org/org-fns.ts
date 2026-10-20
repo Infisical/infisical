@@ -6,12 +6,14 @@ import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-s
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { emitOrgMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { APPLICATION_APPROVAL_SCOPES } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
@@ -33,6 +35,7 @@ type TDeleteOrgMemberships = {
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  eventEmitter: TEventEmitter;
 };
 
 export const deleteOrgMembershipsFn = async ({
@@ -49,7 +52,8 @@ export const deleteOrgMembershipsFn = async ({
   approvalPolicyDAL,
   alertChannelRecipientDAL,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  eventEmitter
 }: TDeleteOrgMemberships) => {
   let sendPamCancellations = () => {};
 
@@ -109,12 +113,15 @@ export const deleteOrgMembershipsFn = async ({
       tx
     );
 
-    const orgGroups = await membershipUserDAL.find({
-      $in: {
-        scopeOrgId: [orgId].concat(childOrgs.map((el) => el.id))
+    const orgGroups = await membershipUserDAL.find(
+      {
+        $in: {
+          scopeOrgId: [orgId].concat(childOrgs.map((el) => el.id))
+        },
+        $notNull: ["actorGroupId"]
       },
-      $notNull: ["actorGroupId"]
-    });
+      { tx }
+    );
 
     const groupIds = orgGroups.filter((el) => el.actorGroupId).map((el) => el.actorGroupId as string);
 
@@ -162,6 +169,14 @@ export const deleteOrgMembershipsFn = async ({
     );
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: membershipUserIds }, tx);
+
+    // the deletes above only cover projects held directly; the consumer reaps what was reached through
+    // groups, here and in the sub-orgs
+    await emitOrgMembershipRemoved(
+      eventEmitter,
+      { orgId, actors: toOrgMembershipActors({ userIds: membershipUserIds }) },
+      tx
+    );
 
     sendPamCancellations = await terminatePamSessionsForUsers({
       orgIds: [orgId, ...childOrgs.map((el) => el.id)],

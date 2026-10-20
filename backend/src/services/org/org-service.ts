@@ -67,6 +67,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { resolveMembershipRoleSlugs, roleNeedsPrivilegeBoundary } from "../membership/membership-fns";
@@ -151,6 +152,7 @@ type TOrgServiceFactoryDep = {
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -191,7 +193,8 @@ export const orgServiceFactory = ({
   usageMeteringService,
   pamSessionDAL,
   gatewayV2Service,
-  auditLogSettingsService
+  auditLogSettingsService,
+  eventEmitter
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -1397,7 +1400,8 @@ export const orgServiceFactory = ({
       approvalPolicyDAL,
       alertChannelRecipientDAL,
       pamSessionDAL,
-      gatewayV2Service
+      gatewayV2Service,
+      eventEmitter
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
@@ -1455,7 +1459,8 @@ export const orgServiceFactory = ({
       approvalPolicyDAL,
       alertChannelRecipientDAL,
       pamSessionDAL,
-      gatewayV2Service
+      gatewayV2Service,
+      eventEmitter
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.

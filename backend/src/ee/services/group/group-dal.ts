@@ -653,8 +653,32 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  // read before deleting the group: the cascade removes all three
+  const findGroupActorsAndOrgs = async (groupId: string, tx?: Knex) => {
+    try {
+      const conn = tx || db.replicaNode();
+      const orgRows = (await conn(TableName.Membership)
+        .where({ actorGroupId: groupId, scope: AccessScope.Organization })
+        .select("scopeOrgId")) as { scopeOrgId: string }[];
+      const userRows = (await conn(TableName.UserGroupMembership).where({ groupId }).select("userId")) as {
+        userId: string;
+      }[];
+      const identityRows = (await conn(TableName.IdentityGroupMembership).where({ groupId }).select("identityId")) as {
+        identityId: string;
+      }[];
+      return {
+        orgIds: orgRows.map((row) => row.scopeOrgId),
+        userIds: userRows.map((row) => row.userId),
+        identityIds: identityRows.map((row) => row.identityId)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindGroupActorsAndOrgs" });
+    }
+  };
+
   return {
     ...groupOrm,
+    findGroupActorsAndOrgs,
     findGroups,
     countGroups,
     findByOrgId,

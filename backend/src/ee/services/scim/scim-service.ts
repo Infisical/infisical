@@ -41,6 +41,7 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -50,6 +51,7 @@ import { TMembershipUserDALFactory } from "@app/services/membership-user/members
 import { assertWillRetainOrgAdmin } from "@app/services/membership-user/membership-user-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipsFn } from "@app/services/org/org-fns";
+import { emitGroupRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -108,6 +110,7 @@ type TScimServiceFactoryDep = {
   orgDAL: Pick<
     TOrgDALFactory,
     | "createMembership"
+    | "lockActorsForOrgAccess"
     | "findById"
     | "find"
     | "findMembership"
@@ -124,6 +127,7 @@ type TScimServiceFactoryDep = {
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
+    | "findGroupActorsAndOrgs"
     | "findOne"
     | "findAllGroupPossibleUsers"
     | "delete"
@@ -161,6 +165,7 @@ type TScimServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  eventEmitter: TEventEmitter;
 };
 
 export const scimServiceFactory = ({
@@ -189,7 +194,8 @@ export const scimServiceFactory = ({
   telemetryService,
   usageMeteringService,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  eventEmitter
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -1095,7 +1101,8 @@ export const scimServiceFactory = ({
       approvalPolicyDAL,
       alertChannelRecipientDAL,
       pamSessionDAL,
-      gatewayV2Service
+      gatewayV2Service,
+      eventEmitter
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
@@ -1603,6 +1610,7 @@ export const scimServiceFactory = ({
           projectKeyDAL,
           additionalPrivilegeDAL,
           alertChannelRecipientDAL,
+          eventEmitter,
           tx,
           shouldFailOnMissingMembers
         });
@@ -1802,6 +1810,18 @@ export const scimServiceFactory = ({
       await reapDeletedGroupFolderGrants(
         { userGroupMembershipDAL, identityGroupMembershipDAL, membershipGroupDAL, additionalPrivilegeDAL },
         groupId,
+        tx
+      );
+      // SCIM can delete a group that is still linked into sub-orgs; read before the cascade drops the links
+      const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
+      await emitGroupRemoved(
+        eventEmitter,
+        {
+          orgId,
+          groupId,
+          linkedOrgIds: orgIds.filter((id) => id !== orgId),
+          members: toOrgMembershipActors({ userIds, identityIds })
+        },
         tx
       );
 
