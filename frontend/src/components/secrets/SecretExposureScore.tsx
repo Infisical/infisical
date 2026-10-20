@@ -138,6 +138,8 @@ export const SecretExposurePanel = ({ exposure, className }: PanelProps) => {
         <p className="text-xs text-muted">
           Up to 45 points for how many can read the value (project admins aside), 30 for ghost
           readers who still know it, and 25 for the share who have not read it in the last 30 days.
+          That last part only counts once the project has 30 days of reads; before then it is too
+          early to judge.
         </p>
       </div>
     </div>
