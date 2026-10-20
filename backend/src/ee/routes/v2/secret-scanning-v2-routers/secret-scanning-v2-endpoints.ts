@@ -63,8 +63,6 @@ export const registerSecretScanningEndpoints = <
   const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
   const sourceTypeId = sourceType.replace(/\s+/g, "");
 
-  // Discovery only picks up resources that push after it is turned on, so it starts from everything already
-  // accessible. Best effort: the data source is saved either way, and the rest can be added from its resources tab.
   const sendResourcesAddedTelemetry = (
     req: FastifyRequest,
     resourceCount: number,
@@ -82,6 +80,8 @@ export const registerSecretScanningEndpoints = <
       .catch(() => {});
   };
 
+  // Discovery only picks up resources that push after it is turned on, so it starts from everything already
+  // accessible. Best effort: the data source is saved either way, and the rest can be added from its resources tab.
   const addAllAccessibleResources = async (
     req: FastifyRequest,
     dataSource: Pick<TSecretScanningDataSource, "id" | "projectId">
