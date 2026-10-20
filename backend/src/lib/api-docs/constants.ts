@@ -980,7 +980,8 @@ export const INSIGHTS = {
     secretKey: "The key of the secret.",
     environment: "The slug of the environment the secret is in.",
     secretPath: "The path of the folder the secret is in.",
-    unlistedCount: "How many more of the principal's unread secrets are not listed. Zero unless it has more than 200."
+    unlistedCount:
+      "How many of the principal's unread secrets are not listed: past the first 200, in places the caller cannot see, or deleted since the results were computed."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",

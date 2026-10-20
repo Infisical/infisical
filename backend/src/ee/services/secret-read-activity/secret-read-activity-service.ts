@@ -833,7 +833,8 @@ export const secretReadActivityServiceFactory = ({
     return {
       principal,
       secrets,
-      unlistedCount: Math.max(0, principal.unreadCount - secretIds.length),
+      // Everything not in the list: past the cached cap, hidden from this viewer, or deleted since.
+      unlistedCount: Math.max(0, principal.unreadCount - secrets.length),
       projectName: tracking.projectName,
       trackingStartedAt: tracking.trackingStartedAt,
       unusedAccessFrom: tracking.unusedAccessFrom,

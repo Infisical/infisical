@@ -59,7 +59,7 @@ const PrincipalSecrets = ({ data }: SecretsProps) => {
           <EmptyTitle>Nothing to show</EmptyTitle>
           <EmptyDescription>
             {data.unlistedCount > 0
-              ? "The unread secrets are ones you cannot see."
+              ? "Its unread secrets are in places you cannot see, or were deleted since the last update."
               : "This principal has no unread secrets anymore."}
           </EmptyDescription>
         </EmptyHeader>
@@ -121,7 +121,8 @@ const PrincipalSecrets = ({ data }: SecretsProps) => {
       {data.unlistedCount > 0 && (
         <p className="text-xs text-muted">
           {data.unlistedCount} more unread {data.unlistedCount === 1 ? "secret is" : "secrets are"}{" "}
-          not listed.
+          not listed: past the first 200, in places you cannot see, or deleted since the last
+          update.
         </p>
       )}
     </div>
