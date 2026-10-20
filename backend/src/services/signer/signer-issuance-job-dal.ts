@@ -25,6 +25,19 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPendingForSignerForUpdate = async (
+    signerId: string,
+    tx: Knex
+  ): Promise<TPkiSignerCertificateIssuanceJobs[]> => {
+    try {
+      return (await tx(TableName.PkiSignerCertificateIssuanceJobs)
+        .where({ signerId, status: SignerIssuanceJobStatus.Pending })
+        .forUpdate()) as TPkiSignerCertificateIssuanceJobs[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPendingSignerIssuanceJobsForUpdate" });
+    }
+  };
+
   const cancelOpenForSigner = async (signerId: string, reason: string, tx?: Knex) => {
     try {
       await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
@@ -97,5 +110,13 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findDuePending, cancelOpenForSigner, completeIfPending, claimForAttempt, findLatestForSigner };
+  return {
+    ...orm,
+    findDuePending,
+    findPendingForSignerForUpdate,
+    cancelOpenForSigner,
+    completeIfPending,
+    claimForAttempt,
+    findLatestForSigner
+  };
 };

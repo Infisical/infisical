@@ -38,6 +38,7 @@ import { SignerExternalCaConfigSchema } from "./signer-types";
 const POLL_INTERVAL_PATTERN = "*/15 * * * *"; // every 15 minutes
 const POLL_BATCH = 25;
 const RETRY_BACKOFF_MS = 15 * 60_000;
+const IN_FLIGHT_ATTEMPT_MS = 5 * 60_000;
 
 // DigiCert CS orders can sit pending for up to 3 business days while DigiCert validates the org and
 // waits for the verified-contact email click, so they get a longer window than synchronous CAs.
@@ -653,7 +654,8 @@ export const signerIssuanceServiceFactory = ({
             orderId,
             certificateId,
             lastStatus: CodeSigningOrderStatus.Pending,
-            lastCheckedAt: new Date().toISOString()
+            lastCheckedAt: new Date().toISOString(),
+            lifecycle
           }
         }
       });
@@ -740,7 +742,8 @@ export const signerIssuanceServiceFactory = ({
           orderId: existingOrderId,
           certificateId: info.certificateId,
           lastStatus: info.status,
-          lastCheckedAt: new Date().toISOString()
+          lastCheckedAt: new Date().toISOString(),
+          lifecycle
         }
       }
     });
@@ -854,8 +857,28 @@ export const signerIssuanceServiceFactory = ({
     };
   };
 
-  const cancelOpenJobs = async (signerId: string, reason: string, tx?: Knex) =>
-    signerIssuanceJobDAL.cancelOpenForSigner(signerId, reason, tx);
+  const cancelOpenJobs = async (signerId: string, orderId: number, tx: Knex) => {
+    const openJobs = await signerIssuanceJobDAL.findPendingForSignerForUpdate(signerId, tx);
+    const now = Date.now();
+    const reissueInProgress = openJobs.some((job) => {
+      const digicert = (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
+      if (digicert?.orderId === orderId) return true;
+      if (digicert?.lifecycle?.previousOrderId !== orderId) return false;
+      const isAttemptInFlight =
+        Boolean(job.lastAttemptAt) && now - new Date(job.lastAttemptAt as Date).getTime() < IN_FLIGHT_ATTEMPT_MS;
+      return Boolean(digicert.orderId) || isAttemptInFlight;
+    });
+    if (reissueInProgress) {
+      throw new ConflictError({
+        message: `A certificate request into DigiCert order ${orderId} is already in progress for this signer, and it would revoke the order's current certificate. Wait for it to finish, then try again.`
+      });
+    }
+    await signerIssuanceJobDAL.cancelOpenForSigner(
+      signerId,
+      "Superseded by an existing DigiCert certificate attached to the signer.",
+      tx
+    );
+  };
 
   const runPendingJobNow = async (signerId: string): Promise<void> => {
     const job = await signerIssuanceJobDAL.transaction((tx) => signerIssuanceJobDAL.findLatestForSigner(signerId, tx));

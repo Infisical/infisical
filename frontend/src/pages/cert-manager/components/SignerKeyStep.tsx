@@ -151,9 +151,7 @@ export const SignerKeyStep = ({
     hsmKeyLookupProblem = "No private key with this label in the connector's slot.";
   }
 
-  const visibleHsmKeyLabelError = ((hsmKeyLabelField.value as string) ?? "").trim()
-    ? undefined
-    : hsmKeyLabelError;
+  const visibleHsmKeyLabelError = typedKeyLabel ? undefined : hsmKeyLabelError;
   const visibleHsmKeyIdError = hsmKeyIdField.value ? undefined : hsmKeyIdError;
 
   const isAlgorithmAllowed = (algo: SignerKeyAlgorithm): boolean => {

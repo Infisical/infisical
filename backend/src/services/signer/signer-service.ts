@@ -527,6 +527,9 @@ export const signerServiceFactory = ({
         message: `The certificate in DigiCert order ${imported.orderId} is already used by signer '${signerUsingCertificate.name}'.`
       });
     }
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [
+      `signer-hsm-key:${imported.hsm.hsmPublicKeySpki.toString("hex")}`
+    ]);
     const signerUsingKey = await signerDAL.findOneInOrgByCurrentHsmPublicKey(
       imported.projectId,
       imported.hsm.hsmPublicKeySpki,
@@ -697,6 +700,16 @@ export const signerServiceFactory = ({
             actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
           })
         : null;
+
+    if (
+      importedCertificate &&
+      dto.certificateRenewBeforeDays != null &&
+      dto.certificateRenewBeforeDays >= importedCertificate.certificateTtlDays
+    ) {
+      throw new BadRequestError({
+        message: `Renew before (${dto.certificateRenewBeforeDays}d) must be less than the validity of the certificate in DigiCert order ${importOrderId} (${importedCertificate.certificateTtlDays}d).`
+      });
+    }
 
     const keyAlgorithm: CertKeyAlgorithm =
       importedCertificate?.keyAlgorithm ?? (dto.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
@@ -1477,13 +1490,17 @@ export const signerServiceFactory = ({
         actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
         signerId: signer.id
       });
+      if (
+        signer.certificateRenewBeforeDays != null &&
+        signer.certificateRenewBeforeDays >= imported.certificateTtlDays
+      ) {
+        throw new BadRequestError({
+          message: `The certificate in DigiCert order ${importOrderId} is valid for ${imported.certificateTtlDays}d, which is not more than the signer's renew before (${signer.certificateRenewBeforeDays}d). Lower the renew-before window first.`
+        });
+      }
       return signerDAL
         .transaction(async (tx) => {
-          await signerIssuanceService.cancelOpenJobs(
-            signer.id,
-            "Superseded by an existing DigiCert certificate attached to the signer.",
-            tx
-          );
+          await signerIssuanceService.cancelOpenJobs(signer.id, importOrderId, tx);
           const importedCertificateId = await $attachImportedCertificate(imported, signer.id, tx);
           return signerDAL.updateById(
             signer.id,
