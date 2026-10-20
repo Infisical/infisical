@@ -126,6 +126,14 @@ type Props = {
   comment?: string;
   tags?: WsTag[];
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+  /**
+   * The same three fields as they are saved on the server, with no queued batch change overlaid.
+   * Used only to seed the revert baselines on a mount that happens while a change is already
+   * queued; everything the row renders still comes from the merged props above.
+   */
+  savedComment?: string;
+  savedTags?: WsTag[];
+  savedMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   skipMultilineEncoding?: boolean | null;
   reminder?: Reminder;
   environment: string;
@@ -213,6 +221,9 @@ export const SecretEditTableRow = ({
   isSecretPresent,
   comment,
   tags,
+  savedComment,
+  savedTags,
+  savedMetadata,
   secretMetadata,
   environmentName,
   skipMultilineEncoding,
@@ -407,10 +418,22 @@ export const SecretEditTableRow = ({
     setIsModalOpen((prev) => !prev);
   }, []);
 
-  const originalCommentRef = useRef(comment ?? "");
-  const originalTagsRef = useRef(tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? []);
+  // comment/tags/secretMetadata arrive with any queued batch change already overlaid, so seeding
+  // the revert baselines from them is only right on a mount with nothing queued. A row that mounts
+  // while a change is queued -- which windowing makes routine, since scrolling past the overscan
+  // unmounts an otherwise clean row -- would take the queued annotation for the saved one. A later
+  // revert of the value would then look like a revert of the whole row and discard the queued
+  // annotation with it. originalValueRef above already reaches past the overlay for exactly this
+  // reason; these use the saved record the page passes down to do the same.
+  const hasQueuedChange = isBatchMode && Boolean(hasPendingChange);
+  const baselineComment = hasQueuedChange ? savedComment : comment;
+  const baselineTags = hasQueuedChange ? savedTags : tags;
+  const baselineMetadata = hasQueuedChange ? savedMetadata : secretMetadata;
+
+  const originalCommentRef = useRef(baselineComment ?? "");
+  const originalTagsRef = useRef(baselineTags?.map((t) => ({ id: t.id, slug: t.slug })) ?? []);
   const originalMetadataRef = useRef(
-    secretMetadata?.map((m) => ({
+    baselineMetadata?.map((m) => ({
       key: m.key,
       value: m.value,
       isEncrypted: m.isEncrypted ?? false
