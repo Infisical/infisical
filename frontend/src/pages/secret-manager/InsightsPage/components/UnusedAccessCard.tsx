@@ -18,6 +18,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  OverflowBadgeList,
   Pagination,
   Skeleton,
   Table,
@@ -63,7 +64,7 @@ export const UnusedAccessCard = () => {
       return (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>Could not load unused access</EmptyTitle>
+            <EmptyTitle>Could not load overprivileged access</EmptyTitle>
             <EmptyDescription>
               {(axios.isAxiosError(error) &&
                 (error.response?.data as { message?: string })?.message) ||
@@ -78,7 +79,7 @@ export const UnusedAccessCard = () => {
       // Recent access and new secrets are not judged yet, so this cannot claim everything was read.
       let description = "No identity has gone 30 days without reading a secret it can access.";
       if (debouncedSearch) {
-        description = "No user, group or machine identity with unused access matches your search.";
+        description = "No overprivileged user, group or machine identity matches your search.";
       } else if (!isJudging) {
         description = `Unused access is judged on 30 days of reads, from ${format(new Date(data.unusedAccessFrom), "PP")}.`;
       }
@@ -86,7 +87,7 @@ export const UnusedAccessCard = () => {
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
-              {debouncedSearch ? "No matching identity" : "No unused access found"}
+              {debouncedSearch ? "No matching identity" : "No overprivileged access found"}
             </EmptyTitle>
             <EmptyDescription>{description}</EmptyDescription>
           </EmptyHeader>
@@ -152,8 +153,13 @@ export const UnusedAccessCard = () => {
                       <span className="text-muted">None in 30 days</span>
                     )}
                   </TableCell>
-                  <TableCell isTruncatable className="max-w-56">
-                    <span className="truncate">{row.accessVia.join(" · ")}</span>
+                  <TableCell className="max-w-64">
+                    <OverflowBadgeList
+                      items={row.accessVia}
+                      getKey={(item) => item}
+                      getLabel={(item) => item}
+                      getVariant={() => "neutral"}
+                    />
                   </TableCell>
                   <TableCell variant="action">
                     <ChevronRightIcon className="size-4 text-muted" />
@@ -179,7 +185,7 @@ export const UnusedAccessCard = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            Unused Access
+            Overprivileged Access
             {updatesIn && (
               <Badge variant="neutral" className="ml-2">
                 Updates in {updatesIn}
