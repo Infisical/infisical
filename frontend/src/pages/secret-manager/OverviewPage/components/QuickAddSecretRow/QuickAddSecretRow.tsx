@@ -209,6 +209,10 @@ export const QuickAddSecretRow = ({
       ref={rowRef}
       className={isActive ? `group ${TABLE_ROW_ACTIVE_FILTER_CLASS_NAME}` : "group"}
       onFocusCapture={() => setIsActive(true)}
+      onMouseDown={(event) => {
+        if (!(event.target as HTMLElement).closest("input, textarea, button, a, [tabindex]"))
+          event.preventDefault();
+      }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           setIsActive(false);
