@@ -18,6 +18,20 @@ export const describeReadPeriod = (trackingStartedAt: string, fullWindowFrom: st
     ? `since ${format(new Date(trackingStartedAt), "PP")}`
     : "in the last 30 days";
 
+// The share of the secrets a principal can read that it has not read, as a whole percentage that only reads 0
+// or 100 when it is exactly that.
+export const unusedSharePercent = (unreadCount: number, entitledCount: number) => {
+  if (unreadCount >= entitledCount) return 100;
+  return Math.min(99, Math.max(1, Math.round((unreadCount / Math.max(1, entitledCount)) * 100)));
+};
+
+// Most of its access unread is the strongest sign a principal has access it does not need.
+export const unusedShareVariant = (percent: number) => {
+  if (percent >= 75) return "danger" as const;
+  if (percent >= 25) return "warning" as const;
+  return "success" as const;
+};
+
 export const formatRemainingTtl = (seconds: number) => {
   if (seconds < 60) {
     const remainingSeconds = Math.max(1, seconds);

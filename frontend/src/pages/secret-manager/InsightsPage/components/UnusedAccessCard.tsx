@@ -25,7 +25,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
@@ -34,7 +37,9 @@ import { TUnusedAccessPrincipal, useGetUnusedAccess } from "@app/hooks/api/secre
 import {
   describeReadPeriod,
   formatRemainingTtl,
-  PRINCIPAL_TYPE_CONFIG
+  PRINCIPAL_TYPE_CONFIG,
+  unusedSharePercent,
+  unusedShareVariant
 } from "./unusedAccessHelpers";
 import { UnusedAccessPrincipalSheet } from "./UnusedAccessPrincipalSheet";
 
@@ -132,11 +137,23 @@ export const UnusedAccessCard = () => {
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <span className="font-medium">{row.unreadCount}</span>
-                    <span className="text-muted">
-                      {" "}
-                      of {row.entitledCount} {row.entitledCount === 1 ? "secret" : "secrets"}
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Badge
+                            variant={unusedShareVariant(
+                              unusedSharePercent(row.unreadCount, row.entitledCount)
+                            )}
+                          >
+                            {unusedSharePercent(row.unreadCount, row.entitledCount)}%
+                          </Badge>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Has not read {row.unreadCount} of the {row.entitledCount}{" "}
+                        {row.entitledCount === 1 ? "secret" : "secrets"} it can access {readPeriod}
+                      </TooltipContent>
+                    </Tooltip>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
