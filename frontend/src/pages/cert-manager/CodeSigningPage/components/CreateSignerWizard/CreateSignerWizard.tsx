@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import { PenTool } from "lucide-react";
 
 import {
@@ -28,6 +29,7 @@ import {
   SignerKeyAlgorithm,
   SignerMemberRole,
   TSignerExternalConfiguration,
+  useCheckSignerCertificateImport,
   useCreateSigner
 } from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
@@ -80,6 +82,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   });
 
   const createSigner = useCreateSigner();
+  const checkCertificateImport = useCheckSignerCertificateImport();
+  const [importCheckError, setImportCheckError] = useState<string>();
 
   const caOptions: CaOption[] = useMemo(() => {
     const list = cas.data ?? [];
@@ -173,6 +177,11 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   });
 
   const selectedCaId = certificateForm.watch("caId");
+  const [watchedKeyLabel, watchedKeyId, watchedConnectorId, watchedOrderMode] =
+    certificateForm.watch(["hsmKeyLabel", "hsmKeyId", "hsmConnectorId", "externalOrderMode"]);
+  useEffect(() => {
+    setImportCheckError(undefined);
+  }, [watchedKeyLabel, watchedKeyId, watchedConnectorId, watchedOrderMode]);
   const selectedCa = caOptions.find((o) => o.id === selectedCaId) ?? null;
   const caCaps = getCaIssuanceCapabilities(selectedCa?.caType);
 
@@ -338,6 +347,29 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         "hsmKeyId"
       ]);
       if (!ok) return;
+      const values = certificateForm.getValues();
+      if (isUsingExistingCertificate(values) && values.externalOrderId && values.hsmConnectorId) {
+        setSubmitting(true);
+        try {
+          await checkCertificateImport.mutateAsync({
+            caId: values.caId,
+            externalOrderId: values.externalOrderId,
+            certificate: {
+              hsmConnectorId: values.hsmConnectorId,
+              hsmKeyLabel: values.hsmKeyLabel,
+              hsmKeyId: values.hsmKeyId || undefined
+            }
+          });
+        } catch (err) {
+          setImportCheckError(
+            (err as AxiosError<{ message?: string }>)?.response?.data?.message ??
+              "Could not check the key against the certificate."
+          );
+          return;
+        } finally {
+          setSubmitting(false);
+        }
+      }
       persistCertificateForm();
       setStep(3);
       return;
@@ -442,6 +474,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                   minRsaKeyBits={caCaps.minRsaKeyBits}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
+                  importCheckError={importCheckError}
                 />
               )}
               {step === 3 && (

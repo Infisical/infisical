@@ -95,6 +95,53 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "POST",
+    url: "/check-certificate-import",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "checkSignerCertificateImport",
+      tags: [ApiDocsTags.PkiSigners],
+      description:
+        "Check that the HSM private key matches the certificate in an existing DigiCert order, without creating or changing a signer.",
+      body: z.object({
+        caId: z.string().uuid().describe("The DigiCert certificate authority the order belongs to."),
+        externalOrderId: ExternalOrderIdSchema.describe("The DigiCert order whose certificate to check."),
+        certificate: SignerCertificateInputSchema.pick({
+          hsmConnectorId: true,
+          hsmKeyLabel: true,
+          hsmKeyId: true
+        }).required({ hsmConnectorId: true, hsmKeyLabel: true })
+      }),
+      response: {
+        200: z.object({
+          check: z.object({
+            hsmKeyId: z
+              .string()
+              .nullable()
+              .describe("The hex-encoded CKA_ID of the matching key, when the HSM reports one."),
+            commonName: z.string(),
+            certificateTtlDays: z.number(),
+            keyAlgorithm: z.string()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const check = await server.services.pkiSigner.checkCertificateImport({
+        projectId: req.internalCertManagerProjectId,
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { check };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/:signerId/certificate/import",
     config: { rateLimit: writeLimit },
     schema: {
@@ -127,7 +174,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const signer = await server.services.pkiSigner.importCertificate({
+      const { signer, caName, hsmConnectorName } = await server.services.pkiSigner.importCertificate({
         signerId: req.params.signerId,
         ...req.body,
         actor: req.permission.type,
@@ -145,11 +192,13 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             signerId: signer.id,
             name: signer.name,
             caId: req.body.caId,
+            caName,
             externalOrderId: req.body.externalOrderId,
             certificateId: signer.certificateId,
             commonName: signer.commonName ?? undefined,
             keyAlgorithm: signer.keyAlgorithm ?? undefined,
             hsmConnectorId: req.body.certificate.hsmConnectorId,
+            hsmConnectorName,
             hsmKeyLabel: req.body.certificate.hsmKeyLabel,
             hsmKeyId: req.body.certificate.hsmKeyId,
             certificateRenewBeforeDays: signer.certificateRenewBeforeDays

@@ -98,6 +98,7 @@ import {
 import { TSignerIssuanceServiceFactory } from "./signer-issuance-service";
 import {
   SignerExternalCaConfigSchema,
+  TCheckCertificateImportDTO,
   TCreateSignerDTO,
   TDeleteSignerDTO,
   TDisableSignerDTO,
@@ -463,13 +464,12 @@ export const signerServiceFactory = ({
     return orderId;
   };
 
-  const $importExistingDigiCertCertificate = async (input: {
+  const $verifyExistingDigiCertCertificate = async (input: {
     caId: string;
     projectId: string;
     orderId: number;
     certificate?: TSignerCertificateInput;
     actor: Parameters<typeof hsmConnectorService.assertAttachPermission>[0];
-    signerId?: string;
   }) => {
     const { caId, projectId, orderId } = input;
     const hsmConnectorId = input.certificate?.hsmConnectorId;
@@ -481,7 +481,7 @@ export const signerServiceFactory = ({
           "Using an existing DigiCert certificate requires an HSM Connector and the label of the certificate's private key on that HSM."
       });
     }
-    await hsmConnectorService.assertAttachPermission(input.actor, hsmConnectorId, projectId);
+    const hsmConnector = await hsmConnectorService.assertAttachPermission(input.actor, hsmConnectorId, projectId);
 
     const { pemBundle, certificate } = await digicertFns.fetchIssuedCodeSigningCertificate(caId, orderId);
     const { keyAlgorithm } = extractCertificateAlgorithms(certificate);
@@ -496,15 +496,14 @@ export const signerServiceFactory = ({
       { hsmConnectorId, projectId, hsmKeyLabel, hsmKeyId: requestedHsmKeyId, certificate }
     );
 
-    const preparedCertificate = await digicertFns.prepareCodeSigningCertificateImport({ caId, orderId, pemBundle });
-
     const validityDays = Math.round(
       (certificate.notAfter.getTime() - certificate.notBefore.getTime()) / (24 * 60 * 60 * 1000)
     );
     return {
       orderId,
       projectId,
-      preparedCertificate,
+      pemBundle,
+      hsmConnectorName: hsmConnector.name,
       hsm: {
         keySource: CertKeySource.Hsm,
         hsmConnectorId,
@@ -515,6 +514,40 @@ export const signerServiceFactory = ({
       commonName: certificate.subjectName.getField("CN")[0] || IMPORTED_CERTIFICATE_FALLBACK_COMMON_NAME,
       certificateTtlDays: Math.min(Math.max(validityDays, 1), MAX_CS_VALIDITY_DAYS),
       keyAlgorithm: keyAlgorithm as CertKeyAlgorithm
+    };
+  };
+
+  const $importExistingDigiCertCertificate = async (
+    input: Parameters<typeof $verifyExistingDigiCertCertificate>[0]
+  ) => {
+    const { pemBundle, ...verified } = await $verifyExistingDigiCertCertificate(input);
+    const preparedCertificate = await digicertFns.prepareCodeSigningCertificateImport({
+      caId: input.caId,
+      orderId: input.orderId,
+      pemBundle
+    });
+    return { ...verified, preparedCertificate };
+  };
+
+  const checkCertificateImport = async (dto: TCheckCertificateImportDTO) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
+    if (!ca || ca.projectId !== dto.projectId) {
+      throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
+    }
+    const caType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
+    const orderId = $parseDigiCertOrderId(dto.externalOrderId, caType, "externalOrderId") as number;
+    const verified = await $verifyExistingDigiCertCertificate({
+      caId: ca.id,
+      projectId: dto.projectId,
+      orderId,
+      certificate: { keySource: CertKeySource.Hsm, ...dto.certificate },
+      actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+    });
+    return {
+      hsmKeyId: verified.hsm.hsmKeyId,
+      commonName: verified.commonName,
+      certificateTtlDays: verified.certificateTtlDays,
+      keyAlgorithm: verified.keyAlgorithm
     };
   };
 
@@ -1475,27 +1508,36 @@ export const signerServiceFactory = ({
       projectId: signer.projectId,
       orderId: importOrderId,
       certificate: { keySource: CertKeySource.Hsm, ...dto.certificate },
-      actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
-      signerId: signer.id
+      actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
     });
-    const renewBeforeDays =
-      dto.certificateRenewBeforeDays !== undefined ? dto.certificateRenewBeforeDays : signer.certificateRenewBeforeDays;
-    if (renewBeforeDays != null && renewBeforeDays >= imported.certificateTtlDays) {
-      throw new BadRequestError({
-        message: `Renew before (${renewBeforeDays}d) must be less than the validity of the certificate in DigiCert order ${importOrderId} (${imported.certificateTtlDays}d).`
-      });
-    }
-    return signerDAL
+    const assertRenewBeforeFitsImport = (renewBeforeDays?: number | null) => {
+      if (renewBeforeDays != null && renewBeforeDays >= imported.certificateTtlDays) {
+        throw new BadRequestError({
+          message: `Renew before (${renewBeforeDays}d) must be less than the validity of the certificate in DigiCert order ${importOrderId} (${imported.certificateTtlDays}d).`
+        });
+      }
+    };
+    assertRenewBeforeFitsImport(
+      dto.certificateRenewBeforeDays !== undefined ? dto.certificateRenewBeforeDays : signer.certificateRenewBeforeDays
+    );
+    const updatedSigner = await signerDAL
       .transaction(async (tx) => {
         await signerIssuanceService.cancelOpenJobs(signer.id, importOrderId, tx);
         const importedCertificateId = await $attachImportedCertificate(imported, signer.id, tx);
+        const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
+        if (!lockedSigner) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+        if (dto.certificateRenewBeforeDays === undefined) {
+          assertRenewBeforeFitsImport(lockedSigner.certificateRenewBeforeDays);
+        }
         return signerDAL.updateById(
           signer.id,
           {
             caId: ca.id,
             commonName: imported.commonName,
             certificateTtlDays: imported.certificateTtlDays,
-            certificateRenewBeforeDays: renewBeforeDays,
+            ...(dto.certificateRenewBeforeDays !== undefined
+              ? { certificateRenewBeforeDays: dto.certificateRenewBeforeDays }
+              : {}),
             keyAlgorithm: imported.keyAlgorithm,
             externalCaConfig: null,
             certificateId: importedCertificateId,
@@ -1509,6 +1551,7 @@ export const signerServiceFactory = ({
         await $rethrowConcurrentImport(error, imported);
         throw error;
       });
+    return { signer: updatedSigner, caName: ca.name, hsmConnectorName: imported.hsmConnectorName };
   };
 
   const reissueCertificate = async (dto: TReissueCertificateDTO) => {
@@ -2413,6 +2456,7 @@ export const signerServiceFactory = ({
     disable,
     reissueCertificate,
     importCertificate,
+    checkCertificateImport,
     exportCertificate,
     sign,
     getPublicKey,

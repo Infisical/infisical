@@ -562,6 +562,11 @@ export const hsmConnectorServiceFactory = ({
             message: "The HSM Connector's gateway is too old to look up keys. Update the gateway to the latest version."
           });
         }
+        if (isPkcs11Error(err, Pkcs11ErrorCode.BadRequest)) {
+          throw new BadRequestError({
+            message: `Too many private keys in the HSM Connector's slot have the label '${dto.keyLabel}'. Give the keys unique labels.`
+          });
+        }
         throw err;
       });
     return { keys: result.keys };

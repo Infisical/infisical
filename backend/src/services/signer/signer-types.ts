@@ -151,6 +151,13 @@ export type TImportCertificateDTO = {
   certificateRenewBeforeDays?: number | null;
 } & TActorPermission;
 
+export type TCheckCertificateImportDTO = {
+  projectId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
+} & TActorPermission;
+
 export type TExportCertificateDTO = {
   signerId: string;
 } & TActorPermission;

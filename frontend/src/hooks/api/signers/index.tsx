@@ -3,6 +3,7 @@ export {
   useAddSignerGroupMember,
   useAddSignerIdentityMember,
   useAddSignerUserMembers,
+  useCheckSignerCertificateImport,
   useCheckSignerIssuance,
   useCreateSigner,
   useDeleteSigner,

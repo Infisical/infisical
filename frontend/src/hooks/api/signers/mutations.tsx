@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { approvalRequestQuery } from "@app/hooks/api/approvalRequests/queries";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 
 import { signerKeys } from "./queries";
 import {
@@ -10,6 +11,7 @@ import {
   TAddSignerGroupMemberDTO,
   TAddSignerIdentityMemberDTO,
   TAddSignerUserMembersDTO,
+  TCheckSignerCertificateImportDTO,
   TCreateSignerDTO,
   TDeleteSignerDTO,
   TDisableSignerDTO,
@@ -138,6 +140,18 @@ export const useReissueSignerCertificate = () => {
     }
   });
 };
+
+export const useCheckSignerCertificateImport = () =>
+  useMutation<{ hsmKeyId: string | null }, object, TCheckSignerCertificateImportDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<{ check: { hsmKeyId: string | null } }>(
+        "/api/v1/cert-manager/signers/check-certificate-import",
+        body
+      );
+      return data.check;
+    },
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, ApiErrorTypes.ConflictError] }
+  });
 
 export const useImportSignerCertificate = () => {
   const queryClient = useQueryClient();

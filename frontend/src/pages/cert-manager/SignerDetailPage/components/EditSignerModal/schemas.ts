@@ -56,6 +56,7 @@ export const createCertificateSchema = (currentKey: TCurrentSignerKey) =>
         .default(null),
       commonName: z.string().trim().min(1, "Common Name is required").max(256).optional(),
       certificateTtlDays: z.coerce.number().int().min(1).max(3650).optional(),
+      currentCertificateTtlDays: z.number().nullable().optional(),
       keySource: z.nativeEnum(CertKeySource).default(CertKeySource.Infisical),
       keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048),
       hsmConnectorId: z.string().uuid().optional().nullable(),
@@ -69,11 +70,14 @@ export const createCertificateSchema = (currentKey: TCurrentSignerKey) =>
       adcsTemplate: z.string().trim().optional().default("")
     })
     .refine(
-      (data) =>
-        data.certificateRenewBeforeDays == null ||
-        data.certificateTtlDays == null ||
-        Boolean(data.externalOrderId) ||
-        data.certificateRenewBeforeDays < data.certificateTtlDays,
+      (data) => {
+        if (data.certificateRenewBeforeDays == null || isUsingExistingCertificate(data))
+          return true;
+        const effectiveTtlDays = data.externalOrderId
+          ? data.currentCertificateTtlDays
+          : data.certificateTtlDays;
+        return effectiveTtlDays == null || data.certificateRenewBeforeDays < effectiveTtlDays;
+      },
       {
         message: "Renew before must be less than the certificate validity (days).",
         path: ["certificateRenewBeforeDays"]

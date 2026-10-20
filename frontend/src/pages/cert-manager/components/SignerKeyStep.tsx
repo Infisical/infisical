@@ -53,6 +53,7 @@ type SignerKeyStepProps = {
   isHsmConnectorsLoading: boolean;
   minRsaKeyBits?: number;
   currentKeyAlgorithm?: SignerKeyAlgorithm;
+  importCheckError?: string;
 };
 
 export const SignerKeyStep = ({
@@ -61,7 +62,8 @@ export const SignerKeyStep = ({
   hsmConnectorOptions,
   isHsmConnectorsLoading,
   minRsaKeyBits,
-  currentKeyAlgorithm
+  currentKeyAlgorithm,
+  importCheckError
 }: SignerKeyStepProps) => {
   const { subscription } = useSubscription();
   const isHsmLicensed = Boolean(subscription?.hsm);
@@ -149,6 +151,8 @@ export const SignerKeyStep = ({
       "Could not look up the key.";
   } else if (matchingHsmKeys?.length === 0) {
     hsmKeyLookupProblem = "No private key with this label in the connector's slot.";
+  } else if (importCheckError) {
+    hsmKeyLookupProblem = importCheckError;
   }
 
   const visibleHsmKeyLabelError = typedKeyLabel ? undefined : hsmKeyLabelError;

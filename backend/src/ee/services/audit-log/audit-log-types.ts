@@ -5148,11 +5148,13 @@ interface ImportPkiSignerCertificateEvent {
     signerId: string;
     name: string;
     caId: string;
+    caName: string;
     externalOrderId: string;
     certificateId?: string | null;
     commonName?: string;
     keyAlgorithm?: string;
     hsmConnectorId: string;
+    hsmConnectorName: string;
     hsmKeyLabel: string;
     hsmKeyId?: string;
     certificateRenewBeforeDays?: number | null;

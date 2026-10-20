@@ -404,6 +404,11 @@ export type TImportSignerCertificateDTO = {
   certificateRenewBeforeDays?: number | null;
 };
 
+export type TCheckSignerCertificateImportDTO = Omit<
+  TImportSignerCertificateDTO,
+  "signerId" | "certificateRenewBeforeDays"
+>;
+
 export type TEnableSignerDTO = { signerId: string };
 export type TDisableSignerDTO = { signerId: string };
 
