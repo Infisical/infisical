@@ -1276,14 +1276,14 @@ const OverviewPageContent = () => {
   const previousTelemetry = useRef<{
     telemetry: typeof overviewTelemetry;
     flows: typeof telemetryFlows;
-  }>();
+  }>(undefined);
   useEffect(() => {
     if (previousTelemetry.current && previousTelemetry.current.flows !== telemetryFlows)
       previousTelemetry.current.telemetry.cancelOpenFlows();
     previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
   }, [overviewTelemetry, telemetryFlows]);
-  const viewedProjectRef = useRef<string>();
-  const loadedProjectRef = useRef<string>();
+  const viewedProjectRef = useRef<string>(undefined);
+  const loadedProjectRef = useRef<string>(undefined);
   useEffect(() => {
     if (!isProjectV3 || viewedProjectRef.current === projectId) return;
     viewedProjectRef.current = projectId;
