@@ -1159,14 +1159,23 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   queries (syncs, rotation age, cross-project destinations) are deliberately left out. The unused-access term is
   weighted by how much of the 30-day window the reads cover (`trackedDays`, from the project's `judgedFrom`), and
   its label names that period, so a project tracked for three days neither claims "30 days" nor scores three
-  days of silence like thirty. `$loadSecretSummarizer` is the one place the counts and the score are derived,
-  used by the project computation and the per-secret endpoint, so the sheet and the card agree. The project
-  computation is cached per project (`insights-cache:<projectId>:secret-exposure`, under a per-project lock on a
-  cold cache) and keeps the 500 highest-scoring secrets plus a per-band tally, served by
-  `GET /insights/:projectId/secrets/exposure` with a per-caller DescribeSecret recheck of every listed secret. The
-  per-secret endpoint returns, for every reader who can read the value, whether they count as unused access and
-  why not (`isAdmin`, `accessChangedAt` after `judgedFrom`, or a secret newer than it), and names each ghost
-  reader from the project's members, else from the user or identity row, else null for a deleted reader.
+  days of silence like thirty. The score, the graph and the ghost readers live only in the secret's access sheet
+  (`GET /secrets/:name/read-activity`), which also returns, for every reader who can read the value, whether they
+  count as unused access and why not (`isAdmin`, `accessChangedAt` after `judgedFrom`, or a secret newer than it),
+  and names each ghost reader from the project's members, else from the user or identity row, else null.
+- **The Insights card is per principal.** `$loadSecretSummarizer` is the one place a secret's readers, unread
+  readers, ghost readers and score are derived, used by both the per-secret endpoint and the project computation.
+  The computation (`$computeUnusedAccess`) walks every secret once and tallies, per user, machine identity and
+  group, how many secrets it can read and how many it has not read, the environments involved, its latest read,
+  and how it has the access (roles, additional privileges, groups; custom roles by name, the one lookup beyond the
+  permissions already loaded). Group members are checked with the group's permission (`getProjectPermissions`
+  lists only direct members) and count once however many ways they qualify; a group's own access to a secret is
+  unused when none of its members read it, and its access date is its project membership's. It is cached per
+  project for a day (`insights-cache:<projectId>:unused-access`, under a per-project lock on a cold cache): every
+  principal's row, plus the unread secret ids for the 200 principals with the most, capped at 200 each; a
+  principal past that is computed alone when opened and cached per principal. Served by
+  `GET /insights/:projectId/secrets/unused-access` (ranked by unread count, searchable by name) and
+  `/unused-access/:principalType/:principalId`, whose secrets go through a per-caller DescribeSecret recheck.
 
 ### Audit Log Event Classes and Settings
 
