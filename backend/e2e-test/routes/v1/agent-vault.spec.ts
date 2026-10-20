@@ -3954,14 +3954,17 @@ describe("Agent Vault V1 Router", async () => {
       expect((await inject("POST", bundleMembersUrl(accessBundleId), body)).statusCode).toBe(200);
     };
 
+    type TMissing = { missingAccessBundles: { id: string; name: string }[] };
+    type TDelegationDetail = TMissing & {
+      scope: string;
+      users: (TMissing & { id: string; addedAt: string })[];
+      groups: (TMissing & { id: string; addedAt: string })[];
+    };
+
     const delegate = async (bot: TMember, body: Record<string, unknown>) => {
       const res = await inject("PUT", delegationUrl(bot.id), body);
       expect(res.statusCode).toBe(200);
-      return res.json().delegation as {
-        scope: string;
-        users: { id: string; addedAt: string }[];
-        groups: { id: string; addedAt: string }[];
-      };
+      return res.json().delegation as TDelegationDetail;
     };
 
     const mintFor = (bot: TMember, onBehalfOf: Record<string, string>, accessBundle: string, ttl?: string) =>
@@ -4319,6 +4322,88 @@ describe("Agent Vault V1 Router", async () => {
         await other.cleanup();
         await deleteOrgIdentity(outsideIdentity.id);
         await deleteUsers([alice.userId, outsider.userId]);
+      }
+    });
+
+    test("a delegation shows the bundles each user and group can use that the identity can't", async () => {
+      const projectId = await getProjectId();
+      const stamp = Date.now();
+      const shared = await createAccessBundle(`obo-gap-shared-${stamp}`);
+      const alicesOnly = await createAccessBundle(`obo-gap-alice-${stamp}`);
+      const groupsOnly = await createAccessBundle(`obo-gap-group-${stamp}`);
+      const bot = await createMemberIdentity(`obo-gap-bot-${stamp}`);
+      const alice = await createAgentVaultUser("obo-gap-alice", projectId);
+      const group = await createProjectGroup(projectId, `obo-gap-group-${stamp}`, ProjectMembershipRole.Member);
+      const admins = await createProjectGroup(projectId, `obo-gap-admins-${stamp}`, ProjectMembershipRole.Admin);
+      const names = (row: TMissing) => row.missingAccessBundles.map((bundle) => bundle.name);
+      const read = async () => {
+        const res = await inject("GET", delegationUrl(bot.id));
+        expect(res.statusCode).toBe(200);
+        const delegation = res.json().delegation as TDelegationDetail;
+        return {
+          delegation,
+          user: (id: string) => delegation.users.find((row) => row.id === id)!,
+          group: (id: string) => delegation.groups.find((row) => row.id === id)!
+        };
+      };
+      try {
+        await grantBundle(shared.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await grantBundle(alicesOnly.id, { userIds: [alice.userId] });
+        await grantBundle(groupsOnly.id, { groupIds: [group.id] });
+
+        const set = await delegate(bot, {
+          scope: "selected",
+          userIds: [alice.userId, seedData1.id],
+          groupIds: [group.id, admins.id]
+        });
+        expect(names(set.users.find((row) => row.id === alice.userId)!)).toEqual([alicesOnly.name]);
+
+        const before = await read();
+        expect(names(before.user(alice.userId))).toEqual([alicesOnly.name]);
+        expect(names(before.group(group.id))).toEqual([groupsOnly.name]);
+        // An admin, directly or through a group, can use every bundle, so it lacks every bundle the identity can't use.
+        [names(before.user(seedData1.id)), names(before.group(admins.id)), names(before.delegation)].forEach((row) => {
+          expect(row).toEqual(expect.arrayContaining([alicesOnly.name, groupsOnly.name]));
+          expect(row).not.toContain(shared.name);
+        });
+
+        await grantBundle(alicesOnly.id, { machineIdentityIds: [bot.id] });
+        const after = await read();
+        expect(names(after.user(alice.userId))).toEqual([]);
+        expect(names(after.delegation)).not.toContain(alicesOnly.name);
+
+        // All-members covers the admins too, so it lacks every bundle the identity can't use.
+        const allMembers = await delegate(bot, { scope: "all-members" });
+        expect(names(allMembers)).toContain(groupsOnly.name);
+        expect(names(allMembers)).not.toContain(shared.name);
+        expect(names(allMembers)).not.toContain(alicesOnly.name);
+
+        // An admin identity can use every bundle, so nothing is missing. It's promoted before anything reads its
+        // permission, since a role change reaches the permission cache only after its marker expires.
+        const adminBot = await createMemberIdentity(`obo-gap-admin-bot-${stamp}`);
+        try {
+          expect(
+            (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [adminBot.id], role: "admin" }))
+              .statusCode
+          ).toBe(200);
+          const adminSet = await delegate(adminBot, {
+            scope: "selected",
+            userIds: [alice.userId, seedData1.id],
+            groupIds: [group.id, admins.id]
+          });
+          expect([adminSet, ...adminSet.users, ...adminSet.groups].flatMap((row) => names(row))).toEqual([]);
+        } finally {
+          await adminBot.cleanup();
+        }
+
+        // The list stays lean: working the gaps out reads every covered user's access.
+        const listed = await inject("GET", `${delegationsUrl}?machineIdentityIds=${bot.id}`);
+        expect(listed.json().delegations[0]).not.toHaveProperty("missingAccessBundles");
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+        await group.cleanup();
+        await admins.cleanup();
       }
     });
   });

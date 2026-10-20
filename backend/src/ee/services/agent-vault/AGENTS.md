@@ -140,6 +140,11 @@ is one
   who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
   as an uncovered one. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted org member,
   as resolve requires.
+- **The delegation read and write return `missingAccessBundles`**, per user and group and in total: the bundles they
+  can use and the identity can't. Users and the identity go through `getAgentVaultReachability`, the function mint
+  uses, so the view can't disagree with mint; a group's reach is its own live role and grants, read directly since a
+  group never holds a session. The list leaves it out, because it reads every covered user's access, and the write
+  works it out after its transaction commits.
 - **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
   the last actor it ran for in the request context, where the audit log reads the caller's permission metadata. The
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.

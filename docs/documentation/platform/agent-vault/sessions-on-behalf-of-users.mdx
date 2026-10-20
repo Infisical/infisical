@@ -1,11 +1,11 @@
 ---
 title: "Sessions on behalf of users"
-description: "Let a machine identity, such as a chat bot or a task runner, create sessions on behalf of users, with each user's own personal values."
+description: "Let a machine identity, such as a chat bot or a task runner, create sessions on behalf of users, so each session uses the personal values of the user it's for."
 ---
 
-A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in Agent Vault. A session created on behalf of a user belongs to that user, so the proxy uses the user's own [personal values](/documentation/platform/agent-vault/services#member-provided-values). The session can use an [access bundle](/documentation/platform/agent-vault/access-bundles) only if both the user and the machine identity can use the bundle.
+A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in Agent Vault. A session created on behalf of a user belongs to that user, so the [proxy](/documentation/platform/agent-vault/proxies) uses the user's own [personal values](/documentation/platform/agent-vault/services#member-provided-values). The session can use an [access bundle](/documentation/platform/agent-vault/access-bundles) only if both the user and the machine identity can use the bundle.
 
-Use a delegation when one service starts agents for many people, such as a chat bot that runs an agent for each message, or a task runner that runs an agent for each ticket. Each agent then gets no more access than the person who asked for it, and uses that person's own credential wherever a service leaves part of its credential to members.
+Use a delegation when one service starts agents for many people, such as a chat bot that runs an agent for each message, or a task runner that runs an agent for each ticket. Each agent then gets no more access than the person who asked for it.
 
 ```mermaid
 sequenceDiagram
@@ -28,7 +28,7 @@ sequenceDiagram
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), or an Agent Vault admin who can [set up the delegation](#set-up-a-delegation) for you
 - A machine identity that's a member of Agent Vault and can log in with [Universal Auth](/documentation/platform/identities/universal-auth), as [Step 1 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) describes
 - A [grant](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) for the machine identity on each access bundle its sessions use
-- Users who are members of Agent Vault and have a grant on the access bundles their agents use
+- Users who are [members of Agent Vault](/documentation/platform/agent-vault/access-control#product-membership) and have a grant on the access bundles their agents use
 
 ## Set up a delegation
 
@@ -40,11 +40,15 @@ sequenceDiagram
       </Step>
       <Step>
         In the **Delegation** section, select **Add Users or Groups**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/machine-identity-delegation.png" alt="The Delegation section of a machine identity, listing two groups and a user with the date each was added, and the Add Users or Groups button" />
+        </Frame>
       </Step>
       <Step>
-        Pick the users and groups in **Users and Groups**, and select **Add**. A group covers every member of the group.
+        In **Users and Groups**, select the users and groups to add, then select **Add**. A group covers every member of the group.
 
-        To cover every user in Agent Vault instead, including users added later, turn on **All Agent Vault Members** and select **Allow All Members**.
+        To cover every current and future user in Agent Vault instead, turn on **All Agent Vault Members** and select **Allow All Members**.
       </Step>
     </Steps>
   </Tab>
@@ -62,9 +66,9 @@ sequenceDiagram
   </Tab>
 </Tabs>
 
-You can pick only users and groups that are members of Agent Vault. If a user is in Agent Vault only through a group, pick the group.
+You can add only users and groups that are members of Agent Vault. If a user is in Agent Vault only through a group, add the group.
 
-To take a user or group out of the delegation, open its actions menu in the **Delegation** section, select **Remove**, and confirm. If you remove the last user or group, or the **All Agent Vault Members** row, the machine identity can no longer act on behalf of anyone.
+To take a user or group out of the delegation, select the actions menu on its row in the **Delegation** section, select **Remove**, then select **Remove** again to confirm. If you remove the last user or group, or the **All Agent Vault Members** row, the machine identity can no longer act on behalf of anyone.
 
 <Warning>
   If a machine identity has a delegation, anyone who can log in as the machine identity can send requests with the personal values of every user the delegation covers. Protect the machine identity's credentials as carefully as you'd protect those users' own credentials.
@@ -95,6 +99,8 @@ A session created on behalf of a user can use an access bundle only if both the 
 - The machine identity can use the access bundles granted to it, directly or through a group (if the machine identity is an Agent Vault admin, every bundle)
 - The proxy refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
 
+If a user or group in the delegation can use an access bundle that isn't granted to the machine identity, their row in the machine identity's **Delegation** section shows the number of excluded bundles, and hovering over the number lists them. Through the API, [the endpoint that reads a delegation](/api-reference/endpoints/agent-vault-delegations/get) returns the same bundles in `missingAccessBundles`. To let the machine identity create sessions over one of them, [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity.
+
 ## When the session stops working
 
 Infisical checks the delegation again each time the proxy polls, once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). The proxy refuses every request on the session if any of these happen:
@@ -113,12 +119,12 @@ If the user or the machine identity can no longer use the access bundle, the ses
 These people and identities can see the session and revoke it:
 
 - The user, under **My Sessions**
-- The machine identity, through the API that [reads a session](/api-reference/endpoints/agent-vault-sessions/get) and the API that [revokes a session](/api-reference/endpoints/agent-vault-sessions/revoke)
+- The machine identity, through the endpoints that [read a session](/api-reference/endpoints/agent-vault-sessions/get) and [revoke a session](/api-reference/endpoints/agent-vault-sessions/revoke)
 - Admins, under **All Sessions**
 
 On the **Sessions** page, the **Identity** column shows the user, followed by "via" and the machine identity's name. The session's details list the machine identity under **Started By**.
 
-When the machine identity creates the session, the audit event names the machine identity as the actor, and records the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. Infisical also writes an audit event when an admin sets up, changes, or removes a delegation.
+When the machine identity creates the session, Infisical writes an audit event with the machine identity as the actor and the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. Infisical also writes an audit event when an admin sets up, changes, or removes a delegation.
 
 ## Troubleshooting
 

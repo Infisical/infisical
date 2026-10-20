@@ -259,6 +259,20 @@ export type TAgentVaultDelegation = {
   updatedAt: string;
 };
 
+export type TAgentVaultMissingAccessBundle = { id: string; name: string };
+
+// Reading or writing one delegation also says which bundles its machine identity can't act on: the ones each user and
+// group can use and the identity can't.
+export type TAgentVaultDelegationDetail = Omit<TAgentVaultDelegation, "users" | "groups"> & {
+  users: (TAgentVaultDelegation["users"][number] & {
+    missingAccessBundles: TAgentVaultMissingAccessBundle[];
+  })[];
+  groups: (TAgentVaultDelegation["groups"][number] & {
+    missingAccessBundles: TAgentVaultMissingAccessBundle[];
+  })[];
+  missingAccessBundles: TAgentVaultMissingAccessBundle[];
+};
+
 export type TSetAgentVaultDelegationDTO = {
   machineIdentityId: string;
   scope: AgentVaultDelegationScope;

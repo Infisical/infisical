@@ -12,6 +12,21 @@ import { actorContext } from "./agent-vault-router-fns";
 
 const MAX_DELEGATION_SUBJECTS = 100;
 
+const DelegationUserSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.userId),
+  username: z.string().describe(AGENT_VAULT.DELEGATION.username),
+  email: z.string().nullable().describe(AGENT_VAULT.DELEGATION.email),
+  firstName: z.string().nullable().describe(AGENT_VAULT.DELEGATION.firstName),
+  lastName: z.string().nullable().describe(AGENT_VAULT.DELEGATION.lastName),
+  addedAt: z.date().describe(AGENT_VAULT.DELEGATION.addedAt)
+});
+
+const DelegationGroupSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.groupId),
+  name: z.string().describe(AGENT_VAULT.DELEGATION.groupName),
+  addedAt: z.date().describe(AGENT_VAULT.DELEGATION.addedAt)
+});
+
 const DelegationSchema = z.object({
   machineIdentity: z
     .object({
@@ -20,27 +35,35 @@ const DelegationSchema = z.object({
     })
     .describe(AGENT_VAULT.DELEGATION.machineIdentity),
   scope: z.nativeEnum(AgentVaultDelegationScope).describe(AGENT_VAULT.DELEGATION.scope),
-  users: z
-    .object({
-      id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.userId),
-      username: z.string().describe(AGENT_VAULT.DELEGATION.username),
-      email: z.string().nullable().describe(AGENT_VAULT.DELEGATION.email),
-      firstName: z.string().nullable().describe(AGENT_VAULT.DELEGATION.firstName),
-      lastName: z.string().nullable().describe(AGENT_VAULT.DELEGATION.lastName),
-      addedAt: z.date().describe(AGENT_VAULT.DELEGATION.addedAt)
-    })
-    .array()
-    .describe(AGENT_VAULT.DELEGATION.users),
-  groups: z
-    .object({
-      id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.groupId),
-      name: z.string().describe(AGENT_VAULT.DELEGATION.groupName),
-      addedAt: z.date().describe(AGENT_VAULT.DELEGATION.addedAt)
-    })
-    .array()
-    .describe(AGENT_VAULT.DELEGATION.groups),
+  users: DelegationUserSchema.array().describe(AGENT_VAULT.DELEGATION.users),
+  groups: DelegationGroupSchema.array().describe(AGENT_VAULT.DELEGATION.groups),
   createdAt: z.date(),
   updatedAt: z.date()
+});
+
+const missingAccessBundlesSchema = (description: string) =>
+  z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.accessBundleId),
+      name: z.string().describe(AGENT_VAULT.DELEGATION.accessBundleName)
+    })
+    .array()
+    .describe(description);
+
+// Only one delegation at a time says which bundles its machine identity can't act on: working that out reads the
+// access of every user it covers, too much for a list.
+const DelegationDetailSchema = DelegationSchema.extend({
+  users: DelegationUserSchema.extend({
+    missingAccessBundles: missingAccessBundlesSchema(AGENT_VAULT.DELEGATION.userMissingAccessBundles)
+  })
+    .array()
+    .describe(AGENT_VAULT.DELEGATION.users),
+  groups: DelegationGroupSchema.extend({
+    missingAccessBundles: missingAccessBundlesSchema(AGENT_VAULT.DELEGATION.groupMissingAccessBundles)
+  })
+    .array()
+    .describe(AGENT_VAULT.DELEGATION.groups),
+  missingAccessBundles: missingAccessBundlesSchema(AGENT_VAULT.DELEGATION.missingAccessBundles)
 });
 
 const machineIdentityParams = z.object({
@@ -100,7 +123,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         "Get which users a machine identity can start Agent Vault sessions on behalf of. A machine identity can read its own.",
       tags: [ApiDocsTags.AgentVaultDelegations],
       params: machineIdentityParams,
-      response: { 200: z.object({ delegation: DelegationSchema }) }
+      response: { 200: z.object({ delegation: DelegationDetailSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) =>
@@ -158,7 +181,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
             });
           }
         }),
-      response: { 200: z.object({ delegation: DelegationSchema }) }
+      response: { 200: z.object({ delegation: DelegationDetailSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {

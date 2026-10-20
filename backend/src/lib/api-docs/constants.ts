@@ -4778,6 +4778,14 @@ export const AGENT_VAULT = {
     groupId: "The ID of the group.",
     groupName: "The name of the group.",
     addedAt: "When the user or group was added to the delegation.",
+    missingAccessBundles:
+      "The access bundles that users the delegation covers can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both can use, so the machine identity can't start sessions over these. With all-members, this is every access bundle the machine identity can't use, since Agent Vault admins can use every bundle.",
+    userMissingAccessBundles:
+      "The access bundles this user can use and the machine identity can't, so the machine identity can't start sessions over them on the user's behalf. For an Agent Vault admin, this is every access bundle the machine identity can't use.",
+    groupMissingAccessBundles:
+      "The access bundles granted to this group, or every bundle if the group has the Admin role, that the machine identity can't use.",
+    accessBundleId: "The ID of the access bundle.",
+    accessBundleName: "The name of the access bundle.",
     limit: "The maximum number of delegations to return.",
     offset: "How many delegations to skip."
   }

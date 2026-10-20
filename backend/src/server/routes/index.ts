@@ -2071,7 +2071,9 @@ export const registerRoutes = async (
   const agentVaultDelegationService = agentVaultDelegationServiceFactory({
     agentVaultDelegationDAL,
     agentVaultDelegationSubjectDAL,
+    agentVaultAccessBundleDAL,
     membershipDAL,
+    membershipRoleDAL,
     userGroupMembershipDAL,
     permissionService
   });

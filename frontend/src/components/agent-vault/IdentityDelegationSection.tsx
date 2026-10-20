@@ -40,23 +40,27 @@ import {
 import { useProjectPermission } from "@app/context";
 import {
   useDeleteAgentVaultDelegation,
-  useListAgentVaultDelegations,
+  useGetAgentVaultDelegation,
   useSetAgentVaultDelegation
 } from "@app/hooks/api/agentVault";
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { TAgentVaultActor } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultActor, TAgentVaultMissingAccessBundle } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { AddDelegationSubjectsDialog } from "./AddDelegationSubjectsDialog";
 import { memberDisplayName, MemberName } from "./MemberName";
+import { MissingAccessBundlesHint } from "./MissingAccessBundlesHint";
 
 type Props = {
   machineIdentityId: string;
   machineIdentityName: string;
 };
 
-type TSubjectRow = TAgentVaultActor & { addedAt: string };
+type TSubjectRow = TAgentVaultActor & {
+  addedAt: string;
+  missingAccessBundles: TAgentVaultMissingAccessBundle[];
+};
 
 type TPendingRemoval = { kind: "subject"; subject: TSubjectRow } | { kind: "all-members" };
 
@@ -65,11 +69,8 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
-  const { data: delegations, isPending } = useListAgentVaultDelegations(
-    [machineIdentityId],
-    isAdmin
-  );
-  const delegation = delegations?.[0] ?? null;
+  const { data, isPending } = useGetAgentVaultDelegation(machineIdentityId, isAdmin);
+  const delegation = data ?? null;
   const setDelegation = useSetAgentVaultDelegation();
   const deleteDelegation = useDeleteAgentVaultDelegation();
 
@@ -196,8 +197,15 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
                   <UsersRoundIcon className="size-4 shrink-0 text-muted" />
                   <div className="min-w-0">
                     <div className="truncate">All Agent Vault Members</div>
-                    <div className="truncate text-xs leading-4 text-muted">
-                      Every user in Agent Vault, including users added later
+                    <div className="flex min-w-0 items-center gap-2 text-xs leading-4 text-muted">
+                      <span className="min-w-0 truncate">
+                        Every user in Agent Vault, including users added later
+                      </span>
+                      <MissingAccessBundlesHint
+                        bundles={delegation.missingAccessBundles}
+                        machineIdentityName={machineIdentityName}
+                        onBehalfOf="Agent Vault members"
+                      />
                     </div>
                   </div>
                 </div>
@@ -213,7 +221,20 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
             subjects.map((subject) => (
               <TableRow key={`${subject.type}:${subject.id}`}>
                 <TableCell>
-                  <MemberName member={subject} />
+                  <MemberName
+                    member={subject}
+                    subtitleAddon={
+                      <MissingAccessBundlesHint
+                        bundles={subject.missingAccessBundles}
+                        machineIdentityName={machineIdentityName}
+                        onBehalfOf={
+                          subject.type === AgentVaultMemberType.Group
+                            ? `members of "${memberDisplayName(subject)}"`
+                            : `"${memberDisplayName(subject)}"`
+                        }
+                      />
+                    }
+                  />
                 </TableCell>
                 <TableCell>{format(new Date(subject.addedAt), "MMM d, yyyy")}</TableCell>
                 <TableCell variant="action">

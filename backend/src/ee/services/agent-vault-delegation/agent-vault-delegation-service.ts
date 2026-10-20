@@ -1,13 +1,16 @@
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { AgentVaultDelegationScope } from "../agent-vault/agent-vault-enums";
-import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import {
   TAgentVaultDelegationDALFactory,
   TAgentVaultDelegationSubjectDALFactory,
@@ -26,12 +29,16 @@ type TAgentVaultDelegationServiceFactoryDep = {
     "upsertScope" | "findViews" | "delete" | "transaction"
   >;
   agentVaultDelegationSubjectDAL: Pick<TAgentVaultDelegationSubjectDALFactory, "find" | "delete" | "insertMany">;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
+  agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne" | "findResourceMembershipsForActor">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TAgentVaultDelegationServiceFactory = ReturnType<typeof agentVaultDelegationServiceFactory>;
+
+type TMissingAccessBundle = { id: string; name: string };
 
 // The row id stays internal: a delegation is named by its machine identity, the one id a client sends back.
 const toDelegation = ({ id, ...delegation }: TAgentVaultDelegationView) => delegation;
@@ -41,7 +48,9 @@ const quoted = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
 export const agentVaultDelegationServiceFactory = ({
   agentVaultDelegationDAL,
   agentVaultDelegationSubjectDAL,
+  agentVaultAccessBundleDAL,
   membershipDAL,
+  membershipRoleDAL,
   userGroupMembershipDAL,
   permissionService
 }: TAgentVaultDelegationServiceFactoryDep) => {
@@ -118,6 +127,127 @@ export const agentVaultDelegationServiceFactory = ({
     throw new BadRequestError({ message: reasons.join(" ") });
   };
 
+  // Users and the identity go through the same reachability as mint, so the view can't disagree with what mint allows.
+  const reachOf = async ({
+    projectId,
+    orgId,
+    actor
+  }: {
+    projectId: string;
+    orgId: string;
+    actor: { type: ActorType.USER | ActorType.IDENTITY; id: string };
+  }) => {
+    try {
+      const { accessBundleIds } = await getAgentVaultReachability(
+        { permissionService, membershipDAL },
+        { projectId, ctx: { actor: actor.type, actorId: actor.id, actorOrgId: orgId, actorAuthMethod: null } }
+      );
+      return accessBundleIds;
+    } catch (error) {
+      if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") return [];
+      throw error;
+    }
+  };
+
+  // A group reaches nothing without a live Agent Vault role, every bundle with the admin role, and otherwise the
+  // bundles granted to it, which is what a group's grants add to its members' reach.
+  const groupReachOf = async ({ projectId, groupIds }: { projectId: string; groupIds: string[] }) => {
+    const reaches = new Map<string, string[] | null>();
+    if (!groupIds.length) return reaches;
+
+    const [memberships, grants] = await Promise.all([
+      membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId, $in: { actorGroupId: groupIds } }),
+      membershipDAL.find({
+        scope: RESOURCE_SCOPE,
+        scopeProjectId: projectId,
+        scopeResourceType: ResourceType.AgentVaultAccessBundle,
+        $in: { actorGroupId: groupIds }
+      })
+    ]);
+    const roles = memberships.length
+      ? await membershipRoleDAL.find({ $in: { membershipId: memberships.map((membership) => membership.id) } })
+      : [];
+
+    groupIds.forEach((groupId) => {
+      const membershipIds = new Set(
+        memberships.filter((m) => m.actorGroupId === groupId && m.isActive).map((membership) => membership.id)
+      );
+      const liveRoles = roles.filter((role) => membershipIds.has(role.membershipId) && isActiveRole(role));
+      if (!liveRoles.length) {
+        reaches.set(groupId, []);
+      } else if (liveRoles.some((role) => role.role === ProjectMembershipRole.Admin)) {
+        reaches.set(groupId, null);
+      } else {
+        reaches.set(
+          groupId,
+          grants
+            .filter((grant) => grant.actorGroupId === groupId && grant.isActive)
+            .map((grant) => grant.scopeResourceId!)
+        );
+      }
+    });
+    return reaches;
+  };
+
+  // A session on a user's behalf can use only the bundles both the user and the identity reach, so these are the
+  // bundles the identity can't act on for each user and group it covers. All-members covers Agent Vault admins, who
+  // reach every bundle, so there it is every bundle the identity can't reach.
+  const withMissingAccessBundles = async ({
+    projectId,
+    ctx,
+    delegation
+  }: {
+    projectId: string;
+    ctx: TGenericPermission;
+    delegation: TAgentVaultDelegationView;
+  }) => {
+    const identityReach = await reachOf({
+      projectId,
+      orgId: ctx.actorOrgId,
+      actor: { type: ActorType.IDENTITY, id: delegation.machineIdentity.id }
+    });
+    const lacking: TMissingAccessBundle[] =
+      identityReach === null
+        ? []
+        : (await agentVaultAccessBundleDAL.find({ projectId }, { sort: [["name", "asc"]] }))
+            .filter((bundle) => !identityReach.includes(bundle.id))
+            .map((bundle) => ({ id: bundle.id, name: bundle.name }));
+    const missingFrom = (reach: string[] | null) =>
+      reach === null ? lacking : lacking.filter((bundle) => reach.includes(bundle.id));
+
+    const [userReaches, groupReaches] = lacking.length
+      ? await Promise.all([
+          Promise.all(
+            delegation.users.map((user) =>
+              reachOf({ projectId, orgId: ctx.actorOrgId, actor: { type: ActorType.USER, id: user.id } })
+            )
+          ),
+          groupReachOf({ projectId, groupIds: delegation.groups.map((group) => group.id) })
+        ])
+      : [[], new Map<string, string[] | null>()];
+
+    // Each reach ran getProjectPermission for someone else, and the audit log reads the caller's permission metadata
+    // from the request context. Running the caller's check again, memoized so it costs no query, puts it back.
+    await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+
+    const users = delegation.users.map((user, index) => ({
+      ...user,
+      missingAccessBundles: lacking.length ? missingFrom(userReaches[index]) : []
+    }));
+    const groups = delegation.groups.map((group) => {
+      // A null reach is every bundle, so it can't fall back with ??.
+      const reach = groupReaches.get(group.id);
+      return { ...group, missingAccessBundles: reach === undefined ? [] : missingFrom(reach) };
+    });
+    const missingIds = new Set([...users, ...groups].flatMap((s) => s.missingAccessBundles.map((bundle) => bundle.id)));
+    const missingAccessBundles =
+      delegation.scope === AgentVaultDelegationScope.AllMembers
+        ? lacking
+        : lacking.filter((bundle) => missingIds.has(bundle.id));
+
+    return { ...toDelegation(delegation), users, groups, missingAccessBundles };
+  };
+
   const listDelegations = async ({ projectId, ctx, machineIdentityIds, limit, offset }: TListDelegationsDTO) => {
     await checkAdmin(projectId, ctx);
     const { delegations, totalCount } = await agentVaultDelegationDAL.findViews({
@@ -143,7 +273,7 @@ export const agentVaultDelegationServiceFactory = ({
       delegations: [delegation]
     } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] });
     if (!delegation) throw notFound(machineIdentityId);
-    return { delegation: toDelegation(delegation) };
+    return { delegation: await withMissingAccessBundles({ projectId, ctx, delegation }) };
   };
 
   const setDelegation = async ({ projectId, ctx, machineIdentityId, scope, userIds, groupIds }: TSetDelegationDTO) => {
@@ -195,7 +325,8 @@ export const agentVaultDelegationServiceFactory = ({
       return written;
     });
 
-    return { delegation: toDelegation(delegation) };
+    // After the commit: reading every covered user's reach is many queries, none of which belong in the transaction.
+    return { delegation: await withMissingAccessBundles({ projectId, ctx, delegation }) };
   };
 
   const deleteDelegation = async ({ projectId, ctx, machineIdentityId }: TDeleteDelegationDTO) => {

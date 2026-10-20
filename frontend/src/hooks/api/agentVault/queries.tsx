@@ -22,7 +22,7 @@ import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultDecryptedSessionLogPage,
-  TAgentVaultDelegation,
+  TAgentVaultDelegationDetail,
   TAgentVaultMember,
   TAgentVaultProductActor,
   TAgentVaultProductMember,
@@ -104,8 +104,8 @@ export const agentVaultKeys = {
   availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.availableMembers(orgId), params] as const,
   delegations: (orgId: string) => [...agentVaultKeys.all(orgId), "delegations"] as const,
-  delegationsOf: (orgId: string, machineIdentityIds: string[]) =>
-    [...agentVaultKeys.delegations(orgId), machineIdentityIds] as const,
+  delegation: (orgId: string, machineIdentityId: string) =>
+    [...agentVaultKeys.delegations(orgId), machineIdentityId] as const,
   sessionLogSettings: (orgId: string) =>
     [...agentVaultKeys.all(orgId), "settings", "session-logs"] as const,
   sessionLogHealth: (orgId: string) =>
@@ -138,21 +138,26 @@ export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentV
   });
 };
 
-// Read through the list, so an identity with no delegation is an empty result rather than a 404. Admins only.
-export const useListAgentVaultDelegations = (machineIdentityIds: string[], enabled = true) => {
+// An identity with no delegation reads as null rather than an error. Admins only. Refetched on every visit, because the
+// bundles the identity can't act on change with grants and roles anywhere in Agent Vault.
+export const useGetAgentVaultDelegation = (machineIdentityId: string, enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.delegationsOf(currentOrg.id, machineIdentityIds),
+    queryKey: agentVaultKeys.delegation(currentOrg.id, machineIdentityId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ delegations: TAgentVaultDelegation[] }>(
-        "/api/v1/agent-vault/delegations",
-        { params: { machineIdentityIds: machineIdentityIds.join(","), limit: 100 } }
-      );
-      return data.delegations;
+      try {
+        const { data } = await apiRequest.get<{ delegation: TAgentVaultDelegationDetail }>(
+          `/api/v1/agent-vault/delegations/${machineIdentityId}`
+        );
+        return data.delegation;
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) return null;
+        throw error;
+      }
     },
-    enabled: enabled && machineIdentityIds.length > 0,
-    placeholderData: (prev) => prev
+    enabled,
+    staleTime: 0
   });
 };
 
