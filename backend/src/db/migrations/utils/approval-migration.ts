@@ -135,11 +135,16 @@ export const readLegacyReviews = async (
   tx: Knex,
   tables: TLegacyApprovalTables,
   requestIds: string[],
-  { withComment = false }: { withComment?: boolean } = {}
+  { withComment = false, forUpdate = false }: { withComment?: boolean; forUpdate?: boolean } = {}
 ) => {
   if (!requestIds.length) return [] as TLegacyReview[];
   const columns = ["id", "requestId", "reviewerUserId", "status", "createdAt", ...(withComment ? ["comment"] : [])];
-  return (await tx(tables.legacyReviewers).whereIn("requestId", requestIds).select(columns)) as TLegacyReview[];
+  return (await tx(tables.legacyReviewers)
+    .whereIn("requestId", requestIds)
+    .modify((qb) => {
+      if (forUpdate) void qb.forUpdate();
+    })
+    .select(columns)) as TLegacyReview[];
 };
 
 export const readApproverGroupMembers = async (tx: Knex, approvers: TLegacyApprover[]) => {

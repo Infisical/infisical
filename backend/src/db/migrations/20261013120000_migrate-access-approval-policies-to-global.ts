@@ -465,7 +465,7 @@ const readPolicyData = async (tx: Knex, policy: TLegacyPolicy, requests: TLegacy
   const environments = await readPolicyEnvironments(tx, LEGACY_TABLES, policyId);
   const approvers = await readLegacyApprovers(tx, LEGACY_TABLES, policyId);
   const bypassers = await readLegacyBypassers(tx, LEGACY_TABLES, policyId);
-  const reviews = await readLegacyReviews(tx, LEGACY_TABLES, requestIds);
+  const reviews = await readLegacyReviews(tx, LEGACY_TABLES, requestIds, { forUpdate: true });
 
   const requesters = requesterIds.length
     ? ((await tx(TableName.Users)
