@@ -123,20 +123,19 @@ const Item = React.forwardRef<HTMLDivElement, ItemProps>(
     const composed = title !== undefined || media || icon || description || actions;
     const body = composed ? (
       <>
-        {unread && (
-          <>
-            <span className={itemStyles.unread} aria-hidden="true" />
-            <span className="sr-only">Unread</span>
-          </>
-        )}
+        {unread && <span className="sr-only">Unread</span>}
         {(media || icon) && (
           <span className={itemStyles.lead}>
             {media ?? <Media icon={icon} size={size === "sm" ? "sm" : "md"} />}
+            {unread && <span className={itemStyles.unread} aria-hidden="true" />}
           </span>
         )}
         <div className={itemStyles.main}>
           <div className={itemStyles.copy}>
             <div className={itemStyles.titleLine}>
+              {unread && !(media || icon) && (
+                <span className={itemStyles.unread} aria-hidden="true" />
+              )}
               <span
                 className={cn(itemStyles.title, mono && itemStyles.mono)}
                 title={typeof title === "string" ? title : undefined}

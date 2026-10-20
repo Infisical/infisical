@@ -90,15 +90,16 @@ export function ListRow({
           />
         </span>
       )}
-      {media}
-      {unread && (
-        <>
-          <span className={styles.unread} aria-hidden />
-          <span className={styles.sr}>Unread</span>
-        </>
+      {media && (
+        <span className={styles.rowMedia}>
+          {media}
+          {unread && <span className={styles.unread} aria-hidden />}
+        </span>
       )}
+      {unread && <span className={styles.sr}>Unread</span>}
       <div className={styles.listBody}>
         <div className={styles.titleLine}>
+          {unread && !media && <span className={styles.unread} aria-hidden />}
           {href && !disabled ? (
             <a
               className={styles.rowTitle}

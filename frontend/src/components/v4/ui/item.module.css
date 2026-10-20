@@ -15,6 +15,7 @@
   gap: var(--v4-space-8);
 }
 .lead {
+  position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -93,16 +94,18 @@
 .mono {
   font-family: var(--v4-font-mono);
 }
-.layout[data-unread] {
-  position: relative;
-}
 .unread {
-  position: absolute;
-  left: calc((var(--v4-space-12) - var(--v4-space-6)) / 2);
-  top: calc(var(--v4-space-10) + (var(--v4-type-row-title-line-height) - var(--v4-space-6)) / 2);
+  flex-shrink: 0;
   width: var(--v4-space-6);
   height: var(--v4-space-6);
   background: var(--v4-accent-fg);
+  border-radius: calc(50% * var(--corners));
+}
+.lead > .unread {
+  position: absolute;
+  top: calc(-1 * var(--v4-space-2));
+  right: calc(-1 * var(--v4-space-2));
+  box-shadow: 0 0 0 var(--v4-space-2) var(--v4-surface);
 }
 .layout[data-unread] .title {
   font-weight: 600;

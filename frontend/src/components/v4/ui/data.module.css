@@ -551,14 +551,18 @@
   position: relative;
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
   min-width: 0;
+  --v4-list-row-surface: var(--v4-surface);
 }
-.listRow > .unread {
+.rowMedia {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+.rowMedia > .unread {
   position: absolute;
-  left: calc((var(--v4-space-surface-inset-sm) - var(--v4-space-6)) / 2);
-  top: calc(
-    var(--v4-space-surface-inset-sm) + (var(--v4-type-row-title-line-height) - var(--v4-space-6)) /
-      2
-  );
+  top: calc(-1 * var(--v4-space-2));
+  right: calc(-1 * var(--v4-space-2));
+  box-shadow: 0 0 0 var(--v4-space-2) var(--v4-list-row-surface);
 }
 .listRow > .rowActions,
 .listRow > .rowCheck {
@@ -572,18 +576,21 @@
 .listRow[data-selected],
 .listRow[data-current] {
   background: var(--v4-selected-surface);
+  --v4-list-row-surface: var(--v4-selected-surface);
 }
 .listRow[data-interactive] {
   transition: background-color var(--v4-duration-fast) var(--v4-ease-fade);
 }
 .listRow[data-interactive]:not([data-selected], [data-current]):hover {
   background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+  --v4-list-row-surface: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), var(--v4-surface));
 }
 .listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
   background: color-mix(in oklab, var(--v4-ink) var(--overlay-press), transparent);
 }
 .listRow[data-resolved] {
   background: var(--v4-row-done);
+  --v4-list-row-surface: var(--v4-row-done);
   color: var(--v4-muted);
 }
 .listRow[data-disabled] {
@@ -687,6 +694,7 @@ button.rowTitle::after {
   width: var(--v4-space-6);
   height: var(--v4-space-6);
   background: var(--v4-accent-fg);
+  border-radius: calc(50% * var(--corners));
   flex-shrink: 0;
 }
 .sr {
@@ -1049,8 +1057,7 @@ button.rowTitle::after {
   overflow-wrap: anywhere;
 }
 .tableScroll tbody tr:hover > td[data-pin="true"] {
-  background:
-    linear-gradient(
+  background: linear-gradient(
       color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent),
       color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent)
     ),
