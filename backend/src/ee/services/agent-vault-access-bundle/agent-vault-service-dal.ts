@@ -44,31 +44,30 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
 
   // A refresh writes only if the sealed credential is still the one it read, so an admin reauthorizing in
   // between keeps the newer tokens. The config is a jsonb merge, so it only touches the keys it names.
-  // `keepStatus` is decided against the row being written, not the one the caller read: a status write that
-  // leaves the sealed credential alone (a scope report) passes the compare, and must not be overwritten.
+  // `keepAdditionalScopesStatus` is decided against the row being written, not the one the caller read: a scope report
+  // leaves the sealed credential alone, so it passes the compare, and its status must not be overwritten.
   const compareAndSwapCredential = async (
     {
       id,
       expectedEncryptedCredential,
       encryptedCredential,
       credentialConfigPatch,
-      keepStatus
+      keepAdditionalScopesStatus
     }: {
       id: string;
       expectedEncryptedCredential: Buffer;
       encryptedCredential?: Buffer;
       credentialConfigPatch: Record<string, unknown>;
-      keepStatus?: { status: string; keys: string[] };
+      keepAdditionalScopesStatus?: boolean;
     },
     tx?: Knex
   ): Promise<Pick<TAgentVaultServices, "id" | "hostPattern" | "config" | "credentialConfig"> | undefined> => {
     try {
       const patch = JSON.stringify(credentialConfigPatch);
-      const keptKeys = ["status", ...(keepStatus?.keys ?? [])];
-      const credentialConfig = keepStatus
+      const credentialConfig = keepAdditionalScopesStatus
         ? db.raw(
-            `CASE WHEN "credentialConfig"->>'status' = ? THEN COALESCE("credentialConfig", '{}'::jsonb) || (?::jsonb${keptKeys.map(() => " - ?::text").join("")}) ELSE COALESCE("credentialConfig", '{}'::jsonb) || ?::jsonb END`,
-            [keepStatus.status, patch, ...keptKeys, patch]
+            `CASE WHEN "credentialConfig"->>'status' = ? THEN COALESCE("credentialConfig", '{}'::jsonb) || (?::jsonb - 'status') ELSE COALESCE("credentialConfig", '{}'::jsonb) || ?::jsonb END`,
+            [AgentVaultOauthStatus.NeedsAdditionalScopes, patch, patch]
           )
         : db.raw(`COALESCE("credentialConfig", '{}'::jsonb) || ?::jsonb`, [patch]);
       const [row] = await (tx || db)(TableName.AgentVaultService)

@@ -95,14 +95,9 @@ export type TAgentVaultVariableReference = {
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
 
-export type TAgentVaultMcpServiceConfig = {
-  serverUrl: string;
-  transport: AgentVaultMcpTransport;
-};
-
 export type TAgentVaultServiceConfig =
-  | { type: AgentVaultServiceType.Http; config: Record<string, never> }
-  | { type: AgentVaultServiceType.Mcp; config: TAgentVaultMcpServiceConfig };
+  | { type: AgentVaultServiceType.Http; serverUrl: null; transport: null }
+  | { type: AgentVaultServiceType.Mcp; serverUrl: string; transport: AgentVaultMcpTransport };
 
 export type TAgentVaultService = TAgentVaultServiceConfig & {
   id: string;
@@ -299,7 +294,7 @@ export type TUpdateAgentVaultAccessBundleDTO = {
 export type TCreateAgentVaultServiceDTO =
   | {
       accessBundleId: string;
-      type?: AgentVaultServiceType.Http;
+      type: AgentVaultServiceType.Http;
       name: string;
       hostPattern: string;
       allowedMethods?: AgentVaultHttpMethod[] | null;

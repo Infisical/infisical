@@ -47,6 +47,7 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
 
 const setup = (refresh: (dto: TRefreshServiceTokenDTO) => Promise<unknown>, rows = [serviceRow()]) => {
   const refreshServiceToken = vi.fn(refresh);
+  const reportMissingScopes = vi.fn(async () => {});
   const service = agentVaultProxyServiceFactory({
     agentVaultProxyDAL: {
       findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
@@ -89,9 +90,12 @@ const setup = (refresh: (dto: TRefreshServiceTokenDTO) => Promise<unknown>, rows
     },
     licenseService: {} as never,
     resourceAuthMethodService: {} as never,
-    agentVaultOauthService: { refreshServiceToken: refreshServiceToken as never }
+    agentVaultOauthService: {
+      refreshServiceToken: refreshServiceToken as never,
+      reportMissingScopes: reportMissingScopes as never
+    }
   });
-  return { service, refreshServiceToken };
+  return { service, refreshServiceToken, reportMissingScopes };
 };
 
 const refreshed = {
@@ -129,6 +133,36 @@ describe("credential refresh", () => {
       refreshed
     );
     expect(refreshServiceToken.mock.calls[0][0].destination).toEqual({ hostPattern: "mcp.linear.app" });
+  });
+});
+
+describe("missing scopes report", () => {
+  test("a host pattern that no longer matches the service is a 409, before anything is recorded", async () => {
+    const { service, reportMissingScopes } = setup(async () => refreshed);
+    const result = service.reportMissingScopes({
+      ...refreshArgs,
+      hostPattern: "old.example.com",
+      requiredScopes: ["admin"]
+    });
+    await expect(result).rejects.toThrow(AGENT_VAULT_SERVICE_MOVED_MESSAGE);
+    expect(reportMissingScopes).not.toHaveBeenCalled();
+  });
+
+  test("records the scopes against the rejected token without refreshing", async () => {
+    const { service, refreshServiceToken, reportMissingScopes } = setup(async () => refreshed);
+    await service.reportMissingScopes({
+      ...refreshArgs,
+      rejectedTokenHash: "A".repeat(64),
+      hostPattern: "mcp.linear.app",
+      requiredScopes: ["admin"]
+    });
+    expect(reportMissingScopes).toHaveBeenCalledWith({
+      serviceId: SERVICE_ID,
+      rejectedTokenHash: "a".repeat(64),
+      requiredScopes: ["admin"],
+      hostPattern: "mcp.linear.app"
+    });
+    expect(refreshServiceToken).not.toHaveBeenCalled();
   });
 });
 

@@ -146,12 +146,21 @@ export type TClaimAuthorizationDTO = {
 };
 
 export type TResolvedOauthCredential = {
-  type: "bearer";
+  type: AgentVaultCredentialType.Bearer;
   headerName: string;
   headerPrefix: string;
   value: string;
-  source: "oauth";
+  source: AgentVaultCredentialType.OAuth;
   expiresAt: string | null;
+};
+
+export type TReportMissingScopesDTO = {
+  serviceId: string;
+  // The sha256 of the token the upstream refused with `insufficient_scope`.
+  rejectedTokenHash: string;
+  requiredScopes: string[];
+  // The host pattern the proxy sent the refused token to. A service that moved since is a 409.
+  hostPattern: string;
 };
 
 export type TRefreshServiceTokenDTO = {
@@ -159,8 +168,6 @@ export type TRefreshServiceTokenDTO = {
   projectId: string;
   // On demand: the sha256 of the token the upstream rejected.
   rejectedTokenHash?: string;
-  // From a `403 insufficient_scope` challenge.
-  requiredScopes?: string[];
   // Lazy, from resolve: refresh when the token expires within this many seconds.
   expiresWithinSeconds?: number;
   // Where the caller will send the token. A service that moved since is a 409, never a token for the new server.

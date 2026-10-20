@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import {
+  AgentVaultCredentialType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultTrafficPolicy
@@ -56,14 +57,19 @@ const SessionHeaderSchema = z
 // `source` and `expiresAt` are only on an OAuth credential. A proxy that predates them injects it as any bearer.
 const ResolvedBearerCredentialSchema = z
   .object({
-    type: z.literal("bearer").describe(AGENT_VAULT.CREDENTIAL_REFRESH.credentialType),
+    type: z.literal(AgentVaultCredentialType.Bearer).describe(AGENT_VAULT.CREDENTIAL_REFRESH.credentialType),
     headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
     headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix),
     value: z.string().describe(AGENT_VAULT.CREDENTIAL_REFRESH.value),
-    source: z.literal("oauth").optional().describe(AGENT_VAULT.CREDENTIAL_REFRESH.source),
+    source: z.literal(AgentVaultCredentialType.OAuth).optional().describe(AGENT_VAULT.CREDENTIAL_REFRESH.source),
     expiresAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthExpiresAt)
   })
   .describe(JSON.stringify({ title: "Bearer" }));
+
+const RejectedTokenHashSchema = z
+  .string()
+  .length(64)
+  .regex(new RE2(/^[0-9a-fA-F]{64}$/), "Must be the hex sha256 of the rejected access token");
 
 export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -195,9 +201,15 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               credential: z.discriminatedUnion("type", [
                 ResolvedBearerCredentialSchema,
                 z
-                  .object({ type: z.literal("basic"), username: z.string(), password: z.string() })
+                  .object({
+                    type: z.literal(AgentVaultCredentialType.Basic),
+                    username: z.string(),
+                    password: z.string()
+                  })
                   .describe(JSON.stringify({ title: "Basic Auth" })),
-                z.object({ type: z.literal("passthrough") }).describe(JSON.stringify({ title: "Pass-through" }))
+                z
+                  .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+                  .describe(JSON.stringify({ title: "Pass-through" }))
               ]),
               customHeaders: z.object({ name: z.string(), prefix: z.string(), value: z.string() }).array(),
               substitutions: z
@@ -239,23 +251,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       params: z.object({ serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId) }),
       body: z.object({
         hostPattern: AgentVaultHostPatternSchema.describe(AGENT_VAULT.CREDENTIAL_REFRESH.hostPattern),
-        rejectedTokenHash: z
-          .string()
-          .length(64)
-          .regex(new RE2(/^[0-9a-fA-F]{64}$/), "Must be the hex sha256 of the rejected access token")
-          .describe(AGENT_VAULT.CREDENTIAL_REFRESH.rejectedTokenHash),
-        requiredScopes: z
-          .string()
-          .min(1)
-          .max(MAX_OAUTH_SCOPE_LENGTH)
-          .regex(
-            OAUTH_SCOPE_TOKEN_PATTERN,
-            "Each scope must be an OAuth scope token: printable ASCII with no spaces, quotes or backslashes"
-          )
-          .array()
-          .max(50)
-          .optional()
-          .describe(AGENT_VAULT.CREDENTIAL_REFRESH.requiredScopes)
+        rejectedTokenHash: RejectedTokenHashSchema.describe(AGENT_VAULT.CREDENTIAL_REFRESH.rejectedTokenHash)
       }),
       response: {
         200: z.object({
@@ -272,9 +268,55 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         sessionToken: req.headers[SESSION_HEADER],
         serviceId: req.params.serviceId,
         hostPattern: req.body.hostPattern,
+        rejectedTokenHash: req.body.rejectedTokenHash
+      })
+  });
+
+  server.route({
+    method: "POST",
+    url: "/services/:serviceId/missing-scopes",
+    config: { rateLimit: agentVaultCredentialRefreshLimit },
+    schema: {
+      hide: true,
+      operationId: "reportAgentVaultServiceMissingScopes",
+      description:
+        "Record the scopes an MCP server asked for in an insufficient_scope challenge, so the service shows it needs reauthorizing with them. The token is not refreshed. A report for a token that is no longer current changes nothing. A 409 means the service's host pattern no longer matches `hostPattern`.",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      headers: SessionHeaderSchema,
+      params: z.object({ serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId) }),
+      body: z.object({
+        hostPattern: AgentVaultHostPatternSchema.describe(AGENT_VAULT.CREDENTIAL_REFRESH.hostPattern),
+        rejectedTokenHash: RejectedTokenHashSchema.describe(AGENT_VAULT.CREDENTIAL_REFRESH.rejectedTokenHash),
+        requiredScopes: z
+          .string()
+          .min(1)
+          .max(MAX_OAUTH_SCOPE_LENGTH)
+          .regex(
+            OAUTH_SCOPE_TOKEN_PATTERN,
+            "Each scope must be an OAuth scope token: printable ASCII with no spaces, quotes or backslashes"
+          )
+          .array()
+          .min(1)
+          .max(50)
+          .describe(AGENT_VAULT.CREDENTIAL_REFRESH.requiredScopes)
+      }),
+      response: {
+        204: z.string().length(0)
+      }
+    },
+    onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
+    handler: async (req, res) => {
+      await server.services.agentVaultProxy.reportMissingScopes({
+        proxyId: req.permission.id,
+        orgId: req.permission.orgId,
+        sessionToken: req.headers[SESSION_HEADER],
+        serviceId: req.params.serviceId,
+        hostPattern: req.body.hostPattern,
         rejectedTokenHash: req.body.rejectedTokenHash,
         requiredScopes: req.body.requiredScopes
-      })
+      });
+      return res.status(204).send("");
+    }
   });
 
   server.route({

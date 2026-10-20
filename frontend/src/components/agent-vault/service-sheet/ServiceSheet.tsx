@@ -359,8 +359,8 @@ export const ServiceSheet = ({
       reset({
         ...BLANK_MCP_SERVICE_FORM,
         name: service.name,
-        serverUrl: service.config.serverUrl,
-        transport: service.config.transport,
+        serverUrl: service.serverUrl,
+        transport: service.transport,
         credentialType: isBearer ? AgentVaultCredentialType.Bearer : AgentVaultCredentialType.OAuth,
         headerName: isBearer ? credential.headerName : "Authorization",
         headerPrefix: isBearer ? credential.headerPrefix : "Bearer",

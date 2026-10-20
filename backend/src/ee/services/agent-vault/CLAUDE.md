@@ -260,12 +260,12 @@ code exchange and refresh; the proxy only ever receives the access token.
 - **Refresh writes the row, which no other credential does, so it races admin edits.** A refresh is a
   compare-and-swap on `encryptedCredential` and a jsonb merge of only the token keys, so an admin who reauthorized
   meanwhile keeps the newer tokens. An admin edit that keeps the tokens never writes `credentialConfig`, so it
-  can't write back token fields a refresh changed. A scope report changes only the config, so it
-  passes that compare; the refresh's UPDATE keeps `needs-additional-scopes` in SQL rather than in the WHERE, since
+  can't write back token fields a refresh changed. A scope report (`missing-scopes`, its own route because it never
+  refreshes) changes only the config, so it passes that compare; the refresh's UPDATE keeps `needs-additional-scopes` in SQL rather than in the WHERE, since
   losing the write would drop a rotated refresh token. For the same reason two scope reports can't be told apart by
   the compare, so the report unions `requiredScopes` in its UPDATE (`addRequiredScopes`), never from what it read.
-- **A token only goes where the service still points.** `credential-refresh` takes the host pattern the proxy
-  cached and answers 409 once the service has moved; resolve's lazy refresh is pinned to the host and server URL of
+- **A token only goes where the service still points.** `credential-refresh` and `missing-scopes` take the host
+  pattern the proxy cached and answer 409 once the service has moved; resolve's lazy refresh is pinned to the host and server URL of
   the snapshot it answers with, and falls back to that snapshot's own token. Both are checked on every row a token
   comes from, since a move can land mid-refresh. A reauthorizing save re-checks the authorization's server URL
   under the bundle lock, and a reauthorization committed since its first read wins with a 409 (a refresh doesn't
@@ -290,7 +290,8 @@ code exchange and refresh; the proxy only ever receives the access token.
   refreshes and sends the stored token for any still running, which finish in the background. A refresh waits
   about 3 seconds for another's lock, then answers with what is stored, and its token requests (the
   `invalid_target` retry included) share one 7 second budget. Keep that sum under the proxy's timeout.
-- **Neither refreshes nor resolve are audited.** Connect and reauthorize are (`AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE`).
+- **Neither refreshes nor resolve are audited.** Connect and reauthorize are recorded by the service create and
+  update events, which carry `oauthIssuer` and `oauthScopes`.
 - **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may
   relax what a server must advertise, never a check that stops mix-up or token theft: the issuer must match (a
   trailing slash aside), the protected resource must be the server's own origin, and `iss` is checked whenever it

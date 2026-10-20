@@ -4487,9 +4487,10 @@ export const AGENT_VAULT = {
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
-    type: "The kind of service. `http`, the default, brokers an HTTP API matched by host pattern. `mcp` brokers a remote MCP server, matched by the host of its server URL. Can't be changed after the service is created.",
-    config:
-      "Settings specific to the service's type. Empty for an `http` service. For an `mcp` service, its `serverUrl` and `transport`.",
+    type: "The kind of service. `http` brokers an HTTP API matched by host pattern. `mcp` brokers a remote MCP server, matched by the host of its server URL. Can't be changed after the service is created.",
+    serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
+    transportRead:
+      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for an `http` service.",
     serverUrl:
       "The MCP server's full URL, as in `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment. The service covers this URL's host, plus its port when that is not 443, which is returned as `hostPattern`.",
     transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",

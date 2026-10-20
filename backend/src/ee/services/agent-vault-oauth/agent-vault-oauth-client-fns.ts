@@ -9,7 +9,11 @@ import {
   MAX_ERROR_DESCRIPTION_LENGTH,
   normalizeProviderText
 } from "./agent-vault-oauth-token-fns";
-import { AgentVaultOauthClientAuthMethod, AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
+import {
+  AGENT_VAULT_OAUTH_GRANT_TYPE,
+  AgentVaultOauthClientAuthMethod,
+  AgentVaultOauthCompatibility
+} from "./agent-vault-oauth-types";
 
 export const AGENT_VAULT_OAUTH_CLIENT_NAME = "Infisical Agent Vault";
 
@@ -34,8 +38,8 @@ const SUPPORTED_AUTH_METHODS = Object.values(AgentVaultOauthClientAuthMethod) as
 // RFC 6749 appendix A.1 and A.2: both are VSCHAR. The ID is stored in jsonb and sent in the authorize URL, and the
 // secret is form-encoded into the token request, which throws on a lone surrogate.
 export const OAUTH_CLIENT_CREDENTIAL_PATTERN = new RE2(/^[\x20-\x7e]+$/);
-const MAX_CLIENT_ID_LENGTH = 512;
-const MAX_CLIENT_SECRET_LENGTH = 4096;
+export const MAX_CLIENT_ID_LENGTH = 512;
+export const MAX_CLIENT_SECRET_LENGTH = 4096;
 
 const parseRegistration = (body: string): TOauthClient | null => {
   let parsed: Record<string, unknown>;
@@ -95,7 +99,7 @@ export const registerOauthClient = async ({
   const full = {
     ...minimal,
     application_type: "web",
-    grant_types: ["authorization_code", "refresh_token"],
+    grant_types: [AGENT_VAULT_OAUTH_GRANT_TYPE, "refresh_token"],
     response_types: ["code"]
   };
 

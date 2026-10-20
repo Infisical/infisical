@@ -397,6 +397,7 @@ describe("Agent Vault V1 Router", async () => {
       const attempts = await Promise.all(
         [1, 2].map((n) =>
           inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
             name: `race-${n}`,
             hostPattern: "api.raced.example.com",
             credential: { type: "passthrough" }
@@ -418,6 +419,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("overlap-check");
 
       const first = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog-us5",
         hostPattern: "api.us5.datadoghq.com, api.datadoghq.eu",
         credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
@@ -425,6 +427,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(first.statusCode).toBe(200);
 
       const overlapping = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog-eu",
         hostPattern: "api.datadoghq.eu, api.datadoghq.com",
         credential: { type: "bearer", value: "def456" }
@@ -433,6 +436,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(overlapping.payload).message).toContain("api.datadoghq.eu:443");
 
       const contained = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog-wildcard",
         hostPattern: "*.datadoghq.com",
         credential: { type: "passthrough" }
@@ -444,6 +448,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("secret-handling");
 
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: " API.GitHub.com ",
         credential: { type: "bearer", value: "ghp_secret_value" }
@@ -470,6 +475,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("credential-patch");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",
         credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
@@ -501,6 +507,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("basic-halves");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "stripe",
         hostPattern: "api.stripe.com",
         credential: { type: "basic", username: "sk_live_key", password: "" }
@@ -545,6 +552,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("type-change");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "bearer", value: "ghp_one" }
@@ -565,6 +573,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a path in a host pattern is rejected", async () => {
       const bundle = await createAccessBundle("no-paths");
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "with-path",
         hostPattern: "gitlab.com/api/v4",
         credential: { type: "passthrough" }
@@ -576,6 +585,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("service-policy");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         allowedMethods: ["GET", "HEAD"],
@@ -608,6 +618,7 @@ describe("Agent Vault V1 Router", async () => {
       const reject = async (prefix: string) =>
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
             name: `svc-${Math.random().toString(36).slice(2, 8)}`,
             hostPattern: `h${Math.random().toString(36).slice(2, 8)}.example.com`,
             allowedPathPrefixes: [prefix],
@@ -633,6 +644,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("transformations");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "passthrough" },
@@ -674,6 +686,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("keep-stored-value");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "passthrough" },
@@ -726,6 +739,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("header-shadowing");
 
       const clash = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "clash",
         hostPattern: "api.clash.example.com",
         credential: { type: "bearer", headerName: "X-Api-Key", headerPrefix: "", value: "k" },
@@ -735,6 +749,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(clash.payload).message).toContain("X-Api-Key");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "bearer", headerName: "X-Api-Key", headerPrefix: "", value: "k" },
@@ -763,6 +778,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a header the proxy controls is refused, from either side", async () => {
       const bundle = await createAccessBundle("reserved-headers");
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "reserved",
         hostPattern: "api.reserved.example.com",
         credential: { type: "passthrough" },
@@ -771,6 +787,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(res.statusCode).toBe(422);
 
       const asCredential = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "reserved-credential",
         hostPattern: "api.reserved-credential.example.com",
         credential: { type: "bearer", headerName: "Content-Length", value: "t" }
@@ -993,6 +1010,7 @@ describe("Agent Vault V1 Router", async () => {
       const org = await createVariable({ key: "ORG_ID", value: "org-42" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "bearer", value: "{{GITHUB_TOKEN}}" },
@@ -1047,6 +1065,7 @@ describe("Agent Vault V1 Router", async () => {
       const long = await createVariable({ key: "LONG", value: "x" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "longest",
         hostPattern: "longest.example.com",
         credential: { type: "bearer", value: "{{LONG}}".repeat(3) }
@@ -1065,6 +1084,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-username-trim");
       await createVariable({ key: "PADDED", value: " padded " });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "padded",
         hostPattern: "padded.example.com",
         credential: { type: "basic", username: "{{PADDED}}", password: "{{PADDED}}" }
@@ -1083,6 +1103,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-missing");
       const gone = await createVariable({ key: "GONE", value: "x" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "missing",
         hostPattern: "api.example.com",
         allowedMethods: ["GET"],
@@ -1106,6 +1127,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-rename");
       const variable = await createVariable({ key: "OLD_NAME", value: "first" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "bearer", value: "{{OLD_NAME}}" }
@@ -1134,6 +1156,7 @@ describe("Agent Vault V1 Router", async () => {
       expect((await resolve()).services[0].credential).toMatchObject({ value: "second" });
 
       const stale = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "stale",
         hostPattern: "stale.example.com",
         credential: { type: "bearer", value: "{{OLD_NAME}}" }
@@ -1146,6 +1169,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-in-use");
       const variable = await createVariable({ key: "API_KEY", value: "key_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",
         credential: { type: "bearer", headerName: "DD-API-KEY", value: "{{API_KEY}}" }
@@ -1173,6 +1197,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-validation");
 
       const unknown = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "unknown",
         hostPattern: "unknown.example.com",
         credential: { type: "bearer", value: "{{NOT_DEFINED}}" }
@@ -1181,6 +1206,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(unknown.payload).message).toContain("NOT_DEFINED");
 
       const malformed = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "malformed",
         hostPattern: "malformed.example.com",
         credential: { type: "passthrough" },
@@ -1190,6 +1216,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(malformed.payload).not.toContain("lower_case_secret");
 
       const bracedPlaceholder = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "braced",
         hostPattern: "braced.example.com",
         credential: { type: "passthrough" },
@@ -1199,12 +1226,14 @@ describe("Agent Vault V1 Router", async () => {
 
       // A prefix is sent as typed, so braces in one would reach the host as a reference nobody fills in.
       const bracedBearerPrefix = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "braced-bearer",
         hostPattern: "braced-bearer.example.com",
         credential: { type: "bearer", headerPrefix: "{{ORG}}", value: "x" }
       });
       expect(bracedBearerPrefix.statusCode).toBe(422);
       const bracedHeaderPrefix = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "braced-header",
         hostPattern: "braced-header.example.com",
         credential: { type: "passthrough" },
@@ -1220,6 +1249,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "TOKEN", value: "t" });
 
       const atLimit = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "at-limit",
         hostPattern: "at-limit.example.com",
         credential: { type: "bearer", value: "{{TOKEN}}".repeat(3) }
@@ -1227,6 +1257,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(atLimit.statusCode).toBe(200);
 
       const overLimit = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "over-limit",
         hostPattern: "over-limit.example.com",
         credential: { type: "bearer", value: "{{TOKEN}}".repeat(4) }
@@ -1311,7 +1342,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "BETA_TOKEN", value: "b" });
       await createVariable({ key: "GAMMA_KEY", value: "g" });
       const createService = async (body: Record<string, unknown>) =>
-        expect((await inject("POST", servicesUrl(bundle.id), body)).statusCode).toBe(200);
+        expect((await inject("POST", servicesUrl(bundle.id), { type: "http", ...body })).statusCode).toBe(200);
       // Two fields of one service count as one service.
       await createService({
         name: "both-fields",
@@ -1379,6 +1410,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const createdIn = async (bundle: { id: string }, name: string) => {
         const res = await inject("POST", servicesUrl(bundle.id), {
+          type: "http",
           name,
           hostPattern: `${name}.example.com`,
           credential: { type: "bearer", value: "{{SHARED_TOKEN}}" }
@@ -1427,6 +1459,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-delete-race");
       const variable = await createVariable({ key: "RACED", value: "raced_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "raced",
         hostPattern: "raced.example.com",
         credential: { type: "passthrough" }
@@ -1472,6 +1505,7 @@ describe("Agent Vault V1 Router", async () => {
         await trx("agent_vault_variables").where({ id: variable.id }).forUpdate().first();
 
         const pending = inject("POST", servicesUrl(bundle.id), {
+          type: "http",
           name: "doomed",
           hostPattern: "doomed.example.com",
           credential: { type: "bearer", value: "{{DOOMED}}" }
@@ -1500,6 +1534,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "HEADER", value: "the-header" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "basic",
         hostPattern: "basic.example.com",
         credential: { type: "basic", username: "{{USER}}", password: "{{PASS}}" },
@@ -1545,6 +1580,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "USER", value: "the-user" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "legacy",
         hostPattern: "legacy.example.com",
         credential: { type: "basic", username: "u", password: "p" }
@@ -1588,6 +1624,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "PASS", value: "the-pass" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "stale",
         hostPattern: "stale.example.com",
         credential: { type: "basic", username: "{{FIRST_USER}}", password: "plain-pass" }
@@ -1598,6 +1635,7 @@ describe("Agent Vault V1 Router", async () => {
 
       // What the other save commits, sealed by the API itself on a second service: a new username.
       const other = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "other",
         hostPattern: "other.example.com",
         credential: { type: "basic", username: "{{SECOND_USER}}", password: "plain-pass" }
@@ -1654,6 +1692,7 @@ describe("Agent Vault V1 Router", async () => {
     test("an update whose service is deleted while it waits is a 404, not a deleted variable", async () => {
       const bundle = await createAccessBundle("variables-deleted-service");
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "doomed",
         hostPattern: "doomed.example.com",
         credential: { type: "passthrough" }
@@ -1689,6 +1728,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-bundle-delete");
       const variable = await createVariable({ key: "TOKEN", value: "t" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "one",
         hostPattern: "one.example.com",
         credential: { type: "bearer", value: "{{TOKEN}}" },
@@ -1715,6 +1755,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-admin-only");
       const variable = await createVariable({ key: "TOKEN", value: "admin_only_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "uses-token",
         hostPattern: "api.example.com",
         credential: { type: "bearer", value: "{{TOKEN}}" }
@@ -2371,7 +2412,7 @@ describe("Agent Vault V1 Router", async () => {
         [
           "POST",
           `/api/v1/agent-vault/access-bundles/${unknown}/services`,
-          { name: "c", hostPattern: "api.foo.com", credential: { type: "passthrough" } }
+          { type: "http", name: "c", hostPattern: "api.foo.com", credential: { type: "passthrough" } }
         ],
         // The bundle is the path resource, so a missing one is still 404 even though a missing actor in
         // the body is reported as skipped.
@@ -3010,6 +3051,7 @@ describe("Agent Vault V1 Router", async () => {
     test("resolve carries the policy and the decrypted transformations", async () => {
       const bundle = await createAccessBundle("resolve-transformations");
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         allowedMethods: ["GET"],
@@ -3073,6 +3115,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a deactivated actor stops resolving, and resolves again once reactivated", async () => {
       const bundle = await createAccessBundle("resolve-deactivation");
       const service = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -3120,6 +3163,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a session whose user was deleted is refused before any lookup", async () => {
       const bundle = await createAccessBundle("resolve-deleted-user");
       await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -3151,6 +3195,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a session whose machine identity was deleted is refused before any lookup", async () => {
       const bundle = await createAccessBundle("resolve-deleted-identity");
       await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -3192,6 +3237,7 @@ describe("Agent Vault V1 Router", async () => {
       };
       const bundle = await createAccessBundle("resolve-temporary-role");
       await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -3910,6 +3956,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
             name: "echo",
             hostPattern: "echo.example.com",
             credential: { type: "passthrough" }
@@ -4005,6 +4052,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
             name: "echo",
             hostPattern: "echo.example.com",
             credential: { type: "passthrough" }

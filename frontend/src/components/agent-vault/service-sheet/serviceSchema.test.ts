@@ -50,7 +50,8 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
     name: "linear-mcp",
     hostPattern: "mcp.linear.app",
     type: AgentVaultServiceType.Mcp,
-    config: { serverUrl, transport: AgentVaultMcpTransport.StreamableHttp },
+    serverUrl,
+    transport: AgentVaultMcpTransport.StreamableHttp,
     allowedMethods: null,
     allowedPathPrefixes: null,
     credential: {

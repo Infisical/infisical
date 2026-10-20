@@ -67,6 +67,7 @@ import {
   TCreateAuthorizationDTO,
   TGetAuthorizationDTO,
   TRefreshServiceTokenDTO,
+  TReportMissingScopesDTO,
   TResolvedOauthCredential
 } from "./agent-vault-oauth-types";
 
@@ -647,11 +648,11 @@ export const agentVaultOauthServiceFactory = ({
   };
 
   const toResolvedCredential = (config: TAgentVaultOauthConfig, accessToken: string): TResolvedOauthCredential => ({
-    type: "bearer",
+    type: AgentVaultCredentialType.Bearer,
     headerName: AGENT_VAULT_OAUTH_HEADER_NAME,
     headerPrefix: AGENT_VAULT_OAUTH_HEADER_PREFIX,
     value: accessToken,
-    source: "oauth",
+    source: AgentVaultCredentialType.OAuth,
     expiresAt: config.expiresAt
   });
 
@@ -707,7 +708,6 @@ export const agentVaultOauthServiceFactory = ({
     serviceId,
     projectId,
     rejectedTokenHash,
-    requiredScopes,
     expiresWithinSeconds,
     destination
   }: TRefreshServiceTokenDTO): Promise<{ credential: TResolvedOauthCredential; status: AgentVaultOauthStatus }> => {
@@ -758,31 +758,6 @@ export const agentVaultOauthServiceFactory = ({
       const updated = await writeStatus(serviceId, current.encryptedCredential, patch, current.config.status);
       current = updated ? fromWrittenRow(updated, current.secret, current.encryptedCredential) : await load(current);
     };
-
-    if (requiredScopes?.length) {
-      // Only the refused token is known to lack the scopes: a replacement may carry them. And a service that needs
-      // reauthorizing keeps saying so, since reauthorizing is what fixes both.
-      // Both conditions are checked again in the UPDATE, against the row it writes.
-      if (
-        rejectedTokenHash === current.config.accessTokenHash &&
-        current.config.status !== AgentVaultOauthStatus.NeedsReauthorization
-      ) {
-        const previousStatus = current.config.status;
-        const updated = await agentVaultServiceDAL.addRequiredScopes({
-          id: serviceId,
-          expectedEncryptedCredential: current.encryptedCredential,
-          rejectedTokenHash,
-          requiredScopes
-        });
-        current = updated ? fromWrittenRow(updated, current.secret, current.encryptedCredential) : await load(current);
-        if (updated && previousStatus !== AgentVaultOauthStatus.NeedsAdditionalScopes) {
-          logger.warn(
-            `agentVaultOauth: service status changed [serviceId=${serviceId}] [from=${previousStatus}] [to=${AgentVaultOauthStatus.NeedsAdditionalScopes}] [reason=insufficient_scope]`
-          );
-        }
-      }
-      return answer();
-    }
 
     const decide = () =>
       decideRefresh({
@@ -866,8 +841,8 @@ export const agentVaultOauthServiceFactory = ({
         scopesCommaSeparated: result.tokens.scopesCommaSeparated
       });
       const patch: Partial<TAgentVaultOauthConfig> = {
-        // Missing scopes stay missing after a refresh; only reauthorizing can add them. `keepStatus` below covers a
-        // scope report that lands after this read.
+        // Missing scopes stay missing after a refresh; only reauthorizing can add them.
+        // `keepAdditionalScopesStatus` below covers a scope report that lands after this read.
         status:
           config.status === AgentVaultOauthStatus.NeedsAdditionalScopes
             ? AgentVaultOauthStatus.NeedsAdditionalScopes
@@ -886,7 +861,7 @@ export const agentVaultOauthServiceFactory = ({
         expectedEncryptedCredential: current.encryptedCredential,
         encryptedCredential,
         credentialConfigPatch: patch,
-        keepStatus: { status: AgentVaultOauthStatus.NeedsAdditionalScopes, keys: ["requiredScopes"] }
+        keepAdditionalScopesStatus: true
       });
 
       if (!swapped) {
@@ -901,12 +876,42 @@ export const agentVaultOauthServiceFactory = ({
     }
   };
 
+  // From a `403 insufficient_scope` challenge. Nothing is refreshed, since only reauthorizing can add scopes. Only
+  // the refused token is known to lack them (a replacement may carry them), and a service that needs reauthorizing
+  // keeps saying so; the UPDATE checks both against the row it writes, so a report that matches neither is a no-op.
+  const reportMissingScopes = async ({
+    serviceId,
+    rejectedTokenHash,
+    requiredScopes,
+    hostPattern
+  }: TReportMissingScopesDTO) => {
+    const service = await agentVaultServiceDAL.findByIdPrimary(serviceId);
+    if (!service || service.credentialType !== AgentVaultCredentialType.OAuth || !service.encryptedCredential) {
+      throw new NotFoundError({ message: `OAuth service with ID '${serviceId}' not found` });
+    }
+    if (service.hostPattern !== hostPattern) throw new ConflictError({ message: AGENT_VAULT_SERVICE_MOVED_MESSAGE });
+
+    const previousStatus = (service.credentialConfig as TAgentVaultOauthConfig).status;
+    const updated = await agentVaultServiceDAL.addRequiredScopes({
+      id: serviceId,
+      expectedEncryptedCredential: service.encryptedCredential,
+      rejectedTokenHash,
+      requiredScopes
+    });
+    if (updated && previousStatus !== AgentVaultOauthStatus.NeedsAdditionalScopes) {
+      logger.warn(
+        `agentVaultOauth: service status changed [serviceId=${serviceId}] [from=${previousStatus}] [to=${AgentVaultOauthStatus.NeedsAdditionalScopes}] [reason=insufficient_scope]`
+      );
+    }
+  };
+
   return {
     createAuthorization,
     completeAuthorization,
     getAuthorization,
     claimAuthorization,
     buildCredentialFromAuthorization,
-    refreshServiceToken
+    refreshServiceToken,
+    reportMissingScopes
   };
 };

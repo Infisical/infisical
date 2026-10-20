@@ -461,27 +461,31 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     customHeaders: TAgentVaultServiceCustomHeaders[],
     substitutions: TAgentVaultServiceSubstitutions[],
     variableReferences: TAgentVaultVariableReferenceWithKey[]
-  ) => ({
-    id: service.id,
-    accessBundleId: service.accessBundleId,
-    name: service.name,
-    type: service.type as AgentVaultServiceType,
-    // Plaintext and secret-free by construction (`{}` for http), so it is returned as stored.
-    config: (service.config ?? {}) as TAgentVaultServiceConfig,
-    hostPattern: service.hostPattern,
-    allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
-    allowedPathPrefixes: service.allowedPathPrefixes ?? null,
-    credential: summarizeCredential(service),
-    customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
-    substitutions: substitutions.map((substitution) => ({
-      id: substitution.id,
-      placeholder: substitution.placeholder,
-      surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
-    })),
-    variableReferences: variableReferences.map(summarizeVariableReference),
-    createdAt: service.createdAt,
-    updatedAt: service.updatedAt
-  });
+  ) => {
+    const config = (service.config ?? {}) as TAgentVaultServiceConfig;
+    return {
+      id: service.id,
+      accessBundleId: service.accessBundleId,
+      name: service.name,
+      type: service.type as AgentVaultServiceType,
+      // Flat, like the create and update bodies, so a client can send back what it read. Null for an http service.
+      serverUrl: config.serverUrl ?? null,
+      transport: config.transport ?? null,
+      hostPattern: service.hostPattern,
+      allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
+      allowedPathPrefixes: service.allowedPathPrefixes ?? null,
+      credential: summarizeCredential(service),
+      customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
+      substitutions: substitutions.map((substitution) => ({
+        id: substitution.id,
+        placeholder: substitution.placeholder,
+        surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
+      })),
+      variableReferences: variableReferences.map(summarizeVariableReference),
+      createdAt: service.createdAt,
+      updatedAt: service.updatedAt
+    };
+  };
 
   const loadTransformations = async (
     serviceIds: string[],

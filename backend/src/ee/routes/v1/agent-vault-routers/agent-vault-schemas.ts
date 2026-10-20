@@ -210,53 +210,38 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
   .superRefine(addDuplicatePlaceholderIssues)
   .describe(AGENT_VAULT.SERVICE.substitutions);
 
-// `type` is optional and means http, so clients written before MCP services keep working unchanged. Each
-// option also takes the other type's fields, hidden from the docs, so the service can refuse them with a
+// Each option also takes the other type's fields, hidden from the docs, so the service can refuse them with a
 // message naming the field rather than zod dropping them silently.
-export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion(
-  "type",
-  [
-    z
-      .object({
-        type: z
-          .literal(AgentVaultServiceType.Http)
-          .optional()
-          .transform(() => AgentVaultServiceType.Http as const)
-          .describe(AGENT_VAULT.SERVICE.type),
-        name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
-        hostPattern: AgentVaultHostPatternSchema,
-        allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
-        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
-        credential: AgentVaultCredentialInputSchema,
-        customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
-        substitutions: AgentVaultSubstitutionsInputSchema.optional(),
-        serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
-        transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden())
-      })
-      .describe(JSON.stringify({ title: "HTTP service" })),
-    z
-      .object({
-        type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
-        name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
-        serverUrl: AgentVaultServerUrlSchema,
-        transport: AgentVaultMcpTransportSchema,
-        credential: AgentVaultCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
-        customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
-        hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
-        allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
-        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
-        substitutions: AgentVaultSubstitutionsInputSchema.optional().describe(openApiHidden())
-      })
-      .describe(JSON.stringify({ title: "MCP service" }))
-  ],
-  {
-    // The default message lists the optional discriminator's `undefined` as an empty option.
-    errorMap: (issue, ctx) =>
-      issue.code === z.ZodIssueCode.invalid_union_discriminator
-        ? { message: `'type' must be '${AgentVaultServiceType.Http}' or '${AgentVaultServiceType.Mcp}'.` }
-        : { message: ctx.defaultError }
-  }
-);
+export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.type),
+      name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
+      hostPattern: AgentVaultHostPatternSchema,
+      allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
+      allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
+      credential: AgentVaultCredentialInputSchema,
+      customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
+      substitutions: AgentVaultSubstitutionsInputSchema.optional(),
+      serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
+      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden())
+    })
+    .describe(JSON.stringify({ title: "HTTP service" })),
+  z
+    .object({
+      type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
+      name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
+      serverUrl: AgentVaultServerUrlSchema,
+      transport: AgentVaultMcpTransportSchema,
+      credential: AgentVaultCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
+      customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
+      hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
+      allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
+      allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
+      substitutions: AgentVaultSubstitutionsInputSchema.optional().describe(openApiHidden())
+    })
+    .describe(JSON.stringify({ title: "MCP service" }))
+]);
 
 const variableReferenceBase = {
   variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
@@ -296,18 +281,8 @@ export const AgentVaultServiceSchema = z.object({
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
-  // MCP first: the empty object matches anything, so it has to be the fallback.
-  config: z
-    .union([
-      z
-        .object({
-          serverUrl: z.string().describe(AGENT_VAULT.SERVICE.serverUrl),
-          transport: z.nativeEnum(AgentVaultMcpTransport).describe(AGENT_VAULT.SERVICE.transport)
-        })
-        .describe(JSON.stringify({ title: "MCP" })),
-      z.object({}).describe(JSON.stringify({ title: "HTTP" }))
-    ])
-    .describe(AGENT_VAULT.SERVICE.config),
+  serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
+  transport: z.nativeEnum(AgentVaultMcpTransport).nullable().describe(AGENT_VAULT.SERVICE.transportRead),
   hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPattern),
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
   allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),

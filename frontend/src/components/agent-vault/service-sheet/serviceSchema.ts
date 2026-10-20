@@ -197,7 +197,7 @@ export const storedOAuthCredential = (
 ): TAgentVaultOAuthCredentialSummary | null =>
   service?.type === AgentVaultServiceType.Mcp &&
   service.credential.type === AgentVaultCredentialType.OAuth &&
-  service.config.serverUrl === serverUrl.trim()
+  service.serverUrl === serverUrl.trim()
     ? service.credential
     : null;
 

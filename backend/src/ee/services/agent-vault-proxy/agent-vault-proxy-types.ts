@@ -1,6 +1,10 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { AgentVaultServiceType, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultServiceType,
+  AgentVaultTrafficPolicy
+} from "../agent-vault/agent-vault-enums";
 
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
@@ -59,7 +63,10 @@ export type TRefreshCredentialDTO = {
   // The host pattern of the cached service the proxy injected the rejected token into.
   hostPattern: string;
   rejectedTokenHash: string;
-  requiredScopes?: string[];
+};
+
+export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
+  requiredScopes: string[];
 };
 
 export type TResolvedService = {
@@ -72,16 +79,16 @@ export type TResolvedService = {
   allowedPathPrefixes: string[] | null;
   credential:
     | {
-        type: "bearer";
+        type: AgentVaultCredentialType.Bearer;
         headerName: string;
         headerPrefix: string;
         value: string;
         // Set only for an OAuth credential, which the proxy may ask to refresh.
-        source?: "oauth";
+        source?: AgentVaultCredentialType.OAuth;
         expiresAt?: string | null;
       }
-    | { type: "basic"; username: string; password: string }
-    | { type: "passthrough" };
+    | { type: AgentVaultCredentialType.Basic; username: string; password: string }
+    | { type: AgentVaultCredentialType.Passthrough };
   customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];
 };

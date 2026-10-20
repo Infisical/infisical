@@ -320,8 +320,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceId: service.id,
             name: service.name,
             serviceType: service.type,
-            serverUrl: service.config.serverUrl,
-            transport: service.config.transport,
+            serverUrl: service.serverUrl ?? undefined,
+            transport: service.transport ?? undefined,
             hostPattern: service.hostPattern,
             credentialType: service.credential.type,
             headerName:
@@ -340,27 +340,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           }
         }
       });
-
-      if (service.credential.type === AgentVaultCredentialType.OAuth) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
-          event: {
-            type: EventType.AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE,
-            metadata: {
-              accessBundleId: req.params.accessBundleId,
-              accessBundleName,
-              serviceId: service.id,
-              name: service.name,
-              serverUrl: service.config.serverUrl,
-              oauthIssuer: service.credential.issuer,
-              oauthScopes: service.credential.grantedScopes,
-              reauthorization: false
-            }
-          }
-        });
-      }
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultServiceCreated,
@@ -482,27 +461,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           }
         }
       });
-
-      if (isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
-          event: {
-            type: EventType.AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE,
-            metadata: {
-              accessBundleId: req.params.accessBundleId,
-              accessBundleName,
-              serviceId: service.id,
-              name: service.name,
-              serverUrl: service.config.serverUrl,
-              oauthIssuer: service.credential.issuer,
-              oauthScopes: service.credential.grantedScopes,
-              reauthorization: true
-            }
-          }
-        });
-      }
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultServiceUpdated,

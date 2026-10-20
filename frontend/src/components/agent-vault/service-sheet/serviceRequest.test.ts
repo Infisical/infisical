@@ -69,6 +69,7 @@ describe("buildCreateServiceRequest", () => {
       )
     ).toEqual({
       accessBundleId: "bundle-1",
+      type: AgentVaultServiceType.Http,
       name: "stripe",
       hostPattern: "api.stripe.com,files.stripe.com",
       allowedMethods: [AgentVaultHttpMethod.Get],

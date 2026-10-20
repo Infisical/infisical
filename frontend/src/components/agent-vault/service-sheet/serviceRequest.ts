@@ -119,7 +119,12 @@ export const buildCreateServiceRequest = (
         ...buildMcpFields(data),
         credential: buildMcpCredential(data)
       }
-    : { accessBundleId, ...buildHttpFields(data), credential: buildHttpCredential(data) };
+    : {
+        accessBundleId,
+        type: AgentVaultServiceType.Http,
+        ...buildHttpFields(data),
+        credential: buildHttpCredential(data)
+      };
 
 export const buildUpdateServiceRequest = (
   accessBundleId: string,

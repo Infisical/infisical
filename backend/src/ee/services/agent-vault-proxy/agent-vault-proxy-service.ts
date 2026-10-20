@@ -67,6 +67,7 @@ import {
   TListProxiesDTO,
   TProxyByIdDTO,
   TRefreshCredentialDTO,
+  TReportMissingScopesDTO,
   TResolvedService,
   TResolveSessionDTO,
   TUpdateProxyDTO
@@ -97,7 +98,7 @@ type TAgentVaultProxyServiceFactoryDep = {
     TResourceAuthMethodServiceFactory,
     "initAtCreate" | "mintToken" | "loginWithToken" | "revokeAccess"
   >;
-  agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken">;
+  agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
 };
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
@@ -341,7 +342,7 @@ export const agentVaultProxyServiceFactory = ({
   ): TResolvedService["credential"] => {
     const config = (row.credentialConfig ?? {}) as Record<string, string>;
     if (row.credentialType === AgentVaultCredentialType.Passthrough || !row.encryptedCredential) {
-      return { type: "passthrough" };
+      return { type: AgentVaultCredentialType.Passthrough };
     }
     if (!decryptor) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
 
@@ -352,7 +353,7 @@ export const agentVaultProxyServiceFactory = ({
 
     if (row.credentialType === AgentVaultCredentialType.Bearer) {
       return {
-        type: "bearer",
+        type: AgentVaultCredentialType.Bearer,
         headerName: config.headerName,
         headerPrefix: config.headerPrefix,
         value: secret.value
@@ -363,15 +364,15 @@ export const agentVaultProxyServiceFactory = ({
     if (row.credentialType === AgentVaultCredentialType.OAuth) {
       const oauth = row.credentialConfig as TAgentVaultOauthConfig;
       return {
-        type: "bearer",
+        type: AgentVaultCredentialType.Bearer,
         headerName: AGENT_VAULT_OAUTH_HEADER_NAME,
         headerPrefix: AGENT_VAULT_OAUTH_HEADER_PREFIX,
         value: secret.accessToken,
-        source: "oauth",
+        source: AgentVaultCredentialType.OAuth,
         expiresAt: oauth.expiresAt ?? null
       };
     }
-    return { type: "basic", username: secret.username ?? "", password: secret.password ?? "" };
+    return { type: AgentVaultCredentialType.Basic, username: secret.username ?? "", password: secret.password ?? "" };
   };
 
   // The ids come out of the decrypted fields rather than the reference rows, so a service saved mid-poll can
@@ -716,16 +717,13 @@ export const agentVaultProxyServiceFactory = ({
     };
   };
 
-  // After the upstream rejected a token. Never audited, like resolve: it is proxy-driven and per request.
-  const refreshCredential = async ({
+  const $findSessionOauthService = async ({
     proxyId,
     orgId,
     sessionToken,
     serviceId,
-    hostPattern,
-    rejectedTokenHash,
-    requiredScopes
-  }: TRefreshCredentialDTO) => {
+    hostPattern
+  }: Pick<TRefreshCredentialDTO, "proxyId" | "orgId" | "sessionToken" | "serviceId" | "hostPattern">) => {
     const { session, accessBundleIds } = await $authorizeSession({ proxyId, orgId, sessionToken });
     const [row] = await agentVaultResolveDAL.findResolvableServices({
       sessionId: session.id,
@@ -743,18 +741,36 @@ export const agentVaultProxyServiceFactory = ({
     // not hand it the new server's token. The refresh re-checks against the primary, which this replica read may
     // trail.
     if (row.hostPattern !== hostPattern) throw new ConflictError({ message: AGENT_VAULT_SERVICE_MOVED_MESSAGE });
+    return { session, row };
+  };
 
+  // After the upstream rejected a token. Never audited, like resolve: it is proxy-driven and per request.
+  const refreshCredential = async ({ rejectedTokenHash, ...dto }: TRefreshCredentialDTO) => {
+    const { session, row } = await $findSessionOauthService(dto);
     const result = await agentVaultOauthService.refreshServiceToken({
       serviceId: row.id,
       projectId: session.projectId,
       rejectedTokenHash: rejectedTokenHash.toLowerCase(),
-      requiredScopes,
-      destination: { hostPattern }
+      destination: { hostPattern: dto.hostPattern }
     });
     logger.info(
-      `agentVaultCredentialRefresh: answered [sessionId=${session.id}] [proxyId=${proxyId}] [serviceId=${row.id}] [status=${result.status}]`
+      `agentVaultCredentialRefresh: answered [sessionId=${session.id}] [proxyId=${dto.proxyId}] [serviceId=${row.id}] [status=${result.status}]`
     );
     return result;
+  };
+
+  // After the upstream refused a token with `insufficient_scope`. Not audited, for the same reason as a refresh.
+  const reportMissingScopes = async ({ rejectedTokenHash, requiredScopes, ...dto }: TReportMissingScopesDTO) => {
+    const { session, row } = await $findSessionOauthService(dto);
+    await agentVaultOauthService.reportMissingScopes({
+      serviceId: row.id,
+      rejectedTokenHash: rejectedTokenHash.toLowerCase(),
+      requiredScopes,
+      hostPattern: dto.hostPattern
+    });
+    logger.info(
+      `agentVaultMissingScopes: recorded [sessionId=${session.id}] [proxyId=${dto.proxyId}] [serviceId=${row.id}] [scopes=${requiredScopes.length}]`
+    );
   };
 
   return {
@@ -768,6 +784,7 @@ export const agentVaultProxyServiceFactory = ({
     enroll,
     heartbeat,
     resolveSession,
-    refreshCredential
+    refreshCredential,
+    reportMissingScopes
   };
 };

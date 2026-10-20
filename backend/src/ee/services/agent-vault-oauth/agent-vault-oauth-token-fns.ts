@@ -8,7 +8,11 @@ import { sanitizeUrlForLog } from "@app/lib/logger";
 import { AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
 import { describeServer, splitScopes, stripTrailingSlash } from "./agent-vault-oauth-discovery-fns";
 import { TOauthHttpClient } from "./agent-vault-oauth-http-fns";
-import { AgentVaultOauthClientAuthMethod, AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
+import {
+  AGENT_VAULT_OAUTH_GRANT_TYPE,
+  AgentVaultOauthClientAuthMethod,
+  AgentVaultOauthCompatibility
+} from "./agent-vault-oauth-types";
 
 const base64Url = (buffer: Buffer) => buffer.toString("base64url");
 
@@ -351,7 +355,7 @@ export const exchangeAuthorizationCode = (
   requestToken({
     ...args,
     params: {
-      grant_type: "authorization_code",
+      grant_type: AGENT_VAULT_OAUTH_GRANT_TYPE,
       code: args.code,
       code_verifier: args.codeVerifier,
       redirect_uri: args.redirectUri

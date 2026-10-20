@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { AgentVaultOauthAuthorizationStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { OAUTH_CLIENT_CREDENTIAL_PATTERN } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-client-fns";
+import {
+  MAX_CLIENT_ID_LENGTH,
+  MAX_CLIENT_SECRET_LENGTH,
+  OAUTH_CLIENT_CREDENTIAL_PATTERN
+} from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-client-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -44,15 +48,15 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
           .string()
           .trim()
           .min(1)
-          .max(512)
-          .pipe(printable(512))
+          .max(MAX_CLIENT_ID_LENGTH)
+          .pipe(printable(MAX_CLIENT_ID_LENGTH))
           .optional()
           .describe(AGENT_VAULT.OAUTH.clientId),
         clientSecret: z
           .string()
           .min(1)
-          .max(1024)
-          .pipe(printable(1024))
+          .max(MAX_CLIENT_SECRET_LENGTH)
+          .pipe(printable(MAX_CLIENT_SECRET_LENGTH))
           .optional()
           .describe(AGENT_VAULT.OAUTH.clientSecret)
       }),

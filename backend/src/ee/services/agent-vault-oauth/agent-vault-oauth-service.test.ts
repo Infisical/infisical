@@ -18,6 +18,7 @@ import {
 } from "../agent-vault/agent-vault-enums";
 import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-fns";
 import {
+  AGENT_VAULT_SERVICE_MOVED_MESSAGE,
   agentVaultOauthServiceFactory,
   checkOauthClaimUnderLock,
   checkOauthServerUnderLock
@@ -161,32 +162,28 @@ const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> 
         const row = rows.get(id);
         return (row ? { ...row, credentialConfig: structuredClone(row.credentialConfig) } : undefined) as never;
       },
-      // Mirrors the SQL: the compare is on the sealed credential only, and `keepStatus` is decided on the row
-      // being written.
+      // Mirrors the SQL: the compare is on the sealed credential only, and `keepAdditionalScopesStatus` is decided on
+      // the row being written.
       compareAndSwapCredential: async ({
         id,
         expectedEncryptedCredential,
         encryptedCredential,
         credentialConfigPatch,
-        keepStatus
+        keepAdditionalScopesStatus
       }: {
         id: string;
         expectedEncryptedCredential: Buffer;
         encryptedCredential?: Buffer;
         credentialConfigPatch: Record<string, unknown>;
-        keepStatus?: { status: string; keys: string[] };
+        keepAdditionalScopesStatus?: boolean;
       }) => {
         const row = rows.get(id);
         if (!row?.encryptedCredential?.equals(expectedEncryptedCredential)) return undefined;
         if (encryptedCredential) row.encryptedCredential = encryptedCredential;
         const stored = row.credentialConfig as Record<string, unknown>;
         const patch =
-          keepStatus && stored.status === keepStatus.status
-            ? Object.fromEntries(
-                Object.entries(credentialConfigPatch).filter(
-                  ([key]) => key !== "status" && !keepStatus.keys.includes(key)
-                )
-              )
+          keepAdditionalScopesStatus && stored.status === AgentVaultOauthStatus.NeedsAdditionalScopes
+            ? Object.fromEntries(Object.entries(credentialConfigPatch).filter(([key]) => key !== "status"))
             : credentialConfigPatch;
         row.credentialConfig = { ...stored, ...patch };
         return {
@@ -920,28 +917,25 @@ describe("refreshing a service's token", () => {
   });
 
   test("required scopes from a 403 mark it as needing them, with no refresh", async () => {
-    const result = await env.service.refreshServiceToken({
+    await env.service.reportMissingScopes({
       serviceId: SERVICE_ID,
-      projectId: PROJECT_ID,
-      destination: DESTINATION,
+      hostPattern: DESTINATION.hostPattern,
       rejectedTokenHash: hashAccessToken("old-access"),
       requiredScopes: ["admin"]
     });
-    expect(result.status).toBe(AgentVaultOauthStatus.NeedsAdditionalScopes);
+    expect(config().status).toBe(AgentVaultOauthStatus.NeedsAdditionalScopes);
     expect(config().requiredScopes).toEqual(["admin"]);
+    expect(openBytes<TAgentVaultOauthSecret>(row().encryptedCredential!).accessToken).toBe("old-access");
     expect(env.tokenRequests).toHaveLength(0);
   });
 
   test("required scopes for a token that was already replaced change nothing", async () => {
-    const result = await env.service.refreshServiceToken({
+    await env.service.reportMissingScopes({
       serviceId: SERVICE_ID,
-      projectId: PROJECT_ID,
-      destination: DESTINATION,
+      hostPattern: DESTINATION.hostPattern,
       rejectedTokenHash: hashAccessToken("older-access"),
       requiredScopes: ["admin"]
     });
-    expect(result.status).toBe(AgentVaultOauthStatus.Connected);
-    expect(result.credential.value).toBe("old-access");
     expect(config().status).toBe(AgentVaultOauthStatus.Connected);
     expect(config().requiredScopes).toEqual([]);
     expect(env.tokenRequests).toHaveLength(0);
@@ -952,14 +946,12 @@ describe("refreshing a service's token", () => {
       status: AgentVaultOauthStatus.NeedsReauthorization,
       lastError: "revoked"
     });
-    const result = await env.service.refreshServiceToken({
+    await env.service.reportMissingScopes({
       serviceId: SERVICE_ID,
-      projectId: PROJECT_ID,
-      destination: DESTINATION,
+      hostPattern: DESTINATION.hostPattern,
       rejectedTokenHash: hashAccessToken("old-access"),
       requiredScopes: ["admin"]
     });
-    expect(result.status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
     expect(config().status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
     expect(config().requiredScopes).toEqual([]);
   });
@@ -1087,10 +1079,9 @@ describe("refreshing a service's token", () => {
 
   test("two scope reports for the same token at once both end up required", async () => {
     const report = (scopes: string[]) =>
-      env.service.refreshServiceToken({
+      env.service.reportMissingScopes({
         serviceId: SERVICE_ID,
-        projectId: PROJECT_ID,
-        destination: DESTINATION,
+        hostPattern: DESTINATION.hostPattern,
         rejectedTokenHash: hashAccessToken("old-access"),
         requiredScopes: scopes
       });
@@ -1105,22 +1096,32 @@ describe("refreshing a service's token", () => {
       status: AgentVaultOauthStatus.NeedsAdditionalScopes,
       requiredScopes: ["admin"]
     });
-    await env.service.refreshServiceToken({
+    await env.service.reportMissingScopes({
       serviceId: SERVICE_ID,
-      projectId: PROJECT_ID,
-      destination: DESTINATION,
+      hostPattern: DESTINATION.hostPattern,
       rejectedTokenHash: hashAccessToken("old-access"),
       requiredScopes: ["write", "admin", "write"]
     });
     expect(config().requiredScopes).toEqual(["admin", "write"]);
   });
 
+  test("a scope report for a service that moved is a 409 and changes nothing", async () => {
+    await expect(
+      env.service.reportMissingScopes({
+        serviceId: SERVICE_ID,
+        hostPattern: "old.example.com",
+        rejectedTokenHash: hashAccessToken("old-access"),
+        requiredScopes: ["admin"]
+      })
+    ).rejects.toThrow(AGENT_VAULT_SERVICE_MOVED_MESSAGE);
+    expect(config().requiredScopes).toEqual([]);
+  });
+
   test("a reauthorization needed after the report's read still isn't overridden by it", async () => {
     const liveRow = env.rows.get(SERVICE_ID)!;
-    const result = env.service.refreshServiceToken({
+    const result = env.service.reportMissingScopes({
       serviceId: SERVICE_ID,
-      projectId: PROJECT_ID,
-      destination: DESTINATION,
+      hostPattern: DESTINATION.hostPattern,
       rejectedTokenHash: hashAccessToken("old-access"),
       requiredScopes: ["admin"]
     });
@@ -1128,7 +1129,8 @@ describe("refreshing a service's token", () => {
       status: AgentVaultOauthStatus.NeedsReauthorization,
       lastError: "revoked"
     });
-    expect((await result).status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
+    await result;
+    expect(config().status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
     expect(config().requiredScopes).toEqual([]);
   });
 });

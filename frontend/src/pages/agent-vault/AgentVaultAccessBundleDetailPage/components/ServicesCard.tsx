@@ -80,7 +80,7 @@ const ALL_TYPES = "all";
 const serviceTypeOf = (service: TAgentVaultService) => service.type ?? AgentVaultServiceType.Http;
 
 const targetOf = (service: TAgentVaultService) =>
-  service.type === AgentVaultServiceType.Mcp ? service.config.serverUrl : service.hostPattern;
+  service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
 
 const SORT_COMPARATORS: Record<
   SortColumn,
@@ -131,8 +131,8 @@ const TypeBadge = ({ type }: { type: AgentVaultServiceType }) => (
 
 const TargetCell = ({ service }: { service: TAgentVaultService }) =>
   service.type === AgentVaultServiceType.Mcp ? (
-    <span className="block max-w-72 truncate font-mono text-sm" title={service.config.serverUrl}>
-      {service.config.serverUrl}
+    <span className="block max-w-72 truncate font-mono text-sm" title={service.serverUrl}>
+      {service.serverUrl}
     </span>
   ) : (
     <HostsCell hostPattern={service.hostPattern} />
