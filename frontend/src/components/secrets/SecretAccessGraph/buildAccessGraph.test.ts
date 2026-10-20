@@ -70,13 +70,14 @@ describe("buildAccessGraph", () => {
     expect(sorted).toEqual(["ci", "newcomer", "alice", "bob"]);
   });
 
-  test("connects direct readers to the secret and group-only readers through their group", () => {
+  test("draws every path a reader has: direct to the secret, and through each group", () => {
     const edgeOf = (source: string) => edges.filter((edge) => edge.source === source);
     expect(edgeOf(readerNodeId({ type: "user", id: "alice" })).map((edge) => edge.target)).toEqual([
       SECRET_NODE_ID
     ]);
     expect(edgeOf(readerNodeId({ type: "user", id: "bob" })).map((edge) => edge.target)).toEqual([
-      SECRET_NODE_ID
+      SECRET_NODE_ID,
+      groupNodeId({ id: "devs" })
     ]);
     expect(edgeOf(readerNodeId({ type: "identity", id: "ci" })).map((edge) => edge.target)).toEqual(
       [groupNodeId({ id: "devs" })]
@@ -97,6 +98,33 @@ describe("buildAccessGraph", () => {
 
     const unknown = buildAccessGraph({ ...input, hasReadActivity: false });
     expect(unknown.edges.every((edge) => edge.style?.strokeDasharray === undefined)).toBe(true);
+  });
+
+  test("draws admins last, with a plain edge whether or not they read", () => {
+    const withAdmin = buildAccessGraph({
+      ...input,
+      readers: [
+        ...input.readers,
+        {
+          id: "root",
+          name: "admin@example.com",
+          type: "user",
+          isDirect: true,
+          groupIds: [],
+          isAdmin: true
+        }
+      ]
+    });
+    const readerYs = withAdmin.nodes
+      .filter((node) => node.type === "reader")
+      .sort((a, b) => a.position.y - b.position.y)
+      .map((node) => node.id);
+    expect(readerYs[readerYs.length - 1]).toBe(readerNodeId({ type: "user", id: "root" }));
+    const adminEdge = withAdmin.edges.find(
+      (edge) => edge.source === readerNodeId({ type: "user", id: "root" })
+    );
+    expect(adminEdge?.target).toBe(SECRET_NODE_ID);
+    expect(adminEdge?.style?.strokeDasharray).toBeUndefined();
   });
 
   test("drops the group column when no reader depends on a group", () => {

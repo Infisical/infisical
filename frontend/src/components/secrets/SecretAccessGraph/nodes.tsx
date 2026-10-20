@@ -21,11 +21,18 @@ const TYPE_LABEL: Record<TAccessGraphActorType, string> = {
 
 const hiddenHandle = "!opacity-0";
 
+const describeAccessPath = (isDirect: boolean, groupNames: string[]) => {
+  if (!groupNames.length) return "Direct access";
+  const groups = groupNames.join(", ");
+  return isDirect ? `Direct · via ${groups}` : `Via ${groups}`;
+};
+
 export const ReaderNode = ({ data }: NodeProps & { data: TReaderNodeData }) => {
   const { reader, groupNames, hasReadActivity } = data;
-  const hasReads = Boolean(reader.lastReadAt);
+  // An admin is never counted as unused access, so their node stays solid whether or not they read.
+  const hasReads = Boolean(reader.lastReadAt) || Boolean(reader.isAdmin);
 
-  // Three states once read activity is known: read, unused access, or too new to judge.
+  // Three states once read activity is known: read, unused access, or too new to judge; admins are never judged.
   let status: { text: string; tone: string } | undefined;
   if (hasReadActivity) {
     if (reader.lastReadAt) {
@@ -33,6 +40,8 @@ export const ReaderNode = ({ data }: NodeProps & { data: TReaderNodeData }) => {
         text: `Read ${formatReadDay(reader.lastReadAt).toLowerCase()}`,
         tone: "text-accent"
       };
+    } else if (reader.isAdmin) {
+      status = { text: "No reads, admins are not counted", tone: "text-muted" };
     } else if (reader.unreadSince) {
       status = {
         text: `No reads since ${format(new Date(reader.unreadSince), "MMM d")}`,
@@ -61,11 +70,14 @@ export const ReaderNode = ({ data }: NodeProps & { data: TReaderNodeData }) => {
         >
           {reader.name}
         </p>
-        <span className="shrink-0 text-xs text-muted">{TYPE_LABEL[reader.type]}</span>
+        <span className="shrink-0 text-xs text-muted">
+          {TYPE_LABEL[reader.type]}
+          {reader.isAdmin && " · admin"}
+        </span>
       </div>
       {status && <span className={cn("truncate text-xs", status.tone)}>{status.text}</span>}
       <span className="mt-auto truncate text-xs text-muted">
-        {groupNames.length ? `Via ${groupNames.join(", ")}` : "Direct access"}
+        {describeAccessPath(reader.isDirect, groupNames)}
       </span>
       <Handle type="source" position={Position.Right} className={hiddenHandle} />
     </div>

@@ -8,9 +8,11 @@ export type TAccessGraphReader = {
   id: string;
   name: string;
   type: TAccessGraphActorType;
-  // Granted on their own, as opposed to only through a group.
+  // Granted on their own; a reader can also have the value through groups at the same time.
   isDirect: boolean;
   groupIds: string[];
+  // Project admins can read everything by design, so they are drawn but never count as unused access.
+  isAdmin?: boolean;
   lastReadAt?: string;
   // Set when the reader counts as unused access: no read since this date, with the secret and their access
   // both older than the judged period. A reader with neither this nor a read is too new to judge.
@@ -106,12 +108,15 @@ const bandLabelNode = (
 });
 
 // Solid means a read in the window, dashed means entitled with none. Without read activity every edge is
-// neutral, because unknown is not the same as unused.
+// neutral, because unknown is not the same as unused, and so is an admin's, who is never counted.
 const readerEdgeStyle = (reader: TAccessGraphReader, hasReadActivity: boolean) => {
-  if (!hasReadActivity) return { stroke: "var(--color-muted)", strokeWidth: 1, opacity: 0.5 };
-  return reader.lastReadAt
-    ? { stroke: "var(--color-foreground)", strokeWidth: 1.5, opacity: 0.55 }
-    : { stroke: "var(--color-muted)", strokeWidth: 1, strokeDasharray: "5 5", opacity: 0.45 };
+  if (reader.lastReadAt && hasReadActivity) {
+    return { stroke: "var(--color-foreground)", strokeWidth: 1.5, opacity: 0.55 };
+  }
+  if (!hasReadActivity || reader.isAdmin) {
+    return { stroke: "var(--color-muted)", strokeWidth: 1, opacity: 0.5 };
+  }
+  return { stroke: "var(--color-muted)", strokeWidth: 1, strokeDasharray: "5 5", opacity: 0.45 };
 };
 
 export const buildAccessGraph = ({
@@ -125,9 +130,10 @@ export const buildAccessGraph = ({
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  // Unused access first, then readers too new to judge, then the ones who have read: the first group is what
-  // the viewer is here to find.
+  // Unused access first, then readers too new to judge, then the ones who have read, then admins: the first
+  // group is what the viewer is here to find.
   const rankOf = (reader: TAccessGraphReader) => {
+    if (reader.isAdmin) return 3;
     if (!hasReadActivity) return 0;
     if (reader.lastReadAt) return 2;
     return reader.unreadSince ? 0 : 1;
@@ -172,9 +178,7 @@ export const buildAccessGraph = ({
 
   orderedReaders.forEach((reader, index) => {
     const nodeId = readerNodeId(reader);
-    const viaGroups = reader.isDirect
-      ? []
-      : reader.groupIds.flatMap((groupId) => groupById.get(groupId) ?? []);
+    const viaGroups = reader.groupIds.flatMap((groupId) => groupById.get(groupId) ?? []);
     nodes.push({
       id: nodeId,
       type: "reader",
@@ -190,20 +194,19 @@ export const buildAccessGraph = ({
     });
 
     const style = readerEdgeStyle(reader, hasReadActivity);
-    // A reader granted access on their own connects straight to the secret, even if a group grants it too:
-    // the group is not what gives them the value.
+    // Every path that gives the reader the value is drawn: straight to the secret for their own grant, and
+    // through each group that grants it too, so removing one path visibly leaves the others.
     if (reader.isDirect || !viaGroups.length) {
       edges.push({ id: `edge-${nodeId}-secret`, source: nodeId, target: SECRET_NODE_ID, style });
-    } else {
-      viaGroups.forEach((group) => {
-        edges.push({
-          id: `edge-${nodeId}-${groupNodeId(group)}`,
-          source: nodeId,
-          target: groupNodeId(group),
-          style
-        });
-      });
     }
+    viaGroups.forEach((group) => {
+      edges.push({
+        id: `edge-${nodeId}-${groupNodeId(group)}`,
+        source: nodeId,
+        target: groupNodeId(group),
+        style
+      });
+    });
   });
 
   groups.forEach((group, index) => {

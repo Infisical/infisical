@@ -573,8 +573,6 @@ export function SecretAccessInsights({
         .filter((group) => group[memberField].includes(entry.id))
         .map((group) => group.id);
       if (!isDirect && !groupIds.length) return [];
-      // Admins can read everything by design, so the secret is not exposed to them and they stay off the graph.
-      if (entitledReaders.get(`${type}:${entry.id}`)?.isAdmin) return [];
       const status = readStatusOf(type, entry.id);
       return [
         {
@@ -583,6 +581,7 @@ export function SecretAccessInsights({
           type,
           isDirect,
           groupIds,
+          isAdmin: entitledReaders.get(`${type}:${entry.id}`)?.isAdmin ?? false,
           lastReadAt: status?.kind === "read" ? status.lastReadAt : undefined,
           unreadSince: status?.kind === "unread" ? status.since : undefined
         }
@@ -601,7 +600,7 @@ export function SecretAccessInsights({
       ...secretAccessList.identities.map((identity) => `identity:${identity.id}`)
     ]);
     const groupOnlyReaders = (readActivity?.entitled ?? []).flatMap((reader) => {
-      if (reader.isAdmin || listed.has(`${reader.actorType}:${reader.actorId}`)) return [];
+      if (listed.has(`${reader.actorType}:${reader.actorId}`)) return [];
       const memberField = reader.actorType === "user" ? "userIds" : "identityIds";
       const groupIds = groups
         .filter((group) => group[memberField].includes(reader.actorId))
@@ -614,25 +613,22 @@ export function SecretAccessInsights({
           type: reader.actorType,
           isDirect: false,
           groupIds,
+          isAdmin: reader.isAdmin,
           lastReadAt: status?.kind === "read" ? status.lastReadAt : undefined,
           unreadSince: status?.kind === "unread" ? status.since : undefined
         }
       ];
     });
     const readers = [...directReaders, ...groupOnlyReaders];
-    const groupIdsInUse = new Set(
-      readers.flatMap((reader) => (reader.isDirect ? [] : reader.groupIds))
-    );
     return {
       secret: { key: secretKey, environment, secretPath, exposure: readActivity?.exposure },
       readers,
-      groups: groups
-        .filter((group) => groupIdsInUse.has(group.id))
-        .map((group) => ({
-          id: group.id,
-          name: group.name,
-          memberCount: group.userIds.length + group.identityIds.length
-        })),
+      // Every group that grants the value is drawn, including one whose members also have it directly.
+      groups: groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        memberCount: group.userIds.length + group.identityIds.length
+      })),
       ghosts: (readActivity?.ghostReaders ?? []).map((ghost) => ({
         id: ghost.actorId,
         name: ghost.actorName,
