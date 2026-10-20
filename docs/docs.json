@@ -1300,7 +1300,6 @@
             "pages": [
               "cli/overview",
               "cli/cloudsmith-migration",
-              "cli/project-config-migration",
               {
                 "group": "Get started",
                 "pages": [
@@ -4971,6 +4970,10 @@
     {
       "source": "/cli/commands/init",
       "destination": "/cli/reference#init"
+    },
+    {
+      "source": "/cli/project-config-migration",
+      "destination": "/cli/project-config"
     },
     {
       "source": "/cli/commands/kmip",
