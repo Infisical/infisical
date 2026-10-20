@@ -8,7 +8,9 @@ import {
 } from "lucide-react";
 
 import { useOrganization, useProject, useSubscription } from "@app/context";
+import { useDebounce } from "@app/hooks";
 import { useGetProjectFolders, useGetProjectSecrets, useGetWorkspaceById } from "@app/hooks/api";
+import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { useListProjectFolderGrantsReceived } from "@app/hooks/api/projectFolderGrants";
 import { TProjectFolderGrantReceived } from "@app/hooks/api/projectFolderGrants/types";
 
@@ -27,10 +29,14 @@ type WizardState = {
 
 type Props = {
   onSelect: (referenceContent: string) => void;
+  onNavigate: (referenceContent: string) => void;
   isEnabled: boolean;
   onFocusItem: () => void;
   currentInput?: string;
 };
+
+const DEEP_SEARCH_MIN_LENGTH = 2;
+const DEEP_SEARCH_LIMIT = 50;
 
 const INITIAL_STATE: WizardState = {
   tab: "this-project",
@@ -42,6 +48,7 @@ const INITIAL_STATE: WizardState = {
 
 export const SecretReferenceWizard = ({
   onSelect,
+  onNavigate,
   isEnabled,
   onFocusItem,
   currentInput = ""
@@ -193,7 +200,11 @@ export const SecretReferenceWizard = ({
   }, [parsedCrossProjectInput, uniqueSourceProjects, receivedGrants]);
 
   useEffect(() => {
-    if (!parsedSameProjectInput) return;
+    if (currentInput.startsWith("@")) return;
+    if (!parsedSameProjectInput) {
+      setState(INITIAL_STATE);
+      return;
+    }
 
     const { envSlug, hasEnvDot, folderSegments } = parsedSameProjectInput;
     const envs = currentProject?.environments || [];
@@ -227,7 +238,7 @@ export const SecretReferenceWizard = ({
       env: { slug: matchedEnv.slug, name: matchedEnv.name },
       secretPath
     });
-  }, [parsedSameProjectInput, currentProject?.environments]);
+  }, [currentInput, parsedSameProjectInput, currentProject?.environments]);
 
   const projectFilter =
     parsedCrossProjectInput && !parsedCrossProjectInput.hasProjectDot
@@ -281,6 +292,50 @@ export const SecretReferenceWizard = ({
     ? availableEnvs.filter((e) => e.slug.toLowerCase().includes(envFilter))
     : availableEnvs;
 
+  const [debouncedEnvFilter] = useDebounce(envFilter, 300);
+  const isDeepSearchEnabled =
+    isEnabled &&
+    state.tab === "this-project" &&
+    state.step === "env" &&
+    debouncedEnvFilter.length >= DEEP_SEARCH_MIN_LENGTH;
+
+  const {
+    data: deepSearchResult,
+    isFetching: isDeepSearchFetching,
+    isPlaceholderData: isDeepSearchPlaceholder
+  } = useGetProjectSecretsQuickSearch(
+    {
+      projectId,
+      secretPath: "/",
+      search: debouncedEnvFilter,
+      environments: availableEnvs.map((env) => env.slug),
+      tags: {},
+      limit: DEEP_SEARCH_LIMIT,
+      offset: 0
+    },
+    { enabled: isDeepSearchEnabled }
+  );
+
+  const isDeepSearchSettled =
+    isDeepSearchEnabled && envFilter === debouncedEnvFilter && !isDeepSearchPlaceholder;
+  const envOrder = availableEnvs.map((env) => env.slug);
+  const searchedSecrets = isDeepSearchSettled
+    ? Object.values(deepSearchResult?.secrets ?? {})
+        .flat()
+        .sort(
+          (a, b) =>
+            a.key.localeCompare(b.key) ||
+            (a.path ?? "/").localeCompare(b.path ?? "/") ||
+            envOrder.indexOf(a.env) - envOrder.indexOf(b.env)
+        )
+    : [];
+  const isDeepSearchPending =
+    envFilter.length >= DEEP_SEARCH_MIN_LENGTH &&
+    state.tab === "this-project" &&
+    (!isDeepSearchSettled || isDeepSearchFetching);
+
+  const envNameBySlug = new Map(availableEnvs.map((env) => [env.slug, env.name]));
+
   const filteredFolders = browseFilter
     ? (folders || []).filter((f) => f.name.toLowerCase().includes(browseFilter))
     : folders || [];
@@ -294,7 +349,7 @@ export const SecretReferenceWizard = ({
       case "project":
         return filteredProjects.length;
       case "env":
-        return filteredEnvs.length;
+        return filteredEnvs.length + searchedSecrets.length;
       case "browse":
         return filteredFolders.length + filteredSecrets.length;
       default:
@@ -318,34 +373,29 @@ export const SecretReferenceWizard = ({
     return [state.env.name, ...pathParts];
   }, [state]);
 
+  const referencePrefix = state.selectedProjectFolderGrant
+    ? `@${state.selectedProjectFolderGrant.sourceProjectSlug}.`
+    : "";
+
+  const navigateToPath = (envSlug: string, pathParts: string[]) => {
+    onNavigate(`${referencePrefix}${[envSlug, ...pathParts].join(".")}.`);
+  };
+
   const handleTabChange = (tab: string) => {
-    const newTab = tab as WizardTab;
-    setState({
-      ...INITIAL_STATE,
-      tab: newTab,
-      step: newTab === "another-project" ? "project" : "env"
-    });
+    onNavigate(tab === "another-project" ? "@" : "");
   };
 
   const handleSelectProject = (grant: TProjectFolderGrantReceived) => {
-    setState((prev) => ({ ...prev, step: "env", selectedProjectFolderGrant: grant }));
+    onNavigate(`@${grant.sourceProjectSlug}.`);
   };
 
-  const handleSelectEnv = (envSlug: string, envName: string) => {
-    setState((prev) => ({
-      ...prev,
-      step: "browse",
-      env: { slug: envSlug, name: envName },
-      secretPath: "/"
-    }));
+  const handleSelectEnv = (envSlug: string) => {
+    navigateToPath(envSlug, []);
   };
 
   const handleSelectFolder = (folderName: string) => {
-    setState((prev) => {
-      const currentPath = prev.secretPath;
-      const newPath = currentPath === "/" ? `/${folderName}/` : `${currentPath}${folderName}/`;
-      return { ...prev, secretPath: newPath };
-    });
+    if (!state.env) return;
+    navigateToPath(state.env.slug, [...state.secretPath.split("/").filter(Boolean), folderName]);
   };
 
   const handleSelectSecret = (secretKey: string) => {
@@ -363,19 +413,16 @@ export const SecretReferenceWizard = ({
     onSelect(reference);
   };
 
+  const handleSelectSearchedSecret = (envSlug: string, secretPath: string, secretKey: string) => {
+    onSelect([envSlug, ...secretPath.split("/").filter(Boolean), secretKey].join("."));
+  };
+
   const handleBreadcrumbClick = (index: number) => {
-    if (index === -1) {
-      setState((prev) => ({
-        ...prev,
-        step: "env",
-        env: null,
-        secretPath: "/"
-      }));
+    if (index === -1 || !state.env) {
+      onNavigate(referencePrefix);
       return;
     }
-    const pathParts = state.secretPath.split("/").filter(Boolean);
-    const newPath = `/${pathParts.slice(0, index).join("/")}${index > 0 ? "/" : ""}`;
-    setState((prev) => ({ ...prev, secretPath: newPath }));
+    navigateToPath(state.env.slug, state.secretPath.split("/").filter(Boolean).slice(0, index));
   };
 
   const navigableCountRef = useRef(navigableCount);
@@ -390,10 +437,15 @@ export const SecretReferenceWizard = ({
         if (filteredProjects[highlightedIndex])
           handleSelectProject(filteredProjects[highlightedIndex]);
         break;
-      case "env":
-        if (filteredEnvs[highlightedIndex])
-          handleSelectEnv(filteredEnvs[highlightedIndex].slug, filteredEnvs[highlightedIndex].name);
+      case "env": {
+        if (highlightedIndex < filteredEnvs.length) {
+          handleSelectEnv(filteredEnvs[highlightedIndex].slug);
+        } else {
+          const secret = searchedSecrets[highlightedIndex - filteredEnvs.length];
+          if (secret) handleSelectSearchedSecret(secret.env, secret.path ?? "/", secret.key);
+        }
         break;
+      }
       case "browse": {
         if (highlightedIndex < filteredFolders.length) {
           handleSelectFolder(filteredFolders[highlightedIndex].name);
@@ -483,7 +535,7 @@ export const SecretReferenceWizard = ({
             aria-label="suggestion-item"
             onClick={() => {
               onFocusItem();
-              setState((prev) => ({ ...prev, step: "project", env: null }));
+              onNavigate("@");
             }}
             className="flex items-center gap-1.5 border-b border-border px-2 py-1.5 text-xs text-muted transition-colors hover:text-foreground"
           >
@@ -491,36 +543,83 @@ export const SecretReferenceWizard = ({
             <span className="truncate">{state.selectedProjectFolderGrant.sourceProjectName}</span>
           </button>
         )}
-        <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
-          Environments
-        </div>
-        {filteredEnvs.length === 0 ? (
+        {filteredEnvs.length > 0 && (
+          <>
+            <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
+              Environments
+            </div>
+            {filteredEnvs.map((env, i) => (
+              <button
+                key={env.slug}
+                type="button"
+                aria-label="suggestion-item"
+                data-nav-index={i}
+                onClick={() => {
+                  onFocusItem();
+                  handleSelectEnv(env.slug);
+                }}
+                className={cn(
+                  "flex w-full cursor-pointer items-center justify-between px-2 py-2 text-left text-sm transition-colors hover:bg-foreground/10",
+                  highlightedIndex === i && "bg-foreground/10"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <LayersIcon className="size-4 text-success" />
+                  <span>{env.name}</span>
+                </div>
+                <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+              </button>
+            ))}
+          </>
+        )}
+
+        {filteredEnvs.length > 0 && searchedSecrets.length > 0 && (
+          <div className="my-1 border-t border-border" />
+        )}
+
+        {searchedSecrets.length > 0 && (
+          <>
+            <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
+              Secrets in this project
+            </div>
+            {searchedSecrets.map((secret, i) => {
+              const navIndex = filteredEnvs.length + i;
+              const location = [
+                envNameBySlug.get(secret.env) ?? secret.env,
+                ...(secret.path ?? "/").split("/").filter(Boolean)
+              ].join(" / ");
+              return (
+                <button
+                  key={`${secret.env}-${secret.id}`}
+                  type="button"
+                  aria-label="suggestion-item"
+                  data-nav-index={navIndex}
+                  onClick={() => {
+                    onFocusItem();
+                    handleSelectSearchedSecret(secret.env, secret.path ?? "/", secret.key);
+                  }}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center justify-between gap-3 px-2 py-2 text-left text-sm transition-colors hover:bg-foreground/10",
+                    highlightedIndex === navIndex && "bg-foreground/10"
+                  )}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <KeyRoundIcon className="size-4 shrink-0 text-muted" />
+                    <span className="truncate">{secret.key}</span>
+                  </div>
+                  <span className="truncate text-xs text-muted">{location}</span>
+                </button>
+              );
+            })}
+          </>
+        )}
+
+        {filteredEnvs.length === 0 && searchedSecrets.length === 0 && (
           <div className="flex items-center justify-center py-6 text-sm text-muted">
-            {envFilter ? "No matching environments" : "No environments available"}
+            {isDeepSearchPending && "Searching secrets…"}
+            {!isDeepSearchPending &&
+              (envFilter ? "No matching environments or secrets" : "No environments available")}
           </div>
-        ) : (
-          filteredEnvs.map((env, i) => (
-            <button
-              key={env.slug}
-              type="button"
-              aria-label="suggestion-item"
-              data-nav-index={i}
-              onClick={() => {
-                onFocusItem();
-                handleSelectEnv(env.slug, env.name);
-              }}
-              className={cn(
-                "flex w-full cursor-pointer items-center justify-between px-2 py-2 text-left text-sm transition-colors hover:bg-foreground/10",
-                highlightedIndex === i && "bg-foreground/10"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <LayersIcon className="size-4 text-success" />
-                <span>{env.name}</span>
-              </div>
-              <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
-            </button>
-          ))
         )}
       </div>
     );

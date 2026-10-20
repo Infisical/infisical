@@ -12,7 +12,7 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -212,7 +212,7 @@ export const CertificatesSection = ({
           handlePopUpToggle={handlePopUpToggle}
           applicationName={applicationName}
         />
-        <DeleteConfirmDialog
+        <ConfirmationAlertDialog
           isOpen={popUp.deleteCertificate.isOpen}
           title={`Are you sure you want to remove the certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""

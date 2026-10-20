@@ -6,7 +6,7 @@ import * as pkijs from "pkijs";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { buildHsmCaSigner } from "@app/services/certificate-authority/ca-signer";
+import { buildHsmCaSigner, createEphemeralKeyCache } from "@app/services/certificate-authority/ca-signer";
 
 import { OcspCertStatus, OcspResponseStatus } from "./certificate-authority-ocsp-enums";
 import { buildSignedOcspResponse, parseOcspRequest } from "./certificate-authority-ocsp-fns";
@@ -61,7 +61,8 @@ describe.each(CASES)("HSM-backed OCSP signing: $keyAlgorithm", (testCase) => {
     const signer = buildHsmCaSigner({
       caPublicKey: keys.publicKey,
       keyAlgorithm: testCase.keyAlgorithm,
-      sign: async (tbs) => Buffer.from(await webcrypto.subtle.sign(testCase.sign, keys.privateKey, tbs))
+      sign: async (tbs) => Buffer.from(await webcrypto.subtle.sign(testCase.sign, keys.privateKey, tbs)),
+      ephemeralKeys: createEphemeralKeyCache()
     });
 
     const request = new pkijs.OCSPRequest();

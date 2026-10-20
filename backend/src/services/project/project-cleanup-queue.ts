@@ -8,6 +8,8 @@ import { resolveCoreMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
+import { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
+import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -57,6 +59,8 @@ type TProjectCleanupQueueFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "deleteById">;
   kmsService: Pick<TKmsServiceFactory, "deleteInternalKms">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findExternallyKeyedByProjectId">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "prepareKeyReleases">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "deleteItem">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
@@ -70,6 +74,8 @@ export const projectCleanupQueueFactory = ({
   membershipUserDAL,
   userDAL,
   kmsService,
+  certificateAuthoritySecretDAL,
+  caKeySourceService,
   keyStore,
   auditLogService,
   queueService,
@@ -177,6 +183,10 @@ export const projectCleanupQueueFactory = ({
         return;
       }
 
+      const releaseCaKeys = await caKeySourceService.prepareKeyReleases(
+        await certificateAuthoritySecretDAL.findExternallyKeyedByProjectId(projectId)
+      );
+
       // 4) Final cascade in one transaction — handles the remaining (smaller) child tables, including
       // deferred / NO ACTION FKs (e.g. secret_rotation_v2_secret_mappings) that PG resolves correctly
       // as a single cascade tree (the same proven path the synchronous delete used).
@@ -221,6 +231,7 @@ export const projectCleanupQueueFactory = ({
         return;
       }
 
+      await releaseCaKeys();
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(project.orgId));
       await auditLogService.createAuditLog({
         orgId: project.orgId,

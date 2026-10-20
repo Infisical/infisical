@@ -227,7 +227,7 @@ describe("buildApprovalSteps", () => {
     expect(steps[0].eligibleUserIds).toEqual(new Set(["u1", "u2"]));
   });
 
-  test("fails a sequence whose only approvers are groups without members", () => {
+  test("keeps a sequence whose only approvers are groups without members", () => {
     const failures: TMigrationFailure[] = [];
 
     const steps = buildApprovalSteps(
@@ -235,7 +235,7 @@ describe("buildApprovalSteps", () => {
       failures
     );
 
-    expect(codes(failures)).toEqual(["step-without-eligible-approvers"]);
+    expect(failures).toEqual([]);
     expect(steps[0]).toMatchObject({ groupIds: ["g1"], eligibleUserIds: new Set() });
   });
 

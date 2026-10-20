@@ -203,6 +203,10 @@ import {
   SanitizedPaloAltoNetworksConnectionSchema
 } from "@app/services/app-connection/palo-alto-networks";
 import {
+  PortainerConnectionListItemSchema,
+  SanitizedPortainerConnectionSchema
+} from "@app/services/app-connection/portainer";
+import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
@@ -224,6 +228,10 @@ import {
   RundeckConnectionListItemSchema,
   SanitizedRundeckConnectionSchema
 } from "@app/services/app-connection/rundeck";
+import {
+  S3CompatibleConnectionListItemSchema,
+  SanitizedS3CompatibleConnectionSchema
+} from "@app/services/app-connection/s3-compatible";
 import {
   SalesforceConnectionListItemSchema,
   SanitizedSalesforceConnectionSchema
@@ -362,6 +370,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
+  ...SanitizedPortainerConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
@@ -371,7 +380,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDaytonaConnectionSchema.options,
   ...SanitizedStripeConnectionSchema.options,
   ...SanitizedKeeperConnectionSchema.options,
-  ...SanitizedHpeIloConnectionSchema.options
+  ...SanitizedHpeIloConnectionSchema.options,
+  ...SanitizedS3CompatibleConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -455,6 +465,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
+  PortainerConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
@@ -464,7 +475,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DaytonaConnectionListItemSchema,
   StripeConnectionListItemSchema,
   KeeperConnectionListItemSchema,
-  HpeIloConnectionListItemSchema
+  HpeIloConnectionListItemSchema,
+  S3CompatibleConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

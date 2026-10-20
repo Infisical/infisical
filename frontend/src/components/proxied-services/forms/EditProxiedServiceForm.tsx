@@ -7,6 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DocumentationLinkBadge,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep
@@ -181,7 +182,7 @@ export const EditProxiedServiceForm = ({
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <span className="text-xs text-muted">{formState.isDirty ? "Unsaved changes" : ""}</span>
           <div className="flex items-center gap-3">
             <Button
@@ -208,7 +209,7 @@ export const EditProxiedServiceForm = ({
               Update
             </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

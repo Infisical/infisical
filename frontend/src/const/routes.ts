@@ -386,12 +386,12 @@ export const ROUTE_PATHS = Object.freeze({
   },
   SecretScanning: {
     DataSourceByIdPage: setRoute(
-      "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/$type/$dataSourceId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/$type/$dataSourceId"
+      "/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/data-sources/$type/$dataSourceId"
     ),
     FindingsPage: setRoute(
-      "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/findings"
+      "/organizations/$orgId/secret-scanning/findings",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/findings"
     )
   },
   Pam: {

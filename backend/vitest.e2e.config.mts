@@ -98,6 +98,11 @@ export default defineConfig({
       {
         find: /^@app\/services\/event-outbox\/event-outbox-queue$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-queue")
+      },
+      // Only audit-log-stream-outbox-service.ts imports this specifier.
+      {
+        find: "./audit-log-stream-outbox-constants",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/audit-log-stream-outbox-constants")
       }
     ]
   },

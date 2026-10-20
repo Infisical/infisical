@@ -40,7 +40,7 @@ export const SERVICE_STEPS: StepMeta[] = [
     rightDescription:
       "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value.",
     rightTip:
-      "To use one of this bundle's variables, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place."
+      "To use a variable, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place."
   },
   {
     step: ServiceStep.Review,

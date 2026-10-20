@@ -173,6 +173,7 @@ export const SecretReminderForm = ({
       webhookUrl: "",
       url: "",
       signingSecret: "",
+      headers: [],
       integrationKey: ""
     }),
     [currentProject.id]
@@ -195,6 +196,7 @@ export const SecretReminderForm = ({
     setValue,
     watch,
     reset,
+    resetField,
     formState: { isDirty }
   } = formMethods;
 
@@ -207,10 +209,10 @@ export const SecretReminderForm = ({
   const hasNoAlert = isEditMode && isAlertLoaded && !alert;
 
   useEffect(() => {
-    if (alert) setValue("channels", alert.channels.map(toChannelForm), { shouldDirty: false });
+    if (alert) resetField("channels", { defaultValue: alert.channels.map(toChannelForm) });
     else if (hasNoAlert)
-      setValue("channels", [{ ...everyoneEmailChannel, recipients: [] }], { shouldDirty: false });
-  }, [alert, hasNoAlert, everyoneEmailChannel, setValue]);
+      resetField("channels", { defaultValue: [{ ...everyoneEmailChannel, recipients: [] }] });
+  }, [alert, hasNoAlert, everyoneEmailChannel, resetField]);
 
   const isPending = isCreating || isDeleting;
 

@@ -199,6 +199,10 @@ export const auditLogStreamServiceFactory = ({
 
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
       encryptedCredentials,
+      // The credentials just passed validateCredentials, so start health tracking over. A stream that
+      // is still broken then alerts again instead of staying silent behind its old failingSince.
+      failingSince: null,
+      lastDeliveryError: null,
       // Only persist a mode change when provided (the validated single -> batch upgrade).
       ...(streamMode ? { streamMode } : {}),
       // `undefined` leaves the existing filter untouched; `null`/empty clears it (stream all).
