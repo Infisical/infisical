@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 
 import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
@@ -25,6 +25,7 @@ import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance"
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 import {
+  NavbarBlock,
   NavbarSwitcher,
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
@@ -45,12 +46,10 @@ const ORG_PRODUCT_PAGE_PATH_RE = /^\/organizations\/[^/]+\/projects\/([^/]+)\//;
 
 const TypeSelectInner = ({
   currentType,
-  currentProjectName,
-  showDivider
+  currentProjectName
 }: {
   currentType: ProjectType;
   currentProjectName?: string;
-  showDivider?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
@@ -121,9 +120,7 @@ const TypeSelectInner = ({
   const ProductIcon = getProjectLucideIcon(currentType);
 
   return (
-    <div
-      className={`flex h-full min-w-16 items-center gap-1 pr-2 pl-1 ${showDivider ? "mr-2 border-r border-border-soft" : "mr-2"}`}
-    >
+    <NavbarBlock className="min-w-16">
       <NavbarSwitcher open={open} onOpenChange={setOpen}>
         <button
           type="button"
@@ -187,14 +184,13 @@ const TypeSelectInner = ({
         isOpen={isCertManagerSetupOpen}
         onOpenChange={setIsCertManagerSetupOpen}
       />
-    </div>
+    </NavbarBlock>
   );
 };
 
 export const TypeSelect = () => {
   const params = useParams({ strict: false });
   const { pathname } = useLocation();
-  const search = useSearch({ strict: false }) as { fromApplication?: string };
   const implicitProjectId = useImplicitProjectId();
   const { data: projects = [] } = useGetUserProjects();
   const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
@@ -211,8 +207,6 @@ export const TypeSelect = () => {
 
   const orgScopedProduct = getOrgScopedProductFromPath(pathname);
   if (orgScopedProduct === ProjectType.CertificateManager) {
-    const applicationName =
-      (params as { applicationName?: string }).applicationName ?? search.fromApplication;
     const project = projects.find((p) => p.id === implicitProjectId);
     // Only orgs with several legacy instances can be viewing one that is not the active instance.
     const isLegacyCertManagerProject =
@@ -223,7 +217,6 @@ export const TypeSelect = () => {
       <TypeSelectInner
         currentType={ProjectType.CertificateManager}
         currentProjectName={isLegacyCertManagerProject ? project?.name : undefined}
-        showDivider={Boolean(applicationName)}
       />
     );
   }
@@ -249,7 +242,7 @@ export const TypeSelect = () => {
   if (params.projectId) {
     const project = projects.find((p) => p.id === params.projectId);
     if (project) {
-      return <TypeSelectInner currentType={project.type} showDivider />;
+      return <TypeSelectInner currentType={project.type} />;
     }
     return null;
   }
