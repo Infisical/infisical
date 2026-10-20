@@ -7,7 +7,6 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { CHEF_SYNC_LIST_OPTION } from "@app/ee/services/secret-sync/chef";
 import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "@app/ee/services/secret-sync/chef/chef-sync-fns";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
-import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -28,7 +27,6 @@ import {
   TPreSaveTransformSyncOptionsFn,
   TPreSaveTransformSyncOptionsParams,
   TSecretMap,
-  TSecretSync,
   TSecretSyncListItem,
   TSecretSyncWithCredentials,
   TSyncSecretsResult
@@ -57,11 +55,7 @@ import { CLOUD66_SYNC_LIST_OPTION, Cloud66SyncFns } from "./cloud66";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
-import {
-  CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
-  CloudflareWorkersSyncFns,
-  TCloudflareWorkersSync
-} from "./cloudflare-workers";
+import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
@@ -753,22 +747,6 @@ export const SecretSyncFns = {
 };
 
 const MAX_MESSAGE_LENGTH = 1024;
-
-// Cloudflare Workers variables are written as the Worker's full binding list, so two syncs writing to one
-// Worker at the same time would each drop what the other just wrote. Every write job on a Worker shares one
-// lock; other destinations only need the per-sync lock.
-export const getSecretSyncWriteLockKeys = (
-  secretSync: Pick<TSecretSync, "id" | "destination" | "connectionId" | "destinationConfig">
-) => {
-  const keys: string[] = [KeyStorePrefixes.SecretSyncLock(secretSync.id)];
-
-  if (secretSync.destination === SecretSync.CloudflareWorkers) {
-    const { scriptId } = secretSync.destinationConfig as TCloudflareWorkersSync["destinationConfig"];
-    keys.push(KeyStorePrefixes.CloudflareWorkerSyncLock(secretSync.connectionId, scriptId));
-  }
-
-  return keys;
-};
 
 export const parseSyncErrorMessage = (err: unknown): string => {
   let errorMessage: string;
