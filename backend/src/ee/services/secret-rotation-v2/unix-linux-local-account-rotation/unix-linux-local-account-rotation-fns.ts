@@ -58,6 +58,9 @@ enum SuVerifyStep {
 }
 
 const SUDO_PROMPT = new RE2("\\[sudo\\]", "i");
+// sudo's default prompt varies by platform (AIX Toolbox sudo prints a bare "Password:"), so every
+// sudo call sets it explicitly to the form SUDO_PROMPT recognizes.
+const SUDO = "sudo -p '[sudo] password for %p: '";
 const ANY_PASSWORD_PROMPT = new RE2("password", "i");
 const NEW_PASSWORD_PROMPT = new RE2("new\\s+password", "i");
 const CONFIRM_PASSWORD_PROMPT = new RE2("retype|re-?enter|again|new\\s+password", "i");
@@ -188,7 +191,7 @@ const changeManagedPassword = async (
   useSudo: boolean = false,
   appConnectionPassword?: string
 ): Promise<void> => {
-  const command = useSudo ? `LC_ALL=C sudo passwd ${targetUsername}` : `LC_ALL=C passwd ${targetUsername}`;
+  const command = useSudo ? `LC_ALL=C ${SUDO} passwd ${targetUsername}` : `LC_ALL=C passwd ${targetUsername}`;
   const stream = await execCommandWithPty(client, command);
 
   return runManagedPasswordChange(stream, newPassword, appConnectionPassword);
@@ -282,7 +285,7 @@ const runAixSecurityCommand = async (
   { client, useSudo, appConnectionPassword }: TAixFlagContext,
   command: string
 ): Promise<TAdminCommandResult> => {
-  const prefix = useSudo ? "LC_ALL=C sudo" : "LC_ALL=C";
+  const prefix = useSudo ? `LC_ALL=C ${SUDO}` : "LC_ALL=C";
   return runAdminCommand(await execCommandWithPty(client, `${prefix} ${command}`), appConnectionPassword);
 };
 
