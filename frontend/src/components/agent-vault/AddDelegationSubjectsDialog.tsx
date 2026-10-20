@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Combobox,
   Dialog,
@@ -15,8 +18,7 @@ import {
   FieldDescription,
   FieldLabel,
   FieldTitle,
-  RadioGroup,
-  RadioGroupItem
+  Toggle
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { useListAgentVaultMembers, useSetAgentVaultDelegation } from "@app/hooks/api/agentVault";
@@ -34,23 +36,6 @@ type SubjectOption = {
 
 const PICKER_LIMIT = 50;
 
-const userOption = (user: TAgentVaultDelegation["users"][number]): SubjectOption => {
-  const actor = { type: AgentVaultMemberType.User as const, ...user };
-  return {
-    type: AgentVaultMemberType.User,
-    id: user.id,
-    label: memberDisplayName(actor),
-    subtitle: memberSubtitle(actor)
-  };
-};
-
-const groupOption = (group: TAgentVaultDelegation["groups"][number]): SubjectOption => ({
-  type: AgentVaultMemberType.Group,
-  id: group.id,
-  label: group.name,
-  subtitle: MEMBER_KIND[AgentVaultMemberType.Group].label
-});
-
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -59,7 +44,7 @@ type Props = {
   delegation: TAgentVaultDelegation | null;
 };
 
-export const DelegationDialog = ({
+export const AddDelegationSubjectsDialog = ({
   isOpen,
   onOpenChange,
   machineIdentityId,
@@ -68,115 +53,135 @@ export const DelegationDialog = ({
 }: Props) => {
   const setDelegation = useSetAgentVaultDelegation();
 
-  const [scope, setScope] = useState(AgentVaultDelegationScope.Selected);
+  const isCurrentlyAllMembers = delegation?.scope === AgentVaultDelegationScope.AllMembers;
+  const [isAllMembers, setIsAllMembers] = useState(false);
   const [selected, setSelected] = useState<SubjectOption[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
 
   useEffect(() => {
     if (!isOpen) return;
-    setScope(delegation?.scope ?? AgentVaultDelegationScope.Selected);
-    setSelected([
-      ...(delegation?.users ?? []).map(userOption),
-      ...(delegation?.groups ?? []).map(groupOption)
-    ]);
+    setIsAllMembers(isCurrentlyAllMembers);
+    setSelected([]);
     setSearch("");
   }, [isOpen]);
 
   // A subject has to be an Agent Vault member, so the picker lists members rather than the whole org.
-  const isPickerOpen = isOpen && scope === AgentVaultDelegationScope.Selected;
+  const isPickerShown = isOpen && !isAllMembers;
   const memberSearch = { search: debouncedSearch.trim() || undefined, limit: PICKER_LIMIT };
   const { data: users, isFetching: isFetchingUsers } = useListAgentVaultMembers(
     { ...memberSearch, actorType: AgentVaultMemberType.User },
-    isPickerOpen
+    isPickerShown
   );
   const { data: groups, isFetching: isFetchingGroups } = useListAgentVaultMembers(
     { ...memberSearch, actorType: AgentVaultMemberType.Group },
-    isPickerOpen
+    isPickerShown
   );
 
+  const listedUserIds = new Set(delegation?.users.map((user) => user.id));
+  const listedGroupIds = new Set(delegation?.groups.map((group) => group.id));
+  const listedCount = listedUserIds.size + listedGroupIds.size;
+
   const options = useMemo<SubjectOption[]>(
-    () => [...(users?.members ?? []).map(userOption), ...(groups?.members ?? []).map(groupOption)],
-    [users, groups]
+    () => [
+      ...(users?.members ?? [])
+        .filter((user) => !listedUserIds.has(user.id))
+        .map((user) => ({
+          type: AgentVaultMemberType.User as const,
+          id: user.id,
+          label: memberDisplayName(user),
+          subtitle: memberSubtitle(user)
+        })),
+      ...(groups?.members ?? [])
+        .filter((group) => !listedGroupIds.has(group.id))
+        .map((group) => ({
+          type: AgentVaultMemberType.Group as const,
+          id: group.id,
+          label: group.name,
+          subtitle: MEMBER_KIND[AgentVaultMemberType.Group].label
+        }))
+    ],
+    [users, groups, delegation]
   );
 
   const isListTruncated =
     (users?.totalCount ?? 0) > (users?.members.length ?? 0) ||
     (groups?.totalCount ?? 0) > (groups?.members.length ?? 0);
 
+  const isUnchanged = isAllMembers ? isCurrentlyAllMembers : !selected.length;
+
   const handleSave = async () => {
     try {
-      const isSelected = scope === AgentVaultDelegationScope.Selected;
-      await setDelegation.mutateAsync({
-        machineIdentityId,
-        scope,
-        userIds: isSelected
-          ? selected
-              .filter((option) => option.type === AgentVaultMemberType.User)
-              .map((option) => option.id)
-          : [],
-        groupIds: isSelected
-          ? selected
-              .filter((option) => option.type === AgentVaultMemberType.Group)
-              .map((option) => option.id)
-          : []
-      });
-      createNotification({
-        text: `Delegation for "${machineIdentityName}" saved`,
-        type: "success"
-      });
+      if (isAllMembers) {
+        await setDelegation.mutateAsync({
+          machineIdentityId,
+          scope: AgentVaultDelegationScope.AllMembers
+        });
+        createNotification({
+          text: `"${machineIdentityName}" now acts on behalf of every Agent Vault member`,
+          type: "success"
+        });
+      } else {
+        const idsOf = (type: SubjectOption["type"]) =>
+          selected.filter((option) => option.type === type).map((option) => option.id);
+        await setDelegation.mutateAsync({
+          machineIdentityId,
+          scope: AgentVaultDelegationScope.Selected,
+          userIds: [...listedUserIds, ...idsOf(AgentVaultMemberType.User)],
+          groupIds: [...listedGroupIds, ...idsOf(AgentVaultMemberType.Group)]
+        });
+        createNotification({
+          text:
+            selected.length === 1
+              ? `"${selected[0].label}" added to the delegation`
+              : `${selected.length} users and groups added to the delegation`,
+          type: "success"
+        });
+      }
       onOpenChange(false);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
   };
 
+  const replacementNote = () => {
+    if (isAllMembers && listedCount) {
+      return `This replaces the ${listedCount} ${listedCount === 1 ? "user or group" : "users and groups"} listed.`;
+    }
+    if (!isAllMembers && isCurrentlyAllMembers) {
+      return "This replaces All Agent Vault Members with the users and groups you pick.";
+    }
+    return null;
+  };
+  const note = replacementNote();
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{delegation ? "Edit Delegation" : "Set Up Delegation"}</DialogTitle>
+          <DialogTitle>Add Users or Groups</DialogTitle>
           <DialogDescription>
-            &quot;{machineIdentityName}&quot; can start sessions on behalf of these users. Each
-            session reaches only the user&apos;s access bundles and uses their personal values.
+            &quot;{machineIdentityName}&quot; can start sessions on behalf of the users you add, and
+            of every member of the groups you add.
           </DialogDescription>
         </DialogHeader>
 
-        <RadioGroup
-          value={scope}
-          onValueChange={(value) => setScope(value as AgentVaultDelegationScope)}
-        >
-          <FieldLabel htmlFor="agent-vault-delegation-selected" variant="av">
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>Selected Users and Groups</FieldTitle>
-                <FieldDescription>
-                  The users you pick, and the members of the groups you pick.
-                </FieldDescription>
-              </FieldContent>
-              <RadioGroupItem
-                value={AgentVaultDelegationScope.Selected}
-                id="agent-vault-delegation-selected"
-              />
-            </Field>
-          </FieldLabel>
-          <FieldLabel htmlFor="agent-vault-delegation-all-members" variant="av">
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>All Agent Vault Members</FieldTitle>
-                <FieldDescription>
-                  Every user with access to Agent Vault, including users added later.
-                </FieldDescription>
-              </FieldContent>
-              <RadioGroupItem
-                value={AgentVaultDelegationScope.AllMembers}
-                id="agent-vault-delegation-all-members"
-              />
-            </Field>
-          </FieldLabel>
-        </RadioGroup>
+        <Field orientation="horizontal" className="rounded-md border border-border p-4">
+          <FieldContent>
+            <FieldTitle>All Agent Vault Members</FieldTitle>
+            <FieldDescription>
+              Act on behalf of every user in Agent Vault, including users added later.
+            </FieldDescription>
+          </FieldContent>
+          <Toggle
+            id="agent-vault-delegation-all-members"
+            variant="av"
+            checked={isAllMembers}
+            onCheckedChange={setIsAllMembers}
+          />
+        </Field>
 
-        {scope === AgentVaultDelegationScope.Selected && (
+        {!isAllMembers && (
           <Field>
             <FieldLabel htmlFor="agent-vault-delegation-subjects">Users and Groups</FieldLabel>
             <FieldContent>
@@ -194,8 +199,8 @@ export const DelegationDialog = ({
                 searchAriaLabel="Search users and groups"
                 emptyMessage={(inputValue) =>
                   inputValue
-                    ? "No Agent Vault users or groups match your search."
-                    : "No users or groups are members of Agent Vault yet."
+                    ? "No Agent Vault users or groups that aren't already added match your search."
+                    : "Every Agent Vault user and group is already in the delegation."
                 }
                 clearAriaLabel="Clear all users and groups"
                 modal
@@ -227,20 +232,27 @@ export const DelegationDialog = ({
               <FieldDescription>
                 {isListTruncated
                   ? "Search by name to find users and groups that are not listed."
-                  : "Only members of Agent Vault are listed. A user who is in Agent Vault through a group is covered by picking the group."}
+                  : "Only members of Agent Vault are listed. A user who is in Agent Vault through a group is covered by adding the group."}
               </FieldDescription>
             </FieldContent>
           </Field>
         )}
 
+        {note && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>{note}</AlertDescription>
+          </Alert>
+        )}
+
         <DialogFooter>
           <Button
             variant="av"
-            isDisabled={scope === AgentVaultDelegationScope.Selected && !selected.length}
+            isDisabled={isUnchanged}
             isPending={setDelegation.isPending}
             onClick={async () => handleSave()}
           >
-            Save Delegation
+            {isAllMembers ? "Allow All Members" : "Add"}
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel

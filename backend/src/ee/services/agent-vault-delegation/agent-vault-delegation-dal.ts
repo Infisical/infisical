@@ -14,8 +14,15 @@ export type TAgentVaultDelegationView = {
   id: string;
   machineIdentity: { id: string; name: string };
   scope: AgentVaultDelegationScope;
-  users: { id: string; username: string; email: string | null; firstName: string | null; lastName: string | null }[];
-  groups: { id: string; name: string }[];
+  users: {
+    id: string;
+    username: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    addedAt: Date;
+  }[];
+  groups: { id: string; name: string; addedAt: Date }[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -89,6 +96,7 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
           db.ref("delegationId").withSchema(TableName.AgentVaultDelegationSubject),
           db.ref("userId").withSchema(TableName.AgentVaultDelegationSubject),
           db.ref("groupId").withSchema(TableName.AgentVaultDelegationSubject),
+          db.ref("createdAt").withSchema(TableName.AgentVaultDelegationSubject).as("addedAt"),
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
@@ -105,6 +113,7 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
         firstName: string | null;
         lastName: string | null;
         groupName: string | null;
+        addedAt: Date;
       }[];
 
       const delegations = rows.map(
@@ -119,11 +128,12 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
               username: subject.username!,
               email: subject.email,
               firstName: subject.firstName,
-              lastName: subject.lastName
+              lastName: subject.lastName,
+              addedAt: subject.addedAt
             })),
           groups: subjects
             .filter((subject) => subject.delegationId === row.id && subject.groupId && subject.groupName)
-            .map((subject) => ({ id: subject.groupId!, name: subject.groupName! })),
+            .map((subject) => ({ id: subject.groupId!, name: subject.groupName!, addedAt: subject.addedAt })),
           createdAt: row.createdAt,
           updatedAt: row.updatedAt
         })

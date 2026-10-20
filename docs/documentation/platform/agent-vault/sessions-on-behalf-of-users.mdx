@@ -38,16 +38,12 @@ sequenceDiagram
         In Agent Vault, go to **Access Control**, select the **Machine Identities** tab, and select the machine identity.
       </Step>
       <Step>
-        In the **Delegation** section, select **Set Up Delegation**.
+        In the **Delegation** section, select **Add Users or Groups**.
       </Step>
       <Step>
-        Select which users the machine identity can act on behalf of:
+        Pick the users and groups in **Users and Groups**, and select **Add**. A group covers every member of the group.
 
-        - **Selected Users and Groups**: the users you pick, and every member of the groups you pick
-        - **All Agent Vault Members**: every user in Agent Vault, including users added later
-      </Step>
-      <Step>
-        For **Selected Users and Groups**, pick the users and groups in **Users and Groups**. Then select **Save Delegation**.
+        To cover every user in Agent Vault instead, including users added later, turn on **All Agent Vault Members** and select **Allow All Members**.
       </Step>
     </Steps>
   </Tab>
@@ -67,7 +63,7 @@ sequenceDiagram
 
 You can pick only users and groups that are members of Agent Vault. If a user is in Agent Vault only through a group, pick the group.
 
-To change the delegation later, select **Edit Delegation** in the same section. To remove it, select **Remove**, type `remove`, and select **Remove Delegation**.
+To take a user or group out of the delegation, open its actions menu in the **Delegation** section, select **Remove**, and confirm. If you remove the last user or group, or the **All Agent Vault Members** row, the machine identity can no longer act on behalf of anyone.
 
 <Warning>
   If a machine identity has a delegation, anyone who can log in as the machine identity can send requests with the personal values of every user the delegation covers. Protect the machine identity's credentials as carefully as you'd protect those users' own credentials.

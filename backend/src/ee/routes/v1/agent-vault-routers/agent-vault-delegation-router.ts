@@ -26,14 +26,16 @@ const DelegationSchema = z.object({
       username: z.string().describe(AGENT_VAULT.DELEGATION.username),
       email: z.string().nullable().describe(AGENT_VAULT.DELEGATION.email),
       firstName: z.string().nullable().describe(AGENT_VAULT.DELEGATION.firstName),
-      lastName: z.string().nullable().describe(AGENT_VAULT.DELEGATION.lastName)
+      lastName: z.string().nullable().describe(AGENT_VAULT.DELEGATION.lastName),
+      addedAt: z.date().describe(AGENT_VAULT.DELEGATION.addedAt)
     })
     .array()
     .describe(AGENT_VAULT.DELEGATION.users),
   groups: z
     .object({
       id: z.string().uuid().describe(AGENT_VAULT.DELEGATION.groupId),
-      name: z.string().describe(AGENT_VAULT.DELEGATION.groupName)
+      name: z.string().describe(AGENT_VAULT.DELEGATION.groupName),
+      addedAt: z.date().describe(AGENT_VAULT.DELEGATION.addedAt)
     })
     .array()
     .describe(AGENT_VAULT.DELEGATION.groups),

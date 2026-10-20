@@ -3957,7 +3957,11 @@ describe("Agent Vault V1 Router", async () => {
     const delegate = async (bot: TMember, body: Record<string, unknown>) => {
       const res = await inject("PUT", delegationUrl(bot.id), body);
       expect(res.statusCode).toBe(200);
-      return res.json().delegation as { scope: string; users: { id: string }[]; groups: { id: string }[] };
+      return res.json().delegation as {
+        scope: string;
+        users: { id: string; addedAt: string }[];
+        groups: { id: string; addedAt: string }[];
+      };
     };
 
     const mintFor = (bot: TMember, onBehalfOf: Record<string, string>, accessBundle: string, ttl?: string) =>
@@ -4252,6 +4256,16 @@ describe("Agent Vault V1 Router", async () => {
 
         const set = await delegate(bot, { scope: "selected", userIds: [alice.userId] });
         expect(set).toMatchObject({ scope: "selected", users: [expect.objectContaining({ id: alice.userId })] });
+
+        // A save keeps the rows that stay, so each one's addedAt still says when it was added.
+        const group = await createProjectGroup(projectId, `obo-api-group-${Date.now()}`, ProjectMembershipRole.Member);
+        try {
+          const widened = await delegate(bot, { scope: "selected", userIds: [alice.userId], groupIds: [group.id] });
+          expect(widened.users).toEqual([expect.objectContaining({ id: alice.userId, addedAt: set.users[0].addedAt })]);
+          expect(widened.groups).toEqual([expect.objectContaining({ id: group.id })]);
+        } finally {
+          await group.cleanup();
+        }
 
         expect((await bot.as("GET", delegationUrl(bot.id))).statusCode).toBe(200);
         expect((await other.as("GET", delegationUrl(bot.id))).statusCode).toBe(403);

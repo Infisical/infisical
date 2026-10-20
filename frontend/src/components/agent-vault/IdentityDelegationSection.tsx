@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { format } from "date-fns";
+import { MoreHorizontalIcon, Trash2Icon, UserPlusIcon, UsersRoundIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardAction,
@@ -11,30 +19,46 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
-  Detail,
-  DetailGroup,
-  DetailLabel,
-  DetailValue,
   DocumentationLinkBadge,
-  Skeleton
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import {
   useDeleteAgentVaultDelegation,
-  useListAgentVaultDelegations
+  useListAgentVaultDelegations,
+  useSetAgentVaultDelegation
 } from "@app/hooks/api/agentVault";
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultActor } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
-import { DelegationDialog } from "./DelegationDialog";
-import { MEMBER_KIND, memberDisplayName } from "./MemberName";
+import { AddDelegationSubjectsDialog } from "./AddDelegationSubjectsDialog";
+import { memberDisplayName, MemberName } from "./MemberName";
 
 type Props = {
   machineIdentityId: string;
   machineIdentityName: string;
 };
+
+type TSubjectRow = TAgentVaultActor & { addedAt: string };
+
+type TPendingRemoval = { kind: "subject"; subject: TSubjectRow } | { kind: "all-members" };
 
 // Only admins can read or change a delegation, so members don't see the section at all.
 export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityName }: Props) => {
@@ -46,63 +70,162 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
     isAdmin
   );
   const delegation = delegations?.[0] ?? null;
+  const setDelegation = useSetAgentVaultDelegation();
   const deleteDelegation = useDeleteAgentVaultDelegation();
 
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isRemoveOpen, setIsRemoveOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<TPendingRemoval | null>(null);
 
   if (!isAdmin) return null;
 
-  const handleRemove = async () => {
+  const isAllMembers = delegation?.scope === AgentVaultDelegationScope.AllMembers;
+  const subjects: TSubjectRow[] = [
+    ...(delegation?.groups ?? []).map((group) => ({
+      type: AgentVaultMemberType.Group as const,
+      ...group
+    })),
+    ...(delegation?.users ?? []).map((user) => ({
+      type: AgentVaultMemberType.User as const,
+      ...user
+    }))
+  ];
+  const isMutating = setDelegation.isPending || deleteDelegation.isPending;
+  // A delegation to selected users names at least one, so taking out the last one removes the delegation.
+  const removesDelegation = pendingRemoval?.kind === "all-members" || subjects.length === 1;
+
+  const applyRemoval = async () => {
+    if (!pendingRemoval) return;
     try {
-      await deleteDelegation.mutateAsync({ machineIdentityId });
-      createNotification({
-        text: `Delegation for "${machineIdentityName}" removed`,
-        type: "success"
-      });
-      setIsRemoveOpen(false);
+      if (removesDelegation) {
+        await deleteDelegation.mutateAsync({ machineIdentityId });
+        createNotification({
+          text: `Delegation for "${machineIdentityName}" removed`,
+          type: "success"
+        });
+      } else if (pendingRemoval.kind === "subject") {
+        const { subject } = pendingRemoval;
+        const remaining = subjects.filter(
+          (row) => !(row.type === subject.type && row.id === subject.id)
+        );
+        await setDelegation.mutateAsync({
+          machineIdentityId,
+          scope: AgentVaultDelegationScope.Selected,
+          userIds: remaining
+            .filter((row) => row.type === AgentVaultMemberType.User)
+            .map((row) => row.id),
+          groupIds: remaining
+            .filter((row) => row.type === AgentVaultMemberType.Group)
+            .map((row) => row.id)
+        });
+        createNotification({
+          text: `"${memberDisplayName(subject)}" removed from the delegation`,
+          type: "success"
+        });
+      }
+      setPendingRemoval(null);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
   };
 
-  const UserIcon = MEMBER_KIND[AgentVaultMemberType.User].icon;
-  const GroupIcon = MEMBER_KIND[AgentVaultMemberType.Group].icon;
+  const removalCopy = () => {
+    if (!pendingRemoval) return { title: "", description: "" };
+    if (pendingRemoval.kind === "all-members") {
+      return {
+        title: "Stop Acting on Behalf of All Members",
+        description: `"${machineIdentityName}" can no longer start sessions on behalf of anyone until you add users or groups, and the sessions it started stop working at the next proxy poll.`
+      };
+    }
+    const { subject } = pendingRemoval;
+    const name = memberDisplayName(subject);
+    const whose =
+      subject.type === AgentVaultMemberType.Group ? `the members of "${name}"` : `"${name}"`;
+    return {
+      title: `Remove "${name}" From the Delegation`,
+      description: `"${machineIdentityName}" can no longer start sessions on behalf of ${whose}, and the sessions it started for them stop working at the next proxy poll.${
+        removesDelegation ? " This is the last user or group, so the delegation is removed." : ""
+      }`
+    };
+  };
+  const copy = removalCopy();
 
-  const renderCoverage = () => {
+  const rowActions = (label: string, onRemove: () => void) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton variant="ghost" size="xs" aria-label={`Actions for ${label}`}>
+          <MoreHorizontalIcon />
+        </IconButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent sideOffset={2} align="end">
+        <DropdownMenuItem variant="danger" onClick={onRemove}>
+          <Trash2Icon />
+          Remove
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const renderList = () => {
+    if (isPending) return <Skeleton className="h-16 w-full" />;
     if (!delegation) {
       return (
-        <p className="text-sm text-muted">
-          This machine identity can&apos;t start sessions on behalf of users.
-        </p>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No users or groups yet</EmptyTitle>
+            <EmptyDescription>
+              Add the users and groups this machine identity can start sessions for.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       );
     }
     return (
-      <DetailGroup>
-        <Detail>
-          <DetailLabel>Acts On Behalf Of</DetailLabel>
-          <DetailValue>
-            {delegation.scope === AgentVaultDelegationScope.AllMembers ? (
-              "Every Agent Vault member"
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {delegation.groups.map((group) => (
-                  <Badge key={group.id} variant="neutral">
-                    <GroupIcon />
-                    {group.name}
-                  </Badge>
-                ))}
-                {delegation.users.map((user) => (
-                  <Badge key={user.id} variant="neutral">
-                    <UserIcon />
-                    {memberDisplayName({ type: AgentVaultMemberType.User, ...user })}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </DetailValue>
-        </Detail>
-      </DetailGroup>
+      <Table className="overflow-hidden rounded-md border border-border">
+        <TableHeader>
+          <TableRow>
+            <TableHead>User or Group</TableHead>
+            <TableHead>Added</TableHead>
+            <TableHead variant="action" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isAllMembers ? (
+            <TableRow>
+              <TableCell>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <UsersRoundIcon className="size-4 shrink-0 text-muted" />
+                  <div className="min-w-0">
+                    <div className="truncate">All Agent Vault Members</div>
+                    <div className="truncate text-xs leading-4 text-muted">
+                      Every user in Agent Vault, including users added later
+                    </div>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell>{format(new Date(delegation.updatedAt), "MMM d, yyyy")}</TableCell>
+              <TableCell variant="action">
+                {rowActions("All Agent Vault Members", () =>
+                  setPendingRemoval({ kind: "all-members" })
+                )}
+              </TableCell>
+            </TableRow>
+          ) : (
+            subjects.map((subject) => (
+              <TableRow key={`${subject.type}:${subject.id}`}>
+                <TableCell>
+                  <MemberName member={subject} />
+                </TableCell>
+                <TableCell>{format(new Date(subject.addedAt), "MMM d, yyyy")}</TableCell>
+                <TableCell variant="action">
+                  {rowActions(memberDisplayName(subject), () =>
+                    setPendingRemoval({ kind: "subject", subject })
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
     );
   };
 
@@ -114,51 +237,54 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
           <DocumentationLinkBadge href={AgentVaultDocsUrls.sessionsOnBehalfOfUsers} />
         </CardTitle>
         <CardDescription>
-          Let this machine identity start sessions on behalf of users, with their access bundles and
-          personal values.
+          The users this machine identity can start sessions on behalf of. Each session uses that
+          user&apos;s access bundles and personal values.
         </CardDescription>
         {!isPending && (
-          <CardAction className="flex gap-2">
-            {delegation ? (
-              <>
-                <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-                  <PencilIcon />
-                  Edit Delegation
-                </Button>
-                <Button variant="danger" onClick={() => setIsRemoveOpen(true)}>
-                  <Trash2Icon />
-                  Remove
-                </Button>
-              </>
-            ) : (
-              <Button variant="av" onClick={() => setIsEditOpen(true)}>
-                <PlusIcon />
-                Set Up Delegation
-              </Button>
-            )}
+          <CardAction>
+            <Button variant="av" onClick={() => setIsAddOpen(true)}>
+              <UserPlusIcon />
+              Add Users or Groups
+            </Button>
           </CardAction>
         )}
       </CardHeader>
-      <CardContent>{isPending ? <Skeleton className="h-4 w-1/2" /> : renderCoverage()}</CardContent>
+      <CardContent>{renderList()}</CardContent>
 
-      <DelegationDialog
-        isOpen={isEditOpen}
-        onOpenChange={setIsEditOpen}
+      <AddDelegationSubjectsDialog
+        isOpen={isAddOpen}
+        onOpenChange={setIsAddOpen}
         machineIdentityId={machineIdentityId}
         machineIdentityName={machineIdentityName}
         delegation={delegation}
       />
 
-      <DeleteConfirmDialog
-        isOpen={isRemoveOpen}
-        onOpenChange={setIsRemoveOpen}
-        title={`Remove Delegation for "${machineIdentityName}"`}
-        description="It can no longer start sessions on behalf of users, and the sessions it already started on their behalf stop working."
-        confirmKey="remove"
-        confirmLabel="Remove Delegation"
-        isPending={deleteDelegation.isPending}
-        onConfirm={handleRemove}
-      />
+      <AlertDialog
+        open={Boolean(pendingRemoval)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && !isMutating) setPendingRemoval(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{copy.title}</AlertDialogTitle>
+            <AlertDialogDescription>{copy.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isMutating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isMutating}
+              onClick={async (event) => {
+                event.preventDefault();
+                await applyRemoval();
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

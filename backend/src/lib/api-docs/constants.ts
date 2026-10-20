@@ -4777,6 +4777,7 @@ export const AGENT_VAULT = {
     lastName: "The last name of the user.",
     groupId: "The ID of the group.",
     groupName: "The name of the group.",
+    addedAt: "When the user or group was added to the delegation.",
     limit: "The maximum number of delegations to return.",
     offset: "How many delegations to skip."
   }

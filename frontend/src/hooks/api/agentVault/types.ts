@@ -249,8 +249,12 @@ export type TAgentVaultSession = {
 export type TAgentVaultDelegation = {
   machineIdentity: { id: string; name: string };
   scope: AgentVaultDelegationScope;
-  users: Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "type">[];
-  groups: Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>, "type">[];
+  users: (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "type"> & {
+    addedAt: string;
+  })[];
+  groups: (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>, "type"> & {
+    addedAt: string;
+  })[];
   createdAt: string;
   updatedAt: string;
 };

@@ -25,7 +25,7 @@ type TAgentVaultDelegationServiceFactoryDep = {
     TAgentVaultDelegationDALFactory,
     "upsertScope" | "findViews" | "delete" | "transaction"
   >;
-  agentVaultDelegationSubjectDAL: Pick<TAgentVaultDelegationSubjectDALFactory, "delete" | "insertMany">;
+  agentVaultDelegationSubjectDAL: Pick<TAgentVaultDelegationSubjectDALFactory, "find" | "delete" | "insertMany">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -168,16 +168,26 @@ export const agentVaultDelegationServiceFactory = ({
     const delegation = await agentVaultDelegationDAL.transaction(async (tx) => {
       const row = await agentVaultDelegationDAL.upsertScope({ projectId, identityId: machineIdentityId, scope }, tx);
 
-      // A write replaces the whole list, so a subject left out is no longer covered.
-      await agentVaultDelegationSubjectDAL.delete({ delegationId: row.id }, tx);
-      const subjects =
-        scope === AgentVaultDelegationScope.Selected
-          ? [
-              ...userIds.map((userId) => ({ delegationId: row.id, userId })),
-              ...groupIds.map((groupId) => ({ delegationId: row.id, groupId }))
-            ]
-          : [];
-      if (subjects.length) await agentVaultDelegationSubjectDAL.insertMany(subjects, tx);
+      // A write replaces the whole list, so a subject left out is no longer covered. Rows that stay are kept rather
+      // than rewritten, so each one's addedAt still says when it was added.
+      const wantedUserIds = new Set(scope === AgentVaultDelegationScope.Selected ? userIds : []);
+      const wantedGroupIds = new Set(scope === AgentVaultDelegationScope.Selected ? groupIds : []);
+      const existing = await agentVaultDelegationSubjectDAL.find({ delegationId: row.id }, { tx });
+      const stale = existing.filter((subject) =>
+        subject.userId ? !wantedUserIds.has(subject.userId) : !wantedGroupIds.has(subject.groupId!)
+      );
+      if (stale.length) {
+        await agentVaultDelegationSubjectDAL.delete({ $in: { id: stale.map((subject) => subject.id) } }, tx);
+      }
+      const keptUserIds = new Set(existing.map((subject) => subject.userId).filter(Boolean));
+      const keptGroupIds = new Set(existing.map((subject) => subject.groupId).filter(Boolean));
+      const added = [
+        ...[...wantedUserIds].filter((id) => !keptUserIds.has(id)).map((userId) => ({ delegationId: row.id, userId })),
+        ...[...wantedGroupIds]
+          .filter((id) => !keptGroupIds.has(id))
+          .map((groupId) => ({ delegationId: row.id, groupId }))
+      ];
+      if (added.length) await agentVaultDelegationSubjectDAL.insertMany(added, tx);
 
       const {
         delegations: [written]
