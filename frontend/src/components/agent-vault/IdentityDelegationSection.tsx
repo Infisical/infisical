@@ -197,50 +197,48 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
                   <UsersRoundIcon className="size-4 shrink-0 text-muted" />
                   <div className="min-w-0">
                     <div className="truncate">All Agent Vault Members</div>
-                    <div className="flex min-w-0 items-center gap-2 text-xs leading-4 text-muted">
-                      <span className="min-w-0 truncate">
-                        Every user in Agent Vault, including users added later
-                      </span>
-                      <MissingAccessBundlesHint
-                        bundles={delegation.missingAccessBundles}
-                        machineIdentityName={machineIdentityName}
-                        onBehalfOf="Agent Vault members"
-                      />
+                    <div className="truncate text-xs leading-4 text-muted">
+                      Every user in Agent Vault, including users added later
                     </div>
                   </div>
                 </div>
               </TableCell>
               <TableCell>{format(new Date(delegation.updatedAt), "MMM d, yyyy")}</TableCell>
               <TableCell variant="action">
-                {rowActions("All Agent Vault Members", () =>
-                  setPendingRemoval({ kind: "all-members" })
-                )}
+                <div className="flex items-center justify-end gap-2">
+                  <MissingAccessBundlesHint
+                    bundles={delegation.missingAccessBundles}
+                    machineIdentityName={machineIdentityName}
+                    onBehalfOf="Agent Vault members"
+                  />
+                  {rowActions("All Agent Vault Members", () =>
+                    setPendingRemoval({ kind: "all-members" })
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ) : (
             subjects.map((subject) => (
               <TableRow key={`${subject.type}:${subject.id}`}>
                 <TableCell>
-                  <MemberName
-                    member={subject}
-                    subtitleAddon={
-                      <MissingAccessBundlesHint
-                        bundles={subject.missingAccessBundles}
-                        machineIdentityName={machineIdentityName}
-                        onBehalfOf={
-                          subject.type === AgentVaultMemberType.Group
-                            ? `members of "${memberDisplayName(subject)}"`
-                            : `"${memberDisplayName(subject)}"`
-                        }
-                      />
-                    }
-                  />
+                  <MemberName member={subject} />
                 </TableCell>
                 <TableCell>{format(new Date(subject.addedAt), "MMM d, yyyy")}</TableCell>
                 <TableCell variant="action">
-                  {rowActions(memberDisplayName(subject), () =>
-                    setPendingRemoval({ kind: "subject", subject })
-                  )}
+                  <div className="flex items-center justify-end gap-2">
+                    <MissingAccessBundlesHint
+                      bundles={subject.missingAccessBundles}
+                      machineIdentityName={machineIdentityName}
+                      onBehalfOf={
+                        subject.type === AgentVaultMemberType.Group
+                          ? `members of "${memberDisplayName(subject)}"`
+                          : `"${memberDisplayName(subject)}"`
+                      }
+                    />
+                    {rowActions(memberDisplayName(subject), () =>
+                      setPendingRemoval({ kind: "subject", subject })
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))

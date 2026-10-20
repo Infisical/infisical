@@ -30,7 +30,7 @@ export const MissingAccessBundlesHint = ({ bundles, machineIdentityName, onBehal
           <span className="underline decoration-dotted underline-offset-2">{label}</span>
         </button>
       </HoverCardTrigger>
-      <HoverCardContent align="start" className="flex w-80 flex-col gap-2.5">
+      <HoverCardContent align="end" className="flex w-80 flex-col gap-2.5">
         <p className="text-xs text-muted">
           {`Sessions on behalf of ${onBehalfOf} can't use these access bundles, because "${machineIdentityName}" isn't granted them.`}
         </p>

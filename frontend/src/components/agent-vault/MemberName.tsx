@@ -21,13 +21,7 @@ export const memberSubtitle = (actor: TAgentVaultActor | TAgentVaultSessionActor
   return actor.email || actor.username;
 };
 
-export const MemberName = ({
-  member,
-  subtitleAddon
-}: {
-  member: TAgentVaultActor;
-  subtitleAddon?: React.ReactNode;
-}) => {
+export const MemberName = ({ member }: { member: TAgentVaultActor }) => {
   const { label, icon: Icon } = MEMBER_KIND[member.type];
 
   return (
@@ -36,14 +30,7 @@ export const MemberName = ({
       <span className="sr-only">{label}</span>
       <div className="min-w-0">
         <div className="truncate">{memberDisplayName(member)}</div>
-        {subtitleAddon ? (
-          <div className="flex min-w-0 items-center gap-2 text-xs leading-4 text-muted">
-            <span className="min-w-0 truncate">{memberSubtitle(member)}</span>
-            {subtitleAddon}
-          </div>
-        ) : (
-          <div className="truncate text-xs leading-4 text-muted">{memberSubtitle(member)}</div>
-        )}
+        <div className="truncate text-xs leading-4 text-muted">{memberSubtitle(member)}</div>
       </div>
     </div>
   );
