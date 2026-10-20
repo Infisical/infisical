@@ -58,6 +58,7 @@ export type WizardState = {
   hsmKeyLabel: string;
   hsmKeyId: string;
   hsmKeyIdRequired: boolean;
+  hsmKeyUnresolved: boolean;
   adcsTemplate: string;
   pendingMembers: PendingMember[];
   policySteps: PolicyStep[];
@@ -80,6 +81,7 @@ export const INITIAL_WIZARD_STATE: WizardState = {
   hsmKeyLabel: "",
   hsmKeyId: "",
   hsmKeyIdRequired: false,
+  hsmKeyUnresolved: false,
   adcsTemplate: "",
   pendingMembers: [],
   policySteps: [],

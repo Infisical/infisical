@@ -177,16 +177,18 @@ export const signerDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findOneByCurrentHsmKey = async (
-    hsmConnectorId: string,
+  const findOneInOrgByCurrentHsmPublicKey = async (
+    projectId: string,
     hsmPublicKeySpki: Buffer,
     excludeSignerId: string | undefined,
     tx?: Knex
   ): Promise<TPkiSigners | undefined> => {
     try {
-      let query = (tx || db.replicaNode())(TableName.PkiSigners)
+      const conn = tx || db.replicaNode();
+      let query = conn(TableName.PkiSigners)
         .join(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
-        .where(`${TableName.Certificate}.hsmConnectorId`, hsmConnectorId)
+        .join(TableName.Project, `${TableName.PkiSigners}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, conn(TableName.Project).select("orgId").where("id", projectId))
         .where(`${TableName.Certificate}.hsmPublicKeySpki`, hsmPublicKeySpki)
         .select(selectAllTableCols(TableName.PkiSigners));
       if (excludeSignerId) {
@@ -194,7 +196,7 @@ export const signerDALFactory = (db: TDbClient) => {
       }
       return (await query.first()) as TPkiSigners | undefined;
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindSignerByCurrentHsmKey" });
+      throw new DatabaseError({ error, name: "FindSignerInOrgByCurrentHsmPublicKey" });
     }
   };
 
@@ -204,6 +206,6 @@ export const signerDALFactory = (db: TDbClient) => {
     findByStatusWithCertificate,
     findByProjectId,
     countByProjectId,
-    findOneByCurrentHsmKey
+    findOneInOrgByCurrentHsmPublicKey
   };
 };

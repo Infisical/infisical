@@ -167,6 +167,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       hsmKeyLabel: state.hsmKeyLabel,
       hsmKeyId: state.hsmKeyId,
       hsmKeyIdRequired: state.hsmKeyIdRequired,
+      hsmKeyUnresolved: state.hsmKeyUnresolved,
       adcsTemplate: state.adcsTemplate
     }
   });
@@ -198,6 +199,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       hsmKeyLabel: "",
       hsmKeyId: "",
       hsmKeyIdRequired: false,
+      hsmKeyUnresolved: false,
       adcsTemplate: ""
     });
   };
@@ -293,6 +295,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       hsmKeyLabel: values.hsmKeyLabel ?? "",
       hsmKeyId: values.hsmKeyId ?? "",
       hsmKeyIdRequired: values.hsmKeyIdRequired ?? false,
+      hsmKeyUnresolved: values.hsmKeyUnresolved ?? false,
       adcsTemplate: values.adcsTemplate ?? ""
     }));
   };

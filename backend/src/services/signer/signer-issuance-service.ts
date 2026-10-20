@@ -410,19 +410,26 @@ export const signerIssuanceServiceFactory = ({
         );
         return;
       }
-      const rows = await signerIssuanceJobDAL.update(
-        { id: job.id, status: SignerIssuanceJobStatus.Pending },
-        {
-          nextPollAt: new Date(Date.now() + RETRY_BACKOFF_MS),
-          failureReason: reason
+      await signerDAL.transaction(async (tx) => {
+        const rows = await signerIssuanceJobDAL.update(
+          { id: job.id, status: SignerIssuanceJobStatus.Pending },
+          {
+            nextPollAt: new Date(Date.now() + RETRY_BACKOFF_MS),
+            failureReason: reason
+          },
+          tx
+        );
+        if (rows.length > 0) {
+          await signerDAL.updateById(
+            job.signerId,
+            {
+              status: SignerStatus.Pending,
+              certificateFailureReason: reason
+            },
+            tx
+          );
         }
-      );
-      if (rows.length > 0) {
-        await signerDAL.updateById(job.signerId, {
-          status: SignerStatus.Pending,
-          certificateFailureReason: reason
-        });
-      }
+      });
       logger.error(
         err,
         `signer issuance: attempt failed, will retry [jobId=${job.id}] [signerId=${job.signerId}] [attempts=${job.attempts}/${job.maxAttempts}]`
@@ -432,15 +439,24 @@ export const signerIssuanceServiceFactory = ({
 
   const markJobFailed = async (job: TPkiSignerCertificateIssuanceJobs, reason: string) => {
     const trimmed = reason.slice(0, 1000);
-    const rows = await signerIssuanceJobDAL.update(
-      { id: job.id, status: SignerIssuanceJobStatus.Pending },
-      { status: SignerIssuanceJobStatus.Failed, failureReason: trimmed }
-    );
-    if (rows.length === 0) return;
-    await signerDAL.updateById(job.signerId, {
-      status: SignerStatus.Failed,
-      certificateFailureReason: trimmed
+    const markedFailed = await signerDAL.transaction(async (tx) => {
+      const rows = await signerIssuanceJobDAL.update(
+        { id: job.id, status: SignerIssuanceJobStatus.Pending },
+        { status: SignerIssuanceJobStatus.Failed, failureReason: trimmed },
+        tx
+      );
+      if (rows.length === 0) return false;
+      await signerDAL.updateById(
+        job.signerId,
+        {
+          status: SignerStatus.Failed,
+          certificateFailureReason: trimmed
+        },
+        tx
+      );
+      return true;
     });
+    if (!markedFailed) return;
     logger.info(
       `signer issuance: job marked Failed [jobId=${job.id}] [signerId=${job.signerId}] [reason=${trimmed.slice(0, 200)}]`
     );

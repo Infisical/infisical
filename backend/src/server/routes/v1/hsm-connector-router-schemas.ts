@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { slugSchema } from "@app/server/lib/schemas";
 import { CaStatus, InternalCaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { HsmConnectorCredentialsSchema } from "@app/services/hsm-connector/hsm-connector-fns";
+import { HsmConnectorCredentialsSchema, HsmKeyLabelSchema } from "@app/services/hsm-connector/hsm-connector-fns";
 
 const HSM_CONNECTOR_NAME_MAX = 32;
 const HSM_CONNECTOR_DESCRIPTION_MAX = 256;
@@ -105,7 +105,7 @@ export const HsmConnectorLinkedResourcesResponseSchema = z.object({
 });
 
 export const HsmConnectorKeysQuerySchema = z.object({
-  label: z.string().trim().min(1).max(128).describe("The exact label (CKA_LABEL) of the private keys to look up.")
+  label: HsmKeyLabelSchema.describe("The exact label (CKA_LABEL) of the private keys to look up.")
 });
 
 export const HsmConnectorKeysResponseSchema = z.object({

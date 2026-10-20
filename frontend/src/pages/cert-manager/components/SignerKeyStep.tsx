@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Control, Controller, useController, useWatch } from "react-hook-form";
 import { AxiosError } from "axios";
 import { AlertTriangleIcon, InfoIcon } from "lucide-react";
@@ -36,15 +36,12 @@ import {
   SignerKeyAlgorithm,
   signerKeyAlgorithmLabels
 } from "@app/hooks/api/signers";
+import { CreateHsmConnectorWizard } from "@app/pages/cert-manager/SettingsPage/components/HsmConnectorsTab/CreateHsmConnectorWizard";
 
 import { ExternalOrderMode, isUsingExistingCertificate } from "./DigiCertExistingOrderField";
 
-const shortenKeyId = (keyId: string) => (keyId.length > 8 ? `${keyId.slice(0, 8)}...` : keyId);
-
 const formatHsmKeyOption = (key: THsmConnectorKey) =>
-  key.keyAlgorithm
-    ? `ID ${shortenKeyId(key.keyId)} (${key.keyAlgorithm.replace("_", " ")})`
-    : `ID ${shortenKeyId(key.keyId)}`;
+  key.keyAlgorithm ? `ID ${key.keyId} (${key.keyAlgorithm.replace("_", " ")})` : `ID ${key.keyId}`;
 
 export type HsmConnectorOption = { id: string; name: string; slotLabel: string };
 
@@ -73,6 +70,11 @@ export const SignerKeyStep = ({
     ProjectPermissionHsmConnectorActions.Attach,
     ProjectPermissionSub.HsmConnectors
   );
+  const canCreateHsmConnector = permission.can(
+    ProjectPermissionHsmConnectorActions.Create,
+    ProjectPermissionSub.HsmConnectors
+  );
+  const [isCreateHsmConnectorOpen, setIsCreateHsmConnectorOpen] = useState(false);
 
   const keySource = useWatch({ control, name: "keySource" });
   const isHsm = keySource === CertKeySource.Hsm;
@@ -96,10 +98,12 @@ export const SignerKeyStep = ({
     fieldState: { error: hsmKeyIdError }
   } = useController({ control, name: "hsmKeyId" });
   const { field: hsmKeyIdRequiredField } = useController({ control, name: "hsmKeyIdRequired" });
-  const [debouncedKeyLabel] = useDebounce(((hsmKeyLabelField.value as string) ?? "").trim());
+  const { field: hsmKeyUnresolvedField } = useController({ control, name: "hsmKeyUnresolved" });
+  const typedKeyLabel = ((hsmKeyLabelField.value as string) ?? "").trim();
+  const [debouncedKeyLabel] = useDebounce(typedKeyLabel);
   const {
     data: matchingHsmKeys,
-    isFetching: isHsmKeyLookupPending,
+    isFetching: isHsmKeyLookupFetching,
     error: hsmKeyLookupError
   } = useListHsmConnectorKeys(hsmConnectorId, debouncedKeyLabel, {
     enabled: isHsm && usingExistingCertificate
@@ -107,8 +111,16 @@ export const SignerKeyStep = ({
   const hsmKeyChoices = (matchingHsmKeys ?? []).filter((key) => Boolean(key.keyId));
   const canChooseHsmKey = (matchingHsmKeys?.length ?? 0) > 1 && hsmKeyChoices.length > 0;
 
+  const isHsmKeyLookupPending =
+    isHsmKeyLookupFetching || (Boolean(hsmConnectorId) && debouncedKeyLabel !== typedKeyLabel);
+  useEffect(() => {
+    hsmKeyUnresolvedField.onChange(isHsmKeyLookupPending || matchingHsmKeys?.length === 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHsmKeyLookupPending, matchingHsmKeys]);
+
   useEffect(() => {
     const keys = matchingHsmKeys ?? [];
+
     hsmKeyIdRequiredField.onChange(keys.length > 1 && keys.some((key) => Boolean(key.keyId)));
     if (keys.length === 1) {
       hsmKeyIdField.onChange(keys[0].keyId);
@@ -123,7 +135,7 @@ export const SignerKeyStep = ({
     hsmKeyLookupHint = "Looking up the key...";
   } else if (matchingHsmKeys?.length === 1) {
     hsmKeyLookupHint = matchingHsmKeys[0].keyId
-      ? `Found the key (ID ${shortenKeyId(matchingHsmKeys[0].keyId)}).`
+      ? `Found the key (ID ${matchingHsmKeys[0].keyId}).`
       : "Found the key.";
   } else if (matchingHsmKeys && matchingHsmKeys.length > 1) {
     hsmKeyLookupHint = canChooseHsmKey
@@ -138,6 +150,11 @@ export const SignerKeyStep = ({
   } else if (matchingHsmKeys?.length === 0) {
     hsmKeyLookupProblem = "No private key with this label in the connector's slot.";
   }
+
+  const visibleHsmKeyLabelError = ((hsmKeyLabelField.value as string) ?? "").trim()
+    ? undefined
+    : hsmKeyLabelError;
+  const visibleHsmKeyIdError = hsmKeyIdField.value ? undefined : hsmKeyIdError;
 
   const isAlgorithmAllowed = (algo: SignerKeyAlgorithm): boolean => {
     if (algo === currentKeyAlgorithm) return true;
@@ -237,20 +254,35 @@ export const SignerKeyStep = ({
                   options={hsmConnectorOptions}
                   value={hsmConnectorOptions.find((o) => o.id === field.value) ?? null}
                   onValueChange={(opt) => field.onChange(opt.id)}
+                  creation={
+                    canCreateHsmConnector
+                      ? {
+                          mode: "action",
+                          emptyLabel: "Add HSM Connector",
+                          formatLabel: () => "Add HSM Connector",
+                          onAction: () => setIsCreateHsmConnectorOpen(true)
+                        }
+                      : undefined
+                  }
                   getOptionLabel={(opt) => `${opt.name} (slot ${opt.slotLabel})`}
                   getOptionValue={(opt) => opt.id}
                   placeholder="Select an HSM Connector..."
                   searchPlaceholder="Search HSM Connectors..."
                   searchAriaLabel="Search HSM Connectors"
                   emptyMessage={
-                    hsmConnectorOptions.length === 0
-                      ? "No HSM Connectors configured. Add one in Settings → HSM Connectors."
-                      : "No match."
+                    hsmConnectorOptions.length === 0 ? "No HSM Connectors configured." : "No match."
                   }
                   isError={Boolean(error)}
                 />
                 <FieldDescription>Which HSM connector to use.</FieldDescription>
                 <FieldError errors={[error]} />
+                {canCreateHsmConnector && (
+                  <CreateHsmConnectorWizard
+                    isOpen={isCreateHsmConnectorOpen}
+                    onOpenChange={setIsCreateHsmConnectorOpen}
+                    onCreated={(connector) => field.onChange(connector.id)}
+                  />
+                )}
               </FieldContent>
             </Field>
           )}
@@ -271,7 +303,8 @@ export const SignerKeyStep = ({
                       <InfoIcon className="h-3.5 w-3.5 text-muted" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      When off, DigiCert reissues the certificate and revokes the current one.
+                      When off, a new key is generated on the HSM and DigiCert replaces the
+                      certificate in this order.
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -280,8 +313,8 @@ export const SignerKeyStep = ({
                 </FieldDescription>
                 {field.value !== ExternalOrderMode.UseExisting && (
                   <FieldDescription className="text-warning">
-                    Reissuing replaces the certificate in this order. DigiCert revokes the previous
-                    one within 72 hours, after which it can no longer be used to sign.
+                    DigiCert revokes the order&apos;s current certificate within 72 hours of the
+                    replacement. After that, it can no longer be used to sign.
                   </FieldDescription>
                 )}
               </FieldContent>
@@ -310,12 +343,12 @@ export const SignerKeyStep = ({
               {...hsmKeyLabelField}
               value={hsmKeyLabelField.value ?? ""}
               placeholder="acme-code-signing-2026"
-              isError={Boolean(hsmKeyLabelError || hsmKeyLookupProblem)}
+              isError={Boolean(visibleHsmKeyLabelError || hsmKeyLookupProblem)}
             />
             <FieldDescription>{hsmKeyLookupHint}</FieldDescription>
             <FieldError
               errors={[
-                hsmKeyLabelError,
+                visibleHsmKeyLabelError,
                 hsmKeyLookupProblem ? { message: hsmKeyLookupProblem } : undefined
               ]}
             />
@@ -330,7 +363,7 @@ export const SignerKeyStep = ({
           </FieldLabel>
           <FieldContent>
             <Select value={hsmKeyIdField.value || undefined} onValueChange={hsmKeyIdField.onChange}>
-              <SelectTrigger className="w-full" isError={Boolean(hsmKeyIdError)}>
+              <SelectTrigger className="w-full" isError={Boolean(visibleHsmKeyIdError)}>
                 <SelectValue placeholder="Select a key..." />
               </SelectTrigger>
               <SelectContent position="popper">
@@ -342,7 +375,7 @@ export const SignerKeyStep = ({
               </SelectContent>
             </Select>
             <FieldDescription>The key&apos;s CKA_ID on the HSM.</FieldDescription>
-            <FieldError errors={[hsmKeyIdError]} />
+            <FieldError errors={[visibleHsmKeyIdError]} />
           </FieldContent>
         </Field>
       )}

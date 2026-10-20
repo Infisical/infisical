@@ -139,6 +139,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       hsmKeyLabel: "",
       hsmKeyId: "",
       hsmKeyIdRequired: false,
+      hsmKeyUnresolved: false,
       adcsTemplate: signerAdcsTemplate
     }
   });
@@ -213,6 +214,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
         hsmKeyLabel: "",
         hsmKeyId: "",
         hsmKeyIdRequired: false,
+        hsmKeyUnresolved: false,
         adcsTemplate: signerAdcsTemplate
       });
     }

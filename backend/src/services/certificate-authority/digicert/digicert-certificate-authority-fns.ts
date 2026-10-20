@@ -746,6 +746,7 @@ export const DigiCertCertificateAuthorityFns = ({
     assertCodeSigningOrderReusable: codeSigningFns.assertCodeSigningOrderReusable,
     getCodeSigningOrderStatus: codeSigningFns.getCodeSigningOrderStatus,
     fetchIssuedCodeSigningCertificate: codeSigningFns.fetchIssuedCodeSigningCertificate,
+    prepareCodeSigningCertificate: codeSigningFns.prepareCodeSigningCertificate,
     downloadCodeSigningCertificate: codeSigningFns.downloadCodeSigningCertificate
   };
 };

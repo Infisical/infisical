@@ -31,6 +31,7 @@ import {
   Pkcs11Mechanism,
   wrapRsaPkcs1DigestInfo
 } from "@app/lib/csr/pkcs11-algorithm-map";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
@@ -180,7 +181,7 @@ type TSignerServiceFactoryDep = {
     | "revokeCertificate"
     | "assertCodeSigningOrderReusable"
     | "fetchIssuedCodeSigningCertificate"
-    | "downloadCodeSigningCertificate"
+    | "prepareCodeSigningCertificate"
   >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
@@ -488,14 +489,15 @@ export const signerServiceFactory = ({
       { hsmConnectorId, projectId, hsmKeyLabel, hsmKeyId: requestedHsmKeyId, certificate }
     );
 
-    const { certificateId } = await digicertFns.downloadCodeSigningCertificate({ caId, orderId, pemBundle });
+    const preparedCertificate = await digicertFns.prepareCodeSigningCertificate({ caId, orderId, pemBundle });
 
     const validityDays = Math.round(
       (certificate.notAfter.getTime() - certificate.notBefore.getTime()) / (24 * 60 * 60 * 1000)
     );
     return {
       orderId,
-      certificateId,
+      projectId,
+      preparedCertificate,
       hsm: {
         keySource: CertKeySource.Hsm,
         hsmConnectorId,
@@ -514,15 +516,19 @@ export const signerServiceFactory = ({
     signerId: string | undefined,
     tx: Knex
   ) => {
-    await certificateDAL.findByIdForUpdate(imported.certificateId, tx);
-    const signerUsingCertificate = await signerDAL.findOne({ certificateId: imported.certificateId }, tx);
+    const { preparedCertificate } = imported;
+    const certificateId = preparedCertificate.insert
+      ? await preparedCertificate.insert(tx)
+      : preparedCertificate.existingCertificateId;
+    await certificateDAL.findByIdForUpdate(certificateId, tx);
+    const signerUsingCertificate = await signerDAL.findOne({ certificateId }, tx);
     if (signerUsingCertificate && signerUsingCertificate.id !== signerId) {
       throw new ConflictError({
         message: `The certificate in DigiCert order ${imported.orderId} is already used by signer '${signerUsingCertificate.name}'.`
       });
     }
-    const signerUsingKey = await signerDAL.findOneByCurrentHsmKey(
-      imported.hsm.hsmConnectorId,
+    const signerUsingKey = await signerDAL.findOneInOrgByCurrentHsmPublicKey(
+      imported.projectId,
       imported.hsm.hsmPublicKeySpki,
       signerId,
       tx
@@ -532,7 +538,24 @@ export const signerServiceFactory = ({
         message: `The private key of the certificate in DigiCert order ${imported.orderId} is already used by another signer. Each signer needs its own key.`
       });
     }
-    await certificateDAL.updateById(imported.certificateId, imported.hsm, tx);
+    await certificateDAL.updateById(certificateId, imported.hsm, tx);
+    return certificateId;
+  };
+
+  const $rethrowConcurrentImport = async (
+    error: unknown,
+    imported: Awaited<ReturnType<typeof $importExistingDigiCertCertificate>> | null
+  ) => {
+    if (
+      imported?.preparedCertificate.insert &&
+      error instanceof DatabaseError &&
+      (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation &&
+      (await imported.preparedCertificate.findConcurrentInsert())
+    ) {
+      throw new ConflictError({
+        message: `The certificate in DigiCert order ${imported.orderId} was attached to a signer by another request at the same time. Refresh and try again.`
+      });
+    }
   };
 
   const create = async (dto: TCreateSignerDTO) => {
@@ -691,17 +714,15 @@ export const signerServiceFactory = ({
       });
     }
 
-    const finalCertificateId = usingExistingCert
-      ? (dto.certificateId as string)
-      : (importedCertificate?.certificateId ?? issuedCertificateId);
+    const finalCertificateId = usingExistingCert ? (dto.certificateId as string) : issuedCertificateId;
     const initialStatus: SignerStatus =
       isExternalCa && !importedCertificate ? SignerStatus.Pending : SignerStatus.Active;
 
     try {
       const result = await signerDAL.transaction(async (tx) => {
-        if (importedCertificate) {
-          await $attachImportedCertificate(importedCertificate, undefined, tx);
-        }
+        const importedCertificateId = importedCertificate
+          ? await $attachImportedCertificate(importedCertificate, undefined, tx)
+          : null;
         const project = await projectDAL.findOne({ id: dto.projectId }, tx);
         if (!project) {
           throw new NotFoundError({ message: "Certificate Manager has not been set up for this organization." });
@@ -725,7 +746,7 @@ export const signerServiceFactory = ({
             projectId: dto.projectId,
             name: dto.name,
             description: dto.description,
-            certificateId: finalCertificateId,
+            certificateId: importedCertificateId ?? finalCertificateId,
             caId: resolvedCaId,
             commonName: usingCa ? (importedCertificate?.commonName ?? dto.commonName) : null,
             certificateTtlDays: usingCa
@@ -979,6 +1000,7 @@ export const signerServiceFactory = ({
 
       return result;
     } catch (error) {
+      await $rethrowConcurrentImport(error, importedCertificate);
       // 23505 = unique constraint violation
       if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
         throw new BadRequestError({
@@ -1455,28 +1477,33 @@ export const signerServiceFactory = ({
         actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
         signerId: signer.id
       });
-      return signerDAL.transaction(async (tx) => {
-        await signerIssuanceService.cancelOpenJobs(
-          signer.id,
-          "Superseded by an existing DigiCert certificate attached to the signer.",
-          tx
-        );
-        await $attachImportedCertificate(imported, signer.id, tx);
-        return signerDAL.updateById(
-          signer.id,
-          {
-            caId: ca.id,
-            commonName: imported.commonName,
-            certificateTtlDays: imported.certificateTtlDays,
-            keyAlgorithm: imported.keyAlgorithm,
-            externalCaConfig: null,
-            certificateId: imported.certificateId,
-            status: SignerStatus.Active,
-            certificateFailureReason: null
-          },
-          tx
-        );
-      });
+      return signerDAL
+        .transaction(async (tx) => {
+          await signerIssuanceService.cancelOpenJobs(
+            signer.id,
+            "Superseded by an existing DigiCert certificate attached to the signer.",
+            tx
+          );
+          const importedCertificateId = await $attachImportedCertificate(imported, signer.id, tx);
+          return signerDAL.updateById(
+            signer.id,
+            {
+              caId: ca.id,
+              commonName: imported.commonName,
+              certificateTtlDays: imported.certificateTtlDays,
+              keyAlgorithm: imported.keyAlgorithm,
+              externalCaConfig: null,
+              certificateId: importedCertificateId,
+              status: SignerStatus.Active,
+              certificateFailureReason: null
+            },
+            tx
+          );
+        })
+        .catch(async (error: unknown) => {
+          await $rethrowConcurrentImport(error, imported);
+          throw error;
+        });
     }
 
     const providedAdcsTemplate = reissueExternalConfig?.template?.trim() || undefined;

@@ -253,7 +253,7 @@ export const createHsmConnectorRouter =
       onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const { keys } = await server.services.hsmConnector.listHsmConnectorKeys(
-          { connectorId: req.params.connectorId, keyLabel: req.query.label },
+          { connectorId: req.params.connectorId, projectId: resolveProjectId(req), keyLabel: req.query.label },
           req.permission
         );
         return { keys };

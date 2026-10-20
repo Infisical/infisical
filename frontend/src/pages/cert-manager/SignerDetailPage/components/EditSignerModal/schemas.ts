@@ -64,6 +64,7 @@ export const createCertificateSchema = (currentKey: TCurrentSignerKey) =>
       hsmKeyLabel: z.string().trim().max(128).optional().default(""),
       hsmKeyId: z.string().trim().max(256).optional().default(""),
       hsmKeyIdRequired: z.boolean().optional().default(false),
+      hsmKeyUnresolved: z.boolean().optional().default(false),
       // AD CS only: the certificate template this signer requests when issuing.
       adcsTemplate: z.string().trim().optional().default("")
     })
@@ -90,6 +91,10 @@ export const createCertificateSchema = (currentKey: TCurrentSignerKey) =>
         !isUsingExistingCertificate(data) || !data.hsmKeyIdRequired || Boolean(data.hsmKeyId),
       { message: "Select which key to use.", path: ["hsmKeyId"] }
     )
+    .refine((data) => !isUsingExistingCertificate(data) || !data.hsmKeyUnresolved, {
+      message: "Wait for the key lookup, or enter the label of a private key on the HSM.",
+      path: ["hsmKeyLabel"]
+    })
     .refine(
       (data) =>
         data.keySource !== CertKeySource.Hsm ||

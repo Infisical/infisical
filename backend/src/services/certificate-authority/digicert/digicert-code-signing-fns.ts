@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError } from "@app/lib/errors";
@@ -43,6 +44,15 @@ const CS_SERVER_PLATFORM_OTHER = -1;
 
 // When a renewal_of_order_id link is rejected with one of these codes, retry as a fresh order.
 const CS_RENEWAL_INELIGIBLE_CODES = ["order_not_eligible_for_renewal", "order_renewed_already"];
+
+export type TPreparedCodeSigningCertificate =
+  | { certificatePem: string; existingCertificateId: string; insert: null }
+  | {
+      certificatePem: string;
+      existingCertificateId: null;
+      insert: (tx: Knex) => Promise<string>;
+      findConcurrentInsert: () => Promise<string | null>;
+    };
 
 type TDigiCertCodeSigningFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -324,7 +334,7 @@ export const digiCertCodeSigningFns = ({
     return { pemBundle, certificate };
   };
 
-  const downloadCodeSigningCertificate = async ({
+  const prepareCodeSigningCertificate = async ({
     caId,
     orderId,
     digicertCertificateId,
@@ -342,7 +352,7 @@ export const digiCertCodeSigningFns = ({
     signatureAlgorithm?: string;
     applicationId?: string | null;
     profileId?: string | null;
-  }): Promise<{ certificateId: string; certificatePem: string }> => {
+  }): Promise<TPreparedCodeSigningCertificate> => {
     const { ca, client } = await loadDigiCertCsContext(caId);
     if (!providedPemBundle && !digicertCertificateId) {
       throw new BadRequestError({ message: `DigiCert order ${orderId} has no certificate to download.` });
@@ -352,10 +362,14 @@ export const digiCertCodeSigningFns = ({
 
     const certObj = new x509.X509Certificate(leaf);
     const parsedFields = extractExternallyIssuedCertificateFields(certObj);
+    const differentCaError = new BadRequestError({
+      message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority. Remove that copy from the certificate inventory, then try again.`
+    });
 
-    const existingCert = await certificateDAL.findOne({ caId: ca.id, serialNumber: certObj.serialNumber });
+    const existingCert = await certificateDAL.findOne({ serialNumber: certObj.serialNumber });
     if (existingCert) {
-      return { certificateId: existingCert.id, certificatePem: leaf };
+      if (existingCert.caId !== ca.id) throw differentCaError;
+      return { certificatePem: leaf, existingCertificateId: existingCert.id, insert: null };
     }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
@@ -371,55 +385,73 @@ export const digiCertCodeSigningFns = ({
       plainText: Buffer.from(chain)
     });
 
-    const createdCertificateId = await certificateDAL
-      .transaction(async (tx) => {
-        const cert = await certificateDAL.create(
-          {
-            ...parsedFields,
-            caId: ca.id,
-            applicationId: applicationId ?? undefined,
-            profileId: profileId ?? undefined,
-            status: CertStatus.ACTIVE,
-            projectId: ca.projectId,
-            friendlyName: parsedFields.commonName || "",
-            commonName: parsedFields.commonName || "",
-            keyUsages: parsedFields.keyUsages ?? [],
-            extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
-            keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
-            signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
-            externalMetadata: {
-              type: CaType.DIGICERT,
-              orderId
-            } satisfies TDigiCertExternalMetadata
-          },
-          tx
+    const insert = async (tx: Knex) => {
+      const cert = await certificateDAL.create(
+        {
+          ...parsedFields,
+          caId: ca.id,
+          applicationId: applicationId ?? undefined,
+          profileId: profileId ?? undefined,
+          status: CertStatus.ACTIVE,
+          projectId: ca.projectId,
+          friendlyName: parsedFields.commonName || "",
+          commonName: parsedFields.commonName || "",
+          keyUsages: parsedFields.keyUsages ?? [],
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
+          externalMetadata: {
+            type: CaType.DIGICERT,
+            orderId
+          } satisfies TDigiCertExternalMetadata
+        },
+        tx
+      );
+
+      await certificateBodyDAL.create(
+        {
+          certId: cert.id,
+          encryptedCertificate,
+          encryptedCertificateChain
+        },
+        tx
+      );
+
+      return cert.id;
+    };
+
+    return {
+      certificatePem: leaf,
+      existingCertificateId: null,
+      insert,
+      findConcurrentInsert: async () => {
+        const concurrentCert = await certificateDAL.transaction((tx) =>
+          certificateDAL.findOne({ serialNumber: certObj.serialNumber }, tx)
         );
+        if (concurrentCert && concurrentCert.caId !== ca.id) throw differentCaError;
+        return concurrentCert?.id ?? null;
+      }
+    };
+  };
 
-        await certificateBodyDAL.create(
-          {
-            certId: cert.id,
-            encryptedCertificate,
-            encryptedCertificateChain
-          },
-          tx
-        );
+  const downloadCodeSigningCertificate = async (
+    args: Parameters<typeof prepareCodeSigningCertificate>[0]
+  ): Promise<{ certificateId: string; certificatePem: string }> => {
+    const prepared = await prepareCodeSigningCertificate(args);
+    if (!prepared.insert) {
+      return { certificateId: prepared.existingCertificateId, certificatePem: prepared.certificatePem };
+    }
+    const { insert, findConcurrentInsert } = prepared;
 
-        return cert.id;
-      })
-      .catch(async (error: unknown) => {
-        if ((error as { error?: { code?: string } })?.error?.code === DatabaseErrorCode.UniqueViolation) {
-          const concurrentCert = await certificateDAL.transaction((tx) =>
-            certificateDAL.findOne({ caId: ca.id, serialNumber: certObj.serialNumber }, tx)
-          );
-          if (concurrentCert) return concurrentCert.id;
-          throw new BadRequestError({
-            message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority. Remove that copy from the certificate inventory, then try again.`
-          });
-        }
-        throw error;
-      });
+    const createdCertificateId = await certificateDAL.transaction(insert).catch(async (error: unknown) => {
+      if ((error as { error?: { code?: string } })?.error?.code === DatabaseErrorCode.UniqueViolation) {
+        const concurrentCertificateId = await findConcurrentInsert();
+        if (concurrentCertificateId) return concurrentCertificateId;
+      }
+      throw error;
+    });
 
-    return { certificateId: createdCertificateId, certificatePem: leaf };
+    return { certificateId: createdCertificateId, certificatePem: prepared.certificatePem };
   };
 
   return {
@@ -430,6 +462,7 @@ export const digiCertCodeSigningFns = ({
     assertCodeSigningOrderReusable,
     getCodeSigningOrderStatus,
     fetchIssuedCodeSigningCertificate,
+    prepareCodeSigningCertificate,
     downloadCodeSigningCertificate
   };
 };

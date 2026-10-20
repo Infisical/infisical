@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { HsmKeyLabelSchema } from "@app/services/hsm-connector/hsm-connector-fns";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
@@ -41,12 +42,7 @@ export const SignerExternalConfigurationSchema = z.object({
 export const SignerCertificateInputSchema = z.object({
   keySource: z.enum([CertKeySource.Infisical, CertKeySource.Hsm]).optional(),
   hsmConnectorId: z.string().uuid().optional(),
-  hsmKeyLabel: z
-    .string()
-    .trim()
-    .min(1)
-    .max(128)
-    .refine((v) => RE_NO_NEWLINES.test(v), "Key label must not contain newline characters")
+  hsmKeyLabel: HsmKeyLabelSchema.refine((v) => RE_NO_NEWLINES.test(v), "Key label must not contain newline characters")
     .optional()
     .describe(
       "The label of an existing private key on the HSM. Only used with externalConfiguration.importFromExternalOrderId. If more than one private key in the HSM Connector's slot has this label, also set hsmKeyId."

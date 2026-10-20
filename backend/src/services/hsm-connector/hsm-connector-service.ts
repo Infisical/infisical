@@ -56,6 +56,7 @@ export type THsmConnectorServiceFactoryDep = {
 export type THsmConnectorServiceFactory = ReturnType<typeof hsmConnectorServiceFactory>;
 
 const OLD_GATEWAY_BAD_REQUEST_MESSAGE = "Invalid request";
+const GATEWAY_MAX_SIGN_DATA_BYTES = 64 * 1024;
 
 export const hsmConnectorServiceFactory = ({
   hsmConnectorDAL,
@@ -437,7 +438,7 @@ export const hsmConnectorServiceFactory = ({
       err.message.endsWith(`(${Pkcs11ErrorCode.BadRequest}): ${OLD_GATEWAY_BAD_REQUEST_MESSAGE}`)
     ) {
       throw new BadRequestError({
-        message: `The HSM Connector's gateway rejected the request for the key labeled '${keyLabel}'. If more than one key in the slot has this label, update the gateway to the latest version so it can select keys by key ID.`
+        message: `More than one key in the HSM Connector's slot has the label '${keyLabel}', and the gateway is too old to select a key by key ID. Update the gateway to the latest version.`
       });
     }
     if (isPkcs11Error(err, Pkcs11ErrorCode.SignatureMismatch)) {
@@ -487,6 +488,11 @@ export const hsmConnectorServiceFactory = ({
     data: Buffer;
     isDigest: boolean;
   }): Promise<{ signature: Buffer; keyId: string | null }> => {
+    if (args.data.length > GATEWAY_MAX_SIGN_DATA_BYTES) {
+      throw new BadRequestError({
+        message: `The data to sign is ${args.data.length} bytes, more than the ${GATEWAY_MAX_SIGN_DATA_BYTES} bytes the HSM Connector's gateway accepts.`
+      });
+    }
     const { row, credentials } = await $loadConnector(args.connectorId, args.projectId);
     const result = await routing
       .dispatchPkcs11<{ signature: string; keyId?: string }>({
@@ -537,15 +543,12 @@ export const hsmConnectorServiceFactory = ({
   };
 
   const listHsmConnectorKeys = async (
-    dto: { connectorId: string; keyLabel: string },
+    dto: { connectorId: string; projectId: string; keyLabel: string },
     actor: THsmConnectorServiceActor
   ) => {
-    const row = await hsmConnectorDAL.findById(dto.connectorId);
-    if (!row) throw new NotFoundError({ message: `HSM Connector ${dto.connectorId} not found.` });
+    await assertProjectPermission(actor, dto.projectId, ProjectPermissionHsmConnectorActions.Attach);
+    const { row, credentials } = await $loadConnector(dto.connectorId, dto.projectId);
 
-    await assertProjectPermission(actor, row.projectId, ProjectPermissionHsmConnectorActions.Attach);
-
-    const credentials = await $decryptCredentials(row);
     const result = await routing
       .dispatchPkcs11<{ keys: THsmConnectorKey[] }>({
         connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
