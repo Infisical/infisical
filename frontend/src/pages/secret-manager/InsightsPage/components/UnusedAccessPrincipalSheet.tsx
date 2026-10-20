@@ -29,7 +29,7 @@ import {
   useGetUnusedAccessPrincipal
 } from "@app/hooks/api/secretInsights";
 
-import { PRINCIPAL_TYPE_CONFIG } from "./unusedAccessHelpers";
+import { describeReadPeriod, PRINCIPAL_TYPE_CONFIG } from "./unusedAccessHelpers";
 
 // Rows shown per environment before "N more" opens the rest.
 const PREVIEW_ROWS = 5;
@@ -185,8 +185,11 @@ export const UnusedAccessPrincipalSheet = ({ principal, onClose }: Props) => {
             </SheetTitle>
             <SheetDescription>
               Has not read {principal.unreadCount} of the {principal.entitledCount}{" "}
-              {principal.entitledCount === 1 ? "secret" : "secrets"} it can access in the last 30
-              days.
+              {principal.entitledCount === 1 ? "secret" : "secrets"} it can access{" "}
+              {data
+                ? describeReadPeriod(data.trackingStartedAt, data.fullWindowFrom)
+                : "in the last 30 days"}
+              .
             </SheetDescription>
           </SheetHeader>
         )}

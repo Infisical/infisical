@@ -1,6 +1,5 @@
 import { useState } from "react";
 import axios from "axios";
-import { format } from "date-fns";
 import { ChevronRightIcon, SearchIcon } from "lucide-react";
 
 import { formatReadDay } from "@app/components/secrets/SecretReadStatusBadge";
@@ -32,7 +31,11 @@ import { useProject, useSubscription } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { TUnusedAccessPrincipal, useGetUnusedAccess } from "@app/hooks/api/secretInsights";
 
-import { formatRemainingTtl, PRINCIPAL_TYPE_CONFIG } from "./unusedAccessHelpers";
+import {
+  describeReadPeriod,
+  formatRemainingTtl,
+  PRINCIPAL_TYPE_CONFIG
+} from "./unusedAccessHelpers";
 import { UnusedAccessPrincipalSheet } from "./UnusedAccessPrincipalSheet";
 
 export const UnusedAccessCard = () => {
@@ -54,8 +57,9 @@ export const UnusedAccessCard = () => {
       ? formatRemainingTtl(data.remainingTtl)
       : null;
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
-  // Nothing is judged until the project has 30 days of reads.
-  const isJudging = !data || new Date(data.unusedAccessFrom) <= new Date();
+  const readPeriod = data
+    ? describeReadPeriod(data.trackingStartedAt, data.fullWindowFrom)
+    : "in the last 30 days";
 
   const renderBody = () => {
     if (isPending) return <Skeleton className="h-[200px] w-full" />;
@@ -77,12 +81,9 @@ export const UnusedAccessCard = () => {
 
     if (totalCount === 0) {
       // Recent access and new secrets are not judged yet, so this cannot claim everything was read.
-      let description = "No identity has gone 30 days without reading a secret it can access.";
-      if (debouncedSearch) {
-        description = "No overprivileged user, group or machine identity matches your search.";
-      } else if (!isJudging) {
-        description = `Unused access is judged on 30 days of reads, from ${format(new Date(data.unusedAccessFrom), "PP")}.`;
-      }
+      const description = debouncedSearch
+        ? "No overprivileged user, group or machine identity matches your search."
+        : `No identity has left a secret it can access unread ${readPeriod}.`;
       return (
         <Empty className="border">
           <EmptyHeader>
@@ -150,7 +151,7 @@ export const UnusedAccessCard = () => {
                     {row.lastReadAt ? (
                       formatReadDay(row.lastReadAt)
                     ) : (
-                      <span className="text-muted">None in 30 days</span>
+                      <span className="text-muted">None {readPeriod}</span>
                     )}
                   </TableCell>
                   <TableCell className="max-w-64">
@@ -193,8 +194,8 @@ export const UnusedAccessCard = () => {
             )}
           </CardTitle>
           <CardDescription>
-            Users, groups, and machine identities that can read secrets they have not read in the
-            last 30 days. Select one to see which secrets.
+            Users, groups, and machine identities that can read secrets they have not read{" "}
+            {readPeriod}. Select one to see which secrets.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

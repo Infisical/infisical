@@ -110,7 +110,7 @@ export type TGetUnusedAccessResponse = {
   principals: TUnusedAccessPrincipal[];
   totalCount: number;
   trackingStartedAt: string;
-  unusedAccessFrom: string;
+  fullWindowFrom: string;
   remainingTtl: number;
 };
 
@@ -131,7 +131,7 @@ export type TGetUnusedAccessPrincipalResponse = {
   secrets: TUnusedSecret[];
   unlistedCount: number;
   trackingStartedAt: string;
-  unusedAccessFrom: string;
+  fullWindowFrom: string;
   remainingTtl: number;
 };
 

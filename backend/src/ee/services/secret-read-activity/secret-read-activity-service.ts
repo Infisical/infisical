@@ -287,7 +287,7 @@ export const secretReadActivityServiceFactory = ({
   // non-admins among them, since admins can read everything by design; ghost readers are readers in the window
   // who are not among them at all, so their access was since removed; and the exposure score is computed from
   // those counts. Groups are judged on their own too: a group's access to a secret is unused when none of its
-  // members read it. Nothing is judged until the project has a full window of reads.
+  // members read it. Until a project has a full window of reads, it is judged on the reads since tracking began.
   const $loadSecretSummarizer = async (projectId: string, orgId: string, windowStart: Date) => {
     const [
       { userPermissions, identityPermissions, groupPermissions },
@@ -308,10 +308,8 @@ export const secretReadActivityServiceFactory = ({
       groupIds.length ? identityGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : []
     ]);
     const groupPermissionById = new Map(groupPermissions.map((group) => [group.id, group]));
+    // In a project tracked for less than the window, unused access is judged on the reads since tracking began.
     const judgedFrom = trackingStartedAt > windowStart ? trackingStartedAt : windowStart;
-    // Unused access is only judged on a full window of reads: until tracking has run for 30 days, the reads
-    // before it began are unknown, so nobody counts as having left a secret unread.
-    const isJudging = trackingStartedAt <= windowStart;
     type TActor = {
       id: string;
       name?: string;
@@ -377,7 +375,6 @@ export const secretReadActivityServiceFactory = ({
       const exposedTo = entitled.filter((actor) => !adminActorIds.has(actor.id));
       const unread = exposedTo.filter(
         (actor) =>
-          isJudging &&
           !reads.has(`${actor.actorType}:${actor.id}`) &&
           coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), judgedFrom)
       );
@@ -387,7 +384,6 @@ export const secretReadActivityServiceFactory = ({
       const entitledGroups = groups.filter((group) => canReadValue(group.permission));
       const unreadGroups = entitledGroups.filter(
         (group) =>
-          isJudging &&
           !group.memberKeys.some((key) => reads.has(key)) &&
           coversWholeWindow(trackedSince, accessChangedAtByActorId.get(group.id), judgedFrom)
       );
@@ -729,7 +725,7 @@ export const secretReadActivityServiceFactory = ({
       remainingTTL,
       projectName: project?.name ?? "",
       trackingStartedAt,
-      unusedAccessFrom: new Date(trackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS)
+      fullWindowFrom: new Date(trackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS)
     };
   };
 
@@ -775,7 +771,7 @@ export const secretReadActivityServiceFactory = ({
       totalCount: matching.length,
       projectName: tracking.projectName,
       trackingStartedAt: tracking.trackingStartedAt,
-      unusedAccessFrom: tracking.unusedAccessFrom,
+      fullWindowFrom: tracking.fullWindowFrom,
       remainingTTL: tracking.remainingTTL
     };
   };
@@ -837,7 +833,7 @@ export const secretReadActivityServiceFactory = ({
       unlistedCount: Math.max(0, principal.unreadCount - secrets.length),
       projectName: tracking.projectName,
       trackingStartedAt: tracking.trackingStartedAt,
-      unusedAccessFrom: tracking.unusedAccessFrom,
+      fullWindowFrom: tracking.fullWindowFrom,
       remainingTTL: tracking.remainingTTL
     };
   };

@@ -953,7 +953,7 @@ export const INSIGHTS = {
     limit: "The maximum number of principals to return per page.",
     search: "Only principals whose name contains this text, ignoring case.",
     principals:
-      "The users, groups and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first. Project admins and admin groups are left out: they can read everything by design.",
+      "The users, groups and machine identities that can read secrets they have not read in the last 30 days (since tracking began, in a project tracked for less), those with the most such secrets first. Project admins and admin groups are left out: they can read everything by design.",
     principalType: "Whether the principal is a user, a group or a machine identity.",
     principalId: "The ID of the user, group or machine identity.",
     name: "The username of the user, or the name of the group or machine identity.",
@@ -968,8 +968,8 @@ export const INSIGHTS = {
     totalCount: "The number of principals the caller can page through.",
     trackingStartedAt:
       "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
-    unusedAccessFrom:
-      "When unused access starts being judged: 30 days after reads started being tracked for the project. Until then nothing is listed, since reads from before tracking began are unknown."
+    fullWindowFrom:
+      "When the results first cover a full 30 days of reads: 30 days after reads started being tracked for the project. Before then they cover the reads since tracking began, and the access that existed then."
   },
   GET_UNUSED_ACCESS_PRINCIPAL: {
     projectId: "The ID of the project.",
@@ -1516,7 +1516,7 @@ export const RAW_SECRETS = {
     trackedSince:
       "The start of the period reads are reported for: the later of 30 days ago, when read tracking began, and when the secret and its folder were created.",
     judgedFrom:
-      "The start of the period unused access is judged on: the later of 30 days ago and when read tracking began for the project. Nobody counts as unused access until it is 30 days ago, and then only readers whose access, like the secret, predates it.",
+      "The start of the period unused access is judged on: the later of 30 days ago and when read tracking began for the project. A reader only counts as unused access once the secret and their access both predate it.",
     entitled:
       "One entry for each user or machine identity that can read the secret's value today, project admins included so their reads can be shown, saying whether they count as unused access and, if not, why.",
     readerName: "The username of the user, or the name of the machine identity. Null when it could not be resolved.",

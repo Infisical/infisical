@@ -493,7 +493,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const { principals, totalCount, trackingStartedAt, unusedAccessFrom, remainingTTL, projectName } =
+      const { principals, totalCount, trackingStartedAt, fullWindowFrom, remainingTTL, projectName } =
         await server.services.secretReadActivity.listUnusedAccess({ projectId, ...req.query }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -507,7 +507,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { principals, totalCount, trackingStartedAt, unusedAccessFrom };
+      return { principals, totalCount, trackingStartedAt, fullWindowFrom };
     }
   });
 
@@ -533,7 +533,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId, principalType, principalId } = req.params;
-      const { principal, secrets, unlistedCount, trackingStartedAt, unusedAccessFrom, remainingTTL, projectName } =
+      const { principal, secrets, unlistedCount, trackingStartedAt, fullWindowFrom, remainingTTL, projectName } =
         await server.services.secretReadActivity.getUnusedAccessPrincipal(
           { projectId, principalType, principalId },
           req.permission
@@ -550,7 +550,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { principal, secrets, unlistedCount, trackingStartedAt, unusedAccessFrom };
+      return { principal, secrets, unlistedCount, trackingStartedAt, fullWindowFrom };
     }
   });
 
