@@ -214,6 +214,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   };
 
   const handleClose = (open: boolean) => {
+    if (!open && submitting) return;
     if (!open) reset();
     onOpenChange(open);
   };
@@ -278,7 +279,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         externalConfiguration
       });
 
-      handleClose(false);
+      reset();
+      onOpenChange(false);
       // eslint-disable-next-line no-empty
     } catch {
     } finally {
@@ -384,6 +386,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   };
 
   const goBack = () => {
+    if (submitting) return;
     if (step > 0) setStep((s) => s - 1);
   };
 
@@ -437,7 +440,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                 activeStep={step}
                 orientation="vertical"
                 onStepChange={(i) => {
-                  if (i < step) setStep(i);
+                  if (i < step && !submitting) setStep(i);
                 }}
               >
                 <StepperList>
@@ -542,7 +545,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                 Step {step + 1} of {STEPS.length}
               </span>
               {step > 0 && (
-                <Button variant="outline" onClick={goBack}>
+                <Button variant="outline" onClick={goBack} isDisabled={submitting}>
                   Back
                 </Button>
               )}

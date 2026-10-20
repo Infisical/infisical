@@ -530,6 +530,18 @@ export const signerServiceFactory = ({
   };
 
   const checkCertificateImport = async (dto: TCheckCertificateImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      projectId: dto.projectId,
+      actorAuthMethod: dto.actorAuthMethod,
+      actorOrgId: dto.actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCodeSigningActions.Create,
+      ProjectPermissionSub.CodeSigners
+    );
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
     if (!ca || ca.projectId !== dto.projectId) {
       throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
