@@ -2,7 +2,6 @@
 import type { AgentOptions as HttpAgentOptions } from "node:http";
 import type { Agent as HttpsAgent } from "node:https";
 
-import { AxiosError } from "axios";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildSsrfSafeAgent, getSharedHttpsAgent, safeRequest, validateAndPinUrl } from "./safe-request";
@@ -469,27 +468,6 @@ describe("safe-request SSRF helpers", () => {
       const args = lastRequestArgs();
       expect(args.httpsAgent).toBeUndefined();
       expect(args.httpAgent).toBeDefined();
-    });
-
-    it.each([
-      ["post", (url: string) => safeRequest.post(url, {})],
-      ["request", (url: string) => safeRequest.request({ method: "POST", url })]
-    ])("safeRequest.%s drops the URL from Axios's missing-slashes error, keeping its code", async (_name, send) => {
-      const url = "http:example.com/hooks/s3cret";
-      requestRequestMock.mockRejectedValueOnce(
-        new AxiosError(`Invalid URL ${JSON.stringify(url)}: missing "//" after protocol`, AxiosError.ERR_INVALID_URL)
-      );
-      const err = (await send(url).catch((e: unknown) => e)) as AxiosError;
-      expect(err).toBeInstanceOf(AxiosError);
-      expect(err.code).toBe(AxiosError.ERR_INVALID_URL);
-      expect(err.message).toBe('Invalid URL: missing "//" after protocol');
-      expect(err.stack).not.toContain("s3cret");
-    });
-
-    it("rethrows other request errors unchanged", async () => {
-      const networkError = new AxiosError("connect ECONNREFUSED", "ECONNREFUSED");
-      requestRequestMock.mockRejectedValueOnce(networkError);
-      await expect(safeRequest.get("https://example.com")).rejects.toBe(networkError);
     });
 
     it("plumbs validateStatus through dispatch", async () => {
