@@ -57,4 +57,22 @@ describe("ValidateOvhConnectionCredentialsSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  test("token method accepts a token at the max length", () => {
+    const result = ValidateOvhConnectionCredentialsSchema.safeParse({
+      method: OVHConnectionMethod.Token,
+      credentials: { token: "a".repeat(8192), okmsDomain: OKMS_DOMAIN, okmsId: OKMS_ID }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test("token method rejects a token over the max length", () => {
+    const result = ValidateOvhConnectionCredentialsSchema.safeParse({
+      method: OVHConnectionMethod.Token,
+      credentials: { token: "a".repeat(8193), okmsDomain: OKMS_DOMAIN, okmsId: OKMS_ID }
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
