@@ -1,9 +1,9 @@
 import * as React from "react";
 import { OTPInput, OTPInputContext } from "input-otp";
-import { MinusIcon } from "lucide-react";
 
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 
@@ -96,7 +96,7 @@ const InputOTPSeparator = React.forwardRef<
       role="separator"
       {...props}
     >
-      <MinusIcon />
+      <Icon name="minus" />
     </div>
   );
 });

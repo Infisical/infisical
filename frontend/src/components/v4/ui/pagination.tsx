@@ -1,5 +1,4 @@
 import * as React from "react";
-import { MoreHorizontalIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
 
@@ -319,7 +318,7 @@ const PaginationEllipsis = React.forwardRef<
       className={cn(styles.ellipsis, className)}
       {...props}
     >
-      <MoreHorizontalIcon />
+      <Icon name="more" />
       <span className="sr-only">More pages</span>
     </span>
   );

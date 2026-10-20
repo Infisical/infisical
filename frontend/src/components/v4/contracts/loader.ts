@@ -12,19 +12,20 @@ export const loaderDefinition = {
   behavior: [
     "Loader composes Spinner with its label, description and delay; it adds the area that centers it and marks the region busy.",
     "With loading false it renders its children and nothing else.",
-    "The default delay of 300ms keeps fast loads from flashing."
+    "The default delay of 300ms keeps fast loads from flashing.",
+    "Loader is for content whose shape is unknown. When the loaded shape is known (rows, cards, a chart), show Skeleton shapes that match the loaded state instead, as the reload in the example does."
   ],
   accessibility: [
     "Spinner's label carries one polite status announcement; the region sets aria-busy while loading."
   ],
   limitations: [
     "For an inline status beside text, use Spinner with a label directly; Loader only fills areas.",
-    "Use Progress for a known count and Skeleton for a known layout."
+    "Use Progress for a known count and Skeleton for a known layout. A blanket Loader over rows, cards or a chart whose shape is known is a misuse."
   ],
   examples: [
     {
       id: "default",
-      title: "Base, page and loaded",
+      title: "Base, page and a skeleton reload",
       module: "./examples/loader/default.tsx",
       states: ["loading", "default"]
     }
@@ -68,6 +69,22 @@ export const loaderDefinition = {
         detect: {
           by: "review",
           how: "Read each Loader label and check that it names what loads."
+        }
+      },
+      {
+        id: "loader-unknown-shape",
+        when: "A region is waiting for data.",
+        do: "Use Loader only when the shape of the result is unknown. When it is known, show Skeleton shapes like the loaded state and announce the wait with a status.",
+        avoid: "Cover known rows, cards or a chart with a blanket Loader.",
+        reason:
+          "Matching shapes keep the layout still and show what is coming; a centered spinner hides both.",
+        evidence: [
+          "src/components/v4/ui/loader.tsx",
+          "src/pages/design-system/examples/loader/default.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "For each Loader, check whether the loaded content has a known shape. If it does, replace the Loader with Skeleton shapes at the same size."
         }
       },
       {

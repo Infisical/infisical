@@ -82,6 +82,7 @@ Exports: FileTree, FileTreeNode. Source TypeScript defines the API.
 
 ## Behavior
 
+- A hovered row uses a translucent ink overlay at the opacity-hover token instead of an opaque fill, so the tree surface shows through.
 - Folder/file/all/none selection modes and folders-only views.
 - Controlled or default selection/expansion, disabled reasons and metadata.
 - Visible rows retain focus identity while children open and close.

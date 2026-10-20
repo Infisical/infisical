@@ -62,10 +62,28 @@ Source evidence:
 - src/components/v4/ui/chart.tsx
 - src/pages/design-system/examples/chart/default.tsx
 
+### chart-hover-overlay
+
+Owner: chart.
+
+When a pointer hovers a bar or category.
+
+Do: Mark the hovered category with a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible.
+
+Avoid: Paint the cursor or a hovered bar with an opaque fill that covers the plot behind it.
+
+Why: Hover marks a position; it should not hide the data people are comparing.
+
+Checked by: review only. Look for: Hover a bar in light and dark. The grid lines inside the cursor band stay visible and the cursor fill has an alpha below one.
+
+Source evidence:
+- src/components/v4/ui/chart.tsx
+- src/pages/design-system/examples/chart/default.tsx
+
 ## State guidance
 
 - empty: Say that no observations match the period instead of drawing zero bars for unknown data.
-- loading: Keep the chart region stable and distinguish pending data from a genuine zero count.
+- loading: Keep the chart region stable with Skeleton bars shaped like the chart, and distinguish pending data from a genuine zero count.
 
 ## Presentation rules
 
@@ -84,6 +102,8 @@ Exports: ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartStyl
 ## Behavior
 
 - ChartContainer provides Recharts responsive sizing and a ChartConfig mapping series keys to labels, icons and color or light/dark values. Tooltip and legend content consume that context.
+- The hover cursor behind a hovered category is a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible. It never paints an opaque fill over the plot.
+- While data loads, the chart region shows Skeleton bars shaped like the chart, with a status that names what is loading.
 
 ## Accessibility
 
@@ -207,17 +227,25 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/chart/states.tsx`; its relative imports are generated for that exact path. States: loading, empty, error.
 
-Registry items used: @infisical/alert, @infisical/empty, @infisical/spinner. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/alert, @infisical/empty, @infisical/skeleton. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Alert, AlertDescription, AlertTitle } from "../../../../components/v4/ui/alert";
 import { EmptyState } from "../../../../components/v4/ui/empty";
-import { Spinner } from "../../../../components/v4/ui/spinner";
+import { Skeleton } from "../../../../components/v4/ui/skeleton";
 export default function Example() {
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="flex min-h-24 w-full items-center justify-center">
-          <Spinner size="base" label="Loading request counts"/>
+        <div aria-busy="true" className="w-full">
+          <span role="status" className="sr-only">
+            Loading request counts
+          </span>
+          <div className="flex h-40 items-end justify-around border-b border-[color:var(--v4-line)] pl-9">
+            {["60%", "85%", "45%"].map((height) => (<Skeleton key={height} width={40} height={height}/>))}
+          </div>
+          <div className="flex justify-around pt-2 pl-9">
+            {["Mon", "Tue", "Wed"].map((day) => (<Skeleton key={day} width={28} height={10}/>))}
+          </div>
         </div>
       </div><figcaption className="text-muted-foreground text-xs">{"Loading"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">

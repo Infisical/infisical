@@ -49,6 +49,7 @@ Exports: DataGrid, GridColumn, GridChange, GridSelection, GridValue. Source Type
 
 ## Behavior
 
+- A hovered row shades its cells with a translucent ink overlay at the opacity-hover token, so the grid surface and cell content stay visible; selected and edited cells keep their own wash.
 - Editable and read-only cells share range selection, copy and resize. rowHeight defaults to a requested 32px minimum. The measured content floor raises one uniform effective height used by cells, virtual positions and keyboard navigation; this is not arbitrary variable-height row support.
 - Quoted TSV preserves null, literal NULL, empty text, embedded separators and quotes. Copy writes null as the unquoted marker \N, and paste reads an unquoted \N back as null.
 - Invalid paste rejects the full batch. Async change failure keeps the edit draft.

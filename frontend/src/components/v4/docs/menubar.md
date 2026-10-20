@@ -47,6 +47,7 @@ Exports: Menubar, MenubarCheckboxItem, MenubarContent, MenubarGroup, MenubarItem
 
 ## Behavior
 
+- Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.
 - Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.
 - Each MenubarMenu owns a trigger and menu content. Action items close normally; checkbox/radio items remain open unless closeOnSelect requests dismissal.
 

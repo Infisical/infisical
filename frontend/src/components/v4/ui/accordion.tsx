@@ -1,8 +1,8 @@
 import * as React from "react";
-import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { Accordion as AccordionPrimitive } from "radix-ui";
 
 import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 
@@ -53,11 +53,14 @@ const AccordionTrigger = React.forwardRef<
         {...props}
       >
         {children}
-        <ChevronDownIcon
+        <Icon
+          name="chev-down"
           data-slot="accordion-trigger-icon"
           className="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden"
         />
-        <ChevronUpIcon
+        <Icon
+          name="chev-down"
+          style={{ rotate: "180deg" }}
           data-slot="accordion-trigger-icon"
           className="pointer-events-none hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
         />

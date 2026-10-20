@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useId, useState } from "react";
-import { ChevronRightIcon } from "lucide-react";
 
 import { AnimatedCollapse } from "@app/components/v4/ui/animated-collapse";
+import { Icon } from "@app/components/v4/ui/icon";
 
 import { typeSpecimenStyle } from "./foundation-data";
 
@@ -57,8 +57,8 @@ export const DocDisclosure = ({
         className="flex min-h-9 items-center gap-2 rounded-sm text-sm font-medium"
         onClick={() => setOpen(!open)}
       >
-        <ChevronRightIcon
-          aria-hidden="true"
+        <Icon
+          name="chev-right"
           size={16}
           className={`shrink-0 transition-transform duration-(--v4-duration-moderate) ease-(--v4-ease-standard) motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
         />

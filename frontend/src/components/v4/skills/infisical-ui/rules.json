@@ -723,10 +723,10 @@
     },
     {
       "id": "one-icon-set",
-      "title": "Draw every icon from Lucide",
-      "instruction": "Lucide (lucide-react) is the icon source of truth. Render icons with the v4 Icon component, by product name or with icon set to a Lucide icon, or import a Lucide icon directly and size it with the size tokens and stroke-icon. Do not import another icon library, the legacy icon data in assets/icons-legacy or a hand-drawn SVG.",
-      "good": "<Icon name=\"chev-down\" /> inside a Select trigger, sized by --v4-size-icon, or <Icon icon={Vault} />.",
-      "avoid": "An import from react-icons or @radix-ui/react-icons, the legacy icon data, or an inline <svg> path drawn by hand.",
+      "title": "Draw icons from the Infisical 2.0 set first",
+      "instruction": "Render icons with the v4 Icon component and one of the 52 Infisical 2.0 names. Use a Lucide icon (Icon icon={...} or a direct lucide-react import) only for a glyph the set lacks, sized by the size tokens at stroke-icon (1.7). Do not import another icon library or hand-draw SVG icons.",
+      "good": "<Icon name=\"chev-down\" /> inside a Select trigger, sized by --v4-size-icon; <Icon icon={ArrowUpDown} /> for an unsorted column, which the set lacks.",
+      "avoid": "A Lucide ChevronDown where the set has chev-down, an import from react-icons or @radix-ui/react-icons, or an inline <svg> path drawn by hand.",
       "detect": {
         "by": "lint",
         "check": "icon-source"
@@ -914,6 +914,39 @@
         "url": "#card"
       },
       "category": "Visual"
+    },
+    {
+      "id": "disable-dont-hide",
+      "title": "Disable blocked actions, do not hide them",
+      "instruction": "When the person may not take an action, keep its control visible and disabled, with a reason in its title or nearby text. Never remove it, especially when removal shifts the layout. Gate each action only by its own permission: a person who may view a secret may copy it while it is still masked.",
+      "good": "A disabled Reveal and Copy in SensitiveEditor for someone without view access, in the same place as for someone with it.",
+      "avoid": "Dropping Copy until the value is revealed, or removing Replace for a read-only person so the row reflows.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Interaction"
+    },
+    {
+      "id": "translucent-hover",
+      "title": "Hover and press overlays are translucent",
+      "instruction": "Hover, highlight and press on part of an element that already has content behind it (chart bars and cursors, rows on tinted surfaces, list and menu items) use ink at opacity-hover or opacity-press (6% and 10% in light, 12% and 18% in dark), so what is behind shows through. Never paint an opaque fill over it.",
+      "good": "A chart cursor at ink 6% that keeps the grid lines and bars behind it visible.",
+      "avoid": "A tint or select fill that covers the bars, grid lines or row content under the pointer.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Visual"
+    },
+    {
+      "id": "skeleton-for-known-shape",
+      "title": "Skeleton when the shape is known, Loader when it is not",
+      "instruction": "When the shape of the content being loaded is known or measurable, show Skeleton shapes that match the loaded state at the same size. Use a Loader only when the shape is unknown.",
+      "good": "Reloading connections shows two skeleton rows shaped like the Vercel and GitHub rows.",
+      "avoid": "A centered spinner over a list whose rows are already known.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Interaction"
     }
   ]
 }

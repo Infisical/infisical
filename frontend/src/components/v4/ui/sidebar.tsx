@@ -4,7 +4,6 @@ import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
 import { Avatar, Identity } from "./avatar";
 import { Count } from "./badge";
-import { Button } from "./button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +13,7 @@ import {
 } from "./dropdown-menu";
 import { Icon, type IconName } from "./icon";
 import { Switcher, type SwitcherAction, type SwitcherActionDivider } from "./switcher";
+import { Tabs, TabsList, TabsTrigger } from "./tabs";
 import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 import { Tooltip, TooltipProvider } from "./tooltip";
 
@@ -22,7 +22,7 @@ import styles from "./sidebar.module.css";
 export interface SidebarLink {
   id: string;
   label: string;
-  icon: IconName;
+  icon?: IconName;
   href?: string;
   onClick?: () => void;
   count?: number;
@@ -36,6 +36,12 @@ export interface SidebarItem extends SidebarLink {
 export interface SidebarSection {
   label?: string;
   items: readonly SidebarItem[];
+}
+export interface SidebarSpace {
+  id: string;
+  label: string;
+  icon: IconName;
+  sections: readonly SidebarSection[];
 }
 export interface SidebarUser {
   name: string;
@@ -57,7 +63,12 @@ export interface SidebarOrganization {
 }
 export type SidebarTheme = "light" | "dark" | "system";
 export interface SidebarProps {
-  sections: readonly SidebarSection[];
+  sections?: readonly SidebarSection[];
+  spaces?: readonly SidebarSpace[];
+  space?: string;
+  defaultSpace?: string;
+  onSpaceChange?: (space: string) => void;
+  spacesLabel?: string;
   current?: string;
   onNavigate?: (item: SidebarLink) => void;
   search?: { onClick: () => void; label?: string; shortcut?: string } | false;
@@ -79,17 +90,34 @@ export interface SidebarProps {
 const total = (items: readonly SidebarLink[] = []) =>
   items.reduce((sum, item) => sum + (item.count ?? 0), 0);
 
+const sectionsTotal = (sections: readonly SidebarSection[]) =>
+  sections.reduce(
+    (sum, section) =>
+      sum + section.items.reduce((acc, item) => acc + (item.count ?? 0) + total(item.children), 0),
+    0
+  );
+
+const holds = (sections: readonly SidebarSection[], id?: string) =>
+  id !== undefined &&
+  sections.some((section) =>
+    section.items.some(
+      (item) => item.id === id || item.children?.some((childItem) => childItem.id === id)
+    )
+  );
+
 const RowContent = ({
   item,
   count,
+  child,
   trailing
 }: {
   item: SidebarLink;
   count?: number;
+  child?: boolean;
   trailing?: React.ReactNode;
 }) => (
   <>
-    <Icon name={item.icon} size={18} className={styles.icon} />
+    {item.icon && !child && <Icon name={item.icon} size={18} className={styles.icon} />}
     <span className={styles.label}>{item.label}</span>
     {count ? (
       <>
@@ -140,11 +168,11 @@ const SidebarRow = ({
       target={item.external ? "_blank" : undefined}
       rel={item.external ? "noreferrer" : undefined}
     >
-      <RowContent item={item} count={item.count} />
+      <RowContent item={item} count={item.count} child={child} />
     </a>
   ) : (
     <button {...shared} type="button" disabled={item.disabled}>
-      <RowContent item={item} count={item.count} />
+      <RowContent item={item} count={item.count} child={child} />
     </button>
   );
   return rail ? (
@@ -216,9 +244,13 @@ const SidebarGroup = ({
                   rel={childItem.external ? "noreferrer" : undefined}
                 >
                   {childItem.label}
+                  {childItem.count ? <Count>{childItem.count}</Count> : null}
                 </a>
               ) : (
-                <span>{childItem.label}</span>
+                <span>
+                  {childItem.label}
+                  {childItem.count ? <Count>{childItem.count}</Count> : null}
+                </span>
               )}
             </DropdownMenuItem>
           ))}
@@ -240,14 +272,7 @@ const SidebarGroup = ({
         <RowContent
           item={item}
           count={open ? undefined : total(children)}
-          trailing={
-            <Icon
-              name="chev-down"
-              size={14}
-              className={styles.trailing}
-              data-open={open || undefined}
-            />
-          }
+          trailing={<Icon name="chev-right" size={14} className={styles.chevron} />}
         />
       </button>
       <ul id={listId} className={styles.children} hidden={!open}>
@@ -325,6 +350,43 @@ const moveFocus = (event: React.KeyboardEvent<HTMLElement>) => {
   targets[next]?.focus();
 };
 
+const useEdgeFade = (rail: boolean, spaceId?: string) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+    const fade = 32;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const max = node.scrollHeight - node.clientHeight;
+      node.style.setProperty("--fade-start", `${Math.max(0, Math.min(fade, node.scrollTop))}px`);
+      node.style.setProperty(
+        "--fade-end",
+        `${Math.max(0, Math.min(fade, max - node.scrollTop))}px`
+      );
+      node.toggleAttribute("data-overflow", max > 0.5);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    node.addEventListener("scroll", schedule, { passive: true });
+    node.addEventListener("transitionend", schedule);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
+    observer?.observe(node);
+    if (node.firstElementChild) observer?.observe(node.firstElementChild);
+    [...node.children].forEach((section) => observer?.observe(section));
+    return () => {
+      node.removeEventListener("scroll", schedule);
+      node.removeEventListener("transitionend", schedule);
+      observer?.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [rail, spaceId]);
+  return ref;
+};
+
 const themeOptions: { value: SidebarTheme; label: string; icon: IconName }[] = [
   { value: "light", label: "Light", icon: "sun" },
   { value: "dark", label: "Dark", icon: "moon" },
@@ -333,6 +395,11 @@ const themeOptions: { value: SidebarTheme; label: string; icon: IconName }[] = [
 
 export const Sidebar = ({
   sections,
+  spaces,
+  space,
+  defaultSpace,
+  onSpaceChange,
+  spacesLabel = "Navigation",
   current,
   onNavigate,
   search,
@@ -347,7 +414,7 @@ export const Sidebar = ({
   collapsible = true,
   header,
   edge = true,
-  label = "Main",
+  label,
   className
 }: SidebarProps) => {
   const [isCollapsed, setCollapsed] = useControllableState({
@@ -355,8 +422,33 @@ export const Sidebar = ({
     defaultValue: defaultCollapsed,
     onChange: onCollapsedChange
   });
+  const currentSpace = spaces?.find((entry) => holds(entry.sections, current))?.id;
+  const [spaceId, setSpaceId] = useControllableState({
+    value: space,
+    defaultValue: defaultSpace ?? currentSpace ?? spaces?.[0]?.id ?? "",
+    onChange: onSpaceChange
+  });
+  const lastCurrent = React.useRef(current);
+  React.useEffect(() => {
+    if (current === lastCurrent.current) return;
+    lastCurrent.current = current;
+    if (currentSpace) setSpaceId(currentSpace);
+  }, [current, currentSpace, setSpaceId]);
+  const activeSpace = spaces?.find((entry) => entry.id === spaceId) ?? spaces?.[0];
+  const shownSections = activeSpace?.sections ?? sections ?? [];
   const rail = collapsible && isCollapsed;
+  const navRef = useEdgeFade(rail, activeSpace?.id);
+  const spaceRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
   const tooltipSide = rail ? "right" : "bottom";
+  const hasUpdates = (entry: SidebarSpace) =>
+    entry.id !== activeSpace?.id && sectionsTotal(entry.sections) > 0;
+  const tool = (toolLabel: string, icon: IconName, onClick: () => void, shortcut?: string) => (
+    <Tooltip content={toolLabel} shortcut={shortcut} side={tooltipSide}>
+      <button type="button" className={styles.tool} aria-label={toolLabel} onClick={onClick}>
+        <Icon name={icon} size={18} />
+      </button>
+    </Tooltip>
+  );
   const userAvatar = <Avatar size={20} name={user.name} initials={user.initials} />;
   const account = (
     <button
@@ -369,7 +461,7 @@ export const Sidebar = ({
         <span className={styles.accountName}>{user.name}</span>
         <span className={styles.accountMeta}>{org ? org.name : user.email}</span>
       </span>
-      <Icon name="chev-ud" size={14} className={styles.trailing} />
+      <Icon name="chev-ud" size={16} className={styles.trailing} />
     </button>
   );
   const hasMenu = Boolean(org || user.items?.length || theme || user.href || user.onClick);
@@ -383,58 +475,85 @@ export const Sidebar = ({
       >
         {header}
         <div className={styles.tools}>
-          {collapsible && (
-            <Tooltip content={rail ? "Expand sidebar" : "Collapse sidebar"} side={tooltipSide}>
-              <Button
-                variant="ghost"
-                size="icon"
-                icon="sidebar"
-                iconOnly
-                className={styles.tool}
-                onClick={() => setCollapsed(!isCollapsed)}
-              >
-                {rail ? "Expand sidebar" : "Collapse sidebar"}
-              </Button>
-            </Tooltip>
-          )}
+          {collapsible &&
+            tool(rail ? "Expand sidebar" : "Collapse sidebar", "sidebar", () =>
+              setCollapsed(!isCollapsed)
+            )}
           <span className={styles.toolsEnd}>
-            {search && (
-              <Tooltip
-                content={search.label ?? "Search"}
-                shortcut={search.shortcut ?? "mod+K"}
-                side={tooltipSide}
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  icon="search"
-                  iconOnly
-                  className={styles.tool}
-                  onClick={search.onClick}
-                >
-                  {search.label ?? "Search"}
-                </Button>
-              </Tooltip>
-            )}
-            {invite && (
-              <Tooltip content={invite.label ?? "Invite members"} side={tooltipSide}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  icon="user-plus"
-                  iconOnly
-                  className={styles.tool}
-                  onClick={invite.onClick}
-                >
-                  {invite.label ?? "Invite members"}
-                </Button>
-              </Tooltip>
-            )}
+            {search &&
+              tool(search.label ?? "Search", "search", search.onClick, search.shortcut ?? "mod+K")}
+            {invite && tool(invite.label ?? "Invite members", "user-plus", invite.onClick)}
           </span>
         </div>
-        <nav aria-label={label} className={styles.navigation} onKeyDown={moveFocus}>
-          <div className={styles.nav}>
-            {sections.map((section, index) => (
+        {spaces && activeSpace && !rail && (
+          <Tabs className={styles.spaces} value={activeSpace.id} onValueChange={setSpaceId}>
+            <TabsList variant="segmented" aria-label={spacesLabel}>
+              {spaces.map((entry) => (
+                <TabsTrigger key={entry.id} value={entry.id} className={styles.spaceTab}>
+                  {entry.label}
+                  {hasUpdates(entry) && (
+                    <>
+                      <span className={styles.spaceDot} aria-hidden="true" />
+                      <span className={styles.srOnly}>, has updates</span>
+                    </>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
+        {spaces && activeSpace && rail && (
+          <div className={styles.railSpacesShelf}>
+            <div
+              role="tablist"
+              aria-label={spacesLabel}
+              aria-orientation="vertical"
+              className={styles.railSpaces}
+            >
+              {spaces.map((entry, index) => {
+                const selected = entry.id === activeSpace.id;
+                return (
+                  <Tooltip key={entry.id} content={entry.label} side="right">
+                    <button
+                      ref={(node) => {
+                        spaceRefs.current[index] = node;
+                      }}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      tabIndex={selected ? 0 : -1}
+                      aria-label={hasUpdates(entry) ? `${entry.label}, has updates` : entry.label}
+                      className={styles.railSpace}
+                      onClick={() => setSpaceId(entry.id)}
+                      onKeyDown={(event) => {
+                        const step = ["ArrowDown", "ArrowRight"].includes(event.key)
+                          ? 1
+                          : ["ArrowUp", "ArrowLeft"].includes(event.key)
+                            ? -1
+                            : 0;
+                        if (!step) return;
+                        event.preventDefault();
+                        const next = (index + step + spaces.length) % spaces.length;
+                        setSpaceId(spaces[next].id);
+                        spaceRefs.current[next]?.focus();
+                      }}
+                    >
+                      <Icon name={entry.icon} size={18} />
+                      {hasUpdates(entry) && <span className={styles.railDot} aria-hidden="true" />}
+                    </button>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <nav
+          aria-label={label ?? (activeSpace ? `${activeSpace.label} navigation` : "Main")}
+          className={styles.navigation}
+          onKeyDown={moveFocus}
+        >
+          <div ref={navRef} className={styles.nav}>
+            {shownSections.map((section, index) => (
               <div key={section.label ?? index} className={styles.section}>
                 {section.label && (
                   <p className={styles.sectionLabel}>

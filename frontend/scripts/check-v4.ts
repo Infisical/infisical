@@ -183,11 +183,10 @@ export const v4Checks: readonly V4Check[] = [
     id: "icon-source",
     rule: "one-icon-set",
     message:
-      "Icons come from Lucide, through the v4 Icon component or a direct lucide-react import. Do not import another icon set or the legacy icon data.",
+      "Icons come from the Infisical 2.0 set through the v4 Icon component, with Lucide only for glyphs the set lacks. Do not import another icon library.",
     appliesTo: isAuthored,
     markup: [
-      /from\s+["'](?:react-icons[^"']*|@radix-ui\/react-icons|@heroicons\/[^"']+|@tabler\/icons[^"']*|@phosphor-icons\/[^"']+)["']/g,
-      /from\s+["'][^"']*icons-legacy[^"']*["']/g
+      /from\s+["'](?:react-icons[^"']*|@radix-ui\/react-icons|@heroicons\/[^"']+|@tabler\/icons[^"']*|@phosphor-icons\/[^"']+)["']/g
     ]
   },
   {
@@ -213,7 +212,7 @@ const skipped = (file: string) =>
   file.startsWith("src/components/v4/docs/") ||
   file === "src/components/v4/tokens.generated.css" ||
   file === "src/components/v4/catalog.ts" ||
-  file.startsWith("src/components/v4/assets/icons-legacy/");
+  file === "src/components/v4/ui/icon-data.ts";
 
 export type Finding = { check: string; file: string; line: number; text: string };
 

@@ -26,6 +26,7 @@ export const tableDefinition = {
   ],
   referenceNames: ["Table"],
   behavior: [
+    "A hovered row uses a translucent ink overlay at the opacity-hover token; a pinned cell lays the same overlay over its opaque surface so scrolled cells never show through it.",
     "DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.",
     "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
     "Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.",

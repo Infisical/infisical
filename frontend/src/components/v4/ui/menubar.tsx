@@ -65,7 +65,7 @@ const MenubarTrigger = React.forwardRef<
       data-slot="menubar-trigger"
       className={cn(
         controlStyles.focusOutline,
-        "flex items-center rounded-sm px-1.5 py-[2px] select-none hover:bg-muted aria-expanded:bg-muted",
+        "flex items-center rounded-sm px-1.5 py-[2px] select-none hover:bg-[color:var(--v4-action-ghost-hover)] aria-expanded:bg-[color:var(--v4-action-ghost-hover)]",
         className
       )}
       {...props}

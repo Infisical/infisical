@@ -13,6 +13,7 @@ export const sensitiveEditorDefinition = {
   referenceNames: ["SecretInput"],
   behavior: [
     "Stored identity and replacement draft are separate. Replacing never fetches the stored value. One-line sensitive hosts use 32px with 24px nested reveal/copy actions; multiline content may grow.",
+    "Blocked actions stay visible and disabled, never hidden: without onReveal (no view permission) Reveal and Copy render disabled with a reason, and without onSave or with readOnly, Replace without viewing renders disabled. Copy is gated only by the view permission: while the value is masked, Copy fetches it through onReveal and writes it without revealing it.",
     "Host reveal/save promises receive AbortSignal. Identity/revision change invalidates pending work and clears plaintext.",
     "Copy awaits the actual write before success notification. Failures preserve current draft and show recovery. CopyButton size sm/md/lg describes a 32/36/40px host and produces a 24/28/32px nested action, defaulting to sm. iconOnly defaults to false; icon-only actions retain their accessible label."
   ],

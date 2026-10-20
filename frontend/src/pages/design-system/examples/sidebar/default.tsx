@@ -4,61 +4,94 @@ import { Sidebar, type SidebarProps, type SidebarTheme } from "@app/components/v
 
 import { ExampleCell, ExampleGrid, ExampleStage } from "../../example-presentation";
 
-const sections: SidebarProps["sections"] = [
+const spaces: SidebarProps["spaces"] = [
   {
-    items: [
-      { id: "home", label: "Home", icon: "home" },
-      { id: "approvals", label: "Approvals", icon: "inbox", count: 3 }
-    ]
-  },
-  {
-    label: "Products",
-    items: [
+    id: "home",
+    label: "Home",
+    icon: "apps",
+    sections: [
       {
-        id: "secrets",
-        label: "Secrets",
-        icon: "key",
-        children: [
-          { id: "projects", label: "Projects", icon: "folder" },
-          { id: "syncs", label: "Secret syncs", icon: "sync", count: 2 }
+        items: [
+          { id: "home", label: "Home", icon: "home" },
+          { id: "inbox", label: "Needs you", icon: "inbox", count: 4 }
         ]
       },
-      { id: "certificates", label: "Certificates", icon: "cert" },
-      { id: "kms", label: "KMS", icon: "lock" },
-      { id: "pam", label: "Access manager", icon: "terminal" }
+      {
+        label: "Products",
+        items: [
+          {
+            id: "secrets",
+            label: "Secrets",
+            icon: "key",
+            children: [
+              { id: "secrets-overview", label: "Overview" },
+              { id: "secrets-integrations", label: "Integrations" },
+              { id: "secrets-rotation", label: "Rotation" },
+              { id: "secrets-approvals", label: "Approvals", count: 2 },
+              { id: "secrets-scanning", label: "Secret scanning", count: 1 }
+            ]
+          },
+          { id: "certificates", label: "Certificates", icon: "cert" },
+          { id: "pam", label: "PAM", icon: "terminal" },
+          { id: "kms", label: "KMS", icon: "lock" }
+        ]
+      }
     ]
   },
   {
-    label: "Administration",
-    items: [
-      { id: "access", label: "Access control", icon: "user" },
-      { id: "audit", label: "Audit logs", icon: "history" },
-      { id: "settings", label: "Settings", icon: "settings" }
+    id: "org",
+    label: "Organization",
+    icon: "building",
+    sections: [
+      {
+        items: [
+          { id: "integrations", label: "Integrations", icon: "link" },
+          {
+            id: "access",
+            label: "Access",
+            icon: "user",
+            children: [
+              { id: "access-members", label: "Members" },
+              { id: "access-identities", label: "Machine identities" },
+              { id: "access-roles", label: "Roles" }
+            ]
+          },
+          { id: "audit", label: "Audit logs", icon: "history" },
+          { id: "billing", label: "Billing", icon: "file" },
+          { id: "settings", label: "Settings", icon: "settings" }
+        ]
+      }
     ]
   }
 ];
 
 const organizations = [
   { value: "acme", label: "Acme Corp", plan: "Enterprise" },
-  { value: "acme-eu", label: "Acme EU", plan: "Enterprise" },
-  { value: "globex", label: "Globex", plan: "Pro" }
+  { value: "globex", label: "Globex", plan: "Pro" },
+  { value: "initech", label: "Initech", plan: "Free" }
 ];
 
-const Shell = ({ defaultCollapsed }: { defaultCollapsed?: boolean }) => {
-  const [current, setCurrent] = useState("projects");
+const Shell = ({ start, defaultCollapsed }: { start: string; defaultCollapsed?: boolean }) => {
+  const [current, setCurrent] = useState(start);
   const [org, setOrg] = useState("acme");
+  const [unseen, setUnseen] = useState(3);
   const [theme, setTheme] = useState<SidebarTheme>("system");
   return (
     <Sidebar
-      label="Main"
-      sections={sections}
+      spaces={spaces}
       current={current}
       onNavigate={(item) => setCurrent(item.id)}
       defaultCollapsed={defaultCollapsed}
       search={{ onClick: () => setCurrent("home") }}
-      invite={{ onClick: () => setCurrent("access") }}
+      invite={{ onClick: () => setCurrent("access-members") }}
       footerItems={[
-        { id: "news", label: "What's new", icon: "megaphone", count: 2 },
+        {
+          id: "news",
+          label: "What's new",
+          icon: "megaphone",
+          count: unseen,
+          onClick: () => setUnseen(0)
+        },
         { id: "docs", label: "Docs", icon: "file", href: "#sidebar", external: true }
       ]}
       user={{
@@ -81,15 +114,15 @@ const Shell = ({ defaultCollapsed }: { defaultCollapsed?: boolean }) => {
 
 export default function Example() {
   return (
-    <ExampleGrid width="full">
+    <ExampleGrid>
       <ExampleCell label="Expanded, a child page current" align="stretch">
         <ExampleStage height="app">
-          <Shell />
+          <Shell start="secrets-overview" />
         </ExampleStage>
       </ExampleCell>
       <ExampleCell label="Rail, counts as dots" align="stretch">
         <ExampleStage height="app">
-          <Shell defaultCollapsed />
+          <Shell start="secrets-approvals" defaultCollapsed />
         </ExampleStage>
       </ExampleCell>
     </ExampleGrid>

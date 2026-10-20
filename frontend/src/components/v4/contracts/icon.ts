@@ -10,10 +10,8 @@ export const iconDefinition = {
   exports: ["Icon", "iconNames"],
   referenceNames: ["Icon"],
   behavior: [
-    "Lucide (lucide-react) is the icon source of truth. Icon renders a Lucide glyph: pass name for one of the 52 product names, or icon for any Lucide icon directly.",
-    "Size defaults to the size-icon token (16px for controls; 18px for navigation and list media and 14px for small buttons come from the surrounding component) and the stroke defaults to stroke-icon (1.7) as Lucide's strokeWidth. Icons inherit currentColor.",
-    "Name mapping: search → Search, key → KeyRound, plus → Plus, minus → Minus, check → Check, x → X, chev-down → ChevronDown, chev-right → ChevronRight, chev-left → ChevronLeft, chev-ud → ChevronsUpDown, more → Ellipsis, copy → Copy, eye → Eye, history → History, trash → Trash2, lock → Lock, info → Info, alert → TriangleAlert, alert-c → CircleAlert, check-c → CircleCheck, agent → Bot, machine → Server, cert → ShieldCheck, terminal → SquareTerminal, user → User, external → ExternalLink, sync → RefreshCw, upload → Upload, clock → Clock, folder → Folder, link → Link, settings → SlidersHorizontal, bell → Bell, globe → Globe, inbox → Inbox, home → House, arrow-down → ArrowDown, git → GitBranch, calendar → Calendar, arrow-up → ArrowUp, file → File, folder-open → FolderOpen, download → Download, menu → Menu, sidebar → PanelLeft, user-plus → UserPlus, megaphone → Megaphone, apps → LayoutGrid, building → Building2, sun → Sun, moon → Moon, monitor → Monitor.",
-    "The original Infisical 2.0 line set from PR 8691 is kept as a legacy artifact in assets/icons-legacy/. No component imports it and the registry does not ship it."
+    "The Infisical 2.0 line set (52 owned 24-unit glyphs in ui/icon-data.ts) is primary: pass name. Pass icon with a Lucide icon only for a glyph the set lacks, such as the Kbd keys and the unsorted sort arrows.",
+    "Size defaults to the size-icon token (16px for controls; 18px for navigation and list media and 14px for small buttons come from the surrounding component) and the stroke to stroke-icon (1.7) for both sources, so a Lucide fallback blends in. Icons inherit currentColor. data-icon-source marks each icon custom or lucide."
   ],
   accessibility: [
     "Icons are decorative by default. With label, the icon is announced as an image with that name."
@@ -22,8 +20,14 @@ export const iconDefinition = {
   examples: [
     {
       id: "default",
-      title: "Product icon names with visible names",
+      title: "Infisical 2.0 set (custom), with visible names",
       module: "./examples/icon/default.tsx",
+      states: ["default"]
+    },
+    {
+      id: "fallbacks",
+      title: "Lucide fallbacks for glyphs the set lacks",
+      module: "./examples/icon/fallbacks.tsx",
       states: ["default"]
     },
     {

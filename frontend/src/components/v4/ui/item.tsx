@@ -53,7 +53,7 @@ ItemSeparator.displayName = "ItemSeparator";
 const itemVariants = cva(
   [
     controlStyles.focusOutline,
-    "group/item flex w-full flex-wrap rounded-lg text-sm transition-colors duration-(--v4-duration-fast) [a]:transition-colors [a]:hover:bg-muted"
+    "group/item flex w-full flex-wrap rounded-lg text-sm transition-colors duration-(--v4-duration-fast) [a]:transition-colors [a]:hover:bg-[color:var(--v4-action-ghost-hover)]"
   ],
   {
     variants: {

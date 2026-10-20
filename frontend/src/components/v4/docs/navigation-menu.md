@@ -47,6 +47,7 @@ Exports: NavigationMenu, NavigationMenuContent, NavigationMenuIndicator, Navigat
 
 ## Behavior
 
+- Hovered, open and active triggers and links use a translucent ink overlay at the opacity-hover token, so the surface behind shows through; they never take an opaque fill.
 - Radix NavigationMenu coordinates trigger/content pairs and an optional shared viewport; NavigationMenuLink retains native navigation through its child anchor.
 
 ## Accessibility

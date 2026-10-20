@@ -1,6 +1,5 @@
 "use client";
 
-import { CircleCheckIcon, InfoIcon, OctagonXIcon, TriangleAlertIcon } from "lucide-react";
 import {
   type ExternalToast,
   toast as sonnerToast,
@@ -9,6 +8,7 @@ import {
 } from "sonner";
 
 import { useV4Theme } from "../scope";
+import { Icon } from "./icon";
 import { Spinner } from "./spinner";
 
 import styles from "./sonner.module.css";
@@ -57,10 +57,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       expand
       gap={8}
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
+        success: <Icon name="check-c" className="size-4" />,
+        info: <Icon name="info" className="size-4" />,
+        warning: <Icon name="alert" className="size-4" />,
+        error: <Icon name="alert-c" className="size-4" />,
         loading: <Spinner />
       }}
       style={{ "--width": "min(400px, calc(100vw - 32px))" } as React.CSSProperties}

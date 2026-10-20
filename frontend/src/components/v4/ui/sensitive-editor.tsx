@@ -7,7 +7,7 @@ import geometry from "./button-geometry.module.css";
 import styles from "./data.module.css";
 
 export interface CopyButtonProps {
-  value: string;
+  value: string | (() => Promise<string>);
   label?: string;
   onCopy?: (value: string) => void;
   writeClipboard?: (value: string) => Promise<void>;
@@ -38,7 +38,7 @@ export function CopyButton({
     return () => {
       turn.current += 1;
     };
-  }, [value]);
+  }, [typeof value === "string" ? value : null]);
   React.useEffect(() => {
     if (state !== "copied") return;
     const timer = window.setTimeout(() => setState("idle"), 1200);
@@ -51,10 +51,11 @@ export function CopyButton({
     const { current } = turn;
     setState("pending");
     try {
-      await writer(value);
+      const text = typeof value === "string" ? value : await value();
+      await writer(text);
       if (current === turn.current) {
         setState("copied");
-        onCopy?.(value);
+        onCopy?.(text);
       }
     } catch {
       if (current === turn.current) setState("failed");
@@ -331,32 +332,46 @@ function SensitiveEditorSession({
           >
             {view.kind === "revealed" ? view.value : stored.hasValue ? "••••••••" : "No value"}
           </span>
-          {onReveal && stored.hasValue && (
-            <Button
-              type="button"
-              variant="ghost"
-              className={geometry.nestedAction}
+          <Button
+            type="button"
+            variant="ghost"
+            className={geometry.nestedAction}
+            iconOnly
+            icon="eye"
+            title={
+              !onReveal
+                ? "You do not have permission to view this value"
+                : !stored.hasValue
+                  ? "No stored value"
+                  : view.kind === "revealed"
+                    ? "Hide value"
+                    : "Reveal value"
+            }
+            disabled={!onReveal || !stored.hasValue}
+            loading={view.kind === "loading"}
+            aria-pressed={view.kind === "revealed"}
+            onClick={() => (view.kind === "revealed" ? hide() : reveal())}
+          >
+            {view.kind === "revealed" ? "Hide value" : "Reveal value"}
+          </Button>
+          {copyable && (
+            <CopyButton
+              value={
+                view.kind === "revealed"
+                  ? view.value
+                  : () =>
+                      onReveal
+                        ? onReveal({ signal: new AbortController().signal })
+                        : Promise.reject()
+              }
+              onCopy={onCopy}
+              disabled={!onReveal || !stored.hasValue}
               iconOnly
-              icon="eye"
-              title={view.kind === "revealed" ? "Hide value" : "Reveal value"}
-              loading={view.kind === "loading"}
-              aria-pressed={view.kind === "revealed"}
-              onClick={() => (view.kind === "revealed" ? hide() : reveal())}
-            >
-              {view.kind === "revealed" ? "Hide value" : "Reveal value"}
-            </Button>
+            />
           )}
-          {onReveal &&
-            stored.hasValue &&
-            copyable &&
-            (view.kind === "revealed" ? (
-              <CopyButton value={view.value} onCopy={onCopy} iconOnly />
-            ) : (
-              <span className={styles.editorSlot} aria-hidden="true" />
-            ))}
         </div>
       )}
-      {!readOnly && onSave && (
+      {(draft !== null || stored.hasValue || onSave) && (
         <div className={styles.editorActions}>
           {draft !== null ? (
             <>
@@ -381,6 +396,10 @@ function SensitiveEditorSession({
             <Button
               type="button"
               variant="outline"
+              disabled={readOnly || !onSave}
+              title={
+                readOnly || !onSave ? "You do not have permission to change this value" : undefined
+              }
               onClick={() => {
                 setDraft("");
                 hide();

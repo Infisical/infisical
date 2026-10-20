@@ -1,6 +1,6 @@
 # Sidebar
 
-The app's navigation beside the inset: tools, sections of rows, footer rows and one account button for the person and their organization.
+The app's navigation beside the inset: tools, a Home and Organization switch, sections of rows, footer rows and one account button for the person and their organization.
 
 ## Choose this component
 
@@ -66,15 +66,18 @@ Exports: Sidebar. Source TypeScript defines the API.
 
 ## Behavior
 
-- The tools row holds the collapse toggle, then search and invite icon buttons with tooltips.
-- Sections stack rows 1px apart. A labeled section draws its eyebrow with a rule that runs to the sidebar's edge.
-- A row with children opens one level of pages on a guide line. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.
-- Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, section labels become rules and a group opens its pages in a menu to the right.
+- The tools row holds the collapse toggle, then search and invite: 36px icon buttons with 18px icons and tooltips.
+- With spaces, a segmented switch under the tools shows one space's sections at a time. The space holding the current page shows by default, a page opened from elsewhere brings its space with it, and a hidden space that holds a count shows a dot.
+- Sections stack 36px rows 1px apart. A labeled section draws its 28px eyebrow with a rule that runs to the sidebar's edge.
+- A row with children opens one level of 32px pages, without icons, on a guide line under its icon. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.
+- The nav scrolls when it runs out of room and fades the edge where more rows are cut off.
+- Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.
 - The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings.
 
 ## Accessibility
 
-- The rows sit in a named nav landmark. Up and Down move between rows and Home and End jump; Tab still reaches every row.
+- The rows sit in a nav landmark named for the space it shows. Up and Down move between rows and Home and End jump; Tab still reaches every row.
+- The space switch is a tablist: Left and Right move between spaces, Up and Down in the rail. A hidden space with a count is announced as having updates.
 - The current page carries aria-current. Rail rows keep their label as the accessible name.
 - Focus draws the 2px ink outline inside the row, so the scrolling nav never clips it.
 - The account button is named for the person and the organization, and the popover returns focus to it on close.
@@ -89,7 +92,6 @@ Exports: Sidebar. Source TypeScript defines the API.
 
 ## Limits
 
-- The reference's two-space switch (Home and Organization) is not implemented; pass the sections for the space you show.
 - The host owns routing: rows call onNavigate or follow href, and the host passes the current id back.
 - Organizations never show an avatar or icon. The account button shows the person's avatar.
 
@@ -118,52 +120,87 @@ Registry items used: @infisical/sidebar. Additional packages: none. Install ever
 ```tsx
 import { useState } from "react";
 import { Sidebar, type SidebarProps, type SidebarTheme } from "../../../../components/v4/ui/sidebar";
-const sections: SidebarProps["sections"] = [
+const spaces: SidebarProps["spaces"] = [
     {
-        items: [
-            { id: "home", label: "Home", icon: "home" },
-            { id: "approvals", label: "Approvals", icon: "inbox", count: 3 }
-        ]
-    },
-    {
-        label: "Products",
-        items: [
+        id: "home",
+        label: "Home",
+        icon: "apps",
+        sections: [
             {
-                id: "secrets",
-                label: "Secrets",
-                icon: "key",
-                children: [
-                    { id: "projects", label: "Projects", icon: "folder" },
-                    { id: "syncs", label: "Secret syncs", icon: "sync", count: 2 }
+                items: [
+                    { id: "home", label: "Home", icon: "home" },
+                    { id: "inbox", label: "Needs you", icon: "inbox", count: 4 }
                 ]
             },
-            { id: "certificates", label: "Certificates", icon: "cert" },
-            { id: "kms", label: "KMS", icon: "lock" },
-            { id: "pam", label: "Access manager", icon: "terminal" }
+            {
+                label: "Products",
+                items: [
+                    {
+                        id: "secrets",
+                        label: "Secrets",
+                        icon: "key",
+                        children: [
+                            { id: "secrets-overview", label: "Overview" },
+                            { id: "secrets-integrations", label: "Integrations" },
+                            { id: "secrets-rotation", label: "Rotation" },
+                            { id: "secrets-approvals", label: "Approvals", count: 2 },
+                            { id: "secrets-scanning", label: "Secret scanning", count: 1 }
+                        ]
+                    },
+                    { id: "certificates", label: "Certificates", icon: "cert" },
+                    { id: "pam", label: "PAM", icon: "terminal" },
+                    { id: "kms", label: "KMS", icon: "lock" }
+                ]
+            }
         ]
     },
     {
-        label: "Administration",
-        items: [
-            { id: "access", label: "Access control", icon: "user" },
-            { id: "audit", label: "Audit logs", icon: "history" },
-            { id: "settings", label: "Settings", icon: "settings" }
+        id: "org",
+        label: "Organization",
+        icon: "building",
+        sections: [
+            {
+                items: [
+                    { id: "integrations", label: "Integrations", icon: "link" },
+                    {
+                        id: "access",
+                        label: "Access",
+                        icon: "user",
+                        children: [
+                            { id: "access-members", label: "Members" },
+                            { id: "access-identities", label: "Machine identities" },
+                            { id: "access-roles", label: "Roles" }
+                        ]
+                    },
+                    { id: "audit", label: "Audit logs", icon: "history" },
+                    { id: "billing", label: "Billing", icon: "file" },
+                    { id: "settings", label: "Settings", icon: "settings" }
+                ]
+            }
         ]
     }
 ];
 const organizations = [
     { value: "acme", label: "Acme Corp", plan: "Enterprise" },
-    { value: "acme-eu", label: "Acme EU", plan: "Enterprise" },
-    { value: "globex", label: "Globex", plan: "Pro" }
+    { value: "globex", label: "Globex", plan: "Pro" },
+    { value: "initech", label: "Initech", plan: "Free" }
 ];
-const Shell = ({ defaultCollapsed }: {
+const Shell = ({ start, defaultCollapsed }: {
+    start: string;
     defaultCollapsed?: boolean;
 }) => {
-    const [current, setCurrent] = useState("projects");
+    const [current, setCurrent] = useState(start);
     const [org, setOrg] = useState("acme");
+    const [unseen, setUnseen] = useState(3);
     const [theme, setTheme] = useState<SidebarTheme>("system");
-    return (<Sidebar label="Main" sections={sections} current={current} onNavigate={(item) => setCurrent(item.id)} defaultCollapsed={defaultCollapsed} search={{ onClick: () => setCurrent("home") }} invite={{ onClick: () => setCurrent("access") }} footerItems={[
-            { id: "news", label: "What's new", icon: "megaphone", count: 2 },
+    return (<Sidebar spaces={spaces} current={current} onNavigate={(item) => setCurrent(item.id)} defaultCollapsed={defaultCollapsed} search={{ onClick: () => setCurrent("home") }} invite={{ onClick: () => setCurrent("access-members") }} footerItems={[
+            {
+                id: "news",
+                label: "What's new",
+                icon: "megaphone",
+                count: unseen,
+                onClick: () => setUnseen(0)
+            },
             { id: "docs", label: "Docs", icon: "file", href: "#sidebar", external: true }
         ]} user={{
             name: "Sarah Lin",
@@ -179,15 +216,15 @@ const Shell = ({ defaultCollapsed }: {
         }} theme={{ value: theme, onChange: setTheme }}/>);
 };
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <div className="relative min-w-0 w-full overflow-auto h-[600px] isolate [transform:translateZ(0)]">
-          <Shell />
+          <Shell start="secrets-overview"/>
         </div>
       </div><figcaption className="text-muted-foreground text-xs">{"Expanded, a child page current"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <div className="relative min-w-0 w-full overflow-auto h-[600px] isolate [transform:translateZ(0)]">
-          <Shell defaultCollapsed/>
+          <Shell start="secrets-approvals" defaultCollapsed/>
         </div>
       </div><figcaption className="text-muted-foreground text-xs">{"Rail, counts as dots"}</figcaption></figure>
     </div>);

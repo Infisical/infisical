@@ -1,5 +1,4 @@
 import * as React from "react";
-import { CheckIcon, MinusIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 
@@ -7,6 +6,7 @@ import { useFieldControlAttributes } from "../lib/field-context";
 import { exit, fade, motionMs } from "../lib/motion";
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 
@@ -74,9 +74,9 @@ const Checkbox = React.forwardRef<
             opacity: { duration: 0, delay: drawn ? 0 : motionMs.exit.fast / 1000 }
           }}
         >
-          <CheckIcon strokeWidth={2} />
+          <Icon name="check" strokeWidth={2} />
         </motion.span>
-        <MinusIcon data-mixed />
+        <Icon name="minus" data-mixed="" strokeWidth={2} />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   );

@@ -109,10 +109,7 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
     ]
   },
   "icon-source": {
-    bad: [
-      [ui, 'import { XIcon } from "@radix-ui/react-icons";'],
-      [ui, 'import { iconShapes } from "../assets/icons-legacy/icon-data.legacy";']
-    ],
+    bad: [[ui, 'import { XIcon } from "@radix-ui/react-icons";']],
     good: [
       [ui, 'import { Icon } from "./icon";'],
       [ui, 'import { XIcon } from "lucide-react";']

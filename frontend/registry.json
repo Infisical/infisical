@@ -592,10 +592,10 @@
       "name": "accordion",
       "type": "registry:ui",
       "registryDependencies": [
+        "@infisical/icon",
         "@infisical/infisical-base"
       ],
       "dependencies": [
-        "lucide-react@^0.544.0",
         "radix-ui@^1.6.7"
       ],
       "files": [
@@ -778,7 +778,6 @@
         "@infisical/switcher"
       ],
       "dependencies": [
-        "lucide-react@^0.544.0",
         "radix-ui@^1.6.7"
       ],
       "files": [
@@ -859,10 +858,10 @@
       "type": "registry:ui",
       "registryDependencies": [
         "@infisical/button",
+        "@infisical/icon",
         "@infisical/infisical-base"
       ],
       "dependencies": [
-        "lucide-react@^0.544.0",
         "react-day-picker@^9.13.0"
       ],
       "files": [
@@ -907,11 +906,11 @@
       "type": "registry:ui",
       "registryDependencies": [
         "@infisical/button",
+        "@infisical/icon",
         "@infisical/infisical-base"
       ],
       "dependencies": [
-        "embla-carousel-react@^8.6.0",
-        "lucide-react@^0.544.0"
+        "embla-carousel-react@^8.6.0"
       ],
       "files": [
         {
@@ -942,10 +941,10 @@
       "name": "checkbox",
       "type": "registry:ui",
       "registryDependencies": [
+        "@infisical/icon",
         "@infisical/infisical-base"
       ],
       "dependencies": [
-        "lucide-react@^0.544.0",
         "motion@^13.2.0",
         "radix-ui@^1.6.7"
       ],
@@ -1439,6 +1438,11 @@
           "path": "src/components/v4/ui/icon.tsx",
           "type": "registry:file",
           "target": "src/components/v4/ui/icon.tsx"
+        },
+        {
+          "path": "src/components/v4/ui/icon-data.ts",
+          "type": "registry:file",
+          "target": "src/components/v4/ui/icon-data.ts"
         }
       ]
     },
@@ -1474,11 +1478,11 @@
       "name": "input-otp",
       "type": "registry:ui",
       "registryDependencies": [
+        "@infisical/icon",
         "@infisical/infisical-base"
       ],
       "dependencies": [
-        "input-otp@^1.5.0",
-        "lucide-react@^0.544.0"
+        "input-otp@^1.5.0"
       ],
       "files": [
         {
@@ -1872,9 +1876,6 @@
         "@infisical/select",
         "@infisical/spinner"
       ],
-      "dependencies": [
-        "lucide-react@^0.544.0"
-      ],
       "files": [
         {
           "path": "src/components/v4/ui/pagination.tsx",
@@ -2132,11 +2133,11 @@
       "registryDependencies": [
         "@infisical/avatar",
         "@infisical/badge",
-        "@infisical/button",
         "@infisical/dropdown-menu",
         "@infisical/icon",
         "@infisical/infisical-base",
         "@infisical/switcher",
+        "@infisical/tabs",
         "@infisical/toggle-group",
         "@infisical/tooltip"
       ],
@@ -2218,12 +2219,12 @@
       "name": "sonner",
       "type": "registry:ui",
       "registryDependencies": [
+        "@infisical/icon",
         "@infisical/infisical-base",
         "@infisical/spinner",
         "@infisical/toast-stack"
       ],
       "dependencies": [
-        "lucide-react@^0.544.0",
         "sonner@^2.0.7"
       ],
       "files": [

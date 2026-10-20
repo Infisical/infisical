@@ -187,7 +187,6 @@ export function DataTable<Row>({
                               ? ArrowUp
                               : ArrowDown
                         }
-                        strokeWidth={2}
                       />
                     </button>
                   ) : (

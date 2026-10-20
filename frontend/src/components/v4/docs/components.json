@@ -3096,7 +3096,9 @@
         "Chart"
       ],
       "behavior": [
-        "ChartContainer provides Recharts responsive sizing and a ChartConfig mapping series keys to labels, icons and color or light/dark values. Tooltip and legend content consume that context."
+        "ChartContainer provides Recharts responsive sizing and a ChartConfig mapping series keys to labels, icons and color or light/dark values. Tooltip and legend content consume that context.",
+        "The hover cursor behind a hovered category is a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible. It never paints an opaque fill over the plot.",
+        "While data loads, the chart region shows Skeleton bars shaped like the chart, with a status that names what is loading."
       ],
       "accessibility": [
         "Provide an equivalent text summary for decisions that cannot be read from the chart alone."
@@ -3289,6 +3291,21 @@
               "src/components/v4/ui/chart.tsx",
               "src/pages/design-system/examples/chart/default.tsx"
             ]
+          },
+          {
+            "id": "chart-hover-overlay",
+            "when": "A pointer hovers a bar or category.",
+            "do": "Mark the hovered category with a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible.",
+            "avoid": "Paint the cursor or a hovered bar with an opaque fill that covers the plot behind it.",
+            "reason": "Hover marks a position; it should not hide the data people are comparing.",
+            "detect": {
+              "by": "review",
+              "how": "Hover a bar in light and dark. The grid lines inside the cursor band stay visible and the cursor fill has an alpha below one."
+            },
+            "evidence": [
+              "src/components/v4/ui/chart.tsx",
+              "src/pages/design-system/examples/chart/default.tsx"
+            ]
           }
         ],
         "states": [
@@ -3298,7 +3315,7 @@
           },
           {
             "state": "loading",
-            "guidance": "Keep the chart region stable and distinguish pending data from a genuine zero count."
+            "guidance": "Keep the chart region stable with Skeleton bars shaped like the chart, and distinguish pending data from a genuine zero count."
           }
         ],
         "antiSlop": [
@@ -3904,6 +3921,7 @@
         "ContextMenu"
       ],
       "behavior": [
+        "Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.",
         "Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.",
         "ContextMenu opens from its trigger's context action. Action items call onSelect and close; checkbox/radio items stay open unless closeOnSelect is true."
       ],
@@ -4450,6 +4468,7 @@
         "DropdownMenu"
       ],
       "behavior": [
+        "Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.",
         "Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.",
         "Radix Root owns open/onOpenChange. Action items close after onSelect; checkbox/radio changes stay open by default and can opt into closeOnSelect."
       ],
@@ -6397,6 +6416,7 @@
         "Menubar"
       ],
       "behavior": [
+        "Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.",
         "Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.",
         "Each MenubarMenu owns a trigger and menu content. Action items close normally; checkbox/radio items remain open unless closeOnSelect requests dismissal."
       ],
@@ -6652,6 +6672,7 @@
         "NavigationMenu"
       ],
       "behavior": [
+        "Hovered, open and active triggers and links use a translucent ink overlay at the opacity-hover token, so the surface behind shows through; they never take an opaque fill.",
         "Radix NavigationMenu coordinates trigger/content pairs and an optional shared viewport; NavigationMenuLink retains native navigation through its child anchor."
       ],
       "accessibility": [
@@ -8316,13 +8337,15 @@
         "Skeleton"
       ],
       "behavior": [
-        "Skeleton reserves measured lines or a shape while the owner loads data. It does not start or finish a request."
+        "Skeleton reserves measured lines or a shape while the owner loads data. It does not start or finish a request.",
+        "When the shape of the loaded content is known, the loading state is a Skeleton shaped like it (same row height, media, text lines and trailing badge), not a blanket Loader. Loader stays for content whose shape is unknown."
       ],
       "accessibility": [
         "Keep decorative loading structure out of the accessibility tree and provide a meaningful loading status where needed."
       ],
       "limitations": [
-        "Skeleton is visual and aria-hidden; the owner announces loading and replaces the shape with the actual result or error."
+        "Skeleton is visual and aria-hidden; the owner announces loading and replaces the shape with the actual result or error.",
+        "Skeleton cannot guess an unknown shape. When the result's shape is unknown, use Loader instead."
       ],
       "examples": [
         {
@@ -8471,7 +8494,7 @@
       ],
       "behavior": [
         "Radix value/defaultValue is a number array; onValueChange reports live adjustment and onValueCommit reports committed adjustment. Array length determines the number of thumbs.",
-        "The filled range and the thumb use the accent in both themes, and the thumb has a 2px on-accent ring. The thumb follows the corner mode: a square in square mode and a rounded square (radius-sm) in soft mode, never a circle. A disabled slider drops to faint and the disabled control surface."
+        "The filled range is slider-range (ink in light, the accent in dark) on a slider-track, and the thumb is the accent with a 2px on-accent ring. Hover and keyboard focus draw the shared focus glow (size-focus-glow, focus-ring: neutral ink, never the accent) around the thumb, the same ring a focused field draws. The thumb follows the corner mode: a square in square mode and a rounded square (radius-sm) in soft mode, never a circle. A disabled slider drops to faint and the disabled control surface."
       ],
       "accessibility": [
         "Name each thumb with thumbLabels or aria-labelledby; with one shared label, each thumb gets that label plus its position. Each thumb announces its minimum, maximum and value, and arrow keys adjust it."
@@ -10602,7 +10625,7 @@
         "Combobox"
       ],
       "behavior": [
-        "Single selection uses Radix Popover and cmdk; multiple selection composes the shared ARIA listbox with removable chips and empty-query Backspace.",
+        "Single selection uses Radix Popover and cmdk; multiple selection composes the shared ARIA listbox with removable chips and empty-query Backspace. Chips sit on a tint; a chip that cannot be removed (locked, for example required by policy) drops the tint and its text goes muted so the whole chip reads as disabled, and its remove button stays visible but disabled.",
         "ArrowDown or ArrowUp on the focused closed trigger opens the list with focus in the search field and the active option highlighted, like Enter and Space.",
         "Multiple mode lists options with checkbox marks and no Select all bar. Removing a chip with Enter, Space, Backspace or Delete on its remove button moves focus to the next removable chip, else the previous one, else the trigger; focus never falls to the page.",
         "Controlled or local value; case-insensitive label and metadata filtering; optional awaited creation.",
@@ -10945,6 +10968,7 @@
         "DataGrid"
       ],
       "behavior": [
+        "A hovered row shades its cells with a translucent ink overlay at the opacity-hover token, so the grid surface and cell content stay visible; selected and edited cells keep their own wash.",
         "Editable and read-only cells share range selection, copy and resize. rowHeight defaults to a requested 32px minimum. The measured content floor raises one uniform effective height used by cells, virtual positions and keyboard navigation; this is not arbitrary variable-height row support.",
         "Quoted TSV preserves null, literal NULL, empty text, embedded separators and quotes. Copy writes null as the unquoted marker \\N, and paste reads an unquoted \\N back as null.",
         "Invalid paste rejects the full batch. Async change failure keeps the edit draft.",
@@ -11212,6 +11236,7 @@
         "FileTree"
       ],
       "behavior": [
+        "A hovered row uses a translucent ink overlay at the opacity-hover token instead of an opaque fill, so the tree surface shows through.",
         "Folder/file/all/none selection modes and folders-only views.",
         "Controlled or default selection/expansion, disabled reasons and metadata.",
         "Visible rows retain focus identity while children open and close."
@@ -11579,10 +11604,8 @@
         "Icon"
       ],
       "behavior": [
-        "Lucide (lucide-react) is the icon source of truth. Icon renders a Lucide glyph: pass name for one of the 52 product names, or icon for any Lucide icon directly.",
-        "Size defaults to the size-icon token (16px for controls; 18px for navigation and list media and 14px for small buttons come from the surrounding component) and the stroke defaults to stroke-icon (1.7) as Lucide's strokeWidth. Icons inherit currentColor.",
-        "Name mapping: search → Search, key → KeyRound, plus → Plus, minus → Minus, check → Check, x → X, chev-down → ChevronDown, chev-right → ChevronRight, chev-left → ChevronLeft, chev-ud → ChevronsUpDown, more → Ellipsis, copy → Copy, eye → Eye, history → History, trash → Trash2, lock → Lock, info → Info, alert → TriangleAlert, alert-c → CircleAlert, check-c → CircleCheck, agent → Bot, machine → Server, cert → ShieldCheck, terminal → SquareTerminal, user → User, external → ExternalLink, sync → RefreshCw, upload → Upload, clock → Clock, folder → Folder, link → Link, settings → SlidersHorizontal, bell → Bell, globe → Globe, inbox → Inbox, home → House, arrow-down → ArrowDown, git → GitBranch, calendar → Calendar, arrow-up → ArrowUp, file → File, folder-open → FolderOpen, download → Download, menu → Menu, sidebar → PanelLeft, user-plus → UserPlus, megaphone → Megaphone, apps → LayoutGrid, building → Building2, sun → Sun, moon → Moon, monitor → Monitor.",
-        "The original Infisical 2.0 line set from PR 8691 is kept as a legacy artifact in assets/icons-legacy/. No component imports it and the registry does not ship it."
+        "The Infisical 2.0 line set (52 owned 24-unit glyphs in ui/icon-data.ts) is primary: pass name. Pass icon with a Lucide icon only for a glyph the set lacks, such as the Kbd keys and the unsorted sort arrows.",
+        "Size defaults to the size-icon token (16px for controls; 18px for navigation and list media and 14px for small buttons come from the surrounding component) and the stroke to stroke-icon (1.7) for both sources, so a Lucide fallback blends in. Icons inherit currentColor. data-icon-source marks each icon custom or lucide."
       ],
       "accessibility": [
         "Icons are decorative by default. With label, the icon is announced as an image with that name."
@@ -11593,8 +11616,16 @@
       "examples": [
         {
           "id": "default",
-          "title": "Product icon names with visible names",
+          "title": "Infisical 2.0 set (custom), with visible names",
           "module": "./examples/icon/default.tsx",
+          "states": [
+            "default"
+          ]
+        },
+        {
+          "id": "fallbacks",
+          "title": "Lucide fallbacks for glyphs the set lacks",
+          "module": "./examples/icon/fallbacks.tsx",
           "states": [
             "default"
           ]
@@ -12444,6 +12475,7 @@
         "List"
       ],
       "behavior": [
+        "Interactive rows use a translucent ink overlay on hover and press (opacity-hover and opacity-press tokens), so tinted surfaces behind the list show through.",
         "Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface) or bare; md/sm, static/link/button rows and actions below.",
         "Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.",
         "Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.",
@@ -12708,19 +12740,20 @@
       "behavior": [
         "Loader composes Spinner with its label, description and delay; it adds the area that centers it and marks the region busy.",
         "With loading false it renders its children and nothing else.",
-        "The default delay of 300ms keeps fast loads from flashing."
+        "The default delay of 300ms keeps fast loads from flashing.",
+        "Loader is for content whose shape is unknown. When the loaded shape is known (rows, cards, a chart), show Skeleton shapes that match the loaded state instead, as the reload in the example does."
       ],
       "accessibility": [
         "Spinner's label carries one polite status announcement; the region sets aria-busy while loading."
       ],
       "limitations": [
         "For an inline status beside text, use Spinner with a label directly; Loader only fills areas.",
-        "Use Progress for a known count and Skeleton for a known layout."
+        "Use Progress for a known count and Skeleton for a known layout. A blanket Loader over rows, cards or a chart whose shape is known is a misuse."
       ],
       "examples": [
         {
           "id": "default",
-          "title": "Base, page and loaded",
+          "title": "Base, page and a skeleton reload",
           "module": "./examples/loader/default.tsx",
           "states": [
             "loading",
@@ -12771,6 +12804,21 @@
             "detect": {
               "by": "review",
               "how": "Read each Loader label and check that it names what loads."
+            }
+          },
+          {
+            "id": "loader-unknown-shape",
+            "when": "A region is waiting for data.",
+            "do": "Use Loader only when the shape of the result is unknown. When it is known, show Skeleton shapes like the loaded state and announce the wait with a status.",
+            "avoid": "Cover known rows, cards or a chart with a blanket Loader.",
+            "reason": "Matching shapes keep the layout still and show what is coming; a centered spinner hides both.",
+            "evidence": [
+              "src/components/v4/ui/loader.tsx",
+              "src/pages/design-system/examples/loader/default.tsx"
+            ],
+            "detect": {
+              "by": "review",
+              "how": "For each Loader, check whether the loaded content has a known shape. If it does, replace the Loader with Skeleton shapes at the same size."
             }
           },
           {
@@ -13782,6 +13830,7 @@
       ],
       "behavior": [
         "Stored identity and replacement draft are separate. Replacing never fetches the stored value. One-line sensitive hosts use 32px with 24px nested reveal/copy actions; multiline content may grow.",
+        "Blocked actions stay visible and disabled, never hidden: without onReveal (no view permission) Reveal and Copy render disabled with a reason, and without onSave or with readOnly, Replace without viewing renders disabled. Copy is gated only by the view permission: while the value is masked, Copy fetches it through onReveal and writes it without revealing it.",
         "Host reveal/save promises receive AbortSignal. Identity/revision change invalidates pending work and clears plaintext.",
         "Copy awaits the actual write before success notification. Failures preserve current draft and show recovery. CopyButton size sm/md/lg describes a 32/36/40px host and produces a 24/28/32px nested action, defaulting to sm. iconOnly defaults to false; icon-only actions retain their accessible label."
       ],
@@ -14128,7 +14177,7 @@
       "id": "sidebar",
       "title": "Sidebar",
       "group": "Navigation",
-      "summary": "The app's navigation beside the inset: tools, sections of rows, footer rows and one account button for the person and their organization.",
+      "summary": "The app's navigation beside the inset: tools, a Home and Organization switch, sections of rows, footer rows and one account button for the person and their organization.",
       "sourceFiles": [
         "src/components/v4/ui/sidebar.tsx",
         "src/components/v4/ui/sidebar.module.css"
@@ -14141,20 +14190,22 @@
         "AppTile"
       ],
       "behavior": [
-        "The tools row holds the collapse toggle, then search and invite icon buttons with tooltips.",
-        "Sections stack rows 1px apart. A labeled section draws its eyebrow with a rule that runs to the sidebar's edge.",
-        "A row with children opens one level of pages on a guide line. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.",
-        "Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, section labels become rules and a group opens its pages in a menu to the right.",
+        "The tools row holds the collapse toggle, then search and invite: 36px icon buttons with 18px icons and tooltips.",
+        "With spaces, a segmented switch under the tools shows one space's sections at a time. The space holding the current page shows by default, a page opened from elsewhere brings its space with it, and a hidden space that holds a count shows a dot.",
+        "Sections stack 36px rows 1px apart. A labeled section draws its 28px eyebrow with a rule that runs to the sidebar's edge.",
+        "A row with children opens one level of 32px pages, without icons, on a guide line under its icon. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.",
+        "The nav scrolls when it runs out of room and fades the edge where more rows are cut off.",
+        "Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.",
         "The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings."
       ],
       "accessibility": [
-        "The rows sit in a named nav landmark. Up and Down move between rows and Home and End jump; Tab still reaches every row.",
+        "The rows sit in a nav landmark named for the space it shows. Up and Down move between rows and Home and End jump; Tab still reaches every row.",
+        "The space switch is a tablist: Left and Right move between spaces, Up and Down in the rail. A hidden space with a count is announced as having updates.",
         "The current page carries aria-current. Rail rows keep their label as the accessible name.",
         "Focus draws the 2px ink outline inside the row, so the scrolling nav never clips it.",
         "The account button is named for the person and the organization, and the popover returns focus to it on close."
       ],
       "limitations": [
-        "The reference's two-space switch (Home and Organization) is not implemented; pass the sections for the space you show.",
         "The host owns routing: rows call onNavigate or follow href, and the host passes the current id back.",
         "Organizations never show an avatar or icon. The account button shows the person's avatar."
       ],
@@ -14503,6 +14554,7 @@
         "Table"
       ],
       "behavior": [
+        "A hovered row uses a translucent ink overlay at the opacity-hover token; a pinned cell lays the same overlay over its opaque surface so scrolled cells never show through it.",
         "DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.",
         "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
         "Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.",

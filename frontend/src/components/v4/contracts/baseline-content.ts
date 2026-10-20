@@ -1309,7 +1309,9 @@ export const baselineContent = [
     ],
     referenceNames: ["Chart"],
     behavior: [
-      "ChartContainer provides Recharts responsive sizing and a ChartConfig mapping series keys to labels, icons and color or light/dark values. Tooltip and legend content consume that context."
+      "ChartContainer provides Recharts responsive sizing and a ChartConfig mapping series keys to labels, icons and color or light/dark values. Tooltip and legend content consume that context.",
+      "The hover cursor behind a hovered category is a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible. It never paints an opaque fill over the plot.",
+      "While data loads, the chart region shows Skeleton bars shaped like the chart, with a status that names what is loading."
     ],
     accessibility: [
       "Provide an equivalent text summary for decisions that cannot be read from the chart alone."
@@ -1486,6 +1488,22 @@ export const baselineContent = [
             "src/components/v4/ui/chart.tsx",
             "src/pages/design-system/examples/chart/default.tsx"
           ]
+        },
+        {
+          id: "chart-hover-overlay",
+          when: "A pointer hovers a bar or category.",
+          do: "Mark the hovered category with a translucent ink overlay at the opacity-hover token, so grid lines and bars behind it stay visible.",
+          avoid:
+            "Paint the cursor or a hovered bar with an opaque fill that covers the plot behind it.",
+          reason: "Hover marks a position; it should not hide the data people are comparing.",
+          detect: {
+            by: "review",
+            how: "Hover a bar in light and dark. The grid lines inside the cursor band stay visible and the cursor fill has an alpha below one."
+          },
+          evidence: [
+            "src/components/v4/ui/chart.tsx",
+            "src/pages/design-system/examples/chart/default.tsx"
+          ]
         }
       ],
       states: [
@@ -1497,7 +1515,7 @@ export const baselineContent = [
         {
           state: "loading",
           guidance:
-            "Keep the chart region stable and distinguish pending data from a genuine zero count."
+            "Keep the chart region stable with Skeleton bars shaped like the chart, and distinguish pending data from a genuine zero count."
         }
       ],
       antiSlop: [
@@ -2742,13 +2760,15 @@ export const baselineContent = [
     exports: ["Skeleton"],
     referenceNames: ["Skeleton"],
     behavior: [
-      "Skeleton reserves measured lines or a shape while the owner loads data. It does not start or finish a request."
+      "Skeleton reserves measured lines or a shape while the owner loads data. It does not start or finish a request.",
+      "When the shape of the loaded content is known, the loading state is a Skeleton shaped like it (same row height, media, text lines and trailing badge), not a blanket Loader. Loader stays for content whose shape is unknown."
     ],
     accessibility: [
       "Keep decorative loading structure out of the accessibility tree and provide a meaningful loading status where needed."
     ],
     limitations: [
-      "Skeleton is visual and aria-hidden; the owner announces loading and replaces the shape with the actual result or error."
+      "Skeleton is visual and aria-hidden; the owner announces loading and replaces the shape with the actual result or error.",
+      "Skeleton cannot guess an unknown shape. When the result's shape is unknown, use Loader instead."
     ],
     examples: [
       {

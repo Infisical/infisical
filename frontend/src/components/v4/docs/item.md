@@ -197,16 +197,15 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/item/composition.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/icon, @infisical/item. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/icon, @infisical/item. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FileText } from "lucide-react";
 import { Button } from "../../../../components/v4/ui/button";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Media } from "../../../../components/v4/ui/item";
-const manifestImage = `data:image/svg+xml,${encodeURIComponent(renderToStaticMarkup(<FileText xmlns="http://www.w3.org/2000/svg" color="CanvasText"/>))}`;
+const manifestImage = `data:image/svg+xml,${encodeURIComponent(renderToStaticMarkup(<Icon name="file" xmlns="http://www.w3.org/2000/svg" color="CanvasText"/>))}`;
 export default function Example() {
     const [imageAvailable, setImageAvailable] = useState(true);
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">

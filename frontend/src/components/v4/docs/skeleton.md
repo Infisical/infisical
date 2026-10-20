@@ -48,6 +48,7 @@ Exports: Skeleton. Source TypeScript defines the API.
 ## Behavior
 
 - Skeleton reserves measured lines or a shape while the owner loads data. It does not start or finish a request.
+- When the shape of the loaded content is known, the loading state is a Skeleton shaped like it (same row height, media, text lines and trailing badge), not a blanket Loader. Loader stays for content whose shape is unknown.
 
 ## Accessibility
 
@@ -64,6 +65,7 @@ Exports: Skeleton. Source TypeScript defines the API.
 ## Limits
 
 - Skeleton is visual and aria-hidden; the owner announces loading and replaces the shape with the actual result or error.
+- Skeleton cannot guess an unknown shape. When the result's shape is unknown, use Loader instead.
 
 ## Declared example coverage
 

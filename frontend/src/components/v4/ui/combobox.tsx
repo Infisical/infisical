@@ -135,7 +135,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>((prop
     return (
       <div ref={fieldRef} className={cn(controlStyles.field, styles.multiCombobox)} data-size="sm">
         {selected.map((value) => (
-          <span key={value} className={styles.chip}>
+          <span key={value} className={styles.chip} data-locked={isLocked(value) || undefined}>
             <span>{options.find((option) => option.value === value)?.label ?? value}</span>
             <Button
               type="button"

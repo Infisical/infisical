@@ -1,5 +1,4 @@
 import * as React from "react";
-import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
 import { Slot } from "radix-ui";
 
 import { useControllableState } from "../lib/use-controllable-state";
@@ -203,7 +202,7 @@ const Breadcrumb = React.forwardRef<HTMLElement, BreadcrumbProps>(
                         aria-expanded={expanded}
                         onClick={() => setExpanded(!expanded)}
                       >
-                        <MoreHorizontalIcon className="size-4" />
+                        <Icon name="more" className="size-4" />
                       </button>
                     </li>
                     {expanded && renderCrumb(crumb, index)}
@@ -303,7 +302,7 @@ const BreadcrumbSeparator = React.forwardRef<
       className={cn("[&>svg]:size-3.5", className)}
       {...props}
     >
-      {children ?? <ChevronRightIcon />}
+      {children ?? <Icon name="chev-right" />}
     </li>
   );
 });
@@ -322,7 +321,7 @@ const BreadcrumbEllipsis = React.forwardRef<
       className={cn("flex size-5 items-center justify-center [&>svg]:size-4", className)}
       {...props}
     >
-      <MoreHorizontalIcon />
+      <Icon name="more" />
       <span className="sr-only">More</span>
     </span>
   );

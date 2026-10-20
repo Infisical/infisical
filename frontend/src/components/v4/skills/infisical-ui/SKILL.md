@@ -19,7 +19,9 @@ Start with [the v4 instructions](../../AGENTS.md), then query the affected task 
 
 Use warm neutrals, Archivo, Geist Mono and square corners. The soft corner scale is an available mode (`V4Scope corners="soft"`); every radius goes through `var(--corners)` so both modes hold. Primary (and default, its alias) Buttons are the ink fill for the one main action; accent Buttons use the shared lime material for approval and grant moments only. The global primary role remains ink; do not recolor other components to match the Button. The brand neon lime is `--v4-accent` with `--v4-on-accent`; shadcn's `bg-accent` is a neutral hover/selection role. Do not swap them. For brand text or icons, the source `accent-fg` role is exposed as `--v4-accent-fg`. Do not use the light neon fill as light-theme text.
 
-Icons come from Lucide (`lucide-react`), the source of truth. Use `Icon` with a product name or a Lucide icon, or import a Lucide icon directly; stroke follows `stroke-icon` (1.7) and size the size tokens. The original 2.0 line set in `assets/icons-legacy/` is a legacy artifact: never import it or hand-draw SVG icons.
+Icons come from the Infisical 2.0 line set: use `Icon` with one of its 52 names. Use Lucide (`lucide-react`) only for glyphs the set lacks, at `stroke-icon` (1.7) and the size tokens; never import another icon library or hand-draw SVG icons.
+
+Disable blocked actions instead of hiding them, and gate each one by its own permission. Hover and press overlays are translucent ink, never opaque fills. Show Skeleton shapes when the loaded shape is known and a Loader only when it is not. Focus glows share size-focus-glow and focus-ring.
 
 Use `V4Scope` for the workbench boundary so portals inherit its colors, fonts and corner mode. Pass the host's resolved light/dark theme to `V4Scope`, or inherit the nearest host theme. Keep preference and storage in the host. The workbench uses its existing ThemeProvider; installed consumers use their own provider. Do not theme `document.body` or maintain a second preference state.
 

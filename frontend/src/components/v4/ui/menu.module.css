@@ -193,6 +193,12 @@
   height: var(--v4-size-icon);
   pointer-events: none;
 }
+:global(.v4) {
+  --overlay-hover: var(--v4-opacity-hover);
+}
+:global(.v4[data-theme="dark"]) {
+  --overlay-hover: var(--v4-opacity-hover-dark);
+}
 .row:is(
     [data-highlighted],
     [data-selected="true"],
@@ -201,7 +207,7 @@
     a:hover,
     a:focus-visible
   ) {
-  background-color: var(--v4-select);
+  background-color: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
 }
 .row:is([data-variant="destructive"], [data-danger]) {
   color: var(--v4-bad);
@@ -404,7 +410,7 @@
   letter-spacing: var(--v4-type-label-letter-spacing);
 }
 .navItem:is(:hover, [data-state="open"], [data-active]) {
-  background-color: var(--v4-select);
+  background-color: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
 }
 .navItem:disabled {
   opacity: 0.5;

@@ -183,7 +183,7 @@
 }
 .snippet:has(> .input:focus-visible) {
   border-color: var(--v4-ink);
-  box-shadow: 0 0 0 var(--v4-size-focus-ring) var(--v4-focus-ring);
+  box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
 }
 .snippet > :global([data-slot="copy-button"]) {
   display: contents;

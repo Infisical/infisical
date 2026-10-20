@@ -66,6 +66,7 @@ Exports: List, ListRow, ListSection, DataList. Source TypeScript defines the API
 
 ## Behavior
 
+- Interactive rows use a translucent ink overlay on hover and press (opacity-hover and opacity-press tokens), so tinted surfaces behind the list show through.
 - Framed (default: the shared tint frame with an uppercase eyebrow title and caption action, rows on an inset raised surface), plain (a bordered surface) or bare; md/sm, static/link/button rows and actions below.
 - Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.
 - Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.

@@ -184,6 +184,7 @@ export const baselineNavigation = [
     ],
     referenceNames: ["NavigationMenu"],
     behavior: [
+      "Hovered, open and active triggers and links use a translucent ink overlay at the opacity-hover token, so the surface behind shows through; they never take an opaque fill.",
       "Radix NavigationMenu coordinates trigger/content pairs and an optional shared viewport; NavigationMenuLink retains native navigation through its child anchor."
     ],
     accessibility: [
@@ -480,6 +481,7 @@ export const baselineNavigation = [
     ],
     referenceNames: ["ContextMenu"],
     behavior: [
+      "Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.",
       "Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.",
       "ContextMenu opens from its trigger's context action. Action items call onSelect and close; checkbox/radio items stay open unless closeOnSelect is true."
     ],
@@ -664,6 +666,7 @@ export const baselineNavigation = [
     ],
     referenceNames: ["DropdownMenu"],
     behavior: [
+      "Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.",
       "Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.",
       "Radix Root owns open/onOpenChange. Action items close after onSelect; checkbox/radio changes stay open by default and can opt into closeOnSelect."
     ],
@@ -897,6 +900,7 @@ export const baselineNavigation = [
     ],
     referenceNames: ["Menubar"],
     behavior: [
+      "Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.",
       "Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.",
       "Each MenubarMenu owns a trigger and menu content. Action items close normally; checkbox/radio items remain open unless closeOnSelect requests dismissal."
     ],

@@ -937,7 +937,6 @@ const support = filesIn(componentRoot).filter(
   (file) =>
     !file.includes("/ui/") &&
     !file.includes("/patterns/") &&
-    !file.includes("/icons-legacy/") &&
     !file.endsWith("/generated-manifest.json") &&
     !file.includes("/contracts/") &&
     !file.endsWith("/catalog.ts") &&

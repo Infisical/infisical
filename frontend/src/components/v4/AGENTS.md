@@ -25,4 +25,11 @@ Use only the composition needed to demonstrate the component. Do not add synthet
 
 ## Icons
 
-Lucide (`lucide-react`) is the icon source of truth for v4. Use `Icon` (52 product names mapped to Lucide, or any Lucide icon through `icon`) or import Lucide directly. `assets/icons-legacy/` holds the original Infisical 2.0 line set from #8691 for reference only: nothing imports it and the registry does not ship it. Do not hand-draw SVG icons.
+The Infisical 2.0 line set (52 glyphs from #8691, ui/icon-data.ts) is the primary icon set: use `<Icon name="..." />`. Use Lucide (`lucide-react`) only for glyphs the set lacks (Kbd keys, the unsorted sort arrows and similar), through `<Icon icon={...} />` or a direct import, drawn at `stroke-icon` (1.7) and the size tokens so it blends in. Do not hand-draw other SVG icons or import another icon library.
+
+## System rules
+
+- Disable, do not hide: a blocked action stays visible and disabled, with a reason, so the layout never shifts. Gate each action by its own permission only; a person who may view a secret may copy it while it is masked.
+- Hover and press overlays on anything with content behind it are translucent ink (opacity-hover and opacity-press), never an opaque fill.
+- Loading: when the loaded shape is known, show Skeleton shapes that match it; use Loader only when the shape is unknown.
+- Focus: fields, slider thumbs and other glow-focused controls share one glow, size-focus-glow in focus-ring (neutral ink, never the accent).

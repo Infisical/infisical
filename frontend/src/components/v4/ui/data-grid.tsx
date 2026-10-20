@@ -678,7 +678,6 @@ export function DataGrid<Row>({
                           ? ArrowUp
                           : ArrowDown
                     }
-                    strokeWidth={2}
                   />
                 </button>
               )}

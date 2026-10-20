@@ -30,8 +30,8 @@ describe("field focus", () => {
 
   it("focus and invalid states come from the focus-ring tokens", () => {
     const css = read("controls.module.css");
-    expect(css).toContain("0 0 0 var(--v4-size-focus-ring) var(--v4-focus-ring)");
-    expect(css).toContain("0 0 0 var(--v4-size-focus-ring) var(--v4-focus-ring-bad)");
+    expect(css).toContain("0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring)");
+    expect(css).toContain("0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring-bad)");
     const invalidAtRest = css.match(
       /\.field:is\(\[aria-invalid="true"\], \[data-invalid\]\),[^{]*\{([^}]*)\}/
     );

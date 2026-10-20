@@ -550,7 +550,7 @@
 }
 
 /* Zero-specificity icon defaults: a component class or an explicit size wins. */
-:where(.v4) :where([data-slot="icon"]) {
+:where(.v4) :where([data-slot="icon"], svg.lucide) {
   width: var(--v4-size-icon);
   height: var(--v4-size-icon);
   stroke-width: var(--v4-stroke-icon);

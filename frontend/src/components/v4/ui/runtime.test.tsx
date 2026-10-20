@@ -114,7 +114,7 @@ describe("v4 React 18 behavior", () => {
     expect(inactive.classList.contains(menuStyles.navItem)).toBe(true);
     const recipe = await readFile(path.resolve("src/components/v4/ui/menu.module.css"), "utf8");
     expect(recipe).toMatch(
-      /\.navItem:is\([^)]*\[data-active\]\) \{\n {2}background-color: var\(--v4-select\);/
+      /\.navItem:is\([^)]*\[data-active\]\) \{\n {2}background-color: color-mix\(in oklab, var\(--v4-ink\) var\(--overlay-hover\), transparent\);/
     );
   });
 

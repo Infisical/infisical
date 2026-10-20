@@ -174,8 +174,16 @@
   border-right: var(--v4-size-control-border) solid var(--v4-line-soft);
   position: relative;
 }
+:global(.v4) {
+  --overlay-hover: var(--v4-opacity-hover);
+  --overlay-press: var(--v4-opacity-press);
+}
+:global(.v4[data-theme="dark"]) {
+  --overlay-hover: var(--v4-opacity-hover-dark);
+  --overlay-press: var(--v4-opacity-press-dark);
+}
 .gridRow:hover > .gridCell:not([data-selected], [data-dirty]) {
-  background: color-mix(in oklab, var(--v4-tint) 60%, transparent);
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
 }
 .gridCell[data-selected] {
   background: var(--v4-accent-wash);
@@ -332,7 +340,7 @@
 .editorInput:focus-visible {
   outline: none;
   border-color: var(--v4-ink);
-  box-shadow: 0 0 0 var(--v4-size-focus-ring) var(--v4-focus-ring);
+  box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
 }
 .editorInput::placeholder {
   color: var(--v4-faint);
@@ -426,7 +434,7 @@
   min-height: var(--v4-size-nested-md);
 }
 .treeRow:hover {
-  background: var(--v4-select);
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
 }
 .treeRow[data-selected="true"] {
   background: var(--v4-select);
@@ -566,19 +574,13 @@
   background: var(--v4-selected-surface);
 }
 .listRow[data-interactive] {
-  --v4-list-row-hover: var(--v4-opacity-hover);
-  --v4-list-row-press: var(--v4-opacity-press);
   transition: background-color var(--v4-duration-fast) var(--v4-ease-fade);
 }
-:global(.v4[data-theme="dark"]) .listRow[data-interactive] {
-  --v4-list-row-hover: var(--v4-opacity-hover-dark);
-  --v4-list-row-press: var(--v4-opacity-press-dark);
-}
 .listRow[data-interactive]:not([data-selected], [data-current]):hover {
-  background: color-mix(in srgb, var(--v4-ink) var(--v4-list-row-hover), transparent);
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
 }
 .listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
-  background: color-mix(in srgb, var(--v4-ink) var(--v4-list-row-press), transparent);
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-press), transparent);
 }
 .listRow[data-resolved] {
   background: var(--v4-row-done);
@@ -994,6 +996,9 @@ button.rowTitle::after {
   font-weight: var(--v4-type-body-font-weight);
   letter-spacing: var(--v4-type-body-letter-spacing);
 }
+.nativeTableRow:is(:hover, :has([aria-expanded="true"])) {
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
+}
 .nativeTableHead,
 .nativeTableCell {
   padding: 0 var(--v4-space-surface-inset-sm);
@@ -1044,5 +1049,10 @@ button.rowTitle::after {
   overflow-wrap: anywhere;
 }
 .tableScroll tbody tr:hover > td[data-pin="true"] {
-  background: var(--v4-tint);
+  background:
+    linear-gradient(
+      color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent),
+      color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent)
+    ),
+    var(--v4-surface);
 }

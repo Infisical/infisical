@@ -49,6 +49,7 @@
   --v4-size-control-xs: var(--v4-size-nested-sm);
   --v4-size-control-border: 1px;
   --v4-size-focus-ring: 2px;
+  --v4-size-focus-glow: 3px;
   --v4-size-icon-sm: 14px;
   --v4-size-icon: 16px;
   --v4-size-icon-xs: 12px;

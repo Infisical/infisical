@@ -26,6 +26,24 @@ Source evidence:
 - src/components/v4/ui/loader.tsx
 - src/pages/design-system/examples/loader/default.tsx
 
+### loader-unknown-shape
+
+Owner: loader.
+
+When a region is waiting for data.
+
+Do: Use Loader only when the shape of the result is unknown. When it is known, show Skeleton shapes like the loaded state and announce the wait with a status.
+
+Avoid: Cover known rows, cards or a chart with a blanket Loader.
+
+Why: Matching shapes keep the layout still and show what is coming; a centered spinner hides both.
+
+Checked by: review only. Look for: For each Loader, check whether the loaded content has a known shape. If it does, replace the Loader with Skeleton shapes at the same size.
+
+Source evidence:
+- src/components/v4/ui/loader.tsx
+- src/pages/design-system/examples/loader/default.tsx
+
 ### loader-reconcile
 
 Owner: loader.
@@ -68,6 +86,7 @@ Exports: Loader. Source TypeScript defines the API.
 - Loader composes Spinner with its label, description and delay; it adds the area that centers it and marks the region busy.
 - With loading false it renders its children and nothing else.
 - The default delay of 300ms keeps fast loads from flashing.
+- Loader is for content whose shape is unknown. When the loaded shape is known (rows, cards, a chart), show Skeleton shapes that match the loaded state instead, as the reload in the example does.
 
 ## Accessibility
 
@@ -84,7 +103,7 @@ Exports: Loader. Source TypeScript defines the API.
 ## Limits
 
 - For an inline status beside text, use Spinner with a label directly; Loader only fills areas.
-- Use Progress for a known count and Skeleton for a known layout.
+- Use Progress for a known count and Skeleton for a known layout. A blanket Loader over rows, cards or a chart whose shape is known is a misuse.
 
 ## Declared example coverage
 
@@ -97,17 +116,24 @@ Source declarations and review criteria only. Generation checks references and c
 
 ## Executable examples
 
-### Base, page and loaded
+### Base, page and a skeleton reload
 
 Save this example at `src/pages/design-system/examples/loader/default.tsx`; its relative imports are generated for that exact path. States: loading, default.
 
-Registry items used: @infisical/button, @infisical/list, @infisical/loader. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/badge, @infisical/button, @infisical/item, @infisical/list, @infisical/loader, @infisical/skeleton. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
+import { Badge } from "../../../../components/v4/ui/badge";
 import { Button } from "../../../../components/v4/ui/button";
+import { Media } from "../../../../components/v4/ui/item";
 import { List, ListRow } from "../../../../components/v4/ui/list";
 import { Loader } from "../../../../components/v4/ui/loader";
+import { Skeleton } from "../../../../components/v4/ui/skeleton";
+const connections = [
+    { value: "vercel", title: "Vercel", description: "Production, 14 secrets", icon: "globe" },
+    { value: "github", title: "GitHub", description: "Actions, 9 secrets", icon: "git" }
+] as const;
 export default function Example() {
     const [loading, setLoading] = useState(false);
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
@@ -124,13 +150,23 @@ export default function Example() {
         }}>
           Reload connections
         </Button>
-        <Loader loading={loading} label="Loading connections" delay={0}>
+        <div aria-busy={loading}>
+          {loading && (<span role="status" className="sr-only">
+              Loading connections
+            </span>)}
           <List label="Connections">
-            <ListRow value="vercel" label="Vercel" title="Vercel" meta="Synced"/>
-            <ListRow value="github" label="GitHub" title="GitHub" meta="Synced"/>
+            {connections.map((connection) => loading ? (<ListRow key={connection.value} value={connection.value} label={connection.title} media={<Skeleton width={40} height={40}/>} title={<span className="flex h-(--v4-type-row-title-line-height) items-center">
+                      <Skeleton width={48} height={12}/>
+                    </span>} meta={<Skeleton width={68} height={20}/>}>
+                  <span className="flex h-(--v4-type-small-line-height) items-center">
+                    <Skeleton width={144} height={10}/>
+                  </span>
+                </ListRow>) : (<ListRow key={connection.value} value={connection.value} label={connection.title} media={<Media icon={connection.icon}/>} title={connection.title} description={connection.description} meta={<Badge tone="ok" dot>
+                      Synced
+                    </Badge>}/>))}
           </List>
-        </Loader>
-      </div><figcaption className="text-muted-foreground text-xs">{"Loaded content replaces the loader"}</figcaption></figure>
+        </div>
+      </div><figcaption className="text-muted-foreground text-xs">{"Known rows reload as skeleton rows"}</figcaption></figure>
     </div>);
 }
 ```

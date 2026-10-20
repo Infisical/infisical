@@ -44,7 +44,7 @@
 .field:is(:focus-visible, [aria-expanded="true"]),
 .field:has([data-field-control]:focus-visible, .field:is(:focus-visible, [aria-expanded="true"])) {
   border-color: var(--v4-ink);
-  box-shadow: 0 0 0 var(--v4-size-focus-ring) var(--v4-focus-ring);
+  box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
 }
 .field:is([aria-invalid="true"], [data-invalid]),
 .field:has(:is([data-field-control], .field)[aria-invalid="true"]) {
@@ -57,7 +57,7 @@
     .field[aria-invalid="true"]:is(:focus-visible, [aria-expanded="true"])
   ) {
   border-color: var(--v4-bad);
-  box-shadow: 0 0 0 var(--v4-size-focus-ring) var(--v4-focus-ring-bad);
+  box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring-bad);
 }
 .field:is(:disabled, [aria-disabled="true"]),
 .field:has([data-field-control]:disabled) {
@@ -713,8 +713,12 @@
 }
 @media (hover: hover) {
   .sliderThumb[data-slot]:hover {
-    box-shadow: 0 0 0 4px color-mix(in oklab, var(--v4-accent) 45%, transparent);
+    box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
   }
+}
+.sliderThumb[data-slot]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
 }
 [data-slot="slider"][data-disabled] .sliderRange {
   background-color: var(--v4-faint);

@@ -34,7 +34,7 @@ const buttonVariants = cva(
           styles.neutralSelection
         ],
         ghost: [
-          "hover:bg-[color:var(--v4-action-ghost-hover)] hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "hover:bg-[color:var(--v4-action-ghost-hover)] hover:text-foreground aria-expanded:bg-[color:var(--v4-action-ghost-hover)] aria-expanded:text-foreground",
           styles.neutralSelection
         ],
         destructive:

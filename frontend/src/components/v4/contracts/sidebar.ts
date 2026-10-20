@@ -5,25 +5,27 @@ export const sidebarDefinition = {
   title: "Sidebar",
   group: "Navigation",
   summary:
-    "The app's navigation beside the inset: tools, sections of rows, footer rows and one account button for the person and their organization.",
+    "The app's navigation beside the inset: tools, a Home and Organization switch, sections of rows, footer rows and one account button for the person and their organization.",
   sourceFiles: ["src/components/v4/ui/sidebar.tsx", "src/components/v4/ui/sidebar.module.css"],
   exports: ["Sidebar"],
   referenceNames: ["Sidebar", "AppTile"],
   behavior: [
-    "The tools row holds the collapse toggle, then search and invite icon buttons with tooltips.",
-    "Sections stack rows 1px apart. A labeled section draws its eyebrow with a rule that runs to the sidebar's edge.",
-    "A row with children opens one level of pages on a guide line. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.",
-    "Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, section labels become rules and a group opens its pages in a menu to the right.",
+    "The tools row holds the collapse toggle, then search and invite: 36px icon buttons with 18px icons and tooltips.",
+    "With spaces, a segmented switch under the tools shows one space's sections at a time. The space holding the current page shows by default, a page opened from elsewhere brings its space with it, and a hidden space that holds a count shows a dot.",
+    "Sections stack 36px rows 1px apart. A labeled section draws its 28px eyebrow with a rule that runs to the sidebar's edge.",
+    "A row with children opens one level of 32px pages, without icons, on a guide line under its icon. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.",
+    "The nav scrolls when it runs out of room and fades the edge where more rows are cut off.",
+    "Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.",
     "The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings."
   ],
   accessibility: [
-    "The rows sit in a named nav landmark. Up and Down move between rows and Home and End jump; Tab still reaches every row.",
+    "The rows sit in a nav landmark named for the space it shows. Up and Down move between rows and Home and End jump; Tab still reaches every row.",
+    "The space switch is a tablist: Left and Right move between spaces, Up and Down in the rail. A hidden space with a count is announced as having updates.",
     "The current page carries aria-current. Rail rows keep their label as the accessible name.",
     "Focus draws the 2px ink outline inside the row, so the scrolling nav never clips it.",
     "The account button is named for the person and the organization, and the popover returns focus to it on close."
   ],
   limitations: [
-    "The reference's two-space switch (Home and Organization) is not implemented; pass the sections for the space you show.",
     "The host owns routing: rows call onNavigate or follow href, and the host passes the current id back.",
     "Organizations never show an avatar or icon. The account button shows the person's avatar."
   ],

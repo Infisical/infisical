@@ -81,7 +81,8 @@ const TableRow = React.forwardRef<React.ComponentRef<"tr">, React.ComponentProps
         ref={ref}
         data-slot="table-row"
         className={cn(
-          "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast) hover:bg-[color:var(--v4-tint)] has-aria-expanded:bg-[color:var(--v4-tint)] data-[state=selected]:bg-[color:var(--v4-selected-surface)]",
+          "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast) data-[state=selected]:bg-[color:var(--v4-selected-surface)]",
+          styles.nativeTableRow,
           className
         )}
         {...props}
