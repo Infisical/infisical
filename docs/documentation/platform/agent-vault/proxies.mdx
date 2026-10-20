@@ -114,6 +114,8 @@ The enrollment token only works once. After the first run, the proxy reads its e
 infisical agent-vault proxy --domain <your-instance-url>
 ```
 
+The proxy also saves the instance it enrolled with, so `--domain` is optional on later runs. If you pass a `--domain` (or set `INFISICAL_DOMAIN`) that names a different instance, the proxy refuses to start rather than send its token there.
+
 If the state directory is empty, the proxy can't start without a new token. Select **New Enrollment Token** on the proxy's menu and [enroll again](#re-enroll-a-proxy).
 
 ## Settings
