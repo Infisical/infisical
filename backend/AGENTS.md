@@ -282,7 +282,7 @@ If you encounter `API_KEY` or `SERVICE_TOKEN` in existing code, do not replicate
 
 Token detection logic in `inject-identity.ts` checks `x-api-key` header first, then parses `Authorization: Bearer` and inspects JWT `authTokenType` field to determine mode.
 
-**Delegated OAuth tokens** (`AuthMode.OAUTH`) are opt-in per route. Before listing it on a route, read [`src/services/oauth-client/AGENTS.md`](src/services/oauth-client/AGENTS.md): an administration route must not accept it, and the handler must check a CASL ability, because that check is what applies the token's scopes.
+**Delegated OAuth tokens** (`AuthMode.OAUTH`) are opt-in per route. Before listing it on a route, read [`src/services/oauth-client/AGENTS.md`](src/services/oauth-client/AGENTS.md): administration writes must not accept it (read-only administration routes may, with the credential-read exceptions listed there), and the handler must check a CASL ability, because that check is what applies the token's scopes.
 
 ### Resolving Users From Provisioning Identifiers
 
