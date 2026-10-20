@@ -1,7 +1,15 @@
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { AccessScope, OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  TableName,
+  TAccessApprovalPoliciesInsert,
+  TAccessApprovalRequestsInsert
+} from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
@@ -1158,5 +1166,120 @@ describe("Break-glass approvals on the global system", () => {
 
     const state = await getRequestState(requestId);
     expect(state.status).toBe("pending");
+  });
+});
+
+describe("Additional privilege list on the global system", () => {
+  const approvers: TApprover[] = [];
+  const legacyRequestIds: string[] = [];
+  let approver: TApprover;
+
+  const listUserPrivileges = async () => {
+    const membership = await getDb()(TableName.Membership)
+      .where({ scope: AccessScope.Project, scopeProjectId: seedData1.project.id, actorUserId: seedData1.id })
+      .first();
+    const res = await testServer.inject({
+      method: "GET",
+      url: `/api/v1/user-project-additional-privilege?projectMembershipId=${membership?.id}`,
+      headers: authHeaders()
+    });
+    expect(res.statusCode).toBe(200);
+    return res.json().privileges as {
+      id: string;
+      isLinkedToAccessApproval: boolean;
+      accessApprovalRequestId: string | null;
+      policyApproverUserIds: string[];
+    }[];
+  };
+
+  beforeAll(async () => {
+    initLogger();
+    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    approver = await createApproverUser();
+    approvers.push(approver);
+  });
+
+  afterEach(async () => {
+    const db = getDb();
+    const globalIds = globalPolicyIds.splice(0);
+    const legacyIds = legacyRequestIds.splice(0);
+
+    if (legacyIds.length) {
+      await db(TableName.AccessApprovalRequest).whereIn("id", legacyIds).del();
+    }
+    await db(TableName.AdditionalPrivilege)
+      .where({ actorUserId: seedData1.id })
+      .whereLike("name", "requested-privilege-%")
+      .del();
+    await db(TableName.ApprovalRequestGrants)
+      .where({ projectId: seedData1.project.id, type: SECRET_ACCESS_TYPE })
+      .del();
+    if (globalIds.length) {
+      await db(TableName.AccessApprovalPolicyApprover).whereIn("policyId", globalIds).del();
+      await db(TableName.AccessApprovalPolicy).whereIn("id", globalIds).del();
+      await db(TableName.ApprovalRequests).whereIn("policyId", globalIds).del();
+      await db(TableName.ApprovalPolicies).whereIn("id", globalIds).del();
+    }
+  });
+
+  afterAll(async () => {
+    const db = getDb();
+    const userIds = approvers.map((el) => el.userId);
+    await db(TableName.AuthTokenSession).whereIn("userId", userIds).del();
+    await db(TableName.Membership).whereIn("actorUserId", userIds).del();
+    await db(TableName.Users).whereIn("id", userIds).del();
+  });
+
+  test("A privilege granted on the global system is listed as managed by its request", async () => {
+    const { requestId } = await createApprovedTemporaryRequest("/privilege-list-native");
+    const { privilege } = await getRequestState(requestId);
+
+    const listed = (await listUserPrivileges()).find((el) => el.id === privilege?.id);
+    expect(listed?.isLinkedToAccessApproval).toBe(true);
+    expect(listed?.accessApprovalRequestId).toBe(requestId);
+    expect(listed?.policyApproverUserIds).toEqual([seedData1.id]);
+  });
+
+  test("A migrated privilege lists the global policy's approvers after they change", async () => {
+    const db = getDb();
+    const secretPath = "/privilege-list-migrated";
+    const { policy, requestId } = await createApprovedTemporaryRequest(secretPath);
+    const { privilege } = await getRequestState(requestId);
+
+    const environment = await db(TableName.Environment)
+      .where({ projectId: seedData1.project.id, slug: seedData1.environment.slug })
+      .first();
+    const legacyPolicy: TAccessApprovalPoliciesInsert & { id: string } = {
+      id: policy.id,
+      name: "privilege-list-migrated",
+      secretPath,
+      envId: environment?.id as string,
+      deletedAt: new Date()
+    };
+    await db(TableName.AccessApprovalPolicy).insert(legacyPolicy);
+    await db(TableName.AccessApprovalPolicyApprover).insert({ policyId: policy.id, approverUserId: seedData1.id });
+    const legacyRequest: TAccessApprovalRequestsInsert & { id: string } = {
+      id: requestId,
+      policyId: policy.id,
+      privilegeId: privilege?.id,
+      requestedByUserId: seedData1.id,
+      isTemporary: true,
+      temporaryRange: "1h",
+      permissions: JSON.stringify([]),
+      status: "approved"
+    };
+    await db(TableName.AccessApprovalRequest).insert(legacyRequest);
+    legacyRequestIds.push(requestId);
+
+    const res = await patchPolicy(policy.id, {
+      secretPath,
+      approvers: [{ type: ApproverType.User, id: approver.userId }]
+    });
+    expect(res.statusCode).toBe(200);
+
+    const listed = (await listUserPrivileges()).find((el) => el.id === privilege?.id);
+    expect(listed?.isLinkedToAccessApproval).toBe(true);
+    expect(listed?.accessApprovalRequestId).toBe(requestId);
+    expect(listed?.policyApproverUserIds).toEqual([approver.userId]);
   });
 });
