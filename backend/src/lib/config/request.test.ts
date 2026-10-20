@@ -42,10 +42,17 @@ describe("createRequestClient", () => {
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", resolve);
     });
-    const { port } = server.address() as AddressInfo;
-    const err = (await client.get(`http://127.0.0.1:${port}/`).catch((e: unknown) => e)) as AxiosError;
-    server.close();
-    expect(err.message).toBe("Request failed with status code 500");
-    expect(err.response?.status).toBe(500);
+    try {
+      const { port } = server.address() as AddressInfo;
+      const err = (await client
+        .get(`http://127.0.0.1:${port}/`, { timeout: 5000 })
+        .catch((e: unknown) => e)) as AxiosError;
+      expect(err.message).toBe("Request failed with status code 500");
+      expect(err.response?.status).toBe(500);
+    } finally {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
+    }
   });
 });
