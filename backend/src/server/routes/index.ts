@@ -3538,6 +3538,7 @@ export const registerRoutes = async (
     identityDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
+    roleDAL,
     kmsService,
     keyStore
   });

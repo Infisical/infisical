@@ -947,26 +947,40 @@ export const INSIGHTS = {
     totalProjects: "The total number of secret management projects in the organization.",
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
   },
-  GET_SECRET_EXPOSURE: {
-    projectId: "The ID of the project to list secret exposure for.",
-    offset: "The number of secrets to skip before returning results.",
-    limit: "The maximum number of secrets to return per page.",
-    orderBy: "The field to sort by. Without it, the most exposed secrets come first.",
-    orderDirection: "The direction to sort in.",
-    secrets:
-      "The secrets with the highest exposure score: those of the top 500 in the project that the caller can see. Secrets scoring 0, which nobody can read, are not listed.",
-    secretKey: "The key of the secret.",
-    environment: "The slug of the environment the secret is in.",
-    secretPath: "The path of the folder the secret is in.",
-    totalCount: "The number of secrets the caller can page through.",
-    unlistedCount:
-      "The number of further scored secrets that are not listed, counted across the whole project before the caller's permissions are applied. Zero unless the project has more than 500.",
-    bands:
-      "How many of the project's secrets fall in each band, counted across the whole project before the caller's permissions are applied.",
+  GET_UNUSED_ACCESS: {
+    projectId: "The ID of the project to list unused access for.",
+    offset: "The number of principals to skip before returning results.",
+    limit: "The maximum number of principals to return per page.",
+    search: "Only principals whose name contains this text, ignoring case.",
+    principals:
+      "The users, groups and machine identities that can read secrets they have not read in the tracked period, those with the most such secrets first. Project admins and admin groups are left out: they can read everything by design.",
+    principalType: "Whether the principal is a user, a group or a machine identity.",
+    principalId: "The ID of the user, group or machine identity.",
+    name: "The username of the user, or the name of the group or machine identity.",
+    memberCount: "How many users and machine identities the group has. Null for a user or machine identity.",
+    entitledCount: "How many secrets the principal can read the value of today.",
+    unreadCount:
+      "How many of those it has not read, or an import or reference of, in the tracked period. A group has not read a secret when none of its members have. Secrets and access newer than the period are not counted.",
+    environments: "The slugs of the environments holding the unread secrets.",
+    lastReadAt:
+      "When the principal last read any secret in the project within the tracked period, as the first read of that day; a group's is its members' latest. Null when it read nothing.",
+    accessVia: "How the principal has the access: its roles, additional privileges, and the groups it belongs to.",
+    totalCount: "The number of principals the caller can page through.",
     trackingStartedAt:
       "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
     preliminaryUntil:
-      "When the scores first cover the full 30 days. Until then they are preliminary: unused access covers only the reads since tracking started and the access that existed then, and weighs less in the score the shorter that period is."
+      "When the results first cover the full 30 days. Until then they are preliminary: they cover only the reads since tracking started, and the access that existed when it started."
+  },
+  GET_UNUSED_ACCESS_PRINCIPAL: {
+    projectId: "The ID of the project.",
+    principalType: "Whether the principal is a user, a group or a machine identity.",
+    principalId: "The ID of the user, group or machine identity.",
+    secrets:
+      "The secrets the principal can read but has not read in the tracked period, among those the caller can see, ordered by environment and path.",
+    secretKey: "The key of the secret.",
+    environment: "The slug of the environment the secret is in.",
+    secretPath: "The path of the folder the secret is in.",
+    unlistedCount: "How many more of the principal's unread secrets are not listed. Zero unless it has more than 200."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",

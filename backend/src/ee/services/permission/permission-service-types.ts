@@ -162,18 +162,23 @@ export type TPermissionServiceFactory = {
       id: string;
       name: string;
       membershipId: string;
+      roles: { role: string; customRoleSlug?: string | null }[];
+      hasAdditionalPrivileges: boolean;
     }[];
     identityPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
       membershipId: string;
+      roles: { role: string; customRoleSlug?: string | null }[];
+      hasAdditionalPrivileges: boolean;
     }[];
     groupPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
       membershipId: string;
+      roles: { role: string; customRoleSlug?: string | null }[];
     }[];
   }>;
   getOrgPermissionByRoles: (

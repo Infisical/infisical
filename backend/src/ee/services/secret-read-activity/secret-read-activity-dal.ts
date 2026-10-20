@@ -138,6 +138,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
   type TAccessChange = {
     actorUserId?: string | null;
     actorIdentityId?: string | null;
+    actorGroupId?: string | null;
     groupMemberId?: string | null;
     membershipCreatedAt?: Date | null;
     createdAt: Date;
@@ -185,6 +186,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
         roleChanges((tx || db.replicaNode())(TableName.Membership)).select(
           db.ref("actorUserId").withSchema(TableName.Membership),
           db.ref("actorIdentityId").withSchema(TableName.Membership),
+          db.ref("actorGroupId").withSchema(TableName.Membership),
           db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
           ...roleColumns
         ),
@@ -198,7 +200,8 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
       const now = new Date();
       const changedAtByActorId = new Map<string, Date>();
       [...directChanges, ...userGroupChanges, ...identityGroupChanges, ...privilegeChanges].forEach((change) => {
-        const actorId = change.actorUserId ?? change.actorIdentityId ?? change.groupMemberId;
+        // A group's own date judges the group as a principal; its members' dates come from the group rows.
+        const actorId = change.actorUserId ?? change.actorIdentityId ?? change.groupMemberId ?? change.actorGroupId;
         if (!actorId) return;
         const dates = [change.createdAt, change.updatedAt];
         if (change.membershipCreatedAt) dates.push(change.membershipCreatedAt);

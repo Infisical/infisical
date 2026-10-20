@@ -1,5 +1,4 @@
 import { TSecretReadActivity } from "@app/db/schemas";
-import { OrderByDirection } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 
 // A reader's last read of an object. The table also keys it by month (its partition key), which the DAL adds
@@ -127,13 +126,6 @@ export type TSecretExposure = {
   drivers: TSecretExposureDriver[];
 };
 
-export type TExposedSecret = TSecretExposureCounts & {
-  secretKey: string;
-  environment: string;
-  secretPath: string;
-  exposure: TSecretExposure;
-};
-
 // A reader who can read the value today, and whether they count as unused access: no read, with the secret and
 // their access both older than the judged period. When they do not, the other fields say why.
 export type TEntitledReader = {
@@ -145,17 +137,41 @@ export type TEntitledReader = {
   accessChangedAt: Date | null;
 };
 
-// Each value is the row field it sorts by.
-export enum SecretExposureOrderBy {
-  SecretKey = "secretKey",
-  Environment = "environment",
-  SecretPath = "secretPath"
+export enum UnusedAccessPrincipalType {
+  User = "user",
+  Identity = "identity",
+  Group = "group"
 }
 
-export type TListSecretExposureDTO = {
+// A user, group or machine identity that can read secrets it has not read in the window.
+export type TUnusedAccessPrincipal = {
+  principalType: UnusedAccessPrincipalType;
+  principalId: string;
+  name: string;
+  // Groups only.
+  memberCount: number | null;
+  // The secrets it can read, and how many of those it has not read.
+  entitledCount: number;
+  unreadCount: number;
+  // The environments holding its unread secrets.
+  environments: string[];
+  // Its latest read of any secret in the project within the window; a group's is its members' latest.
+  lastReadAt: Date | null;
+  // How it has the access: roles, additional privileges and groups.
+  accessVia: string[];
+};
+
+export type TUnusedSecret = TSecretLocation & { secretKey: string };
+
+export type TListUnusedAccessDTO = {
   projectId: string;
   offset: number;
   limit: number;
-  orderBy?: SecretExposureOrderBy;
-  orderDirection: OrderByDirection;
+  search?: string;
+};
+
+export type TGetUnusedAccessPrincipalDTO = {
+  projectId: string;
+  principalType: UnusedAccessPrincipalType;
+  principalId: string;
 };

@@ -17,14 +17,14 @@ import {
 import {
   OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
-  SecretExposureListSchema,
   SecretsProjectsSchema,
   SecretsSummarySchema,
-  StaticSecretsUsageSchema
+  StaticSecretsUsageSchema,
+  UnusedAccessPrincipalSchema,
+  UnusedAccessSchema
 } from "@app/ee/services/insights/insights-schemas";
-import { SecretExposureOrderBy } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
+import { UnusedAccessPrincipalType } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { INSIGHTS } from "@app/lib/api-docs";
-import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -471,46 +471,34 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:projectId/secrets/exposure",
+    url: "/:projectId/secrets/unused-access",
     config: { rateLimit: readLimit },
     schema: {
-      operationId: "getInsightsSecretExposure",
+      operationId: "getInsightsUnusedAccess",
       description:
-        "List the secrets with the highest exposure score in a project, with how many of the project's secrets fall in each band",
+        "List the users, groups and machine identities that can read secrets they have not read in the tracked period, those with the most such secrets first",
       security: [{ bearerAuth: [] }],
       params: z.object({
-        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_SECRET_EXPOSURE.projectId)
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS.projectId)
       }),
       querystring: z.object({
-        offset: z.coerce.number().int().min(0).max(500).default(0).describe(INSIGHTS.GET_SECRET_EXPOSURE.offset),
-        limit: z.coerce.number().int().min(1).max(100).default(10).describe(INSIGHTS.GET_SECRET_EXPOSURE.limit),
-        orderBy: z.nativeEnum(SecretExposureOrderBy).optional().describe(INSIGHTS.GET_SECRET_EXPOSURE.orderBy),
-        orderDirection: z
-          .nativeEnum(OrderByDirection)
-          .default(OrderByDirection.ASC)
-          .describe(INSIGHTS.GET_SECRET_EXPOSURE.orderDirection)
+        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(INSIGHTS.GET_UNUSED_ACCESS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(20).describe(INSIGHTS.GET_UNUSED_ACCESS.limit),
+        search: z.string().trim().max(255).optional().describe(INSIGHTS.GET_UNUSED_ACCESS.search)
       }),
       response: {
-        200: SecretExposureListSchema
+        200: UnusedAccessSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const {
-        secrets,
-        totalCount,
-        unlistedCount,
-        bands,
-        trackingStartedAt,
-        preliminaryUntil,
-        remainingTTL,
-        projectName
-      } = await server.services.secretReadActivity.listSecretExposure({ projectId, ...req.query }, req.permission);
+      const { principals, totalCount, trackingStartedAt, preliminaryUntil, remainingTTL, projectName } =
+        await server.services.secretReadActivity.listUnusedAccess({ projectId, ...req.query }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
         event: {
-          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SECRET_EXPOSURE,
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS,
           metadata: { projectId, projectName }
         },
         ...req.auditLogInfo
@@ -519,7 +507,51 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { secrets, totalCount, unlistedCount, bands, trackingStartedAt, preliminaryUntil };
+      return { principals, totalCount, trackingStartedAt, preliminaryUntil };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/unused-access/:principalType/:principalId",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsUnusedAccessPrincipal",
+      description:
+        "List the secrets one user, group or machine identity can read but has not read in the tracked period",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.projectId),
+        principalType: z
+          .nativeEnum(UnusedAccessPrincipalType)
+          .describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.principalType),
+        principalId: z.string().uuid().describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.principalId)
+      }),
+      response: {
+        200: UnusedAccessPrincipalSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { projectId, principalType, principalId } = req.params;
+      const { principal, secrets, unlistedCount, trackingStartedAt, preliminaryUntil, remainingTTL, projectName } =
+        await server.services.secretReadActivity.getUnusedAccessPrincipal(
+          { projectId, principalType, principalId },
+          req.permission
+        );
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS,
+          metadata: { projectId, projectName, principalType, principalId, principalName: principal.name }
+        },
+        ...req.auditLogInfo
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+      return { principal, secrets, unlistedCount, trackingStartedAt, preliminaryUntil };
     }
   });
 

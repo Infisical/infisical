@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
-import {
-  SecretExposureCountsSchema,
-  SecretExposureSchema
-} from "@app/ee/services/secret-read-activity/secret-read-activity-schemas";
-import { SecretExposureBand } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
+import { UnusedAccessPrincipalType } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { INSIGHTS } from "@app/lib/api-docs";
 
 export const SecretsSummarySchema = z.object({
@@ -71,20 +67,36 @@ export const SecretsProjectsSchema = z.object({
   limit: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.limit)
 });
 
-export const SecretExposureListSchema = z.object({
-  totalCount: z.number().int().describe(INSIGHTS.GET_SECRET_EXPOSURE.totalCount),
-  unlistedCount: z.number().int().describe(INSIGHTS.GET_SECRET_EXPOSURE.unlistedCount),
-  bands: z.record(z.nativeEnum(SecretExposureBand), z.number().int()).describe(INSIGHTS.GET_SECRET_EXPOSURE.bands),
-  trackingStartedAt: z.date().describe(INSIGHTS.GET_SECRET_EXPOSURE.trackingStartedAt),
-  preliminaryUntil: z.date().describe(INSIGHTS.GET_SECRET_EXPOSURE.preliminaryUntil),
+const UnusedAccessPrincipalRowSchema = z.object({
+  principalType: z.nativeEnum(UnusedAccessPrincipalType).describe(INSIGHTS.GET_UNUSED_ACCESS.principalType),
+  principalId: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.principalId),
+  name: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.name),
+  memberCount: z.number().int().nullable().describe(INSIGHTS.GET_UNUSED_ACCESS.memberCount),
+  entitledCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.entitledCount),
+  unreadCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.unreadCount),
+  environments: z.string().array().describe(INSIGHTS.GET_UNUSED_ACCESS.environments),
+  lastReadAt: z.date().nullable().describe(INSIGHTS.GET_UNUSED_ACCESS.lastReadAt),
+  accessVia: z.string().array().describe(INSIGHTS.GET_UNUSED_ACCESS.accessVia)
+});
+
+export const UnusedAccessSchema = z.object({
+  totalCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.totalCount),
+  trackingStartedAt: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.trackingStartedAt),
+  preliminaryUntil: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.preliminaryUntil),
+  principals: UnusedAccessPrincipalRowSchema.array().describe(INSIGHTS.GET_UNUSED_ACCESS.principals)
+});
+
+export const UnusedAccessPrincipalSchema = z.object({
+  principal: UnusedAccessPrincipalRowSchema,
+  unlistedCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.unlistedCount),
+  trackingStartedAt: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.trackingStartedAt),
+  preliminaryUntil: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.preliminaryUntil),
   secrets: z
     .object({
-      secretKey: z.string().describe(INSIGHTS.GET_SECRET_EXPOSURE.secretKey),
-      environment: z.string().describe(INSIGHTS.GET_SECRET_EXPOSURE.environment),
-      secretPath: z.string().describe(INSIGHTS.GET_SECRET_EXPOSURE.secretPath),
-      exposure: SecretExposureSchema
+      secretKey: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.secretKey),
+      environment: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.environment),
+      secretPath: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.secretPath)
     })
-    .merge(SecretExposureCountsSchema)
     .array()
-    .describe(INSIGHTS.GET_SECRET_EXPOSURE.secrets)
+    .describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.secrets)
 });

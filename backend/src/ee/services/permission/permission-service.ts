@@ -996,7 +996,9 @@ export const permissionServiceFactory = ({
         permission,
         id: userProjectPermission.userId,
         membershipId: userProjectPermission.id,
-        name: userProjectPermission.username
+        name: userProjectPermission.username,
+        roles: (userProjectPermission.roles ?? []).map(({ role, customRoleSlug }) => ({ role, customRoleSlug })),
+        hasAdditionalPrivileges: Boolean(userProjectPermission.additionalPrivileges?.length)
       };
     });
 
@@ -1039,7 +1041,9 @@ export const permissionServiceFactory = ({
         permission,
         id: identityProjectPermission.identityId,
         membershipId: identityProjectPermission.id,
-        name: identityProjectPermission.username
+        name: identityProjectPermission.username,
+        roles: (identityProjectPermission.roles ?? []).map(({ role, customRoleSlug }) => ({ role, customRoleSlug })),
+        hasAdditionalPrivileges: Boolean(identityProjectPermission.additionalPrivileges?.length)
       };
     });
 
@@ -1057,7 +1061,8 @@ export const permissionServiceFactory = ({
         permission,
         id: groupProjectPermission.groupId,
         membershipId: groupProjectPermission.id,
-        name: groupProjectPermission.username
+        name: groupProjectPermission.username,
+        roles: (groupProjectPermission.roles ?? []).map(({ role, customRoleSlug }) => ({ role, customRoleSlug }))
       };
     });
 
