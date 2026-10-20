@@ -4448,6 +4448,7 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               secretKey={key}
                               getSecretByKey={getSecretByKeyWithPending}
+                              getSavedSecretByKey={getSecretByKey}
                               importedBy={importedBy}
                               isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
                               isBatchMode={isBatchModeActive}

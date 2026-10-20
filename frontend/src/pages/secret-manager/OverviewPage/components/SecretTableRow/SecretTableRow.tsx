@@ -77,6 +77,12 @@ type Props = {
   isSecretVisible: boolean;
   onToggleSecretVisible: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
+  /**
+   * The saved record, without any pending batch change overlaid on it. `getSecretByKey` is bound
+   * to the pending-merged getter, so a row that remounts while a change is queued would otherwise
+   * have no way to see what the server actually holds.
+   */
+  getSavedSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
   onSecretUpdate: (params: {
     env: string;
@@ -150,6 +156,7 @@ export const SecretTableRow = ({
   environments = [],
   secretPath,
   getSecretByKey,
+  getSavedSecretByKey,
   onSecretUpdate,
   onSecretCreate,
   onSecretDelete,
@@ -220,6 +227,9 @@ export const SecretTableRow = ({
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
   const singleEnvName = isSingleEnvView ? environments[0].name : "";
   const singleEnvSecret = isSingleEnvView ? getSecretByKey(singleEnvSlug, secretKey) : undefined;
+  const savedSingleEnvSecret = isSingleEnvView
+    ? getSavedSecretByKey(singleEnvSlug, secretKey)
+    : undefined;
   const singleEnvIsCreatable = isSingleEnvView ? !singleEnvSecret : false;
   const singleEnvIsImported = isSingleEnvView
     ? isImportedSecretPresentInEnv(singleEnvSlug, secretKey)
@@ -514,6 +524,9 @@ export const SecretTableRow = ({
             comment={singleEnvSecret?.comment}
             tags={singleEnvSecret?.tags}
             secretMetadata={singleEnvSecret?.secretMetadata}
+            savedComment={savedSingleEnvSecret?.comment}
+            savedTags={savedSingleEnvSecret?.tags}
+            savedMetadata={savedSingleEnvSecret?.secretMetadata}
             skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
             reminder={singleEnvSecret?.reminder}
             revokedProjectFolderGrant={singleEnvSecret?.revokedProjectFolderGrant}
