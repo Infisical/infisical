@@ -232,13 +232,6 @@ export const buildApprovalSteps = (
         });
       }
 
-      if (!eligibleUserIds.size) {
-        failures.push({
-          code: "step-without-eligible-approvers",
-          message: `Sequence ${sequence} has no user approvers and its groups have no members, so no one can approve it`
-        });
-      }
-
       return { sequence, requiredApprovals, userIds, groupIds, eligibleUserIds };
     });
 };

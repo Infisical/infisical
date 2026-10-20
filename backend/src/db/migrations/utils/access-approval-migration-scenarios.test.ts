@@ -385,6 +385,14 @@ describe("access approval migration scenarios that migrate", () => {
 
     expect(failures).toEqual([]);
   });
+
+  test("keeps a sequence whose only group has no members, so whoever joins the group can approve", () => {
+    const { failures, rows } = run(scenario({ approvers: [groupApprover("g1")], requests: [request()] }));
+
+    expect(failures).toEqual([]);
+    expect(rows.policyStepApprovers).toEqual([{ policyStepId: rows.policySteps[0].id, userId: null, groupId: "g1" }]);
+    expect(rows.eligibleApprovers).toEqual([{ stepId: rows.requestSteps[0].id, userId: null, groupId: "g1" }]);
+  });
 });
 
 describe("access approval migration scenarios that fail the checks", () => {
@@ -428,12 +436,6 @@ describe("access approval migration scenarios that fail the checks", () => {
     const { failures } = run(scenario({ approvers: [approver("u1", { approvalsRequired: 2 })] }));
 
     expect(codes(failures)).toEqual(["required-approvals-exceed-approvers"]);
-  });
-
-  test("sequence whose only group has no members", () => {
-    expect(codes(run(scenario({ approvers: [groupApprover("g1")] })).failures)).toEqual([
-      "step-without-eligible-approvers"
-    ]);
   });
 
   test("request that already exists on the global system", () => {
