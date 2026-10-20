@@ -26,6 +26,13 @@ export async function up(knex: Knex): Promise<void> {
         (await knex.schema.hasTable(TableName.SecretApprovalRequestSecretV2)) &&
         (await knex.schema.hasColumn(TableName.SecretApprovalRequestSecretV2, COLUMN))
       ) {
+        const invalid = await raw(
+          `SELECT 1 FROM pg_class c JOIN pg_index i ON i.indexrelid = c.oid WHERE c.relname = '${INDEX_NAME}' AND NOT i.indisvalid`
+        );
+        if (invalid.rows.length > 0) {
+          await raw(`DROP INDEX CONCURRENTLY IF EXISTS "${INDEX_NAME}"`);
+        }
+
         await raw(`
           CREATE INDEX CONCURRENTLY IF NOT EXISTS "${INDEX_NAME}"
           ON ${TableName.SecretApprovalRequestSecretV2} ("${COLUMN}")
