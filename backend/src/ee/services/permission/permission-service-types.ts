@@ -175,6 +175,8 @@ export type TPermissionServiceFactory = {
     }[];
     groupPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+      // The group's roles with the given member's own folder grants applied on top.
+      permissionForMember: (actorId: string) => MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
       membershipId: string;

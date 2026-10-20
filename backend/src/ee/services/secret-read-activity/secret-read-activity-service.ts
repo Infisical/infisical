@@ -300,14 +300,14 @@ export const secretReadActivityServiceFactory = ({
       secretReadActivityDAL.findAdminActorIds(projectId),
       $getProjectTrackingStartedAt(projectId)
     ]);
-    // The user and identity lists carry only direct members, so every group member is also checked with the
-    // group's permission; an actor who qualifies more than one way still counts once.
+    // The user and identity lists carry only direct members, so every group member is also checked with what the
+    // group gives them, their own folder grants included; an actor who qualifies more than one way counts once.
     const groupIds = groupPermissions.map((group) => group.id);
     const [userGroupMemberships, identityGroupMemberships] = await Promise.all([
       groupIds.length ? userGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : [],
       groupIds.length ? identityGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : []
     ]);
-    const groupPermissionById = new Map(groupPermissions.map((group) => [group.id, group.permission]));
+    const groupPermissionById = new Map(groupPermissions.map((group) => [group.id, group]));
     const judgedFrom = trackingStartedAt > windowStart ? trackingStartedAt : windowStart;
     // Unused access is only judged on a full window of reads: until tracking has run for 30 days, the reads
     // before it began are unknown, so nobody counts as having left a secret unread.
@@ -324,8 +324,9 @@ export const secretReadActivityServiceFactory = ({
       idOf: (membership: T) => string
     ): TActor[] =>
       memberships.flatMap((membership) => {
-        const permission = groupPermissionById.get(membership.groupId);
-        return permission ? [{ id: idOf(membership), actorType, permission }] : [];
+        const group = groupPermissionById.get(membership.groupId);
+        const id = idOf(membership);
+        return group ? [{ id, actorType, permission: group.permissionForMember(id) }] : [];
       });
     const actors: TActor[] = [
       ...userPermissions.map((actor) => ({ ...actor, actorType: ActorType.USER as const })),

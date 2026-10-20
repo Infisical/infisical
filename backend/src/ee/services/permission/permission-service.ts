@@ -1057,8 +1057,26 @@ export const permissionServiceFactory = ({
         conditionsMatcher
       });
 
+      // What a member gets through the group: the group's roles with that member's own folder grants on top, the
+      // same way their own permission is built, so a grant that narrows a folder narrows the group access too.
+      const memberPermissions = new Map<string, MongoAbility<ProjectPermissionSet>>();
+      const permissionForMember = (actorId: string) => {
+        const folderPrivileges = folderScopedPrivilegesOf(actorId, groupProjectPermission.roles);
+        if (!folderPrivileges?.length) return permission;
+        let memberPermission = memberPermissions.get(actorId);
+        if (!memberPermission) {
+          memberPermission = createMongoAbility<ProjectPermissionSet>(
+            buildProjectPermissionRules(rolePermissions, undefined, folderPrivileges),
+            { conditionsMatcher }
+          );
+          memberPermissions.set(actorId, memberPermission);
+        }
+        return memberPermission;
+      };
+
       return {
         permission,
+        permissionForMember,
         id: groupProjectPermission.groupId,
         membershipId: groupProjectPermission.id,
         name: groupProjectPermission.username,
