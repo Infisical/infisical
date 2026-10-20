@@ -4,7 +4,7 @@ import http from "node:http";
 import https from "node:https";
 import { LookupFunction } from "node:net";
 
-import { AxiosRequestConfig } from "axios";
+import { AxiosError, AxiosRequestConfig, isAxiosError } from "axios";
 import { isIP } from "net";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -386,6 +386,17 @@ const resolveBaseUrl = (url: string, baseURL?: string): string => {
   return combineURLs(baseURL, url);
 };
 
+// Axios embeds the requested URL, path included, in this error's message, and a
+// path can carry a secret (webhook tokens). Rethrow it without the URL.
+const MISSING_SLASHES_SUFFIX = 'missing "//" after protocol';
+
+const withoutUrlInMessage = (err: unknown): unknown => {
+  if (isAxiosError(err) && err.code === AxiosError.ERR_INVALID_URL && err.message.endsWith(MISSING_SLASHES_SUFFIX)) {
+    return new AxiosError(`Invalid URL: ${MISSING_SLASHES_SUFFIX}`, err.code, err.config, err.request, err.response);
+  }
+  return err;
+};
+
 const logDispatch = (method: string, effectiveUrl: string, validated: TValidatedHost | undefined) => {
   const pinned = validated ? formatEntries(validated.entries) : "none";
   logger.debug(
@@ -407,18 +418,22 @@ const dispatch = async <T>(
   const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
   logDispatch(method, effectiveUrl, validated);
 
-  return request.request<T>({
-    ...axiosOpts,
-    method,
-    url,
-    ...(data !== undefined && { data }),
-    maxRedirects: 0,
-    // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
-    // pinned agent (the proxy would re-resolve the target, defeating the pin).
-    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
-    httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
-    httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
-  });
+  return request
+    .request<T>({
+      ...axiosOpts,
+      method,
+      url,
+      ...(data !== undefined && { data }),
+      maxRedirects: 0,
+      // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
+      // pinned agent (the proxy would re-resolve the target, defeating the pin).
+      ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
+      httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
+      httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
+    })
+    .catch((err: unknown) => {
+      throw withoutUrlInMessage(err);
+    });
 };
 
 const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
@@ -430,16 +445,20 @@ const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
   const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
   logDispatch(axiosOpts.method ?? "GET", effectiveUrl, validated);
 
-  return request.request<T>({
-    ...axiosOpts,
-    url,
-    maxRedirects: 0,
-    // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
-    // pinned agent (the proxy would re-resolve the target, defeating the pin).
-    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
-    httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
-    httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
-  });
+  return request
+    .request<T>({
+      ...axiosOpts,
+      url,
+      maxRedirects: 0,
+      // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
+      // pinned agent (the proxy would re-resolve the target, defeating the pin).
+      ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
+      httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
+      httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
+    })
+    .catch((err: unknown) => {
+      throw withoutUrlInMessage(err);
+    });
 };
 
 // HTTP client that validates the URL, pins the connection to the validated
