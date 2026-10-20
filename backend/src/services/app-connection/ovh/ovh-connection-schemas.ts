@@ -31,7 +31,12 @@ export const OvhConnectionCertificateCredentialsSchema = z.object({
 });
 
 export const OvhConnectionTokenCredentialsSchema = z.object({
-  token: z.string().trim().min(1, "Token required").describe(AppConnections.CREDENTIALS.OVH.token),
+  token: z
+    .string()
+    .trim()
+    .min(1, "Token required")
+    .max(8192, "Token cannot exceed 8192 characters")
+    .describe(AppConnections.CREDENTIALS.OVH.token),
   okmsDomain: OkmsDomainSchema,
   okmsId: OkmsIdSchema
 });
