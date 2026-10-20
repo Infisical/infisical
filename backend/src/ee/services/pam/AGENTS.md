@@ -1,4 +1,4 @@
-# PAM Backend — CLAUDE.md
+# PAM Backend
 
 ## Maintaining this file
 

@@ -46,7 +46,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   product owner; bundle-hosts is documented as the hardening step.
 - Wherever code branches on `ProjectType.PAM`, add the Agent Vault arm: `AgentVaultIdentities` metering emits,
   the admin-or-member predefined roles filter, `AuditLogStreamProduct`, `grantAgentVaultAccess` on the org
-  invite. See the root `CLAUDE.md`.
+  invite. See the root `AGENTS.md`.
 
 ## Grants and reachability
 
