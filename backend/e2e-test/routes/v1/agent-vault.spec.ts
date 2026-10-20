@@ -4084,9 +4084,16 @@ describe("Agent Vault V1 Router", async () => {
           );
         });
 
-        const notTheirs = await mintFor(bot, { userId: alice.userId }, botsOnly.name);
-        expect(notTheirs.statusCode).toBe(400);
-        expect(notTheirs.json().message).toBe(
+        // The refusal names the user the way the request did.
+        const [byId, byEmail] = await Promise.all([
+          mintFor(bot, { userId: alice.userId }, botsOnly.name),
+          mintFor(bot, { userEmail: alice.username }, botsOnly.name)
+        ]);
+        expect([byId.statusCode, byEmail.statusCode]).toEqual([400, 400]);
+        expect(byId.json().message).toBe(
+          `No access bundle named '${botsOnly.name}' is granted to '${alice.userId}'. Check the name, or ask an Agent Vault admin to grant it to them.`
+        );
+        expect(byEmail.json().message).toBe(
           `No access bundle named '${botsOnly.name}' is granted to '${alice.username}'. Check the name, or ask an Agent Vault admin to grant it to them.`
         );
       } finally {

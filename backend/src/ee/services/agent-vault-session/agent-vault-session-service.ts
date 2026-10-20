@@ -167,7 +167,7 @@ export const agentVaultSessionServiceFactory = ({
       });
     }
 
-    return { user, accessBundleIds: reachability.accessBundleIds };
+    return { user, identifier, accessBundleIds: reachability.accessBundleIds };
   };
 
   const resolveSessionTtl = (ttl: string | undefined, isOnBehalfOf: boolean) => {
@@ -244,7 +244,7 @@ export const agentVaultSessionServiceFactory = ({
       const notGrantedToUser = firstUnreachable(onBehalfOfUser.accessBundleIds);
       if (notGrantedToUser) {
         throw new BadRequestError({
-          message: `No access bundle named '${notGrantedToUser}' is granted to '${onBehalfOfUser.user.username}'. Check the name, or ask an Agent Vault admin to grant it to them.`
+          message: `No access bundle named '${notGrantedToUser}' is granted to '${onBehalfOfUser.identifier}'. Check the name, or ask an Agent Vault admin to grant it to them.`
         });
       }
     } else {
