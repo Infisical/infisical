@@ -238,7 +238,7 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="okms-domain">
-                Rest API endpoint
+                REST API Endpoint
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info />

@@ -926,9 +926,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ImpervaConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case OVHConnectionMethod.Certificate:
-      return { name: "Certificate", icon: faCertificate };
+      return { name: "Certificate", icon: FileBadgeIcon };
     case OVHConnectionMethod.Token:
-      return { name: "Token", icon: faKey };
+      return { name: "Token", icon: KeyRoundIcon };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
