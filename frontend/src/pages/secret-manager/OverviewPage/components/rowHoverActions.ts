@@ -1,4 +1,4 @@
-import { FocusEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FocusEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Matches the `transition-all duration-300` the action bars fade out with, so the bar stays in the
@@ -64,7 +64,7 @@ type TRowHoverActions = {
   /** Spread onto the row element that carries `groupClassName`. */
   rowHoverProps: {
     tabIndex?: number;
-    onMouseEnter: () => void;
+    onMouseEnter: (e: MouseEvent<HTMLElement>) => void;
     onMouseLeave: () => void;
     onFocus: (e: FocusEvent<HTMLElement>) => void;
     onBlur: (e: FocusEvent<HTMLElement>) => void;
@@ -154,7 +154,16 @@ export const useRowHoverActions = ({
   const rowHoverProps = useMemo(
     () => ({
       tabIndex: needsRowTabStop ? 0 : undefined,
-      onMouseEnter: () => setIsHovered(true),
+      // Same portal trap as the focus handler below. React's synthetic mouse-enter is dispatched
+      // along the React tree, so a popover or sheet this row renders counts as the row for enter
+      // purposes even though it is mounted on <body>. Opening one under a pointer that is nowhere
+      // near the row would otherwise mark the row hovered, and because the matching leave belongs
+      // to a node that is not a DOM descendant the row never sees it: the bar stays mounted for
+      // the life of the page on a row the user is not on.
+      onMouseEnter: (e: MouseEvent<HTMLElement>) => {
+        if (!e.currentTarget.contains(e.target as Node)) return;
+        setIsHovered(true);
+      },
       onMouseLeave: () => setIsHovered(false),
       // React's synthetic focus bubbles through portals, so focus landing in a popover this row
       // renders would otherwise mark the row focused. That node is not a DOM descendant, so when
