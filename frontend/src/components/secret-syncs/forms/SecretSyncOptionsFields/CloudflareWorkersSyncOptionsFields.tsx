@@ -45,17 +45,19 @@ export const CloudflareWorkersSyncOptionsFields = () => {
           <Field className="mb-4">
             <FieldLabel htmlFor="cloudflare-workers-variable-type">Variable type</FieldLabel>
             <FieldContent>
-              {/* Only a type the user picks is saved, so editing an older sync keeps its behavior */}
-              <Select
-                value={value ?? CloudflareWorkersVariableType.Secret}
-                onValueChange={onChange}
-              >
+              {/* Unset shows Secret as a placeholder, so picking Secret still saves it, while editing an
+                  older sync without picking a type keeps its behavior */}
+              <Select value={value} onValueChange={onChange}>
                 <SelectTrigger
                   id="cloudflare-workers-variable-type"
                   className="w-full"
                   isError={Boolean(error)}
                 >
-                  <SelectValue />
+                  <SelectValue
+                    placeholder={
+                      CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS[CloudflareWorkersVariableType.Secret]
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   {Object.entries(CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS).map(([type, label]) => (
