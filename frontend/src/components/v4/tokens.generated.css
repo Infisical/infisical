@@ -55,6 +55,7 @@
   --v4-size-icon-xs: 12px;
   --v4-size-measure-page: 1160px;
   --v4-size-measure-form: 640px;
+  --v4-size-measure-field: 400px;
   --v4-size-measure-prose: 65ch;
   --v4-size-control-default: var(--v4-size-control-sm);
   --v4-size-nested-default: var(--v4-size-nested-sm);
@@ -90,7 +91,7 @@
   --v4-surface: #fbfbf9;
   --v4-pop: #ffffff;
   --v4-pop-line: var(--v4-line-soft);
-  --v4-inset: var(--v4-surface);
+  --v4-inset: #f5f4ef;
   --v4-sidebar: var(--v4-tint);
   --v4-sidebar-line: var(--v4-line);
   --v4-sidebar-hover: var(--v4-line-soft);
@@ -99,8 +100,8 @@
   --v4-tint: #f1f0ea;
   --v4-row-done: #f6f5f1;
   --v4-select: #eeede6;
-  --v4-line-soft: #e6e5e0;
-  --v4-line: #d8d8d4;
+  --v4-line-soft: #ebeae5;
+  --v4-line: #e1e0db;
   --v4-control: #b0b0a9;
   --v4-faint: #8e9291;
   --v4-muted: #565654;
@@ -263,21 +264,21 @@
 .v4[data-theme="dark"] {
   --v4-frame: #010101;
   --v4-frame-soft: #010101;
-  --v4-surface: #0b0b0b;
-  --v4-pop: #161616;
+  --v4-surface: #111111;
+  --v4-pop: #1a1a1a;
   --v4-pop-line: var(--v4-line);
-  --v4-inset: var(--v4-surface);
+  --v4-inset: #0b0b0b;
   --v4-sidebar: var(--v4-frame);
   --v4-sidebar-line: var(--v4-line-soft);
   --v4-sidebar-hover: var(--v4-tint);
   --v4-sidebar-current: #2c2c2b;
-  --v4-paper: #121212;
+  --v4-paper: #161616;
   --v4-tint: #1c1c1c;
-  --v4-row-done: #101010;
+  --v4-row-done: #151515;
   --v4-select: #262626;
-  --v4-line-soft: #1e2022;
-  --v4-line: #2f3234;
-  --v4-control: #3f4245;
+  --v4-line-soft: #1b1c1d;
+  --v4-line: #262729;
+  --v4-control: #37393c;
   --v4-faint: #8e9291;
   --v4-muted: #b0b0a9;
   --v4-text2: #d8d8d4;

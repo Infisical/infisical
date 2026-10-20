@@ -566,6 +566,9 @@
 .field {
   gap: var(--v4-space-field-label);
 }
+.field:not([data-orientation="horizontal"]) {
+  max-width: var(--v4-size-measure-field);
+}
 .field[data-orientation="horizontal"] {
   gap: var(--v4-space-12);
 }
