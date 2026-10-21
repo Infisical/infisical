@@ -108,12 +108,16 @@ Each template sets the storage for every account that uses it, so you can use di
 If Infisical can't reach the bucket, the template isn't saved and the error message says which permission is missing. If the bucket has no CORS policy that allows your Infisical URL, Infisical saves the template and shows a **Bucket CORS not configured** warning.
 
 <Warning>
-  If you change the bucket or key prefix on a template, you can no longer view the recordings already stored in the old location. To keep them viewable, move the objects to the new location yourself.
+  If you change the template's bucket, you can't view the recordings in the old bucket until you copy their objects to the new bucket. Keep each object's key the same when you copy it, since Infisical looks for each recording at the key it was saved under.
+
+  If you only change the key prefix, the recordings that were already stored keep working. Don't move them to the new prefix, or Infisical won't be able to find them.
 </Warning>
 
 ### Use a different bucket for one account
 
-To store a Windows or Windows AD account's recordings somewhere other than its template's bucket, [open the account's settings](/documentation/platform/pam/accounts/manage#open-an-accounts-settings), go to the **Advanced** tab, and select **Override** under **Recording Settings**. Other account types always use their template's storage.
+To store a Windows or Windows AD account's recordings in a different bucket from its template, [open the account's settings](/documentation/platform/pam/accounts/manage#open-an-accounts-settings), go to the **Advanced** tab, and select **Override** under **Recording Settings**.
+
+The override only changes the bucket details, so the template's **Storage backend** must still be **S3 Bucket**. Other account types always use their template's storage.
 
 ## Managing retention
 

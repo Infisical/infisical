@@ -36,11 +36,17 @@ Discovery finds each account's username but not its password. An imported accoun
 
 A staged account is an account that a scan found and that you haven't imported yet. To see a source's staged accounts, go to **Privileged Access Management** > **Discovery**, select the source, and open its **Staged Accounts** tab.
 
-When you scan a source again, Infisical updates its staged accounts instead of adding duplicates, and doesn't stage an account you already imported. If a scan no longer finds a staged account, Infisical removes it.
+When you scan a source again, Infisical updates its staged accounts instead of adding duplicates, and doesn't stage an account you already imported. If a scan no longer finds a staged account, Infisical removes it, except on [Unix sources](#unix-sources).
 
 ## Stale accounts
 
 If a scan no longer finds an account that you imported, Infisical lists the account on the source's **Stale Accounts** tab and marks it as stale on the **Accounts** page. A stale account keeps working, including sessions and rotation. Check whether the account still exists on the target, and delete the PAM account if it doesn't.
+
+For Windows, PostgreSQL, and Microsoft SQL Server sources, Infisical only removes staged accounts and marks accounts as stale on hosts that the scan reached, so an unreachable host doesn't change its accounts.
+
+### Unix sources
+
+Unix sources never remove staged accounts or mark imported accounts as stale. If you delete a user from a Unix host, its staged account and its PAM account stay as they were. Check the host itself before you treat an account from a Unix source as current.
 
 ## Scan schedules
 

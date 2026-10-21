@@ -16,9 +16,7 @@ To sign in to one server with a local Windows account, use a [Windows account](/
 
 - The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
 - A [Gateway](/documentation/platform/gateways/overview) that can reach each allowed host on its RDP port
-- A Windows AD [template](/documentation/platform/pam/templates/overview) that stores recordings in [your own S3 bucket](/documentation/platform/pam/sessions/external-storage)
-
-People can't connect to a Windows AD account until it has S3 recording storage. If the template doesn't set an S3 bucket, you can set one on the account after you create it. Open the account's options menu, select **Configure**, and override **Recording Settings** on the **Advanced** tab.
+- A Windows AD [template](/documentation/platform/pam/templates/overview) that stores recordings in [your own S3 bucket](/documentation/platform/pam/sessions/external-storage) (the default Windows AD template stores them in Infisical's database, so a Product Admin must change it or create another template)
 
 ## Create an account
 

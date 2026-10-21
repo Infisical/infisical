@@ -88,7 +88,9 @@ You need the Admin [role](/documentation/platform/pam/concepts/access-control#fo
 To rotate the password right away, select **Rotate now**. The next scheduled rotation then happens one full interval later.
 
 <Note>
-  If another PAM account stores the same credential, the **Rotation** tab lists it under **Shared identity**. Infisical doesn't update that account when this one rotates, so enter the new password on that account after each rotation.
+  If another PAM account stores the same credential, Infisical doesn't update it when this account rotates, so enter the new password on that account after each rotation.
+  
+  The **Rotation** tab lists some of these accounts under **Shared identity**, such as accounts that discovery imported, but not accounts that someone added by hand. Check for other copies of the credential before you rotate, even if the list is empty.
 </Note>
 
 ## Supported account types

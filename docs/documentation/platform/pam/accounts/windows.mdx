@@ -16,9 +16,7 @@ To sign in to several servers with one Active Directory account, use a [Windows 
 
 - The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
 - A [Gateway](/documentation/platform/gateways/overview) that can reach the server on its RDP port
-- A Windows [template](/documentation/platform/pam/templates/overview) that stores recordings in [your own S3 bucket](/documentation/platform/pam/sessions/external-storage)
-
-People can't connect to a Windows account until it has S3 recording storage. If the template doesn't set an S3 bucket, you can set one on the account after you create it. Open the account's options menu, select **Configure**, and override **Recording Settings** on the **Advanced** tab.
+- A Windows [template](/documentation/platform/pam/templates/overview) that stores recordings in [your own S3 bucket](/documentation/platform/pam/sessions/external-storage) (the default Windows template stores them in Infisical's database, so a Product Admin must change it or create another template)
 
 ## Create an account
 

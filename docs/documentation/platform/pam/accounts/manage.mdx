@@ -80,7 +80,7 @@ To learn what each role allows, see [Access control](/documentation/platform/pam
 The account's [template](/documentation/platform/pam/templates/overview) sets its gateway and, for Windows and Windows AD accounts, where Infisical stores its session recordings. To use a different setting for this account only, go to the **Advanced** tab and select **Override** next to the setting:
 
 - **Gateway**: Select a different gateway or gateway pool (every account type except AWS IAM)
-- **Recording Settings**: Select a different bucket for this account's recordings (Windows and Windows AD accounts only), as described in [External storage](/documentation/platform/pam/sessions/external-storage)
+- **Recording Settings**: Select a different bucket for this account's recordings (Windows and Windows AD accounts only, and only if the template's **Storage backend** is **S3 Bucket**), as described in [External storage](/documentation/platform/pam/sessions/external-storage)
 
 Select **Save Changes**. To go back to the template's setting, select **Remove Override**.
 
