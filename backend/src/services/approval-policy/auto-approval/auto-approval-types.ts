@@ -20,9 +20,6 @@ export type TAutoApprovalProviderDeps = {
 
 export type TAutoApprovalContext = {
   requester: {
-    userId: string | null;
-    machineIdentityId: string | null;
-    // Empty for machine identities, which can never match a person in another service
     email: string | null;
   };
 };

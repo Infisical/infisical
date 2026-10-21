@@ -1297,8 +1297,6 @@ export const approvalPolicyServiceFactory = ({
           projectId,
           ctx: {
             requester: {
-              userId: actor.type === ActorType.USER ? actor.id : null,
-              machineIdentityId: machineIdentityId ?? null,
               email: actor.type === ActorType.USER ? requesterEmail || null : null
             }
           }

@@ -12,7 +12,7 @@ import {
 const conn = { credentials: { instanceUrl: "https://acme.atlassian.net" } } as Parameters<typeof parseJiraTicket>[1];
 
 const ctx: TAutoApprovalContext = {
-  requester: { userId: "user-id", machineIdentityId: null, email: "dev@acme.com" }
+  requester: { email: "dev@acme.com" }
 };
 
 const facts = (overrides: Partial<TJiraTicketFacts> = {}): TJiraTicketFacts => ({

@@ -38,7 +38,7 @@ const ticket: TAutoApprovalSubject<unknown, TFacts> = {
   }
 };
 
-const ctx: TAutoApprovalContext = { requester: { userId: "user-id", machineIdentityId: null, email: "dev@acme.com" } };
+const ctx: TAutoApprovalContext = { requester: { email: "dev@acme.com" } };
 
 const condition = (id: string, constraint: string, values: string[], inputId: string | null = "input-1") => ({
   id,

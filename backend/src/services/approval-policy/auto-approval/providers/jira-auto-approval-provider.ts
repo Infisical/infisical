@@ -130,12 +130,8 @@ const matchAssigneeToRequester = (
   ctx: TAutoApprovalContext
 ): NonNullable<TJiraTicketFacts["assignee"]> => {
   const email = ctx.requester.email?.trim().toLowerCase();
-  if (!email) {
-    return { matchesRequester: false, reason: "Requests from machine identities can't match a Jira assignee" };
-  }
-
   const assigneeEmail = issue.fields?.assignee?.emailAddress?.trim().toLowerCase();
-  return assigneeEmail === email
+  return email && assigneeEmail === email
     ? { matchesRequester: true, reason: null }
     : { matchesRequester: false, reason: `${issue.key} isn't assigned to the requester` };
 };
