@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Info, Link2, Plus, TriangleAlert, X } from "lucide-react";
+import { Link2, Plus, TriangleAlert, X } from "lucide-react";
 
 import {
   Badge,
@@ -18,10 +18,7 @@ import {
   FieldDescription,
   FieldTitle,
   IconButton,
-  ProviderIcon,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  ProviderIcon
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
@@ -119,22 +116,10 @@ export const AutoApprovalCard = ({
   return (
     <Card>
       <CardHeader className="border-b">
-        <CardTitle className="flex items-center gap-1.5 text-base">
-          Auto-Approval
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="size-3.5 text-muted" aria-label="When auto-approval applies" />
-            </TooltipTrigger>
-            <TooltipContent className="max-w-72">
-              Only applies to accounts whose template has Allow Auto-Approval on. Requests that no
-              rule approves wait for the approvers below. Without approvers, those requests are
-              rejected immediately.
-            </TooltipContent>
-          </Tooltip>
-        </CardTitle>
+        <CardTitle className="text-base">Auto-Approval</CardTitle>
         <CardDescription>
-          Automatically approve requests that meet specific conditions, using what requesters
-          provide.
+          Requests that pass a rule are approved automatically if the account&apos;s template allows
+          auto-approval. Other requests wait for the approvers below.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
