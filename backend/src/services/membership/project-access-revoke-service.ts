@@ -48,11 +48,9 @@ const toRevoked = (rows: TMemberships[]) => ({
     }))
 });
 
-// The one definition of what an actor loses when they leave the projects of an org: project rows,
-// resource rows (PAM, Agent Vault, PKI applications, signers), project keys, privileges, approver
-// slots, alert recipient slots and live PAM sessions. Everything keyed on actor + project is reaped
-// across every project in the orgs, not only the ones the actor held a row in, since those can exist
-// in projects reached through a group. Membership roles cascade from the membership row.
+// The one list of what leaving an org's projects takes away: project and resource rows, keys, privileges,
+// approver and alert recipient slots, live PAM sessions. Actor + project stuff is reaped across every
+// project in the orgs, since it can exist in group-only projects. Roles cascade from the membership row.
 export const projectAccessRevokeServiceFactory = ({
   membershipDAL,
   projectDAL,
@@ -63,8 +61,7 @@ export const projectAccessRevokeServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service
 }: TProjectAccessRevokeServiceFactoryDep) => {
-  // Runs inside the caller's transaction and returns the PAM cancellation sender to call after it
-  // commits, as `terminatePamSessionsForUsers` does.
+  // Runs in the caller's tx; call the returned PAM cancellation sender after commit.
   const revokeActorsInOrgs = async (
     { orgIds, userIds = [], identityIds = [] }: { orgIds: string[]; userIds?: string[]; identityIds?: string[] },
     tx: Knex

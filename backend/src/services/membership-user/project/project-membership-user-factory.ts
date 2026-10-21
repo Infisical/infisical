@@ -70,8 +70,7 @@ export const newProjectMembershipUserFactory = ({
 
   const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
-  // Users with an active org row of their own or an active group reaching the org can get a project
-  // membership, the same rule every other add path uses (findActorsWithActiveOrgAccess).
+  // Same add rule as everywhere else (findActorsWithActiveOrgAccess).
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
     newUsers
@@ -156,8 +155,7 @@ export const newProjectMembershipUserFactory = ({
     }
   };
 
-  // Only users who can already sign in get the email: accepted direct members, plus group-only members
-  // (no direct row, so no status to check).
+  // Only email users who can already sign in: accepted direct members and group-only members.
   const onCreateMembershipComplete: TMembershipUserScopeFactory["onCreateMembershipComplete"] = async (
     dto,
     newMembers

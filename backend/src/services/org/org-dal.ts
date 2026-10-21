@@ -1196,8 +1196,8 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Actors that still reach the org: a direct org row (any status) or a group holding one. Same as
-  // findEffectiveOrgMembership minus isActive, which the token layer handles.
+  // Actors that still reach the org: a direct org row (any status) or a group holding one. Ignores isActive
+  // on purpose, it's for the reconcile consumer, and deactivating someone mustn't reap their projects.
   const findActorsWithOrgAccess = async (
     { orgId, userIds, identityIds }: { orgId: string; userIds: string[]; identityIds: string[] },
     tx?: Knex
@@ -1235,9 +1235,9 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Actors that can be granted access in the org right now: an active direct org row, or no direct row and
-  // an active group that holds one. A deactivated direct member stays out even if a group reaches the org,
-  // matching findEffectiveOrgMembership, which resolves the direct row first.
+  // Actors that can be granted access right now, used by every add path: an active direct org row, or no
+  // direct row and an active group holding one. A deactivated direct member stays out even with a group
+  // path, matching findEffectiveOrgMembership, which resolves the direct row first.
   const findActorsWithActiveOrgAccess = async (
     { orgId, userIds, identityIds }: { orgId: string; userIds: string[]; identityIds: string[] },
     tx?: Knex
@@ -1284,13 +1284,11 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // (actor, org) pairs with a project or resource row (PAM, Agent Vault, PKI apps, signers) in an org the
-  // actor no longer reaches. Resource rows count on their own: a group-derived PAM admin's personal folder
-  // row can exist with no project row behind it. Skips ghost users (project bots), they never have an org
-  // row. One streaming pass over those rows against a hash of the org rows; collapsing to distinct pairs
-  // first was measured and only moved the cost into an aggregate.
-  // Without a caller's tx it runs in its own replica transaction so `statementTimeoutMs` bounds it: a
-  // backstop that overruns should fail and log, not keep the replica busy after the cron has given up on it.
+  // (actor, org) pairs with a project or resource row in an org they no longer reach. Resource rows count on
+  // their own (a group-derived PAM admin's folder row has no project row). Skips ghost users, they never
+  // have an org row. One streaming pass against a hash of org rows; collapsing to pairs first was measured
+  // and just moved the cost into an aggregate. Without a tx it runs in its own replica tx so
+  // `statementTimeoutMs` can bound it: an overrunning backstop should fail, not keep the replica busy.
   const findOrphanedProjectActors = async (
     { limit, statementTimeoutMs }: { limit: number; statementTimeoutMs?: number },
     tx?: Knex
@@ -1357,11 +1355,9 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Serializes group additions with the reconcile consumer per actor, so access granted between its check
-  // and its deletes doesn't get reaped. One statement for the whole set: a SCIM sync can add thousands of
-  // members in one request and everything else on that path is batched. The function scan emits the array
-  // in order and the lock call runs per row, so a sorted array is taken in sorted order, which is what
-  // keeps two callers from deadlocking on each other.
+  // Serializes grants with the reconcile consumer per actor. One statement for the whole set, since a SCIM
+  // sync can add thousands at once. unnest keeps array order, so sorted ids lock in sorted order and two
+  // callers can't deadlock.
   const lockActorsForOrgAccess = async (actorIds: string[], tx: Knex) => {
     const keys = [...new Set(actorIds)].sort().map((actorId) => PgSqlLock.OrgAccessReconcile(actorId));
     if (!keys.length) return;

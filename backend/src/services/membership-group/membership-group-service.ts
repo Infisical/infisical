@@ -378,9 +378,8 @@ export const membershipGroupServiceFactory = ({
     return { membership: membershipDoc, group };
   };
 
-  // Unlinks a group from an org, plus its project rows there (otherwise they'd keep granting access through
-  // a group the org no longer holds) and folder grants members only had through it. Whether members keep
-  // their own project rows is up to the reconcile consumer.
+  // Unlinks a group from an org plus its project rows there (or they'd keep granting access) and folder grants
+  // members only had through it. Members' own project rows are left to the reconcile consumer.
   const detachGroupFromOrg = async (
     { groupId, orgId, orgMembershipId }: { groupId: string; orgId: string; orgMembershipId?: string },
     tx: Knex

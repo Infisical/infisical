@@ -43,8 +43,8 @@ const ActorSchema = z.object({
 });
 export type TOrgMembershipActor = z.infer<typeof ActorSchema>;
 
-// Group events snapshot the orgs and members at removal time, since by the time the consumer runs a later
-// removal or the delete cascade may have wiped those rows. orgIds includes the group's own org.
+// Group events snapshot orgs and members at removal time, since a later removal or the delete cascade can
+// wipe those rows before the consumer runs. orgIds includes the group's own org.
 const GroupScopePayloadSchema = z.object({
   groupId: z.string().uuid(),
   orgIds: z.array(z.string().uuid()).max(ORGS_PER_EVENT),

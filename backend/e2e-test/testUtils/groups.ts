@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 
-// Group creation over the API is gated on the groups plan flag, which the license fake turns off, so
-// the rows are written directly: the group plus the org row that lets the group routes resolve it.
+// Group creation sits behind a plan flag the license fake turns off, so the group and its org row are
+// written directly.
 export const createOrgGroup = async (dto: { orgId: string; label: string; role?: OrgMembershipRole }) => {
   const slug = `${dto.label}-${randomUUID().slice(0, 8)}`;
   const [group] = await testDb(TableName.Groups).insert({ orgId: dto.orgId, name: slug, slug }).returning("*");
@@ -27,7 +27,7 @@ export const deleteGroups = async (groupIds: string[]) => {
   await testDb(TableName.Groups).whereIn("id", groupIds).delete();
 };
 
-// `authToken` must be scoped to the sub-org being linked into; the route reads the org from it.
+// `authToken` has to be scoped to the sub-org, the route reads the org from it.
 export const linkGroupToOrg = async (dto: { groupId: string; authToken: string; role?: OrgMembershipRole }) => {
   const res = await testServer.inject({
     method: "POST",

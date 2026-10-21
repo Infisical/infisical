@@ -653,8 +653,8 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Every org a member reaches through the group: the one that owns it plus every org it is linked into.
-  // The one source for the org list on org membership events, so the emit sites cannot disagree.
+  // Orgs the group reaches: its owner plus every org it's linked into. The only source for event org lists,
+  // so emit sites can't disagree.
   const findGroupOrgIds = async (groupId: string, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();

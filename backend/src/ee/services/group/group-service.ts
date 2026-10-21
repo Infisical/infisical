@@ -380,8 +380,7 @@ export const groupServiceFactory = ({
   /**
    * Delete a group owned by the current organization.
    * Ensures the group is not linked by any sub-organizations before deleting.
-   * Folder grant cleanup and the actor/org read have to run before the delete, since the cascade wipes
-   * the memberships they read.
+   * Folder grant cleanup and the actor/org read run before the delete, the cascade wipes what they read.
    */
   const deleteOwnedGroup = async ({ groupId, actorOrgId }: { groupId: string; actorOrgId: string }) => {
     const referencingSubOrgs = await groupDAL.getGroupsReferencingGroup(groupId);

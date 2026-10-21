@@ -283,8 +283,8 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Sub-org: root org users not yet in it. Project: anyone who can be granted access in the project's org
-  // (same rule as findActorsWithActiveOrgAccess) without a direct project row.
+  // Sub-org: root org users not in it yet. Project: anyone grantable in the project's org
+  // (findActorsWithActiveOrgAccess rule) without a direct project row.
   const listAvailableUsers = async (scopeData: AccessScopeData, rootOrgId?: string | null) => {
     try {
       const userColumns = [

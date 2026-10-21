@@ -415,6 +415,7 @@ export const membershipIdentityServiceFactory = ({
     return { membership: membershipDoc };
   };
 
+  // On org removal the identity's project rows in the org and its sub-orgs are left to the reconcile consumer.
   const deleteMembership = async (dto: TDeleteMembershipIdentityDTO, externalTx?: Knex) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
@@ -471,8 +472,7 @@ export const membershipIdentityServiceFactory = ({
         }
       }
 
-      // Durable deny atomic with the org-membership removal. The identity's project rows in this org
-      // and its sub-orgs are left to the reconcile consumer, which the event triggers.
+      // Durable deny atomic with the org-membership removal.
       if (scopeData.scope === AccessScope.Organization) {
         await identityAccessTokenService.insertOrgMembershipRevocationMarker({
           identityId: dto.selector.identityId,
@@ -581,8 +581,8 @@ export const membershipIdentityServiceFactory = ({
     return membership;
   };
 
-  // The list is made of org identities, so at project scope it's gated on org identity read alone, plus a
-  // check that the project belongs to the org.
+  // It's a list of org identities, so at project scope only org identity read gates it, plus a check that
+  // the project is in the org.
   const listAvailableIdentities = async (dto: TListMembershipIdentityDTO) => {
     const { scopeData } = dto;
 

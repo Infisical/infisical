@@ -306,8 +306,8 @@ export const agentVaultMembershipServiceFactory = ({
     resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, actors);
 
   // resolveSession refuses an actor with no active org membership, so one added without it could never mint.
-  // Users and identities count when they have an active row of their own or an active group reaching the org;
-  // the reconcile consumer revokes the membership if that group path goes away.
+  // Users and identities need an active row of their own or an active group into the org. Reconcile revokes
+  // the membership if that group path goes.
   const assertActorsAreAddable = async (actors: TAgentVaultNamedActor[], orgId: string, projectId: string) => {
     const groupIds = named(actors, AgentVaultMemberType.Group);
     const machineIdentityIds = named(actors, AgentVaultMemberType.MachineIdentity);

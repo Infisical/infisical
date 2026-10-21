@@ -24,9 +24,8 @@ type TDeleteOrgMemberships = {
   eventEmitter: TEventEmitter;
 };
 
-// Removes the users from the org and its sub-orgs outright: their org rows, their groups there and
-// everything they held in those projects. The event is still emitted so the reconcile consumer can
-// confirm nothing is left.
+// Removes the users from the org and its sub-orgs outright, org rows, groups and project access included.
+// Still emits the event so the reconcile consumer can confirm nothing's left.
 export const deleteOrgMembershipsFn = async ({
   orgMembershipIds,
   orgId,

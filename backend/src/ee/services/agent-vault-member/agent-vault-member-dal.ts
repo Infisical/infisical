@@ -231,7 +231,8 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
   };
 
   // Every rule here mirrors one in assertActorsAreAddable, so the picker cannot offer an actor the add
-  // path would then refuse.
+  // path would then refuse. Group-only users and identities get a synthetic row shaped and aliased like
+  // the memberships table, so the same filters cover them.
   const findAvailableActors = async (
     { projectId, orgId, actorTypes, search, limit, offset }: TFindAvailableActorsDTO,
     tx?: Knex
@@ -248,8 +249,6 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
           .whereNotNull(`${TableName.Membership}.${column}`)
           .select(column);
 
-      // The org's own rows plus a synthetic active row for every user or identity reaching it only through an
-      // active group, shaped like and aliased as the memberships table so the filters below read both alike.
       const m = TableName.Membership;
       const orgActors = () => {
         const direct = conn(m)

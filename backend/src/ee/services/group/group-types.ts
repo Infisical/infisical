@@ -172,8 +172,7 @@ export type TRemoveIdentitiesFromGroup = {
   eventEmitter: TEventEmitter;
 };
 
-// Structural rather than Pick<TGroupDALFactory, ...>: group-dal.ts imports this file, so naming its type
-// here would make the two files import each other.
+// Structural instead of Pick<TGroupDALFactory>, since group-dal.ts imports this file.
 export type TGroupOrgIdsDAL = { findGroupOrgIds: (groupId: string, tx?: Knex) => Promise<string[]> };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {

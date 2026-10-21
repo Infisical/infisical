@@ -65,10 +65,9 @@ const splitActors = (actors: TOrgMembershipActor[]) => ({
   identityIds: actors.filter((a) => a.actorType === ActorType.IDENTITY).map((a) => a.actorId)
 });
 
-// Keeps project memberships in an org only for actors that still reach it (direct org row or a group
-// holding one). Events say what got removed; we figure out who might've lost their last path, recheck
-// against current state and delete what's orphaned. Not on the enforcement path (token validation
-// already rejects these actors) and safe to re-run.
+// Keeps project memberships in an org only for actors that still reach it. Events say what got removed; we
+// recheck who might've lost their last path and delete what's orphaned. Not on the enforcement path (token
+// validation already rejects these actors) and safe to re-run.
 export const orgAccessReconcileConsumerFactory = ({
   orgDAL,
   userDAL,
@@ -81,9 +80,8 @@ export const orgAccessReconcileConsumerFactory = ({
   const eventTypes = new Set<string>(ORG_MEMBERSHIP_EVENTS);
   const subscribesTo = (eventType: string) => eventTypes.has(eventType);
 
-  // Group events carry the orgs and actors captured at removal time, since later removals can wipe the
-  // rows that would tell us. Parsing is eager and reads are deferred: a bad payload never recovers, a
-  // failed read is worth a retry.
+  // Group events carry orgs and actors captured at removal time, since later removals can wipe those rows.
+  // Parse eagerly and read lazily: a bad payload never recovers, a failed read is worth a retry.
   const $parseScope = (event: TEvent): (() => Promise<TReconcileScope>) => {
     switch (event.eventType) {
       case GROUP_MEMBERSHIP_REMOVED_EVENT: {
@@ -127,7 +125,6 @@ export const orgAccessReconcileConsumerFactory = ({
       return projectAccessRevokeService.revokeActorsInOrgs({ orgIds: [orgId], userIds, identityIds }, tx);
     });
 
-  // Names are read at log time, so a deleted group (or an actor since removed) simply has none.
   const $describeActor = async ({ userId, identityId }: Pick<TRevokedProjectAccess, "userId" | "identityId">) => {
     if (userId) {
       const user = await userDAL.findById(userId);
@@ -137,8 +134,8 @@ export const orgAccessReconcileConsumerFactory = ({
     return { identityId, identityName: identity?.name };
   };
 
-  // Actors are handled in small batches, each in its own short tx, since the rows they hold aren't bounded.
-  // Side effects fire per batch after commit and only when rows were removed, so replays are no-ops.
+  // Small actor batches, each in its own short tx, since what they hold isn't bounded. Side effects fire per
+  // batch after commit and only when rows went, so replays are no-ops.
   const $reconcileOrg = async (orgId: string, scope: TReconcileScope, groupName?: string) => {
     const org = await orgDAL.findById(orgId);
     if (!org) return;

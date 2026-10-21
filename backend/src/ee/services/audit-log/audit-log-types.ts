@@ -2935,10 +2935,9 @@ interface UnlinkGroupFromSubOrgEvent {
   };
 }
 
-// Logged by the reconcile consumer after the fact, so the actor is the platform and the cause is in
-// `reason`, with the group that carried the lost path when there was one. Names are resolved at log
-// time and omitted when the row is already gone (a deleted group). `resources` are resource-level
-// grants (PAM, Agent Vault, PKI apps, signers), including ones in projects only reached through a group.
+// Written by the reconcile consumer, so the actor is the platform and `reason` / `groupId` say why. Names
+// are looked up at log time and missing if the row's already gone. `resources` are resource-level grants
+// (PAM, Agent Vault, PKI apps, signers), including ones in projects only reached through a group.
 interface RevokeOrgProjectAccessEvent {
   type: EventType.REVOKE_ORG_PROJECT_ACCESS;
   metadata: {

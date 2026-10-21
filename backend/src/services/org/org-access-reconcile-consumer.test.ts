@@ -31,7 +31,7 @@ const makeEvent = (eventType: string, payload: Record<string, unknown>, id = 1):
 const userRemovedFromOrg = (orgId = ORG_ID) =>
   makeEvent(ORG_MEMBERSHIP_REMOVED_EVENT, { orgId, actorType: ActorType.USER, actorId: USER_ID });
 
-// The revoke service reports one entry per actor it found rows for; actors without rows are absent.
+// The revoke service only reports actors it found rows for.
 const build = (opts?: {
   withAccess?: { userIds?: string[]; identityIds?: string[] };
   revoked?: TRevokedProjectAccess[];

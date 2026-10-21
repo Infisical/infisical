@@ -58,8 +58,8 @@ export const newProjectMembershipIdentityFactory = ({
 
   const isCustomRole: TMembershipIdentityScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
-  // Same rule as every other add path (findActorsWithActiveOrgAccess): an active row of its own or an active
-  // group reaching the org. The reconcile consumer revokes the project row if that group path goes away.
+  // Same add rule as everywhere else (findActorsWithActiveOrgAccess). Reconcile revokes the row if the group
+  // path goes.
   const assertOrgAccess = async (identityId: string, orgId: string) => {
     const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({ orgId, userIds: [], identityIds: [identityId] });
     if (!withOrgAccess.identityIds.has(identityId)) {

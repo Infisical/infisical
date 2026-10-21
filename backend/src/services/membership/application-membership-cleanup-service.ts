@@ -80,7 +80,7 @@ export const applicationMembershipCleanupServiceFactory = ({
     );
   };
 
-  // Returns the resource rows it removed, so a caller can say which grants went.
+  // Returns the removed resource rows so callers can report them.
   const cleanupActorsApplicationMembershipsInProjects = async (
     { projectIds, userIds, identityIds }: { projectIds: string[]; userIds: string[]; identityIds: string[] },
     tx: Knex

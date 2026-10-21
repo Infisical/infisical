@@ -4,9 +4,8 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { TOrgDALFactory } from "./org-dal";
 
-// Call inside the transaction that writes the grant, before the write. It takes the reconcile consumer's
-// per-actor lock and rechecks access under it, so a path removed concurrently is either seen here or seen
-// by the consumer once this commits. Without it the grant can land after the consumer ran and outlive it.
+// Call in the grant's tx before writing. Takes the consumer's per-actor lock and rechecks, so a path removed
+// at the same time is caught either here or by the consumer after commit, never neither.
 export const lockAndAssertActiveOrgAccess = async (
   {
     orgDAL,

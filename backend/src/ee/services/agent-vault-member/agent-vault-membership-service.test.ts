@@ -45,7 +45,8 @@ const buildTx = (adminCount: number) => {
 };
 
 // Only the collaborators these three guards touch; everything else is left undefined so a guard that
-// fails to short-circuit shows up as a crash rather than a silent pass.
+// fails to short-circuit shows up as a crash rather than a silent pass. findActorsWithActiveOrgAccess
+// follows the org read, and groupReachableIds fakes actors that reach the org only through a group.
 const buildService = ({
   identityProjectId = null as string | null,
   productMemberships = [] as ({ id: string } & Record<string, string | null>)[],
@@ -71,8 +72,6 @@ const buildService = ({
     userAliasDAL: { findBySsoExternalIds: vi.fn().mockResolvedValue([]) },
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
-      // Derived from the organization read below, so a test that changes what the org holds changes this
-      // too; groupReachableIds stands in for actors the org reaches only through an active group.
       lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
       findActorsWithActiveOrgAccess: vi.fn(
         async ({ userIds, identityIds }: { userIds: string[]; identityIds: string[] }) => {

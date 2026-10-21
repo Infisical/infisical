@@ -450,6 +450,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Project scope: anyone grantable in the project's org (findActorsWithActiveOrgAccess rule) not already in it.
   const listAvailableIdentities = async (scopeData: AccessScopeData, rootOrgId: string) => {
     // TODO (akhil/scott): need to implement filters
 
@@ -472,8 +473,6 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         db.ref("hasDeleteProtection").withSchema(TableName.Identity)
       ];
 
-      // A project can take anyone who can be granted access in its org, the same rule as
-      // findActorsWithActiveOrgAccess.
       if (scopeData.scope === AccessScope.Project) {
         const directOrgIdentities = (activeOnly: boolean) =>
           db

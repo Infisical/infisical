@@ -61,10 +61,8 @@ export const createIsolatedOrgAndProject = async (namePrefix: string) => {
   return { orgId, projectId, authToken, cleanup };
 };
 
-// A sub-org under `rootOrgId` with a project in it. There is no API for creating a sub-org in the
-// test plan, so the org row is written directly; the seed user is made its admin so a token can be
-// scoped to it and the project created the normal way. Deleting the root org cascades to the sub-org
-// (organizations.parentOrgId is ON DELETE CASCADE), so this needs no cleanup of its own.
+// Nothing in the test plan creates sub-orgs, so the row is written directly and the seed user made its
+// admin to get a scoped token. Deleting the root org cascades to it (parentOrgId), so no cleanup needed.
 export const createSubOrgAndProject = async (dto: { rootOrgId: string; namePrefix: string }) => {
   const slug = `${dto.namePrefix}-${randomUUID().slice(0, 8)}`;
   const [subOrg] = await testDb(TableName.Organization)

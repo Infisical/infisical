@@ -709,8 +709,8 @@ export const membershipUserServiceFactory = ({
     return membership;
   };
 
-  // The list is made of org members, so at project scope it's gated on org member read alone, plus a check
-  // that the project belongs to the org.
+  // It's a list of org members, so at project scope only org member read gates it, plus a check that the
+  // project is in the org.
   const listAvailableUsers = async (dto: TListMembershipUserDTO) => {
     const { scopeData } = dto;
 

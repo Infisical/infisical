@@ -37,6 +37,8 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
+// The ?requesterEmail= link resolves against the candidate list (group-only members included); existing
+// members are caught by requesterMatch. Both fetch a page since the search is a substring match.
 export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
   const addMembers = useAddAgentVaultMembers();
@@ -63,9 +65,6 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
       { actorType: AgentVaultMemberType.User, search: debouncedSearch.trim() || undefined },
       isOpen
     );
-  // The ?requesterEmail= deep link resolves against the candidate list, which holds everyone who can be
-  // added, group-only sub-org members included. A requester who is already a member is caught by
-  // requesterMatch instead. A page for the same reason as there: the search is a substring match.
   const { data: requesterCandidates } = useListAvailableAgentVaultMembers(
     { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: 20 },
     Boolean(requesterEmail)

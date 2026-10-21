@@ -33,9 +33,8 @@ import {
 } from "../../testUtils/project-members";
 import { addUserMembership, createUser, deleteUsers } from "../../testUtils/users";
 
-// A user reaches a sub-org only through a root group linked into it. Removing the group path has to
-// reap the direct project rows they hold there, and nothing else: the consumer rechecks current
-// state, so a second path keeps the rows, and the root org is untouched throughout.
+// A user reaches the sub-org only through a linked root group. Losing that path reaps their sub-org
+// project rows and nothing else: a second path keeps them and the root org is never touched.
 describe("Org access reconcile", () => {
   let rootOrgId: string;
   let rootProjectId: string;
@@ -66,8 +65,7 @@ describe("Org access reconcile", () => {
     });
   };
 
-  // Drains what is pending now, then waits for whatever the relay may have claimed first, so an
-  // assertion that rows survived is made after the consumer has actually run.
+  // Drain, then wait out anything the relay claimed first, so "rows survived" checks run after the consumer.
   const reconcile = async () => {
     await eventOutbox.drain(ORG_ACCESS_RECONCILE_CONSUMER);
     await pollUntil({
@@ -89,7 +87,6 @@ describe("Org access reconcile", () => {
     return groupId;
   };
 
-  // A root member with a direct project row in the root project and in the sub-org project.
   const createRootUserWithProjects = async (label: string, groupIds: string[]) => {
     const { userId, username } = await createUser(label);
     createdUserIds.push(userId);
@@ -200,8 +197,8 @@ describe("Org access reconcile", () => {
     expect(await projectRows(rootProjectId, { actorIdentityId: identityId })).toHaveLength(1);
   });
 
-  // An indirect member (in the sub-org only through a linked root group) can be assigned to a sub-org
-  // project directly, without becoming a direct sub-org member, and loses it again once the path goes.
+  // Indirect members can be added to a sub-org project without becoming direct sub-org members, and lose it
+  // once the group path goes.
   test("a user who reaches the sub-org only through a group can be added to its project", async () => {
     const groupId = await createLinkedGroup("assign-grp");
     const { userId, username } = await createUser("assign-user");
@@ -270,7 +267,7 @@ describe("Org access reconcile", () => {
     );
   });
 
-  // PAM and Agent Vault run over one implicit project per org, and add members through their own routes.
+  // PAM and Agent Vault have one implicit project per org and their own member routes.
   const asSubOrg = (method: "GET" | "POST", url: string, body?: Record<string, unknown>) =>
     testServer.inject({ method, url, headers: { authorization: `Bearer ${subOrgToken}` }, ...(body ? { body } : {}) });
 
@@ -313,6 +310,7 @@ describe("Org access reconcile", () => {
     });
   });
 
+  // A lazily created Agent Vault project starts empty, so an org admin has to join it first.
   test("Agent Vault offers and takes a user who reaches the sub-org only through a group", async () => {
     const groupId = await createLinkedGroup("av-grp");
     const { userId } = await createUser("av-user");
@@ -320,7 +318,6 @@ describe("Org access reconcile", () => {
     await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
     await testDb(TableName.UserGroupMembership).insert({ userId, groupId });
     const agentVaultProjectId = await implicitProjectId("agent-vault");
-    // A lazily created Agent Vault project starts empty; an org admin joins it before managing members.
     const join = await asSubOrg(
       "POST",
       `/api/v1/organization-admin/projects/${agentVaultProjectId}/grant-admin-access`
@@ -336,8 +333,8 @@ describe("Org access reconcile", () => {
     expect(await projectRows(agentVaultProjectId, { actorUserId: userId })).toHaveLength(1);
   });
 
-  // The sweep's query is what backs the daily backstop, so it is checked against real rows: an actor
-  // with a project row and no path into that org is an orphan, and every kind of path clears them.
+  // The sweep query, against real rows: a project or resource row with no path into the org is an orphan,
+  // any path clears it. Resource-only rows (like a group-derived PAM admin's folder row) count too.
   test("the sweep query finds an actor with a project or resource row and no path into the org, and nothing else", async () => {
     const orgDAL = orgDALFactory(testDb);
     const groupId = await createLinkedGroup("reconcile-sweep-grp");
@@ -363,7 +360,6 @@ describe("Org access reconcile", () => {
 
     const { userId: viaGroupUserId } = await createRootUserWithProjects("reconcile-via-group", [groupId]);
 
-    // Resource rows with no project row behind them, like a group-derived PAM admin's personal folder row.
     const resourceRow = (actor: { actorUserId?: string; actorIdentityId?: string }, resourceType: ResourceType) => ({
       scope: RESOURCE_SCOPE,
       scopeOrgId: subOrgId,
