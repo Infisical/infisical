@@ -43,12 +43,12 @@ interface CountResult {
 
 const SCIM_USER_ALIAS = "scim_user_alias";
 
-export type TOrgAccessActors = {
+type TOrgAccessActors = {
   userIds: Set<string>;
   identityIds: Set<string>;
 };
 
-export type TOrphanedProjectActor = {
+type TOrphanedProjectActor = {
   actorUserId: string | null;
   actorIdentityId: string | null;
   scopeOrgId: string;
@@ -1287,12 +1287,15 @@ export const orgDALFactory = (db: TDbClient) => {
   // (actor, org) pairs with a project or resource row in an org they no longer reach. Resource rows count on
   // their own (a group-derived PAM admin's folder row has no project row). Skips ghost users, they never
   // have an org row. One streaming pass against a hash of org rows; collapsing to pairs first was measured
-  // and just moved the cost into an aggregate. Without a tx it runs in its own replica tx so
-  // `statementTimeoutMs` can bound it: an overrunning backstop should fail, not keep the replica busy.
-  const findOrphanedProjectActors = async (
-    { limit, statementTimeoutMs }: { limit: number; statementTimeoutMs?: number },
-    tx?: Knex
-  ) => {
+  // and just moved the cost into an aggregate. Runs in its own replica tx so `statementTimeoutMs` can
+  // bound it: an overrunning backstop should fail, not keep the replica busy.
+  const findOrphanedProjectActors = async ({
+    limit,
+    statementTimeoutMs
+  }: {
+    limit: number;
+    statementTimeoutMs?: number;
+  }) => {
     const m = TableName.Membership;
 
     const query = async (conn: Knex): Promise<TOrphanedProjectActor[]> => {
@@ -1345,7 +1348,6 @@ export const orgDALFactory = (db: TDbClient) => {
     };
 
     try {
-      if (tx) return await query(tx);
       return await db.replicaNode().transaction(async (trx) => {
         if (statementTimeoutMs) await trx.raw(`SET LOCAL statement_timeout = ${Math.floor(statementTimeoutMs)}`);
         return query(trx);

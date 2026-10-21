@@ -101,7 +101,6 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
     addUser(
       {
         userIds: selectedUsers.map((selection) => selection.value),
-        emails: [],
         role: selectedRole,
         projectId: currentProject.id
       },

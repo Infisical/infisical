@@ -34,7 +34,7 @@ export const ORG_ACCESS_RECONCILE_CONSUMER = "org-access-reconcile";
 export const ACTORS_PER_RECONCILE_TX = 10;
 const RECONCILE_STATEMENT_TIMEOUT_MS = 30_000;
 
-export type TOrgAccessReconcileConsumerDep = {
+type TOrgAccessReconcileConsumerDep = {
   orgDAL: Pick<
     TOrgDALFactory,
     "findById" | "find" | "findActorsWithOrgAccess" | "lockActorsForOrgAccess" | "transaction"

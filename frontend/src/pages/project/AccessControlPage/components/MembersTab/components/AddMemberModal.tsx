@@ -55,8 +55,7 @@ const addMemberFormSchema = z.object({
     .array(
       z.object({
         label: z.string().trim(),
-        value: z.string().trim(),
-        isNewInvitee: z.boolean().optional()
+        value: z.string().trim()
       })
     )
     .min(1),
@@ -203,7 +202,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     const requesterStatus = {
       isProjectUser: Boolean(requesterEmail) && wsUserUsernames.has(requesterEmail as string),
       userLabel: requester ? getUserLabel(requester) : "",
-      userId: requester?.username
+      hasRequester: Boolean(requester)
     };
     if (!requesterStatus.isProjectUser && requester) {
       setValue("orgMemberships", [{ value: requester.username, label: requesterStatus.userLabel }]);
@@ -297,7 +296,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                         </>
                       )}
                       onCreateOption={(inputValue) =>
-                        append({ label: inputValue, value: inputValue, isNewInvitee: true })
+                        append({ label: inputValue, value: inputValue })
                       }
                       formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
                       isValidNewOption={(input) =>
@@ -367,7 +366,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           )}
           {requesterEmail &&
             !projectInviteList.requesterStatus.isProjectUser &&
-            projectInviteList.requesterStatus.userId && (
+            projectInviteList.requesterStatus.hasRequester && (
               <Alert>
                 <AlertDescription>
                   <p>

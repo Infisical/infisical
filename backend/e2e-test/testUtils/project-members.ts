@@ -33,14 +33,3 @@ export const inviteUsersToProject = (dto: { projectId: string; usernames: string
     },
     (res) => res.json().memberships as { id: string }[]
   );
-
-export const addIdentityToProjectRequest = (dto: { projectId: string; identityId: string; authToken: string }) =>
-  request(
-    {
-      method: "POST",
-      url: `/api/v1/projects/${dto.projectId}/memberships/identities/${dto.identityId}`,
-      headers: { authorization: `Bearer ${dto.authToken}` },
-      body: { roles: [{ role: ProjectMembershipRole.Member }] }
-    },
-    (res) => res.json()
-  );

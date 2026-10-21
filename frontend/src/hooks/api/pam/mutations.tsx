@@ -561,7 +561,6 @@ export const useUpdatePamProductUserMember = () => {
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.all });
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAvailableProjectUsers(projectId) });
     }
   });
 };

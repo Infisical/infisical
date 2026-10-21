@@ -17,7 +17,7 @@ type TApplicationMembershipCleanupServiceFactoryDep = {
 
 export type TApplicationMembershipCleanupServiceFactory = ReturnType<typeof applicationMembershipCleanupServiceFactory>;
 
-export const APPLICATION_APPROVAL_SCOPES = [ApprovalPolicyScope.PkiApplication, ApprovalPolicyScope.Signer];
+const APPLICATION_APPROVAL_SCOPES = [ApprovalPolicyScope.PkiApplication, ApprovalPolicyScope.Signer];
 
 export const applicationMembershipCleanupServiceFactory = ({
   membershipDAL,

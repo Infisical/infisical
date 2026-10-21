@@ -14,7 +14,7 @@ import { TApplicationMembershipCleanupServiceFactory } from "./application-membe
 import { TMembershipDALFactory } from "./membership-dal";
 
 type TProjectAccessRevokeServiceFactoryDep = {
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "delete">;
+  membershipDAL: Pick<TMembershipDALFactory, "delete">;
   projectDAL: Pick<TProjectDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
@@ -29,7 +29,7 @@ type TProjectAccessRevokeServiceFactoryDep = {
 
 export type TProjectAccessRevokeServiceFactory = ReturnType<typeof projectAccessRevokeServiceFactory>;
 
-export type TRevokedProjectResource = { projectId: string; resourceType: string; resourceId: string };
+type TRevokedProjectResource = { projectId: string; resourceType: string; resourceId: string };
 export type TRevokedProjectAccess = {
   userId?: string;
   identityId?: string;

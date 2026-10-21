@@ -100,10 +100,7 @@ type TGroupServiceFactoryDep = {
     | "findGroupActorsAndOrgs"
     | "findGroupOrgIds"
   >;
-  membershipGroupDAL: Pick<
-    TMembershipGroupDALFactory,
-    "find" | "findOne" | "create" | "getGroupById" | "deleteById" | "delete"
-  >;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById" | "lockActorsForOrgAccess">;

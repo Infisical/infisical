@@ -141,6 +141,9 @@ export type TAddIdentitiesToGroup = {
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
+// Structural instead of Pick<TGroupDALFactory>, since group-dal.ts imports this file.
+type TGroupOrgIdsDAL = { findGroupOrgIds: (groupId: string, tx?: Knex) => Promise<string[]> };
+
 export type TRemoveUsersFromGroupByUserIds = {
   group: { id: string; name: string; slug: string; orgId: string };
   userIds: string[];
@@ -171,9 +174,6 @@ export type TRemoveIdentitiesFromGroup = {
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   eventEmitter: TEventEmitter;
 };
-
-// Structural instead of Pick<TGroupDALFactory>, since group-dal.ts imports this file.
-export type TGroupOrgIdsDAL = { findGroupOrgIds: (groupId: string, tx?: Knex) => Promise<string[]> };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {
   userIds: string[];

@@ -23,10 +23,9 @@ import {
   removeUserFromGroup,
   unlinkGroupFromOrg
 } from "../../testUtils/groups";
-import { createIdentityActor } from "../../testUtils/identities";
+import { addIdentityProjectMembership, addIdentityToProject, createIdentityActor } from "../../testUtils/identities";
 import { pollUntil } from "../../testUtils/poll";
 import {
-  addIdentityToProjectRequest,
   inviteUsersToProject,
   listAvailableProjectIdentities,
   listAvailableProjectUsers
@@ -49,21 +48,6 @@ describe("Org access reconcile", () => {
 
   const projectRows = (projectId: string, actor: { actorUserId?: string; actorIdentityId?: string }) =>
     testDb(TableName.Membership).where({ scope: AccessScope.Project, scopeProjectId: projectId, ...actor });
-
-  const insertIdentityProjectRow = async (dto: { orgId: string; projectId: string; identityId: string }) => {
-    const [membership] = await testDb(TableName.Membership)
-      .insert({
-        scope: AccessScope.Project,
-        scopeOrgId: dto.orgId,
-        scopeProjectId: dto.projectId,
-        actorIdentityId: dto.identityId
-      })
-      .returning("id");
-    await testDb(TableName.MembershipRole).insert({
-      membershipId: (membership as { id: string }).id,
-      role: ProjectMembershipRole.Member
-    });
-  };
 
   // Drain, then wait out anything the relay claimed first, so "rows survived" checks run after the consumer.
   const reconcile = async () => {
@@ -183,8 +167,8 @@ describe("Org access reconcile", () => {
     const { identityId } = await createIdentityActor({ orgId: rootOrgId, authToken: rootToken });
     createdIdentityIds.push(identityId);
     await testDb(TableName.IdentityGroupMembership).insert({ identityId, groupId });
-    await insertIdentityProjectRow({ orgId: subOrgId, projectId: subOrgProjectId, identityId });
-    await insertIdentityProjectRow({ orgId: rootOrgId, projectId: rootProjectId, identityId });
+    await addIdentityProjectMembership({ identityId, orgId: subOrgId, projectId: subOrgProjectId });
+    await addIdentityProjectMembership({ identityId, orgId: rootOrgId, projectId: rootProjectId });
 
     await removeIdentityFromGroup({ groupId, identityId, authToken: rootToken });
     await reconcile();
@@ -252,9 +236,12 @@ describe("Org access reconcile", () => {
     const available = await listAvailableProjectIdentities({ projectId: subOrgProjectId, authToken: subOrgToken });
     expect(available.map((identity) => identity.id)).toContain(identityId);
 
-    await addIdentityToProjectRequest({ projectId: subOrgProjectId, identityId, authToken: subOrgToken }).expect(
-      (res) => expect(res.statusCode).toBe(200)
-    );
+    await addIdentityToProject({
+      projectId: subOrgProjectId,
+      identityId,
+      role: ProjectMembershipRole.Member,
+      authToken: subOrgToken
+    });
     expect(await projectRows(subOrgProjectId, { actorIdentityId: identityId })).toHaveLength(1);
   });
 
