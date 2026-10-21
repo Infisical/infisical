@@ -51,8 +51,11 @@ type Decision = "approve" | "reject";
 type Outcome =
   | { status: "merged"; reviewError?: string }
   | { status: "rejected" }
+  | { status: "awaiting" }
   | { status: "approved"; message: string }
   | { status: "failed"; message: string };
+
+const PENDING_APPROVALS_PATTERN = /needs \d+ approval\(s\)/;
 
 type Conflict = { secretKey: string; slug: string; mergesFirst: boolean };
 
@@ -210,6 +213,10 @@ const BulkReviewChangeRequestsSheetContent = ({
           };
           return;
         }
+        if (review?.isSuccess && PENDING_APPROVALS_PATTERN.test(errorMessage ?? "")) {
+          nextOutcomes[id] = { status: "awaiting" };
+          return;
+        }
         nextOutcomes[id] = review?.isSuccess
           ? { status: "approved", message: errorMessage ?? "Could not be merged" }
           : { status: "failed", message: review?.errorMessage ?? errorMessage ?? "Review failed" };
@@ -218,16 +225,16 @@ const BulkReviewChangeRequestsSheetContent = ({
 
       const listResults: TBulkChangeRequestResult[] = requests.map(({ id }) => {
         const outcome = nextOutcomes[id];
-        if (outcome.status === "merged" || outcome.status === "rejected")
-          return { id, isSuccess: true };
-        return {
-          id,
-          isSuccess: false,
-          errorMessage:
-            outcome.status === "approved"
-              ? `Approved, but not merged: ${outcome.message}`
-              : outcome.message
-        };
+        if (outcome.status === "approved" || outcome.status === "failed")
+          return {
+            id,
+            isSuccess: false,
+            errorMessage:
+              outcome.status === "approved"
+                ? `Approved, but not merged: ${outcome.message}`
+                : outcome.message
+          };
+        return { id, isSuccess: true };
       });
       onComplete(listResults);
 
@@ -246,6 +253,15 @@ const BulkReviewChangeRequestsSheetContent = ({
   const renderOutcome = (requestId: string) => {
     const outcome = outcomes?.[requestId];
     if (!outcome) return <Spinner size="xs" />;
+
+    if (outcome.status === "awaiting")
+      return (
+        <span className="inline-flex items-center gap-1.5 text-sm text-success">
+          <CheckIcon className="size-4" />
+          Approved
+          <span className="text-muted">Awaiting other reviewers</span>
+        </span>
+      );
 
     if (outcome.status === "merged" || outcome.status === "rejected")
       return (
@@ -348,6 +364,7 @@ const BulkReviewChangeRequestsSheetContent = ({
   const summary = (
     [
       ["merged", "merged"],
+      ["awaiting", "approved and awaiting other reviewers"],
       ["approved", "approved but not merged"],
       ["rejected", "rejected"],
       ["failed", "failed"]
