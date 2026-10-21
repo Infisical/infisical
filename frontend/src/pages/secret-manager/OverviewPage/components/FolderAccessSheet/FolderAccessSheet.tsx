@@ -223,7 +223,7 @@ export const FolderAccessSheet = ({
     <>
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
         <SheetContent className="gap-y-0 sm:max-w-[640px]">
-          <SheetHeader className="gap-3">
+          <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               Manage Permissions
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
