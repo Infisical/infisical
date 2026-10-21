@@ -563,10 +563,10 @@ const OverviewPageContent = () => {
   // (not mount-only) because the tree is rendered inside this page, so navigating from a node
   // updates the params without remounting.
   useEffect(() => {
-    const { search, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
+    const { search, clearSearch, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
     const hasEnvLink = Boolean(envSlugs?.length);
 
-    if (!search && !tags && !filterBy && !hasEnvLink) return;
+    if (!search && !clearSearch && !tags && !filterBy && !hasEnvLink) return;
     // Env link present but envs not loaded yet → wait so we don't strip it before applying.
     if (hasEnvLink && userAvailableEnvs.length === 0) return;
 
@@ -610,9 +610,12 @@ const OverviewPageContent = () => {
       }
     }
 
+    if (clearSearch) setSearchFilter("");
+
     navigate({ search: query, replace: true });
   }, [
     routerSearch.search,
+    routerSearch.clearSearch,
     routerSearch.tags,
     routerSearch.filterBy,
     routerSearch.environments?.join(","),
