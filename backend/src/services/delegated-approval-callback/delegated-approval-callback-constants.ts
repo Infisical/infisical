@@ -12,8 +12,6 @@ export const DELEGATED_APPROVAL_CALLBACK_TOKEN_MAX_LENGTH = 256;
 
 export const DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS = 5;
 
-export const DELEGATED_APPROVAL_CALLBACK_EVENT_CONSUMER = "delegated-approval-callback";
-
 export const DELEGATED_APPROVAL_CALLBACK_REJECTED_MESSAGE = "Callback rejected.";
 
 export const DELEGATED_APPROVAL_CALLBACK_ATTEMPTS_EXHAUSTED_REASON = `The delegated approval system called back more than ${DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS} times, so Infisical no longer accepts its decision for this request. Create the request again.`;

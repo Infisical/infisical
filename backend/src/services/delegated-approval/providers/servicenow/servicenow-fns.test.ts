@@ -1,18 +1,25 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { UnrecoverableError } from "bullmq";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { DelegatedApprovalDecision } from "@app/services/delegated-approval-decision/delegated-approval-decision-enums";
 
-import { TDelegatedApprovalDispatchInput } from "../../delegated-approval-dispatch-types";
-import { ServiceNowRequestType } from "./servicenow-enums";
+import { TDelegatedApprovalDispatchInput } from "../../dispatch/delegated-approval-dispatch-types";
+import { ServiceNowRequestOperation, ServiceNowRequestType } from "./servicenow-enums";
 import {
   buildServiceNowAccessRequestPayload,
   parseServiceNowAccessRequestResponse,
-  toServiceNowDispatchError
+  parseServiceNowDecision,
+  toServiceNowRequestError
 } from "./servicenow-fns";
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+  initLogger: () => {}
+}));
 
 const INSTANCE_URL = "https://acme.service-now.com";
 const CALLBACK_TOKEN = "callback-token-plaintext";
@@ -104,6 +111,23 @@ describe("buildServiceNowAccessRequestPayload", () => {
     ).toThrow(UnrecoverableError);
   });
 
+  test("refuses a permission list longer than the ServiceNow column stores", () => {
+    expect(() =>
+      buildServiceNowAccessRequestPayload(
+        makeInput({
+          details: {
+            policyType: ApprovalPolicyType.SecretAccess,
+            environment: "prod",
+            secretPath: "/",
+            permissions: Array.from({ length: 200 }, (_, i) => `subject-${i}: ${"x".repeat(20)}`),
+            isTemporary: false,
+            temporaryRange: null
+          }
+        })
+      )
+    ).toThrow(/too long for ServiceNow to store/);
+  });
+
   test("refuses a temporary range longer than ServiceNow stores", () => {
     expect(() =>
       buildServiceNowAccessRequestPayload(
@@ -154,7 +178,7 @@ describe("parseServiceNowAccessRequestResponse", () => {
   });
 });
 
-describe("toServiceNowDispatchError", () => {
+describe("toServiceNowRequestError", () => {
   test.each([
     [302, UnrecoverableError, /credentials/],
     [401, UnrecoverableError, /credentials/],
@@ -166,15 +190,22 @@ describe("toServiceNowDispatchError", () => {
     [500, BadRequestError, /server error \(HTTP 500\)/],
     [503, BadRequestError, /server error \(HTTP 503\)/]
   ])("maps HTTP %s", (status, errorClass, message) => {
-    const error = toServiceNowDispatchError(makeAxiosError(status), INSTANCE_URL);
+    const error = toServiceNowRequestError(makeAxiosError(status), INSTANCE_URL);
 
     expect(error).toBeInstanceOf(errorClass);
     expect(error.message).toMatch(message);
     expect(error.message).toContain("acme.service-now.com");
   });
 
+  test("names the missing record when a read returns 404", () => {
+    const error = toServiceNowRequestError(makeAxiosError(404), INSTANCE_URL, ServiceNowRequestOperation.Read);
+
+    expect(error).toBeInstanceOf(UnrecoverableError);
+    expect(error.message).toMatch(/no longer has the record for this request/);
+  });
+
   test("includes the detail ServiceNow returned on a validation failure", () => {
-    const error = toServiceNowDispatchError(
+    const error = toServiceNowRequestError(
       makeAxiosError(400, { result: { error: "Missing required field: environment" } }),
       INSTANCE_URL
     );
@@ -183,16 +214,79 @@ describe("toServiceNowDispatchError", () => {
   });
 
   test("retries when there was no response at all", () => {
-    const error = toServiceNowDispatchError(makeAxiosError(undefined, undefined, "ECONNABORTED"), INSTANCE_URL);
+    const error = toServiceNowRequestError(makeAxiosError(undefined, undefined, "ECONNABORTED"), INSTANCE_URL);
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect(error.message).toMatch(/could not be reached \(ECONNABORTED\)/);
   });
 
   test("never echoes the request path, credentials or token", () => {
-    const error = toServiceNowDispatchError(makeAxiosError(401), INSTANCE_URL);
+    const error = toServiceNowRequestError(makeAxiosError(401), INSTANCE_URL);
 
     expect(error.message).not.toContain("x_infis_approvals");
     expect(error.message).not.toContain(CALLBACK_TOKEN);
+  });
+});
+
+describe("parseServiceNowDecision", () => {
+  const record = (overrides: Record<string, unknown> = {}) => ({
+    sys_id: "abc",
+    request_id: "request-1",
+    permissions: "secrets:        create, read\nsecret-folders: edit",
+    state: "callback_pending",
+    decision: "approved",
+    approved_by: "",
+    decision_date: "2026-10-20 10:15:00",
+    decision_notes: null,
+    ...overrides
+  });
+
+  test("reads an approved record, bare or enveloped", () => {
+    const expected = {
+      status: "decided",
+      decision: DelegatedApprovalDecision.Approved,
+      approvalRequestId: "request-1",
+      permissions: ["secrets:        create, read", "secret-folders: edit"],
+      decidedBy: null,
+      decidedAt: "2026-10-20 10:15:00",
+      notes: null
+    };
+
+    expect(parseServiceNowDecision({ success: true, data: record() })).toEqual(expected);
+    expect(parseServiceNowDecision({ result: { success: true, data: record() } })).toEqual(expected);
+  });
+
+  test("reads a rejected record with its notes, whatever the state says", () => {
+    expect(
+      parseServiceNowDecision({
+        result: { success: true, data: record({ decision: " Rejected ", state: "completed", decision_notes: "No." }) }
+      })
+    ).toMatchObject({ status: "decided", decision: DelegatedApprovalDecision.Rejected, notes: "No." });
+  });
+
+  test.each([null, "", "   "])("is pending while decision is %j, naming the state", (decision) => {
+    expect(
+      parseServiceNowDecision({ result: { success: true, data: record({ decision, state: "completed" }) } })
+    ).toEqual({
+      status: "pending",
+      reason: "ServiceNow has not recorded a decision for this request yet (state: completed)."
+    });
+  });
+
+  test("gives up on a decision it does not recognise", () => {
+    expect(() => parseServiceNowDecision({ result: { success: true, data: record({ decision: "maybe" }) } })).toThrow(
+      UnrecoverableError
+    );
+  });
+
+  test("gives up when the stored permission list was cut short", () => {
+    expect(() =>
+      parseServiceNowDecision({ result: { success: true, data: record({ permissions: "x".repeat(4000) }) } })
+    ).toThrow(/cut short/);
+  });
+
+  test("retries a response it cannot read", () => {
+    expect(() => parseServiceNowDecision("<html>")).toThrow(BadRequestError);
+    expect(() => parseServiceNowDecision({ result: { success: false, error: "nope" } })).toThrow(BadRequestError);
   });
 });

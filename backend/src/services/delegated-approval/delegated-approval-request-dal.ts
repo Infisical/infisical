@@ -13,8 +13,6 @@ export type TDelegatedApprovalRequestWithApprovalRequest = TDelegatedApprovalReq
 export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.DelegatedApprovalRequests);
 
-  const primaryNode = () => db.primaryNode();
-
   const findByProviderRequestId = async (providerRequestId: string) => {
     try {
       const row = await db
@@ -37,5 +35,5 @@ export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, primaryNode, findByProviderRequestId };
+  return { ...orm, findByProviderRequestId };
 };

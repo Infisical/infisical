@@ -99,7 +99,7 @@ const buildConsumer = ({
   const consumer = delegatedApprovalDispatchConsumerFactory({
     delegatedApprovalRequestDAL: {
       findById: findById ?? vi.fn(async () => row),
-      primaryNode: () => PRIMARY,
+      transaction: async (cb: (tx: never) => Promise<unknown>) => cb(PRIMARY),
       update,
       updateById
     },

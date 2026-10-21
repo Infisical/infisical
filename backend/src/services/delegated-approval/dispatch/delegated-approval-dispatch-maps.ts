@@ -2,12 +2,12 @@ import { ApprovalPolicyType } from "@app/services/approval-policy/approval-polic
 
 import { DelegatedApprovalPolicyType } from "../delegated-approval-enums";
 import { DelegatedApprovalSupportedPolicyType } from "../delegated-approval-maps";
+import { serviceNowProvider } from "../providers/servicenow";
 import { buildSecretAccessDispatchDetails } from "./delegated-approval-dispatch-builders";
 import {
   TDelegatedApprovalDispatchDetailsBuilder,
   TDelegatedApprovalProvider
 } from "./delegated-approval-dispatch-types";
-import { serviceNowProvider } from "./providers/servicenow";
 
 export const DELEGATED_APPROVAL_PROVIDER_MAP: Record<DelegatedApprovalPolicyType, TDelegatedApprovalProvider> = {
   [DelegatedApprovalPolicyType.ServiceNow]: serviceNowProvider

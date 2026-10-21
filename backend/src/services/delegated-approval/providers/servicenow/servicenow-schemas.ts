@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SERVICENOW_PERMISSIONS_MAX_CHARS } from "./servicenow-constants";
 import { ServiceNowRequestType } from "./servicenow-enums";
 
 // Mirrors what the Infisical Approvals ServiceNow application accepts, so a request that would be
@@ -20,7 +21,14 @@ export const ServiceNowAccessRequestPayloadSchema = z.object({
   environment: z.string().min(1).max(100),
   requestor_email: z.string().min(1).max(255),
   secret_path: z.string().optional(),
-  permissions: z.string().array().optional(),
+  permissions: z
+    .string()
+    .array()
+    .refine(
+      (lines) => lines.join("\n").length <= SERVICENOW_PERMISSIONS_MAX_CHARS,
+      "The permission list is too long for ServiceNow to store. Split it into smaller requests"
+    )
+    .optional(),
   requestor_name: z.string().min(1).max(255).optional(),
   is_temporary: z.boolean().optional(),
   temporary_range: z.string().min(1).max(50).optional(),
@@ -33,4 +41,22 @@ export const ServiceNowAccessRequestResponseSchema = z.object({
 
 export const ServiceNowErrorResponseSchema = z.object({
   error: z.unknown().optional()
+});
+
+const ServiceNowNullableText = z.string().max(SERVICENOW_PERMISSIONS_MAX_CHARS).nullable().optional();
+
+// The read projection of the Infisical Approvals ServiceNow application. Every field arrives as a
+// string, and an empty field as null.
+export const ServiceNowAccessResponseRecordSchema = z.object({
+  success: z.boolean().optional(),
+  data: z.object({
+    sys_id: ServiceNowNullableText,
+    request_id: ServiceNowNullableText,
+    permissions: ServiceNowNullableText,
+    state: z.string().max(100).nullable().optional(),
+    decision: ServiceNowNullableText,
+    approved_by: ServiceNowNullableText,
+    decision_date: ServiceNowNullableText,
+    decision_notes: ServiceNowNullableText
+  })
 });

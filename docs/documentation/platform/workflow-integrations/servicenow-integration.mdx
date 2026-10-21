@@ -157,7 +157,7 @@ Each request becomes one **Infisical Access Request** record, numbered `INFAR<nu
 | Infisical Request ID      | The Infisical request this record corresponds to.                           |
 | State                     | Where the request stands, see below.                                        |
 
-The record is a read-only mirror of the request. Editing the fields in ServiceNow doesn't change what Infisical grants; only the decision sent back matters.
+The record is a mirror of the request. Infisical grants what the request asked for, never what the record says. If the **Permissions** field on the record no longer matches the request when it's approved, Infisical cancels the request instead of granting access.
 
 ### States
 
@@ -186,3 +186,4 @@ Both sides keep their own record. In ServiceNow, the access request record carri
 | Callback Failed with HTTP 401 or 403    | The machine identity isn't a member of the project, or is missing the External Review permission on Approval Requests.                                                                   |
 | Callback Failed with a connection error     | The ServiceNow instance can't reach your Infisical URL. Check the URL on the alias and any outbound firewall rules on the instance.                                                      |
 | Request expired before approval             | The policy's request expiration elapsed while the request sat in ServiceNow. Extend it, or shorten your approval SLA.                                                                     |
+| Infisical says the request couldn't be completed in ServiceNow | Infisical couldn't apply the decision. The reason is shown under the request status: the **Permissions** field was changed in ServiceNow, the record was deleted, or ServiceNow rejected the integration user's credentials. Fix the cause and create the request again. |

@@ -9,15 +9,12 @@ import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-en
 export type TDelegatedApprovalCallbackServiceFactoryDep = {
   delegatedApprovalRequestDAL: Pick<
     TDelegatedApprovalRequestDALFactory,
-    "findById" | "findByProviderRequestId" | "primaryNode" | "update"
+    "findById" | "findByProviderRequestId" | "transaction" | "update"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "transaction" | "findByIdForUpdate" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   eventEmitter: Pick<TEventEmitter, "emit">;
 };
-
-export type TFailExhaustedDelegatedApprovalRequestDTO = Pick<TDelegatedApprovalRequests, "id" | "requestId"> &
-  Pick<TDelegatedApprovalCallbackServiceFactoryDep, "approvalRequestDAL" | "delegatedApprovalRequestDAL">;
 
 export type TGetOrIssueCallbackTokenDTO = {
   delegatedRequest: Pick<TDelegatedApprovalRequests, "id" | "encryptedCallbackToken">;
@@ -26,14 +23,6 @@ export type TGetOrIssueCallbackTokenDTO = {
 
 export type THandleDelegatedApprovalCallbackDTO = {
   token: string | undefined;
-  event: DelegatedApprovalCallbackEvent;
-  externalId: string;
-};
-
-export type TDelegatedApprovalCallbackEventPayload = {
-  delegatedRequestId: string;
-  approvalRequestId: string;
-  orgId: string;
   event: DelegatedApprovalCallbackEvent;
   externalId: string;
 };

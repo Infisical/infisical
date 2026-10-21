@@ -836,7 +836,9 @@ await someDAL.transaction(async (tx) => {
 - **Discovery only looks at consumers registered in this process.** A row for any other name has nowhere
   to go here. It waits and shows up on the oldest-pending gauge instead.
 - **Don't let one event's failure escape `handle`.** The outbox retries the whole batch when `handle`
-  throws. Catch per event and report `Retry` for that event alone (see `alert-event-consumer.ts`).
+  throws. Catch per event and report `Retry` for that event alone: `runEventsSerially` and
+  `parseEventPayload` in `event-outbox-fns.ts` are that loop and the payload check, and every consumer
+  uses them rather than its own copy.
 - **BullMQ owns latency, not correctness.** `attempts: 1` on the flush job is intentional; retry lives
   on the row. A lost job costs one relay interval.
 - **The relay is a `setInterval`, not a cron job.** It doesn't need exactly-once (`FOR UPDATE SKIP

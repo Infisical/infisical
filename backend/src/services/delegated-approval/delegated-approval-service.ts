@@ -9,12 +9,12 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
-import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
 import { emitDelegatedApprovalDispatchRequested } from "./delegated-approval-events";
 import { assertPolicyTypeSupportsDelegatedApproval, listDelegatedApprovalOptions } from "./delegated-approval-fns";
+import { DelegatedApprovalRequestBlocker, getDelegatedApprovalRequestBlocker } from "./delegated-approval-guards";
 import { DELEGATED_APPROVAL_CONNECTION_MAP, DELEGATED_APPROVAL_NAME_MAP } from "./delegated-approval-maps";
 import { TDelegatedApprovalPolicyDALFactory } from "./delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "./delegated-approval-request-dal";
@@ -36,6 +36,14 @@ type TDelegatedApprovalServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   eventEmitter: TEventEmitter;
+};
+
+const RETRY_DISPATCH_BLOCKER_MESSAGES: Record<DelegatedApprovalRequestBlocker, string> = {
+  [DelegatedApprovalRequestBlocker.Missing]: "Only pending requests can be sent again",
+  [DelegatedApprovalRequestBlocker.NotPending]: "Only pending requests can be sent again",
+  [DelegatedApprovalRequestBlocker.Expired]: "This request has expired. Create a new request instead.",
+  [DelegatedApprovalRequestBlocker.PolicyRemoved]:
+    "The policy for this request no longer uses an external approval system. Create a new request instead."
 };
 
 export type TDelegatedApprovalServiceFactory = ReturnType<typeof delegatedApprovalServiceFactory>;
@@ -191,18 +199,11 @@ export const delegatedApprovalServiceFactory = ({
       });
     }
 
-    if (approvalRequest.status !== ApprovalRequestStatus.Pending) {
-      throw new BadRequestError({ message: "Only pending requests can be sent again" });
-    }
-
-    if (approvalRequest.expiresAt && new Date(approvalRequest.expiresAt) < new Date()) {
-      throw new BadRequestError({ message: "This request has expired. Create a new request instead." });
-    }
-
     const delegatedPolicy = approvalRequest.policyId ? await getPolicyByPolicyId(approvalRequest.policyId) : null;
-    if (!delegatedPolicy) {
+    const blocker = getDelegatedApprovalRequestBlocker(approvalRequest, delegatedPolicy);
+    if (blocker || !delegatedPolicy) {
       throw new BadRequestError({
-        message: "The policy for this request no longer uses an external approval system. Create a new request instead."
+        message: RETRY_DISPATCH_BLOCKER_MESSAGES[blocker ?? DelegatedApprovalRequestBlocker.PolicyRemoved]
       });
     }
 

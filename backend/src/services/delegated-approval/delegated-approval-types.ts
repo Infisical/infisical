@@ -1,7 +1,16 @@
-import { TApprovalRequests, TDelegatedApprovalPolicies, TDelegatedApprovalRequests } from "@app/db/schemas";
+import {
+  TAppConnections,
+  TApprovalRequests,
+  TDelegatedApprovalPolicies,
+  TDelegatedApprovalRequests
+} from "@app/db/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
+import { TDelegatedApprovalPolicyDALFactory } from "./delegated-approval-policy-dal";
+import { TDelegatedApprovalRequestDALFactory } from "./delegated-approval-request-dal";
 
 export type TDelegatedApprovalListItem = {
   name: string;
@@ -50,4 +59,30 @@ export type TUpdateDelegatedApprovalRequestDTO = {
   requestId: string;
   status?: DelegatedApprovalRequestStatus;
   statusReason?: string | null;
+};
+
+export type TApprovalRequestExpiry = { expiresAt?: Date | string | null };
+
+export type TLoadDelegatedApprovalContextDeps = {
+  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "transaction">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById">;
+  delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
+};
+
+export type TGetDelegatedApprovalConnectionErrorDTO = {
+  rawConnection: Pick<TAppConnections, "orgId"> | null | undefined;
+  delegatedPolicy: Pick<TDelegatedApprovalPolicies, "type" | "connectionId">;
+  organizationId: string;
+};
+
+export type TFailDelegatedApprovalRequestDeps = {
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "transaction" | "findByIdForUpdate" | "updateById">;
+  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "update">;
+};
+
+export type TFailDelegatedApprovalRequestDTO = {
+  id: string;
+  requestId: string;
+  reason: string;
+  closeAs?: ApprovalRequestStatus.Cancelled | ApprovalRequestStatus.Expired;
 };

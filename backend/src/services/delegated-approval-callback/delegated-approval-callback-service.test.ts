@@ -40,8 +40,8 @@ const makeService = ({
   currentRow = null
 }: { stored?: boolean; currentRow?: { encryptedCallbackToken: Buffer | null } | null } = {}) => {
   const delegatedApprovalRequestDAL = {
-    update: vi.fn(async () => (stored ? [{ id: "delegated-1" }] : [])),
-    primaryNode: vi.fn(() => ({})),
+    update: vi.fn(async (_filter: unknown, patch: object) => (stored ? [{ id: "delegated-1", ...patch }] : [])),
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(TX)),
     findById: vi.fn(async () => currentRow),
     findByProviderRequestId: vi.fn(async (): Promise<unknown> => null)
   };
@@ -92,7 +92,8 @@ describe("getOrIssueCallbackToken", () => {
     });
     expect(delegatedApprovalRequestDAL.update).toHaveBeenCalledWith(
       { id: "delegated-1", encryptedCallbackToken: null },
-      { encryptedCallbackToken: encrypt(Buffer.from(token as string)) }
+      { encryptedCallbackToken: encrypt(Buffer.from(token as string)) },
+      TX
     );
   });
 
@@ -277,7 +278,7 @@ describe("handleCallback", () => {
     });
     expect(eventEmitter.emit).toHaveBeenCalledWith({
       eventType: EVENT,
-      idempotencyKey: "delegated-1",
+      idempotencyKey: "delegated-1:1",
       payload: {
         delegatedRequestId: "delegated-1",
         approvalRequestId: "request-1",

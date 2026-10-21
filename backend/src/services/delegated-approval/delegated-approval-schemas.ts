@@ -16,5 +16,7 @@ export const DelegatedApprovalRequestSchema = z.object({
   statusReason: z
     .string()
     .nullable()
-    .describe("Why the request could not be sent to the delegated approval system, when it could not.")
+    .describe(
+      "Why the request is not progressing in, or could not be completed by, the delegated approval system, when that is the case."
+    )
 });

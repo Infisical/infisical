@@ -35,6 +35,7 @@ import {
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { isApprovalRequestExpired } from "@app/services/delegated-approval/delegated-approval-guards";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";
@@ -54,6 +55,7 @@ import {
   TCountSecretAccessApprovalGlobalRequestsDTO,
   TCreateSecretAccessApprovalGlobalRequestDTO,
   TListSecretAccessApprovalGlobalRequestsDTO,
+  TNotifyDelegatedDecisionDTO,
   TRetrySecretAccessApprovalGlobalRequestDispatchDTO,
   TReviewSecretAccessApprovalGlobalRequestDTO,
   TRevokeSecretAccessApprovalGlobalRequestDTO,
@@ -480,7 +482,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     if (request.status !== ApprovalRequestStatus.Pending) {
       throw new BadRequestError({ message: "The request has been closed" });
     }
-    if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+    if (isApprovalRequestExpired(request)) {
       await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired });
       throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
     }
@@ -582,7 +584,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
           throw new BadRequestError({ message: "The request has been closed" });
         }
-        if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+        if (isApprovalRequestExpired(locked)) {
           throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
         }
 
@@ -658,7 +660,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         throw new BadRequestError({ message: "The request has been closed" });
       }
 
-      if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+      if (isApprovalRequestExpired(locked)) {
         throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
       }
 
@@ -908,6 +910,40 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     };
   };
 
+  // Fires the same webhook a reviewer's decision does, for a decision read back from the delegated
+  // approval system. The decision itself is already committed by the time this runs.
+  const notifyDelegatedDecision = async ({ requestId }: TNotifyDelegatedDecisionDTO) => {
+    const request = await $findRequestByIdFromPrimary(requestId);
+    if (!request.policyId || !request.requesterId) {
+      logger.warn(
+        `Skipping access request webhook, policy or requester missing [requestId=${requestId}] [action=${AccessRequestWebhookAction.Reviewed}]`
+      );
+      return;
+    }
+
+    const [policy, project, requestedByUser] = await Promise.all([
+      $findPolicyById(request.policyId, "The policy associated with this access request has been deleted."),
+      projectDAL.findById(request.projectId),
+      userDAL.findById(request.requesterId)
+    ]);
+    if (!project || !requestedByUser) {
+      logger.warn(
+        `Skipping access request webhook, project or requester not found [requestId=${requestId}] [action=${AccessRequestWebhookAction.Reviewed}]`
+      );
+      return;
+    }
+
+    // we need to check this, because I believe this is sending the webhook only, but it does not send any email for the user that created the policy
+    await $queueAccessRequestWebhook({
+      action: AccessRequestWebhookAction.Reviewed,
+      request: toLegacyAccessApprovalRequest(request),
+      project,
+      policy: { ...policy, hasSequencedApprovers: policy.approvers.some((a) => (a.sequence ?? 1) > 1) },
+      requestedByUser,
+      envName: policy.environment.name
+    });
+  };
+
   const cancelAccessApprovalRequest = async ({
     requestId,
     actor,
@@ -967,6 +1003,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     reviewAccessApprovalRequest,
     revokeAccessApprovalRequest,
     retryDelegatedApprovalDispatch,
-    cancelAccessApprovalRequest
+    cancelAccessApprovalRequest,
+    notifyDelegatedDecision
   };
 };

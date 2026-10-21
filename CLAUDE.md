@@ -178,7 +178,7 @@ no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/ca
 one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
 policy blocked by pending requests is freed for editing. Every provider implements `TDelegatedApprovalProvider` against the same
 `TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`
-(`dispatch/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
+(`delegated-approval/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
 builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The consumer
 reads from the primary, never checks the license, and treats bullmq's `UnrecoverableError` as the terminal failure
 signal, returning `Failed` for it and `Retry` for anything else. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
@@ -194,9 +194,23 @@ the body carries no decision, which a later worker reads back from the provider.
 wrong token for a known record still burns the request, and on the sixth callback sets the row `failed` with a
 readable `statusReason` and cancels the attached approval request in the same transaction, so the policy is freed
 and the UI stops offering Cancel. Every other refusal (bad or missing token, request not `waiting_approval`)
-gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event: `eventType` is the body's event,
-`idempotencyKey` is the delegated request id so a repeat is dropped, and the `delegated-approval-callback`
-consumer is a placeholder that marks the row delivered until the read-back worker replaces it.
+gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event: `eventType` is the body's event and
+`idempotencyKey` is the delegated request id plus the attempt count, so a repeat of one delivery is dropped
+while a fresh notification after an earlier read-back ran out of retries is not. The
+`delegated-approval-decision` consumer (`backend/src/services/delegated-approval-decision/`, a thin outbox
+adapter over `delegatedApprovalDecisionService.applyDecision`) then reads the decision back through the
+policy's app connection: `TDelegatedApprovalProvider.fetchDecision` returns `pending` or a decision with
+the permissions the provider holds, and the consumer answers `Retry` for `pending`, compares the approved
+permissions with the ones it dispatched after both go through `normalizeDelegatedApprovalPermissions` (set
+comparison: padding, order, duplicates and case never count as a change), and finalizes in one transaction
+that locks the approval request, moves the delegated row `waiting_approval` → `approved` / `rejected`, and
+runs the policy type's `postApprovalTxRoutine` from `approvalResources`. A mismatch, a record for another
+request, or any other `UnrecoverableError` goes through `failDelegatedApprovalRequest`: the delegated row
+becomes `failed` with a readable `statusReason`, the approval request is cancelled, and nothing can retry
+it. Every outcome is audited as `ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION` with the `PLATFORM` actor, and
+product notifications (the access request webhook) go through `decisionNotifiers`, never through the
+consumer itself. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
+the provider reads that field alone and ignores `state`.
 
 ### API Layer (Frontend)
 

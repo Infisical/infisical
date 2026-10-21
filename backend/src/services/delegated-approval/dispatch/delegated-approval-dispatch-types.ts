@@ -1,6 +1,10 @@
 import { ProjectType, TApprovalRequests } from "@app/db/schemas";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  TDelegatedApprovalDecisionReadResult,
+  TDelegatedApprovalReadDecisionInput
+} from "@app/services/delegated-approval-decision/delegated-approval-decision-types";
 
 export type TSecretAccessDispatchDetails = {
   policyType: ApprovalPolicyType.SecretAccess;
@@ -37,6 +41,10 @@ export type TDelegatedApprovalProvider = {
     input: TDelegatedApprovalDispatchInput,
     connection: TAppConnection
   ) => Promise<TDelegatedApprovalDispatchResult>;
+  fetchDecision: (
+    input: TDelegatedApprovalReadDecisionInput,
+    connection: TAppConnection
+  ) => Promise<TDelegatedApprovalDecisionReadResult>;
 };
 
 export type TDelegatedApprovalDispatchDetailsBuilder = (
