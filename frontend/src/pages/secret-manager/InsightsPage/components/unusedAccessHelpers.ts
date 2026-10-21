@@ -26,10 +26,10 @@ export const unusedSharePercent = (unreadCount: number, entitledCount: number) =
 };
 
 // Most of its access unread is the strongest sign a principal has access it does not need.
-export const unusedShareVariant = (percent: number) => {
-  if (percent >= 75) return "danger" as const;
-  if (percent >= 25) return "warning" as const;
-  return "success" as const;
+export const unusedShareTone = (percent: number) => {
+  if (percent >= 75) return { text: "text-danger", bar: "bg-danger" };
+  if (percent >= 25) return { text: "text-warning", bar: "bg-warning" };
+  return { text: "text-success", bar: "bg-success" };
 };
 
 export const formatRemainingTtl = (seconds: number) => {

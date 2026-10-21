@@ -1,8 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
-import { ChevronRightIcon, SearchIcon } from "lucide-react";
+import { ChevronRightIcon, InfoIcon, SearchIcon } from "lucide-react";
 
-import { formatReadDay } from "@app/components/secrets/SecretReadStatusBadge";
 import {
   Badge,
   Card,
@@ -30,6 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useProject, useSubscription } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { TUnusedAccessPrincipal, useGetUnusedAccess } from "@app/hooks/api/secretInsights";
@@ -39,7 +39,7 @@ import {
   formatRemainingTtl,
   PRINCIPAL_TYPE_CONFIG,
   unusedSharePercent,
-  unusedShareVariant
+  unusedShareTone
 } from "./unusedAccessHelpers";
 import { UnusedAccessPrincipalSheet } from "./UnusedAccessPrincipalSheet";
 
@@ -106,10 +106,22 @@ export const UnusedAccessCard = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Identity</TableHead>
-              <TableHead className="whitespace-nowrap">Unused</TableHead>
-              <TableHead className="whitespace-nowrap">Unused In</TableHead>
-              <TableHead className="whitespace-nowrap">Last Read</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead className="whitespace-nowrap">
+                <span className="inline-flex items-center gap-1">
+                  Secrets Not Read
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-64">
+                      Of the secrets each identity can read, how many it has not read {readPeriod}.
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
+              </TableHead>
+              <TableHead>Environments</TableHead>
               <TableHead className="whitespace-nowrap">Access Via</TableHead>
               <TableHead variant="action" />
             </TableRow>
@@ -117,43 +129,46 @@ export const UnusedAccessCard = () => {
           <TableBody>
             {data.principals.map((row) => {
               const { icon: TypeIcon, label } = PRINCIPAL_TYPE_CONFIG[row.principalType];
-              const typeLine =
-                row.memberCount != null
-                  ? `${label} · ${row.memberCount} ${row.memberCount === 1 ? "member" : "members"}`
-                  : label;
+              const percent = unusedSharePercent(row.unreadCount, row.entitledCount);
+              const tone = unusedShareTone(percent);
               return (
                 <TableRow
                   key={`${row.principalType}-${row.principalId}`}
                   className="group/row cursor-pointer"
                   onClick={() => setSelected(row)}
                 >
-                  <TableCell isTruncatable className="max-w-64">
-                    <div className="flex items-center gap-2">
-                      <TypeIcon className="size-4 shrink-0 text-accent" />
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{row.name}</div>
-                        <div className="truncate text-xs text-muted">{typeLine}</div>
-                      </div>
-                    </div>
+                  <TableCell isTruncatable className="max-w-56 font-medium">
+                    <span className="truncate">{row.name}</span>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Badge
-                            variant={unusedShareVariant(
-                              unusedSharePercent(row.unreadCount, row.entitledCount)
-                            )}
-                          >
-                            {unusedSharePercent(row.unreadCount, row.entitledCount)}%
-                          </Badge>
+                    <span className="flex items-center gap-2">
+                      <TypeIcon className="size-4 shrink-0 text-accent" />
+                      {label}
+                      {row.memberCount != null && (
+                        <span className="text-muted">
+                          · {row.memberCount} {row.memberCount === 1 ? "member" : "members"}
                         </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Has not read {row.unreadCount} of the {row.entitledCount}{" "}
-                        {row.entitledCount === 1 ? "secret" : "secrets"} it can access {readPeriod}
-                      </TooltipContent>
-                    </Tooltip>
+                      )}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex min-w-44 flex-col gap-1.5">
+                      <div className="flex items-baseline justify-between gap-3 whitespace-nowrap">
+                        <span>
+                          {row.unreadCount}{" "}
+                          <span className="text-muted">
+                            of {row.entitledCount} {row.entitledCount === 1 ? "secret" : "secrets"}
+                          </span>
+                        </span>
+                        <span className={cn("tabular-nums", tone.text)}>{percent}%</span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
+                        <div
+                          className={cn("h-full rounded-full", tone.bar)}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -163,13 +178,6 @@ export const UnusedAccessCard = () => {
                         </Badge>
                       ))}
                     </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {row.lastReadAt ? (
-                      formatReadDay(row.lastReadAt)
-                    ) : (
-                      <span className="text-muted">None {readPeriod}</span>
-                    )}
                   </TableCell>
                   <TableCell className="max-w-64">
                     <OverflowBadgeList
@@ -211,8 +219,8 @@ export const UnusedAccessCard = () => {
             )}
           </CardTitle>
           <CardDescription>
-            Users, groups, and machine identities that can read secrets they have not read{" "}
-            {readPeriod}. Select one to see which secrets.
+            Users, groups, and machine identities with access to secrets they have not read{" "}
+            {readPeriod}. Select one to see those secrets.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
