@@ -125,11 +125,7 @@ export const orgAccessReconcileConsumerFactory = ({
   // Privileges, keys and resource rows are keyed on actor + project and can exist in group-only projects
   // (e.g. a group-derived PAM admin's personal folder-admin row), so they're reaped across the whole org
   // or they come back on re-add.
-  const $revokeActors = async (
-    orgId: string,
-    orgProjectIds: string[],
-    candidates: { userIds: string[]; identityIds: string[] }
-  ) =>
+  const $revokeActors = async (orgId: string, candidates: { userIds: string[]; identityIds: string[] }) =>
     membershipDAL.transaction(async (tx) => {
       await tx.raw(`SET LOCAL statement_timeout = ${RECONCILE_STATEMENT_TIMEOUT_MS}`);
       await orgDAL.lockActorsForOrgAccess([...candidates.userIds, ...candidates.identityIds], tx);
@@ -147,6 +143,7 @@ export const orgAccessReconcileConsumerFactory = ({
         ? await membershipDAL.find({ ...projectScope, $in: { actorIdentityId: identityIds } }, { tx })
         : [];
 
+      const orgProjectIds = (await projectDAL.find({ orgId }, { tx })).map((project) => project.id);
       const resourceScope = { scope: RESOURCE_SCOPE };
       const userResourceRows =
         orgProjectIds.length && userIds.length
@@ -221,10 +218,9 @@ export const orgAccessReconcileConsumerFactory = ({
   const $reconcileOrg = async (orgId: string, scope: TReconcileScope, reason: string) => {
     const org = await orgDAL.findById(orgId);
     if (!org) return;
-    const orgProjectIds = (await projectDAL.find({ orgId })).map((project) => project.id);
 
     for await (const actors of chunkArray(scope.actors, ACTORS_PER_RECONCILE_TX)) {
-      const outcome = await $revokeActors(orgId, orgProjectIds, splitActors(actors));
+      const outcome = await $revokeActors(orgId, splitActors(actors));
       if (outcome) outcome.sendPamCancellations();
       if (outcome?.revoked.length) {
         for await (const { projectIds, resources, ...actor } of outcome.revoked) {

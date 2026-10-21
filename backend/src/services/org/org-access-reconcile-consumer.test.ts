@@ -424,7 +424,7 @@ describe("org access reconcile consumer", () => {
       { scope: AccessScope.Project, scopeOrgId: ORG_ID, $in: { actorUserId: [USER_ID] } },
       { tx }
     );
-    expect(deps.projectDAL.find).toHaveBeenCalledWith({ orgId: ORG_ID });
+    expect(deps.projectDAL.find).toHaveBeenCalledWith({ orgId: ORG_ID }, { tx });
   });
 
   test("splits the actors into short, time-boxed transactions and logs each batch after it commits", async () => {
