@@ -1149,6 +1149,24 @@ export const orgServiceFactory = ({
       });
     }
 
+    const inviteeRoles = resolveMembershipRoleSlugs(
+      await membershipRoleDAL.findRolesByMembershipIds([inviteeOrgMembership.id])
+    );
+    const inviteePermissions = await permissionService.getOrgPermissionByRoles(inviteeRoles, orgId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
+      orgDAL.findById(orgId)
+    );
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionMemberActions.GrantPrivileges,
+      opSubject: OrgPermissionSubjects.Member,
+      actorPermission: permission,
+      targetPermissions: inviteePermissions,
+      baseMessage: "Failed to resend the invitation for this org member"
+    });
+
     if (org?.authEnforced) {
       const ssoLoginUrl = await $getEnforcedSsoLoginUrl(org.id, org.slug);
 
