@@ -612,17 +612,31 @@
             "icon": "lock",
             "pages": [
               "documentation/platform/kms/overview",
+              "documentation/platform/kms/concepts",
               {
-                "group": "Infisical KMS",
+                "group": "Key management",
+                "pages": [
+                  "documentation/platform/kms/keys",
+                  "documentation/platform/kms/encrypt-decrypt",
+                  "documentation/platform/kms/sign-verify",
+                  "documentation/platform/kms/mac",
+                  "documentation/platform/kms/key-rotation",
+                  "documentation/platform/kms/export-import"
+                ]
+              },
+              {
+                "group": "KMIP",
+                "pages": [
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/kmip-server",
+                  "documentation/platform/kms/kmip-clients",
+                  "documentation/platform/kms/kmip-dell-poweredge"
+                ]
+              },
+              {
+                "group": "Integrations",
                 "pages": [
                   "documentation/platform/kms/kubernetes-encryption",
-                  {
-                    "group": "KMIP integration",
-                    "pages": [
-                      "documentation/platform/kms/kmip",
-                      "documentation/platform/kms/kmip-dell-poweredge"
-                    ]
-                  },
                   "documentation/platform/kms/sigstore-cosign"
                 ]
               }
@@ -1294,7 +1308,8 @@
                   "cli/usage",
                   "cli/upgrade",
                   "cli/project-config",
-                  "cli/faq"
+                  "cli/faq",
+                  "cli/troubleshooting"
                 ]
               },
               {
@@ -1327,6 +1342,7 @@
                       "cli/reference/sm/agent-proxy",
                       "cli/reference/sm/dynamic-secrets",
                       "cli/reference/sm/export",
+                      "cli/reference/sm/projects",
                       "cli/reference/sm/run",
                       "cli/reference/sm/secrets"
                     ]
@@ -4014,6 +4030,7 @@
                           "api-reference/endpoints/certificates/delete",
                           "api-reference/endpoints/certificates/cert-body",
                           "api-reference/endpoints/certificates/bundle",
+                          "api-reference/endpoints/certificates/pkcs12",
                           "api-reference/endpoints/certificates/private-key",
                           "api-reference/endpoints/certificates/import-certificate"
                         ]
@@ -4392,6 +4409,7 @@
                           "api-reference/endpoints/code-signing/signers/enable",
                           "api-reference/endpoints/code-signing/signers/disable",
                           "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                          "api-reference/endpoints/code-signing/signers/import-certificate",
                           "api-reference/endpoints/code-signing/signers/list-operations"
                         ]
                       },

@@ -7,6 +7,10 @@ import DOMPurify from "dompurify";
 import rehypeRaw from "rehype-raw";
 import { z } from "zod";
 
+import {
+  getSignupTrialBillingSearch,
+  parseSignupTrialSearch
+} from "@app/components/auth/signupTrialIntent";
 import { Button } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
@@ -111,6 +115,20 @@ export const Route = createFileRoute("/_restrict-login-signup")({
 
     const orgId = data.subOrganizationId || data.organizationId;
     if (orgId) {
+      // A signed-in visitor from a pricing-page trial button gets that plan's trial confirmation on
+      // their current organization's billing page, which falls back to projects when they can't trial.
+      const trialIntent =
+        location.pathname.replace(/\/$/, "") === "/signup"
+          ? parseSignupTrialSearch(location.searchStr)
+          : null;
+      if (trialIntent) {
+        const billingSearch = new URLSearchParams(
+          getSignupTrialBillingSearch(trialIntent, `/organizations/${orgId}/projects`)
+        );
+        throw redirect({
+          href: `/organizations/${data.organizationId ?? orgId}/billing?${billingSearch.toString()}`
+        });
+      }
       throw redirect({
         to: "/organizations/$orgId/projects",
         params: { orgId }

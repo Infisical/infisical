@@ -75,6 +75,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "redirectOidcLogin",
       querystring: z.object({
         domain: z.string().trim().optional(),
         orgSlug: z.string().trim().optional(),
@@ -123,6 +124,15 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/callback",
     method: "GET",
+    schema: {
+      operationId: "oidcCallback",
+      querystring: z
+        .object({
+          code: z.string().trim().max(4096).optional(),
+          state: z.string().trim().max(4096).optional()
+        })
+        .passthrough()
+    },
     preValidation: [
       async (req, res) => {
         const oidcIdentifier = req.session.get<any>("oidcIdentifier");
@@ -195,6 +205,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getOidcConfig",
       tags: [ApiDocsTags.OidcSso],
       description: "Get OIDC config",
       security: [
@@ -249,6 +260,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateOidcConfig",
       tags: [ApiDocsTags.OidcSso],
       description: "Update OIDC config",
       security: [
@@ -342,6 +354,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "createOidcConfig",
       tags: [ApiDocsTags.OidcSso],
       description: "Create OIDC config",
       security: [

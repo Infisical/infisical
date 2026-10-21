@@ -25,7 +25,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -332,7 +332,7 @@ export const ServicesCard = ({
         </Table>
       )}
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(serviceToDelete)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setServiceToDelete(null);

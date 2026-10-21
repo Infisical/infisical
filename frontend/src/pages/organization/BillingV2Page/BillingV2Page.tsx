@@ -37,6 +37,7 @@ import { ALL_ORGS_VALUE } from "./components/RootOrgFilter";
 import { UsageBreakdownSheet } from "./components/UsageBreakdownSheet";
 import { catalogById } from "./billing-v2-format";
 import { BillingV2RenderState } from "./billing-v2-view-types";
+import { useOfflineBilling } from "./useOfflineBilling";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
@@ -46,7 +47,7 @@ const ORG_PAGE_SIZE = 10;
 // `view` optionally opens the product sheet straight into a sub-view (e.g. the set-commitment flow
 // from the "commit and save" nudge) instead of the default plans view.
 type BillingV2Flow =
-  | { type: "sheet"; prodId: string; view?: "commitment" }
+  | { type: "sheet"; prodId: string; view?: "commitment"; trialTier?: string }
   | { type: "breakdown"; prodId: string; dimensionKey?: string };
 
 export const BillingV2Page = () => {
@@ -55,6 +56,7 @@ export const BillingV2Page = () => {
   const { permission } = useOrgPermission();
   const { subscription } = useSubscription();
   const orgId = currentOrg?.id ?? "";
+  const isOfflineLicense = getSelfHostedLicenseState(subscription) === "offline";
   const hasManageBillingPermission = permission.can(
     OrgPermissionBillingActions.ManageBilling,
     OrgPermissionSubjects.Billing
@@ -82,14 +84,11 @@ export const BillingV2Page = () => {
   const { data: unsearchedOrgPage, isPending: isRootOrgCountPending } =
     useGetBillingV2Organizations(orgId, { limit: ORG_PAGE_SIZE });
 
-  const {
-    data: overview,
-    isPending,
-    isPlaceholderData,
-    isError,
-    refetch
-  } = useGetBillingV2Overview(selectedOrgId);
-  const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
+  const onlineOverview = useGetBillingV2Overview(selectedOrgId, { enabled: !isOfflineLicense });
+  const { data: onlineCatalog = [], isPending: isOnlineCatalogPending } = useGetBillingV2Catalog(
+    selectedOrgId,
+    { enabled: !isOfflineLicense }
+  );
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
   const confirmTrialPayment = useConfirmBillingV2TrialPayment();
@@ -102,6 +101,22 @@ export const BillingV2Page = () => {
   const rootOrgCount = unsearchedOrgPage?.totalCount ?? 0;
   const showOrgFilter = rootOrgCount > 1;
 
+  const offlineBilling = useOfflineBilling({
+    orgId: selectedOrgId,
+    scope: showOrgFilter ? breakdownScope : "organization",
+    enabled:
+      isOfflineLicense &&
+      !isRootOrgCountPending &&
+      permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing)
+  });
+  const overview = isOfflineLicense ? offlineBilling.overview : onlineOverview.data;
+  const isPending = isOfflineLicense ? offlineBilling.isPending : onlineOverview.isPending;
+  const isPlaceholderData = !isOfflineLicense && onlineOverview.isPlaceholderData;
+  const isError = isOfflineLicense ? offlineBilling.isError : onlineOverview.isError;
+  const refetch = isOfflineLicense ? offlineBilling.refetch : onlineOverview.refetch;
+  const catalog = isOfflineLicense ? offlineBilling.catalog : onlineCatalog;
+  const isCatalogPending = !isOfflineLicense && isOnlineCatalogPending;
+
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const openedUpgradeProduct = useRef(false);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
@@ -109,23 +124,46 @@ export const BillingV2Page = () => {
   const trialApprovalUrl = trialApproval?.orgId === selectedOrgId ? trialApproval.url : null;
   const deepLinkSearch = new URLSearchParams(window.location.search);
   const upgradeProduct = deepLinkSearch.get("upgradeProduct");
+  const upgradePlan = deepLinkSearch.get("upgradePlan");
+  const upgradeCycle = deepLinkSearch.get("upgradeCycle");
   const upgradeReturnPath = getSafeUpgradeReturnPath(
     deepLinkSearch.get("upgradeReturnPath"),
     window.location.origin
   );
 
   useEffect(() => {
-    if (
-      flow ||
-      openedUpgradeProduct.current ||
-      !upgradeProduct ||
-      !catalog.some((product) => product.id === upgradeProduct)
-    ) {
+    if (flow || openedUpgradeProduct.current || !upgradeProduct) {
+      return;
+    }
+    const product = catalog.find((candidate) => candidate.id === upgradeProduct);
+    const hasProduct = Boolean(product);
+    if (upgradePlan) {
+      if (isCatalogPending || (hasProduct && !overview && !isError)) return;
+      const trialPlan = product?.plans.find((plan) => plan.tier === upgradePlan);
+      const canTrial =
+        !isError &&
+        hasManageBillingPermission &&
+        Boolean(overview?.selfServe) &&
+        Boolean(trialPlan?.selfServe && trialPlan.trialable);
+      if (!canTrial) {
+        if (upgradeReturnPath) window.location.replace(upgradeReturnPath);
+        return;
+      }
+    } else if (!hasProduct) {
       return;
     }
     openedUpgradeProduct.current = true;
-    setFlow({ type: "sheet", prodId: upgradeProduct });
-  }, [catalog, flow, upgradeProduct]);
+    setFlow({ type: "sheet", prodId: upgradeProduct, trialTier: upgradePlan ?? undefined });
+  }, [
+    catalog,
+    flow,
+    upgradeProduct,
+    upgradePlan,
+    isCatalogPending,
+    overview,
+    isError,
+    hasManageBillingPermission
+  ]);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -167,10 +205,16 @@ export const BillingV2Page = () => {
 
   const close = () => {
     setFlow(null);
+    if (flow?.type === "sheet" && flow.trialTier && upgradeReturnPath) {
+      window.location.assign(upgradeReturnPath);
+      return;
+    }
     if (openedUpgradeProduct.current) {
       const url = new URL(window.location.href);
       url.searchParams.delete("upgradeProduct");
       url.searchParams.delete("upgradeReturnPath");
+      url.searchParams.delete("upgradePlan");
+      url.searchParams.delete("upgradeCycle");
       window.history.replaceState(
         window.history.state,
         "",
@@ -349,6 +393,9 @@ export const BillingV2Page = () => {
           entitlement={overview?.entitlements[flow.prodId]}
           hasActiveSubscription={hasActiveSubscription}
           initialView={flow.view}
+          initialTrialTier={flow.trialTier}
+          showAnnualTrialNote={Boolean(flow.trialTier) && upgradeCycle === "annual"}
+          trialOrgName={flow.trialTier ? currentOrg?.name : undefined}
           returnPath={upgradeReturnPath ?? window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           selfServe={overview?.selfServe ?? true}

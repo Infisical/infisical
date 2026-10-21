@@ -1,9 +1,8 @@
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { Building2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -13,6 +12,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -45,7 +45,12 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { handleSubmit, control, reset } = useForm<FormData>({
+  const {
+    handleSubmit,
+    control,
+    reset,
+    formState: { isDirty }
+  } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: currentOrg?.name || "",
@@ -87,18 +92,15 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <Building2 className="size-4 text-accent" />
-          Sub-Organization Details
-        </CardTitle>
-        <CardDescription>
-          Update your sub-organization&apos;s display name and slug.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle>Sub-Organization Details</CardTitle>
+          <CardDescription>
+            Update your sub-organization&apos;s display name and slug.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="max-w-md px-6 pb-6">
           <FieldGroup>
             <Controller
               defaultValue=""
@@ -146,22 +148,23 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
               )}
             />
           </FieldGroup>
-          <div className="mt-6 flex justify-end">
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-              {(isAllowed) => (
-                <Button
-                  variant="sub-org"
-                  type="submit"
-                  isPending={isPending}
-                  isDisabled={!isAllowed}
-                >
-                  Save
-                </Button>
-              )}
-            </OrgPermissionCan>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        </CardContent>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+            {(isAllowed) => (
+              <Button
+                variant="sub-org"
+                size="sm"
+                type="submit"
+                isPending={isPending}
+                isDisabled={!isAllowed || !isDirty}
+              >
+                Save Changes
+              </Button>
+            )}
+          </OrgPermissionCan>
+        </CardFooter>
+      </Card>
+    </form>
   );
 };

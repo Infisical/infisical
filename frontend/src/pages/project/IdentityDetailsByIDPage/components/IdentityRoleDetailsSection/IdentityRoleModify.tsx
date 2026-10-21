@@ -44,7 +44,7 @@ import {
   useSubscription
 } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 
@@ -261,6 +261,7 @@ type Props = {
 };
 
 export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { projectId, currentProject } = useProject();
   const { subscription } = useSubscription();
   const { filteredRoles, isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
@@ -360,7 +361,7 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
         </Button>
         <Button
           type="submit"
-          variant="project"
+          variant={scopeVariant}
           isDisabled={!roleForm.formState.isDirty || isEditDisabled}
           isPending={roleForm.formState.isSubmitting}
         >

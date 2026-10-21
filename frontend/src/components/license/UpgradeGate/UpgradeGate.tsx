@@ -44,7 +44,10 @@ import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
 import { getSelfHostedLicenseState, SELF_HOSTED_LICENSE_COPY } from "../self-hosted-license";
-import { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
+import {
+  CapabilityUpgradeAlternative,
+  CapabilityUpgradeIntent
+} from "./capability-upgrade-intents";
 import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
 import {
   focusUpgradeContinuation,
@@ -72,6 +75,7 @@ type CapabilityProps = Omit<Props, "intent"> & {
   intent: CapabilityUpgradeIntent;
   onOpenAutoFocus?: (event: Event) => void;
   onCloseAutoFocus?: (event: Event) => void;
+  alternative?: CapabilityUpgradeAlternative;
 };
 
 type PlanPrice = {
@@ -262,7 +266,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   const [selectedTier, setSelectedTier] = useState<string>();
   const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
   const [startedTrial, setStartedTrial] = useState<BillingV2Plan | null>(null);
-  const refreshedReturn = useRef<string>();
+  const refreshedReturn = useRef<string>(undefined);
   const hasTrackedView = useRef(false);
   const queryClient = useQueryClient();
   const { currentOrg, isSubOrganization } = useOrganization();

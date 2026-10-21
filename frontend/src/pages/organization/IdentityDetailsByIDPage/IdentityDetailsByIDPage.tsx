@@ -15,7 +15,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -240,7 +240,7 @@ const Page = () => {
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteIdentity.isOpen}
         title={`Are you sure you want to delete ${
           (popUp?.deleteIdentity?.data as { name: string })?.name || ""

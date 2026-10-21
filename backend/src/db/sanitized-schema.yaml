@@ -1134,6 +1134,9 @@ tables:
       - createdAt
       - updatedAt
       - isDisconnected
+      - isHistoricalScanEnabled
+      - isScanNewCommitsEnabled
+      - isDiscoveryEnabled
 
   - name: secret_scanning_findings
     source: public.secret_scanning_findings
@@ -1354,3 +1357,16 @@ tables:
       - orgId
       - projectId
       - projectName
+
+  - name: audit_log_streams
+    source: public.audit_log_streams
+    columns:
+      - id
+      - orgId
+      - createdAt
+      - updatedAt
+      - provider
+      - streamMode
+      - filters
+      - failingSince
+      - lastDeliveryError

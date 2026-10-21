@@ -40,6 +40,13 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     </Steps>
 
     Hand the copied command to whoever will start the agent. No Infisical login is needed on that machine.
+
+    You can also pass the token in the environment instead:
+
+    ```bash
+    export INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token>
+    infisical agent-vault run --proxy <proxy-address> -- claude
+    ```
   </Tab>
   <Tab title="CLI">
     `infisical agent-vault run` creates a session for you when you name the access bundle:

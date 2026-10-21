@@ -18,7 +18,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
@@ -32,7 +31,7 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useDebounce, useDiscardChangesGuard } from "@app/hooks";
+import { useDebounce } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
   useGetAgentVaultAccessBundle,
@@ -118,10 +117,6 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   const isTtlValid = customTtlError === null;
   const visibleTtlError = customTtl.length > 0 ? customTtlError : null;
 
-  const isDirty = Boolean(selectedBundle) || customTtl.length > 0;
-  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
-    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
-
   useEffect(() => {
     if (isOpen) {
       setSelectedBundle(null);
@@ -147,16 +142,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen) {
-          onOpenChange(true);
-          return;
-        }
-        requestDiscard();
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Session</DialogTitle>
@@ -301,7 +287,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={requestDiscard}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
@@ -323,14 +309,6 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
           onOpenChange={(open) => {
             if (!open) setServiceToSetUp(null);
           }}
-        />
-
-        <DiscardChangesAlertDialog
-          open={isDiscardDialogOpen}
-          onOpenChange={setIsDiscardDialogOpen}
-          onDiscard={confirmDiscard}
-          title="Discard Changes?"
-          description="The access bundle and expiry you picked will be lost."
         />
       </DialogContent>
     </Dialog>
