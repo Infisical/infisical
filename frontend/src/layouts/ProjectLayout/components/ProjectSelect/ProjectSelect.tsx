@@ -31,6 +31,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import {
+  NavbarBlock,
   NavbarSwitcher,
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
@@ -133,7 +134,7 @@ const ProjectSelectInner = () => {
   }
 
   return (
-    <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
+    <NavbarBlock className="min-w-16">
       <NavbarSwitcher
         open={open}
         onOpenChange={(nextOpen) => {
@@ -266,7 +267,7 @@ const ProjectSelectInner = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={currentWorkspace.type}
       />
-    </div>
+    </NavbarBlock>
   );
 };
 

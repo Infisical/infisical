@@ -105,6 +105,7 @@ describe("Secret approval request bridge routing", () => {
   let globalSystemPolicyId: string;
   let globalSystemFolderId: string;
   const globalSystemRequestIds: string[] = [];
+  const legacyTwinRequestIds: string[] = [];
   const secretKeys = ["SAR_BRIDGE_MERGE", "SAR_BRIDGE_STATUS", "SAR_BRIDGE_LIST_LEGACY", "SAR_BRIDGE_STATUS_LEGACY"];
 
   beforeAll(async () => {
@@ -141,6 +142,7 @@ describe("Secret approval request bridge routing", () => {
       throw new Error(`cleanup: unexpected ${res.statusCode} deleting policy ${legacyPolicyId} - ${res.payload}`);
     }
     await Promise.all(secretKeys.map((key) => deleteSecret(key)));
+    await db(TableName.SecretApprovalRequest).whereIn("id", legacyTwinRequestIds).del();
     await db(TableName.ApprovalRequests).whereIn("id", globalSystemRequestIds).del();
     await db(TableName.ApprovalPolicies).where({ id: globalSystemPolicyId }).del();
     await deleteFolder({
@@ -306,6 +308,42 @@ describe("Secret approval request bridge routing", () => {
     const countRes = await countRequests();
     expect(countRes.statusCode).toBe(200);
     expect(countRes.json().approvals.open).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a migrated request's legacy twin is not listed, counted or read", async () => {
+    const globalRes = await createSecret("SAR_BRIDGE_MIGRATED", "value", GLOBAL_SYSTEM_PATH);
+    expect(globalRes.statusCode).toBe(200);
+    const requestId = (globalRes.json().approval as TListedRequest).id;
+    globalSystemRequestIds.push(requestId);
+
+    const before = await countRequests();
+    expect(before.statusCode).toBe(200);
+
+    const legacyTwin = {
+      id: requestId,
+      policyId: legacyPolicyId,
+      folderId: globalSystemFolderId,
+      slug: "sar-bridge-migrated-twin",
+      status: RequestState.Open,
+      committerUserId: seedData1.id
+    };
+    await getDb()(TableName.SecretApprovalRequest).insert(legacyTwin);
+    legacyTwinRequestIds.push(requestId);
+
+    const listRes = await listRequests();
+    expect(listRes.statusCode).toBe(200);
+    const listed: { approvals: (TListedRequest & { policy: { id: string } })[] } = listRes.json();
+    const matches = listed.approvals.filter((row) => row.id === requestId);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].policy.id).toBe(globalSystemPolicyId);
+
+    const after = await countRequests();
+    expect(after.statusCode).toBe(200);
+    expect(after.json().approvals).toEqual(before.json().approvals);
+
+    const getRes = await getRequest(requestId);
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json().approval).toMatchObject({ id: requestId, policy: { id: globalSystemPolicyId } });
   });
 
   test("a status change keeps a request on the system it was opened on", async () => {

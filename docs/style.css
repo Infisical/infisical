@@ -406,19 +406,37 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 0.75rem 2.5rem 0.75rem 0.875rem;
-  background-color: #fbfbfa;
-  border: 1px solid #ebebeb;
-  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--ifx-surface);
+  border: 1px solid var(--ifx-line);
   font-size: 0.8125rem;
   line-height: 1.55;
-  color: #26272b;
+  color: var(--ifx-text-dim);
 }
 
 .ifx-prompt__body {
   flex: 1;
   min-height: 0;
+  padding: 0.75rem 3rem 0.75rem 0.875rem;
+  overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: thin;
+  --ifx-prompt-fade-top: 0px;
+  --ifx-prompt-fade-bottom: 0px;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--ifx-prompt-fade-top),
+    black calc(100% - var(--ifx-prompt-fade-bottom)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--ifx-prompt-fade-top),
+    black calc(100% - var(--ifx-prompt-fade-bottom)),
+    transparent
+  );
 }
 
 .ifx-prompt__p {
@@ -431,17 +449,16 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
 
 .ifx-prompt__code {
   padding: 0.05rem 0.3rem;
-  border-radius: 3px;
-  background-color: #ebebeb;
+  background-color: var(--ifx-control-line);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.72rem;
-  color: #171718;
+  color: var(--ifx-text-dim);
 }
 
 .ifx-prompt__copy {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 0.375rem;
+  right: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -449,37 +466,15 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   height: 2rem;
   padding: 0;
   border: 0;
-  border-bottom-left-radius: 4px;
-  background-color: rgba(251, 251, 250, 0.95);
-  color: #6f6f6f;
+  background-color: transparent;
+  color: var(--ifx-muted);
   cursor: pointer;
   transition: color 0.2s, background-color 0.2s;
 }
 
 .ifx-prompt__copy:hover {
-  color: #171718;
-  background-color: #f4f4f4;
-}
-
-.dark .ifx-prompt {
-  background-color: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #dfdfdf;
-}
-
-.dark .ifx-prompt__code {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #f4f4f4;
-}
-
-.dark .ifx-prompt__copy {
-  background-color: rgba(23, 23, 24, 0.95);
-  color: #adaeb0;
-}
-
-.dark .ifx-prompt__copy:hover {
-  color: #f4f4f4;
-  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--ifx-control-text-hover);
+  background-color: var(--ifx-hover-fill);
 }
 
 .ifx-steps__prose p {
@@ -618,7 +613,6 @@ a.ifx-steps__label:hover {
   height: 2rem;
   border-left: 0;
   border-bottom: 1px solid #ebebeb;
-  border-bottom-left-radius: 4px;
   background-color: rgba(251, 251, 250, 0.92);
 }
 
