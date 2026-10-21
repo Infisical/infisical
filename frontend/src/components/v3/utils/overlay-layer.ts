@@ -28,6 +28,10 @@ const useOverlayLayer = (isPending: boolean) => {
   const openPopups = React.useRef(new Map<string, ((event: KeyboardEvent) => void) | undefined>());
   const popupDismissEvents = React.useRef(new WeakSet<Event>());
   const focusReturnTarget = React.useRef<HTMLElement | null>(null);
+  // Where to send focus when the opener itself has gone. A row that mounts its action buttons only
+  // while it is hovered or focused has none of them left by the time the overlay closes, so the
+  // stored target is detached and focus would otherwise fall to the body, losing the user's place.
+  const focusReturnFallback = React.useRef<HTMLElement | null>(null);
 
   const markPopupDismissEvent = React.useCallback(
     (event: Event) => {
@@ -91,16 +95,30 @@ const useOverlayLayer = (isPending: boolean) => {
       opener instanceof HTMLElement && opener !== opener.ownerDocument.body
         ? (menuItemFocusReturnTargets.get(opener) ?? opener)
         : null;
+    // The nearest ancestor that is itself a tab stop, captured while the opener is still in the
+    // document. For an overlay opened from a table row that is what the row is, so focus lands
+    // back on the row the user was on rather than at the top of the page.
+    focusReturnFallback.current =
+      opener instanceof HTMLElement ? opener.closest<HTMLElement>("[tabindex]") : null;
     handler?.(event);
   };
 
   const restoreFocusReturn = (event: Event, handler?: (event: Event) => void) => {
     handler?.(event);
     const target = focusReturnTarget.current;
+    const fallback = focusReturnFallback.current;
     focusReturnTarget.current = null;
-    if (event.defaultPrevented || !target?.isConnected) return;
-    event.preventDefault();
-    target.focus();
+    focusReturnFallback.current = null;
+    if (event.defaultPrevented) return;
+    if (target?.isConnected) {
+      event.preventDefault();
+      target.focus();
+      return;
+    }
+    if (fallback?.isConnected) {
+      event.preventDefault();
+      fallback.focus();
+    }
   };
 
   return { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn };
