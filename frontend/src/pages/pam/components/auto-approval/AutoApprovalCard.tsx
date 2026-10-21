@@ -154,7 +154,7 @@ export const AutoApprovalCard = ({
                 <DisabledReason reason={addInputBlocker}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild disabled={Boolean(addInputBlocker)}>
-                      <Button type="button" variant="outline" size="sm" className="border-dashed">
+                      <Button type="button" variant="outline" size="sm">
                         <Plus />
                         Add Field
                       </Button>
@@ -231,13 +231,7 @@ export const AutoApprovalCard = ({
             <section className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-4">
                 <FieldTitle>Rules</FieldTitle>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="border-dashed"
-                  onClick={addRule}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={addRule}>
                   <Plus />
                   Add Rule
                 </Button>
