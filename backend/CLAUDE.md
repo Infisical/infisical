@@ -897,7 +897,8 @@ itself whether the actor still reaches the org.
     `membershipIdentityService.deleteMembership` (identities) and the sweep.
 
   Group events snapshot orgs and members at removal time, since a later removal can wipe those rows before
-  the consumer runs. Both lists are paged at 100 (one event per org page x member page) because the outbox
+  the consumer runs. The org list always comes from `groupDAL.findGroupOrgIds` (the owning org plus every
+  org the group is linked into), so no emit site assembles it by hand. Both lists are paged at 100 (one event per org page x member page) because the outbox
   rejects payloads over 16 KiB, which rolls back the removal. Any new path removing one of these must emit
   the matching event. The daily `org-access-reconcile-sweep` cron is a backstop, not a substitute.
 - **The consumer (`org-access-reconcile`) rechecks against current state**, in batches of 10 actors per org,

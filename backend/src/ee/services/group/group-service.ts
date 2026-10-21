@@ -98,6 +98,7 @@ type TGroupServiceFactoryDep = {
     | "listAvailableGroups"
     | "getGroupsReferencingGroup"
     | "findGroupActorsAndOrgs"
+    | "findGroupOrgIds"
   >;
   membershipGroupDAL: Pick<
     TMembershipGroupDALFactory,
@@ -427,11 +428,7 @@ export const groupServiceFactory = ({
       const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
       await emitGroupRemoved(
         eventEmitter,
-        {
-          groupId,
-          orgIds: [actorOrgId, ...orgIds],
-          members: toOrgMembershipActors({ userIds, identityIds })
-        },
+        { groupId, orgIds, members: toOrgMembershipActors({ userIds, identityIds }) },
         tx
       );
 
@@ -1052,6 +1049,7 @@ export const groupServiceFactory = ({
       userDAL,
       userGroupMembershipDAL,
       membershipGroupDAL,
+      groupDAL,
       projectKeyDAL,
       additionalPrivilegeDAL,
       alertChannelRecipientDAL,
@@ -1136,6 +1134,7 @@ export const groupServiceFactory = ({
       identityIds: [identityId],
       identityDAL,
       membershipDAL,
+      groupDAL,
       identityGroupMembershipDAL,
       additionalPrivilegeDAL,
       eventEmitter

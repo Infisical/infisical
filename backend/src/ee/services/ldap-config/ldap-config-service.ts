@@ -89,7 +89,7 @@ type TLdapConfigServiceFactoryDep = {
     | "updateById"
     | "lockActorsForOrgAccess"
   >;
-  groupDAL: Pick<TGroupDALFactory, "find" | "findOne">;
+  groupDAL: Pick<TGroupDALFactory, "find" | "findOne" | "findGroupOrgIds">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
@@ -735,6 +735,7 @@ export const ldapConfigServiceFactory = ({
               userDAL,
               userGroupMembershipDAL,
               membershipGroupDAL,
+              groupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
               usageMeteringService,

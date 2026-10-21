@@ -128,6 +128,7 @@ type TScimServiceFactoryDep = {
     TGroupDALFactory,
     | "create"
     | "findGroupActorsAndOrgs"
+    | "findGroupOrgIds"
     | "findOne"
     | "findAllGroupPossibleUsers"
     | "delete"
@@ -1607,6 +1608,7 @@ export const scimServiceFactory = ({
           userDAL,
           userGroupMembershipDAL,
           membershipGroupDAL,
+          groupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
           alertChannelRecipientDAL,
@@ -1817,11 +1819,7 @@ export const scimServiceFactory = ({
       const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
       await emitGroupRemoved(
         eventEmitter,
-        {
-          groupId,
-          orgIds: [orgId, ...orgIds],
-          members: toOrgMembershipActors({ userIds, identityIds })
-        },
+        { groupId, orgIds, members: toOrgMembershipActors({ userIds, identityIds }) },
         tx
       );
 

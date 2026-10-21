@@ -100,7 +100,7 @@ type TSamlConfigServiceFactoryDep = {
     TUserGroupMembershipDALFactory,
     "find" | "delete" | "transaction" | "insertMany" | "filterProjectsByUserMembership"
   >;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "find" | "transaction">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "find" | "transaction" | "findGroupOrgIds">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
@@ -270,6 +270,7 @@ export const samlConfigServiceFactory = ({
                 userDAL,
                 userGroupMembershipDAL,
                 membershipGroupDAL,
+                groupDAL,
                 projectKeyDAL,
                 additionalPrivilegeDAL,
                 usageMeteringService,

@@ -653,13 +653,28 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Every org a member reaches through the group: the one that owns it plus every org it is linked into.
+  // The one source for the org list on org membership events, so the emit sites cannot disagree.
+  const findGroupOrgIds = async (groupId: string, tx?: Knex) => {
+    try {
+      const conn = tx || db.replicaNode();
+      const group = (await conn(TableName.Groups).where({ id: groupId }).first("orgId")) as
+        | { orgId: string }
+        | undefined;
+      const linkRows = (await conn(TableName.Membership)
+        .where({ actorGroupId: groupId, scope: AccessScope.Organization })
+        .select("scopeOrgId")) as { scopeOrgId: string }[];
+      return [...new Set([...(group ? [group.orgId] : []), ...linkRows.map((row) => row.scopeOrgId)])];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindGroupOrgIds" });
+    }
+  };
+
   // Call before deleting the group, the cascade wipes all three.
   const findGroupActorsAndOrgs = async (groupId: string, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();
-      const orgRows = (await conn(TableName.Membership)
-        .where({ actorGroupId: groupId, scope: AccessScope.Organization })
-        .select("scopeOrgId")) as { scopeOrgId: string }[];
+      const orgIds = await findGroupOrgIds(groupId, tx);
       const userRows = (await conn(TableName.UserGroupMembership).where({ groupId }).select("userId")) as {
         userId: string;
       }[];
@@ -667,7 +682,7 @@ export const groupDALFactory = (db: TDbClient) => {
         identityId: string;
       }[];
       return {
-        orgIds: orgRows.map((row) => row.scopeOrgId),
+        orgIds,
         userIds: userRows.map((row) => row.userId),
         identityIds: identityRows.map((row) => row.identityId)
       };
@@ -678,6 +693,7 @@ export const groupDALFactory = (db: TDbClient) => {
 
   return {
     ...groupOrm,
+    findGroupOrgIds,
     findGroupActorsAndOrgs,
     findGroups,
     countGroups,

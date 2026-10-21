@@ -414,6 +414,7 @@ export const removeUsersFromGroupByUserIds = async ({
   additionalPrivilegeDAL,
   tx: outerTx,
   membershipGroupDAL,
+  groupDAL,
   shouldFailOnMissingMembers = true,
   usageMeteringService,
   alertChannelRecipientDAL,
@@ -590,15 +591,11 @@ export const removeUsersFromGroupByUserIds = async ({
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
-    const groupOrgRows = await membershipGroupDAL.find(
-      { scope: AccessScope.Organization, actorGroupId: group.id },
-      { tx }
-    );
     await emitGroupMembershipRemoved(
       eventEmitter,
       {
         groupId: group.id,
-        orgIds: groupOrgRows.map((row) => row.scopeOrgId),
+        orgIds: await groupDAL.findGroupOrgIds(group.id, tx),
         actors: toOrgMembershipActors({ userIds: foundMembers.map((m) => m.id) })
       },
       tx
@@ -630,6 +627,7 @@ export const removeIdentitiesFromGroup = async ({
   identityIds,
   identityDAL,
   membershipDAL,
+  groupDAL,
   identityGroupMembershipDAL,
   additionalPrivilegeDAL,
   usageMeteringService,
@@ -728,12 +726,11 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
-    const groupOrgRows = await membershipDAL.find({ scope: AccessScope.Organization, actorGroupId: group.id }, { tx });
     await emitGroupMembershipRemoved(
       eventEmitter,
       {
         groupId: group.id,
-        orgIds: groupOrgRows.map((row) => row.scopeOrgId),
+        orgIds: await groupDAL.findGroupOrgIds(group.id, tx),
         actors: toOrgMembershipActors({ identityIds: identityIdsArray })
       },
       tx

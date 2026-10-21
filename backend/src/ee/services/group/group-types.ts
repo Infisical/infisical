@@ -147,6 +147,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   userDAL: Pick<TUserDALFactory, "find" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
+  groupDAL: TGroupOrgIdsDAL;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   tx?: Knex;
@@ -161,6 +162,7 @@ export type TRemoveIdentitiesFromGroup = {
   identityIds: string[];
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
+  groupDAL: TGroupOrgIdsDAL;
   identityGroupMembershipDAL: Pick<
     TIdentityGroupMembershipDALFactory,
     "find" | "delete" | "filterProjectsByIdentityMembership"
@@ -169,6 +171,10 @@ export type TRemoveIdentitiesFromGroup = {
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   eventEmitter: TEventEmitter;
 };
+
+// Structural rather than Pick<TGroupDALFactory, ...>: group-dal.ts imports this file, so naming its type
+// here would make the two files import each other.
+export type TGroupOrgIdsDAL = { findGroupOrgIds: (groupId: string, tx?: Knex) => Promise<string[]> };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {
   userIds: string[];
