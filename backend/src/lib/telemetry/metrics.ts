@@ -685,7 +685,7 @@ export const secretWriteCounter = infisicalCoreMeter.createCounter("infisical.se
 
 export const recordSecretOperationDuration = (params: {
   startTime: number;
-  operation: "read" | "write" | "delete";
+  operation: "read" | "write";
   outcome: "success" | "failure";
 }) => {
   if (!isTelemetryEnabled()) return;

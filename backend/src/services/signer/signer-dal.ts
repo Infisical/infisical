@@ -177,5 +177,44 @@ export const signerDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithCertificate, findByStatusWithCertificate, findByProjectId, countByProjectId };
+  const findByIdForUpdate = async (signerId: string, tx: Knex): Promise<TPkiSigners | undefined> => {
+    try {
+      return (await tx(TableName.PkiSigners).where({ id: signerId }).forUpdate().first()) as TPkiSigners | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSignerByIdForUpdate" });
+    }
+  };
+
+  const findOneInOrgByCurrentHsmPublicKey = async (
+    projectId: string,
+    hsmPublicKeySpki: Buffer,
+    excludeSignerId: string | undefined,
+    tx?: Knex
+  ): Promise<TPkiSigners | undefined> => {
+    try {
+      const conn = tx || db.replicaNode();
+      let query = conn(TableName.PkiSigners)
+        .join(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
+        .join(TableName.Project, `${TableName.PkiSigners}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, conn(TableName.Project).select("orgId").where("id", projectId))
+        .where(`${TableName.Certificate}.hsmPublicKeySpki`, hsmPublicKeySpki)
+        .select(selectAllTableCols(TableName.PkiSigners));
+      if (excludeSignerId) {
+        query = query.whereNot(`${TableName.PkiSigners}.id`, excludeSignerId);
+      }
+      return (await query.first()) as TPkiSigners | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSignerInOrgByCurrentHsmPublicKey" });
+    }
+  };
+
+  return {
+    ...orm,
+    findByIdWithCertificate,
+    findByStatusWithCertificate,
+    findByProjectId,
+    countByProjectId,
+    findOneInOrgByCurrentHsmPublicKey,
+    findByIdForUpdate
+  };
 };

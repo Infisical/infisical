@@ -56,8 +56,8 @@ const PAGE_HEADER_SCOPE_CONFIG: Record<NonNullable<TPageHeaderScope>, TPageHeade
   },
   [ProjectType.SecretScanning]: {
     icon: ProjectIcon,
-    iconClassName: "text-project",
-    titleClassName: "decoration-project/90"
+    iconClassName: "text-product-ss",
+    titleClassName: "decoration-product-ss/90"
   },
   [ProjectType.PAM]: {
     icon: ProjectIcon,

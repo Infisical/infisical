@@ -5778,6 +5778,816 @@ func (e CreateSecretTag500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for PatchScimGroupJSONBodyOperations0Op0.
+const (
+	PatchScimGroupJSONBodyOperations0Op0Remove PatchScimGroupJSONBodyOperations0Op0 = "remove"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimGroupJSONBodyOperations0Op0 enum.
+func (e PatchScimGroupJSONBodyOperations0Op0) Valid() bool {
+	switch e {
+	case PatchScimGroupJSONBodyOperations0Op0Remove:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimGroupJSONBodyOperations0Op1.
+const (
+	PatchScimGroupJSONBodyOperations0Op1Remove PatchScimGroupJSONBodyOperations0Op1 = "Remove"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimGroupJSONBodyOperations0Op1 enum.
+func (e PatchScimGroupJSONBodyOperations0Op1) Valid() bool {
+	switch e {
+	case PatchScimGroupJSONBodyOperations0Op1Remove:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimGroupJSONBodyOperations1Op0.
+const (
+	PatchScimGroupJSONBodyOperations1Op0Add PatchScimGroupJSONBodyOperations1Op0 = "add"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimGroupJSONBodyOperations1Op0 enum.
+func (e PatchScimGroupJSONBodyOperations1Op0) Valid() bool {
+	switch e {
+	case PatchScimGroupJSONBodyOperations1Op0Add:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimGroupJSONBodyOperations1Op1.
+const (
+	PatchScimGroupJSONBodyOperations1Op1Add PatchScimGroupJSONBodyOperations1Op1 = "Add"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimGroupJSONBodyOperations1Op1 enum.
+func (e PatchScimGroupJSONBodyOperations1Op1) Valid() bool {
+	switch e {
+	case PatchScimGroupJSONBodyOperations1Op1Add:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimGroupJSONBodyOperations1Op2.
+const (
+	PatchScimGroupJSONBodyOperations1Op2Replace PatchScimGroupJSONBodyOperations1Op2 = "replace"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimGroupJSONBodyOperations1Op2 enum.
+func (e PatchScimGroupJSONBodyOperations1Op2) Valid() bool {
+	switch e {
+	case PatchScimGroupJSONBodyOperations1Op2Replace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimGroupJSONBodyOperations1Op3.
+const (
+	PatchScimGroupJSONBodyOperations1Op3Replace PatchScimGroupJSONBodyOperations1Op3 = "Replace"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimGroupJSONBodyOperations1Op3 enum.
+func (e PatchScimGroupJSONBodyOperations1Op3) Valid() bool {
+	switch e {
+	case PatchScimGroupJSONBodyOperations1Op3Replace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetScimServiceProviderConfig400JSONResponseBodyStatusCode.
+const (
+	GetScimServiceProviderConfig400JSONResponseBodyStatusCodeN400 GetScimServiceProviderConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetScimServiceProviderConfig400JSONResponseBodyStatusCode enum.
+func (e GetScimServiceProviderConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetScimServiceProviderConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetScimServiceProviderConfig401JSONResponseBodyStatusCode.
+const (
+	GetScimServiceProviderConfig401JSONResponseBodyStatusCodeN401 GetScimServiceProviderConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetScimServiceProviderConfig401JSONResponseBodyStatusCode enum.
+func (e GetScimServiceProviderConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetScimServiceProviderConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetScimServiceProviderConfig403JSONResponseBodyStatusCode.
+const (
+	GetScimServiceProviderConfig403JSONResponseBodyStatusCodeN403 GetScimServiceProviderConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetScimServiceProviderConfig403JSONResponseBodyStatusCode enum.
+func (e GetScimServiceProviderConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetScimServiceProviderConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetScimServiceProviderConfig404JSONResponseBodyStatusCode.
+const (
+	GetScimServiceProviderConfig404JSONResponseBodyStatusCodeN404 GetScimServiceProviderConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetScimServiceProviderConfig404JSONResponseBodyStatusCode enum.
+func (e GetScimServiceProviderConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetScimServiceProviderConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetScimServiceProviderConfig422JSONResponseBodyStatusCode.
+const (
+	GetScimServiceProviderConfig422JSONResponseBodyStatusCodeN422 GetScimServiceProviderConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetScimServiceProviderConfig422JSONResponseBodyStatusCode enum.
+func (e GetScimServiceProviderConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetScimServiceProviderConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetScimServiceProviderConfig500JSONResponseBodyStatusCode.
+const (
+	GetScimServiceProviderConfig500JSONResponseBodyStatusCodeN500 GetScimServiceProviderConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetScimServiceProviderConfig500JSONResponseBodyStatusCode enum.
+func (e GetScimServiceProviderConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetScimServiceProviderConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimUserJSONBodyOperations0Op0.
+const (
+	PatchScimUserJSONBodyOperations0Op0Remove PatchScimUserJSONBodyOperations0Op0 = "remove"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimUserJSONBodyOperations0Op0 enum.
+func (e PatchScimUserJSONBodyOperations0Op0) Valid() bool {
+	switch e {
+	case PatchScimUserJSONBodyOperations0Op0Remove:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimUserJSONBodyOperations0Op1.
+const (
+	PatchScimUserJSONBodyOperations0Op1Remove PatchScimUserJSONBodyOperations0Op1 = "Remove"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimUserJSONBodyOperations0Op1 enum.
+func (e PatchScimUserJSONBodyOperations0Op1) Valid() bool {
+	switch e {
+	case PatchScimUserJSONBodyOperations0Op1Remove:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimUserJSONBodyOperations1Op0.
+const (
+	PatchScimUserJSONBodyOperations1Op0Add PatchScimUserJSONBodyOperations1Op0 = "add"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimUserJSONBodyOperations1Op0 enum.
+func (e PatchScimUserJSONBodyOperations1Op0) Valid() bool {
+	switch e {
+	case PatchScimUserJSONBodyOperations1Op0Add:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimUserJSONBodyOperations1Op1.
+const (
+	PatchScimUserJSONBodyOperations1Op1Add PatchScimUserJSONBodyOperations1Op1 = "Add"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimUserJSONBodyOperations1Op1 enum.
+func (e PatchScimUserJSONBodyOperations1Op1) Valid() bool {
+	switch e {
+	case PatchScimUserJSONBodyOperations1Op1Add:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimUserJSONBodyOperations1Op2.
+const (
+	PatchScimUserJSONBodyOperations1Op2Replace PatchScimUserJSONBodyOperations1Op2 = "replace"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimUserJSONBodyOperations1Op2 enum.
+func (e PatchScimUserJSONBodyOperations1Op2) Valid() bool {
+	switch e {
+	case PatchScimUserJSONBodyOperations1Op2Replace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchScimUserJSONBodyOperations1Op3.
+const (
+	PatchScimUserJSONBodyOperations1Op3Replace PatchScimUserJSONBodyOperations1Op3 = "Replace"
+)
+
+// Valid indicates whether the value is a known member of the PatchScimUserJSONBodyOperations1Op3 enum.
+func (e PatchScimUserJSONBodyOperations1Op3) Valid() bool {
+	switch e {
+	case PatchScimUserJSONBodyOperations1Op3Replace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode.
+const (
+	ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCodeN400 ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode enum.
+func (e ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode.
+const (
+	ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCodeN401 ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode enum.
+func (e ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode.
+const (
+	ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCodeN403 ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode enum.
+func (e ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode.
+const (
+	ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCodeN404 ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode enum.
+func (e ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode.
+const (
+	ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCodeN422 ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode enum.
+func (e ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode.
+const (
+	ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCodeN500 ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode enum.
+func (e ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode.
+const (
+	UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCodeN400 UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode enum.
+func (e UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode.
+const (
+	UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCodeN401 UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode enum.
+func (e UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode.
+const (
+	UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCodeN403 UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode enum.
+func (e UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode.
+const (
+	UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCodeN404 UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode enum.
+func (e UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode.
+const (
+	UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCodeN422 UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode enum.
+func (e UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode.
+const (
+	UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCodeN500 UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode enum.
+func (e UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimEvents400JSONResponseBodyStatusCode.
+const (
+	ListScimEvents400JSONResponseBodyStatusCodeN400 ListScimEvents400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListScimEvents400JSONResponseBodyStatusCode enum.
+func (e ListScimEvents400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimEvents400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimEvents401JSONResponseBodyStatusCode.
+const (
+	ListScimEvents401JSONResponseBodyStatusCodeN401 ListScimEvents401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListScimEvents401JSONResponseBodyStatusCode enum.
+func (e ListScimEvents401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimEvents401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimEvents403JSONResponseBodyStatusCode.
+const (
+	ListScimEvents403JSONResponseBodyStatusCodeN403 ListScimEvents403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListScimEvents403JSONResponseBodyStatusCode enum.
+func (e ListScimEvents403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimEvents403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimEvents404JSONResponseBodyStatusCode.
+const (
+	ListScimEvents404JSONResponseBodyStatusCodeN404 ListScimEvents404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListScimEvents404JSONResponseBodyStatusCode enum.
+func (e ListScimEvents404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimEvents404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimEvents422JSONResponseBodyStatusCode.
+const (
+	ListScimEvents422JSONResponseBodyStatusCodeN422 ListScimEvents422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListScimEvents422JSONResponseBodyStatusCode enum.
+func (e ListScimEvents422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimEvents422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimEvents500JSONResponseBodyStatusCode.
+const (
+	ListScimEvents500JSONResponseBodyStatusCodeN500 ListScimEvents500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListScimEvents500JSONResponseBodyStatusCode enum.
+func (e ListScimEvents500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimEvents500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimTokens400JSONResponseBodyStatusCode.
+const (
+	ListScimTokens400JSONResponseBodyStatusCodeN400 ListScimTokens400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListScimTokens400JSONResponseBodyStatusCode enum.
+func (e ListScimTokens400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimTokens400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimTokens401JSONResponseBodyStatusCode.
+const (
+	ListScimTokens401JSONResponseBodyStatusCodeN401 ListScimTokens401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListScimTokens401JSONResponseBodyStatusCode enum.
+func (e ListScimTokens401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimTokens401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimTokens403JSONResponseBodyStatusCode.
+const (
+	ListScimTokens403JSONResponseBodyStatusCodeN403 ListScimTokens403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListScimTokens403JSONResponseBodyStatusCode enum.
+func (e ListScimTokens403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimTokens403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimTokens404JSONResponseBodyStatusCode.
+const (
+	ListScimTokens404JSONResponseBodyStatusCodeN404 ListScimTokens404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListScimTokens404JSONResponseBodyStatusCode enum.
+func (e ListScimTokens404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimTokens404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimTokens422JSONResponseBodyStatusCode.
+const (
+	ListScimTokens422JSONResponseBodyStatusCodeN422 ListScimTokens422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListScimTokens422JSONResponseBodyStatusCode enum.
+func (e ListScimTokens422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimTokens422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListScimTokens500JSONResponseBodyStatusCode.
+const (
+	ListScimTokens500JSONResponseBodyStatusCodeN500 ListScimTokens500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListScimTokens500JSONResponseBodyStatusCode enum.
+func (e ListScimTokens500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListScimTokens500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateScimToken400JSONResponseBodyStatusCode.
+const (
+	CreateScimToken400JSONResponseBodyStatusCodeN400 CreateScimToken400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateScimToken400JSONResponseBodyStatusCode enum.
+func (e CreateScimToken400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateScimToken400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateScimToken401JSONResponseBodyStatusCode.
+const (
+	CreateScimToken401JSONResponseBodyStatusCodeN401 CreateScimToken401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateScimToken401JSONResponseBodyStatusCode enum.
+func (e CreateScimToken401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateScimToken401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateScimToken403JSONResponseBodyStatusCode.
+const (
+	CreateScimToken403JSONResponseBodyStatusCodeN403 CreateScimToken403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateScimToken403JSONResponseBodyStatusCode enum.
+func (e CreateScimToken403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateScimToken403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateScimToken404JSONResponseBodyStatusCode.
+const (
+	CreateScimToken404JSONResponseBodyStatusCodeN404 CreateScimToken404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateScimToken404JSONResponseBodyStatusCode enum.
+func (e CreateScimToken404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateScimToken404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateScimToken422JSONResponseBodyStatusCode.
+const (
+	CreateScimToken422JSONResponseBodyStatusCodeN422 CreateScimToken422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateScimToken422JSONResponseBodyStatusCode enum.
+func (e CreateScimToken422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateScimToken422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateScimToken500JSONResponseBodyStatusCode.
+const (
+	CreateScimToken500JSONResponseBodyStatusCodeN500 CreateScimToken500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateScimToken500JSONResponseBodyStatusCode enum.
+func (e CreateScimToken500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateScimToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteScimToken400JSONResponseBodyStatusCode.
+const (
+	DeleteScimToken400JSONResponseBodyStatusCodeN400 DeleteScimToken400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteScimToken400JSONResponseBodyStatusCode enum.
+func (e DeleteScimToken400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteScimToken400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteScimToken401JSONResponseBodyStatusCode.
+const (
+	DeleteScimToken401JSONResponseBodyStatusCodeN401 DeleteScimToken401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteScimToken401JSONResponseBodyStatusCode enum.
+func (e DeleteScimToken401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteScimToken401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteScimToken403JSONResponseBodyStatusCode.
+const (
+	DeleteScimToken403JSONResponseBodyStatusCodeN403 DeleteScimToken403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteScimToken403JSONResponseBodyStatusCode enum.
+func (e DeleteScimToken403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteScimToken403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteScimToken404JSONResponseBodyStatusCode.
+const (
+	DeleteScimToken404JSONResponseBodyStatusCodeN404 DeleteScimToken404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteScimToken404JSONResponseBodyStatusCode enum.
+func (e DeleteScimToken404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteScimToken404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteScimToken422JSONResponseBodyStatusCode.
+const (
+	DeleteScimToken422JSONResponseBodyStatusCodeN422 DeleteScimToken422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteScimToken422JSONResponseBodyStatusCode enum.
+func (e DeleteScimToken422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteScimToken422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteScimToken500JSONResponseBodyStatusCode.
+const (
+	DeleteScimToken500JSONResponseBodyStatusCodeN500 DeleteScimToken500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteScimToken500JSONResponseBodyStatusCode enum.
+func (e DeleteScimToken500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteScimToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListSecretApprovalRequestsParamsStatus.
 const (
 	ListSecretApprovalRequestsParamsStatusClose ListSecretApprovalRequestsParamsStatus = "close"
@@ -7848,6 +8658,360 @@ func (e CreateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetOidcConfig400JSONResponseBodyStatusCode.
+const (
+	GetOidcConfig400JSONResponseBodyStatusCodeN400 GetOidcConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetOidcConfig400JSONResponseBodyStatusCode enum.
+func (e GetOidcConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOidcConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOidcConfig401JSONResponseBodyStatusCode.
+const (
+	GetOidcConfig401JSONResponseBodyStatusCodeN401 GetOidcConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetOidcConfig401JSONResponseBodyStatusCode enum.
+func (e GetOidcConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOidcConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOidcConfig403JSONResponseBodyStatusCode.
+const (
+	GetOidcConfig403JSONResponseBodyStatusCodeN403 GetOidcConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetOidcConfig403JSONResponseBodyStatusCode enum.
+func (e GetOidcConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOidcConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOidcConfig404JSONResponseBodyStatusCode.
+const (
+	GetOidcConfig404JSONResponseBodyStatusCodeN404 GetOidcConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetOidcConfig404JSONResponseBodyStatusCode enum.
+func (e GetOidcConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOidcConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOidcConfig422JSONResponseBodyStatusCode.
+const (
+	GetOidcConfig422JSONResponseBodyStatusCodeN422 GetOidcConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetOidcConfig422JSONResponseBodyStatusCode enum.
+func (e GetOidcConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOidcConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOidcConfig500JSONResponseBodyStatusCode.
+const (
+	GetOidcConfig500JSONResponseBodyStatusCodeN500 GetOidcConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetOidcConfig500JSONResponseBodyStatusCode enum.
+func (e GetOidcConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOidcConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOidcConfigJSONBodyConfigurationType.
+const (
+	UpdateOidcConfigJSONBodyConfigurationTypeCustom       UpdateOidcConfigJSONBodyConfigurationType = "custom"
+	UpdateOidcConfigJSONBodyConfigurationTypeDiscoveryURL UpdateOidcConfigJSONBodyConfigurationType = "discoveryURL"
+)
+
+// Valid indicates whether the value is a known member of the UpdateOidcConfigJSONBodyConfigurationType enum.
+func (e UpdateOidcConfigJSONBodyConfigurationType) Valid() bool {
+	switch e {
+	case UpdateOidcConfigJSONBodyConfigurationTypeCustom:
+		return true
+	case UpdateOidcConfigJSONBodyConfigurationTypeDiscoveryURL:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOidcConfigJSONBodyJwtSignatureAlgorithm.
+const (
+	UpdateOidcConfigJSONBodyJwtSignatureAlgorithmEdDSA UpdateOidcConfigJSONBodyJwtSignatureAlgorithm = "EdDSA"
+	UpdateOidcConfigJSONBodyJwtSignatureAlgorithmHS256 UpdateOidcConfigJSONBodyJwtSignatureAlgorithm = "HS256"
+	UpdateOidcConfigJSONBodyJwtSignatureAlgorithmRS256 UpdateOidcConfigJSONBodyJwtSignatureAlgorithm = "RS256"
+	UpdateOidcConfigJSONBodyJwtSignatureAlgorithmRS512 UpdateOidcConfigJSONBodyJwtSignatureAlgorithm = "RS512"
+)
+
+// Valid indicates whether the value is a known member of the UpdateOidcConfigJSONBodyJwtSignatureAlgorithm enum.
+func (e UpdateOidcConfigJSONBodyJwtSignatureAlgorithm) Valid() bool {
+	switch e {
+	case UpdateOidcConfigJSONBodyJwtSignatureAlgorithmEdDSA:
+		return true
+	case UpdateOidcConfigJSONBodyJwtSignatureAlgorithmHS256:
+		return true
+	case UpdateOidcConfigJSONBodyJwtSignatureAlgorithmRS256:
+		return true
+	case UpdateOidcConfigJSONBodyJwtSignatureAlgorithmRS512:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOidcConfig400JSONResponseBodyStatusCode.
+const (
+	UpdateOidcConfig400JSONResponseBodyStatusCodeN400 UpdateOidcConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateOidcConfig400JSONResponseBodyStatusCode enum.
+func (e UpdateOidcConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOidcConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOidcConfig401JSONResponseBodyStatusCode.
+const (
+	UpdateOidcConfig401JSONResponseBodyStatusCodeN401 UpdateOidcConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateOidcConfig401JSONResponseBodyStatusCode enum.
+func (e UpdateOidcConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOidcConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOidcConfig403JSONResponseBodyStatusCode.
+const (
+	UpdateOidcConfig403JSONResponseBodyStatusCodeN403 UpdateOidcConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateOidcConfig403JSONResponseBodyStatusCode enum.
+func (e UpdateOidcConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOidcConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOidcConfig404JSONResponseBodyStatusCode.
+const (
+	UpdateOidcConfig404JSONResponseBodyStatusCodeN404 UpdateOidcConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateOidcConfig404JSONResponseBodyStatusCode enum.
+func (e UpdateOidcConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOidcConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOidcConfig422JSONResponseBodyStatusCode.
+const (
+	UpdateOidcConfig422JSONResponseBodyStatusCodeN422 UpdateOidcConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateOidcConfig422JSONResponseBodyStatusCode enum.
+func (e UpdateOidcConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOidcConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOidcConfig500JSONResponseBodyStatusCode.
+const (
+	UpdateOidcConfig500JSONResponseBodyStatusCodeN500 UpdateOidcConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateOidcConfig500JSONResponseBodyStatusCode enum.
+func (e UpdateOidcConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOidcConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateOidcConfigJSONBodyConfigurationType.
+const (
+	CreateOidcConfigJSONBodyConfigurationTypeCustom       CreateOidcConfigJSONBodyConfigurationType = "custom"
+	CreateOidcConfigJSONBodyConfigurationTypeDiscoveryURL CreateOidcConfigJSONBodyConfigurationType = "discoveryURL"
+)
+
+// Valid indicates whether the value is a known member of the CreateOidcConfigJSONBodyConfigurationType enum.
+func (e CreateOidcConfigJSONBodyConfigurationType) Valid() bool {
+	switch e {
+	case CreateOidcConfigJSONBodyConfigurationTypeCustom:
+		return true
+	case CreateOidcConfigJSONBodyConfigurationTypeDiscoveryURL:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateOidcConfigJSONBodyJwtSignatureAlgorithm.
+const (
+	CreateOidcConfigJSONBodyJwtSignatureAlgorithmEdDSA CreateOidcConfigJSONBodyJwtSignatureAlgorithm = "EdDSA"
+	CreateOidcConfigJSONBodyJwtSignatureAlgorithmHS256 CreateOidcConfigJSONBodyJwtSignatureAlgorithm = "HS256"
+	CreateOidcConfigJSONBodyJwtSignatureAlgorithmRS256 CreateOidcConfigJSONBodyJwtSignatureAlgorithm = "RS256"
+	CreateOidcConfigJSONBodyJwtSignatureAlgorithmRS512 CreateOidcConfigJSONBodyJwtSignatureAlgorithm = "RS512"
+)
+
+// Valid indicates whether the value is a known member of the CreateOidcConfigJSONBodyJwtSignatureAlgorithm enum.
+func (e CreateOidcConfigJSONBodyJwtSignatureAlgorithm) Valid() bool {
+	switch e {
+	case CreateOidcConfigJSONBodyJwtSignatureAlgorithmEdDSA:
+		return true
+	case CreateOidcConfigJSONBodyJwtSignatureAlgorithmHS256:
+		return true
+	case CreateOidcConfigJSONBodyJwtSignatureAlgorithmRS256:
+		return true
+	case CreateOidcConfigJSONBodyJwtSignatureAlgorithmRS512:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateOidcConfig400JSONResponseBodyStatusCode.
+const (
+	CreateOidcConfig400JSONResponseBodyStatusCodeN400 CreateOidcConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateOidcConfig400JSONResponseBodyStatusCode enum.
+func (e CreateOidcConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateOidcConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateOidcConfig401JSONResponseBodyStatusCode.
+const (
+	CreateOidcConfig401JSONResponseBodyStatusCodeN401 CreateOidcConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateOidcConfig401JSONResponseBodyStatusCode enum.
+func (e CreateOidcConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateOidcConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateOidcConfig403JSONResponseBodyStatusCode.
+const (
+	CreateOidcConfig403JSONResponseBodyStatusCodeN403 CreateOidcConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateOidcConfig403JSONResponseBodyStatusCode enum.
+func (e CreateOidcConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateOidcConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateOidcConfig404JSONResponseBodyStatusCode.
+const (
+	CreateOidcConfig404JSONResponseBodyStatusCodeN404 CreateOidcConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateOidcConfig404JSONResponseBodyStatusCode enum.
+func (e CreateOidcConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateOidcConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateOidcConfig422JSONResponseBodyStatusCode.
+const (
+	CreateOidcConfig422JSONResponseBodyStatusCodeN422 CreateOidcConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateOidcConfig422JSONResponseBodyStatusCode enum.
+func (e CreateOidcConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateOidcConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateOidcConfig500JSONResponseBodyStatusCode.
+const (
+	CreateOidcConfig500JSONResponseBodyStatusCodeN500 CreateOidcConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateOidcConfig500JSONResponseBodyStatusCode enum.
+func (e CreateOidcConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateOidcConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateSecretFolder400JSONResponseBodyStatusCode.
 const (
 	CreateSecretFolder400JSONResponseBodyStatusCodeN400 CreateSecretFolder400JSONResponseBodyStatusCode = 400
@@ -9204,6 +10368,96 @@ const (
 func (e GetCurrentUser500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetCurrentUser500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequestEmailChangeOtp400JSONResponseBodyStatusCode.
+const (
+	RequestEmailChangeOtp400JSONResponseBodyStatusCodeN400 RequestEmailChangeOtp400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RequestEmailChangeOtp400JSONResponseBodyStatusCode enum.
+func (e RequestEmailChangeOtp400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RequestEmailChangeOtp400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequestEmailChangeOtp401JSONResponseBodyStatusCode.
+const (
+	RequestEmailChangeOtp401JSONResponseBodyStatusCodeN401 RequestEmailChangeOtp401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RequestEmailChangeOtp401JSONResponseBodyStatusCode enum.
+func (e RequestEmailChangeOtp401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RequestEmailChangeOtp401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequestEmailChangeOtp403JSONResponseBodyStatusCode.
+const (
+	RequestEmailChangeOtp403JSONResponseBodyStatusCodeN403 RequestEmailChangeOtp403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RequestEmailChangeOtp403JSONResponseBodyStatusCode enum.
+func (e RequestEmailChangeOtp403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RequestEmailChangeOtp403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequestEmailChangeOtp404JSONResponseBodyStatusCode.
+const (
+	RequestEmailChangeOtp404JSONResponseBodyStatusCodeN404 RequestEmailChangeOtp404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RequestEmailChangeOtp404JSONResponseBodyStatusCode enum.
+func (e RequestEmailChangeOtp404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RequestEmailChangeOtp404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequestEmailChangeOtp422JSONResponseBodyStatusCode.
+const (
+	RequestEmailChangeOtp422JSONResponseBodyStatusCodeN422 RequestEmailChangeOtp422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RequestEmailChangeOtp422JSONResponseBodyStatusCode enum.
+func (e RequestEmailChangeOtp422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RequestEmailChangeOtp422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequestEmailChangeOtp500JSONResponseBodyStatusCode.
+const (
+	RequestEmailChangeOtp500JSONResponseBodyStatusCodeN500 RequestEmailChangeOtp500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RequestEmailChangeOtp500JSONResponseBodyStatusCode enum.
+func (e RequestEmailChangeOtp500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RequestEmailChangeOtp500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -11265,12 +12519,13 @@ type AdminBootstrap500JSONResponseBodyStatusCode float32
 
 // UpdateAdminConfigJSONBody defines parameters for UpdateAdminConfig.
 type UpdateAdminConfigJSONBody struct {
-	AllowSignUp         *bool                                           `json:"allowSignUp,omitempty"`
-	AllowedSignUpDomain *string                                         `json:"allowedSignUpDomain,omitempty"`
-	AuthConsentContent  *string                                         `json:"authConsentContent,omitempty"`
-	DefaultAuthOrgId    *string                                         `json:"defaultAuthOrgId,omitempty"`
-	EnabledLoginMethods *[]UpdateAdminConfigJSONBodyEnabledLoginMethods `json:"enabledLoginMethods,omitempty"`
-	EnvOverrides        *struct {
+	AllowSignUp             *bool                                           `json:"allowSignUp,omitempty"`
+	AllowedSignUpDomain     *string                                         `json:"allowedSignUpDomain,omitempty"`
+	AllowedStorageHostnames *[]string                                       `json:"allowedStorageHostnames,omitempty"`
+	AuthConsentContent      *string                                         `json:"authConsentContent,omitempty"`
+	DefaultAuthOrgId        *string                                         `json:"defaultAuthOrgId,omitempty"`
+	EnabledLoginMethods     *[]UpdateAdminConfigJSONBodyEnabledLoginMethods `json:"enabledLoginMethods,omitempty"`
+	EnvOverrides            *struct {
 		CLIENTGITLABLOGINURL                              string `json:"CLIENT_GITLAB_LOGIN_URL"`
 		CLIENTIDGITHUBLOGIN                               string `json:"CLIENT_ID_GITHUB_LOGIN"`
 		CLIENTIDGITLABLOGIN                               string `json:"CLIENT_ID_GITLAB_LOGIN"`
@@ -15224,6 +16479,387 @@ type CreateSecretTag422JSONResponseBodyStatusCode float32
 // CreateSecretTag500JSONResponseBodyStatusCode defines parameters for CreateSecretTag.
 type CreateSecretTag500JSONResponseBodyStatusCode float32
 
+// ListScimGroupsParams defines parameters for ListScimGroups.
+type ListScimGroupsParams struct {
+	StartIndex         *float32 `form:"startIndex,omitempty" json:"startIndex,omitempty"`
+	Count              *float32 `form:"count,omitempty" json:"count,omitempty"`
+	Filter             *string  `form:"filter,omitempty" json:"filter,omitempty"`
+	ExcludedAttributes *string  `form:"excludedAttributes,omitempty" json:"excludedAttributes,omitempty"`
+}
+
+// CreateScimGroupJSONBody defines parameters for CreateScimGroup.
+type CreateScimGroupJSONBody struct {
+	DisplayName string `json:"displayName"`
+	Members     *[]struct {
+		Display *string `json:"display,omitempty"`
+		Value   string  `json:"value"`
+	} `json:"members,omitempty"`
+	Schemas *[]string `json:"schemas,omitempty"`
+}
+
+// GetScimGroupParams defines parameters for GetScimGroup.
+type GetScimGroupParams struct {
+	ExcludedAttributes *string `form:"excludedAttributes,omitempty" json:"excludedAttributes,omitempty"`
+}
+
+// PatchScimGroupJSONBody defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBody struct {
+	Operations []PatchScimGroupJSONBody_Operations_Item `json:"Operations"`
+	Schemas    *[]string                                `json:"schemas,omitempty"`
+}
+
+// PatchScimGroupJSONBodyOperations0 defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBodyOperations0 struct {
+	Op    PatchScimGroupJSONBody_Operations_0_Op `json:"op"`
+	Path  string                                 `json:"path"`
+	Value *[]struct {
+		Value string `json:"value"`
+	} `json:"value,omitempty"`
+}
+
+// PatchScimGroupJSONBodyOperations0Op0 defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBodyOperations0Op0 string
+
+// PatchScimGroupJSONBodyOperations0Op1 defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBodyOperations0Op1 string
+
+// PatchScimGroupJSONBody_Operations_0_Op defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBody_Operations_0_Op struct {
+	union json.RawMessage
+}
+
+// PatchScimGroupJSONBodyOperations1 defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBodyOperations1 struct {
+	Op    PatchScimGroupJSONBody_Operations_1_Op `json:"op"`
+	Path  *string                                `json:"path,omitempty"`
+	Value interface{}                            `json:"value,omitempty"`
+}
+
+// PatchScimGroupJSONBodyOperations1Op0 defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBodyOperations1Op0 string
+
+// PatchScimGroupJSONBodyOperations1Op1 defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBodyOperations1Op1 string
+
+// PatchScimGroupJSONBodyOperations1Op2 defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBodyOperations1Op2 string
+
+// PatchScimGroupJSONBodyOperations1Op3 defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBodyOperations1Op3 string
+
+// PatchScimGroupJSONBody_Operations_1_Op defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBody_Operations_1_Op struct {
+	union json.RawMessage
+}
+
+// PatchScimGroupJSONBody_Operations_Item defines parameters for PatchScimGroup.
+type PatchScimGroupJSONBody_Operations_Item struct {
+	union json.RawMessage
+}
+
+// ReplaceScimGroupJSONBody defines parameters for ReplaceScimGroup.
+type ReplaceScimGroupJSONBody struct {
+	DisplayName string `json:"displayName"`
+	Id          string `json:"id"`
+	Members     []struct {
+		Display *string `json:"display,omitempty"`
+		Value   string  `json:"value"`
+	} `json:"members"`
+	Schemas *[]string `json:"schemas,omitempty"`
+}
+
+// GetScimServiceProviderConfig400JSONResponseBodyStatusCode defines parameters for GetScimServiceProviderConfig.
+type GetScimServiceProviderConfig400JSONResponseBodyStatusCode float32
+
+// GetScimServiceProviderConfig401JSONResponseBodyStatusCode defines parameters for GetScimServiceProviderConfig.
+type GetScimServiceProviderConfig401JSONResponseBodyStatusCode float32
+
+// GetScimServiceProviderConfig403JSONResponseBodyStatusCode defines parameters for GetScimServiceProviderConfig.
+type GetScimServiceProviderConfig403JSONResponseBodyStatusCode float32
+
+// GetScimServiceProviderConfig404JSONResponseBodyStatusCode defines parameters for GetScimServiceProviderConfig.
+type GetScimServiceProviderConfig404JSONResponseBodyStatusCode float32
+
+// GetScimServiceProviderConfig422JSONResponseBodyStatusCode defines parameters for GetScimServiceProviderConfig.
+type GetScimServiceProviderConfig422JSONResponseBodyStatusCode float32
+
+// GetScimServiceProviderConfig500JSONResponseBodyStatusCode defines parameters for GetScimServiceProviderConfig.
+type GetScimServiceProviderConfig500JSONResponseBodyStatusCode float32
+
+// ListScimUsersParams defines parameters for ListScimUsers.
+type ListScimUsersParams struct {
+	StartIndex *float32 `form:"startIndex,omitempty" json:"startIndex,omitempty"`
+	Count      *float32 `form:"count,omitempty" json:"count,omitempty"`
+	Filter     *string  `form:"filter,omitempty" json:"filter,omitempty"`
+}
+
+// ListScimUsers200JSONResponseBodyResourcesActive0 defines parameters for ListScimUsers.
+type ListScimUsers200JSONResponseBodyResourcesActive0 = bool
+
+// ListScimUsers200JSONResponseBodyResourcesActive1 defines parameters for ListScimUsers.
+type ListScimUsers200JSONResponseBodyResourcesActive1 = string
+
+// ListScimUsers200JSONResponseBody_Resources_Active defines parameters for ListScimUsers.
+type ListScimUsers200JSONResponseBody_Resources_Active struct {
+	union json.RawMessage
+}
+
+// CreateScimUserJSONBody defines parameters for CreateScimUser.
+type CreateScimUserJSONBody struct {
+	Active *bool `json:"active,omitempty"`
+	Emails *[]struct {
+		Primary bool                `json:"primary"`
+		Value   openapi_types.Email `json:"value"`
+	} `json:"emails,omitempty"`
+	Name *struct {
+		FamilyName *string `json:"familyName,omitempty"`
+		GivenName  *string `json:"givenName,omitempty"`
+	} `json:"name,omitempty"`
+	Schemas  *[]string `json:"schemas,omitempty"`
+	UserName string    `json:"userName"`
+}
+
+// CreateScimUser200JSONResponseBodyActive0 defines parameters for CreateScimUser.
+type CreateScimUser200JSONResponseBodyActive0 = bool
+
+// CreateScimUser200JSONResponseBodyActive1 defines parameters for CreateScimUser.
+type CreateScimUser200JSONResponseBodyActive1 = string
+
+// CreateScimUser200JSONResponseBody_Active defines parameters for CreateScimUser.
+type CreateScimUser200JSONResponseBody_Active struct {
+	union json.RawMessage
+}
+
+// GetScimUser200JSONResponseBodyActive0 defines parameters for GetScimUser.
+type GetScimUser200JSONResponseBodyActive0 = bool
+
+// GetScimUser200JSONResponseBodyActive1 defines parameters for GetScimUser.
+type GetScimUser200JSONResponseBodyActive1 = string
+
+// GetScimUser200JSONResponseBody_Active defines parameters for GetScimUser.
+type GetScimUser200JSONResponseBody_Active struct {
+	union json.RawMessage
+}
+
+// PatchScimUserJSONBody defines parameters for PatchScimUser.
+type PatchScimUserJSONBody struct {
+	Operations []PatchScimUserJSONBody_Operations_Item `json:"Operations"`
+	Schemas    *[]string                               `json:"schemas,omitempty"`
+}
+
+// PatchScimUserJSONBodyOperations0 defines parameters for PatchScimUser.
+type PatchScimUserJSONBodyOperations0 struct {
+	Op    PatchScimUserJSONBody_Operations_0_Op `json:"op"`
+	Path  string                                `json:"path"`
+	Value *[]struct {
+		Value string `json:"value"`
+	} `json:"value,omitempty"`
+}
+
+// PatchScimUserJSONBodyOperations0Op0 defines parameters for PatchScimUser.
+type PatchScimUserJSONBodyOperations0Op0 string
+
+// PatchScimUserJSONBodyOperations0Op1 defines parameters for PatchScimUser.
+type PatchScimUserJSONBodyOperations0Op1 string
+
+// PatchScimUserJSONBody_Operations_0_Op defines parameters for PatchScimUser.
+type PatchScimUserJSONBody_Operations_0_Op struct {
+	union json.RawMessage
+}
+
+// PatchScimUserJSONBodyOperations1 defines parameters for PatchScimUser.
+type PatchScimUserJSONBodyOperations1 struct {
+	Op    PatchScimUserJSONBody_Operations_1_Op `json:"op"`
+	Path  *string                               `json:"path,omitempty"`
+	Value interface{}                           `json:"value,omitempty"`
+}
+
+// PatchScimUserJSONBodyOperations1Op0 defines parameters for PatchScimUser.
+type PatchScimUserJSONBodyOperations1Op0 string
+
+// PatchScimUserJSONBodyOperations1Op1 defines parameters for PatchScimUser.
+type PatchScimUserJSONBodyOperations1Op1 string
+
+// PatchScimUserJSONBodyOperations1Op2 defines parameters for PatchScimUser.
+type PatchScimUserJSONBodyOperations1Op2 string
+
+// PatchScimUserJSONBodyOperations1Op3 defines parameters for PatchScimUser.
+type PatchScimUserJSONBodyOperations1Op3 string
+
+// PatchScimUserJSONBody_Operations_1_Op defines parameters for PatchScimUser.
+type PatchScimUserJSONBody_Operations_1_Op struct {
+	union json.RawMessage
+}
+
+// PatchScimUserJSONBody_Operations_Item defines parameters for PatchScimUser.
+type PatchScimUserJSONBody_Operations_Item struct {
+	union json.RawMessage
+}
+
+// PatchScimUser200JSONResponseBodyActive0 defines parameters for PatchScimUser.
+type PatchScimUser200JSONResponseBodyActive0 = bool
+
+// PatchScimUser200JSONResponseBodyActive1 defines parameters for PatchScimUser.
+type PatchScimUser200JSONResponseBodyActive1 = string
+
+// PatchScimUser200JSONResponseBody_Active defines parameters for PatchScimUser.
+type PatchScimUser200JSONResponseBody_Active struct {
+	union json.RawMessage
+}
+
+// ReplaceScimUserJSONBody defines parameters for ReplaceScimUser.
+type ReplaceScimUserJSONBody struct {
+	Active bool `json:"active"`
+	Emails *[]struct {
+		Primary bool                `json:"primary"`
+		Value   openapi_types.Email `json:"value"`
+	} `json:"emails,omitempty"`
+	Name *struct {
+		FamilyName *string `json:"familyName,omitempty"`
+		GivenName  *string `json:"givenName,omitempty"`
+	} `json:"name,omitempty"`
+	Schemas  *[]string `json:"schemas,omitempty"`
+	UserName string    `json:"userName"`
+}
+
+// ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode defines parameters for ListExternalGroupOrgRoleMappings.
+type ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode float32
+
+// ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode defines parameters for ListExternalGroupOrgRoleMappings.
+type ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode float32
+
+// ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode defines parameters for ListExternalGroupOrgRoleMappings.
+type ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode float32
+
+// ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode defines parameters for ListExternalGroupOrgRoleMappings.
+type ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode float32
+
+// ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode defines parameters for ListExternalGroupOrgRoleMappings.
+type ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode float32
+
+// ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode defines parameters for ListExternalGroupOrgRoleMappings.
+type ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode float32
+
+// UpdateExternalGroupOrgRoleMappingsJSONBody defines parameters for UpdateExternalGroupOrgRoleMappings.
+type UpdateExternalGroupOrgRoleMappingsJSONBody struct {
+	Mappings []struct {
+		// GroupName The name of the group in the SCIM provider.
+		GroupName string `json:"groupName"`
+
+		// RoleSlug The slug of the role that group members should be assigned when provisioned.
+		RoleSlug string `json:"roleSlug"`
+	} `json:"mappings"`
+}
+
+// UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode defines parameters for UpdateExternalGroupOrgRoleMappings.
+type UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode float32
+
+// UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode defines parameters for UpdateExternalGroupOrgRoleMappings.
+type UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode float32
+
+// UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode defines parameters for UpdateExternalGroupOrgRoleMappings.
+type UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode float32
+
+// UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode defines parameters for UpdateExternalGroupOrgRoleMappings.
+type UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode float32
+
+// UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode defines parameters for UpdateExternalGroupOrgRoleMappings.
+type UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode float32
+
+// UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode defines parameters for UpdateExternalGroupOrgRoleMappings.
+type UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode float32
+
+// ListScimEventsParams defines parameters for ListScimEvents.
+type ListScimEventsParams struct {
+	Since  *string  `form:"since,omitempty" json:"since,omitempty"`
+	Limit  *float32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *float32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListScimEvents400JSONResponseBodyStatusCode defines parameters for ListScimEvents.
+type ListScimEvents400JSONResponseBodyStatusCode float32
+
+// ListScimEvents401JSONResponseBodyStatusCode defines parameters for ListScimEvents.
+type ListScimEvents401JSONResponseBodyStatusCode float32
+
+// ListScimEvents403JSONResponseBodyStatusCode defines parameters for ListScimEvents.
+type ListScimEvents403JSONResponseBodyStatusCode float32
+
+// ListScimEvents404JSONResponseBodyStatusCode defines parameters for ListScimEvents.
+type ListScimEvents404JSONResponseBodyStatusCode float32
+
+// ListScimEvents422JSONResponseBodyStatusCode defines parameters for ListScimEvents.
+type ListScimEvents422JSONResponseBodyStatusCode float32
+
+// ListScimEvents500JSONResponseBodyStatusCode defines parameters for ListScimEvents.
+type ListScimEvents500JSONResponseBodyStatusCode float32
+
+// ListScimTokensParams defines parameters for ListScimTokens.
+type ListScimTokensParams struct {
+	OrganizationId string `form:"organizationId" json:"organizationId"`
+}
+
+// ListScimTokens400JSONResponseBodyStatusCode defines parameters for ListScimTokens.
+type ListScimTokens400JSONResponseBodyStatusCode float32
+
+// ListScimTokens401JSONResponseBodyStatusCode defines parameters for ListScimTokens.
+type ListScimTokens401JSONResponseBodyStatusCode float32
+
+// ListScimTokens403JSONResponseBodyStatusCode defines parameters for ListScimTokens.
+type ListScimTokens403JSONResponseBodyStatusCode float32
+
+// ListScimTokens404JSONResponseBodyStatusCode defines parameters for ListScimTokens.
+type ListScimTokens404JSONResponseBodyStatusCode float32
+
+// ListScimTokens422JSONResponseBodyStatusCode defines parameters for ListScimTokens.
+type ListScimTokens422JSONResponseBodyStatusCode float32
+
+// ListScimTokens500JSONResponseBodyStatusCode defines parameters for ListScimTokens.
+type ListScimTokens500JSONResponseBodyStatusCode float32
+
+// CreateScimTokenJSONBody defines parameters for CreateScimToken.
+type CreateScimTokenJSONBody struct {
+	Description    *string  `json:"description,omitempty"`
+	OrganizationId string   `json:"organizationId"`
+	TtlDays        *float32 `json:"ttlDays,omitempty"`
+}
+
+// CreateScimToken400JSONResponseBodyStatusCode defines parameters for CreateScimToken.
+type CreateScimToken400JSONResponseBodyStatusCode float32
+
+// CreateScimToken401JSONResponseBodyStatusCode defines parameters for CreateScimToken.
+type CreateScimToken401JSONResponseBodyStatusCode float32
+
+// CreateScimToken403JSONResponseBodyStatusCode defines parameters for CreateScimToken.
+type CreateScimToken403JSONResponseBodyStatusCode float32
+
+// CreateScimToken404JSONResponseBodyStatusCode defines parameters for CreateScimToken.
+type CreateScimToken404JSONResponseBodyStatusCode float32
+
+// CreateScimToken422JSONResponseBodyStatusCode defines parameters for CreateScimToken.
+type CreateScimToken422JSONResponseBodyStatusCode float32
+
+// CreateScimToken500JSONResponseBodyStatusCode defines parameters for CreateScimToken.
+type CreateScimToken500JSONResponseBodyStatusCode float32
+
+// DeleteScimToken400JSONResponseBodyStatusCode defines parameters for DeleteScimToken.
+type DeleteScimToken400JSONResponseBodyStatusCode float32
+
+// DeleteScimToken401JSONResponseBodyStatusCode defines parameters for DeleteScimToken.
+type DeleteScimToken401JSONResponseBodyStatusCode float32
+
+// DeleteScimToken403JSONResponseBodyStatusCode defines parameters for DeleteScimToken.
+type DeleteScimToken403JSONResponseBodyStatusCode float32
+
+// DeleteScimToken404JSONResponseBodyStatusCode defines parameters for DeleteScimToken.
+type DeleteScimToken404JSONResponseBodyStatusCode float32
+
+// DeleteScimToken422JSONResponseBodyStatusCode defines parameters for DeleteScimToken.
+type DeleteScimToken422JSONResponseBodyStatusCode float32
+
+// DeleteScimToken500JSONResponseBodyStatusCode defines parameters for DeleteScimToken.
+type DeleteScimToken500JSONResponseBodyStatusCode float32
+
 // ListSecretApprovalRequestsParams defines parameters for ListSecretApprovalRequests.
 type ListSecretApprovalRequestsParams struct {
 	ProjectId   string                                  `form:"projectId" json:"projectId"`
@@ -16017,6 +17653,181 @@ type CreateSamlConfig422JSONResponseBodyStatusCode float32
 // CreateSamlConfig500JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
 type CreateSamlConfig500JSONResponseBodyStatusCode float32
 
+// OidcCallbackParams defines parameters for OidcCallback.
+type OidcCallbackParams struct {
+	Code  *string `form:"code,omitempty" json:"code,omitempty"`
+	State *string `form:"state,omitempty" json:"state,omitempty"`
+}
+
+// GetOidcConfigParams defines parameters for GetOidcConfig.
+type GetOidcConfigParams struct {
+	// OrganizationId The ID of the organization to get the OIDC config for.
+	OrganizationId string `form:"organizationId" json:"organizationId"`
+}
+
+// GetOidcConfig400JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
+type GetOidcConfig400JSONResponseBodyStatusCode float32
+
+// GetOidcConfig401JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
+type GetOidcConfig401JSONResponseBodyStatusCode float32
+
+// GetOidcConfig403JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
+type GetOidcConfig403JSONResponseBodyStatusCode float32
+
+// GetOidcConfig404JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
+type GetOidcConfig404JSONResponseBodyStatusCode float32
+
+// GetOidcConfig422JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
+type GetOidcConfig422JSONResponseBodyStatusCode float32
+
+// GetOidcConfig500JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
+type GetOidcConfig500JSONResponseBodyStatusCode float32
+
+// UpdateOidcConfigJSONBody defines parameters for UpdateOidcConfig.
+type UpdateOidcConfigJSONBody struct {
+	// AllowedEmailDomains A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com). Example: 'example.com, *.acme.com'
+	AllowedEmailDomains *string `json:"allowedEmailDomains,omitempty"`
+
+	// AuthorizationEndpoint The endpoint to use for OIDC authorization. This is only supported when the OIDC configuration type is set to 'custom'.
+	AuthorizationEndpoint *string `json:"authorizationEndpoint,omitempty"`
+
+	// ClientId The client ID to use for OIDC authentication.
+	ClientId *string `json:"clientId,omitempty"`
+
+	// ClientSecret The client secret to use for OIDC authentication.
+	ClientSecret *string `json:"clientSecret,omitempty"`
+
+	// ConfigurationType The configuration type to use for the OIDC configuration.
+	ConfigurationType *UpdateOidcConfigJSONBodyConfigurationType `json:"configurationType,omitempty"`
+
+	// DiscoveryURL The URL of the OIDC discovery endpoint.
+	DiscoveryURL *string `json:"discoveryURL,omitempty"`
+
+	// IsActive Whether to enable or disable this OIDC configuration.
+	IsActive *bool `json:"isActive,omitempty"`
+
+	// Issuer The issuer for the OIDC configuration. This is only supported when the OIDC configuration type is set to 'custom'.
+	Issuer *string `json:"issuer,omitempty"`
+
+	// JwksUri The URL of the OIDC JWKS endpoint.
+	JwksUri *string `json:"jwksUri,omitempty"`
+
+	// JwtSignatureAlgorithm The algorithm to use for JWT signature verification.
+	JwtSignatureAlgorithm *UpdateOidcConfigJSONBodyJwtSignatureAlgorithm `json:"jwtSignatureAlgorithm,omitempty"`
+
+	// ManageGroupMemberships Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.
+	ManageGroupMemberships *bool `json:"manageGroupMemberships,omitempty"`
+
+	// OrganizationId The ID of the organization to update the OIDC config for.
+	OrganizationId string `json:"organizationId"`
+
+	// TokenEndpoint The token endpoint to use for OIDC token exchange.
+	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
+
+	// UserinfoEndpoint The userinfo endpoint to get user information from the OIDC provider.
+	UserinfoEndpoint *string `json:"userinfoEndpoint,omitempty"`
+}
+
+// UpdateOidcConfigJSONBodyConfigurationType defines parameters for UpdateOidcConfig.
+type UpdateOidcConfigJSONBodyConfigurationType string
+
+// UpdateOidcConfigJSONBodyJwtSignatureAlgorithm defines parameters for UpdateOidcConfig.
+type UpdateOidcConfigJSONBodyJwtSignatureAlgorithm string
+
+// UpdateOidcConfig400JSONResponseBodyStatusCode defines parameters for UpdateOidcConfig.
+type UpdateOidcConfig400JSONResponseBodyStatusCode float32
+
+// UpdateOidcConfig401JSONResponseBodyStatusCode defines parameters for UpdateOidcConfig.
+type UpdateOidcConfig401JSONResponseBodyStatusCode float32
+
+// UpdateOidcConfig403JSONResponseBodyStatusCode defines parameters for UpdateOidcConfig.
+type UpdateOidcConfig403JSONResponseBodyStatusCode float32
+
+// UpdateOidcConfig404JSONResponseBodyStatusCode defines parameters for UpdateOidcConfig.
+type UpdateOidcConfig404JSONResponseBodyStatusCode float32
+
+// UpdateOidcConfig422JSONResponseBodyStatusCode defines parameters for UpdateOidcConfig.
+type UpdateOidcConfig422JSONResponseBodyStatusCode float32
+
+// UpdateOidcConfig500JSONResponseBodyStatusCode defines parameters for UpdateOidcConfig.
+type UpdateOidcConfig500JSONResponseBodyStatusCode float32
+
+// CreateOidcConfigJSONBody defines parameters for CreateOidcConfig.
+type CreateOidcConfigJSONBody struct {
+	// AllowedEmailDomains A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com).
+	AllowedEmailDomains *string `json:"allowedEmailDomains,omitempty"`
+
+	// AuthorizationEndpoint The authorization endpoint to use for OIDC authorization. This is only supported when the OIDC configuration type is set to 'custom'.
+	AuthorizationEndpoint *string `json:"authorizationEndpoint,omitempty"`
+
+	// ClientId The client ID to use for OIDC authentication.
+	ClientId string `json:"clientId"`
+
+	// ClientSecret The client secret to use for OIDC authentication.
+	ClientSecret string `json:"clientSecret"`
+
+	// ConfigurationType The configuration type to use for the OIDC configuration.
+	ConfigurationType CreateOidcConfigJSONBodyConfigurationType `json:"configurationType"`
+
+	// DiscoveryURL The URL of the OIDC discovery endpoint.
+	DiscoveryURL *string `json:"discoveryURL,omitempty"`
+
+	// IsActive Whether to enable or disable this OIDC configuration.
+	IsActive bool `json:"isActive"`
+
+	// Issuer The issuer for the OIDC configuration. This is only supported when the OIDC configuration type is set to 'custom'.
+	Issuer *string `json:"issuer,omitempty"`
+
+	// JwksUri The URL of the OIDC JWKS endpoint.
+	JwksUri *string `json:"jwksUri,omitempty"`
+
+	// JwtSignatureAlgorithm The algorithm to use for JWT signature verification.
+	JwtSignatureAlgorithm *CreateOidcConfigJSONBodyJwtSignatureAlgorithm `json:"jwtSignatureAlgorithm,omitempty"`
+
+	// ManageGroupMemberships Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.
+	ManageGroupMemberships *bool `json:"manageGroupMemberships,omitempty"`
+
+	// OrganizationId The ID of the organization to create the OIDC config for.
+	OrganizationId string `json:"organizationId"`
+
+	// TokenEndpoint The token endpoint to use for OIDC token exchange.
+	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
+
+	// UserinfoEndpoint The userinfo endpoint to get user information from the OIDC provider.
+	UserinfoEndpoint *string `json:"userinfoEndpoint,omitempty"`
+}
+
+// CreateOidcConfigJSONBodyConfigurationType defines parameters for CreateOidcConfig.
+type CreateOidcConfigJSONBodyConfigurationType string
+
+// CreateOidcConfigJSONBodyJwtSignatureAlgorithm defines parameters for CreateOidcConfig.
+type CreateOidcConfigJSONBodyJwtSignatureAlgorithm string
+
+// CreateOidcConfig400JSONResponseBodyStatusCode defines parameters for CreateOidcConfig.
+type CreateOidcConfig400JSONResponseBodyStatusCode float32
+
+// CreateOidcConfig401JSONResponseBodyStatusCode defines parameters for CreateOidcConfig.
+type CreateOidcConfig401JSONResponseBodyStatusCode float32
+
+// CreateOidcConfig403JSONResponseBodyStatusCode defines parameters for CreateOidcConfig.
+type CreateOidcConfig403JSONResponseBodyStatusCode float32
+
+// CreateOidcConfig404JSONResponseBodyStatusCode defines parameters for CreateOidcConfig.
+type CreateOidcConfig404JSONResponseBodyStatusCode float32
+
+// CreateOidcConfig422JSONResponseBodyStatusCode defines parameters for CreateOidcConfig.
+type CreateOidcConfig422JSONResponseBodyStatusCode float32
+
+// CreateOidcConfig500JSONResponseBodyStatusCode defines parameters for CreateOidcConfig.
+type CreateOidcConfig500JSONResponseBodyStatusCode float32
+
+// RedirectOidcLoginParams defines parameters for RedirectOidcLogin.
+type RedirectOidcLoginParams struct {
+	Domain       *string `form:"domain,omitempty" json:"domain,omitempty"`
+	OrgSlug      *string `form:"orgSlug,omitempty" json:"orgSlug,omitempty"`
+	CallbackPort *string `form:"callbackPort,omitempty" json:"callbackPort,omitempty"`
+}
+
 // RedirectOrgSSOParams defines parameters for RedirectOrgSSO.
 type RedirectOrgSSOParams struct {
 	CallbackPort *string `form:"callback_port,omitempty" json:"callback_port,omitempty"`
@@ -16486,6 +18297,29 @@ type GetCurrentUser422JSONResponseBodyStatusCode float32
 
 // GetCurrentUser500JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
 type GetCurrentUser500JSONResponseBodyStatusCode float32
+
+// RequestEmailChangeOtpJSONBody defines parameters for RequestEmailChangeOtp.
+type RequestEmailChangeOtpJSONBody struct {
+	NewEmail openapi_types.Email `json:"newEmail"`
+}
+
+// RequestEmailChangeOtp400JSONResponseBodyStatusCode defines parameters for RequestEmailChangeOtp.
+type RequestEmailChangeOtp400JSONResponseBodyStatusCode float32
+
+// RequestEmailChangeOtp401JSONResponseBodyStatusCode defines parameters for RequestEmailChangeOtp.
+type RequestEmailChangeOtp401JSONResponseBodyStatusCode float32
+
+// RequestEmailChangeOtp403JSONResponseBodyStatusCode defines parameters for RequestEmailChangeOtp.
+type RequestEmailChangeOtp403JSONResponseBodyStatusCode float32
+
+// RequestEmailChangeOtp404JSONResponseBodyStatusCode defines parameters for RequestEmailChangeOtp.
+type RequestEmailChangeOtp404JSONResponseBodyStatusCode float32
+
+// RequestEmailChangeOtp422JSONResponseBodyStatusCode defines parameters for RequestEmailChangeOtp.
+type RequestEmailChangeOtp422JSONResponseBodyStatusCode float32
+
+// RequestEmailChangeOtp500JSONResponseBodyStatusCode defines parameters for RequestEmailChangeOtp.
+type RequestEmailChangeOtp500JSONResponseBodyStatusCode float32
 
 // CreateProjectRoleJSONBody defines parameters for CreateProjectRole.
 type CreateProjectRoleJSONBody struct {
@@ -17721,6 +19555,30 @@ type CreateIdentityFolderAccessJSONRequestBody CreateIdentityFolderAccessJSONBod
 // CreateSecretTagJSONRequestBody defines body for CreateSecretTag for application/json ContentType.
 type CreateSecretTagJSONRequestBody CreateSecretTagJSONBody
 
+// CreateScimGroupJSONRequestBody defines body for CreateScimGroup for application/json ContentType.
+type CreateScimGroupJSONRequestBody CreateScimGroupJSONBody
+
+// PatchScimGroupJSONRequestBody defines body for PatchScimGroup for application/json ContentType.
+type PatchScimGroupJSONRequestBody PatchScimGroupJSONBody
+
+// ReplaceScimGroupJSONRequestBody defines body for ReplaceScimGroup for application/json ContentType.
+type ReplaceScimGroupJSONRequestBody ReplaceScimGroupJSONBody
+
+// CreateScimUserJSONRequestBody defines body for CreateScimUser for application/json ContentType.
+type CreateScimUserJSONRequestBody CreateScimUserJSONBody
+
+// PatchScimUserJSONRequestBody defines body for PatchScimUser for application/json ContentType.
+type PatchScimUserJSONRequestBody PatchScimUserJSONBody
+
+// ReplaceScimUserJSONRequestBody defines body for ReplaceScimUser for application/json ContentType.
+type ReplaceScimUserJSONRequestBody ReplaceScimUserJSONBody
+
+// UpdateExternalGroupOrgRoleMappingsJSONRequestBody defines body for UpdateExternalGroupOrgRoleMappings for application/json ContentType.
+type UpdateExternalGroupOrgRoleMappingsJSONRequestBody UpdateExternalGroupOrgRoleMappingsJSONBody
+
+// CreateScimTokenJSONRequestBody defines body for CreateScimToken for application/json ContentType.
+type CreateScimTokenJSONRequestBody CreateScimTokenJSONBody
+
 // MergeSecretApprovalRequestJSONRequestBody defines body for MergeSecretApprovalRequest for application/json ContentType.
 type MergeSecretApprovalRequestJSONRequestBody MergeSecretApprovalRequestJSONBody
 
@@ -17738,6 +19596,12 @@ type UpdateSamlConfigJSONRequestBody UpdateSamlConfigJSONBody
 
 // CreateSamlConfigJSONRequestBody defines body for CreateSamlConfig for application/json ContentType.
 type CreateSamlConfigJSONRequestBody CreateSamlConfigJSONBody
+
+// UpdateOidcConfigJSONRequestBody defines body for UpdateOidcConfig for application/json ContentType.
+type UpdateOidcConfigJSONRequestBody UpdateOidcConfigJSONBody
+
+// CreateOidcConfigJSONRequestBody defines body for CreateOidcConfig for application/json ContentType.
+type CreateOidcConfigJSONRequestBody CreateOidcConfigJSONBody
 
 // SamlAcsFormdataRequestBody defines body for SamlAcs for application/x-www-form-urlencoded ContentType.
 type SamlAcsFormdataRequestBody SamlAcsFormdataBody
@@ -17759,6 +19623,9 @@ type UpdateSecretApprovalPolicyJSONRequestBody UpdateSecretApprovalPolicyJSONBod
 
 // CreateSecretImportJSONRequestBody defines body for CreateSecretImport for application/json ContentType.
 type CreateSecretImportJSONRequestBody CreateSecretImportJSONBody
+
+// RequestEmailChangeOtpJSONRequestBody defines body for RequestEmailChangeOtp for application/json ContentType.
+type RequestEmailChangeOtpJSONRequestBody RequestEmailChangeOtpJSONBody
 
 // CreateProjectRoleJSONRequestBody defines body for CreateProjectRole for application/json ContentType.
 type CreateProjectRoleJSONRequestBody CreateProjectRoleJSONBody
@@ -20260,6 +22127,730 @@ func (t *CreateIdentityFolderAccessJSONBody_Type) UnmarshalJSON(b []byte) error 
 	return err
 }
 
+// AsPatchScimGroupJSONBodyOperations0Op0 returns the union data inside the PatchScimGroupJSONBody_Operations_0_Op as a PatchScimGroupJSONBodyOperations0Op0
+func (t PatchScimGroupJSONBody_Operations_0_Op) AsPatchScimGroupJSONBodyOperations0Op0() (PatchScimGroupJSONBodyOperations0Op0, error) {
+	var body PatchScimGroupJSONBodyOperations0Op0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimGroupJSONBodyOperations0Op0 overwrites any union data inside the PatchScimGroupJSONBody_Operations_0_Op as the provided PatchScimGroupJSONBodyOperations0Op0
+func (t *PatchScimGroupJSONBody_Operations_0_Op) FromPatchScimGroupJSONBodyOperations0Op0(v PatchScimGroupJSONBodyOperations0Op0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimGroupJSONBodyOperations0Op0 performs a merge with any union data inside the PatchScimGroupJSONBody_Operations_0_Op, using the provided PatchScimGroupJSONBodyOperations0Op0
+func (t *PatchScimGroupJSONBody_Operations_0_Op) MergePatchScimGroupJSONBodyOperations0Op0(v PatchScimGroupJSONBodyOperations0Op0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimGroupJSONBodyOperations0Op1 returns the union data inside the PatchScimGroupJSONBody_Operations_0_Op as a PatchScimGroupJSONBodyOperations0Op1
+func (t PatchScimGroupJSONBody_Operations_0_Op) AsPatchScimGroupJSONBodyOperations0Op1() (PatchScimGroupJSONBodyOperations0Op1, error) {
+	var body PatchScimGroupJSONBodyOperations0Op1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimGroupJSONBodyOperations0Op1 overwrites any union data inside the PatchScimGroupJSONBody_Operations_0_Op as the provided PatchScimGroupJSONBodyOperations0Op1
+func (t *PatchScimGroupJSONBody_Operations_0_Op) FromPatchScimGroupJSONBodyOperations0Op1(v PatchScimGroupJSONBodyOperations0Op1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimGroupJSONBodyOperations0Op1 performs a merge with any union data inside the PatchScimGroupJSONBody_Operations_0_Op, using the provided PatchScimGroupJSONBodyOperations0Op1
+func (t *PatchScimGroupJSONBody_Operations_0_Op) MergePatchScimGroupJSONBodyOperations0Op1(v PatchScimGroupJSONBodyOperations0Op1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PatchScimGroupJSONBody_Operations_0_Op) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PatchScimGroupJSONBody_Operations_0_Op) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsPatchScimGroupJSONBodyOperations1Op0 returns the union data inside the PatchScimGroupJSONBody_Operations_1_Op as a PatchScimGroupJSONBodyOperations1Op0
+func (t PatchScimGroupJSONBody_Operations_1_Op) AsPatchScimGroupJSONBodyOperations1Op0() (PatchScimGroupJSONBodyOperations1Op0, error) {
+	var body PatchScimGroupJSONBodyOperations1Op0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimGroupJSONBodyOperations1Op0 overwrites any union data inside the PatchScimGroupJSONBody_Operations_1_Op as the provided PatchScimGroupJSONBodyOperations1Op0
+func (t *PatchScimGroupJSONBody_Operations_1_Op) FromPatchScimGroupJSONBodyOperations1Op0(v PatchScimGroupJSONBodyOperations1Op0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimGroupJSONBodyOperations1Op0 performs a merge with any union data inside the PatchScimGroupJSONBody_Operations_1_Op, using the provided PatchScimGroupJSONBodyOperations1Op0
+func (t *PatchScimGroupJSONBody_Operations_1_Op) MergePatchScimGroupJSONBodyOperations1Op0(v PatchScimGroupJSONBodyOperations1Op0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimGroupJSONBodyOperations1Op1 returns the union data inside the PatchScimGroupJSONBody_Operations_1_Op as a PatchScimGroupJSONBodyOperations1Op1
+func (t PatchScimGroupJSONBody_Operations_1_Op) AsPatchScimGroupJSONBodyOperations1Op1() (PatchScimGroupJSONBodyOperations1Op1, error) {
+	var body PatchScimGroupJSONBodyOperations1Op1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimGroupJSONBodyOperations1Op1 overwrites any union data inside the PatchScimGroupJSONBody_Operations_1_Op as the provided PatchScimGroupJSONBodyOperations1Op1
+func (t *PatchScimGroupJSONBody_Operations_1_Op) FromPatchScimGroupJSONBodyOperations1Op1(v PatchScimGroupJSONBodyOperations1Op1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimGroupJSONBodyOperations1Op1 performs a merge with any union data inside the PatchScimGroupJSONBody_Operations_1_Op, using the provided PatchScimGroupJSONBodyOperations1Op1
+func (t *PatchScimGroupJSONBody_Operations_1_Op) MergePatchScimGroupJSONBodyOperations1Op1(v PatchScimGroupJSONBodyOperations1Op1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimGroupJSONBodyOperations1Op2 returns the union data inside the PatchScimGroupJSONBody_Operations_1_Op as a PatchScimGroupJSONBodyOperations1Op2
+func (t PatchScimGroupJSONBody_Operations_1_Op) AsPatchScimGroupJSONBodyOperations1Op2() (PatchScimGroupJSONBodyOperations1Op2, error) {
+	var body PatchScimGroupJSONBodyOperations1Op2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimGroupJSONBodyOperations1Op2 overwrites any union data inside the PatchScimGroupJSONBody_Operations_1_Op as the provided PatchScimGroupJSONBodyOperations1Op2
+func (t *PatchScimGroupJSONBody_Operations_1_Op) FromPatchScimGroupJSONBodyOperations1Op2(v PatchScimGroupJSONBodyOperations1Op2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimGroupJSONBodyOperations1Op2 performs a merge with any union data inside the PatchScimGroupJSONBody_Operations_1_Op, using the provided PatchScimGroupJSONBodyOperations1Op2
+func (t *PatchScimGroupJSONBody_Operations_1_Op) MergePatchScimGroupJSONBodyOperations1Op2(v PatchScimGroupJSONBodyOperations1Op2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimGroupJSONBodyOperations1Op3 returns the union data inside the PatchScimGroupJSONBody_Operations_1_Op as a PatchScimGroupJSONBodyOperations1Op3
+func (t PatchScimGroupJSONBody_Operations_1_Op) AsPatchScimGroupJSONBodyOperations1Op3() (PatchScimGroupJSONBodyOperations1Op3, error) {
+	var body PatchScimGroupJSONBodyOperations1Op3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimGroupJSONBodyOperations1Op3 overwrites any union data inside the PatchScimGroupJSONBody_Operations_1_Op as the provided PatchScimGroupJSONBodyOperations1Op3
+func (t *PatchScimGroupJSONBody_Operations_1_Op) FromPatchScimGroupJSONBodyOperations1Op3(v PatchScimGroupJSONBodyOperations1Op3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimGroupJSONBodyOperations1Op3 performs a merge with any union data inside the PatchScimGroupJSONBody_Operations_1_Op, using the provided PatchScimGroupJSONBodyOperations1Op3
+func (t *PatchScimGroupJSONBody_Operations_1_Op) MergePatchScimGroupJSONBodyOperations1Op3(v PatchScimGroupJSONBodyOperations1Op3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PatchScimGroupJSONBody_Operations_1_Op) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PatchScimGroupJSONBody_Operations_1_Op) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsPatchScimGroupJSONBodyOperations0 returns the union data inside the PatchScimGroupJSONBody_Operations_Item as a PatchScimGroupJSONBodyOperations0
+func (t PatchScimGroupJSONBody_Operations_Item) AsPatchScimGroupJSONBodyOperations0() (PatchScimGroupJSONBodyOperations0, error) {
+	var body PatchScimGroupJSONBodyOperations0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimGroupJSONBodyOperations0 overwrites any union data inside the PatchScimGroupJSONBody_Operations_Item as the provided PatchScimGroupJSONBodyOperations0
+func (t *PatchScimGroupJSONBody_Operations_Item) FromPatchScimGroupJSONBodyOperations0(v PatchScimGroupJSONBodyOperations0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimGroupJSONBodyOperations0 performs a merge with any union data inside the PatchScimGroupJSONBody_Operations_Item, using the provided PatchScimGroupJSONBodyOperations0
+func (t *PatchScimGroupJSONBody_Operations_Item) MergePatchScimGroupJSONBodyOperations0(v PatchScimGroupJSONBodyOperations0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimGroupJSONBodyOperations1 returns the union data inside the PatchScimGroupJSONBody_Operations_Item as a PatchScimGroupJSONBodyOperations1
+func (t PatchScimGroupJSONBody_Operations_Item) AsPatchScimGroupJSONBodyOperations1() (PatchScimGroupJSONBodyOperations1, error) {
+	var body PatchScimGroupJSONBodyOperations1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimGroupJSONBodyOperations1 overwrites any union data inside the PatchScimGroupJSONBody_Operations_Item as the provided PatchScimGroupJSONBodyOperations1
+func (t *PatchScimGroupJSONBody_Operations_Item) FromPatchScimGroupJSONBodyOperations1(v PatchScimGroupJSONBodyOperations1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimGroupJSONBodyOperations1 performs a merge with any union data inside the PatchScimGroupJSONBody_Operations_Item, using the provided PatchScimGroupJSONBodyOperations1
+func (t *PatchScimGroupJSONBody_Operations_Item) MergePatchScimGroupJSONBodyOperations1(v PatchScimGroupJSONBodyOperations1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PatchScimGroupJSONBody_Operations_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PatchScimGroupJSONBody_Operations_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsListScimUsers200JSONResponseBodyResourcesActive0 returns the union data inside the ListScimUsers200JSONResponseBody_Resources_Active as a ListScimUsers200JSONResponseBodyResourcesActive0
+func (t ListScimUsers200JSONResponseBody_Resources_Active) AsListScimUsers200JSONResponseBodyResourcesActive0() (ListScimUsers200JSONResponseBodyResourcesActive0, error) {
+	var body ListScimUsers200JSONResponseBodyResourcesActive0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListScimUsers200JSONResponseBodyResourcesActive0 overwrites any union data inside the ListScimUsers200JSONResponseBody_Resources_Active as the provided ListScimUsers200JSONResponseBodyResourcesActive0
+func (t *ListScimUsers200JSONResponseBody_Resources_Active) FromListScimUsers200JSONResponseBodyResourcesActive0(v ListScimUsers200JSONResponseBodyResourcesActive0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListScimUsers200JSONResponseBodyResourcesActive0 performs a merge with any union data inside the ListScimUsers200JSONResponseBody_Resources_Active, using the provided ListScimUsers200JSONResponseBodyResourcesActive0
+func (t *ListScimUsers200JSONResponseBody_Resources_Active) MergeListScimUsers200JSONResponseBodyResourcesActive0(v ListScimUsers200JSONResponseBodyResourcesActive0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListScimUsers200JSONResponseBodyResourcesActive1 returns the union data inside the ListScimUsers200JSONResponseBody_Resources_Active as a ListScimUsers200JSONResponseBodyResourcesActive1
+func (t ListScimUsers200JSONResponseBody_Resources_Active) AsListScimUsers200JSONResponseBodyResourcesActive1() (ListScimUsers200JSONResponseBodyResourcesActive1, error) {
+	var body ListScimUsers200JSONResponseBodyResourcesActive1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListScimUsers200JSONResponseBodyResourcesActive1 overwrites any union data inside the ListScimUsers200JSONResponseBody_Resources_Active as the provided ListScimUsers200JSONResponseBodyResourcesActive1
+func (t *ListScimUsers200JSONResponseBody_Resources_Active) FromListScimUsers200JSONResponseBodyResourcesActive1(v ListScimUsers200JSONResponseBodyResourcesActive1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListScimUsers200JSONResponseBodyResourcesActive1 performs a merge with any union data inside the ListScimUsers200JSONResponseBody_Resources_Active, using the provided ListScimUsers200JSONResponseBodyResourcesActive1
+func (t *ListScimUsers200JSONResponseBody_Resources_Active) MergeListScimUsers200JSONResponseBodyResourcesActive1(v ListScimUsers200JSONResponseBodyResourcesActive1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ListScimUsers200JSONResponseBody_Resources_Active) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ListScimUsers200JSONResponseBody_Resources_Active) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateScimUser200JSONResponseBodyActive0 returns the union data inside the CreateScimUser200JSONResponseBody_Active as a CreateScimUser200JSONResponseBodyActive0
+func (t CreateScimUser200JSONResponseBody_Active) AsCreateScimUser200JSONResponseBodyActive0() (CreateScimUser200JSONResponseBodyActive0, error) {
+	var body CreateScimUser200JSONResponseBodyActive0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateScimUser200JSONResponseBodyActive0 overwrites any union data inside the CreateScimUser200JSONResponseBody_Active as the provided CreateScimUser200JSONResponseBodyActive0
+func (t *CreateScimUser200JSONResponseBody_Active) FromCreateScimUser200JSONResponseBodyActive0(v CreateScimUser200JSONResponseBodyActive0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateScimUser200JSONResponseBodyActive0 performs a merge with any union data inside the CreateScimUser200JSONResponseBody_Active, using the provided CreateScimUser200JSONResponseBodyActive0
+func (t *CreateScimUser200JSONResponseBody_Active) MergeCreateScimUser200JSONResponseBodyActive0(v CreateScimUser200JSONResponseBodyActive0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateScimUser200JSONResponseBodyActive1 returns the union data inside the CreateScimUser200JSONResponseBody_Active as a CreateScimUser200JSONResponseBodyActive1
+func (t CreateScimUser200JSONResponseBody_Active) AsCreateScimUser200JSONResponseBodyActive1() (CreateScimUser200JSONResponseBodyActive1, error) {
+	var body CreateScimUser200JSONResponseBodyActive1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateScimUser200JSONResponseBodyActive1 overwrites any union data inside the CreateScimUser200JSONResponseBody_Active as the provided CreateScimUser200JSONResponseBodyActive1
+func (t *CreateScimUser200JSONResponseBody_Active) FromCreateScimUser200JSONResponseBodyActive1(v CreateScimUser200JSONResponseBodyActive1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateScimUser200JSONResponseBodyActive1 performs a merge with any union data inside the CreateScimUser200JSONResponseBody_Active, using the provided CreateScimUser200JSONResponseBodyActive1
+func (t *CreateScimUser200JSONResponseBody_Active) MergeCreateScimUser200JSONResponseBodyActive1(v CreateScimUser200JSONResponseBodyActive1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateScimUser200JSONResponseBody_Active) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateScimUser200JSONResponseBody_Active) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetScimUser200JSONResponseBodyActive0 returns the union data inside the GetScimUser200JSONResponseBody_Active as a GetScimUser200JSONResponseBodyActive0
+func (t GetScimUser200JSONResponseBody_Active) AsGetScimUser200JSONResponseBodyActive0() (GetScimUser200JSONResponseBodyActive0, error) {
+	var body GetScimUser200JSONResponseBodyActive0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetScimUser200JSONResponseBodyActive0 overwrites any union data inside the GetScimUser200JSONResponseBody_Active as the provided GetScimUser200JSONResponseBodyActive0
+func (t *GetScimUser200JSONResponseBody_Active) FromGetScimUser200JSONResponseBodyActive0(v GetScimUser200JSONResponseBodyActive0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetScimUser200JSONResponseBodyActive0 performs a merge with any union data inside the GetScimUser200JSONResponseBody_Active, using the provided GetScimUser200JSONResponseBodyActive0
+func (t *GetScimUser200JSONResponseBody_Active) MergeGetScimUser200JSONResponseBodyActive0(v GetScimUser200JSONResponseBodyActive0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetScimUser200JSONResponseBodyActive1 returns the union data inside the GetScimUser200JSONResponseBody_Active as a GetScimUser200JSONResponseBodyActive1
+func (t GetScimUser200JSONResponseBody_Active) AsGetScimUser200JSONResponseBodyActive1() (GetScimUser200JSONResponseBodyActive1, error) {
+	var body GetScimUser200JSONResponseBodyActive1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetScimUser200JSONResponseBodyActive1 overwrites any union data inside the GetScimUser200JSONResponseBody_Active as the provided GetScimUser200JSONResponseBodyActive1
+func (t *GetScimUser200JSONResponseBody_Active) FromGetScimUser200JSONResponseBodyActive1(v GetScimUser200JSONResponseBodyActive1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetScimUser200JSONResponseBodyActive1 performs a merge with any union data inside the GetScimUser200JSONResponseBody_Active, using the provided GetScimUser200JSONResponseBodyActive1
+func (t *GetScimUser200JSONResponseBody_Active) MergeGetScimUser200JSONResponseBodyActive1(v GetScimUser200JSONResponseBodyActive1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetScimUser200JSONResponseBody_Active) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetScimUser200JSONResponseBody_Active) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsPatchScimUserJSONBodyOperations0Op0 returns the union data inside the PatchScimUserJSONBody_Operations_0_Op as a PatchScimUserJSONBodyOperations0Op0
+func (t PatchScimUserJSONBody_Operations_0_Op) AsPatchScimUserJSONBodyOperations0Op0() (PatchScimUserJSONBodyOperations0Op0, error) {
+	var body PatchScimUserJSONBodyOperations0Op0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUserJSONBodyOperations0Op0 overwrites any union data inside the PatchScimUserJSONBody_Operations_0_Op as the provided PatchScimUserJSONBodyOperations0Op0
+func (t *PatchScimUserJSONBody_Operations_0_Op) FromPatchScimUserJSONBodyOperations0Op0(v PatchScimUserJSONBodyOperations0Op0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUserJSONBodyOperations0Op0 performs a merge with any union data inside the PatchScimUserJSONBody_Operations_0_Op, using the provided PatchScimUserJSONBodyOperations0Op0
+func (t *PatchScimUserJSONBody_Operations_0_Op) MergePatchScimUserJSONBodyOperations0Op0(v PatchScimUserJSONBodyOperations0Op0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimUserJSONBodyOperations0Op1 returns the union data inside the PatchScimUserJSONBody_Operations_0_Op as a PatchScimUserJSONBodyOperations0Op1
+func (t PatchScimUserJSONBody_Operations_0_Op) AsPatchScimUserJSONBodyOperations0Op1() (PatchScimUserJSONBodyOperations0Op1, error) {
+	var body PatchScimUserJSONBodyOperations0Op1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUserJSONBodyOperations0Op1 overwrites any union data inside the PatchScimUserJSONBody_Operations_0_Op as the provided PatchScimUserJSONBodyOperations0Op1
+func (t *PatchScimUserJSONBody_Operations_0_Op) FromPatchScimUserJSONBodyOperations0Op1(v PatchScimUserJSONBodyOperations0Op1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUserJSONBodyOperations0Op1 performs a merge with any union data inside the PatchScimUserJSONBody_Operations_0_Op, using the provided PatchScimUserJSONBodyOperations0Op1
+func (t *PatchScimUserJSONBody_Operations_0_Op) MergePatchScimUserJSONBodyOperations0Op1(v PatchScimUserJSONBodyOperations0Op1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PatchScimUserJSONBody_Operations_0_Op) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PatchScimUserJSONBody_Operations_0_Op) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsPatchScimUserJSONBodyOperations1Op0 returns the union data inside the PatchScimUserJSONBody_Operations_1_Op as a PatchScimUserJSONBodyOperations1Op0
+func (t PatchScimUserJSONBody_Operations_1_Op) AsPatchScimUserJSONBodyOperations1Op0() (PatchScimUserJSONBodyOperations1Op0, error) {
+	var body PatchScimUserJSONBodyOperations1Op0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUserJSONBodyOperations1Op0 overwrites any union data inside the PatchScimUserJSONBody_Operations_1_Op as the provided PatchScimUserJSONBodyOperations1Op0
+func (t *PatchScimUserJSONBody_Operations_1_Op) FromPatchScimUserJSONBodyOperations1Op0(v PatchScimUserJSONBodyOperations1Op0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUserJSONBodyOperations1Op0 performs a merge with any union data inside the PatchScimUserJSONBody_Operations_1_Op, using the provided PatchScimUserJSONBodyOperations1Op0
+func (t *PatchScimUserJSONBody_Operations_1_Op) MergePatchScimUserJSONBodyOperations1Op0(v PatchScimUserJSONBodyOperations1Op0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimUserJSONBodyOperations1Op1 returns the union data inside the PatchScimUserJSONBody_Operations_1_Op as a PatchScimUserJSONBodyOperations1Op1
+func (t PatchScimUserJSONBody_Operations_1_Op) AsPatchScimUserJSONBodyOperations1Op1() (PatchScimUserJSONBodyOperations1Op1, error) {
+	var body PatchScimUserJSONBodyOperations1Op1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUserJSONBodyOperations1Op1 overwrites any union data inside the PatchScimUserJSONBody_Operations_1_Op as the provided PatchScimUserJSONBodyOperations1Op1
+func (t *PatchScimUserJSONBody_Operations_1_Op) FromPatchScimUserJSONBodyOperations1Op1(v PatchScimUserJSONBodyOperations1Op1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUserJSONBodyOperations1Op1 performs a merge with any union data inside the PatchScimUserJSONBody_Operations_1_Op, using the provided PatchScimUserJSONBodyOperations1Op1
+func (t *PatchScimUserJSONBody_Operations_1_Op) MergePatchScimUserJSONBodyOperations1Op1(v PatchScimUserJSONBodyOperations1Op1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimUserJSONBodyOperations1Op2 returns the union data inside the PatchScimUserJSONBody_Operations_1_Op as a PatchScimUserJSONBodyOperations1Op2
+func (t PatchScimUserJSONBody_Operations_1_Op) AsPatchScimUserJSONBodyOperations1Op2() (PatchScimUserJSONBodyOperations1Op2, error) {
+	var body PatchScimUserJSONBodyOperations1Op2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUserJSONBodyOperations1Op2 overwrites any union data inside the PatchScimUserJSONBody_Operations_1_Op as the provided PatchScimUserJSONBodyOperations1Op2
+func (t *PatchScimUserJSONBody_Operations_1_Op) FromPatchScimUserJSONBodyOperations1Op2(v PatchScimUserJSONBodyOperations1Op2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUserJSONBodyOperations1Op2 performs a merge with any union data inside the PatchScimUserJSONBody_Operations_1_Op, using the provided PatchScimUserJSONBodyOperations1Op2
+func (t *PatchScimUserJSONBody_Operations_1_Op) MergePatchScimUserJSONBodyOperations1Op2(v PatchScimUserJSONBodyOperations1Op2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimUserJSONBodyOperations1Op3 returns the union data inside the PatchScimUserJSONBody_Operations_1_Op as a PatchScimUserJSONBodyOperations1Op3
+func (t PatchScimUserJSONBody_Operations_1_Op) AsPatchScimUserJSONBodyOperations1Op3() (PatchScimUserJSONBodyOperations1Op3, error) {
+	var body PatchScimUserJSONBodyOperations1Op3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUserJSONBodyOperations1Op3 overwrites any union data inside the PatchScimUserJSONBody_Operations_1_Op as the provided PatchScimUserJSONBodyOperations1Op3
+func (t *PatchScimUserJSONBody_Operations_1_Op) FromPatchScimUserJSONBodyOperations1Op3(v PatchScimUserJSONBodyOperations1Op3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUserJSONBodyOperations1Op3 performs a merge with any union data inside the PatchScimUserJSONBody_Operations_1_Op, using the provided PatchScimUserJSONBodyOperations1Op3
+func (t *PatchScimUserJSONBody_Operations_1_Op) MergePatchScimUserJSONBodyOperations1Op3(v PatchScimUserJSONBodyOperations1Op3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PatchScimUserJSONBody_Operations_1_Op) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PatchScimUserJSONBody_Operations_1_Op) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsPatchScimUserJSONBodyOperations0 returns the union data inside the PatchScimUserJSONBody_Operations_Item as a PatchScimUserJSONBodyOperations0
+func (t PatchScimUserJSONBody_Operations_Item) AsPatchScimUserJSONBodyOperations0() (PatchScimUserJSONBodyOperations0, error) {
+	var body PatchScimUserJSONBodyOperations0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUserJSONBodyOperations0 overwrites any union data inside the PatchScimUserJSONBody_Operations_Item as the provided PatchScimUserJSONBodyOperations0
+func (t *PatchScimUserJSONBody_Operations_Item) FromPatchScimUserJSONBodyOperations0(v PatchScimUserJSONBodyOperations0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUserJSONBodyOperations0 performs a merge with any union data inside the PatchScimUserJSONBody_Operations_Item, using the provided PatchScimUserJSONBodyOperations0
+func (t *PatchScimUserJSONBody_Operations_Item) MergePatchScimUserJSONBodyOperations0(v PatchScimUserJSONBodyOperations0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimUserJSONBodyOperations1 returns the union data inside the PatchScimUserJSONBody_Operations_Item as a PatchScimUserJSONBodyOperations1
+func (t PatchScimUserJSONBody_Operations_Item) AsPatchScimUserJSONBodyOperations1() (PatchScimUserJSONBodyOperations1, error) {
+	var body PatchScimUserJSONBodyOperations1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUserJSONBodyOperations1 overwrites any union data inside the PatchScimUserJSONBody_Operations_Item as the provided PatchScimUserJSONBodyOperations1
+func (t *PatchScimUserJSONBody_Operations_Item) FromPatchScimUserJSONBodyOperations1(v PatchScimUserJSONBodyOperations1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUserJSONBodyOperations1 performs a merge with any union data inside the PatchScimUserJSONBody_Operations_Item, using the provided PatchScimUserJSONBodyOperations1
+func (t *PatchScimUserJSONBody_Operations_Item) MergePatchScimUserJSONBodyOperations1(v PatchScimUserJSONBodyOperations1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PatchScimUserJSONBody_Operations_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PatchScimUserJSONBody_Operations_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsPatchScimUser200JSONResponseBodyActive0 returns the union data inside the PatchScimUser200JSONResponseBody_Active as a PatchScimUser200JSONResponseBodyActive0
+func (t PatchScimUser200JSONResponseBody_Active) AsPatchScimUser200JSONResponseBodyActive0() (PatchScimUser200JSONResponseBodyActive0, error) {
+	var body PatchScimUser200JSONResponseBodyActive0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUser200JSONResponseBodyActive0 overwrites any union data inside the PatchScimUser200JSONResponseBody_Active as the provided PatchScimUser200JSONResponseBodyActive0
+func (t *PatchScimUser200JSONResponseBody_Active) FromPatchScimUser200JSONResponseBodyActive0(v PatchScimUser200JSONResponseBodyActive0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUser200JSONResponseBodyActive0 performs a merge with any union data inside the PatchScimUser200JSONResponseBody_Active, using the provided PatchScimUser200JSONResponseBodyActive0
+func (t *PatchScimUser200JSONResponseBody_Active) MergePatchScimUser200JSONResponseBodyActive0(v PatchScimUser200JSONResponseBodyActive0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPatchScimUser200JSONResponseBodyActive1 returns the union data inside the PatchScimUser200JSONResponseBody_Active as a PatchScimUser200JSONResponseBodyActive1
+func (t PatchScimUser200JSONResponseBody_Active) AsPatchScimUser200JSONResponseBodyActive1() (PatchScimUser200JSONResponseBodyActive1, error) {
+	var body PatchScimUser200JSONResponseBodyActive1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPatchScimUser200JSONResponseBodyActive1 overwrites any union data inside the PatchScimUser200JSONResponseBody_Active as the provided PatchScimUser200JSONResponseBodyActive1
+func (t *PatchScimUser200JSONResponseBody_Active) FromPatchScimUser200JSONResponseBodyActive1(v PatchScimUser200JSONResponseBodyActive1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePatchScimUser200JSONResponseBodyActive1 performs a merge with any union data inside the PatchScimUser200JSONResponseBody_Active, using the provided PatchScimUser200JSONResponseBodyActive1
+func (t *PatchScimUser200JSONResponseBody_Active) MergePatchScimUser200JSONResponseBodyActive1(v PatchScimUser200JSONResponseBodyActive1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PatchScimUser200JSONResponseBody_Active) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PatchScimUser200JSONResponseBody_Active) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsCreateGitHubSecretSyncJSONBodyDestinationConfig0 returns the union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig as a CreateGitHubSecretSyncJSONBodyDestinationConfig0
 func (t CreateGitHubSecretSyncJSONBody_DestinationConfig) AsCreateGitHubSecretSyncJSONBodyDestinationConfig0() (CreateGitHubSecretSyncJSONBodyDestinationConfig0, error) {
 	var body CreateGitHubSecretSyncJSONBodyDestinationConfig0
@@ -21978,6 +24569,103 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	CreateSecretTag(ctx context.Context, projectId string, body CreateSecretTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListScimGroups performs a GET /api/v1/scim/Groups (the `ListScimGroups` operationId) request.
+	ListScimGroups(ctx context.Context, params *ListScimGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateScimGroupWithBody performs a POST /api/v1/scim/Groups (the `CreateScimGroup` operationId) request,
+	// with any type of body and a specified content type.
+	CreateScimGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateScimGroup performs a POST /api/v1/scim/Groups (the `CreateScimGroup` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateScimGroup(ctx context.Context, body CreateScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteScimGroup performs a DELETE /api/v1/scim/Groups/{groupId} (the `DeleteScimGroup` operationId) request.
+	DeleteScimGroup(ctx context.Context, groupId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetScimGroup performs a GET /api/v1/scim/Groups/{groupId} (the `GetScimGroup` operationId) request.
+	GetScimGroup(ctx context.Context, groupId string, params *GetScimGroupParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchScimGroupWithBody performs a PATCH /api/v1/scim/Groups/{groupId} (the `PatchScimGroup` operationId) request,
+	// with any type of body and a specified content type.
+	PatchScimGroupWithBody(ctx context.Context, groupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchScimGroup performs a PATCH /api/v1/scim/Groups/{groupId} (the `PatchScimGroup` operationId) request.
+	// Takes a body of the `application/json` content type.
+	PatchScimGroup(ctx context.Context, groupId string, body PatchScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReplaceScimGroupWithBody performs a PUT /api/v1/scim/Groups/{groupId} (the `ReplaceScimGroup` operationId) request,
+	// with any type of body and a specified content type.
+	ReplaceScimGroupWithBody(ctx context.Context, groupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReplaceScimGroup performs a PUT /api/v1/scim/Groups/{groupId} (the `ReplaceScimGroup` operationId) request.
+	// Takes a body of the `application/json` content type.
+	ReplaceScimGroup(ctx context.Context, groupId string, body ReplaceScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetScimServiceProviderConfig performs a GET /api/v1/scim/ServiceProviderConfig (the `GetScimServiceProviderConfig` operationId) request.
+	GetScimServiceProviderConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListScimUsers performs a GET /api/v1/scim/Users (the `ListScimUsers` operationId) request.
+	ListScimUsers(ctx context.Context, params *ListScimUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateScimUserWithBody performs a POST /api/v1/scim/Users (the `CreateScimUser` operationId) request,
+	// with any type of body and a specified content type.
+	CreateScimUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateScimUser performs a POST /api/v1/scim/Users (the `CreateScimUser` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateScimUser(ctx context.Context, body CreateScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteScimUser performs a DELETE /api/v1/scim/Users/{orgMembershipId} (the `DeleteScimUser` operationId) request.
+	DeleteScimUser(ctx context.Context, orgMembershipId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetScimUser performs a GET /api/v1/scim/Users/{orgMembershipId} (the `GetScimUser` operationId) request.
+	GetScimUser(ctx context.Context, orgMembershipId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchScimUserWithBody performs a PATCH /api/v1/scim/Users/{orgMembershipId} (the `PatchScimUser` operationId) request,
+	// with any type of body and a specified content type.
+	PatchScimUserWithBody(ctx context.Context, orgMembershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchScimUser performs a PATCH /api/v1/scim/Users/{orgMembershipId} (the `PatchScimUser` operationId) request.
+	// Takes a body of the `application/json` content type.
+	PatchScimUser(ctx context.Context, orgMembershipId string, body PatchScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReplaceScimUserWithBody performs a PUT /api/v1/scim/Users/{orgMembershipId} (the `ReplaceScimUser` operationId) request,
+	// with any type of body and a specified content type.
+	ReplaceScimUserWithBody(ctx context.Context, orgMembershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReplaceScimUser performs a PUT /api/v1/scim/Users/{orgMembershipId} (the `ReplaceScimUser` operationId) request.
+	// Takes a body of the `application/json` content type.
+	ReplaceScimUser(ctx context.Context, orgMembershipId string, body ReplaceScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListExternalGroupOrgRoleMappings performs a GET /api/v1/scim/group-org-role-mappings (the `ListExternalGroupOrgRoleMappings` operationId) request.
+	ListExternalGroupOrgRoleMappings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateExternalGroupOrgRoleMappingsWithBody performs a PUT /api/v1/scim/group-org-role-mappings (the `UpdateExternalGroupOrgRoleMappings` operationId) request,
+	// with any type of body and a specified content type.
+	UpdateExternalGroupOrgRoleMappingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateExternalGroupOrgRoleMappings performs a PUT /api/v1/scim/group-org-role-mappings (the `UpdateExternalGroupOrgRoleMappings` operationId) request.
+	// Takes a body of the `application/json` content type.
+	UpdateExternalGroupOrgRoleMappings(ctx context.Context, body UpdateExternalGroupOrgRoleMappingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListScimEvents performs a GET /api/v1/scim/scim-events (the `ListScimEvents` operationId) request.
+	ListScimEvents(ctx context.Context, params *ListScimEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListScimTokens performs a GET /api/v1/scim/scim-tokens (the `ListScimTokens` operationId) request.
+	ListScimTokens(ctx context.Context, params *ListScimTokensParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateScimTokenWithBody performs a POST /api/v1/scim/scim-tokens (the `CreateScimToken` operationId) request,
+	// with any type of body and a specified content type.
+	CreateScimTokenWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateScimToken performs a POST /api/v1/scim/scim-tokens (the `CreateScimToken` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateScimToken(ctx context.Context, body CreateScimTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteScimToken performs a DELETE /api/v1/scim/scim-tokens/{scimTokenId} (the `DeleteScimToken` operationId) request.
+	DeleteScimToken(ctx context.Context, scimTokenId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListSecretApprovalRequests performs a GET /api/v1/secret-approval-requests (the `ListSecretApprovalRequests` operationId) request.
 	ListSecretApprovalRequests(ctx context.Context, params *ListSecretApprovalRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -22071,6 +24759,41 @@ type ClientInterface interface {
 	//
 	// Create SAML config.
 	CreateSamlConfig(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OidcCallback performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
+	OidcCallback(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOidcConfig performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
+	//
+	// Get OIDC config.
+	GetOidcConfig(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOidcConfigWithBody performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update OIDC config.
+	UpdateOidcConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOidcConfig performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update OIDC config.
+	UpdateOidcConfig(ctx context.Context, body UpdateOidcConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateOidcConfigWithBody performs a POST /api/v1/sso/oidc/config (the `CreateOidcConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create OIDC config.
+	CreateOidcConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateOidcConfig performs a POST /api/v1/sso/oidc/config (the `CreateOidcConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create OIDC config.
+	CreateOidcConfig(ctx context.Context, body CreateOidcConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RedirectOidcLogin performs a GET /api/v1/sso/oidc/login (the `RedirectOidcLogin` operationId) request.
+	RedirectOidcLogin(ctx context.Context, params *RedirectOidcLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RedirectOrgSSO performs a GET /api/v1/sso/redirect/organizations/{orgSlug} (the `RedirectOrgSSO` operationId) request.
 	RedirectOrgSSO(ctx context.Context, orgSlug string, params *RedirectOrgSSOParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -22178,6 +24901,14 @@ type ClientInterface interface {
 	//
 	// Retrieve the current user on the request.
 	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RequestEmailChangeOtpWithBody performs a POST /api/v2/users/me/email-change/otp (the `RequestEmailChangeOtp` operationId) request,
+	// with any type of body and a specified content type.
+	RequestEmailChangeOtpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RequestEmailChangeOtp performs a POST /api/v2/users/me/email-change/otp (the `RequestEmailChangeOtp` operationId) request.
+	// Takes a body of the `application/json` content type.
+	RequestEmailChangeOtp(ctx context.Context, body RequestEmailChangeOtpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectRoleWithBody performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
 	// with any type of body and a specified content type.
@@ -23115,6 +25846,373 @@ func (c *Client) CreateSecretTag(ctx context.Context, projectId string, body Cre
 	return c.Client.Do(req)
 }
 
+// ListScimGroups performs a GET /api/v1/scim/Groups (the `ListScimGroups` operationId) request.
+func (c *Client) ListScimGroups(ctx context.Context, params *ListScimGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListScimGroupsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateScimGroupWithBody performs a POST /api/v1/scim/Groups (the `CreateScimGroup` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateScimGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateScimGroupRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateScimGroup performs a POST /api/v1/scim/Groups (the `CreateScimGroup` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateScimGroup(ctx context.Context, body CreateScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateScimGroupRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteScimGroup performs a DELETE /api/v1/scim/Groups/{groupId} (the `DeleteScimGroup` operationId) request.
+func (c *Client) DeleteScimGroup(ctx context.Context, groupId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteScimGroupRequest(c.Server, groupId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetScimGroup performs a GET /api/v1/scim/Groups/{groupId} (the `GetScimGroup` operationId) request.
+func (c *Client) GetScimGroup(ctx context.Context, groupId string, params *GetScimGroupParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetScimGroupRequest(c.Server, groupId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PatchScimGroupWithBody performs a PATCH /api/v1/scim/Groups/{groupId} (the `PatchScimGroup` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) PatchScimGroupWithBody(ctx context.Context, groupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchScimGroupRequestWithBody(c.Server, groupId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PatchScimGroup performs a PATCH /api/v1/scim/Groups/{groupId} (the `PatchScimGroup` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) PatchScimGroup(ctx context.Context, groupId string, body PatchScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchScimGroupRequest(c.Server, groupId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReplaceScimGroupWithBody performs a PUT /api/v1/scim/Groups/{groupId} (the `ReplaceScimGroup` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) ReplaceScimGroupWithBody(ctx context.Context, groupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceScimGroupRequestWithBody(c.Server, groupId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReplaceScimGroup performs a PUT /api/v1/scim/Groups/{groupId} (the `ReplaceScimGroup` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) ReplaceScimGroup(ctx context.Context, groupId string, body ReplaceScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceScimGroupRequest(c.Server, groupId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetScimServiceProviderConfig performs a GET /api/v1/scim/ServiceProviderConfig (the `GetScimServiceProviderConfig` operationId) request.
+func (c *Client) GetScimServiceProviderConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetScimServiceProviderConfigRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListScimUsers performs a GET /api/v1/scim/Users (the `ListScimUsers` operationId) request.
+func (c *Client) ListScimUsers(ctx context.Context, params *ListScimUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListScimUsersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateScimUserWithBody performs a POST /api/v1/scim/Users (the `CreateScimUser` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateScimUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateScimUserRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateScimUser performs a POST /api/v1/scim/Users (the `CreateScimUser` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateScimUser(ctx context.Context, body CreateScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateScimUserRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteScimUser performs a DELETE /api/v1/scim/Users/{orgMembershipId} (the `DeleteScimUser` operationId) request.
+func (c *Client) DeleteScimUser(ctx context.Context, orgMembershipId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteScimUserRequest(c.Server, orgMembershipId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetScimUser performs a GET /api/v1/scim/Users/{orgMembershipId} (the `GetScimUser` operationId) request.
+func (c *Client) GetScimUser(ctx context.Context, orgMembershipId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetScimUserRequest(c.Server, orgMembershipId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PatchScimUserWithBody performs a PATCH /api/v1/scim/Users/{orgMembershipId} (the `PatchScimUser` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) PatchScimUserWithBody(ctx context.Context, orgMembershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchScimUserRequestWithBody(c.Server, orgMembershipId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PatchScimUser performs a PATCH /api/v1/scim/Users/{orgMembershipId} (the `PatchScimUser` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) PatchScimUser(ctx context.Context, orgMembershipId string, body PatchScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchScimUserRequest(c.Server, orgMembershipId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReplaceScimUserWithBody performs a PUT /api/v1/scim/Users/{orgMembershipId} (the `ReplaceScimUser` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) ReplaceScimUserWithBody(ctx context.Context, orgMembershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceScimUserRequestWithBody(c.Server, orgMembershipId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReplaceScimUser performs a PUT /api/v1/scim/Users/{orgMembershipId} (the `ReplaceScimUser` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) ReplaceScimUser(ctx context.Context, orgMembershipId string, body ReplaceScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceScimUserRequest(c.Server, orgMembershipId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListExternalGroupOrgRoleMappings performs a GET /api/v1/scim/group-org-role-mappings (the `ListExternalGroupOrgRoleMappings` operationId) request.
+func (c *Client) ListExternalGroupOrgRoleMappings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExternalGroupOrgRoleMappingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateExternalGroupOrgRoleMappingsWithBody performs a PUT /api/v1/scim/group-org-role-mappings (the `UpdateExternalGroupOrgRoleMappings` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) UpdateExternalGroupOrgRoleMappingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateExternalGroupOrgRoleMappingsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateExternalGroupOrgRoleMappings performs a PUT /api/v1/scim/group-org-role-mappings (the `UpdateExternalGroupOrgRoleMappings` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) UpdateExternalGroupOrgRoleMappings(ctx context.Context, body UpdateExternalGroupOrgRoleMappingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateExternalGroupOrgRoleMappingsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListScimEvents performs a GET /api/v1/scim/scim-events (the `ListScimEvents` operationId) request.
+func (c *Client) ListScimEvents(ctx context.Context, params *ListScimEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListScimEventsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListScimTokens performs a GET /api/v1/scim/scim-tokens (the `ListScimTokens` operationId) request.
+func (c *Client) ListScimTokens(ctx context.Context, params *ListScimTokensParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListScimTokensRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateScimTokenWithBody performs a POST /api/v1/scim/scim-tokens (the `CreateScimToken` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateScimTokenWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateScimTokenRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateScimToken performs a POST /api/v1/scim/scim-tokens (the `CreateScimToken` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateScimToken(ctx context.Context, body CreateScimTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateScimTokenRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteScimToken performs a DELETE /api/v1/scim/scim-tokens/{scimTokenId} (the `DeleteScimToken` operationId) request.
+func (c *Client) DeleteScimToken(ctx context.Context, scimTokenId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteScimTokenRequest(c.Server, scimTokenId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListSecretApprovalRequests performs a GET /api/v1/secret-approval-requests (the `ListSecretApprovalRequests` operationId) request.
 func (c *Client) ListSecretApprovalRequests(ctx context.Context, params *ListSecretApprovalRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListSecretApprovalRequestsRequest(c.Server, params)
@@ -23399,6 +26497,111 @@ func (c *Client) CreateSamlConfigWithBody(ctx context.Context, contentType strin
 // Create SAML config.
 func (c *Client) CreateSamlConfig(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateSamlConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OidcCallback performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
+func (c *Client) OidcCallback(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOidcCallbackRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOidcConfig performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
+//
+// Get OIDC config.
+func (c *Client) GetOidcConfig(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOidcConfigRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOidcConfigWithBody performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update OIDC config.
+func (c *Client) UpdateOidcConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOidcConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOidcConfig performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update OIDC config.
+func (c *Client) UpdateOidcConfig(ctx context.Context, body UpdateOidcConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOidcConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateOidcConfigWithBody performs a POST /api/v1/sso/oidc/config (the `CreateOidcConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create OIDC config.
+func (c *Client) CreateOidcConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateOidcConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateOidcConfig performs a POST /api/v1/sso/oidc/config (the `CreateOidcConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create OIDC config.
+func (c *Client) CreateOidcConfig(ctx context.Context, body CreateOidcConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateOidcConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RedirectOidcLogin performs a GET /api/v1/sso/oidc/login (the `RedirectOidcLogin` operationId) request.
+func (c *Client) RedirectOidcLogin(ctx context.Context, params *RedirectOidcLoginParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRedirectOidcLoginRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -23756,6 +26959,34 @@ func (c *Client) CreateSecretImport(ctx context.Context, body CreateSecretImport
 // Retrieve the current user on the request.
 func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetCurrentUserRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RequestEmailChangeOtpWithBody performs a POST /api/v2/users/me/email-change/otp (the `RequestEmailChangeOtp` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) RequestEmailChangeOtpWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestEmailChangeOtpRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RequestEmailChangeOtp performs a POST /api/v2/users/me/email-change/otp (the `RequestEmailChangeOtp` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) RequestEmailChangeOtp(ctx context.Context, body RequestEmailChangeOtpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestEmailChangeOtpRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -25841,6 +29072,901 @@ func NewCreateSecretTagRequestWithBody(server string, projectId string, contentT
 	return req, nil
 }
 
+// NewListScimGroupsRequest constructs an http.Request for the ListScimGroups method
+func NewListScimGroupsRequest(server string, params *ListScimGroupsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Groups")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.StartIndex != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "startIndex", *params.StartIndex, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Count != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "count", *params.Count, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Filter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filter", *params.Filter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ExcludedAttributes != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "excludedAttributes", *params.ExcludedAttributes, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateScimGroupRequest calls the generic CreateScimGroup builder with application/json body
+func NewCreateScimGroupRequest(server string, body CreateScimGroupJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateScimGroupRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateScimGroupRequestWithBody constructs an http.Request for the CreateScimGroup method, with any body, and a specified content type
+func NewCreateScimGroupRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Groups")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteScimGroupRequest constructs an http.Request for the DeleteScimGroup method
+func NewDeleteScimGroupRequest(server string, groupId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Groups/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetScimGroupRequest constructs an http.Request for the GetScimGroup method
+func NewGetScimGroupRequest(server string, groupId string, params *GetScimGroupParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Groups/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ExcludedAttributes != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "excludedAttributes", *params.ExcludedAttributes, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPatchScimGroupRequest calls the generic PatchScimGroup builder with application/json body
+func NewPatchScimGroupRequest(server string, groupId string, body PatchScimGroupJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPatchScimGroupRequestWithBody(server, groupId, "application/json", bodyReader)
+}
+
+// NewPatchScimGroupRequestWithBody constructs an http.Request for the PatchScimGroup method, with any body, and a specified content type
+func NewPatchScimGroupRequestWithBody(server string, groupId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Groups/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReplaceScimGroupRequest calls the generic ReplaceScimGroup builder with application/json body
+func NewReplaceScimGroupRequest(server string, groupId string, body ReplaceScimGroupJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReplaceScimGroupRequestWithBody(server, groupId, "application/json", bodyReader)
+}
+
+// NewReplaceScimGroupRequestWithBody constructs an http.Request for the ReplaceScimGroup method, with any body, and a specified content type
+func NewReplaceScimGroupRequestWithBody(server string, groupId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Groups/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetScimServiceProviderConfigRequest constructs an http.Request for the GetScimServiceProviderConfig method
+func NewGetScimServiceProviderConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/ServiceProviderConfig")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListScimUsersRequest constructs an http.Request for the ListScimUsers method
+func NewListScimUsersRequest(server string, params *ListScimUsersParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.StartIndex != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "startIndex", *params.StartIndex, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Count != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "count", *params.Count, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Filter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filter", *params.Filter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateScimUserRequest calls the generic CreateScimUser builder with application/json body
+func NewCreateScimUserRequest(server string, body CreateScimUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateScimUserRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateScimUserRequestWithBody constructs an http.Request for the CreateScimUser method, with any body, and a specified content type
+func NewCreateScimUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteScimUserRequest constructs an http.Request for the DeleteScimUser method
+func NewDeleteScimUserRequest(server string, orgMembershipId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgMembershipId", orgMembershipId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetScimUserRequest constructs an http.Request for the GetScimUser method
+func NewGetScimUserRequest(server string, orgMembershipId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgMembershipId", orgMembershipId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPatchScimUserRequest calls the generic PatchScimUser builder with application/json body
+func NewPatchScimUserRequest(server string, orgMembershipId string, body PatchScimUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPatchScimUserRequestWithBody(server, orgMembershipId, "application/json", bodyReader)
+}
+
+// NewPatchScimUserRequestWithBody constructs an http.Request for the PatchScimUser method, with any body, and a specified content type
+func NewPatchScimUserRequestWithBody(server string, orgMembershipId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgMembershipId", orgMembershipId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReplaceScimUserRequest calls the generic ReplaceScimUser builder with application/json body
+func NewReplaceScimUserRequest(server string, orgMembershipId string, body ReplaceScimUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReplaceScimUserRequestWithBody(server, orgMembershipId, "application/json", bodyReader)
+}
+
+// NewReplaceScimUserRequestWithBody constructs an http.Request for the ReplaceScimUser method, with any body, and a specified content type
+func NewReplaceScimUserRequestWithBody(server string, orgMembershipId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgMembershipId", orgMembershipId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/Users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListExternalGroupOrgRoleMappingsRequest constructs an http.Request for the ListExternalGroupOrgRoleMappings method
+func NewListExternalGroupOrgRoleMappingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/group-org-role-mappings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateExternalGroupOrgRoleMappingsRequest calls the generic UpdateExternalGroupOrgRoleMappings builder with application/json body
+func NewUpdateExternalGroupOrgRoleMappingsRequest(server string, body UpdateExternalGroupOrgRoleMappingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateExternalGroupOrgRoleMappingsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateExternalGroupOrgRoleMappingsRequestWithBody constructs an http.Request for the UpdateExternalGroupOrgRoleMappings method, with any body, and a specified content type
+func NewUpdateExternalGroupOrgRoleMappingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/group-org-role-mappings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListScimEventsRequest constructs an http.Request for the ListScimEvents method
+func NewListScimEventsRequest(server string, params *ListScimEventsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/scim-events")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "since", *params.Since, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListScimTokensRequest constructs an http.Request for the ListScimTokens method
+func NewListScimTokensRequest(server string, params *ListScimTokensParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/scim-tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateScimTokenRequest calls the generic CreateScimToken builder with application/json body
+func NewCreateScimTokenRequest(server string, body CreateScimTokenJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateScimTokenRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateScimTokenRequestWithBody constructs an http.Request for the CreateScimToken method, with any body, and a specified content type
+func NewCreateScimTokenRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/scim-tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteScimTokenRequest constructs an http.Request for the DeleteScimToken method
+func NewDeleteScimTokenRequest(server string, scimTokenId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "scimTokenId", scimTokenId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/scim/scim-tokens/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListSecretApprovalRequestsRequest constructs an http.Request for the ListSecretApprovalRequests method
 func NewListSecretApprovalRequestsRequest(server string, params *ListSecretApprovalRequestsParams) (*http.Request, error) {
 	var err error
@@ -26553,6 +30679,280 @@ func NewCreateSamlConfigRequestWithBody(server string, contentType string, body 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewOidcCallbackRequest constructs an http.Request for the OidcCallback method
+func NewOidcCallbackRequest(server string, params *OidcCallbackParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/oidc/callback")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Code != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", *params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOidcConfigRequest constructs an http.Request for the GetOidcConfig method
+func NewGetOidcConfigRequest(server string, params *GetOidcConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/oidc/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateOidcConfigRequest calls the generic UpdateOidcConfig builder with application/json body
+func NewUpdateOidcConfigRequest(server string, body UpdateOidcConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateOidcConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateOidcConfigRequestWithBody constructs an http.Request for the UpdateOidcConfig method, with any body, and a specified content type
+func NewUpdateOidcConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/oidc/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateOidcConfigRequest calls the generic CreateOidcConfig builder with application/json body
+func NewCreateOidcConfigRequest(server string, body CreateOidcConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateOidcConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateOidcConfigRequestWithBody constructs an http.Request for the CreateOidcConfig method, with any body, and a specified content type
+func NewCreateOidcConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/oidc/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRedirectOidcLoginRequest constructs an http.Request for the RedirectOidcLogin method
+func NewRedirectOidcLoginRequest(server string, params *RedirectOidcLoginParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/oidc/login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Domain != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "domain", *params.Domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.OrgSlug != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orgSlug", *params.OrgSlug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.CallbackPort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "callbackPort", *params.CallbackPort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -27375,6 +31775,46 @@ func NewGetCurrentUserRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewRequestEmailChangeOtpRequest calls the generic RequestEmailChangeOtp builder with application/json body
+func NewRequestEmailChangeOtpRequest(server string, body RequestEmailChangeOtpJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRequestEmailChangeOtpRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewRequestEmailChangeOtpRequestWithBody constructs an http.Request for the RequestEmailChangeOtp method, with any body, and a specified content type
+func NewRequestEmailChangeOtpRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/users/me/email-change/otp")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -28814,6 +33254,141 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	CreateSecretTagWithResponse(ctx context.Context, projectId string, body CreateSecretTagJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSecretTagResponse, error)
 
+	// ListScimGroupsWithResponse performs a GET /api/v1/scim/Groups (the `ListScimGroups` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListScimGroupsWithResponse(ctx context.Context, params *ListScimGroupsParams, reqEditors ...RequestEditorFn) (*ListScimGroupsResponse, error)
+
+	// CreateScimGroupWithBodyWithResponse performs a POST /api/v1/scim/Groups (the `CreateScimGroup` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateScimGroupWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScimGroupResponse, error)
+
+	// CreateScimGroupWithResponse performs a POST /api/v1/scim/Groups (the `CreateScimGroup` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateScimGroupWithResponse(ctx context.Context, body CreateScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScimGroupResponse, error)
+
+	// DeleteScimGroupWithResponse performs a DELETE /api/v1/scim/Groups/{groupId} (the `DeleteScimGroup` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteScimGroupWithResponse(ctx context.Context, groupId string, reqEditors ...RequestEditorFn) (*DeleteScimGroupResponse, error)
+
+	// GetScimGroupWithResponse performs a GET /api/v1/scim/Groups/{groupId} (the `GetScimGroup` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetScimGroupWithResponse(ctx context.Context, groupId string, params *GetScimGroupParams, reqEditors ...RequestEditorFn) (*GetScimGroupResponse, error)
+
+	// PatchScimGroupWithBodyWithResponse performs a PATCH /api/v1/scim/Groups/{groupId} (the `PatchScimGroup` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	PatchScimGroupWithBodyWithResponse(ctx context.Context, groupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchScimGroupResponse, error)
+
+	// PatchScimGroupWithResponse performs a PATCH /api/v1/scim/Groups/{groupId} (the `PatchScimGroup` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	PatchScimGroupWithResponse(ctx context.Context, groupId string, body PatchScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchScimGroupResponse, error)
+
+	// ReplaceScimGroupWithBodyWithResponse performs a PUT /api/v1/scim/Groups/{groupId} (the `ReplaceScimGroup` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ReplaceScimGroupWithBodyWithResponse(ctx context.Context, groupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceScimGroupResponse, error)
+
+	// ReplaceScimGroupWithResponse performs a PUT /api/v1/scim/Groups/{groupId} (the `ReplaceScimGroup` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	ReplaceScimGroupWithResponse(ctx context.Context, groupId string, body ReplaceScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceScimGroupResponse, error)
+
+	// GetScimServiceProviderConfigWithResponse performs a GET /api/v1/scim/ServiceProviderConfig (the `GetScimServiceProviderConfig` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetScimServiceProviderConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetScimServiceProviderConfigResponse, error)
+
+	// ListScimUsersWithResponse performs a GET /api/v1/scim/Users (the `ListScimUsers` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListScimUsersWithResponse(ctx context.Context, params *ListScimUsersParams, reqEditors ...RequestEditorFn) (*ListScimUsersResponse, error)
+
+	// CreateScimUserWithBodyWithResponse performs a POST /api/v1/scim/Users (the `CreateScimUser` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateScimUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScimUserResponse, error)
+
+	// CreateScimUserWithResponse performs a POST /api/v1/scim/Users (the `CreateScimUser` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateScimUserWithResponse(ctx context.Context, body CreateScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScimUserResponse, error)
+
+	// DeleteScimUserWithResponse performs a DELETE /api/v1/scim/Users/{orgMembershipId} (the `DeleteScimUser` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteScimUserWithResponse(ctx context.Context, orgMembershipId string, reqEditors ...RequestEditorFn) (*DeleteScimUserResponse, error)
+
+	// GetScimUserWithResponse performs a GET /api/v1/scim/Users/{orgMembershipId} (the `GetScimUser` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetScimUserWithResponse(ctx context.Context, orgMembershipId string, reqEditors ...RequestEditorFn) (*GetScimUserResponse, error)
+
+	// PatchScimUserWithBodyWithResponse performs a PATCH /api/v1/scim/Users/{orgMembershipId} (the `PatchScimUser` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	PatchScimUserWithBodyWithResponse(ctx context.Context, orgMembershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchScimUserResponse, error)
+
+	// PatchScimUserWithResponse performs a PATCH /api/v1/scim/Users/{orgMembershipId} (the `PatchScimUser` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	PatchScimUserWithResponse(ctx context.Context, orgMembershipId string, body PatchScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchScimUserResponse, error)
+
+	// ReplaceScimUserWithBodyWithResponse performs a PUT /api/v1/scim/Users/{orgMembershipId} (the `ReplaceScimUser` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ReplaceScimUserWithBodyWithResponse(ctx context.Context, orgMembershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceScimUserResponse, error)
+
+	// ReplaceScimUserWithResponse performs a PUT /api/v1/scim/Users/{orgMembershipId} (the `ReplaceScimUser` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	ReplaceScimUserWithResponse(ctx context.Context, orgMembershipId string, body ReplaceScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceScimUserResponse, error)
+
+	// ListExternalGroupOrgRoleMappingsWithResponse performs a GET /api/v1/scim/group-org-role-mappings (the `ListExternalGroupOrgRoleMappings` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListExternalGroupOrgRoleMappingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExternalGroupOrgRoleMappingsResponse, error)
+
+	// UpdateExternalGroupOrgRoleMappingsWithBodyWithResponse performs a PUT /api/v1/scim/group-org-role-mappings (the `UpdateExternalGroupOrgRoleMappings` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateExternalGroupOrgRoleMappingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateExternalGroupOrgRoleMappingsResponse, error)
+
+	// UpdateExternalGroupOrgRoleMappingsWithResponse performs a PUT /api/v1/scim/group-org-role-mappings (the `UpdateExternalGroupOrgRoleMappings` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	UpdateExternalGroupOrgRoleMappingsWithResponse(ctx context.Context, body UpdateExternalGroupOrgRoleMappingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateExternalGroupOrgRoleMappingsResponse, error)
+
+	// ListScimEventsWithResponse performs a GET /api/v1/scim/scim-events (the `ListScimEvents` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListScimEventsWithResponse(ctx context.Context, params *ListScimEventsParams, reqEditors ...RequestEditorFn) (*ListScimEventsResponse, error)
+
+	// ListScimTokensWithResponse performs a GET /api/v1/scim/scim-tokens (the `ListScimTokens` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListScimTokensWithResponse(ctx context.Context, params *ListScimTokensParams, reqEditors ...RequestEditorFn) (*ListScimTokensResponse, error)
+
+	// CreateScimTokenWithBodyWithResponse performs a POST /api/v1/scim/scim-tokens (the `CreateScimToken` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateScimTokenWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScimTokenResponse, error)
+
+	// CreateScimTokenWithResponse performs a POST /api/v1/scim/scim-tokens (the `CreateScimToken` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateScimTokenWithResponse(ctx context.Context, body CreateScimTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScimTokenResponse, error)
+
+	// DeleteScimTokenWithResponse performs a DELETE /api/v1/scim/scim-tokens/{scimTokenId} (the `DeleteScimToken` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteScimTokenWithResponse(ctx context.Context, scimTokenId string, reqEditors ...RequestEditorFn) (*DeleteScimTokenResponse, error)
+
 	// ListSecretApprovalRequestsWithResponse performs a GET /api/v1/secret-approval-requests (the `ListSecretApprovalRequests` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -28935,6 +33510,51 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create SAML config.
 	CreateSamlConfigWithResponse(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error)
+
+	// OidcCallbackWithResponse performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	OidcCallbackWithResponse(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*OidcCallbackResponse, error)
+
+	// GetOidcConfigWithResponse performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
+	//
+	// Get OIDC config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetOidcConfigWithResponse(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error)
+
+	// UpdateOidcConfigWithBodyWithResponse performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update OIDC config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateOidcConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOidcConfigResponse, error)
+
+	// UpdateOidcConfigWithResponse performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update OIDC config.
+	UpdateOidcConfigWithResponse(ctx context.Context, body UpdateOidcConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOidcConfigResponse, error)
+
+	// CreateOidcConfigWithBodyWithResponse performs a POST /api/v1/sso/oidc/config (the `CreateOidcConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create OIDC config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateOidcConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOidcConfigResponse, error)
+
+	// CreateOidcConfigWithResponse performs a POST /api/v1/sso/oidc/config (the `CreateOidcConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create OIDC config.
+	CreateOidcConfigWithResponse(ctx context.Context, body CreateOidcConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOidcConfigResponse, error)
+
+	// RedirectOidcLoginWithResponse performs a GET /api/v1/sso/oidc/login (the `RedirectOidcLogin` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RedirectOidcLoginWithResponse(ctx context.Context, params *RedirectOidcLoginParams, reqEditors ...RequestEditorFn) (*RedirectOidcLoginResponse, error)
 
 	// RedirectOrgSSOWithResponse performs a GET /api/v1/sso/redirect/organizations/{orgSlug} (the `RedirectOrgSSO` operationId) request.
 	//
@@ -29078,6 +33698,16 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
+
+	// RequestEmailChangeOtpWithBodyWithResponse performs a POST /api/v2/users/me/email-change/otp (the `RequestEmailChangeOtp` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RequestEmailChangeOtpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestEmailChangeOtpResponse, error)
+
+	// RequestEmailChangeOtpWithResponse performs a POST /api/v2/users/me/email-change/otp (the `RequestEmailChangeOtp` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	RequestEmailChangeOtpWithResponse(ctx context.Context, body RequestEmailChangeOtpJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestEmailChangeOtpResponse, error)
 
 	// CreateProjectRoleWithBodyWithResponse performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
 	// with any type of body and a specified content type.
@@ -29652,6 +34282,7 @@ type UpdateAdminConfigResponse struct {
 			AdminIdentityIds                       *[]string           `json:"adminIdentityIds,omitempty"`
 			AllowSignUp                            *bool               `json:"allowSignUp,omitempty"`
 			AllowedSignUpDomain                    *string             `json:"allowedSignUpDomain,omitempty"`
+			AllowedStorageHostnames                *[]string           `json:"allowedStorageHostnames,omitempty"`
 			AuthConsentContent                     *string             `json:"authConsentContent,omitempty"`
 			CreatedAt                              *time.Time          `json:"createdAt,omitempty"`
 			DefaultAuthOrgAuthEnforced             *bool               `json:"defaultAuthOrgAuthEnforced,omitempty"`
@@ -29685,6 +34316,18 @@ type UpdateAdminConfigResponse struct {
 					ValidationMessage        string   `json:"validationMessage"`
 				} `json:"requirements"`
 			} `json:"passwordPolicy"`
+			Pkcs12PasswordPolicy struct {
+				Requirements []struct {
+					Code                     string   `json:"code"`
+					Flags                    *string  `json:"flags,omitempty"`
+					IsPrimary                bool     `json:"isPrimary"`
+					MaxConsecutiveCharacters *int     `json:"maxConsecutiveCharacters,omitempty"`
+					Message                  string   `json:"message"`
+					Patterns                 []string `json:"patterns"`
+					ShouldMatch              bool     `json:"shouldMatch"`
+					ValidationMessage        string   `json:"validationMessage"`
+				} `json:"requirements"`
+			} `json:"pkcs12PasswordPolicy"`
 			TrustLdapEmails *bool `json:"trustLdapEmails,omitempty"`
 		} `json:"config"`
 	}
@@ -29740,6 +34383,7 @@ func (r UpdateAdminConfigResponse) GetJSON200() *struct {
 		AdminIdentityIds                       *[]string           `json:"adminIdentityIds,omitempty"`
 		AllowSignUp                            *bool               `json:"allowSignUp,omitempty"`
 		AllowedSignUpDomain                    *string             `json:"allowedSignUpDomain,omitempty"`
+		AllowedStorageHostnames                *[]string           `json:"allowedStorageHostnames,omitempty"`
 		AuthConsentContent                     *string             `json:"authConsentContent,omitempty"`
 		CreatedAt                              *time.Time          `json:"createdAt,omitempty"`
 		DefaultAuthOrgAuthEnforced             *bool               `json:"defaultAuthOrgAuthEnforced,omitempty"`
@@ -29773,6 +34417,18 @@ func (r UpdateAdminConfigResponse) GetJSON200() *struct {
 				ValidationMessage        string   `json:"validationMessage"`
 			} `json:"requirements"`
 		} `json:"passwordPolicy"`
+		Pkcs12PasswordPolicy struct {
+			Requirements []struct {
+				Code                     string   `json:"code"`
+				Flags                    *string  `json:"flags,omitempty"`
+				IsPrimary                bool     `json:"isPrimary"`
+				MaxConsecutiveCharacters *int     `json:"maxConsecutiveCharacters,omitempty"`
+				Message                  string   `json:"message"`
+				Patterns                 []string `json:"patterns"`
+				ShouldMatch              bool     `json:"shouldMatch"`
+				ValidationMessage        string   `json:"validationMessage"`
+			} `json:"requirements"`
+		} `json:"pkcs12PasswordPolicy"`
 		TrustLdapEmails *bool `json:"trustLdapEmails,omitempty"`
 	} `json:"config"`
 } {
@@ -35285,6 +39941,1977 @@ func (r CreateSecretTagResponse) ContentType() string {
 	return ""
 }
 
+type ListScimGroupsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Resources []struct {
+			DisplayName string `json:"displayName"`
+			Id          string `json:"id"`
+			Members     *[]struct {
+				Display *string `json:"display,omitempty"`
+				Value   string  `json:"value"`
+			} `json:"members,omitempty"`
+			Meta struct {
+				ResourceType string `json:"resourceType"`
+			} `json:"meta"`
+			Schemas []string `json:"schemas"`
+		} `json:"Resources"`
+		ItemsPerPage float32  `json:"itemsPerPage"`
+		Schemas      []string `json:"schemas"`
+		StartIndex   float32  `json:"startIndex"`
+		TotalResults float32  `json:"totalResults"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListScimGroupsResponse) GetJSON200() *struct {
+	Resources []struct {
+		DisplayName string `json:"displayName"`
+		Id          string `json:"id"`
+		Members     *[]struct {
+			Display *string `json:"display,omitempty"`
+			Value   string  `json:"value"`
+		} `json:"members,omitempty"`
+		Meta struct {
+			ResourceType string `json:"resourceType"`
+		} `json:"meta"`
+		Schemas []string `json:"schemas"`
+	} `json:"Resources"`
+	ItemsPerPage float32  `json:"itemsPerPage"`
+	Schemas      []string `json:"schemas"`
+	StartIndex   float32  `json:"startIndex"`
+	TotalResults float32  `json:"totalResults"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListScimGroupsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListScimGroupsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListScimGroupsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListScimGroupsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateScimGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		DisplayName string `json:"displayName"`
+		Id          string `json:"id"`
+		Members     *[]struct {
+			Display *string `json:"display,omitempty"`
+			Value   string  `json:"value"`
+		} `json:"members,omitempty"`
+		Meta struct {
+			ResourceType string `json:"resourceType"`
+		} `json:"meta"`
+		Schemas []string `json:"schemas"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateScimGroupResponse) GetJSON200() *struct {
+	DisplayName string `json:"displayName"`
+	Id          string `json:"id"`
+	Members     *[]struct {
+		Display *string `json:"display,omitempty"`
+		Value   string  `json:"value"`
+	} `json:"members,omitempty"`
+	Meta struct {
+		ResourceType string `json:"resourceType"`
+	} `json:"meta"`
+	Schemas []string `json:"schemas"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateScimGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateScimGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateScimGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateScimGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteScimGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON204 the response for an HTTP 204 `application/json` response
+	JSON204 *string
+}
+
+// GetJSON204 returns the response for an HTTP 204 `application/json` response
+func (r DeleteScimGroupResponse) GetJSON204() *string {
+	return r.JSON204
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteScimGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteScimGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteScimGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteScimGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetScimGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		DisplayName string `json:"displayName"`
+		Id          string `json:"id"`
+		Members     *[]struct {
+			Display *string `json:"display,omitempty"`
+			Value   string  `json:"value"`
+		} `json:"members,omitempty"`
+		Meta struct {
+			ResourceType string `json:"resourceType"`
+		} `json:"meta"`
+		Schemas []string `json:"schemas"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetScimGroupResponse) GetJSON200() *struct {
+	DisplayName string `json:"displayName"`
+	Id          string `json:"id"`
+	Members     *[]struct {
+		Display *string `json:"display,omitempty"`
+		Value   string  `json:"value"`
+	} `json:"members,omitempty"`
+	Meta struct {
+		ResourceType string `json:"resourceType"`
+	} `json:"meta"`
+	Schemas []string `json:"schemas"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetScimGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetScimGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetScimGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetScimGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PatchScimGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		DisplayName string `json:"displayName"`
+		Id          string `json:"id"`
+		Members     *[]struct {
+			Display *string `json:"display,omitempty"`
+			Value   string  `json:"value"`
+		} `json:"members,omitempty"`
+		Meta struct {
+			ResourceType string `json:"resourceType"`
+		} `json:"meta"`
+		Schemas []string `json:"schemas"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PatchScimGroupResponse) GetJSON200() *struct {
+	DisplayName string `json:"displayName"`
+	Id          string `json:"id"`
+	Members     *[]struct {
+		Display *string `json:"display,omitempty"`
+		Value   string  `json:"value"`
+	} `json:"members,omitempty"`
+	Meta struct {
+		ResourceType string `json:"resourceType"`
+	} `json:"meta"`
+	Schemas []string `json:"schemas"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r PatchScimGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchScimGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchScimGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PatchScimGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReplaceScimGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		DisplayName string `json:"displayName"`
+		Id          string `json:"id"`
+		Members     *[]struct {
+			Display *string `json:"display,omitempty"`
+			Value   string  `json:"value"`
+		} `json:"members,omitempty"`
+		Meta struct {
+			ResourceType string `json:"resourceType"`
+		} `json:"meta"`
+		Schemas []string `json:"schemas"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReplaceScimGroupResponse) GetJSON200() *struct {
+	DisplayName string `json:"displayName"`
+	Id          string `json:"id"`
+	Members     *[]struct {
+		Display *string `json:"display,omitempty"`
+		Value   string  `json:"value"`
+	} `json:"members,omitempty"`
+	Meta struct {
+		ResourceType string `json:"resourceType"`
+	} `json:"meta"`
+	Schemas []string `json:"schemas"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ReplaceScimGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReplaceScimGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReplaceScimGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReplaceScimGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetScimServiceProviderConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuthenticationSchemes []struct {
+			Description      string  `json:"description"`
+			DocumentationUri *string `json:"documentationUri,omitempty"`
+			Name             string  `json:"name"`
+			Primary          *bool   `json:"primary,omitempty"`
+			SpecUri          *string `json:"specUri,omitempty"`
+			Type             string  `json:"type"`
+		} `json:"authenticationSchemes"`
+		Bulk struct {
+			MaxOperations  float32 `json:"maxOperations"`
+			MaxPayloadSize float32 `json:"maxPayloadSize"`
+			Supported      bool    `json:"supported"`
+		} `json:"bulk"`
+		ChangePassword struct {
+			Supported bool `json:"supported"`
+		} `json:"changePassword"`
+		DocumentationUri *string `json:"documentationUri,omitempty"`
+		Etag             struct {
+			Supported bool `json:"supported"`
+		} `json:"etag"`
+		Filter struct {
+			MaxResults float32 `json:"maxResults"`
+			Supported  bool    `json:"supported"`
+		} `json:"filter"`
+		Meta struct {
+			Location     *string `json:"location,omitempty"`
+			ResourceType string  `json:"resourceType"`
+		} `json:"meta"`
+		Patch struct {
+			Supported bool `json:"supported"`
+		} `json:"patch"`
+		Schemas []string `json:"schemas"`
+		Sort    struct {
+			Supported bool `json:"supported"`
+		} `json:"sort"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode GetScimServiceProviderConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode GetScimServiceProviderConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode GetScimServiceProviderConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode GetScimServiceProviderConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                    `json:"error"`
+		Message    interface{}                                               `json:"message,omitempty"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode GetScimServiceProviderConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode GetScimServiceProviderConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetScimServiceProviderConfigResponse) GetJSON200() *struct {
+	AuthenticationSchemes []struct {
+		Description      string  `json:"description"`
+		DocumentationUri *string `json:"documentationUri,omitempty"`
+		Name             string  `json:"name"`
+		Primary          *bool   `json:"primary,omitempty"`
+		SpecUri          *string `json:"specUri,omitempty"`
+		Type             string  `json:"type"`
+	} `json:"authenticationSchemes"`
+	Bulk struct {
+		MaxOperations  float32 `json:"maxOperations"`
+		MaxPayloadSize float32 `json:"maxPayloadSize"`
+		Supported      bool    `json:"supported"`
+	} `json:"bulk"`
+	ChangePassword struct {
+		Supported bool `json:"supported"`
+	} `json:"changePassword"`
+	DocumentationUri *string `json:"documentationUri,omitempty"`
+	Etag             struct {
+		Supported bool `json:"supported"`
+	} `json:"etag"`
+	Filter struct {
+		MaxResults float32 `json:"maxResults"`
+		Supported  bool    `json:"supported"`
+	} `json:"filter"`
+	Meta struct {
+		Location     *string `json:"location,omitempty"`
+		ResourceType string  `json:"resourceType"`
+	} `json:"meta"`
+	Patch struct {
+		Supported bool `json:"supported"`
+	} `json:"patch"`
+	Schemas []string `json:"schemas"`
+	Sort    struct {
+		Supported bool `json:"supported"`
+	} `json:"sort"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetScimServiceProviderConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode GetScimServiceProviderConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetScimServiceProviderConfigResponse) GetJSON401() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode GetScimServiceProviderConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetScimServiceProviderConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode GetScimServiceProviderConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetScimServiceProviderConfigResponse) GetJSON404() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode GetScimServiceProviderConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetScimServiceProviderConfigResponse) GetJSON422() *struct {
+	Error      string                                                    `json:"error"`
+	Message    interface{}                                               `json:"message,omitempty"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode GetScimServiceProviderConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetScimServiceProviderConfigResponse) GetJSON500() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode GetScimServiceProviderConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetScimServiceProviderConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetScimServiceProviderConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetScimServiceProviderConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetScimServiceProviderConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListScimUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Resources []struct {
+			Active      ListScimUsers200JSONResponseBody_Resources_Active `json:"active"`
+			DisplayName string                                            `json:"displayName"`
+			Emails      *[]struct {
+				Primary bool                `json:"primary"`
+				Type    *string             `json:"type,omitempty"`
+				Value   openapi_types.Email `json:"value"`
+			} `json:"emails,omitempty"`
+			Id   string `json:"id"`
+			Name *struct {
+				FamilyName *string `json:"familyName,omitempty"`
+				GivenName  *string `json:"givenName,omitempty"`
+			} `json:"name,omitempty"`
+			Schemas  []string `json:"schemas"`
+			UserName string   `json:"userName"`
+		} `json:"Resources"`
+		ItemsPerPage float32  `json:"itemsPerPage"`
+		Schemas      []string `json:"schemas"`
+		StartIndex   float32  `json:"startIndex"`
+		TotalResults float32  `json:"totalResults"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListScimUsersResponse) GetJSON200() *struct {
+	Resources []struct {
+		Active      ListScimUsers200JSONResponseBody_Resources_Active `json:"active"`
+		DisplayName string                                            `json:"displayName"`
+		Emails      *[]struct {
+			Primary bool                `json:"primary"`
+			Type    *string             `json:"type,omitempty"`
+			Value   openapi_types.Email `json:"value"`
+		} `json:"emails,omitempty"`
+		Id   string `json:"id"`
+		Name *struct {
+			FamilyName *string `json:"familyName,omitempty"`
+			GivenName  *string `json:"givenName,omitempty"`
+		} `json:"name,omitempty"`
+		Schemas  []string `json:"schemas"`
+		UserName string   `json:"userName"`
+	} `json:"Resources"`
+	ItemsPerPage float32  `json:"itemsPerPage"`
+	Schemas      []string `json:"schemas"`
+	StartIndex   float32  `json:"startIndex"`
+	TotalResults float32  `json:"totalResults"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListScimUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListScimUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListScimUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListScimUsersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateScimUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Active      CreateScimUser200JSONResponseBody_Active `json:"active"`
+		DisplayName string                                   `json:"displayName"`
+		Emails      *[]struct {
+			Primary bool                `json:"primary"`
+			Type    *string             `json:"type,omitempty"`
+			Value   openapi_types.Email `json:"value"`
+		} `json:"emails,omitempty"`
+		Id   string `json:"id"`
+		Name *struct {
+			FamilyName *string `json:"familyName,omitempty"`
+			GivenName  *string `json:"givenName,omitempty"`
+		} `json:"name,omitempty"`
+		Schemas  []string `json:"schemas"`
+		UserName string   `json:"userName"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateScimUserResponse) GetJSON200() *struct {
+	Active      CreateScimUser200JSONResponseBody_Active `json:"active"`
+	DisplayName string                                   `json:"displayName"`
+	Emails      *[]struct {
+		Primary bool                `json:"primary"`
+		Type    *string             `json:"type,omitempty"`
+		Value   openapi_types.Email `json:"value"`
+	} `json:"emails,omitempty"`
+	Id   string `json:"id"`
+	Name *struct {
+		FamilyName *string `json:"familyName,omitempty"`
+		GivenName  *string `json:"givenName,omitempty"`
+	} `json:"name,omitempty"`
+	Schemas  []string `json:"schemas"`
+	UserName string   `json:"userName"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateScimUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateScimUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateScimUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateScimUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteScimUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON204 the response for an HTTP 204 `application/json` response
+	JSON204 *string
+}
+
+// GetJSON204 returns the response for an HTTP 204 `application/json` response
+func (r DeleteScimUserResponse) GetJSON204() *string {
+	return r.JSON204
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteScimUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteScimUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteScimUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteScimUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetScimUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Active      GetScimUser200JSONResponseBody_Active `json:"active"`
+		DisplayName string                                `json:"displayName"`
+		Emails      *[]struct {
+			Primary bool                `json:"primary"`
+			Type    *string             `json:"type,omitempty"`
+			Value   openapi_types.Email `json:"value"`
+		} `json:"emails,omitempty"`
+		Id   string `json:"id"`
+		Name *struct {
+			FamilyName *string `json:"familyName,omitempty"`
+			GivenName  *string `json:"givenName,omitempty"`
+		} `json:"name,omitempty"`
+		Schemas  []string `json:"schemas"`
+		UserName string   `json:"userName"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetScimUserResponse) GetJSON200() *struct {
+	Active      GetScimUser200JSONResponseBody_Active `json:"active"`
+	DisplayName string                                `json:"displayName"`
+	Emails      *[]struct {
+		Primary bool                `json:"primary"`
+		Type    *string             `json:"type,omitempty"`
+		Value   openapi_types.Email `json:"value"`
+	} `json:"emails,omitempty"`
+	Id   string `json:"id"`
+	Name *struct {
+		FamilyName *string `json:"familyName,omitempty"`
+		GivenName  *string `json:"givenName,omitempty"`
+	} `json:"name,omitempty"`
+	Schemas  []string `json:"schemas"`
+	UserName string   `json:"userName"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetScimUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetScimUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetScimUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetScimUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PatchScimUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Active      PatchScimUser200JSONResponseBody_Active `json:"active"`
+		DisplayName string                                  `json:"displayName"`
+		Emails      *[]struct {
+			Primary bool                `json:"primary"`
+			Type    *string             `json:"type,omitempty"`
+			Value   openapi_types.Email `json:"value"`
+		} `json:"emails,omitempty"`
+		Id   string `json:"id"`
+		Name *struct {
+			FamilyName *string `json:"familyName,omitempty"`
+			GivenName  *string `json:"givenName,omitempty"`
+		} `json:"name,omitempty"`
+		Schemas  []string `json:"schemas"`
+		UserName string   `json:"userName"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PatchScimUserResponse) GetJSON200() *struct {
+	Active      PatchScimUser200JSONResponseBody_Active `json:"active"`
+	DisplayName string                                  `json:"displayName"`
+	Emails      *[]struct {
+		Primary bool                `json:"primary"`
+		Type    *string             `json:"type,omitempty"`
+		Value   openapi_types.Email `json:"value"`
+	} `json:"emails,omitempty"`
+	Id   string `json:"id"`
+	Name *struct {
+		FamilyName *string `json:"familyName,omitempty"`
+		GivenName  *string `json:"givenName,omitempty"`
+	} `json:"name,omitempty"`
+	Schemas  []string `json:"schemas"`
+	UserName string   `json:"userName"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r PatchScimUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchScimUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchScimUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PatchScimUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReplaceScimUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Active      bool   `json:"active"`
+		DisplayName string `json:"displayName"`
+		Emails      []struct {
+			Primary bool                `json:"primary"`
+			Type    *string             `json:"type,omitempty"`
+			Value   openapi_types.Email `json:"value"`
+		} `json:"emails"`
+		Id   string `json:"id"`
+		Name struct {
+			FamilyName string `json:"familyName"`
+			GivenName  string `json:"givenName"`
+		} `json:"name"`
+		Schemas  []string `json:"schemas"`
+		UserName string   `json:"userName"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReplaceScimUserResponse) GetJSON200() *struct {
+	Active      bool   `json:"active"`
+	DisplayName string `json:"displayName"`
+	Emails      []struct {
+		Primary bool                `json:"primary"`
+		Type    *string             `json:"type,omitempty"`
+		Value   openapi_types.Email `json:"value"`
+	} `json:"emails"`
+	Id   string `json:"id"`
+	Name struct {
+		FamilyName string `json:"familyName"`
+		GivenName  string `json:"givenName"`
+	} `json:"name"`
+	Schemas  []string `json:"schemas"`
+	UserName string   `json:"userName"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ReplaceScimUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReplaceScimUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReplaceScimUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReplaceScimUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListExternalGroupOrgRoleMappingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]struct {
+		CreatedAt time.Time           `json:"createdAt"`
+		GroupName string              `json:"groupName"`
+		Id        openapi_types.UUID  `json:"id"`
+		OrgId     openapi_types.UUID  `json:"orgId"`
+		Role      string              `json:"role"`
+		RoleId    *openapi_types.UUID `json:"roleId,omitempty"`
+		UpdatedAt time.Time           `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListExternalGroupOrgRoleMappingsResponse) GetJSON200() *[]struct {
+	CreatedAt time.Time           `json:"createdAt"`
+	GroupName string              `json:"groupName"`
+	Id        openapi_types.UUID  `json:"id"`
+	OrgId     openapi_types.UUID  `json:"orgId"`
+	Role      string              `json:"role"`
+	RoleId    *openapi_types.UUID `json:"roleId,omitempty"`
+	UpdatedAt time.Time           `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListExternalGroupOrgRoleMappingsResponse) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListExternalGroupOrgRoleMappingsResponse) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListExternalGroupOrgRoleMappingsResponse) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListExternalGroupOrgRoleMappingsResponse) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListExternalGroupOrgRoleMappingsResponse) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListExternalGroupOrgRoleMappingsResponse) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListExternalGroupOrgRoleMappingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExternalGroupOrgRoleMappingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExternalGroupOrgRoleMappingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListExternalGroupOrgRoleMappingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateExternalGroupOrgRoleMappingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]struct {
+		CreatedAt time.Time           `json:"createdAt"`
+		GroupName string              `json:"groupName"`
+		Id        openapi_types.UUID  `json:"id"`
+		OrgId     openapi_types.UUID  `json:"orgId"`
+		Role      string              `json:"role"`
+		RoleId    *openapi_types.UUID `json:"roleId,omitempty"`
+		UpdatedAt time.Time           `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                     `json:"details,omitempty"`
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                     `json:"details,omitempty"`
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                          `json:"error"`
+		Message    interface{}                                                     `json:"message,omitempty"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateExternalGroupOrgRoleMappingsResponse) GetJSON200() *[]struct {
+	CreatedAt time.Time           `json:"createdAt"`
+	GroupName string              `json:"groupName"`
+	Id        openapi_types.UUID  `json:"id"`
+	OrgId     openapi_types.UUID  `json:"orgId"`
+	Role      string              `json:"role"`
+	RoleId    *openapi_types.UUID `json:"roleId,omitempty"`
+	UpdatedAt time.Time           `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateExternalGroupOrgRoleMappingsResponse) GetJSON400() *struct {
+	Details    interface{}                                                     `json:"details,omitempty"`
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateExternalGroupOrgRoleMappingsResponse) GetJSON401() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateExternalGroupOrgRoleMappingsResponse) GetJSON403() *struct {
+	Details    interface{}                                                     `json:"details,omitempty"`
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateExternalGroupOrgRoleMappingsResponse) GetJSON404() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateExternalGroupOrgRoleMappingsResponse) GetJSON422() *struct {
+	Error      string                                                          `json:"error"`
+	Message    interface{}                                                     `json:"message,omitempty"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateExternalGroupOrgRoleMappingsResponse) GetJSON500() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateExternalGroupOrgRoleMappingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateExternalGroupOrgRoleMappingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateExternalGroupOrgRoleMappingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateExternalGroupOrgRoleMappingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListScimEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ScimEvents []struct {
+			CreatedAt time.Time          `json:"createdAt"`
+			Event     interface{}        `json:"event,omitempty"`
+			EventType *string            `json:"eventType,omitempty"`
+			Id        openapi_types.UUID `json:"id"`
+			OrgId     openapi_types.UUID `json:"orgId"`
+			UpdatedAt time.Time          `json:"updatedAt"`
+		} `json:"scimEvents"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimEvents400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimEvents401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimEvents403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimEvents404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                      `json:"error"`
+		Message    interface{}                                 `json:"message,omitempty"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimEvents422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimEvents500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListScimEventsResponse) GetJSON200() *struct {
+	ScimEvents []struct {
+		CreatedAt time.Time          `json:"createdAt"`
+		Event     interface{}        `json:"event,omitempty"`
+		EventType *string            `json:"eventType,omitempty"`
+		Id        openapi_types.UUID `json:"id"`
+		OrgId     openapi_types.UUID `json:"orgId"`
+		UpdatedAt time.Time          `json:"updatedAt"`
+	} `json:"scimEvents"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListScimEventsResponse) GetJSON400() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimEvents400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListScimEventsResponse) GetJSON401() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimEvents401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListScimEventsResponse) GetJSON403() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimEvents403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListScimEventsResponse) GetJSON404() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimEvents404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListScimEventsResponse) GetJSON422() *struct {
+	Error      string                                      `json:"error"`
+	Message    interface{}                                 `json:"message,omitempty"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimEvents422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListScimEventsResponse) GetJSON500() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimEvents500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListScimEventsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListScimEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListScimEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListScimEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListScimTokensResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ScimTokens []struct {
+			CreatedAt              time.Time          `json:"createdAt"`
+			Description            string             `json:"description"`
+			ExpiryNotificationSent *bool              `json:"expiryNotificationSent,omitempty"`
+			Id                     string             `json:"id"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			TtlDays                *float32           `json:"ttlDays,omitempty"`
+			UpdatedAt              time.Time          `json:"updatedAt"`
+		} `json:"scimTokens"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimTokens400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimTokens401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimTokens403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimTokens404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                      `json:"error"`
+		Message    interface{}                                 `json:"message,omitempty"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimTokens422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode ListScimTokens500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListScimTokensResponse) GetJSON200() *struct {
+	ScimTokens []struct {
+		CreatedAt              time.Time          `json:"createdAt"`
+		Description            string             `json:"description"`
+		ExpiryNotificationSent *bool              `json:"expiryNotificationSent,omitempty"`
+		Id                     string             `json:"id"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		TtlDays                *float32           `json:"ttlDays,omitempty"`
+		UpdatedAt              time.Time          `json:"updatedAt"`
+	} `json:"scimTokens"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListScimTokensResponse) GetJSON400() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimTokens400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListScimTokensResponse) GetJSON401() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimTokens401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListScimTokensResponse) GetJSON403() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimTokens403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListScimTokensResponse) GetJSON404() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimTokens404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListScimTokensResponse) GetJSON422() *struct {
+	Error      string                                      `json:"error"`
+	Message    interface{}                                 `json:"message,omitempty"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimTokens422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListScimTokensResponse) GetJSON500() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode ListScimTokens500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListScimTokensResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListScimTokensResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListScimTokensResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListScimTokensResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateScimTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ScimToken string `json:"scimToken"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                  `json:"details,omitempty"`
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode CreateScimToken400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode CreateScimToken401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                  `json:"details,omitempty"`
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode CreateScimToken403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode CreateScimToken404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                       `json:"error"`
+		Message    interface{}                                  `json:"message,omitempty"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode CreateScimToken422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode CreateScimToken500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateScimTokenResponse) GetJSON200() *struct {
+	ScimToken string `json:"scimToken"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateScimTokenResponse) GetJSON400() *struct {
+	Details    interface{}                                  `json:"details,omitempty"`
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode CreateScimToken400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateScimTokenResponse) GetJSON401() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode CreateScimToken401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateScimTokenResponse) GetJSON403() *struct {
+	Details    interface{}                                  `json:"details,omitempty"`
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode CreateScimToken403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateScimTokenResponse) GetJSON404() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode CreateScimToken404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateScimTokenResponse) GetJSON422() *struct {
+	Error      string                                       `json:"error"`
+	Message    interface{}                                  `json:"message,omitempty"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode CreateScimToken422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateScimTokenResponse) GetJSON500() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode CreateScimToken500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateScimTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateScimTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateScimTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateScimTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteScimTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ScimToken struct {
+			CreatedAt              time.Time          `json:"createdAt"`
+			Description            string             `json:"description"`
+			ExpiryNotificationSent *bool              `json:"expiryNotificationSent,omitempty"`
+			Id                     string             `json:"id"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			TtlDays                *float32           `json:"ttlDays,omitempty"`
+			UpdatedAt              time.Time          `json:"updatedAt"`
+		} `json:"scimToken"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                  `json:"details,omitempty"`
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode DeleteScimToken400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode DeleteScimToken401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                  `json:"details,omitempty"`
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode DeleteScimToken403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode DeleteScimToken404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                       `json:"error"`
+		Message    interface{}                                  `json:"message,omitempty"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode DeleteScimToken422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode DeleteScimToken500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteScimTokenResponse) GetJSON200() *struct {
+	ScimToken struct {
+		CreatedAt              time.Time          `json:"createdAt"`
+		Description            string             `json:"description"`
+		ExpiryNotificationSent *bool              `json:"expiryNotificationSent,omitempty"`
+		Id                     string             `json:"id"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		TtlDays                *float32           `json:"ttlDays,omitempty"`
+		UpdatedAt              time.Time          `json:"updatedAt"`
+	} `json:"scimToken"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteScimTokenResponse) GetJSON400() *struct {
+	Details    interface{}                                  `json:"details,omitempty"`
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode DeleteScimToken400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteScimTokenResponse) GetJSON401() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode DeleteScimToken401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteScimTokenResponse) GetJSON403() *struct {
+	Details    interface{}                                  `json:"details,omitempty"`
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode DeleteScimToken403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteScimTokenResponse) GetJSON404() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode DeleteScimToken404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteScimTokenResponse) GetJSON422() *struct {
+	Error      string                                       `json:"error"`
+	Message    interface{}                                  `json:"message,omitempty"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode DeleteScimToken422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteScimTokenResponse) GetJSON500() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode DeleteScimToken500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteScimTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteScimTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteScimTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteScimTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListSecretApprovalRequestsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -35340,6 +41967,7 @@ type ListSecretApprovalRequestsResponse struct {
 				Status string `json:"status"`
 				UserId string `json:"userId"`
 			} `json:"reviewers"`
+			SecretPath            string              `json:"secretPath"`
 			Slug                  string              `json:"slug"`
 			Status                *string             `json:"status,omitempty"`
 			StatusChangedByUserId *openapi_types.UUID `json:"statusChangedByUserId,omitempty"`
@@ -35445,6 +42073,7 @@ func (r ListSecretApprovalRequestsResponse) GetJSON200() *struct {
 			Status string `json:"status"`
 			UserId string `json:"userId"`
 		} `json:"reviewers"`
+		SecretPath            string              `json:"secretPath"`
 		Slug                  string              `json:"slug"`
 		Status                *string             `json:"status,omitempty"`
 		StatusChangedByUserId *openapi_types.UUID `json:"statusChangedByUserId,omitempty"`
@@ -38441,6 +45070,601 @@ func (r CreateSamlConfigResponse) ContentType() string {
 	return ""
 }
 
+type OidcCallbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r OidcCallbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OidcCallbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OidcCallbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OidcCallbackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOidcConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+		AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+		ClientId               string             `json:"clientId"`
+		ClientSecret           string             `json:"clientSecret"`
+		ConfigurationType      string             `json:"configurationType"`
+		DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+		Id                     openapi_types.UUID `json:"id"`
+		IsActive               bool               `json:"isActive"`
+		Issuer                 *string            `json:"issuer,omitempty"`
+		JwksUri                *string            `json:"jwksUri,omitempty"`
+		JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+		UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                     `json:"error"`
+		Message    interface{}                                `json:"message,omitempty"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOidcConfigResponse) GetJSON200() *struct {
+	AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+	AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+	ClientId               string             `json:"clientId"`
+	ClientSecret           string             `json:"clientSecret"`
+	ConfigurationType      string             `json:"configurationType"`
+	DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+	Id                     openapi_types.UUID `json:"id"`
+	IsActive               bool               `json:"isActive"`
+	Issuer                 *string            `json:"issuer,omitempty"`
+	JwksUri                *string            `json:"jwksUri,omitempty"`
+	JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+	OrgId                  openapi_types.UUID `json:"orgId"`
+	TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+	UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetOidcConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOidcConfigResponse) GetJSON401() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOidcConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOidcConfigResponse) GetJSON404() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetOidcConfigResponse) GetJSON422() *struct {
+	Error      string                                     `json:"error"`
+	Message    interface{}                                `json:"message,omitempty"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetOidcConfigResponse) GetJSON500() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOidcConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOidcConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOidcConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOidcConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateOidcConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+		AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+		ConfigurationType      string             `json:"configurationType"`
+		DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+		Id                     openapi_types.UUID `json:"id"`
+		IsActive               bool               `json:"isActive"`
+		Issuer                 *string            `json:"issuer,omitempty"`
+		JwksUri                *string            `json:"jwksUri,omitempty"`
+		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+		UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateOidcConfigResponse) GetJSON200() *struct {
+	AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+	AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+	ConfigurationType      string             `json:"configurationType"`
+	DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+	Id                     openapi_types.UUID `json:"id"`
+	IsActive               bool               `json:"isActive"`
+	Issuer                 *string            `json:"issuer,omitempty"`
+	JwksUri                *string            `json:"jwksUri,omitempty"`
+	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+	OrgId                  openapi_types.UUID `json:"orgId"`
+	TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+	UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateOidcConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateOidcConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateOidcConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateOidcConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateOidcConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateOidcConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateOidcConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOidcConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOidcConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateOidcConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateOidcConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+		AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+		ConfigurationType      string             `json:"configurationType"`
+		DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+		Id                     openapi_types.UUID `json:"id"`
+		IsActive               bool               `json:"isActive"`
+		Issuer                 *string            `json:"issuer,omitempty"`
+		JwksUri                *string            `json:"jwksUri,omitempty"`
+		JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+		UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateOidcConfigResponse) GetJSON200() *struct {
+	AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+	AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+	ConfigurationType      string             `json:"configurationType"`
+	DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+	Id                     openapi_types.UUID `json:"id"`
+	IsActive               bool               `json:"isActive"`
+	Issuer                 *string            `json:"issuer,omitempty"`
+	JwksUri                *string            `json:"jwksUri,omitempty"`
+	JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+	OrgId                  openapi_types.UUID `json:"orgId"`
+	TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+	UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateOidcConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateOidcConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateOidcConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateOidcConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateOidcConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateOidcConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateOidcConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateOidcConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateOidcConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateOidcConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RedirectOidcLoginResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r RedirectOidcLoginResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RedirectOidcLoginResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RedirectOidcLoginResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RedirectOidcLoginResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RedirectOrgSSOResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -41222,6 +48446,159 @@ func (r GetCurrentUserResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetCurrentUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RequestEmailChangeOtpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Message string `json:"message"`
+		Success bool   `json:"success"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode RequestEmailChangeOtp400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode RequestEmailChangeOtp401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode RequestEmailChangeOtp403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode RequestEmailChangeOtp404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                             `json:"error"`
+		Message    interface{}                                        `json:"message,omitempty"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode RequestEmailChangeOtp422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode RequestEmailChangeOtp500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RequestEmailChangeOtpResponse) GetJSON200() *struct {
+	Message string `json:"message"`
+	Success bool   `json:"success"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RequestEmailChangeOtpResponse) GetJSON400() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode RequestEmailChangeOtp400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RequestEmailChangeOtpResponse) GetJSON401() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode RequestEmailChangeOtp401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RequestEmailChangeOtpResponse) GetJSON403() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode RequestEmailChangeOtp403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RequestEmailChangeOtpResponse) GetJSON404() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode RequestEmailChangeOtp404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RequestEmailChangeOtpResponse) GetJSON422() *struct {
+	Error      string                                             `json:"error"`
+	Message    interface{}                                        `json:"message,omitempty"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode RequestEmailChangeOtp422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RequestEmailChangeOtpResponse) GetJSON500() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode RequestEmailChangeOtp500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RequestEmailChangeOtpResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RequestEmailChangeOtpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RequestEmailChangeOtpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RequestEmailChangeOtpResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -45120,6 +52497,303 @@ func (c *ClientWithResponses) CreateSecretTagWithResponse(ctx context.Context, p
 	return ParseCreateSecretTagResponse(rsp)
 }
 
+// ListScimGroupsWithResponse performs a GET /api/v1/scim/Groups (the `ListScimGroups` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListScimGroupsWithResponse(ctx context.Context, params *ListScimGroupsParams, reqEditors ...RequestEditorFn) (*ListScimGroupsResponse, error) {
+	rsp, err := c.ListScimGroups(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListScimGroupsResponse(rsp)
+}
+
+// CreateScimGroupWithBodyWithResponse performs a POST /api/v1/scim/Groups (the `CreateScimGroup` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateScimGroupWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScimGroupResponse, error) {
+	rsp, err := c.CreateScimGroupWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateScimGroupResponse(rsp)
+}
+
+// CreateScimGroupWithResponse performs a POST /api/v1/scim/Groups (the `CreateScimGroup` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateScimGroupWithResponse(ctx context.Context, body CreateScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScimGroupResponse, error) {
+	rsp, err := c.CreateScimGroup(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateScimGroupResponse(rsp)
+}
+
+// DeleteScimGroupWithResponse performs a DELETE /api/v1/scim/Groups/{groupId} (the `DeleteScimGroup` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteScimGroupWithResponse(ctx context.Context, groupId string, reqEditors ...RequestEditorFn) (*DeleteScimGroupResponse, error) {
+	rsp, err := c.DeleteScimGroup(ctx, groupId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteScimGroupResponse(rsp)
+}
+
+// GetScimGroupWithResponse performs a GET /api/v1/scim/Groups/{groupId} (the `GetScimGroup` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetScimGroupWithResponse(ctx context.Context, groupId string, params *GetScimGroupParams, reqEditors ...RequestEditorFn) (*GetScimGroupResponse, error) {
+	rsp, err := c.GetScimGroup(ctx, groupId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetScimGroupResponse(rsp)
+}
+
+// PatchScimGroupWithBodyWithResponse performs a PATCH /api/v1/scim/Groups/{groupId} (the `PatchScimGroup` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PatchScimGroupWithBodyWithResponse(ctx context.Context, groupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchScimGroupResponse, error) {
+	rsp, err := c.PatchScimGroupWithBody(ctx, groupId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchScimGroupResponse(rsp)
+}
+
+// PatchScimGroupWithResponse performs a PATCH /api/v1/scim/Groups/{groupId} (the `PatchScimGroup` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PatchScimGroupWithResponse(ctx context.Context, groupId string, body PatchScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchScimGroupResponse, error) {
+	rsp, err := c.PatchScimGroup(ctx, groupId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchScimGroupResponse(rsp)
+}
+
+// ReplaceScimGroupWithBodyWithResponse performs a PUT /api/v1/scim/Groups/{groupId} (the `ReplaceScimGroup` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ReplaceScimGroupWithBodyWithResponse(ctx context.Context, groupId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceScimGroupResponse, error) {
+	rsp, err := c.ReplaceScimGroupWithBody(ctx, groupId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReplaceScimGroupResponse(rsp)
+}
+
+// ReplaceScimGroupWithResponse performs a PUT /api/v1/scim/Groups/{groupId} (the `ReplaceScimGroup` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ReplaceScimGroupWithResponse(ctx context.Context, groupId string, body ReplaceScimGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceScimGroupResponse, error) {
+	rsp, err := c.ReplaceScimGroup(ctx, groupId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReplaceScimGroupResponse(rsp)
+}
+
+// GetScimServiceProviderConfigWithResponse performs a GET /api/v1/scim/ServiceProviderConfig (the `GetScimServiceProviderConfig` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetScimServiceProviderConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetScimServiceProviderConfigResponse, error) {
+	rsp, err := c.GetScimServiceProviderConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetScimServiceProviderConfigResponse(rsp)
+}
+
+// ListScimUsersWithResponse performs a GET /api/v1/scim/Users (the `ListScimUsers` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListScimUsersWithResponse(ctx context.Context, params *ListScimUsersParams, reqEditors ...RequestEditorFn) (*ListScimUsersResponse, error) {
+	rsp, err := c.ListScimUsers(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListScimUsersResponse(rsp)
+}
+
+// CreateScimUserWithBodyWithResponse performs a POST /api/v1/scim/Users (the `CreateScimUser` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateScimUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScimUserResponse, error) {
+	rsp, err := c.CreateScimUserWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateScimUserResponse(rsp)
+}
+
+// CreateScimUserWithResponse performs a POST /api/v1/scim/Users (the `CreateScimUser` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateScimUserWithResponse(ctx context.Context, body CreateScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScimUserResponse, error) {
+	rsp, err := c.CreateScimUser(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateScimUserResponse(rsp)
+}
+
+// DeleteScimUserWithResponse performs a DELETE /api/v1/scim/Users/{orgMembershipId} (the `DeleteScimUser` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteScimUserWithResponse(ctx context.Context, orgMembershipId string, reqEditors ...RequestEditorFn) (*DeleteScimUserResponse, error) {
+	rsp, err := c.DeleteScimUser(ctx, orgMembershipId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteScimUserResponse(rsp)
+}
+
+// GetScimUserWithResponse performs a GET /api/v1/scim/Users/{orgMembershipId} (the `GetScimUser` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetScimUserWithResponse(ctx context.Context, orgMembershipId string, reqEditors ...RequestEditorFn) (*GetScimUserResponse, error) {
+	rsp, err := c.GetScimUser(ctx, orgMembershipId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetScimUserResponse(rsp)
+}
+
+// PatchScimUserWithBodyWithResponse performs a PATCH /api/v1/scim/Users/{orgMembershipId} (the `PatchScimUser` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PatchScimUserWithBodyWithResponse(ctx context.Context, orgMembershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchScimUserResponse, error) {
+	rsp, err := c.PatchScimUserWithBody(ctx, orgMembershipId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchScimUserResponse(rsp)
+}
+
+// PatchScimUserWithResponse performs a PATCH /api/v1/scim/Users/{orgMembershipId} (the `PatchScimUser` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PatchScimUserWithResponse(ctx context.Context, orgMembershipId string, body PatchScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchScimUserResponse, error) {
+	rsp, err := c.PatchScimUser(ctx, orgMembershipId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchScimUserResponse(rsp)
+}
+
+// ReplaceScimUserWithBodyWithResponse performs a PUT /api/v1/scim/Users/{orgMembershipId} (the `ReplaceScimUser` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ReplaceScimUserWithBodyWithResponse(ctx context.Context, orgMembershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceScimUserResponse, error) {
+	rsp, err := c.ReplaceScimUserWithBody(ctx, orgMembershipId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReplaceScimUserResponse(rsp)
+}
+
+// ReplaceScimUserWithResponse performs a PUT /api/v1/scim/Users/{orgMembershipId} (the `ReplaceScimUser` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ReplaceScimUserWithResponse(ctx context.Context, orgMembershipId string, body ReplaceScimUserJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceScimUserResponse, error) {
+	rsp, err := c.ReplaceScimUser(ctx, orgMembershipId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReplaceScimUserResponse(rsp)
+}
+
+// ListExternalGroupOrgRoleMappingsWithResponse performs a GET /api/v1/scim/group-org-role-mappings (the `ListExternalGroupOrgRoleMappings` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListExternalGroupOrgRoleMappingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExternalGroupOrgRoleMappingsResponse, error) {
+	rsp, err := c.ListExternalGroupOrgRoleMappings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExternalGroupOrgRoleMappingsResponse(rsp)
+}
+
+// UpdateExternalGroupOrgRoleMappingsWithBodyWithResponse performs a PUT /api/v1/scim/group-org-role-mappings (the `UpdateExternalGroupOrgRoleMappings` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateExternalGroupOrgRoleMappingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateExternalGroupOrgRoleMappingsResponse, error) {
+	rsp, err := c.UpdateExternalGroupOrgRoleMappingsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateExternalGroupOrgRoleMappingsResponse(rsp)
+}
+
+// UpdateExternalGroupOrgRoleMappingsWithResponse performs a PUT /api/v1/scim/group-org-role-mappings (the `UpdateExternalGroupOrgRoleMappings` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateExternalGroupOrgRoleMappingsWithResponse(ctx context.Context, body UpdateExternalGroupOrgRoleMappingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateExternalGroupOrgRoleMappingsResponse, error) {
+	rsp, err := c.UpdateExternalGroupOrgRoleMappings(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateExternalGroupOrgRoleMappingsResponse(rsp)
+}
+
+// ListScimEventsWithResponse performs a GET /api/v1/scim/scim-events (the `ListScimEvents` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListScimEventsWithResponse(ctx context.Context, params *ListScimEventsParams, reqEditors ...RequestEditorFn) (*ListScimEventsResponse, error) {
+	rsp, err := c.ListScimEvents(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListScimEventsResponse(rsp)
+}
+
+// ListScimTokensWithResponse performs a GET /api/v1/scim/scim-tokens (the `ListScimTokens` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListScimTokensWithResponse(ctx context.Context, params *ListScimTokensParams, reqEditors ...RequestEditorFn) (*ListScimTokensResponse, error) {
+	rsp, err := c.ListScimTokens(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListScimTokensResponse(rsp)
+}
+
+// CreateScimTokenWithBodyWithResponse performs a POST /api/v1/scim/scim-tokens (the `CreateScimToken` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateScimTokenWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScimTokenResponse, error) {
+	rsp, err := c.CreateScimTokenWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateScimTokenResponse(rsp)
+}
+
+// CreateScimTokenWithResponse performs a POST /api/v1/scim/scim-tokens (the `CreateScimToken` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateScimTokenWithResponse(ctx context.Context, body CreateScimTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScimTokenResponse, error) {
+	rsp, err := c.CreateScimToken(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateScimTokenResponse(rsp)
+}
+
+// DeleteScimTokenWithResponse performs a DELETE /api/v1/scim/scim-tokens/{scimTokenId} (the `DeleteScimToken` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteScimTokenWithResponse(ctx context.Context, scimTokenId string, reqEditors ...RequestEditorFn) (*DeleteScimTokenResponse, error) {
+	rsp, err := c.DeleteScimToken(ctx, scimTokenId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteScimTokenResponse(rsp)
+}
+
 // ListSecretApprovalRequestsWithResponse performs a GET /api/v1/secret-approval-requests (the `ListSecretApprovalRequests` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -45360,6 +53034,93 @@ func (c *ClientWithResponses) CreateSamlConfigWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseCreateSamlConfigResponse(rsp)
+}
+
+// OidcCallbackWithResponse performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) OidcCallbackWithResponse(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*OidcCallbackResponse, error) {
+	rsp, err := c.OidcCallback(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOidcCallbackResponse(rsp)
+}
+
+// GetOidcConfigWithResponse performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
+//
+// Get OIDC config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetOidcConfigWithResponse(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error) {
+	rsp, err := c.GetOidcConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOidcConfigResponse(rsp)
+}
+
+// UpdateOidcConfigWithBodyWithResponse performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update OIDC config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateOidcConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOidcConfigResponse, error) {
+	rsp, err := c.UpdateOidcConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOidcConfigResponse(rsp)
+}
+
+// UpdateOidcConfigWithResponse performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update OIDC config.
+func (c *ClientWithResponses) UpdateOidcConfigWithResponse(ctx context.Context, body UpdateOidcConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOidcConfigResponse, error) {
+	rsp, err := c.UpdateOidcConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOidcConfigResponse(rsp)
+}
+
+// CreateOidcConfigWithBodyWithResponse performs a POST /api/v1/sso/oidc/config (the `CreateOidcConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create OIDC config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateOidcConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOidcConfigResponse, error) {
+	rsp, err := c.CreateOidcConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateOidcConfigResponse(rsp)
+}
+
+// CreateOidcConfigWithResponse performs a POST /api/v1/sso/oidc/config (the `CreateOidcConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create OIDC config.
+func (c *ClientWithResponses) CreateOidcConfigWithResponse(ctx context.Context, body CreateOidcConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOidcConfigResponse, error) {
+	rsp, err := c.CreateOidcConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateOidcConfigResponse(rsp)
+}
+
+// RedirectOidcLoginWithResponse performs a GET /api/v1/sso/oidc/login (the `RedirectOidcLogin` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RedirectOidcLoginWithResponse(ctx context.Context, params *RedirectOidcLoginParams, reqEditors ...RequestEditorFn) (*RedirectOidcLoginResponse, error) {
+	rsp, err := c.RedirectOidcLogin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRedirectOidcLoginResponse(rsp)
 }
 
 // RedirectOrgSSOWithResponse performs a GET /api/v1/sso/redirect/organizations/{orgSlug} (the `RedirectOrgSSO` operationId) request.
@@ -45653,6 +53414,28 @@ func (c *ClientWithResponses) GetCurrentUserWithResponse(ctx context.Context, re
 		return nil, err
 	}
 	return ParseGetCurrentUserResponse(rsp)
+}
+
+// RequestEmailChangeOtpWithBodyWithResponse performs a POST /api/v2/users/me/email-change/otp (the `RequestEmailChangeOtp` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RequestEmailChangeOtpWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestEmailChangeOtpResponse, error) {
+	rsp, err := c.RequestEmailChangeOtpWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRequestEmailChangeOtpResponse(rsp)
+}
+
+// RequestEmailChangeOtpWithResponse performs a POST /api/v2/users/me/email-change/otp (the `RequestEmailChangeOtp` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RequestEmailChangeOtpWithResponse(ctx context.Context, body RequestEmailChangeOtpJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestEmailChangeOtpResponse, error) {
+	rsp, err := c.RequestEmailChangeOtp(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRequestEmailChangeOtpResponse(rsp)
 }
 
 // CreateProjectRoleWithBodyWithResponse performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
@@ -46310,6 +54093,7 @@ func ParseUpdateAdminConfigResponse(rsp *http.Response) (*UpdateAdminConfigRespo
 				AdminIdentityIds                       *[]string           `json:"adminIdentityIds,omitempty"`
 				AllowSignUp                            *bool               `json:"allowSignUp,omitempty"`
 				AllowedSignUpDomain                    *string             `json:"allowedSignUpDomain,omitempty"`
+				AllowedStorageHostnames                *[]string           `json:"allowedStorageHostnames,omitempty"`
 				AuthConsentContent                     *string             `json:"authConsentContent,omitempty"`
 				CreatedAt                              *time.Time          `json:"createdAt,omitempty"`
 				DefaultAuthOrgAuthEnforced             *bool               `json:"defaultAuthOrgAuthEnforced,omitempty"`
@@ -46343,6 +54127,18 @@ func ParseUpdateAdminConfigResponse(rsp *http.Response) (*UpdateAdminConfigRespo
 						ValidationMessage        string   `json:"validationMessage"`
 					} `json:"requirements"`
 				} `json:"passwordPolicy"`
+				Pkcs12PasswordPolicy struct {
+					Requirements []struct {
+						Code                     string   `json:"code"`
+						Flags                    *string  `json:"flags,omitempty"`
+						IsPrimary                bool     `json:"isPrimary"`
+						MaxConsecutiveCharacters *int     `json:"maxConsecutiveCharacters,omitempty"`
+						Message                  string   `json:"message"`
+						Patterns                 []string `json:"patterns"`
+						ShouldMatch              bool     `json:"shouldMatch"`
+						ValidationMessage        string   `json:"validationMessage"`
+					} `json:"requirements"`
+				} `json:"pkcs12PasswordPolicy"`
 				TrustLdapEmails *bool `json:"trustLdapEmails,omitempty"`
 			} `json:"config"`
 		}
@@ -49906,6 +57702,1243 @@ func ParseCreateSecretTagResponse(rsp *http.Response) (*CreateSecretTagResponse,
 	return response, nil
 }
 
+// ParseListScimGroupsResponse parses an HTTP response from a ListScimGroupsWithResponse call
+func ParseListScimGroupsResponse(rsp *http.Response) (*ListScimGroupsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListScimGroupsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Resources []struct {
+				DisplayName string `json:"displayName"`
+				Id          string `json:"id"`
+				Members     *[]struct {
+					Display *string `json:"display,omitempty"`
+					Value   string  `json:"value"`
+				} `json:"members,omitempty"`
+				Meta struct {
+					ResourceType string `json:"resourceType"`
+				} `json:"meta"`
+				Schemas []string `json:"schemas"`
+			} `json:"Resources"`
+			ItemsPerPage float32  `json:"itemsPerPage"`
+			Schemas      []string `json:"schemas"`
+			StartIndex   float32  `json:"startIndex"`
+			TotalResults float32  `json:"totalResults"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateScimGroupResponse parses an HTTP response from a CreateScimGroupWithResponse call
+func ParseCreateScimGroupResponse(rsp *http.Response) (*CreateScimGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateScimGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			DisplayName string `json:"displayName"`
+			Id          string `json:"id"`
+			Members     *[]struct {
+				Display *string `json:"display,omitempty"`
+				Value   string  `json:"value"`
+			} `json:"members,omitempty"`
+			Meta struct {
+				ResourceType string `json:"resourceType"`
+			} `json:"meta"`
+			Schemas []string `json:"schemas"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteScimGroupResponse parses an HTTP response from a DeleteScimGroupWithResponse call
+func ParseDeleteScimGroupResponse(rsp *http.Response) (*DeleteScimGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteScimGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 204:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON204 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetScimGroupResponse parses an HTTP response from a GetScimGroupWithResponse call
+func ParseGetScimGroupResponse(rsp *http.Response) (*GetScimGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetScimGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			DisplayName string `json:"displayName"`
+			Id          string `json:"id"`
+			Members     *[]struct {
+				Display *string `json:"display,omitempty"`
+				Value   string  `json:"value"`
+			} `json:"members,omitempty"`
+			Meta struct {
+				ResourceType string `json:"resourceType"`
+			} `json:"meta"`
+			Schemas []string `json:"schemas"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchScimGroupResponse parses an HTTP response from a PatchScimGroupWithResponse call
+func ParsePatchScimGroupResponse(rsp *http.Response) (*PatchScimGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchScimGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			DisplayName string `json:"displayName"`
+			Id          string `json:"id"`
+			Members     *[]struct {
+				Display *string `json:"display,omitempty"`
+				Value   string  `json:"value"`
+			} `json:"members,omitempty"`
+			Meta struct {
+				ResourceType string `json:"resourceType"`
+			} `json:"meta"`
+			Schemas []string `json:"schemas"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReplaceScimGroupResponse parses an HTTP response from a ReplaceScimGroupWithResponse call
+func ParseReplaceScimGroupResponse(rsp *http.Response) (*ReplaceScimGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReplaceScimGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			DisplayName string `json:"displayName"`
+			Id          string `json:"id"`
+			Members     *[]struct {
+				Display *string `json:"display,omitempty"`
+				Value   string  `json:"value"`
+			} `json:"members,omitempty"`
+			Meta struct {
+				ResourceType string `json:"resourceType"`
+			} `json:"meta"`
+			Schemas []string `json:"schemas"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetScimServiceProviderConfigResponse parses an HTTP response from a GetScimServiceProviderConfigWithResponse call
+func ParseGetScimServiceProviderConfigResponse(rsp *http.Response) (*GetScimServiceProviderConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetScimServiceProviderConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuthenticationSchemes []struct {
+				Description      string  `json:"description"`
+				DocumentationUri *string `json:"documentationUri,omitempty"`
+				Name             string  `json:"name"`
+				Primary          *bool   `json:"primary,omitempty"`
+				SpecUri          *string `json:"specUri,omitempty"`
+				Type             string  `json:"type"`
+			} `json:"authenticationSchemes"`
+			Bulk struct {
+				MaxOperations  float32 `json:"maxOperations"`
+				MaxPayloadSize float32 `json:"maxPayloadSize"`
+				Supported      bool    `json:"supported"`
+			} `json:"bulk"`
+			ChangePassword struct {
+				Supported bool `json:"supported"`
+			} `json:"changePassword"`
+			DocumentationUri *string `json:"documentationUri,omitempty"`
+			Etag             struct {
+				Supported bool `json:"supported"`
+			} `json:"etag"`
+			Filter struct {
+				MaxResults float32 `json:"maxResults"`
+				Supported  bool    `json:"supported"`
+			} `json:"filter"`
+			Meta struct {
+				Location     *string `json:"location,omitempty"`
+				ResourceType string  `json:"resourceType"`
+			} `json:"meta"`
+			Patch struct {
+				Supported bool `json:"supported"`
+			} `json:"patch"`
+			Schemas []string `json:"schemas"`
+			Sort    struct {
+				Supported bool `json:"supported"`
+			} `json:"sort"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode GetScimServiceProviderConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode GetScimServiceProviderConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode GetScimServiceProviderConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode GetScimServiceProviderConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    interface{}                                               `json:"message,omitempty"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode GetScimServiceProviderConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode GetScimServiceProviderConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListScimUsersResponse parses an HTTP response from a ListScimUsersWithResponse call
+func ParseListScimUsersResponse(rsp *http.Response) (*ListScimUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListScimUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Resources []struct {
+				Active      ListScimUsers200JSONResponseBody_Resources_Active `json:"active"`
+				DisplayName string                                            `json:"displayName"`
+				Emails      *[]struct {
+					Primary bool                `json:"primary"`
+					Type    *string             `json:"type,omitempty"`
+					Value   openapi_types.Email `json:"value"`
+				} `json:"emails,omitempty"`
+				Id   string `json:"id"`
+				Name *struct {
+					FamilyName *string `json:"familyName,omitempty"`
+					GivenName  *string `json:"givenName,omitempty"`
+				} `json:"name,omitempty"`
+				Schemas  []string `json:"schemas"`
+				UserName string   `json:"userName"`
+			} `json:"Resources"`
+			ItemsPerPage float32  `json:"itemsPerPage"`
+			Schemas      []string `json:"schemas"`
+			StartIndex   float32  `json:"startIndex"`
+			TotalResults float32  `json:"totalResults"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateScimUserResponse parses an HTTP response from a CreateScimUserWithResponse call
+func ParseCreateScimUserResponse(rsp *http.Response) (*CreateScimUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateScimUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Active      CreateScimUser200JSONResponseBody_Active `json:"active"`
+			DisplayName string                                   `json:"displayName"`
+			Emails      *[]struct {
+				Primary bool                `json:"primary"`
+				Type    *string             `json:"type,omitempty"`
+				Value   openapi_types.Email `json:"value"`
+			} `json:"emails,omitempty"`
+			Id   string `json:"id"`
+			Name *struct {
+				FamilyName *string `json:"familyName,omitempty"`
+				GivenName  *string `json:"givenName,omitempty"`
+			} `json:"name,omitempty"`
+			Schemas  []string `json:"schemas"`
+			UserName string   `json:"userName"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteScimUserResponse parses an HTTP response from a DeleteScimUserWithResponse call
+func ParseDeleteScimUserResponse(rsp *http.Response) (*DeleteScimUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteScimUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 204:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON204 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetScimUserResponse parses an HTTP response from a GetScimUserWithResponse call
+func ParseGetScimUserResponse(rsp *http.Response) (*GetScimUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetScimUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Active      GetScimUser200JSONResponseBody_Active `json:"active"`
+			DisplayName string                                `json:"displayName"`
+			Emails      *[]struct {
+				Primary bool                `json:"primary"`
+				Type    *string             `json:"type,omitempty"`
+				Value   openapi_types.Email `json:"value"`
+			} `json:"emails,omitempty"`
+			Id   string `json:"id"`
+			Name *struct {
+				FamilyName *string `json:"familyName,omitempty"`
+				GivenName  *string `json:"givenName,omitempty"`
+			} `json:"name,omitempty"`
+			Schemas  []string `json:"schemas"`
+			UserName string   `json:"userName"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchScimUserResponse parses an HTTP response from a PatchScimUserWithResponse call
+func ParsePatchScimUserResponse(rsp *http.Response) (*PatchScimUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchScimUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Active      PatchScimUser200JSONResponseBody_Active `json:"active"`
+			DisplayName string                                  `json:"displayName"`
+			Emails      *[]struct {
+				Primary bool                `json:"primary"`
+				Type    *string             `json:"type,omitempty"`
+				Value   openapi_types.Email `json:"value"`
+			} `json:"emails,omitempty"`
+			Id   string `json:"id"`
+			Name *struct {
+				FamilyName *string `json:"familyName,omitempty"`
+				GivenName  *string `json:"givenName,omitempty"`
+			} `json:"name,omitempty"`
+			Schemas  []string `json:"schemas"`
+			UserName string   `json:"userName"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReplaceScimUserResponse parses an HTTP response from a ReplaceScimUserWithResponse call
+func ParseReplaceScimUserResponse(rsp *http.Response) (*ReplaceScimUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReplaceScimUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Active      bool   `json:"active"`
+			DisplayName string `json:"displayName"`
+			Emails      []struct {
+				Primary bool                `json:"primary"`
+				Type    *string             `json:"type,omitempty"`
+				Value   openapi_types.Email `json:"value"`
+			} `json:"emails"`
+			Id   string `json:"id"`
+			Name struct {
+				FamilyName string `json:"familyName"`
+				GivenName  string `json:"givenName"`
+			} `json:"name"`
+			Schemas  []string `json:"schemas"`
+			UserName string   `json:"userName"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListExternalGroupOrgRoleMappingsResponse parses an HTTP response from a ListExternalGroupOrgRoleMappingsWithResponse call
+func ParseListExternalGroupOrgRoleMappingsResponse(rsp *http.Response) (*ListExternalGroupOrgRoleMappingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExternalGroupOrgRoleMappingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []struct {
+			CreatedAt time.Time           `json:"createdAt"`
+			GroupName string              `json:"groupName"`
+			Id        openapi_types.UUID  `json:"id"`
+			OrgId     openapi_types.UUID  `json:"orgId"`
+			Role      string              `json:"role"`
+			RoleId    *openapi_types.UUID `json:"roleId,omitempty"`
+			UpdatedAt time.Time           `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ListExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ListExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ListExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ListExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ListExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ListExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateExternalGroupOrgRoleMappingsResponse parses an HTTP response from a UpdateExternalGroupOrgRoleMappingsWithResponse call
+func ParseUpdateExternalGroupOrgRoleMappingsResponse(rsp *http.Response) (*UpdateExternalGroupOrgRoleMappingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateExternalGroupOrgRoleMappingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []struct {
+			CreatedAt time.Time           `json:"createdAt"`
+			GroupName string              `json:"groupName"`
+			Id        openapi_types.UUID  `json:"id"`
+			OrgId     openapi_types.UUID  `json:"orgId"`
+			Role      string              `json:"role"`
+			RoleId    *openapi_types.UUID `json:"roleId,omitempty"`
+			UpdatedAt time.Time           `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                     `json:"details,omitempty"`
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdateExternalGroupOrgRoleMappings400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdateExternalGroupOrgRoleMappings401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                     `json:"details,omitempty"`
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdateExternalGroupOrgRoleMappings403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdateExternalGroupOrgRoleMappings404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    interface{}                                                     `json:"message,omitempty"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdateExternalGroupOrgRoleMappings422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdateExternalGroupOrgRoleMappings500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListScimEventsResponse parses an HTTP response from a ListScimEventsWithResponse call
+func ParseListScimEventsResponse(rsp *http.Response) (*ListScimEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListScimEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ScimEvents []struct {
+				CreatedAt time.Time          `json:"createdAt"`
+				Event     interface{}        `json:"event,omitempty"`
+				EventType *string            `json:"eventType,omitempty"`
+				Id        openapi_types.UUID `json:"id"`
+				OrgId     openapi_types.UUID `json:"orgId"`
+				UpdatedAt time.Time          `json:"updatedAt"`
+			} `json:"scimEvents"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimEvents400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimEvents401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimEvents403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimEvents404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    interface{}                                 `json:"message,omitempty"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimEvents422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimEvents500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListScimTokensResponse parses an HTTP response from a ListScimTokensWithResponse call
+func ParseListScimTokensResponse(rsp *http.Response) (*ListScimTokensResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListScimTokensResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ScimTokens []struct {
+				CreatedAt              time.Time          `json:"createdAt"`
+				Description            string             `json:"description"`
+				ExpiryNotificationSent *bool              `json:"expiryNotificationSent,omitempty"`
+				Id                     string             `json:"id"`
+				OrgId                  openapi_types.UUID `json:"orgId"`
+				TtlDays                *float32           `json:"ttlDays,omitempty"`
+				UpdatedAt              time.Time          `json:"updatedAt"`
+			} `json:"scimTokens"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimTokens400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimTokens401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimTokens403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimTokens404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    interface{}                                 `json:"message,omitempty"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimTokens422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode ListScimTokens500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateScimTokenResponse parses an HTTP response from a CreateScimTokenWithResponse call
+func ParseCreateScimTokenResponse(rsp *http.Response) (*CreateScimTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateScimTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ScimToken string `json:"scimToken"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                  `json:"details,omitempty"`
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode CreateScimToken400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode CreateScimToken401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                  `json:"details,omitempty"`
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode CreateScimToken403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode CreateScimToken404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    interface{}                                  `json:"message,omitempty"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode CreateScimToken422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode CreateScimToken500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteScimTokenResponse parses an HTTP response from a DeleteScimTokenWithResponse call
+func ParseDeleteScimTokenResponse(rsp *http.Response) (*DeleteScimTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteScimTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ScimToken struct {
+				CreatedAt              time.Time          `json:"createdAt"`
+				Description            string             `json:"description"`
+				ExpiryNotificationSent *bool              `json:"expiryNotificationSent,omitempty"`
+				Id                     string             `json:"id"`
+				OrgId                  openapi_types.UUID `json:"orgId"`
+				TtlDays                *float32           `json:"ttlDays,omitempty"`
+				UpdatedAt              time.Time          `json:"updatedAt"`
+			} `json:"scimToken"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                  `json:"details,omitempty"`
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode DeleteScimToken400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode DeleteScimToken401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                  `json:"details,omitempty"`
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode DeleteScimToken403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode DeleteScimToken404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    interface{}                                  `json:"message,omitempty"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode DeleteScimToken422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode DeleteScimToken500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListSecretApprovalRequestsResponse parses an HTTP response from a ListSecretApprovalRequestsWithResponse call
 func ParseListSecretApprovalRequestsResponse(rsp *http.Response) (*ListSecretApprovalRequestsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -49972,6 +59005,7 @@ func ParseListSecretApprovalRequestsResponse(rsp *http.Response) (*ListSecretApp
 					Status string `json:"status"`
 					UserId string `json:"userId"`
 				} `json:"reviewers"`
+				SecretPath            string              `json:"secretPath"`
 				Slug                  string              `json:"slug"`
 				Status                *string             `json:"status,omitempty"`
 				StatusChangedByUserId *openapi_types.UUID `json:"statusChangedByUserId,omitempty"`
@@ -51855,6 +60889,381 @@ func ParseCreateSamlConfigResponse(rsp *http.Response) (*CreateSamlConfigRespons
 	return response, nil
 }
 
+// ParseOidcCallbackResponse parses an HTTP response from a OidcCallbackWithResponse call
+func ParseOidcCallbackResponse(rsp *http.Response) (*OidcCallbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OidcCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetOidcConfigResponse parses an HTTP response from a GetOidcConfigWithResponse call
+func ParseGetOidcConfigResponse(rsp *http.Response) (*GetOidcConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOidcConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+			AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+			ClientId               string             `json:"clientId"`
+			ClientSecret           string             `json:"clientSecret"`
+			ConfigurationType      string             `json:"configurationType"`
+			DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+			Id                     openapi_types.UUID `json:"id"`
+			IsActive               bool               `json:"isActive"`
+			Issuer                 *string            `json:"issuer,omitempty"`
+			JwksUri                *string            `json:"jwksUri,omitempty"`
+			JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+			UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    interface{}                                `json:"message,omitempty"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOidcConfigResponse parses an HTTP response from a UpdateOidcConfigWithResponse call
+func ParseUpdateOidcConfigResponse(rsp *http.Response) (*UpdateOidcConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOidcConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+			AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+			ConfigurationType      string             `json:"configurationType"`
+			DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+			Id                     openapi_types.UUID `json:"id"`
+			IsActive               bool               `json:"isActive"`
+			Issuer                 *string            `json:"issuer,omitempty"`
+			JwksUri                *string            `json:"jwksUri,omitempty"`
+			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+			UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateOidcConfigResponse parses an HTTP response from a CreateOidcConfigWithResponse call
+func ParseCreateOidcConfigResponse(rsp *http.Response) (*CreateOidcConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateOidcConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+			AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+			ConfigurationType      string             `json:"configurationType"`
+			DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+			Id                     openapi_types.UUID `json:"id"`
+			IsActive               bool               `json:"isActive"`
+			Issuer                 *string            `json:"issuer,omitempty"`
+			JwksUri                *string            `json:"jwksUri,omitempty"`
+			JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+			UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRedirectOidcLoginResponse parses an HTTP response from a RedirectOidcLoginWithResponse call
+func ParseRedirectOidcLoginResponse(rsp *http.Response) (*RedirectOidcLoginResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RedirectOidcLoginResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseRedirectOrgSSOResponse parses an HTTP response from a RedirectOrgSSOWithResponse call
 func ParseRedirectOrgSSOResponse(rsp *http.Response) (*RedirectOrgSSOResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -53577,6 +62986,109 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 			Message    string                                      `json:"message"`
 			ReqId      string                                      `json:"reqId"`
 			StatusCode GetCurrentUser500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRequestEmailChangeOtpResponse parses an HTTP response from a RequestEmailChangeOtpWithResponse call
+func ParseRequestEmailChangeOtpResponse(rsp *http.Response) (*RequestEmailChangeOtpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RequestEmailChangeOtpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Message string `json:"message"`
+			Success bool   `json:"success"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode RequestEmailChangeOtp400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode RequestEmailChangeOtp401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode RequestEmailChangeOtp403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode RequestEmailChangeOtp404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    interface{}                                        `json:"message,omitempty"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode RequestEmailChangeOtp422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode RequestEmailChangeOtp500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

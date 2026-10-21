@@ -1,11 +1,15 @@
+import jwt from "jsonwebtoken";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
+  assertJwtNotExpired,
   computeIssuedTtl,
   computePerTokenMarkerExpiry,
+  computeReseededUsesRemainingTtl,
   computeRevocationVerdictFingerprint,
   computeSingleIssuanceTtlCap,
   computeTokenAuthRevokeMarkerExpiry,
+  computeUsesRemainingTtl,
   evaluateRevocationMarkers,
   hasLegacyTokenWithoutExpExceededMaxAge,
   IDENTITY_REVOCATION_MARKER_SKEW_SECONDS,
@@ -172,6 +176,100 @@ describe("computeSingleIssuanceTtlCap", () => {
 
   test("periodic mode uses period as the effective TTL", () => {
     expect(computeSingleIssuanceTtlCap({ requestedTTL: 0, accessTokenPeriod: 900 })).toBe(900);
+  });
+});
+
+describe("computeUsesRemainingTtl", () => {
+  test("outlives the JWT by the skew so an in-flight request still finds its counter", () => {
+    expect(computeUsesRemainingTtl(3600)).toBe(3600 + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+});
+
+describe("computeReseededUsesRemainingTtl", () => {
+  const ENFORCED_AT_SECONDS = Math.floor(ENFORCED_AT.getTime() / 1000);
+  const THIRTY_DAYS = 30 * 24 * 60 * 60;
+
+  test("lasts until the maxTTL budget runs out when a renewed JWT can outlive the presented one", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        exp: NOW + 600,
+        accessTokenMaxTTL: 7200,
+        creationEpoch: NOW - 1800,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
+    ).toBe(5400 + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+
+  test("falls back to the ceiling when the token has no maxTTL", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        exp: NOW + 3600,
+        accessTokenMaxTTL: 0,
+        creationEpoch: NOW,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
+    ).toBe(MAX_AGE + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+
+  test("never exceeds the ceiling even with a larger maxTTL budget", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        exp: NOW + 3600,
+        accessTokenMaxTTL: MAX_AGE * 2,
+        creationEpoch: NOW,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
+    ).toBe(MAX_AGE + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+
+  test("covers the presented JWT once the maxTTL budget is spent", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        exp: NOW + 60,
+        accessTokenMaxTTL: 600,
+        creationEpoch: NOW - 900,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
+    ).toBe(60 + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+
+  test("stays positive when every JWT for the token is past its deadline", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        exp: NOW,
+        accessTokenMaxTTL: 600,
+        creationEpoch: NOW - 900,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
+    ).toBe(1 + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+
+  test("covers the legacy window for a JWT with no exp, even after its maxTTL budget is spent", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        accessTokenMaxTTL: 7200,
+        creationEpoch: ENFORCED_AT_SECONDS - 365 * 24 * 60 * 60,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: ENFORCED_AT_SECONDS + THIRTY_DAYS
+      })
+    ).toBe(MAX_AGE - THIRTY_DAYS + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+});
+
+describe("assertJwtNotExpired", () => {
+  test("throws the jwt.verify expiry error from the exp second onward", () => {
+    expect(() => assertJwtNotExpired({ exp: NOW, nowSeconds: NOW })).toThrow(jwt.TokenExpiredError);
+    expect(() => assertJwtNotExpired({ exp: NOW, nowSeconds: NOW })).toThrow("jwt expired");
+    expect(() => assertJwtNotExpired({ exp: NOW + 1, nowSeconds: NOW })).not.toThrow();
+  });
+
+  test("passes a legacy JWT with no exp", () => {
+    expect(() => assertJwtNotExpired({ nowSeconds: NOW })).not.toThrow();
   });
 });
 

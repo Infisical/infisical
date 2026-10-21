@@ -7,8 +7,8 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { ConfirmActionModal, ContentLoader, EmptyState } from "@app/components/v2";
-import { Badge, Button } from "@app/components/v3";
+import { ContentLoader, EmptyState } from "@app/components/v2";
+import { Badge, Button, ConfirmationAlertDialog } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -411,13 +411,15 @@ const PageContent = () => {
           </div>
         </div>
       </div>
-      <ConfirmActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.cancelRequest.isOpen}
+        confirmVariant="project"
+        description="This action is irreversible."
         confirmKey="cancel"
         title="Do you want to cancel this approval request?"
-        onChange={(isOpen) => handlePopUpToggle("cancelRequest", isOpen)}
-        onConfirmed={handleRequestCancel}
-        buttonText="Confirm"
+        onOpenChange={(isOpen) => handlePopUpToggle("cancelRequest", isOpen)}
+        onConfirm={handleRequestCancel}
+        confirmLabel="Confirm"
       />
     </div>
   );

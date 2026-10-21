@@ -14,17 +14,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  EmailInput,
   Field,
   FieldError,
   FieldLabel,
   FilterableSelect,
-  TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission } from "@app/context";
-import { emailListSchema, parseEmailList } from "@app/helpers/email";
+import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
 import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -35,7 +35,7 @@ import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib
 const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
 
 const inviteMembersFormSchema = z.object({
-  emails: emailListSchema,
+  emails: emailListSchema({ max: MAX_INVITE_EMAILS, isRequired: true }),
   projectRole: z
     .object({
       slug: z.string().min(1),
@@ -87,7 +87,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
     formState: { isSubmitting }
   } = useForm<TInviteMembersForm>({
     resolver: zodResolver(inviteMembersFormSchema),
-    defaultValues: { emails: "", projectRole: DEFAULT_PROJECT_ROLE }
+    defaultValues: { emails: [], projectRole: DEFAULT_PROJECT_ROLE }
   });
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
@@ -126,10 +126,9 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
       return;
     }
 
-    const usernames = parseEmailList(emails);
-    if (usernames.length) {
+    if (emails.length) {
       await addUserToProject({
-        usernames,
+        usernames: emails,
         orgId: currentOrg.id,
         projectId: currentProject.id,
         projectType: currentProject.type,
@@ -139,7 +138,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
 
     analytics.captureForOrganization(AnalyticsEvent.SecretsActivationModalMembersInvited, orgId, {
       ...baseEventProps,
-      invitedCount: usernames.length
+      invitedCount: emails.length
     });
 
     createNotification({
@@ -175,16 +174,16 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
           <Controller
             control={control}
             name="emails"
-            render={({ field, fieldState: { error } }) => (
+            render={({ field: { value, onChange, ref }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="invite-members-emails">Emails</FieldLabel>
-                <TextArea
+                <EmailInput
+                  ref={ref}
                   id="invite-members-emails"
-                  rows={1}
-                  className="min-h-8"
+                  value={value}
+                  onValueChange={onChange}
                   isError={Boolean(error)}
                   placeholder="email@example.com, email2@example.com..."
-                  {...field}
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>

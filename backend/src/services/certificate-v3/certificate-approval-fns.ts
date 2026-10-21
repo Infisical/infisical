@@ -110,7 +110,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
