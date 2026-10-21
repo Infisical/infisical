@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BotIcon, ChevronDownIcon, ClockIcon, InfoIcon, ShieldIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, ClockIcon, ShieldIcon } from "lucide-react";
 
 import {
   Badge,
@@ -29,7 +29,10 @@ import {
 } from "./folder-access.utils";
 import { TierDropdown } from "./TierDropdown";
 
-const ROW_CLASS_NAME = "flex items-center gap-3 border-b border-border py-3";
+const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
+
+// every badge in the name row shares the Admin badge's compact height
+const NAME_BADGE_CLASS_NAME = "min-h-0 shrink-0 py-0";
 
 const ActorIdentity = ({
   actor,
@@ -46,7 +49,7 @@ const ActorIdentity = ({
       <div className="flex min-w-0 items-center gap-1.5">
         <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
         {actor.isProjectAdmin && (
-          <Badge variant="neutral" iconPosition="left" className="min-h-0 shrink-0 py-0">
+          <Badge variant="neutral" iconPosition="left" className={NAME_BADGE_CLASS_NAME}>
             <ShieldIcon />
             Admin
           </Badge>
@@ -129,7 +132,11 @@ export const FolderAccessRow = ({
         {Boolean(remainingTime && remainingTime?.expiresAt) && (
           <Tooltip>
             <TooltipTrigger>
-              <Badge variant={remainingTime?.isExpired ? "danger" : "neutral"} className="shrink-0">
+              <Badge
+                variant={remainingTime?.isExpired ? "danger" : "neutral"}
+                iconPosition="left"
+                className={NAME_BADGE_CLASS_NAME}
+              >
                 <ClockIcon />
                 {remainingTime?.isExpired ? "Access Expired" : `Expires in ${remainingTime?.value}`}
               </Badge>
@@ -144,7 +151,7 @@ export const FolderAccessRow = ({
         {access && actor.roles.length > 0 && (
           <Tooltip>
             <TooltipTrigger>
-              <Badge variant="warning" className="shrink-0">
+              <Badge variant="warning" className={NAME_BADGE_CLASS_NAME}>
                 Overrides project role
               </Badge>
             </TooltipTrigger>
@@ -162,29 +169,20 @@ export const FolderAccessRow = ({
             <DropdownMenu>
               {access ? (
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" isDisabled={isDisabled}>
+                  <Button variant="ghost" size="xs" isDisabled={isDisabled}>
                     {FOLDER_ROLE_TIER_LABELS[access.permission]}
                     <ChevronDownIcon />
                   </Button>
                 </DropdownMenuTrigger>
               ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" isDisabled={isDisabled}>
-                        <InfoIcon className="text-info" />
-                        Project Role
-                        <ChevronDownIcon />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="left" className="flex max-w-64 flex-col gap-0.5">
-                    <span className="font-medium">Project roles</span>
-                    <span className="opacity-70">
-                      {roleNames || "No project role found for this folder."}
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="xs" isDisabled={isDisabled}>
+                    <span>
+                      {roleNames || "Role"} <span className="text-muted">(Project)</span>
                     </span>
-                  </TooltipContent>
-                </Tooltip>
+                    <ChevronDownIcon />
+                  </Button>
+                </DropdownMenuTrigger>
               )}
               <TierDropdown
                 activeTier={access?.permission ?? null}

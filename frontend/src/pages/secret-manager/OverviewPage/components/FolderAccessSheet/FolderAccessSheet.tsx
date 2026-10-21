@@ -1,25 +1,21 @@
 import { useMemo, useState } from "react";
 import {
-  ArrowLeftIcon,
   ChevronRightIcon,
   FolderIcon,
   LayersIcon,
   SearchIcon,
-  UserPlusIcon,
   UsersIcon,
   XIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
   DocumentationLinkBadge,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
@@ -32,7 +28,6 @@ import {
   SheetTitle,
   Skeleton
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   SecretFolderRole,
@@ -46,9 +41,7 @@ import {
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
-import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
-import { AddFolderAccessPanel } from "./AddFolderAccessPanel";
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
 import {
   byAdminThenName,
@@ -86,11 +79,9 @@ export const FolderAccessSheet = ({
   folderPath,
   environmentName
 }: Props) => {
-  const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
-  const [isAddingMultiple, setIsAddingMultiple] = useState(false);
   const [removalActor, setRemovalActor] = useState<TFolderAccessActor | null>(null);
 
   const listArgs = {
@@ -230,27 +221,11 @@ export const FolderAccessSheet = ({
 
   return (
     <>
-      <Sheet
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!open) setIsAddingMultiple(false);
-          onOpenChange(open);
-        }}
-      >
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
         <SheetContent className="gap-y-0 sm:max-w-[640px]">
           <SheetHeader className="gap-3">
             <SheetTitle className="flex items-center gap-2">
-              {isAddingMultiple && (
-                <IconButton
-                  variant="ghost-muted"
-                  size="xs"
-                  aria-label="Back to permissions"
-                  onClick={() => setIsAddingMultiple(false)}
-                >
-                  <ArrowLeftIcon />
-                </IconButton>
-              )}
-              {isAddingMultiple ? "Add Access" : "Manage Permissions"}
+              Manage Permissions
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
             </SheetTitle>
             <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-neutral/5 px-3 py-2 text-xs">
@@ -262,143 +237,114 @@ export const FolderAccessSheet = ({
             </div>
           </SheetHeader>
 
-          {isAddingMultiple ? (
-            <AddFolderAccessPanel
-              projectId={projectId}
-              environmentSlug={environmentSlug}
-              folderPath={folderPath}
-              onDone={() => setIsAddingMultiple(false)}
-            />
-          ) : (
-            <>
-              <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
-                <div className="flex items-center gap-2">
-                  <InputGroup className="flex-1">
-                    <InputGroupAddon>
-                      <SearchIcon />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      value={search}
-                      onChange={(e) => {
-                        setSearch(e.target.value);
-                        setPage(1);
-                      }}
-                      placeholder="Search users and machine identities..."
-                    />
-                    {search && (
-                      <InputGroupAddon align="inline-end">
-                        <InputGroupButton
-                          aria-label="Clear search"
-                          onClick={() => {
-                            setSearch("");
-                            setPage(1);
-                          }}
-                        >
-                          <XIcon />
-                        </InputGroupButton>
-                      </InputGroupAddon>
-                    )}
-                  </InputGroup>
-                  <Button
-                    variant="outline"
-                    size="md"
-                    className="shrink-0"
+          <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
+            <InputGroup>
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search users and machine identities..."
+              />
+              {search && (
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    aria-label="Clear search"
                     onClick={() => {
-                      setIsAddingMultiple(true);
-                      analytics.captureForOrganization(
-                        AnalyticsEvent.FolderAccessAddSheetOpened,
-                        currentOrg.id,
-                        { projectId }
-                      );
+                      setSearch("");
+                      setPage(1);
                     }}
                   >
-                    <UserPlusIcon />
-                    Add Multiple
-                  </Button>
-                </div>
+                    <XIcon />
+                  </InputGroupButton>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
 
-                {isLoading && (
-                  <div className="space-y-2">
-                    <Skeleton className="h-14 w-full" />
-                    <Skeleton className="h-14 w-full" />
-                    <Skeleton className="h-14 w-full" />
-                  </div>
-                )}
-
-                {!isLoading && !actors.length && !candidates.length && (
-                  <Empty className="border">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <UsersIcon />
-                      </EmptyMedia>
-                      <EmptyTitle>{emptyState.title}</EmptyTitle>
-                      <EmptyDescription>{emptyState.description}</EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                )}
-
-                {!isLoading && Boolean(actors.length || candidates.length) && (
-                  <section className="flex flex-col">
-                    <SectionLabel title="Has Access" count={actors.length} />
-                    {!actors.length && (
-                      <p className="py-2.5 text-xs text-muted">
-                        {rosterCount > PER_PAGE
-                          ? "No one matching your search on this page has access to this folder. Check another page, or refine your search."
-                          : "No one matching your search has access to this folder yet."}
-                      </p>
-                    )}
-                    {actors.map((actor) => (
-                      <FolderAccessRow
-                        key={`${actor.type}-${actor.id}`}
-                        actor={actor}
-                        onSetTier={(tier) => setTier(actor, tier)}
-                        onSetTemporaryRange={(range) =>
-                          setAccessType(actor, {
-                            isTemporary: true,
-                            temporaryMode: "relative",
-                            temporaryRange: range,
-                            temporaryAccessStartTime: new Date().toISOString()
-                          })
-                        }
-                        onMakePermanent={() => setAccessType(actor, { isTemporary: false })}
-                        onRemove={() => setRemovalActor(actor)}
-                      />
-                    ))}
-                  </section>
-                )}
-
-                {!isLoading && Boolean(candidates.length) && (
-                  <section className="flex flex-col">
-                    <SectionLabel title="Other Project Members" count={candidates.length} />
-                    {candidates.map((actor) => (
-                      <FolderAccessGrantRow
-                        key={`${actor.type}-${actor.id}`}
-                        actor={actor}
-                        isDisabled={isGrantLocked}
-                        onSetTier={(tier) => setTier(actor, tier)}
-                      />
-                    ))}
-                  </section>
-                )}
-
-                {!isLoading && rosterCount > PER_PAGE && (
-                  <Pagination
-                    count={rosterCount}
-                    page={page}
-                    perPage={PER_PAGE}
-                    onChangePage={setPage}
-                    onChangePerPage={() => {}}
-                    perPageList={[PER_PAGE]}
-                    startAdornment={<span className="text-xs text-muted">Project members</span>}
-                  />
-                )}
+            {isLoading && (
+              <div className="space-y-2">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
               </div>
+            )}
 
-              <SheetFooter className="border-t">
-                <span className="text-xs text-muted">Changes save automatically</span>
-              </SheetFooter>
-            </>
-          )}
+            {!isLoading && !actors.length && !candidates.length && (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <UsersIcon />
+                  </EmptyMedia>
+                  <EmptyTitle>{emptyState.title}</EmptyTitle>
+                  <EmptyDescription>{emptyState.description}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+
+            {!isLoading && Boolean(actors.length || candidates.length) && (
+              <section className="flex flex-col">
+                <SectionLabel title="Has Access" count={actors.length} />
+                {!actors.length && (
+                  <p className="py-2.5 text-xs text-muted">
+                    {rosterCount > PER_PAGE
+                      ? "No one matching your search on this page has access to this folder. Check another page, or refine your search."
+                      : "No one matching your search has access to this folder yet."}
+                  </p>
+                )}
+                {actors.map((actor) => (
+                  <FolderAccessRow
+                    key={`${actor.type}-${actor.id}`}
+                    actor={actor}
+                    onSetTier={(tier) => setTier(actor, tier)}
+                    onSetTemporaryRange={(range) =>
+                      setAccessType(actor, {
+                        isTemporary: true,
+                        temporaryMode: "relative",
+                        temporaryRange: range,
+                        temporaryAccessStartTime: new Date().toISOString()
+                      })
+                    }
+                    onMakePermanent={() => setAccessType(actor, { isTemporary: false })}
+                    onRemove={() => setRemovalActor(actor)}
+                  />
+                ))}
+              </section>
+            )}
+
+            {!isLoading && Boolean(candidates.length) && (
+              <section className="flex flex-col">
+                <SectionLabel title="Other Project Members" count={candidates.length} />
+                {candidates.map((actor) => (
+                  <FolderAccessGrantRow
+                    key={`${actor.type}-${actor.id}`}
+                    actor={actor}
+                    isDisabled={isGrantLocked}
+                    onSetTier={(tier) => setTier(actor, tier)}
+                  />
+                ))}
+              </section>
+            )}
+
+            {!isLoading && rosterCount > PER_PAGE && (
+              <Pagination
+                count={rosterCount}
+                page={page}
+                perPage={PER_PAGE}
+                onChangePage={setPage}
+                onChangePerPage={() => {}}
+                perPageList={[PER_PAGE]}
+                startAdornment={<span className="text-xs text-muted">Project members</span>}
+              />
+            )}
+          </div>
+
+          <SheetFooter className="border-t">
+            <span className="text-xs text-muted">Changes save automatically</span>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
 
