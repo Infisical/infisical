@@ -4260,6 +4260,7 @@ const OverviewPageContent = () => {
                             }
                             activityId={getTableRowActivityId("secret", key)}
                             onActivityChange={handleTableRowActivityChange}
+                            timestampSortField={isTimestampSort ? orderBy : undefined}
                           />
                         ))}
                         {tableView === "table" && (

@@ -2,7 +2,9 @@ import { useState } from "react";
 import {
   AlertTriangleIcon,
   BellIcon,
+  CheckIcon,
   CircleStopIcon,
+  CopyIcon,
   EyeIcon,
   InfoIcon,
   MoreHorizontalIcon,
@@ -46,6 +48,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useToggle } from "@app/hooks";
 import {
   AlertRunStatus,
   CertificateAlertResourceType,
@@ -159,6 +162,18 @@ const AlertRow = ({
   scope
 }: AlertRowProps) => {
   const { mutate: updateAlert } = useUpdateAlert();
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(alert.id);
+      setIsIdCopied.on();
+      createNotification({ type: "info", text: "Alert ID copied to clipboard" });
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    } catch {
+      createNotification({ type: "error", text: "Could not copy to clipboard" });
+    }
+  };
 
   const handleToggleAlert = () =>
     updateAlert(
@@ -239,6 +254,10 @@ const AlertRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
+            <DropdownMenuItem onClick={handleCopyId}>
+              {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+              Copy ID
+            </DropdownMenuItem>
             {!canEdit && (
               <DropdownMenuItem onClick={onView}>
                 <EyeIcon />
