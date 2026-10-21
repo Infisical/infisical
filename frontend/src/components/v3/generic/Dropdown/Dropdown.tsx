@@ -293,7 +293,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        "z-[var(--z-index-dropdown)] min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
+        "z-[var(--z-index-dropdown)] max-h-(--radix-dropdown-menu-content-available-height) thin-scrollbar min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
         className
       )}
       sideOffset={sideOffset}
