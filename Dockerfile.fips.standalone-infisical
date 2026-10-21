@@ -4,7 +4,7 @@ ARG INTERCOM_ID=intercom-id
 
 ARG INFISICAL_CLI_VERSION=0.43.136
 
-FROM node:26.10.0-trixie-slim AS base
+FROM node:26.12.1-trixie-slim AS base
 
 FROM base AS frontend-dependencies
 WORKDIR /app
