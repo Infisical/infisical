@@ -1,3 +1,8 @@
+## 1.11.1 (Unreleased)
+Changes:
+* Updated the default `infisical.image.tag` value from `v0.158.0` to `v0.167.0`.
+* Updated the default `infisical.autoBootstrap.image.tag` value from `0.41.86` to `0.44.6`.
+
 ## 1.11.0 (September 17, 2026)
 Changes:
 * `infisical.autoBootstrap.secretDestination.namespace` now defaults to `""` instead of the literal `"default"`. Helm's `default` function only substitutes on an empty value, so the non-empty `"default"` meant the template's documented fall back to the release namespace never applied. Every install that left this key alone wrote the root identity token to the `default` namespace and created the bootstrap Role and RoleBinding there, and the bootstrap Job still reported success. Fresh installs now place the secret and its RBAC in the release namespace.

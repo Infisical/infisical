@@ -2,7 +2,7 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 
-ARG INFISICAL_CLI_VERSION=0.44.5
+ARG INFISICAL_CLI_VERSION=0.44.6
 
 FROM node:26.12.1-trixie-slim AS base
 
