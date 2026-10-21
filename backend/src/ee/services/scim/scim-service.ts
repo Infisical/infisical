@@ -1798,6 +1798,7 @@ export const scimServiceFactory = ({
 
     const [group] = await groupDAL.transaction(async (tx) => {
       if (!isUuidV4(groupId)) return [];
+      if (!(await groupDAL.findOne({ id: groupId, orgId }, tx))) return [];
 
       const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
         { userGroupMembershipDAL, alertChannelRecipientDAL },
