@@ -177,10 +177,7 @@ export const AgentVaultAccessBundlesPage = () => {
             <p>
               {bundlesNeedingSetupCount === 1
                 ? `${bundlesNeedingSetup[0].name} has services that require your personal values.`
-                : `${bundlesNeedingSetupCount} access bundles have services that require your personal values: ${nameList(
-                    bundlesNeedingSetup.map((bundle) => bundle.name),
-                    bundlesNeedingSetupCount
-                  )}.`}{" "}
+                : `${bundlesNeedingSetupCount} access bundles have services that require your personal values.`}{" "}
               Sessions can&apos;t reach those services until you set them up.
             </p>
             <AlertAction>

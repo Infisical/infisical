@@ -14,7 +14,6 @@ import {
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
-import { nameList } from "@app/components/agent-vault/nameList";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import {
@@ -142,7 +141,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
             <p>
               {needsSetup.length === 1
                 ? `${needsSetup[0].name} requires your personal values.`
-                : `${needsSetup.length} services require your personal values: ${nameList(needsSetup.map((service) => service.name))}.`}{" "}
+                : `${needsSetup.length} services require your personal values.`}{" "}
               Sessions from this bundle can&apos;t reach {needsSetup.length === 1 ? "it" : "them"}{" "}
               until you set {needsSetup.length === 1 ? "it" : "them"} up.
             </p>

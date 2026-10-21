@@ -78,6 +78,8 @@ const fieldLabel = (
   return credentialType === AgentVaultCredentialType.Basic ? "Password" : "Token";
 };
 
+// The API's limits: a username like the admin's, a token or password like theirs.
+const MAX_USERNAME_LENGTH = 256;
 const MAX_LENGTH = 8192;
 
 type TFormData = { secret: string; username: string };
@@ -98,11 +100,15 @@ const buildSchema = (
           : data[formField];
       const at = (message: string) =>
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: [formField], message });
+      const maxLength =
+        field === AgentVaultVariableReferenceField.CredentialUsername
+          ? MAX_USERNAME_LENGTH
+          : MAX_LENGTH;
 
       if (!value) {
         if (!savedFields.has(field)) at("Required");
-      } else if (value.length > MAX_LENGTH) {
-        at(`This can be at most ${MAX_LENGTH} characters.`);
+      } else if (value.length > maxLength) {
+        at(`This can be at most ${maxLength} characters.`);
       } else if (!NO_CONTROL_CHARS_RE.test(value)) at(CONTROL_CHARS_MESSAGE);
       else {
         // Only once the list has loaded: until then no key can be called missing.
