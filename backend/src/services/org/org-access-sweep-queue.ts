@@ -6,7 +6,6 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TOrgDALFactory } from "./org-dal";
 import { emitOrgMembershipRemoved, toOrgMembershipActors } from "./org-membership-events";
 
-// per run; a run that hits it logs and the next run picks up the rest
 export const ORG_ACCESS_SWEEP_LIMIT = 5000;
 
 type TOrgAccessSweepQueueDep = {
@@ -17,8 +16,8 @@ type TOrgAccessSweepQueueDep = {
 
 export type TOrgAccessSweepQueueFactory = ReturnType<typeof orgAccessSweepQueueFactory>;
 
-// Backstop for the reconcile consumer: finds project rows whose actor no longer reaches the org and
-// reports each as an org membership that is gone. Also repairs data from before the events existed.
+// Backstop for the reconcile consumer: finds project rows whose actor no longer reaches the org and emits
+// an org membership removal for each. Also cleans up data from before the events existed.
 export const orgAccessSweepQueueFactory = ({ cronJob, orgDAL, eventEmitter }: TOrgAccessSweepQueueDep) => {
   const runSweep = async () => {
     const orphans = await orgDAL.findOrphanedProjectActors({ limit: ORG_ACCESS_SWEEP_LIMIT });

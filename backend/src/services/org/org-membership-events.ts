@@ -17,8 +17,8 @@ export const ORG_MEMBERSHIP_EVENTS = [
   ORG_MEMBERSHIP_REMOVED_EVENT
 ] as const;
 
-// Together these keep one event well under MAX_OUTBOX_PAYLOAD_BYTES (about 4 KB of org ids, 6 KB of members);
-// a group can be linked into any number of sub-orgs, so neither list may go unbounded.
+// Keeps each event well under MAX_OUTBOX_PAYLOAD_BYTES (~4 KB of org ids, ~6 KB of members). A group can be
+// linked into any number of sub-orgs, so both lists need a cap.
 const ORGS_PER_EVENT = 100;
 const MEMBERS_PER_EVENT = 100;
 
@@ -28,10 +28,8 @@ const ActorSchema = z.object({
 });
 export type TOrgMembershipActor = z.infer<typeof ActorSchema>;
 
-// Each group event carries the orgs and actors it affects, read when the removal happened: by the time the
-// consumer runs, a later removal (or the group delete cascade) may have taken away the rows that would say.
-// A group membership removal names the members who left; a group removal names all of them. Both list every
-// org the group held a row in, the group's own org included.
+// Group events snapshot the orgs and members at removal time, since by the time the consumer runs a later
+// removal or the delete cascade may have wiped those rows. orgIds includes the group's own org.
 const GroupScopePayloadSchema = z.object({
   groupId: z.string().uuid(),
   orgIds: z.array(z.string().uuid()).max(ORGS_PER_EVENT),
@@ -70,10 +68,10 @@ const emitAll = async (eventEmitter: TEventEmitter, events: TEventInput[], tx?: 
   }
 };
 
-// Big lists are paged across events so each fits the outbox; an empty one is still one page.
+// An empty list is still one page, so the event still goes out.
 const page = <T>(items: T[], size: number): T[][] => (items.length ? chunkArray(items, size) : [[]]);
 
-// One event per (org page, member page), so every member is rechecked in every org.
+// One event per (org page, member page) so every member gets rechecked in every org.
 const pageGroupScope = (orgIds: string[], members: TOrgMembershipActor[]) =>
   page([...new Set(orgIds)], ORGS_PER_EVENT).flatMap((orgPage) =>
     page(members, MEMBERS_PER_EVENT).map((memberPage) => ({ orgIds: orgPage, members: memberPage }))

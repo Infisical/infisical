@@ -70,6 +70,7 @@ export const newProjectMembershipUserFactory = ({
 
   const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
+  // Users reaching the org through a direct row or a group can both get a project membership.
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
     newUsers
@@ -85,7 +86,6 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
 
-    // a direct org row or a group holding one; either is enough to hold a project membership
     const withOrgAccess = await orgDAL.findActorsWithOrgAccess({
       orgId: dto.permission.orgId,
       userIds: newUsers.map((el) => el.id),
@@ -155,6 +155,8 @@ export const newProjectMembershipUserFactory = ({
     }
   };
 
+  // Only users who can already sign in get the email: accepted direct members, plus group-only members
+  // (no direct row, so no status to check).
   const onCreateMembershipComplete: TMembershipUserScopeFactory["onCreateMembershipComplete"] = async (
     dto,
     newMembers
@@ -168,8 +170,6 @@ export const newProjectMembershipUserFactory = ({
       });
     }
 
-    // only users who can already sign in get the email: accepted direct members, plus group-only
-    // members, who have no direct row to carry a status
     const newMemberIds = newMembers.map((el) => el.id);
     const directOrgMemberships = await membershipUserDAL.find({
       scope: AccessScope.Organization,

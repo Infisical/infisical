@@ -1195,8 +1195,8 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Which of the given actors still reach the org: a direct org row of any status, or a group that holds
-  // one. Same rule as findEffectiveOrgMembership minus isActive, which the token layer enforces.
+  // Actors that still reach the org: a direct org row (any status) or a group holding one. Same as
+  // findEffectiveOrgMembership minus isActive, which the token layer handles.
   const findActorsWithOrgAccess = async (
     { orgId, userIds, identityIds }: { orgId: string; userIds: string[]; identityIds: string[] },
     tx?: Knex
@@ -1234,8 +1234,8 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // (actor, org) pairs with a project row in an org the actor no longer reaches. Ghost users are the
-  // project bots and never hold an org row, so they are skipped.
+  // (actor, org) pairs with a project row in an org the actor no longer reaches. Skips ghost users (project
+  // bots), they never have an org row.
   const findOrphanedProjectActors = async ({ limit }: { limit: number }, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();
@@ -1292,8 +1292,8 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Serializes group additions with the reconcile consumer on the same actor, so a path granted between
-  // its access check and its deletes cannot be reaped. Sorted to avoid deadlocks.
+  // Serializes group additions with the reconcile consumer per actor, so access granted between its check
+  // and its deletes doesn't get reaped. Sorted to avoid deadlocks.
   const lockActorsForOrgAccess = async (actorIds: string[], tx: Knex) => {
     try {
       for await (const actorId of [...new Set(actorIds)].sort()) {

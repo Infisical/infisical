@@ -378,8 +378,9 @@ export const membershipGroupServiceFactory = ({
     return { membership: membershipDoc, group };
   };
 
-  // Removes a linked group from an org: its link, its project rows there and the folder grants members
-  // held only through it. Whether members keep their own project rows is the reconcile consumer's call.
+  // Unlinks a group from an org, plus its project rows there (otherwise they'd keep granting access through
+  // a group the org no longer holds) and folder grants members only had through it. Whether members keep
+  // their own project rows is up to the reconcile consumer.
   const detachGroupFromOrg = async (
     { groupId, orgId, orgMembershipId }: { groupId: string; orgId: string; orgMembershipId?: string },
     tx: Knex
@@ -582,7 +583,6 @@ export const membershipGroupServiceFactory = ({
       }
 
       if (scopeData.scope === AccessScope.Organization) {
-        // the group's project rows go too, or they keep granting access through a group the org no longer holds
         await detachGroupFromOrg(
           {
             groupId: dto.selector.groupId,

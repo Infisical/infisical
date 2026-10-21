@@ -653,7 +653,7 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
-  // read before deleting the group: the cascade removes all three
+  // Call before deleting the group, the cascade wipes all three.
   const findGroupActorsAndOrgs = async (groupId: string, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();

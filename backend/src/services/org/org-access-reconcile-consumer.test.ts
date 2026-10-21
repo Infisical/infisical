@@ -194,6 +194,7 @@ describe("org access reconcile consumer", () => {
     expect(deps.usageMeteringService.emit).not.toHaveBeenCalled();
   });
 
+  // A group with no org rows names no orgs, so the actual reconcile is driven by an org membership event.
   test("revokes every project row, key, privilege and approver slot in the org when no path remains", async () => {
     const { consumer, deps, tx } = build({
       projectRows: [
@@ -209,7 +210,6 @@ describe("org access reconcile consumer", () => {
         members: [{ actorType: ActorType.USER, actorId: USER_ID }]
       })
     ]);
-    // a group that held no org rows names no orgs; drive the reconcile with an org membership event
     expect(result.status).toBe(EventResultStatus.Delivered);
     expect(deps.membershipDAL.transaction).not.toHaveBeenCalled();
 
@@ -219,7 +219,6 @@ describe("org access reconcile consumer", () => {
     expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenCalledWith([USER_ID], tx);
     expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith({ $in: { membershipId: [uuid(100), uuid(101)] } }, tx);
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: [uuid(100), uuid(101)] } }, tx);
-    // reaped across the whole org, not only the projects that had a row
     const allProjects = [PROJECT_A, PROJECT_B, PROJECT_C];
     expect(deps.additionalPrivilegeDAL.delete).toHaveBeenCalledWith(
       { $in: { actorUserId: [USER_ID], projectId: allProjects } },
@@ -307,7 +306,6 @@ describe("org access reconcile consumer", () => {
   });
 
   test("reaps a resource grant in a project the user only reached through a group, and logs it", async () => {
-    // a group-derived PAM admin who created a folder holds a personal folder-admin row but no project row
     const { consumer, deps, tx } = build({
       resourceRows: [
         {
@@ -382,8 +380,8 @@ describe("org access reconcile consumer", () => {
     expect(deps.membershipDAL.transaction).not.toHaveBeenCalled();
   });
 
+  // Nothing in the DB says who to recheck anymore, only the payloads do.
   test("still reaps when the group lost its link and its member before the events were handled", async () => {
-    // the group no longer holds a row in the sub-org nor lists the user, so only the payloads say who to recheck
     const { consumer, deps } = build({
       projectRows: [{ id: uuid(105), actorUserId: USER_ID, scopeProjectId: PROJECT_A }]
     });

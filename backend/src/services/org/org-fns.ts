@@ -38,6 +38,8 @@ type TDeleteOrgMemberships = {
   eventEmitter: TEventEmitter;
 };
 
+// Only reaps projects held directly. The reconcile consumer handles what was reached through groups, here
+// and in sub-orgs.
 export const deleteOrgMembershipsFn = async ({
   orgMembershipIds,
   orgId,
@@ -170,8 +172,6 @@ export const deleteOrgMembershipsFn = async ({
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: membershipUserIds }, tx);
 
-    // the deletes above only cover projects held directly; the consumer reaps what was reached through
-    // groups, here and in the sub-orgs
     await emitOrgMembershipRemoved(
       eventEmitter,
       { orgId, actors: toOrgMembershipActors({ userIds: membershipUserIds }) },

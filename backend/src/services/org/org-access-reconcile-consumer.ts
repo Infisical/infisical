@@ -70,14 +70,10 @@ const splitActors = (actors: TOrgMembershipActor[]) => ({
   identityIds: actors.filter((a) => a.actorType === ActorType.IDENTITY).map((a) => a.actorId)
 });
 
-// One invariant: an actor keeps project memberships in an org only while they have a direct org row
-// there or a group that holds one. The org membership events say what was removed; this works out who
-// may have lost their last path, recomputes from current state and deletes what is orphaned, one short
-// transaction per org.
-//
-// Not on the enforcement path: token validation already rejects actors with no effective org
-// membership, so these rows are inert until it runs. Safe to re-run, and an actor re-added in the
-// meantime keeps everything.
+// Keeps project memberships in an org only for actors that still reach it (direct org row or a group
+// holding one). Events say what got removed; we figure out who might've lost their last path, recheck
+// against current state and delete what's orphaned, one short tx per org. Not on the enforcement path
+// (token validation already rejects these actors) and safe to re-run.
 export const orgAccessReconcileConsumerFactory = ({
   orgDAL,
   projectDAL,
@@ -95,10 +91,9 @@ export const orgAccessReconcileConsumerFactory = ({
   const eventTypes = new Set<string>(ORG_MEMBERSHIP_EVENTS);
   const subscribesTo = (eventType: string) => eventTypes.has(eventType);
 
-  // The group events carry the orgs and actors to recheck, captured when the removal happened, because
-  // later removals can delete the rows that would say. Only the access check reads current state.
-  // Parsing happens here and any read in the returned function, because a payload that fails to parse
-  // never will, while a read that fails is worth retrying.
+  // Group events carry the orgs and actors captured at removal time, since later removals can wipe the
+  // rows that would tell us. Parsing is eager and reads are deferred: a bad payload never recovers, a
+  // failed read is worth a retry.
   const $parseScope = (event: TEvent): (() => Promise<TReconcileScope>) => {
     switch (event.eventType) {
       case GROUP_MEMBERSHIP_REMOVED_EVENT: {
@@ -125,6 +120,9 @@ export const orgAccessReconcileConsumerFactory = ({
     }
   };
 
+  // Privileges, keys and resource rows are keyed on actor + project and can exist in group-only projects
+  // (e.g. a group-derived PAM admin's personal folder-admin row), so they're reaped across the whole org
+  // or they come back on re-add. Side effects fire only when rows were removed, so replays are no-ops.
   const $reconcileOrg = async (orgId: string, scope: TReconcileScope, reason: string) => {
     const org = await orgDAL.findById(orgId);
     if (!org) return;
@@ -146,9 +144,6 @@ export const orgAccessReconcileConsumerFactory = ({
         ? await membershipDAL.find({ ...projectScope, $in: { actorIdentityId: identityIds } }, { tx })
         : [];
 
-      // Everything below is keyed on actor + project rather than on a project membership, and may exist for
-      // projects reached only through a group (a group-derived PAM admin creating a folder gets a personal
-      // folder-admin row with no project row), so reap across the whole org or it reactivates on re-add.
       const orgProjectIds = (await projectDAL.find({ orgId }, { tx })).map((project) => project.id);
       const resourceScope = { scope: RESOURCE_SCOPE };
       const userResourceRows =
@@ -222,7 +217,6 @@ export const orgAccessReconcileConsumerFactory = ({
     if (!outcome) return;
     outcome.sendPamCancellations();
 
-    // at-least-once delivery: a replay finds no rows and returns above, so these fire once
     if (!outcome.revoked.length) return;
 
     for await (const { projectIds, resources, ...actor } of outcome.revoked) {

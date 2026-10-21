@@ -1783,6 +1783,8 @@ export const scimServiceFactory = ({
     };
   };
 
+  // SCIM can delete a group that's still linked into sub-orgs, so read its orgs and members before the
+  // cascade drops the links.
   const deleteScimGroup: TScimServiceFactory["deleteScimGroup"] = async ({ groupId, orgId }) => {
     const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) {
@@ -1812,7 +1814,6 @@ export const scimServiceFactory = ({
         groupId,
         tx
       );
-      // SCIM can delete a group that is still linked into sub-orgs; read before the cascade drops the links
       const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
       await emitGroupRemoved(
         eventEmitter,

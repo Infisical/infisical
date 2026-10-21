@@ -880,46 +880,39 @@ query shape.
 
 ### Org Access Reconcile (second outbox consumer)
 
-`src/services/org/org-membership-events.ts` (the event contract), `org-access-reconcile-consumer.ts` and
-`org-access-sweep-queue.ts` (queries live on `org-dal.ts`) keep one invariant: **an actor holds project
-memberships in an org only while they have a direct org row there or belong to a group that does.** A
-user can reach a sub-org purely through a root group linked into it, so the code that removes a group
-membership can't tell on its own whether the actor still reaches the org.
+Lives in `src/services/org/`: `org-membership-events.ts` (event contract), `org-access-reconcile-consumer.ts`
+and `org-access-sweep-queue.ts`, with queries on `org-dal.ts`. The rule: **an actor keeps project
+memberships in an org only while they have a direct org row there or are in a group that has one.** A user
+can reach a sub-org only through a linked root group, so code removing a group membership can't tell by
+itself whether the actor still reaches the org.
 
-- **Every removal of an org path is a fact event, emitted inside the transaction that removed it.** Four
-  events, all `com.infisical.organization.<entity>.removed.v1` per the event naming ADR, each saying what
-  went away and nothing about who lost access: `group-membership` (`groupId`, the group's `orgIds` and the
-  `members` who left, from the two group-removal helpers in `group-fns.ts`, which covers the manual route
-  plus SCIM, LDAP, OIDC and SAML sync), `group-link` (`orgId`, `groupId` and the group's `members`, from
-  `membershipGroupService.detachGroupFromOrg`, used by `group-service.ts` and the org-scope group
-  membership `DELETE`), `group` (`groupId`, `orgIds` and all `members`, from the owned and SCIM group
-  deletes, read through `groupDAL.findGroupActorsAndOrgs` before the cascade removes it) and `membership`
-  (`orgId` + actor, from `deleteOrgMembershipsFn` and the sweep). Actors are
-  `{ actorType: user | identity, actorId }`. The group events carry the orgs and members as they were at
-  removal time, never left for the consumer to read: removing a member and then unlinking the group before
-  the consumer runs would otherwise leave neither event able to name that member in that org. Both lists
-  are paged (100 each, one event per org page x member page), because a group can be linked into any
-  number of sub-orgs and the outbox rejects a payload over 16 KiB, which rolls back the removal. A new path
-  that removes a group membership, link, group or org membership must emit the matching event. The daily
-  `org-access-reconcile-sweep` cron is a backstop, not a substitute.
-- **The consumer (`org-access-reconcile`) subscribes to all four, works out the orgs and actors to recheck**
-  (from the payload for the three group events, the org plus its sub-orgs for an org membership removal) **and recomputes from current state**,
-  one short transaction per org. Actors with no path left lose their project rows in that org, plus privileges, project keys,
-  application approver slots and resource-scope memberships (PAM folders and accounts, Agent Vault, PKI
-  applications, signers) across every project of the org, since those are keyed on actor + project and may
-  exist for group-only projects: a group-derived PAM admin who creates a folder gets a personal
-  folder-admin row with no project row behind it. PAM cancellations, the `revoke-org-project-access` audit event
-  (`projectIds` for project memberships, `resources` for resource grants) and the usage meters fire after
-  commit, only when rows were removed, so a replay logs nothing.
-- **It's not on the enforcement path.** Token validation already rejects an actor with no effective org
-  membership (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat
-  counts and SCIM reads.
-- **`orgDAL.lockActorsForOrgAccess`** is taken by the add-to-group helpers and the consumer, in sorted
-  order, so a membership granted between the consumer's access check and its deletes can't be reaped.
-  Take it in any new path that grants an actor an org path outside `group-fns.ts`.
-- **Adding a user to a project checks effective org membership** (`orgDAL.findActorsWithOrgAccess` in
-  `project-membership-user-factory.ts`), so a user who only reaches the org through a linked group can
-  get a direct project membership. That row is what the consumer revokes when the group path goes.
+- **Every removal of an org path emits a fact event in the same tx.** Four of them,
+  `com.infisical.organization.<entity>.removed.v1`:
+  - `group-membership`: `groupId`, `orgIds`, the `members` who left. From the removal helpers in
+    `group-fns.ts` (manual route plus SCIM, LDAP, OIDC and SAML sync).
+  - `group-link`: `orgId`, `groupId`, the group's `members`. From `membershipGroupService.detachGroupFromOrg`.
+  - `group`: `groupId`, `orgIds`, all `members`. From owned and SCIM group deletes, read with
+    `groupDAL.findGroupActorsAndOrgs` before the cascade.
+  - `membership`: `orgId` + actor. From `deleteOrgMembershipsFn` and the sweep.
+
+  Group events snapshot orgs and members at removal time, since a later removal can wipe those rows before
+  the consumer runs. Both lists are paged at 100 (one event per org page x member page) because the outbox
+  rejects payloads over 16 KiB, which rolls back the removal. Any new path removing one of these must emit
+  the matching event. The daily `org-access-reconcile-sweep` cron is a backstop, not a substitute.
+- **The consumer (`org-access-reconcile`) rechecks against current state**, one short tx per org. Orgs and
+  actors come from the payload for group events, and from the org plus its sub-orgs for a membership
+  removal. Actors with no path left lose their project rows in that org, plus privileges, project keys,
+  approver slots and resource memberships (PAM, Agent Vault, PKI apps, signers) across every project in the
+  org, since those can exist in group-only projects. PAM cancellations, the `revoke-org-project-access`
+  audit log and usage meters fire after commit and only when something was removed, so replays are silent.
+- **Not on the enforcement path.** Token validation already rejects actors with no effective org membership
+  (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat counts and SCIM.
+- **`orgDAL.lockActorsForOrgAccess`** is taken (sorted) by the add-to-group helpers and the consumer, so
+  access granted between the consumer's check and its deletes doesn't get reaped. Take it in any new path
+  that grants an org path outside `group-fns.ts`.
+- **Adding a user to a project checks effective org membership** (`orgDAL.findActorsWithOrgAccess`), so
+  group-only users can get a direct project membership. That's the row the consumer revokes once the group
+  path goes away.
 
 ### Soft-Delete + Async Cleanup
 

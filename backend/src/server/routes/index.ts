@@ -856,7 +856,6 @@ export const registerRoutes = async (
   const folderPermissionDAL = folderPermissionDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
-  // built early: the membership services below emit through it, consumers register later
   const eventOutboxDAL = eventOutboxDALFactory(db);
   const eventOutboxRegistry = eventOutboxRegistryFactory();
   const eventOutboxService = eventOutboxServiceFactory({ eventOutboxDAL, eventOutboxRegistry });

@@ -123,8 +123,7 @@ describe("org membership events", () => {
         await emitGroupMembershipRemoved(eventEmitter, { groupId: GROUP, orgIds, actors: members }, TX);
       }
 
-      // 5 org pages x 3 member pages
-      expect(emitted).toHaveLength(15);
+      expect(emitted).toHaveLength(5 * 3);
       const covered = new Set<string>();
       for (const { event, tx } of emitted) {
         expect(tx).toBe(TX);

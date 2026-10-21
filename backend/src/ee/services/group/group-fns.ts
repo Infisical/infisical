@@ -403,6 +403,7 @@ export const addIdentitiesToGroup = async ({
  * this function will handle both cases.
  * @param {group} group - group to remove user(s) from
  * @param {string[]} userIds - id(s) of user(s) to remove from group
+ * Cleans up projects in every org the group reaches, not just its home org.
  */
 export const removeUsersFromGroupByUserIds = async ({
   group,
@@ -487,7 +488,6 @@ export const removeUsersFromGroupByUserIds = async ({
       }
     });
 
-    // every org the group reaches, not just its home org
     const projectIds = Array.from(
       new Set(
         (

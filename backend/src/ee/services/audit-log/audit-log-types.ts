@@ -2934,17 +2934,15 @@ interface UnlinkGroupFromSubOrgEvent {
   };
 }
 
-// Logged by the org access reconcile consumer after the fact, so the actor is the platform and the
-// cause lives in reason and groupId.
+// Logged by the reconcile consumer after the fact, so the actor is the platform and the cause is in
+// reason/groupId. `resources` are resource-level grants (PAM, Agent Vault, PKI apps, signers), including
+// ones in projects only reached through a group.
 interface RevokeOrgProjectAccessEvent {
   type: EventType.REVOKE_ORG_PROJECT_ACCESS;
   metadata: {
     userId?: string;
     identityId?: string;
-    // projects whose membership was removed
     projectIds: string[];
-    // resource-level grants removed (PAM folders and accounts, Agent Vault, PKI applications, signers),
-    // including ones in projects the actor only reached through a group
     resources: { projectId: string; resourceType: string; resourceId: string }[];
     reason: string;
     groupId?: string;
