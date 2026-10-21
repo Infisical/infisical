@@ -15,6 +15,16 @@ const marked = (value: string) =>
     .map(({ text }) => text);
 
 describe("splitSuspiciousCharacters", () => {
+  it("keeps every character of the input across its parts", () => {
+    const value = `before\u00a0\u200bafter ${FAMILY_EMOJI}\u200d${ENGLAND_FLAG_EMOJI} ${UNICODE_TEXT}`;
+    assert.equal(
+      splitSuspiciousCharacters(value)
+        .map(({ text }) => text)
+        .join(""),
+      value
+    );
+  });
+
   it("marks nothing in ordinary text, tabs, or newlines", () => {
     assert.deepEqual(marked('{ "KEY": "value with spaces\ttab" }\r\n'), []);
   });
