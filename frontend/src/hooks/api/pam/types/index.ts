@@ -810,6 +810,10 @@ export type TBreakGlassPamAccessRequestDTO = {
   bypassReason: string;
 };
 
+export type TCancelPamAccessRequestDTO = {
+  requestId: string;
+};
+
 export type TSetPamApprovalConfigDTO = {
   folderId: string;
   steps: {

@@ -15,6 +15,7 @@ import {
   TAddPamProductIdentityMemberDTO,
   TAddPamProductUserMemberDTO,
   TBreakGlassPamAccessRequestDTO,
+  TCancelPamAccessRequestDTO,
   TCreatePamAccessRequestDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
@@ -895,6 +896,22 @@ export const useBreakGlassPamAccessRequest = () => {
       const { data } = await apiRequest.post(
         `/api/v1/approval-policies/pam-access/requests/${requestId}/break-glass`,
         { bypassReason }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+    }
+  });
+};
+
+export const useCancelPamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId }: TCancelPamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/approval-policies/pam-access/requests/${requestId}/cancel`
       );
       return data;
     },

@@ -49,6 +49,7 @@ import {
   TAccessiblePamAccount,
   TPamApprovalWorkflowStep,
   useBreakGlassPamAccessRequest,
+  useCancelPamAccessRequest,
   useCreatePamAccessRequest,
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
@@ -186,6 +187,7 @@ export const RequestAccessSheet = ({
   const createRequest = useCreatePamAccessRequest();
   const formId = useId();
   const breakGlass = useBreakGlassPamAccessRequest();
+  const cancelRequest = useCancelPamAccessRequest();
   const [bypassReason, setBypassReason] = useState("");
   const [autoApprovalValues, setAutoApprovalValues] = useState<Record<string, string>>({});
   const isCredentialRequest = accessType === PamAccessType.Credential;
@@ -228,6 +230,22 @@ export const RequestAccessSheet = ({
       setAutoApprovalValues({});
     }
     onOpenChange(open);
+  };
+
+  const onCancelRequest = () => {
+    if (!pendingRequestId) return;
+    cancelRequest.mutate(
+      { requestId: pendingRequestId },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: isCredentialRequest ? "Credential request canceled" : "Access request canceled",
+            type: "success"
+          });
+          handleOpenChange(false);
+        }
+      }
+    );
   };
 
   const onBreakGlass = () => {
@@ -317,7 +335,18 @@ export const RequestAccessSheet = ({
       metadata={metadata}
       isDirty={(isDirty || hasAutoApprovalValues) && !isPending}
       contentFooter={
-        !isPending && (
+        isPending ? (
+          pendingRequestId && (
+            <Button
+              type="button"
+              variant="danger"
+              isPending={cancelRequest.isPending}
+              onClick={onCancelRequest}
+            >
+              Cancel Request
+            </Button>
+          )
+        ) : (
           <>
             <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
               Cancel
