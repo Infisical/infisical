@@ -4,7 +4,8 @@ import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvide
 import { type ComponentGroup } from "@app/components/v4/contracts/types";
 import { V4Scope } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
-import { Icon } from "@app/components/v4/ui/icon";
+import { Icon, type IconName } from "@app/components/v4/ui/icon";
+import { Kbd } from "@app/components/v4/ui/kbd";
 import {
   Sheet,
   SheetContent,
@@ -12,7 +13,9 @@ import {
   SheetTitle,
   SheetTrigger
 } from "@app/components/v4/ui/sheet";
+import { Sidebar } from "@app/components/v4/ui/sidebar";
 import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
+import { AppInset, AppShell, TopBar } from "@app/components/v4/ui/top-bar";
 
 import logo from "./assets/infisical-logo.svg";
 import { AccentPanelButton, AccentPanelProvider, useAccentPanel } from "./accent-panel";
@@ -30,6 +33,7 @@ import {
   resolveDocumentationPage
 } from "./navigation";
 import { RulesPage } from "./RulesPage";
+import { WorkbenchPalette } from "./workbench-palette";
 
 import "@app/components/v4/v4.css";
 import dockStyles from "./dock.module.css";
@@ -78,6 +82,21 @@ const componentGroupOrder: readonly ComponentGroup[] = [
   "Code",
   "Utilities"
 ];
+const groupIcons: Record<string, IconName> = {
+  Foundations: "apps",
+  Actions: "plus",
+  Forms: "file",
+  Navigation: "menu",
+  "Data display": "inbox",
+  Feedback: "bell",
+  Overlays: "folder-open",
+  Composites: "building",
+  Patterns: "sync",
+  Code: "terminal",
+  Utilities: "settings",
+  Comparisons: "eye",
+  Contributing: "user"
+};
 const navigationGroups = [
   { title: "Foundations", pages: foundationPages },
   ...componentGroupOrder.map((title) => ({
@@ -86,7 +105,14 @@ const navigationGroups = [
   })),
   { title: "Comparisons", pages: comparisonPages },
   { title: "Contributing", pages: guidancePages }
-];
+].map((group) => ({ ...group, icon: groupIcons[group.title] ?? "file" }));
+const sidebarSections = navigationGroups.map((group) => ({
+  label: group.title,
+  icon: group.icon,
+  items: group.pages.map((page) => ({ id: page.id, label: page.title, href: `#${page.id}` }))
+}));
+const groupOf = (page: string) =>
+  navigationGroups.find((group) => group.pages.some((entry) => entry.id === page));
 
 const Brand = ({ theme, onSelect }: { theme: "light" | "dark"; onSelect?: () => void }) => (
   <a
@@ -160,6 +186,7 @@ const DockAccentButton = () => {
 export const DesignSystemPage = () => {
   const [view, setView] = useState<"human" | "agent">("human");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const mobileNavigation = useRef<HTMLDivElement>(null);
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState<number>();
@@ -189,6 +216,21 @@ export const DesignSystemPage = () => {
     return () => observer.disconnect();
   }, []);
   const currentPage = resolveDocumentationPage(hash);
+  const example = hash.split("/")[1];
+  useEffect(() => {
+    if (!example) return undefined;
+    const started = performance.now();
+    let frame = 0;
+    const seek = () => {
+      const target = document.querySelector<HTMLElement>(
+        `[data-component="${currentPage}"][data-example="${example}"]`
+      );
+      if (target) target.scrollIntoView({ block: "start" });
+      else if (performance.now() - started < 3000) frame = requestAnimationFrame(seek);
+    };
+    frame = requestAnimationFrame(seek);
+    return () => cancelAnimationFrame(frame);
+  }, [currentPage, example]);
   const nextTheme = theme === "dark" ? "light" : "dark";
   return (
     <V4Scope className="flex h-svh flex-col overflow-hidden" theme={theme} corners={corners}>
@@ -196,16 +238,42 @@ export const DesignSystemPage = () => {
         <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
           Skip to content
         </a>
-        <div className="flex min-h-0 flex-1">
-          <aside className="hidden w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-            <div className="shrink-0 px-6 pt-7 pb-6">
-              <Brand theme={theme} />
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-              <DocumentationNavigation currentPage={currentPage} />
-            </div>
-          </aside>
-          <div className="flex min-w-0 flex-1 flex-col">
+        <AppShell className="min-h-0 flex-1">
+          <Sidebar
+            className="hidden lg:flex"
+            label="Design system"
+            footerItems={[
+              { id: "workbench", label: "Infisical 2.0 workbench", icon: "apps", href: "#overview" }
+            ]}
+            sections={sidebarSections}
+            current={currentPage}
+            search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
+          />
+          <AppInset>
+            <TopBar
+              breadcrumb={[
+                { label: "Design system", href: "#overview" },
+                ...(groupOf(currentPage) ? [{ label: groupOf(currentPage)?.title ?? "" }] : []),
+                {
+                  label:
+                    groupOf(currentPage)?.pages.find((entry) => entry.id === currentPage)?.title ??
+                    currentPage
+                }
+              ]}
+              actions={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon="search"
+                  aria-keyshortcuts="Meta+K Control+K"
+                  onClick={() => setPaletteOpen(true)}
+                >
+                  Search
+                  <Kbd keys="mod+K" size="sm" />
+                </Button>
+              }
+            />
             <div className="flex shrink-0 items-center justify-between px-4 pt-3 lg:hidden">
               <Brand theme={theme} />
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -257,12 +325,12 @@ export const DesignSystemPage = () => {
                 </p>
               }
             >
-              <main
+              <div
                 key={currentPage}
                 id={currentPage}
                 data-document-view={view}
                 tabIndex={-1}
-                className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pt-5 outline-none lg:px-10 lg:pt-8"
+                className="min-w-0 flex-1 px-4 pt-5 outline-none lg:px-10 lg:pt-8"
                 style={{
                   marginBottom: `calc(${dockHeight === undefined ? "var(--v4-space-48)" : `${dockHeight}px`} + ${dockInset} + var(--v4-space-8))`
                 }}
@@ -276,10 +344,25 @@ export const DesignSystemPage = () => {
                     </div>
                   )}
                 </article>
-              </main>
+              </div>
             </Suspense>
-          </div>
-        </div>
+          </AppInset>
+        </AppShell>
+        <WorkbenchPalette
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+          groups={navigationGroups}
+          toggleTheme={() => setTheme(nextTheme, "design-system")}
+          toggleCorners={() => {
+            try {
+              window.localStorage.setItem("v4-corners", nextCorners);
+            } catch {
+              // Storage is unavailable; keep the choice for this session only.
+            }
+            setCorners(nextCorners);
+          }}
+          setView={setView}
+        />
         <div
           data-documentation-dock
           className="pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4"

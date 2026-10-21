@@ -2718,7 +2718,7 @@
         "Card"
       ],
       "behavior": [
-        "Card offers framed and plain shells, a flush body and named title/description/action/footer slots. Framed (the default) is a tint frame with a soft frame-line outline, so header band, inner surface and footer band read as one bordered card: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. Its radius is radius-panel minus that pad, so the corners stay concentric in soft mode and are square in square mode. Plain is a single surface with one line border and no frame. The header band holds labels only: the title, with optional badges in it and an action. It never holds a framed icon or media tile; put those in the body. A footerPlacement of frame moves the footer out of the inner surface into a matching band of the frame below it, for a stats or status row under the content. Title, description, body and footer share one text column, and the action centres on the title line."
+        "Card offers framed and plain shells, a flush body and named title/description/action/footer slots. Framed (the default) is a tint frame with a soft frame-line outline, so header band, inner surface and footer band read as one bordered card: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. Its radius is radius-panel minus that pad, so the corners stay concentric in soft mode and are square in square mode. With footerPlacement frame and the title, description and footer props, the header and body sit together on the inner surface with its own line border, and the footer is a band in the frame below it, padded by the frame pad, never a separate box. Plain is a single surface with one line border and no frame. The header band holds labels only: the title, with optional badges in it and an action. It never holds a framed icon or media tile; put those in the body. A footerPlacement of frame moves the footer out of the inner surface into a matching band of the frame below it, for a stats or status row under the content. Title, description, body and footer share one text column, and the action centres on the title line."
       ],
       "accessibility": [
         "Choose the heading level through the composed title; actions remain native controls with their own names."
@@ -4473,7 +4473,9 @@
         "Radix Root owns open/onOpenChange. Action items close after onSelect; checkbox/radio changes stay open by default and can opt into closeOnSelect."
       ],
       "accessibility": [
-        "A named trigger opens the menu. Typing a letter jumps to a matching item, arrow keys skip disabled items and focus returns to the trigger on close. Use checkbox or radio items for persistent selection."
+        "A named trigger opens the menu. Typing a letter jumps to a matching item, arrow keys skip disabled items and focus returns to the trigger on close. Use checkbox or radio items for persistent selection.",
+        "DropdownMenuTrigger defers to Button. Without asChild it renders an outline Button; with asChild it adds nothing, so rest, hover, open, focus and disabled all come from the Button. No tint is ever drawn inside a bordered control.",
+        "The panel follows the shared menu recipe: pop ground, pop-line edge and shadow-pop, a 3px inset on all four sides, and 32px rows that are inset rounded blocks (radius-pop minus the inset, so they stay concentric in soft mode). Separators run edge to edge; rows and their tints never do."
       ],
       "limitations": [
         "Menu checked state and action effects are caller-owned; menu dismissal does not mean an operation succeeded."
@@ -11982,7 +11984,10 @@
       "behavior": [
         "String, array and sequence bindings render one cap per key.",
         "mod becomes Command on Apple and Control elsewhere; explicit platform supports documentation.",
-        "Existing composed Kbd children and native element refs remain supported."
+        "Existing composed Kbd children and native element refs remain supported.",
+        "Cap sizes are tokens: md is size-kbd-md (20px), sm is size-kbd-sm (18px) and caps in a tooltip are size-kbd-xs (16px). A single-glyph cap (Command, K, an arrow) is a square of that size; a longer label (Ctrl, Shift, Esc) keeps the height and grows with equal side padding, never narrower than the square.",
+        "Inside a control the last cap sits as far from the control's inner right edge as from its top and bottom: (inner height minus cap height) / 2. The host slot sets this once (Input trailing slot, Button, menu and command rows), never an example.",
+        "Modifier, Enter, Tab, Backspace and arrow glyphs are icons, never text symbols. The custom 2.0 set has none of them, so they use Lucide fallbacks at the shared stroke."
       ],
       "accessibility": [
         "The shortcut group announces key names rather than symbol glyphs.",
@@ -12026,11 +12031,11 @@
           "omitted": [
             {
               "value": "md",
-              "reason": "The one key cap size, 20px. Every example on this page uses it."
+              "reason": "The default 20px cap (size-kbd-md). Every example on this page uses it."
             },
             {
               "value": "sm",
-              "reason": "Alias of md. The 2px smaller cap could not be told apart, so both render 20px."
+              "reason": "The 18px cap (size-kbd-sm) that menus, command rows, buttons and the TopBar search use; it shows in those components' examples."
             }
           ]
         },
@@ -14197,7 +14202,8 @@
         "A row with children opens one level of 32px pages, without icons, on a guide line under its icon. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.",
         "The nav scrolls when it runs out of room and fades the edge where more rows are cut off.",
         "Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.",
-        "The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings."
+        "The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings. Without user there is no account button, for hosts such as the design system workbench.",
+        "A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail."
       ],
       "accessibility": [
         "The rows sit in a nav landmark named for the space it shows. Up and Down move between rows and Home and End jump; Tab still reaches every row.",

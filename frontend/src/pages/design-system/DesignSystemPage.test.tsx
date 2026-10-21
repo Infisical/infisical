@@ -91,7 +91,7 @@ const waitForPage = async (id: string) =>
           setTimeout(resolve, 20);
         });
       });
-      expect(document.querySelector("main")?.id).toBe(id);
+      expect(document.querySelector("[data-document-view]")?.id).toBe(id);
     },
     { timeout: 5000 }
   );
@@ -166,7 +166,7 @@ it.each(["#button", "#button-directions"])(
       root.render(<RouterProvider<typeof router> router={router} />);
     });
     await waitForPage("button");
-    expect(host.querySelector('main[data-document-view="human"]')).not.toBeNull();
+    expect(host.querySelector('[data-document-view="human"]')).not.toBeNull();
     expect(host.querySelector('[data-component="button"]')).not.toBeNull();
     expect(host.textContent).not.toContain("View code");
     expect(host.textContent).not.toContain("API source and verification recipes");
@@ -231,7 +231,7 @@ it.each(["#button", "#button-directions"])(
     expect(document.activeElement).toBe(notes[0]);
     expect(host.textContent).not.toContain("Workbench / in progress");
     expect(host.querySelector("[data-documentation-dock]")?.contains(human ?? null)).toBe(true);
-    expect(host.querySelector("header")).toBeNull();
+    expect(host.querySelectorAll("header")).toHaveLength(1);
     human?.focus();
     await React.act(async () => {
       human?.dispatchEvent(
@@ -270,7 +270,7 @@ it("opens compact mobile navigation, follows a destination and restores its stab
   );
   expect(trigger?.textContent).toBe("");
   expect(host.querySelector("select")).toBeNull();
-  expect(host.querySelector("header")).toBeNull();
+  expect(host.querySelectorAll("header")).toHaveLength(1);
   trigger?.focus();
   await React.act(async () => trigger?.click());
   let panel = document.querySelector('[data-slot="sheet-content"]');
@@ -288,7 +288,7 @@ it("opens compact mobile navigation, follows a destination and restores its stab
       })
   );
   expect(window.location.hash).toBe("#colors");
-  expect(host.querySelector("main")?.id).toBe("colors");
+  expect(host.querySelector("[data-document-view]")?.id).toBe("colors");
   expect(document.querySelector('[data-slot="sheet-content"]')).toBeNull();
   expect(trigger?.isConnected).toBe(true);
   expect(document.activeElement).toBe(trigger);

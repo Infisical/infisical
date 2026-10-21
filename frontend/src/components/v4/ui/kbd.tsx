@@ -46,7 +46,7 @@ export type KeyCombo = string | readonly string[] | readonly (readonly string[])
 export interface KbdProps extends Omit<React.ComponentPropsWithoutRef<"kbd">, "children"> {
   children?: React.ReactNode;
   keys?: KeyCombo;
-  /** sm is an alias of md: both render the 20px key cap. */
+  /** md is the 20px key cap (size-kbd-md); sm is the 18px cap (size-kbd-sm) for menus, buttons and rows. */
   size?: "sm" | "md";
   platform?: "auto" | "mac" | "other";
 }
@@ -130,6 +130,9 @@ const Kbd = React.forwardRef<HTMLElement, KbdProps>(
           ref={ref}
           data-slot="kbd"
           data-size={size}
+          data-glyph={
+            typeof children === "string" && [...children].length === 1 ? "single" : undefined
+          }
           className={cn(styles.cap, className)}
           {...props}
         >
@@ -161,6 +164,7 @@ const Kbd = React.forwardRef<HTMLElement, KbdProps>(
                 aria-hidden
                 data-slot="kbd"
                 data-size={size}
+                data-glyph={[...key.glyph].length === 1 ? "single" : undefined}
                 className={styles.cap}
               >
                 <KeyGlyph glyph={key.glyph} />

@@ -57,7 +57,37 @@ const Card = React.forwardRef<
         {...props}
       >
         <FramedContext.Provider value={variant !== "plain"}>
-          {convenience ? (
+          {convenience &&
+          variant !== "plain" &&
+          footer !== undefined &&
+          footerPlacement === "frame" ? (
+            <>
+              <div
+                data-slot="card-inset"
+                className={cn(frameStyles.frameInset, controlStyles.cardInset)}
+              >
+                <FramedContext.Provider value={false}>
+                  {(title !== undefined || description !== undefined || action) && (
+                    <CardHeader>
+                      <div className={controlStyles.cardTitleGroup}>
+                        <div className={controlStyles.cardCopy}>
+                          {title !== undefined && <CardTitle>{title}</CardTitle>}
+                          {description !== undefined && (
+                            <CardDescription>{description}</CardDescription>
+                          )}
+                        </div>
+                      </div>
+                      {action && <CardAction>{action}</CardAction>}
+                    </CardHeader>
+                  )}
+                  {children !== undefined && children !== null && (
+                    <CardContent>{children}</CardContent>
+                  )}
+                </FramedContext.Provider>
+              </div>
+              <CardFooter placement="frame">{footer}</CardFooter>
+            </>
+          ) : convenience ? (
             <>
               {(title !== undefined || description !== undefined || action) && (
                 <CardHeader>

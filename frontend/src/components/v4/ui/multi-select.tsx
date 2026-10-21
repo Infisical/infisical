@@ -312,7 +312,7 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
             className={cn(
               controlStyles.field,
               controlStyles.trigger,
-              controlStyles.insetHover,
+              controlStyles.triggerHover,
               className
             )}
           >

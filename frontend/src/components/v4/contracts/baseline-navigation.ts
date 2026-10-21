@@ -671,7 +671,9 @@ export const baselineNavigation = [
       "Radix Root owns open/onOpenChange. Action items close after onSelect; checkbox/radio changes stay open by default and can opt into closeOnSelect."
     ],
     accessibility: [
-      "A named trigger opens the menu. Typing a letter jumps to a matching item, arrow keys skip disabled items and focus returns to the trigger on close. Use checkbox or radio items for persistent selection."
+      "A named trigger opens the menu. Typing a letter jumps to a matching item, arrow keys skip disabled items and focus returns to the trigger on close. Use checkbox or radio items for persistent selection.",
+      "DropdownMenuTrigger defers to Button. Without asChild it renders an outline Button; with asChild it adds nothing, so rest, hover, open, focus and disabled all come from the Button. No tint is ever drawn inside a bordered control.",
+      "The panel follows the shared menu recipe: pop ground, pop-line edge and shadow-pop, a 3px inset on all four sides, and 32px rows that are inset rounded blocks (radius-pop minus the inset, so they stay concentric in soft mode). Separators run edge to edge; rows and their tints never do."
     ],
     limitations: [
       "Menu checked state and action effects are caller-owned; menu dismissal does not mean an operation succeeded."

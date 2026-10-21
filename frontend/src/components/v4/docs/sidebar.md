@@ -72,7 +72,8 @@ Exports: Sidebar. Source TypeScript defines the API.
 - A row with children opens one level of 32px pages, without icons, on a guide line under its icon. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.
 - The nav scrolls when it runs out of room and fades the edge where more rows are cut off.
 - Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.
-- The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings.
+- The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings. Without user there is no account button, for hosts such as the design system workbench.
+- A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail.
 
 ## Accessibility
 

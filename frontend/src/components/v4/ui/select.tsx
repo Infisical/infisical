@@ -132,7 +132,7 @@ const SelectTrigger = React.forwardRef<
       className={cn(
         controlStyles.field,
         controlStyles.trigger,
-        controlStyles.insetHover,
+        controlStyles.triggerHover,
         "[&_svg]:pointer-events-none [&_svg]:shrink-0",
         controlStyles.selectTrigger,
         className

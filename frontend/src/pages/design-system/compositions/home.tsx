@@ -1,9 +1,8 @@
 import { Badge } from "@app/components/v4/ui/badge";
-import { Card, CardFooter } from "@app/components/v4/ui/card";
+import { Card } from "@app/components/v4/ui/card";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Heading, Text } from "@app/components/v4/ui/text";
 
 import { orgSections, Shell, useCrumbs } from "./shared";
 
@@ -72,27 +71,27 @@ export default function Home() {
         />
         <Grid columns={2} gap={32}>
           {products.map((p) => (
-            <Stack key={p.title} gap={12}>
-              <Inline gap={8} align="center">
-                <Icon name={p.icon} size={18} />
-                <Heading level={2} size="subsection">
+            <Card
+              key={p.title}
+              footerPlacement="frame"
+              title={
+                <Inline gap={8} align="center">
+                  <Icon name={p.icon} size={18} />
                   {p.title}
-                </Heading>
-                {"preview" in p && <Badge size="sm">Preview</Badge>}
-              </Inline>
-              <Text muted>{p.body}</Text>
-              <Card>
-                <CardFooter placement="frame">
-                  <Inline gap={24}>
-                    {p.stats.map(([n, l]) => (
-                      <span key={l}>
-                        <strong>{n}</strong> {l}
-                      </span>
-                    ))}
-                  </Inline>
-                </CardFooter>
-              </Card>
-            </Stack>
+                  {"preview" in p && <Badge size="sm">Preview</Badge>}
+                </Inline>
+              }
+              description={p.body}
+              footer={
+                <Inline gap={24}>
+                  {p.stats.map(([n, l]) => (
+                    <span key={l}>
+                      <strong>{n}</strong> {l}
+                    </span>
+                  ))}
+                </Inline>
+              }
+            />
           ))}
         </Grid>
       </Stack>

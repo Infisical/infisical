@@ -69,6 +69,9 @@ Exports: Kbd, KbdGroup, KeyCombo, shortcutSteps. Source TypeScript defines the A
 - String, array and sequence bindings render one cap per key.
 - mod becomes Command on Apple and Control elsewhere; explicit platform supports documentation.
 - Existing composed Kbd children and native element refs remain supported.
+- Cap sizes are tokens: md is size-kbd-md (20px), sm is size-kbd-sm (18px) and caps in a tooltip are size-kbd-xs (16px). A single-glyph cap (Command, K, an arrow) is a square of that size; a longer label (Ctrl, Shift, Esc) keeps the height and grows with equal side padding, never narrower than the square.
+- Inside a control the last cap sits as far from the control's inner right edge as from its top and bottom: (inner height minus cap height) / 2. The host slot sets this once (Input trailing slot, Button, menu and command rows), never an example.
+- Modifier, Enter, Tab, Backspace and arrow glyphs are icons, never text symbols. The custom 2.0 set has none of them, so they use Lucide fallbacks at the shared stroke.
 
 ## Accessibility
 
@@ -91,8 +94,8 @@ Source declarations and review criteria only. Generation checks references and c
 ### size
 
 
-- md: omitted. The one key cap size, 20px. Every example on this page uses it.
-- sm: omitted. Alias of md. The 2px smaller cap could not be told apart, so both render 20px.
+- md: omitted. The default 20px cap (size-kbd-md). Every example on this page uses it.
+- sm: omitted. The 18px cap (size-kbd-sm) that menus, command rows, buttons and the TopBar search use; it shows in those components' examples.
 
 ### platform
 

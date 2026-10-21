@@ -33,7 +33,14 @@ The Infisical 2.0 line set (52 glyphs from #8691, ui/icon-data.ts) is the primar
 - Hover and press overlays on anything with content behind it are translucent ink (opacity-hover and opacity-press), never an opaque fill.
 - Loading: when the loaded shape is known, show Skeleton shapes that match it; use Loader only when the shape is unknown.
 - Focus: fields, slider thumbs and other glow-focused controls share one glow, size-focus-glow in focus-ring (neutral ink, never the accent).
+- Menus: every menu-like popover (Switcher, account menu, DropdownMenu, Select and Combobox lists, ContextMenu, CommandMenu) uses the shared recipe in menu.module.css: pop ground, pop-line edge and shadow-pop, a 3px inset on all four sides, 32px rows as inset rounded blocks, eyebrow labels and one lead-icon column. Separators may span the panel; rows and their tints never touch its edge.
+- Triggers defer to Button: a menu, popover or select trigger takes Button's rest, hover, pressed, open and focus states on the whole control. Never draw an inner tint inside a bordered control.
+- Kbd: caps are size-kbd-md (20px), size-kbd-sm (18px) or size-kbd-xs (16px, tooltips). Single glyphs are square; longer labels grow with equal side padding. A host slot sets --v4-kbd-host-block and --v4-kbd-host-end so the trailing gap equals the vertical gap.
 
 ## Workbench comparisons
 
 `/design-system` has a Comparisons group: one page per product screen with a before/after slider (`pages/design-system/comparison-slider.tsx`, built from v4 Button, ToggleGroup and Icon). Before is a committed WebP of the current app on main (`assets/comparisons/<screen>-<light|dark>.webp`, 1706x971 at 2x, seeded data); after is the live page in `pages/design-system/compositions/`, built only from v4 components and following the dock's theme, corners and accent. The handle drags, takes Left and Right (Shift for 10%), Home and End, and Reset centers it; "Live, full width" shows the page unscaled so it can be clicked through. Compositions are workbench pages with fake data and no backend; never import them into product code.
+
+## Workbench navigation and search
+
+The workbench itself runs in a real AppShell: the v4 Sidebar (one eyebrow section per workbench group, each with an icon so the rail shows one flyout row per group, no account button and a Workbench footer row), AppInset, and a TopBar whose breadcrumb reads Design system, section, page. Mod+K, the sidebar search tool and the TopBar Search button open the command palette (`pages/design-system/workbench-palette.tsx`, built on CommandMenu). Its index is derived from `navigation.ts` and the generated catalog, so every page, alias and example section is searchable without a hand-kept list. An example result sets the hash to `#<page>/<example>` and the page scrolls to that section. Recent picks show on an empty query, and the Commands group toggles theme and corners, opens the accent picker and switches the Human or Agent view.

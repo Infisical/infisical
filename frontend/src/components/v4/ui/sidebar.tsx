@@ -35,6 +35,7 @@ export interface SidebarItem extends SidebarLink {
 }
 export interface SidebarSection {
   label?: string;
+  icon?: IconName;
   items: readonly SidebarItem[];
 }
 export interface SidebarSpace {
@@ -73,7 +74,7 @@ export interface SidebarProps {
   onNavigate?: (item: SidebarLink) => void;
   search?: { onClick: () => void; label?: string; shortcut?: string } | false;
   invite?: { onClick: () => void; label?: string } | false;
-  user: SidebarUser;
+  user?: SidebarUser;
   org?: SidebarOrganization;
   theme?: { value: SidebarTheme; onChange: (value: SidebarTheme) => void; label?: string };
   footerItems?: readonly SidebarItem[];
@@ -404,7 +405,7 @@ export const Sidebar = ({
   onNavigate,
   search,
   invite,
-  user,
+  user: accountUser,
   org,
   theme,
   footerItems,
@@ -449,6 +450,7 @@ export const Sidebar = ({
       </button>
     </Tooltip>
   );
+  const user = accountUser ?? { name: "", email: "" };
   const userAvatar = <Avatar size={20} name={user.name} initials={user.initials} />;
   const account = (
     <button
@@ -561,7 +563,18 @@ export const Sidebar = ({
                   </p>
                 )}
                 <SidebarItems
-                  items={section.items}
+                  items={
+                    rail && section.icon && section.label
+                      ? [
+                          {
+                            id: `section-${section.label}`,
+                            label: section.label,
+                            icon: section.icon,
+                            children: section.items
+                          }
+                        ]
+                      : section.items
+                  }
                   current={current}
                   rail={rail}
                   onNavigate={onNavigate}
@@ -580,84 +593,86 @@ export const Sidebar = ({
             </div>
           )}
         </nav>
-        <div className={styles.accountShelf}>
-          {hasMenu ? (
-            <Switcher
-              label={org ? "Switch organization" : "Account"}
-              width={264}
-              side={rail ? "right" : "top"}
-              options={(org?.options ?? []).map((option) => ({
-                value: option.value,
-                label: option.label,
-                meta: option.plan,
-                group: org?.optionsLabel ?? "Organizations"
-              }))}
-              value={org?.value}
-              onChange={(value) => org?.onChange(value)}
-              actions={[
-                ...(org?.actions ?? []),
-                ...(org?.actions?.length && user.items?.length
-                  ? [{ type: "separator" } as const]
-                  : []),
-                ...(user.items ?? [])
-              ]}
-              footer={({ close }) => (
-                <>
-                  {theme && (
-                    <div className={styles.themeRow}>
-                      <span>{theme.label ?? "Theme"}</span>
-                      <ToggleGroup
-                        type="single"
-                        size="sm"
-                        aria-label={theme.label ?? "Theme"}
-                        value={theme.value}
-                        onValueChange={(value) => {
-                          if (value) theme.onChange(value as SidebarTheme);
-                        }}
-                      >
-                        {themeOptions.map((option) => (
-                          <ToggleGroupItem
-                            key={option.value}
-                            value={option.value}
-                            aria-label={option.label}
-                            title={option.label}
-                          >
-                            <Icon name={option.icon} size={14} />
-                          </ToggleGroupItem>
-                        ))}
-                      </ToggleGroup>
-                    </div>
-                  )}
-                  {(user.href || user.onClick) &&
-                    React.createElement(
-                      user.href ? "a" : "button",
-                      {
-                        className: styles.userRow,
-                        href: user.href,
-                        type: user.href ? undefined : "button",
-                        "aria-label": user.settingsLabel ?? "Personal settings",
-                        onClick: () => {
-                          user.onClick?.();
-                          close();
-                        }
-                      },
-                      <Identity name={user.name} description={user.email} />,
-                      <Icon name="chev-right" size={14} className={styles.trailing} />
+        {accountUser && (
+          <div className={styles.accountShelf}>
+            {hasMenu ? (
+              <Switcher
+                label={org ? "Switch organization" : "Account"}
+                width={264}
+                side={rail ? "right" : "top"}
+                options={(org?.options ?? []).map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                  meta: option.plan,
+                  group: org?.optionsLabel ?? "Organizations"
+                }))}
+                value={org?.value}
+                onChange={(value) => org?.onChange(value)}
+                actions={[
+                  ...(org?.actions ?? []),
+                  ...(org?.actions?.length && user.items?.length
+                    ? [{ type: "separator" } as const]
+                    : []),
+                  ...(user.items ?? [])
+                ]}
+                footer={({ close }) => (
+                  <>
+                    {theme && (
+                      <div className={styles.themeRow}>
+                        <span>{theme.label ?? "Theme"}</span>
+                        <ToggleGroup
+                          type="single"
+                          size="sm"
+                          aria-label={theme.label ?? "Theme"}
+                          value={theme.value}
+                          onValueChange={(value) => {
+                            if (value) theme.onChange(value as SidebarTheme);
+                          }}
+                        >
+                          {themeOptions.map((option) => (
+                            <ToggleGroupItem
+                              key={option.value}
+                              value={option.value}
+                              aria-label={option.label}
+                              title={option.label}
+                            >
+                              <Icon name={option.icon} size={14} />
+                            </ToggleGroupItem>
+                          ))}
+                        </ToggleGroup>
+                      </div>
                     )}
-                </>
-              )}
-              trigger={account}
-            />
-          ) : (
-            <div className={styles.account}>
-              {userAvatar}
-              <span className={styles.accountText}>
-                <span className={styles.accountName}>{user.name}</span>
-                <span className={styles.accountMeta}>{user.email}</span>
-              </span>
-            </div>
-          )}
-        </div>
+                    {(user.href || user.onClick) &&
+                      React.createElement(
+                        user.href ? "a" : "button",
+                        {
+                          className: styles.userRow,
+                          href: user.href,
+                          type: user.href ? undefined : "button",
+                          "aria-label": user.settingsLabel ?? "Personal settings",
+                          onClick: () => {
+                            user.onClick?.();
+                            close();
+                          }
+                        },
+                        <Identity name={user.name} description={user.email} />,
+                        <Icon name="chev-right" size={14} className={styles.trailing} />
+                      )}
+                  </>
+                )}
+                trigger={account}
+              />
+            ) : (
+              <div className={styles.account}>
+                {userAvatar}
+                <span className={styles.accountText}>
+                  <span className={styles.accountName}>{user.name}</span>
+                  <span className={styles.accountMeta}>{user.email}</span>
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </aside>
     </TooltipProvider>
   );

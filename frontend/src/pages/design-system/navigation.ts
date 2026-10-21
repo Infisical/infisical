@@ -64,7 +64,8 @@ export const documentationPages = [
 export type DocumentationPage = (typeof documentationPages)[number]["id"];
 export type ComponentPage = (typeof componentPages)[number]["id"];
 
-export const resolveDocumentationPage = (hash: string): DocumentationPage => {
+export const resolveDocumentationPage = (fullHash: string): DocumentationPage => {
+  const hash = fullHash.split("/")[0];
   if (hash === "#button-directions") return "button";
   const alias = Object.entries(required.aliases).find(([name]) => `#${name}` === hash)?.[1];
   if (alias) return alias;

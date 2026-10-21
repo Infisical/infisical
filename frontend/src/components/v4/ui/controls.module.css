@@ -77,6 +77,8 @@
   cursor: text;
 }
 .fieldBox:has(> .trailing) {
+  --v4-kbd-host-block: calc(var(--v4-field-height) - 2 * var(--v4-size-control-border));
+  --v4-kbd-host-end: var(--v4-space-control-slot-inset);
   padding-inline-end: var(--v4-space-control-slot-inset);
 }
 .bare {
@@ -122,26 +124,13 @@
   white-space: nowrap;
   cursor: pointer;
 }
-.insetHover {
-  --v4-inset-hover-gap: calc(var(--v4-space-2) + var(--v4-size-control-border));
-  --v4-inset-hover-rest: var(--v4-control-surface);
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: calc(100% - 2 * var(--v4-inset-hover-gap))
-    calc(100% - 2 * var(--v4-inset-hover-gap));
-}
-.insetHover:is([data-variant="outline"], [data-variant="secondary"]) {
-  --v4-inset-hover-rest: var(--v4-action-outline-surface);
-}
 @media (hover: hover) {
-  .insetHover:hover:not(:disabled, [aria-disabled="true"]) {
-    background-color: var(--v4-inset-hover-rest);
-    background-image: linear-gradient(var(--v4-action-ghost-hover), var(--v4-action-ghost-hover));
+  .triggerHover:hover:not(:disabled, [aria-disabled="true"]) {
+    background-color: var(--v4-action-outline-hover);
   }
 }
-.insetHover[aria-expanded="true"] {
-  background-color: var(--v4-inset-hover-rest);
-  background-image: linear-gradient(var(--v4-action-ghost-hover), var(--v4-action-ghost-hover));
+.triggerHover[aria-expanded="true"] {
+  background-color: var(--v4-action-outline-hover);
 }
 .trigger > :first-child {
   flex: 1 1 auto;
@@ -291,6 +280,10 @@
 }
 .cardPlain {
   background: var(--v4-surface);
+}
+.cardInset {
+  display: flex;
+  flex-direction: column;
 }
 .card[data-variant="framed"] > .cardHeader {
   display: grid;

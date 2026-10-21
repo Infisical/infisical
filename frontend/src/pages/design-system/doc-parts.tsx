@@ -57,11 +57,12 @@ export const DocDisclosure = ({
         className="flex min-h-9 items-center gap-2 rounded-sm text-sm font-medium"
         onClick={() => setOpen(!open)}
       >
-        <Icon
-          name="chev-right"
-          size={16}
-          className={`shrink-0 transition-transform duration-(--v4-duration-moderate) ease-(--v4-ease-standard) motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
-        />
+        <span
+          aria-hidden
+          className={`inline-flex shrink-0 transition-transform duration-(--v4-duration-moderate) ease-(--v4-ease-standard) motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
+        >
+          <Icon name="chev-right" size={16} />
+        </span>
         {title}
       </button>
       <AnimatedCollapse open={open} lazy id={`${id}-content`} aria-labelledby={`${id}-trigger`}>

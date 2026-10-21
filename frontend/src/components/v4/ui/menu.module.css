@@ -145,7 +145,11 @@
 
 .inset {
   --v4-menu-icon-slot: 0px;
-  padding: var(--v4-space-4);
+  --v4-menu-pad: var(--v4-space-3);
+  padding: var(--v4-menu-pad);
+}
+.inset .separator {
+  margin-inline: calc(-1 * var(--v4-menu-pad));
 }
 .inset:has(.row > :is(svg, [data-menu-icon]):not(.trail), .row[data-inset], .label[data-inset]) {
   --v4-menu-icon-slot: calc(var(--v4-size-icon) + var(--v4-space-8));
@@ -169,7 +173,9 @@
   min-height: var(--v4-size-control-sm);
   padding: var(--v4-space-6) var(--v4-space-8);
   padding-inline-start: calc(var(--v4-space-8) + var(--v4-menu-icon-slot, 0px));
-  border-radius: calc(var(--v4-radius-sm) * var(--corners));
+  --v4-kbd-host-block: var(--v4-size-control-sm);
+  --v4-kbd-host-end: var(--v4-space-8);
+  border-radius: calc((var(--v4-radius-pop) - var(--v4-menu-pad, var(--v4-space-3))) * var(--corners));
   overflow: hidden;
   color: var(--v4-ink);
   white-space: nowrap;
@@ -310,11 +316,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--v4-type-small-font-family);
-  font-size: var(--v4-type-small-font-size);
-  line-height: var(--v4-type-small-line-height);
-  font-weight: var(--v4-type-small-font-weight);
-  letter-spacing: var(--v4-type-small-letter-spacing);
+  text-transform: uppercase;
+  font-family: var(--v4-type-eyebrow-font-family);
+  font-size: var(--v4-type-eyebrow-font-size);
+  line-height: var(--v4-type-eyebrow-line-height);
+  font-weight: var(--v4-type-eyebrow-font-weight);
+  letter-spacing: var(--v4-type-eyebrow-letter-spacing);
 }
 .label:not(:first-child, .separator + *),
 :is([role="group"], [cmdk-group]):not(:first-child)

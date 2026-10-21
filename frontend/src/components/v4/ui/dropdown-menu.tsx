@@ -4,10 +4,10 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
 import { cn } from "../lib/utils";
+import { Button } from "./button";
 import { Icon } from "./icon";
 import { menuRowContent, menuShortcutContent } from "./menu-content";
 
-import controlStyles from "./controls.module.css";
 import menu from "./menu.module.css";
 
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
@@ -29,16 +29,25 @@ function DropdownMenuPortal({
 const DropdownMenuTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
->(({ className, ...props }, ref) => {
-  return (
+>(({ className, asChild, children, ...props }, ref) =>
+  asChild ? (
     <DropdownMenuPrimitive.Trigger
       ref={ref}
+      asChild
       data-slot="dropdown-menu-trigger"
-      className={cn(controlStyles.insetHover, className)}
+      className={className}
       {...props}
-    />
-  );
-});
+    >
+      {children}
+    </DropdownMenuPrimitive.Trigger>
+  ) : (
+    <DropdownMenuPrimitive.Trigger ref={ref} asChild data-slot="dropdown-menu-trigger" {...props}>
+      <Button type="button" variant="outline" className={className}>
+        {children}
+      </Button>
+    </DropdownMenuPrimitive.Trigger>
+  )
+);
 DropdownMenuTrigger.displayName = "DropdownMenuTrigger";
 
 const DropdownMenuContent = React.forwardRef<

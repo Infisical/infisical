@@ -5,6 +5,8 @@
   --v4-action-line-height: var(--v4-type-label-line-height);
   --v4-action-inset: var(--v4-space-control-inline);
   --v4-action-icon-size: var(--v4-size-icon);
+  --v4-kbd-host-block: calc(var(--v4-action-height) - 2 * var(--v4-size-control-border));
+  --v4-kbd-host-end: var(--v4-action-inset);
   box-sizing: border-box;
   min-height: var(--v4-action-height);
   gap: var(--v4-space-control-gap);
