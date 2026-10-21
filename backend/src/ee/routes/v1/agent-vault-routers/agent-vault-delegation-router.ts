@@ -12,8 +12,6 @@ import { actorContext } from "./agent-vault-router-fns";
 
 const MAX_DELEGATION_SUBJECTS = 100;
 
-// Without an example, the docs show all-members, the first value, next to users and groups, which only a selected
-// delegation names.
 const DelegationScopeSchema = z
   .nativeEnum(AgentVaultDelegationScope)
   .describe(JSON.stringify({ description: AGENT_VAULT.DELEGATION.scope, example: AgentVaultDelegationScope.Selected }));
@@ -154,7 +152,6 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       body: z
         .object({
           scope: DelegationScopeSchema,
-          // Without examples, the docs show both lists empty, which a selected delegation can't be.
           userIds: z
             .string()
             .uuid()

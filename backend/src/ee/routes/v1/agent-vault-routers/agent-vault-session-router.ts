@@ -187,7 +187,6 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             message: "Name the user by userId or by userEmail, not both"
           })
           .optional()
-          // Without an example, the docs' generated request sets both fields, which the refine rejects.
           .describe(
             JSON.stringify({
               description: AGENT_VAULT.SESSION.onBehalfOf,
