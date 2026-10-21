@@ -4,7 +4,9 @@ import { DelegatedApprovalRequestStatus } from "../delegatedApprovals/enums";
 
 type RetryPhase = "awaiting-dispatch" | "dispatching";
 
-const retries = new Map<string, RetryPhase>();
+const DISPATCH_PICKUP_WINDOW_MS = 30_000;
+
+const retries = new Map<string, { phase: RetryPhase; markedAt: number }>();
 const listeners = new Set<() => void>();
 let version = 0;
 
@@ -21,7 +23,7 @@ const subscribe = (listener: () => void) => {
 };
 
 export const markDelegatedDispatchRetry = (requestId: string) => {
-  retries.set(requestId, "awaiting-dispatch");
+  retries.set(requestId, { phase: "awaiting-dispatch", markedAt: Date.now() });
   emit();
 };
 
@@ -37,8 +39,8 @@ export const noteDelegatedDispatchRetryStatuses = (
   let changed = false;
 
   requests.forEach(({ id, status }) => {
-    const phase = retries.get(id);
-    if (!phase) return;
+    const retry = retries.get(id);
+    if (!retry) return;
 
     if (!status) {
       retries.delete(id);
@@ -46,12 +48,13 @@ export const noteDelegatedDispatchRetryStatuses = (
       return;
     }
 
-    if (phase === "awaiting-dispatch") {
+    if (retry.phase === "awaiting-dispatch") {
       if (status === DelegatedApprovalRequestStatus.PendingDispatch) {
-        retries.set(id, "dispatching");
+        retries.set(id, { ...retry, phase: "dispatching" });
         return;
       }
-      if (status === DelegatedApprovalRequestStatus.FailedDispatch) return;
+      const isAwaitingPickup = Date.now() - retry.markedAt < DISPATCH_PICKUP_WINDOW_MS;
+      if (status === DelegatedApprovalRequestStatus.FailedDispatch && isAwaitingPickup) return;
 
       retries.delete(id);
       changed = true;
