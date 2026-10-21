@@ -200,7 +200,7 @@ Long read fan-outs take `abortSignal: getClientDisconnectSignal(reply)` (`src/se
 
 ### Logging
 
-**Never log an outbound URL verbatim, because a URL is often itself a credential.** Read [`src/lib/logger/AGENTS.md`](src/lib/logger/AGENTS.md) before logging a URL, a header, or a provider response.
+**Never log an outbound URL verbatim, because a URL is often itself a credential.** Include key identifiers in the message as `[key=value]`. Read [`src/lib/logger/AGENTS.md`](src/lib/logger/AGENTS.md) before adding or changing any log message.
 
 ### Internal CAs: revocation and key sources
 
