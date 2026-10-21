@@ -173,7 +173,7 @@ it("shows CommandMenu keyboard guidance without decorative dot separators", asyn
       ].join(" ")
     );
   };
-  expect(hints()).toEqual(["Arrow up Arrow down Navigate", "Enter Open", "Escape Close"]);
+  expect(hints()).toEqual(["Arrow up Arrow down Move", "Enter Open", "Escape Close"]);
   expect(host.textContent).not.toContain("·");
   const connections = host.querySelector<HTMLElement>('[role="option"]');
   if (!connections) throw new Error("Missing Connections page option");
