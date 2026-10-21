@@ -10,7 +10,10 @@ import {
   DelegatedApprovalPolicyType,
   DelegatedApprovalRequestStatus
 } from "@app/services/delegated-approval/delegated-approval-enums";
-import { isApprovalRequestExpired } from "@app/services/delegated-approval/delegated-approval-guards";
+import {
+  getDelegatedApprovalConnectionError,
+  isApprovalRequestExpired
+} from "@app/services/delegated-approval/delegated-approval-guards";
 import {
   DELEGATED_APPROVAL_FINAL_STATE,
   DELEGATED_APPROVAL_NAME_MAP,
@@ -263,8 +266,13 @@ export const delegatedApprovalDecisionServiceFactory = ({
     }
 
     const rawConnection = await appConnectionDAL.findById(delegatedPolicy.connectionId);
-    if (!rawConnection) {
-      return $terminal(context, "The policy's App Connection was not found.");
+    const connectionError = getDelegatedApprovalConnectionError({
+      rawConnection,
+      delegatedPolicy,
+      organizationId: approvalRequest.organizationId
+    });
+    if (connectionError || !rawConnection) {
+      return $terminal(context, connectionError ?? "The policy's App Connection was not found.");
     }
 
     const providerName = context.delegatedApprovalType;
