@@ -1,10 +1,11 @@
 import RE2 from "re2";
 
+import { getStsVerificationUrl } from "@app/lib/aws/endpoint";
 import { isValidAwsRegion } from "@app/lib/aws/region";
 import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { extractPrincipalArn } from "@app/services/identity-aws-auth/identity-aws-auth-fns";
+import { extractPrincipalArn, isAwsRootPrincipalArn } from "@app/services/identity-aws-auth/identity-aws-auth-fns";
 
 import { TAwsGetCallerIdentityHeaders, TGetCallerIdentityResponse } from "./aws-auth-types";
 
@@ -67,7 +68,7 @@ export const verifyStsAndExtractCaller = async ({
     });
   }
 
-  const url = `https://sts.${region}.amazonaws.com`;
+  const url = getStsVerificationUrl(region);
 
   let stsResponse: { data: TGetCallerIdentityResponse };
   try {
@@ -119,6 +120,13 @@ export const validateAllowlists = ({
     throw new UnauthorizedError({
       message: "Access denied: AWS auth method has no allowlist configured.",
       detail: { reasonCode: "no_allowlist_configured", ...errorContext }
+    });
+  }
+
+  if (isAwsRootPrincipalArn(Arn)) {
+    throw new UnauthorizedError({
+      message: "Access denied: AWS account root principals cannot use AWS Auth.",
+      detail: { reasonCode: "root_principal_not_supported", accountId: Account, ...errorContext }
     });
   }
 
