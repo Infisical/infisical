@@ -20,9 +20,10 @@ import { assertNamespacesValid } from "./object-storage-namespace-fns";
 import { buildNamespaceFolder, buildObjectKey, buildOrgsFolder, buildProductFolder } from "./object-storage-path-fns";
 import { ObjectStorageErrorReason, ObjectStorageType, TStorageConfig, TStorageNamespace } from "./object-storage-types";
 
-// An org may upload this much a UTC day, across every product and both storage types. Each upload counts as at
-// least 16 KiB, so many tiny files cost as much as a few large ones. It stops a modified client from filling a
-// bucket; it is internal and not shown anywhere.
+// An org may upload this much a UTC day to default storage on Infisical Cloud, across every product. Each upload counts
+// as at least 16 KiB, so many tiny files cost as much as a few large ones. It stops a modified client from filling
+// Infisical's bucket; an external bucket or a self-hosted instance's bucket belongs to the customer, so neither is
+// capped. It is internal and not shown anywhere.
 const DAILY_BYTES_CAP = 1024 * 1024 * 1024; // 1 GiB
 const MIN_COUNTED_BYTES = 16 * 1024; // 16 KiB
 const DAILY_COUNTER_TTL_SECONDS = 2 * 24 * 60 * 60; // 2 days, so the counter outlives its UTC day wherever it began
@@ -314,7 +315,7 @@ export const objectStorageServiceFactory = ({
           }) => {
             const key = buildObjectKey(folderPrefix, name);
             try {
-              await $admitDailyBytes(orgId, bytes);
+              if (isDefault && getConfig().isCloud) await $admitDailyBytes(orgId, bytes);
             } catch (error) {
               if (error instanceof DailyQuotaExceededError) {
                 recordObjectStorageUploadMetric({ storageType, outcome: ObjectStorageUploadOutcome.Capped, bytes });

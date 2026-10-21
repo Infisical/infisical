@@ -4,7 +4,6 @@ import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
 import { RunMode } from "@app/lib/types";
-import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import {
   isS3DirectoryBucket,
@@ -167,7 +166,14 @@ export const objectStorageEnvSchema = z.object({
       .optional()
   ),
   OBJECT_STORAGE_S3_PREFIX: zpStr(keyPrefixSchema(256).optional()),
-  OBJECT_STORAGE_S3_REGION: zpStr(z.nativeEnum(AWSRegion).optional()),
+  // Any region-shaped name, so regions newer than the app connection list work. A region that doesn't exist fails the
+  // startup bucket check, which logs it.
+  OBJECT_STORAGE_S3_REGION: zpStr(
+    z
+      .string()
+      .regex(/^[a-z]{2}(-gov)?-[a-z]+-\d+$/, "Must be an AWS region, like us-east-1")
+      .optional()
+  ),
   OBJECT_STORAGE_S3_ACCESS_KEY_ID: zpStr(z.string().max(128).optional()),
   OBJECT_STORAGE_S3_SECRET_ACCESS_KEY: zpStr(z.string().max(256).optional())
 });

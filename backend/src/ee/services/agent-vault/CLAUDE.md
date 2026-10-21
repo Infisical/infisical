@@ -293,8 +293,9 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   while they may still be uploading. When a poll comes late or returns a full feed, the panel also merges in the
   newest history page, at most once a minute, since the feed may have dropped names it never saw. If that
   page doesn't reach the rows already shown, the panel says some requests may be missing and offers Reload.
-- **The shared layer caps uploads at 1 GiB per org per UTC day** (each upload counts as at least 16 KiB, 429 over it,
-  allowed if Redis doesn't answer in 250 ms). It's internal: no UI and no docs.
+- **The shared layer caps default storage on Infisical Cloud at 1 GiB per org per UTC day** (each upload counts as at
+  least 16 KiB, 429 over it, allowed if Redis doesn't answer in 250 ms). External buckets and self-hosted instances
+  aren't capped, since the bucket is the customer's. It's internal: no UI and no docs.
 - **Default storage deletes by tag**: each upload is signed with `retention={n}d` from the plan
   (`agentVaultSessionLogRetentionDays`, 30 by default) and the operator's lifecycle rules delete. Unlike other plan
   limits, `null` here still means 30, so a plan never keeps logs forever by accident. Nothing ever deletes from

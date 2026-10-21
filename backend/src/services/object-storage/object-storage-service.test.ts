@@ -43,8 +43,8 @@ vi.mock("@app/lib/aws/s3", () => ({
   createS3Bucket: vi.fn(() => bucketClient)
 }));
 
-const site = vi.hoisted(() => ({ url: "https://app.example.com" as string | undefined }));
-vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: site.url }) }));
+const site = vi.hoisted(() => ({ url: "https://app.example.com" as string | undefined, isCloud: true }));
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: site.url, isCloud: site.isCloud }) }));
 
 const preflight = vi.hoisted(() => ({
   options: vi.fn(async () => ({
@@ -90,6 +90,7 @@ const put = { name: "chunk.json.enc", bytes: 4096, sha256Base64: "abc=", expires
 beforeEach(() => {
   vi.clearAllMocks();
   site.url = "https://app.example.com";
+  site.isCloud = true;
   instance.storage = { bucket: "instance-bucket", region: "us-east-1", prefix: "infisical" };
 });
 
@@ -279,8 +280,12 @@ describe("folders", () => {
 });
 
 describe("the daily cap", () => {
-  const presign = async (service: ReturnType<typeof build>["service"], bytes: number) =>
-    (await service.at(external).forOrg(ORG_ID))
+  const presign = async (
+    service: ReturnType<typeof build>["service"],
+    bytes: number,
+    config: Parameters<ReturnType<typeof build>["service"]["at"]>[0] = { storageType: ObjectStorageType.Default }
+  ) =>
+    (await service.at(config).forOrg(ORG_ID))
       .namespace(logs)
       .folder({ sessionId: "sess-1" })
       .presignPut({ ...put, bytes });
@@ -322,9 +327,16 @@ describe("the daily cap", () => {
     await expect(presign(service, 4096)).resolves.toHaveProperty("url");
   });
 
-  test("a connection that can't be used never counts against the day", async () => {
-    const { service, incrementByIfUnderLimitWithFixedExpiry } = build({ connection: undefined });
-    await expect(presign(service, 4096)).rejects.toBeInstanceOf(ObjectStorageError);
+  test("an external bucket belongs to the customer, so it isn't counted", async () => {
+    const { service, incrementByIfUnderLimitWithFixedExpiry } = build({ admit: async () => -1 });
+    await expect(presign(service, 4096, external)).resolves.toHaveProperty("url");
+    expect(incrementByIfUnderLimitWithFixedExpiry).not.toHaveBeenCalled();
+  });
+
+  test("a self-hosted instance's default storage is its own bucket, so it isn't counted", async () => {
+    site.isCloud = false;
+    const { service, incrementByIfUnderLimitWithFixedExpiry } = build({ admit: async () => -1 });
+    await expect(presign(service, 4096)).resolves.toHaveProperty("url");
     expect(incrementByIfUnderLimitWithFixedExpiry).not.toHaveBeenCalled();
   });
 });

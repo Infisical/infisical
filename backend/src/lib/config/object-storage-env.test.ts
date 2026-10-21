@@ -50,7 +50,12 @@ describe("default storage env", () => {
     expect(messages(parse(env)).join(" ")).toContain(expected);
   });
 
+  test.each(["il-central-1", "ap-southeast-7", "us-gov-west-1"])("accepts the region %s", (region) => {
+    expect(parse({ OBJECT_STORAGE_S3_BUCKET: "infisical-logs", OBJECT_STORAGE_S3_REGION: region }).success).toBe(true);
+  });
+
   test.each([
+    { OBJECT_STORAGE_S3_BUCKET: "infisical-logs", OBJECT_STORAGE_S3_REGION: "US-EAST-1" },
     { OBJECT_STORAGE_S3_BUCKET: "Not_A_Bucket", OBJECT_STORAGE_S3_REGION: "us-east-1" },
     { OBJECT_STORAGE_S3_BUCKET: "logs--x-s3", OBJECT_STORAGE_S3_REGION: "us-east-1" },
     { OBJECT_STORAGE_S3_BUCKET: "infisical-logs", OBJECT_STORAGE_S3_REGION: "moon-1" },
