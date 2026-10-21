@@ -51,7 +51,122 @@ Run the [Infisical Agent](/integrations/platforms/infisical-agent), a daemon tha
 
 Everything is set in the YAML configuration file, including the auth method, sinks, templates, and the Infisical instance in `infisical.address`, which defaults to Infisical Cloud. The global `--domain` flag has no effect. To pass the configuration without a file, set `INFISICAL_AGENT_CONFIG_BASE64` to the base64-encoded YAML. It takes precedence over `--config`.
 
-For a daemon that only manages certificates, use [infisical cert-manager agent](/cli/reference#cert-manager-agent).
+For a daemon that only manages certificates, use [infisical cert-manager agent](/cli/reference#cert-manager-agent). To run the agent as a service that starts on boot, use [infisical agent service](/cli/reference#agent-service).
+
+</CLICommand>
+
+<CLICommand
+  id="agent-service"
+  command="agent service"
+>
+
+Install, start, stop, and uninstall the agent as a service that starts on boot and restarts when it fails. On Linux, the commands manage a systemd service and must run with `sudo`. On Windows, they manage a Windows service and must run from a prompt opened with **Run as administrator**. Other operating systems aren't supported.
+
+Each command takes an optional service name, which defaults to `infisical-agent`. Give each agent its own name to run several agents with different configs on one machine. A name can have up to 128 letters, digits, `.`, `_`, or `-`, and must start with a letter or digit. The commands only manage services that `infisical agent service install` created.
+
+On Linux, the service logs to the systemd journal. Read the logs with `sudo journalctl -u <name>`. On Windows, the service logs to `%ProgramData%\Infisical\Agent\<name>.log`, and also writes errors to the Application log in Event Viewer.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-service-install"
+  command="agent service install"
+  usage="[name] [flags]"
+  args={[
+    { name: "name", usage: "[name]", description: "The service's name. Defaults to `infisical-agent`." },
+  ]}
+  flags={[
+    { name: "--config", value: "<string>", type: "string", default: "agent-config.yaml", description: "The path to the agent's YAML configuration file that the service runs with." },
+  ]}
+  examples={[
+    { title: "Install a service on Linux", code: "sudo infisical agent service install my-agent --config=/etc/infisical/agents/my-agent.yaml" },
+    { title: "Install a service on Windows", code: "infisical agent service install my-agent --config=C:\\infisical\\agent-config.yaml" },
+  ]}
+>
+
+Install the agent as a service that starts on boot. The command checks the config before it creates the service. It rejects a config that sets `exit-after-auth: true`, because the agent would exit after its first render and the service would keep restarting it. The command doesn't start the service, so run [infisical agent service start](/cli/reference#agent-service-start) afterwards.
+
+The service runs as root on Linux and as LocalSystem on Windows. It runs its own copy of the config, which only administrators can change:
+
+- On Linux, the copy is `/etc/infisical/agents/<name>.service-config.yaml`.
+- On Windows, the copy is `%ProgramFiles%\Infisical\Agent\<name>\service-config.yaml`, next to the service's own copy of `infisical.exe`.
+
+To change the config, edit the copy and restart the service, or edit the original and install the service again. Relative paths in the config still resolve from the original config's directory. On Windows, uninstall and install the service again to upgrade the CLI it runs.
+
+On Linux, the service can't access `/home` and has its own `/tmp` and `/var/tmp`. The command fails if the config, credential files, cache, templates, rendered files, or token sinks are under those directories. Keep them in a directory such as `/etc/infisical/agents`.
+
+On Windows, the service restarts 5 seconds after it crashes or exits on its own, then after 30 seconds, then after every minute. A service you stop isn't restarted.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-service-start"
+  command="agent service start"
+  usage="[name]"
+  args={[
+    { name: "name", usage: "[name]", description: "The service to start. Defaults to `infisical-agent`." },
+  ]}
+  examples={[
+    { title: "Start a service on Linux", code: "sudo infisical agent service start my-agent" },
+    { title: "Start a service on Windows", code: "infisical agent service start my-agent" },
+  ]}
+>
+
+Start an agent service that [infisical agent service install](/cli/reference#agent-service-install) created.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-service-stop"
+  command="agent service stop"
+  usage="[name]"
+  args={[
+    { name: "name", usage: "[name]", description: "The service to stop. Defaults to `infisical-agent`." },
+  ]}
+  examples={[
+    { title: "Stop a service on Linux", code: "sudo infisical agent service stop my-agent" },
+    { title: "Stop a service on Windows", code: "infisical agent service stop my-agent" },
+  ]}
+>
+
+Stop an agent service. If the config sets `revoke-credentials-on-shutdown: true`, the agent revokes its credentials before the service stops.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-service-uninstall"
+  command="agent service uninstall"
+  usage="[name]"
+  args={[
+    { name: "name", usage: "[name]", description: "The service to remove. Defaults to `infisical-agent`." },
+  ]}
+  examples={[
+    { title: "Remove a service on Linux", code: "sudo infisical agent service uninstall my-agent" },
+    { title: "Remove a service on Windows", code: "infisical agent service uninstall my-agent" },
+  ]}
+>
+
+Stop and remove an agent service, along with the service's copy of the config. On Windows, the command also removes the service's copy of `infisical.exe`. The original config and the Windows log file are left in place.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-start"
+  command="agent start"
+  usage="[flags]"
+  flags={[
+    { name: "--config", value: "<string>", type: "string", description: "The path to the agent's YAML configuration file. Defaults to `INFISICAL_AGENT_CONFIG_PATH`, then `agent-config.yaml`." },
+  ]}
+  env={[
+    { name: "INFISICAL_AGENT_CONFIG_PATH", description: "The path to the agent's YAML configuration file. Used if `--config` isn't passed." },
+    { name: "INFISICAL_AGENT_WORKING_DIR", description: "The directory that relative paths in the config resolve from. Defaults to the config's directory." },
+  ]}
+  examples={[
+    { title: "Run the agent with a config from an environment variable", code: "INFISICAL_AGENT_CONFIG_PATH=/etc/infisical/agents/my-agent.yaml infisical agent start" },
+  ]}
+>
+
+Run the agent, as [infisical agent](/cli/reference#agent) does. The agent's systemd service runs this command. Unlike `infisical agent`, it resolves relative paths in the config from the config's directory instead of the current directory, and it ignores `INFISICAL_AGENT_CONFIG_BASE64`.
 
 </CLICommand>
 
