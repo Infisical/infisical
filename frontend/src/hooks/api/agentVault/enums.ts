@@ -43,9 +43,9 @@ export enum AgentVaultSessionScope {
   All = "all"
 }
 
-/** Shared variables are an admin's, for services; personal ones are the caller's own, for their personal values. */
+/** Global variables are an admin's, for services; personal ones are the caller's own, for their personal values. */
 export enum AgentVaultVariableScope {
-  Shared = "shared",
+  Global = "global",
   Personal = "personal"
 }
 

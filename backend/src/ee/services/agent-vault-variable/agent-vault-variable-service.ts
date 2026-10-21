@@ -63,7 +63,7 @@ export const agentVaultVariableServiceFactory = ({
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   /**
-   * Shared variables are admin only, reads included: a member can use a service without seeing what it is built
+   * Global variables are admin only, reads included: a member can use a service without seeing what it is built
    * from, and Edit on access bundles is the action only an admin holds. Personal variables are the caller's own,
    * and any Agent Vault member keeps them. Nobody, an admin included, can name or read another actor's.
    */
@@ -72,7 +72,7 @@ export const agentVaultVariableServiceFactory = ({
     scope: AgentVaultVariableScope
   ): Promise<TAgentVaultVariableOwnerScope> => {
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    if (scope === AgentVaultVariableScope.Shared) {
+    if (scope === AgentVaultVariableScope.Global) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionAgentVaultAccessBundleActions.Edit,
         ProjectPermissionSub.AgentVaultAccessBundles
@@ -116,7 +116,7 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   // A member who lost a bundle keeps their personal variables, but not a view into the bundle: its services drop out
-  // of what they see. Shared variables are admin-only, and an admin reaches every bundle.
+  // of what they see. Global variables are admin-only, and an admin reaches every bundle.
   const splitByReach = async (
     { projectId, ctx, owner }: { projectId: string; ctx: TGenericPermission; owner: TAgentVaultOwner | null },
     services: TAgentVaultServiceUsingVariable[]
@@ -138,7 +138,7 @@ export const agentVaultVariableServiceFactory = ({
   const projectVariable = (variable: TAgentVaultVariable, services: TAgentVaultServiceUsingVariable[]) => ({
     id: variable.id,
     key: variable.key,
-    scope: isPersonal(variable) ? AgentVaultVariableScope.Personal : AgentVaultVariableScope.Shared,
+    scope: isPersonal(variable) ? AgentVaultVariableScope.Personal : AgentVaultVariableScope.Global,
     usedByServices: services
       .filter((service) => service.variableId === variable.id)
       .map(
@@ -221,7 +221,7 @@ export const agentVaultVariableServiceFactory = ({
           throw new BadRequestError({
             message: owner
               ? `You can keep at most ${cap} variables in Agent Vault. Delete one that none of your values use first.`
-              : `Agent Vault can hold at most ${cap} shared variables. Delete one that no service uses first.`
+              : `Agent Vault can hold at most ${cap} global variables. Delete one that no service uses first.`
           });
         }
 

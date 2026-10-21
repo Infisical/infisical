@@ -107,7 +107,7 @@ const VariableForm = ({
   variable,
   initialKey,
   onCreated,
-  scope = AgentVaultVariableScope.Shared
+  scope = AgentVaultVariableScope.Global
 }: Omit<Props, "onCloseAutoFocus">) => {
   const isPersonal = scope === AgentVaultVariableScope.Personal;
   const createVariable = useCreateAgentVaultVariable();
@@ -221,12 +221,12 @@ const VariableForm = ({
     <>
       <DialogHeader>
         <DialogTitle>
-          {isUpdate ? "Edit" : "Add"} {isPersonal ? "Personal" : "Shared"} Variable
+          {isUpdate ? "Edit" : "Add"} {isPersonal ? "Personal" : "Global"} Variable
         </DialogTitle>
         <DialogDescription>
           {isPersonal
             ? "Store a value once and reuse it for any service that asks you for a value. Only you can read it."
-            : "Store a value once and use it from any service in any access bundle."}
+            : "Store a value once and use it from any service in any access bundle. Only admins can manage it and see its value."}
         </DialogDescription>
       </DialogHeader>
 
@@ -311,7 +311,7 @@ const VariableForm = ({
             isPending={isSubmitting}
             isDisabled={isUpdate && !isDirty}
           >
-            {isUpdate ? "Save" : `Add ${isPersonal ? "Personal" : "Shared"} Variable`}
+            {isUpdate ? "Save" : `Add ${isPersonal ? "Personal" : "Global"} Variable`}
           </Button>
         </DialogFooter>
       </form>

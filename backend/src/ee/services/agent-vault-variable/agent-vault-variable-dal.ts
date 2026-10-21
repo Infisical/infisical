@@ -15,8 +15,8 @@ export type TAgentVaultVariable = Omit<TAgentVaultVariables, "accessBundleId">;
 
 export type TAgentVaultVariableOrderBy = "key" | "serviceCount";
 
-// `owner: null` is the shared variables; an owner is that user's or identity's personal ones. Every read and lock
-// names one, so a shared lookup never matches a personal key and the other way round.
+// `owner: null` is the global variables; an owner is that user's or identity's personal ones. Every read and lock
+// names one, so a global lookup never matches a personal key and the other way round.
 export type TAgentVaultVariableOwnerScope = { projectId: string; owner: TAgentVaultOwner | null };
 
 export type TFindAgentVaultVariablesDTO = TAgentVaultVariableOwnerScope & {
@@ -210,7 +210,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
   };
 
   // Reads the primary even without a tx, so a service or personal value saved a moment ago shows as using its
-  // variables. A shared variable is referenced by services, a personal one by its owner's personal values, so each
+  // variables. A global variable is referenced by services, a personal one by its owner's personal values, so each
   // variable only ever appears in one of the two.
   const findServicesUsing = async (variableIds: string[], tx?: Knex): Promise<TAgentVaultServiceUsingVariable[]> => {
     if (!variableIds.length) return [];

@@ -6541,7 +6541,7 @@ interface AgentVaultVariableCreateEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
-    // shared, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
     scope?: string;
   };
 }
@@ -6553,7 +6553,7 @@ interface AgentVaultVariableUpdateEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
-    // shared, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
     scope?: string;
     // Present only when the update changed the key.
     previousKey?: string;
@@ -6568,7 +6568,7 @@ interface AgentVaultVariableDeleteEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
-    // shared, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
     scope?: string;
   };
 }
@@ -6580,7 +6580,7 @@ interface AgentVaultVariableValueViewEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
-    // shared, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
     scope?: string;
   };
 }

@@ -4498,7 +4498,7 @@ export const AGENT_VAULT = {
     substitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
     variableReferences:
-      "The shared variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see shared variables. A member's own personal variables are listed under personalValues.",
+      "The global variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
@@ -4528,11 +4528,11 @@ export const AGENT_VAULT = {
   VARIABLE: {
     variableId: "The ID of the variable.",
     scope:
-      "shared for a variable admins set up for services, or personal for one of your own, which only your personal values can use and only you can see. Personal keys are unique among your own variables.",
+      "global for a variable admins set up for services, or personal for one of your own, which only your personal values can use and only you can see. Personal keys are unique among your own variables.",
     listScope:
-      "Which variables to list: shared (the default), which needs the admin role, or personal for your own. Nobody can list another member's personal variables.",
+      "Which variables to list: global (the default), which needs the admin role, or personal for your own. Nobody can list another member's personal variables.",
     createScope:
-      "shared (the default) creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
+      "global (the default) creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
     key: "The name values use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",

@@ -123,11 +123,11 @@ describe("findValuesForResolve", () => {
     expect(values.map((value) => value.id)).toEqual([FIRST_ID]);
   });
 
-  test("a shared lookup never returns a personal variable, and a personal one returns only its owner's", async () => {
+  test("a global lookup never returns a personal variable, and a personal one returns only its owner's", async () => {
     const personal = row(SECOND_ID, USER_ID);
     const { dal } = buildDAL({ primaryRows: [row(FIRST_ID), personal], replicaRows: [row(FIRST_ID), personal] });
 
-    const shared = await dal.findValuesForResolve({
+    const global = await dal.findValuesForResolve({
       variableIds: [FIRST_ID, SECOND_ID],
       projectId: PROJECT_ID,
       owner: null
@@ -138,7 +138,7 @@ describe("findValuesForResolve", () => {
       owner: { userId: USER_ID }
     });
 
-    expect(shared.map((value) => value.id)).toEqual([FIRST_ID]);
+    expect(global.map((value) => value.id)).toEqual([FIRST_ID]);
     expect(own.map((value) => value.id)).toEqual([SECOND_ID]);
   });
 });

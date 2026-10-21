@@ -30,12 +30,12 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "listAgentVaultVariables",
-      description: "List Agent Vault's shared variables, or your own personal ones",
+      description: "List Agent Vault's global variables, or your own personal ones",
       tags: [ApiDocsTags.AgentVaultVariables],
       querystring: z.object({
         scope: z
           .nativeEnum(AgentVaultVariableScope)
-          .default(AgentVaultVariableScope.Shared)
+          .default(AgentVaultVariableScope.Global)
           .describe(AGENT_VAULT.VARIABLE.listScope),
         orderBy: z.enum(["key", "serviceCount"]).default("key").describe(AGENT_VAULT.VARIABLE.orderBy),
         orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.VARIABLE.orderDirection),
@@ -74,12 +74,12 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "createAgentVaultVariable",
-      description: "Create a shared variable, or a personal one of your own",
+      description: "Create a global variable, or a personal one of your own",
       tags: [ApiDocsTags.AgentVaultVariables],
       body: z.object({
         scope: z
           .nativeEnum(AgentVaultVariableScope)
-          .default(AgentVaultVariableScope.Shared)
+          .default(AgentVaultVariableScope.Global)
           .describe(AGENT_VAULT.VARIABLE.createScope),
         key: AgentVaultVariableKeySchema.describe(AGENT_VAULT.VARIABLE.key),
         value: AgentVaultVariableValueSchema.describe(AGENT_VAULT.VARIABLE.value)
@@ -120,7 +120,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "updateAgentVaultVariable",
-      description: "Update a shared variable, or a personal one of your own",
+      description: "Update a global variable, or a personal one of your own",
       tags: [ApiDocsTags.AgentVaultVariables],
       params: z.object({
         variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
@@ -184,7 +184,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "deleteAgentVaultVariable",
       description:
-        "Delete a shared variable, or a personal one of your own. A variable in use, by a service or by your personal values, can't be deleted.",
+        "Delete a global variable, or a personal one of your own. A variable in use, by a service or by your personal values, can't be deleted.",
       tags: [ApiDocsTags.AgentVaultVariables],
       params: z.object({
         variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
@@ -225,7 +225,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "getAgentVaultVariableValue",
-      description: "Get the value of a shared variable, or a personal one of your own",
+      description: "Get the value of a global variable, or a personal one of your own",
       tags: [ApiDocsTags.AgentVaultVariables],
       params: z.object({
         variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)

@@ -1766,7 +1766,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(listed.statusCode).toBe(403);
         expect(listed.payload).not.toContain("admin_only_value");
         expect(listed.payload).not.toContain("TOKEN");
-        // By id, a shared variable reads to a member like one that does not exist, as another member's personal one does.
+        // By id, a global variable reads to a member like one that does not exist, as another member's personal one does.
         expect((await member.asIdentity("GET", `${variablesUrl}/${variable.id}/value`)).statusCode).toBe(404);
         expect((await member.asIdentity("DELETE", `${variablesUrl}/${variable.id}`)).statusCode).toBe(404);
         expect((await member.asIdentity("POST", variablesUrl, { key: "MINE", value: "x" })).statusCode).toBe(403);
@@ -2032,11 +2032,11 @@ describe("Agent Vault V1 Router", async () => {
           expect.objectContaining({ id: adminVariableId, usedByServices: [] })
         ]);
 
-        // Personal variables never show among the shared ones, and a member can't list those.
-        const sharedList = await inject("GET", variablesUrl);
-        expect(sharedList.statusCode).toBe(200);
+        // Personal variables never show among the global ones, and a member can't list those.
+        const globalList = await inject("GET", variablesUrl);
+        expect(globalList.statusCode).toBe(200);
         expect(
-          (JSON.parse(sharedList.payload) as { variables: { id: string }[] }).variables.map((variable) => variable.id)
+          (JSON.parse(globalList.payload) as { variables: { id: string }[] }).variables.map((variable) => variable.id)
         ).not.toContain(adminVariableId);
         expect((await member.as("GET", variablesUrl)).statusCode).toBe(403);
         expect(JSON.parse(created.payload).variable.scope).toBe("personal");

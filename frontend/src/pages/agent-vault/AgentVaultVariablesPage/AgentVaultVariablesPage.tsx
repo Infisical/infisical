@@ -11,7 +11,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { VariablesCard } from "./components/VariablesCard";
 
-// Shared variables are an admin's alone, so a member sees only their personal ones, without tabs. Nobody can see
+// Global variables are an admin's alone, so a member sees only their personal ones, without tabs. Nobody can see
 // anyone else's personal variables, admins included.
 export const AgentVaultVariablesPage = () => {
   const { t } = useTranslation();
@@ -26,7 +26,7 @@ export const AgentVaultVariablesPage = () => {
   });
   const tab =
     isAdmin && selectedTab !== AgentVaultVariableScope.Personal
-      ? AgentVaultVariableScope.Shared
+      ? AgentVaultVariableScope.Global
       : AgentVaultVariableScope.Personal;
 
   const updateTab = (value: string) => {
@@ -56,11 +56,11 @@ export const AgentVaultVariablesPage = () => {
       {isAdmin ? (
         <Tabs value={tab} onValueChange={updateTab}>
           <TabsList variant="av" aria-label="Agent Vault variable lists">
-            <TabsTrigger value={AgentVaultVariableScope.Shared}>Shared Variables</TabsTrigger>
+            <TabsTrigger value={AgentVaultVariableScope.Global}>Global Variables</TabsTrigger>
             <TabsTrigger value={AgentVaultVariableScope.Personal}>Personal Variables</TabsTrigger>
           </TabsList>
-          <TabsContent value={AgentVaultVariableScope.Shared}>
-            <VariablesCard scope={AgentVaultVariableScope.Shared} />
+          <TabsContent value={AgentVaultVariableScope.Global}>
+            <VariablesCard scope={AgentVaultVariableScope.Global} />
           </TabsContent>
           <TabsContent value={AgentVaultVariableScope.Personal}>
             <VariablesCard scope={AgentVaultVariableScope.Personal} />

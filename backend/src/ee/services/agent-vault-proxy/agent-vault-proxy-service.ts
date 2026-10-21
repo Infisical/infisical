@@ -445,7 +445,7 @@ export const agentVaultProxyServiceFactory = ({
 
   /**
    * A member-provided field comes from what the session's actor saved for the service, expanded against their own
-   * personal variables only, after the admin's fields were expanded against the shared ones: a value is never
+   * personal variables only, after the admin's fields were expanded against the global ones: a value is never
    * expanded twice. A service whose actor hasn't set every field the admin leaves to them goes out flagged and
    * without a credential, so the proxy refuses it instead of sending a half-built one.
    */

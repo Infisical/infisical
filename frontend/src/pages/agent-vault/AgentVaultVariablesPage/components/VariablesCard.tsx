@@ -210,7 +210,7 @@ type Props = {
   scope?: AgentVaultVariableScope;
 };
 
-export const VariablesCard = ({ scope = AgentVaultVariableScope.Shared }: Props) => {
+export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props) => {
   const isPersonal = scope === AgentVaultVariableScope.Personal;
   const revealValue = useRevealAgentVaultVariableValue();
 
@@ -327,7 +327,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Shared }: Props)
     <Card>
       <CardHeader>
         <CardTitle>
-          {isPersonal ? "Personal Variables" : "Shared Variables"}
+          {isPersonal ? "Personal Variables" : "Global Variables"}
           <DocumentationLinkBadge href={AgentVaultDocsUrls.variables} />
         </CardTitle>
         <CardDescription>
@@ -338,8 +338,9 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Shared }: Props)
             </>
           ) : (
             <>
-              A variable stores one value that any service can use as{" "}
-              <code className="font-mono">{toVariableReference("KEY")}</code>.
+              A global variable stores one value that any service can use as{" "}
+              <code className="font-mono">{toVariableReference("KEY")}</code>. Only admins can
+              manage these and see their values.
             </>
           )}
         </CardDescription>
@@ -351,7 +352,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Shared }: Props)
                 <span tabIndex={0}>
                   <Button variant="av" isDisabled>
                     <PlusIcon />
-                    Add {isPersonal ? "Personal" : "Shared"} Variable
+                    Add {isPersonal ? "Personal" : "Global"} Variable
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -364,7 +365,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Shared }: Props)
           ) : (
             <Button variant="av" onClick={() => openForm(null)}>
               <PlusIcon />
-              Add {isPersonal ? "Personal" : "Shared"} Variable
+              Add {isPersonal ? "Personal" : "Global"} Variable
             </Button>
           )}
         </CardAction>

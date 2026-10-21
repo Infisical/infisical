@@ -27,7 +27,7 @@ export const ownerColumns = (owner: TAgentVaultOwner | null) => {
   return owner.userId ? { userId: owner.userId, identityId: null } : { userId: null, identityId: owner.identityId! };
 };
 
-// `null` matches the rows no one owns, the shared ones.
+// `null` matches the rows no one owns, the global ones.
 export const whereOwner = <T extends Knex.QueryBuilder>(query: T, table: string, owner: TAgentVaultOwner | null) => {
   if (!owner) return query.whereNull(`${table}.userId`).whereNull(`${table}.identityId`);
   return owner.userId

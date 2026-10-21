@@ -4,7 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 const PROJECT_KEY_UNIQUE = "agent_vault_variables_projectid_key_unique";
-const SHARED_KEY_UNIQUE = "agent_vault_variables_shared_key_unique";
+const GLOBAL_KEY_UNIQUE = "agent_vault_variables_global_key_unique";
 const USER_KEY_UNIQUE = "agent_vault_variables_user_key_unique";
 const IDENTITY_KEY_UNIQUE = "agent_vault_variables_identity_key_unique";
 
@@ -12,7 +12,7 @@ const IDENTITY_KEY_UNIQUE = "agent_vault_variables_identity_key_unique";
 const NO_TARGET = "'00000000-0000-0000-0000-000000000000'::uuid";
 
 export async function up(knex: Knex): Promise<void> {
-  // A variable with an owner is that user's or identity's own; one without is shared across Agent Vault.
+  // A variable with an owner is that user's or identity's own; one without is global across Agent Vault.
   if (!(await knex.schema.hasColumn(TableName.AgentVaultVariable, "userId"))) {
     await knex.schema.alterTable(TableName.AgentVaultVariable, (t) => {
       t.uuid("userId");
@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
     );
     await knex.raw(
       `CREATE UNIQUE INDEX ?? ON ?? ("projectId", "key") WHERE "userId" IS NULL AND "identityId" IS NULL`,
-      [SHARED_KEY_UNIQUE, TableName.AgentVaultVariable]
+      [GLOBAL_KEY_UNIQUE, TableName.AgentVaultVariable]
     );
     // The owner column leads, so each index also serves its foreign key's cascade.
     await knex.raw(`CREATE UNIQUE INDEX ?? ON ?? ("userId", "projectId", "key") WHERE "userId" IS NOT NULL`, [
@@ -154,9 +154,9 @@ export async function down(knex: Knex): Promise<void> {
 
   if (await knex.schema.hasColumn(TableName.AgentVaultVariable, "userId")) {
     await knex.raw(`DROP VIEW IF EXISTS analytics.??`, [TableName.AgentVaultVariable]);
-    // Variables of one owner can't move into the shared namespace, where their keys may clash.
+    // Variables of one owner can't move into the global namespace, where their keys may clash.
     await knex(TableName.AgentVaultVariable).whereNotNull("userId").orWhereNotNull("identityId").delete();
-    await knex.raw(`DROP INDEX IF EXISTS ??`, [SHARED_KEY_UNIQUE]);
+    await knex.raw(`DROP INDEX IF EXISTS ??`, [GLOBAL_KEY_UNIQUE]);
     await knex.raw(`DROP INDEX IF EXISTS ??`, [USER_KEY_UNIQUE]);
     await knex.raw(`DROP INDEX IF EXISTS ??`, [IDENTITY_KEY_UNIQUE]);
     await knex.raw(`ALTER TABLE ?? DROP CONSTRAINT IF EXISTS "agent_vault_variables_one_owner"`, [

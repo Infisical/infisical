@@ -577,7 +577,7 @@ export const useAgentVaultVariableKeyStatus = (
   {
     enabled = true,
     isCached = true,
-    scope = AgentVaultVariableScope.Shared
+    scope = AgentVaultVariableScope.Global
   }: { enabled?: boolean; isCached?: boolean; scope?: AgentVaultVariableScope } = {}
 ) => {
   const { currentOrg } = useOrganization();

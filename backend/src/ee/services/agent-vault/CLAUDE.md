@@ -18,7 +18,7 @@ never in anything the agent holds.
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
-agent-vault-variable/        shared and personal variables and the reads behind Used By
+agent-vault-variable/        global and personal variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-session/         mint, revoke, list, get
@@ -190,7 +190,7 @@ path decides what a service can reach, so it stays literal.
   session project's variables.
 - **A variable delete and a service save meet on the variable row**: the delete locks it `FOR UPDATE`, a save
   locks what it references `FOR SHARE` (`insertReferenceRows`). Create serialises on a per-project advisory lock;
-  the shared-key partial unique index is the backstop.
+  the global-key partial unique index is the backstop.
 - A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
   field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
   reference back in its field made it the one stored field that shows, and left a field mixing text with a
@@ -229,7 +229,7 @@ path decides what a service can reach, so it stays literal.
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- Shared variables are admin only, reads included: their routes check `Edit` on access bundles, which a member lacks,
+- Global variables are admin only, reads included: their routes check `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
   an empty list would claim they use none). Every value is sealed and no response but the value route returns
   one. That route is a GET with no-store headers and one audit event per read.
@@ -248,19 +248,19 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at
   all and the column is NULL. Code that reads `encryptedCredential` NULL as passthrough has to check
   `memberProvidedFields` first.
-- **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`shared`, the default, or
+- **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global`, the default, or
   `personal`) picks the list and the owner of a new one; every variable read and lock in the DAL takes an owner
-  (`null` for shared) so a shared lookup never matches a personal key, and resolve expands each kind only against
+  (`null` for global) so a global lookup never matches a personal key, and resolve expands each kind only against
   its own. By id, a variable the caller may not act on is a 404, never a 403: someone else's personal one, and a
-  shared one for a member. Shared keys are unique per project (500 cap), personal ones per owner (100 cap), each
+  global one for a member. Global keys are unique per project (500 cap), personal ones per owner (100 cap), each
   enforced by a partial unique index plus an advisory lock per project or per owner.
 - **Everything personal is scoped to the caller, never to an id the caller sends.** No route names another actor,
   so an admin can't list, read or set anyone else's variables or values. The owner is a user or a machine identity
   (`ownerOf`); the UI only covers users for now, but resolve and the API already work for an identity's own
   sessions.
-- **Resolve fills member fields last**: the admin's fields are expanded against shared variables first, then each
+- **Resolve fills member fields last**: the admin's fields are expanded against global variables first, then each
   personal value against the session actor's personal variables only, so neither is ever expanded twice and a
-  personal `{{KEY}}` can't reach a shared variable. A service whose actor hasn't set every member-provided field
+  personal `{{KEY}}` can't reach a global variable. A service whose actor hasn't set every member-provided field
   goes out with `personalValuesMissing: true` and a passthrough credential. The proxy refuses it with a 403 (CLI
   change); an older proxy that ignores the flag forwards the request without a credential, never with the admin's.
 - **A save is a PATCH**: a field sent replaces that field's saved value, a field left out keeps it, and every
@@ -279,7 +279,7 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   variable also clears the owner's values on bundles they no longer reach, which otherwise would hold the variable
   in place with nothing able to edit them. Personal variables survive all of this, and their Used By lists only
   the bundles the owner still reaches.
-- Personal variables follow the shared variables' reference rules: sealed text names them by id, a reference row
+- Personal variables follow the global variables' reference rules: sealed text names them by id, a reference row
   per personal value (`agent_vault_personal_value_references`, a deferred foreign key), the delete takes the variable
   row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. Used By on a variable reads
   both reference tables; any one variable only ever appears in one of them.

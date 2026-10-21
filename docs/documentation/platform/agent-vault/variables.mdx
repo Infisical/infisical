@@ -8,7 +8,7 @@ A variable is a value that you can use in any [service](/documentation/platform/
 When an agent sends a request, the [proxy](/documentation/platform/agent-vault/proxies) replaces each reference with the variable's value.
 
 <Info>
-  Only [Agent Vault admins](/documentation/platform/agent-vault/access-control#product-membership) can view and update shared variables, the variables that services use. Every member, including admins, can also keep [personal variables](#personal-variables).
+  Only [Agent Vault admins](/documentation/platform/agent-vault/access-control#product-membership) can view and update global variables, the variables that services use. Every member, including admins, can also keep [personal variables](#personal-variables).
 </Info>
 
 ## Add a variable
@@ -17,7 +17,7 @@ To add a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables** > **Shared Variables**.
+    In Agent Vault, go to **Variables** > **Global Variables**.
 
     <Frame>
       <img src="/images/platform/agent-vault/variables-empty.png" alt="The Variables page with no variables and an Add Variable button" />
@@ -25,7 +25,7 @@ To add a variable:
 
   </Step>
   <Step>
-    Select **Add Shared Variable**.
+    Select **Add Global Variable**.
 
     <Frame>
       <img src="/images/platform/agent-vault/variable-create.png" alt="The Add Variable dialog with GITHUB_TOKEN as the key and a hidden value" />
@@ -41,7 +41,7 @@ To add a variable:
 
   </Step>
   <Step>
-    Select **Add Shared Variable**. The variable appears in the list on the **Shared Variables** tab.
+    Select **Add Global Variable**. The variable appears in the list on the **Global Variables** tab.
 
     <Frame>
       <img src="/images/platform/agent-vault/variables.png" alt="The Variables page listing seven variables with hidden values. The Used By column shows access bundle badges, such as code-review, on-call, and release-notes for GITHUB_TOKEN, with a tooltip listing the github service in code-review. SLACK_BOT_TOKEN shows three badges and +1 for one more access bundle. SENTRY_AUTH_TOKEN shows Unused." />
@@ -81,7 +81,7 @@ To use a variable:
     Select a variable from the list. Infisical inserts the reference, such as `{{GITHUB_TOKEN}}`.
 
     <Tip>
-    You can also create a variable without leaving the service. Type its key, then select **Create** at the end of the list. The **Add Shared Variable** dialog opens with the key filled in, so you only need to enter a **Value**.
+    You can also create a variable without leaving the service. Type its key, then select **Create** at the end of the list. The **Add Global Variable** dialog opens with the key filled in, so you only need to enter a **Value**.
     </Tip>
 
     <Frame>
@@ -150,11 +150,11 @@ If any service still uses the variable, the dialog lists those services, and you
 
 ## Personal variables
 
-A personal variable works like a shared variable, with two differences: only your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) can use it, and only you can read it. Use one when several services ask you for the same value, such as a personal GitHub token that services in two access bundles require.
+A personal variable works like a global variable, with two differences: only your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) can use it, and only you can read it. Use one when several services ask you for the same value, such as a personal GitHub token that services in two access bundles require.
 
 To see your personal variables, go to **Variables** in Agent Vault. If you're an admin, select the **Personal Variables** tab.
 
-You add, update, and delete personal variables the same way as [shared variables](#add-a-variable), with these limits:
+You add, update, and delete personal variables the same way as [global variables](#add-a-variable), with these limits:
 
 - You can keep up to 100 personal variables
 - If your personal values for a service use a variable, you can't delete the variable until you change those values
