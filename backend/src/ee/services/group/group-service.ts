@@ -377,27 +377,6 @@ export const groupServiceFactory = ({
     return updatedGroup;
   };
 
-  const unlinkGroupFromSubOrg = async ({
-    groupId,
-    groupMembershipId,
-    actorOrgId
-  }: {
-    groupId: string;
-    groupMembershipId: string;
-    actorOrgId: string;
-  }) => {
-    const group = await groupDAL.findById(groupId);
-
-    await groupDAL.transaction(async (tx) => {
-      await membershipGroupService.detachGroupFromOrg(
-        { groupId, orgId: actorOrgId, orgMembershipId: groupMembershipId },
-        tx
-      );
-    });
-
-    return group;
-  };
-
   /**
    * Delete a group owned by the current organization.
    * Ensures the group is not linked by any sub-organizations before deleting.
@@ -495,10 +474,12 @@ export const groupServiceFactory = ({
     const isLinkedGroup = group.orgId !== actorOrgId;
 
     if (isLinkedGroup) {
-      const unlinkedGroup = await unlinkGroupFromSubOrg({
-        groupId: id,
-        groupMembershipId: groupMembership.id,
-        actorOrgId
+      const unlinkedGroup = await groupDAL.findById(id);
+      await groupDAL.transaction(async (tx) => {
+        await membershipGroupService.detachGroupFromOrg(
+          { groupId: id, orgId: actorOrgId, orgMembershipId: groupMembership.id },
+          tx
+        );
       });
       // Removing the group drops its members from any project it was on.
       usageMeteringService.emit(actorOrgId, SecretIdentities.key);
