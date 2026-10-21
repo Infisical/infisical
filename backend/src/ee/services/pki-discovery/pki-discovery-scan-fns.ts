@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { Knex } from "knex";
 import net from "net";
 import pLimit from "p-limit";
 
@@ -6,6 +7,8 @@ import { TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
@@ -63,6 +66,50 @@ type TExecuteScanDeps = {
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService?: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+};
+
+export const findOrCreateNetworkInstallation = async (
+  deps: Pick<TExecuteScanDeps, "pkiCertificateInstallationDAL">,
+  tx: Knex,
+  data: {
+    projectId: string;
+    locationDetails: TPkiCertificateInstallationsInsert["locationDetails"];
+    locationFingerprint: string;
+    name: string;
+    scanTime: Date;
+  }
+) => {
+  const { pkiCertificateInstallationDAL } = deps;
+  const { projectId, locationDetails, locationFingerprint, name, scanTime } = data;
+
+  const existing = await pkiCertificateInstallationDAL.findByFingerprint(projectId, locationFingerprint, tx);
+  if (existing) {
+    await pkiCertificateInstallationDAL.updateById(existing.id, { lastSeenAt: scanTime }, tx);
+    return existing;
+  }
+
+  try {
+    return await tx.transaction((sp) =>
+      pkiCertificateInstallationDAL.create(
+        {
+          projectId,
+          locationType: PkiInstallationLocationType.Network,
+          locationDetails,
+          locationFingerprint,
+          name,
+          type: PkiInstallationType.Unknown,
+          lastSeenAt: scanTime
+        },
+        sp
+      )
+    );
+  } catch (error) {
+    if (!hasPostgresErrorCode(error, DatabaseErrorCode.UniqueViolation)) throw error;
+    const raced = await pkiCertificateInstallationDAL.findByFingerprint(projectId, locationFingerprint, tx);
+    if (!raced) throw error;
+    await pkiCertificateInstallationDAL.updateById(raced.id, { lastSeenAt: scanTime }, tx);
+    return raced;
+  }
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
@@ -324,28 +371,13 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
         );
 
         const domainInstallationId = await deps.pkiDiscoveryConfigDAL.transaction(async (tx) => {
-          let domainInstallation = await deps.pkiCertificateInstallationDAL.findByFingerprint(
-            discoveryConfig.projectId,
-            domainFingerprint,
-            tx
-          );
-
-          if (!domainInstallation) {
-            domainInstallation = await deps.pkiCertificateInstallationDAL.create(
-              {
-                projectId: discoveryConfig.projectId,
-                locationType: PkiInstallationLocationType.Network,
-                locationDetails: domainLocationDetails,
-                locationFingerprint: domainFingerprint,
-                name: domain,
-                type: PkiInstallationType.Unknown,
-                lastSeenAt: now
-              },
-              tx
-            );
-          } else {
-            await deps.pkiCertificateInstallationDAL.updateById(domainInstallation.id, { lastSeenAt: now }, tx);
-          }
+          const domainInstallation = await findOrCreateNetworkInstallation(deps, tx, {
+            projectId: discoveryConfig.projectId,
+            locationDetails: domainLocationDetails,
+            locationFingerprint: domainFingerprint,
+            name: domain,
+            scanTime: now
+          });
 
           const domainLink = await deps.pkiDiscoveryInstallationDAL.upsertLink(
             discoveryId,
@@ -471,13 +503,7 @@ const processEndpointResult = async (
   gatewayName?: string,
   fingerprintGatewayKey?: string
 ): Promise<{ installationId?: string; certificateIds: string[]; sniHostname?: string }> => {
-  const {
-    pkiCertificateInstallationDAL,
-    pkiDiscoveryInstallationDAL,
-    pkiCertificateInstallationCertDAL,
-    certificateDAL,
-    certificateBodyDAL
-  } = deps;
+  const { pkiDiscoveryInstallationDAL, pkiCertificateInstallationCertDAL, certificateDAL, certificateBodyDAL } = deps;
 
   const certificateIds: string[] = [];
 
@@ -536,23 +562,13 @@ const processEndpointResult = async (
   }
 
   const installationId = await deps.pkiDiscoveryConfigDAL.transaction(async (tx) => {
-    let installation = await pkiCertificateInstallationDAL.findByFingerprint(projectId, locationFingerprint, tx);
-
-    if (!installation) {
-      const installationData: TPkiCertificateInstallationsInsert = {
-        projectId,
-        locationType: PkiInstallationLocationType.Network,
-        locationDetails,
-        locationFingerprint,
-        name: displayName,
-        type: PkiInstallationType.Unknown,
-        lastSeenAt: scanTime
-      };
-
-      installation = await pkiCertificateInstallationDAL.create(installationData, tx);
-    } else {
-      await pkiCertificateInstallationDAL.updateById(installation.id, { lastSeenAt: scanTime }, tx);
-    }
+    const installation = await findOrCreateNetworkInstallation(deps, tx, {
+      projectId,
+      locationDetails,
+      locationFingerprint,
+      name: displayName,
+      scanTime
+    });
 
     const link = await pkiDiscoveryInstallationDAL.upsertLink(discoveryId, installation.id, scanTime, tx);
     if (!link) {
