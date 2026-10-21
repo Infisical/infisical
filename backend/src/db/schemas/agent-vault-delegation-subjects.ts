@@ -12,8 +12,7 @@ export const AgentVaultDelegationSubjectsSchema = z.object({
   delegationId: z.string().uuid(),
   userId: z.string().uuid().nullable().optional(),
   groupId: z.string().uuid().nullable().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date()
+  createdAt: z.date()
 });
 
 export type TAgentVaultDelegationSubjects = z.infer<typeof AgentVaultDelegationSubjectsSchema>;

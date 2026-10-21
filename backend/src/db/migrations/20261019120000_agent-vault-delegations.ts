@@ -69,7 +69,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("groupId");
       t.foreign("groupId").references("id").inTable(TableName.Groups).onDelete("CASCADE");
 
-      t.timestamps(true, true, true);
+      t.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
     });
 
     await knex.raw(
@@ -85,15 +85,12 @@ export async function up(knex: Knex): Promise<void> {
       `CREATE UNIQUE INDEX "agent_vault_delegation_subjects_group_unique" ON ?? ("groupId", "delegationId") WHERE "groupId" IS NOT NULL`,
       [TableName.AgentVaultDelegationSubject]
     );
-
-    await createOnUpdateTrigger(knex, TableName.AgentVaultDelegationSubject);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.raw(`DROP VIEW IF EXISTS analytics.??`, [TableName.AgentVaultDelegationSubject]);
   await knex.schema.dropTableIfExists(TableName.AgentVaultDelegationSubject);
-  await dropOnUpdateTrigger(knex, TableName.AgentVaultDelegationSubject);
 
   await knex.raw(`DROP VIEW IF EXISTS analytics.??`, [TableName.AgentVaultDelegation]);
   await knex.schema.dropTableIfExists(TableName.AgentVaultDelegation);
