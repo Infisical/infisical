@@ -2,6 +2,7 @@
 Changes:
 * Updated the default `infisical.image.tag` value from `v0.158.0` to `v0.167.0`.
 * Updated the default `infisical.autoBootstrap.image.tag` value from `0.41.86` to `0.44.6`.
+* Upgrading from Infisical `v0.159.25` or older invalidates the root identity token that the bootstrap Job stored in `infisical.autoBootstrap.secretDestination.name` (`infisical-bootstrap-secret` by default). Infisical `v0.159.26` and newer reject access tokens that have no expiry once `LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT` (default `2026-05-04`) plus `MAX_MACHINE_IDENTITY_TOKEN_AGE` (default `90d`) has passed, and the bootstrap Job runs only on install, so the upgrade does not replace the token. After upgrading, create a new access token for the instance admin identity and update anything that reads the bootstrap secret. To keep the old token working for another 90 days while you do that, set `LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT` to the upgrade date through `infisical.extraEnv`.
 
 ## 1.11.0 (September 17, 2026)
 Changes:
