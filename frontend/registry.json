@@ -1076,6 +1076,9 @@
         "@infisical/kbd",
         "@infisical/spinner"
       ],
+      "dependencies": [
+        "lucide-react@^0.544.0"
+      ],
       "files": [
         {
           "path": "src/components/v4/ui/command-menu.tsx",

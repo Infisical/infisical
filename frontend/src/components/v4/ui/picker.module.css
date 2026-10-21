@@ -23,9 +23,6 @@
   padding-inline-end: var(--v4-space-menu-inset);
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
-.commandSearch:focus-within {
-  border-bottom-color: var(--v4-control);
-}
 .commandSearch > [data-slot="command-input-wrapper"] {
   flex: 1;
   min-width: 0;
@@ -216,4 +213,13 @@
   line-height: var(--v4-type-caption-line-height);
   font-weight: var(--v4-type-caption-font-weight);
   letter-spacing: var(--v4-type-caption-letter-spacing);
+}
+.commandText {
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--v4-space-8);
+}
+.commandText > :first-child {
+  flex: none;
+  max-width: 100%;
 }

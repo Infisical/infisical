@@ -139,7 +139,28 @@ export default function Example() {
       <Button variant="outline" onClick={() => setOpen(true)}>
         Search commands
       </Button>
-      <CommandMenu open={open} onOpenChange={setOpen} label="Search commands" recent={recent ? [{ id: "recent", label: "Input", href: "#input" }] : []} groups={[
+      <CommandMenu open={open} onOpenChange={setOpen} label="Search commands" recent={recent
+            ? [
+                {
+                    id: "recent-secret",
+                    label: "stripe_api_key",
+                    description: "production",
+                    mono: true,
+                    kind: "secret"
+                },
+                { id: "recent", label: "Audit logs", href: "#input", kind: "page", icon: "history" }
+            ]
+            : []} groups={[
+            {
+                label: "Go to",
+                items: [
+                    { id: "home", label: "Home", icon: "home", shortcut: "g then h" },
+                    { id: "secrets", label: "Secrets", icon: "key", shortcut: "g then s" },
+                    { id: "certificates", label: "Certificates", icon: "cert", shortcut: "g then c" },
+                    { id: "access", label: "Access", icon: "user" },
+                    { id: "settings", label: "Project settings", kind: "setting" }
+                ]
+            },
             {
                 label: "Commands",
                 items: [
@@ -170,7 +191,7 @@ export default function Example() {
                     { label: "Staging", items: [{ id: "connection", label: "Inspect connection" }] }
                 ]
             }
-        }} footer={pinned ? "Recent commands pinned" : undefined}/>
+        }} footer={pinned ? "Recent commands pinned" : "acme-platform"}/>
     </div><figcaption className="text-muted-foreground text-xs">{"Default"}</figcaption></figure>);
 }
 ```

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { Palette, SquareRoundCorner } from "lucide-react";
 
 import { componentCatalog } from "@app/components/v4/catalog";
 import required from "@app/components/v4/required-capabilities.json";
 import {
   CommandMenu,
   type CommandMenuGroup,
-  type CommandMenuItem
+  type CommandMenuItem,
+  type CommandMenuItemKind
 } from "@app/components/v4/ui/command-menu";
 import { type IconName } from "@app/components/v4/ui/icon";
 
@@ -25,6 +27,14 @@ export type PaletteControls = {
 };
 
 const RECENT_KEY = "v4-palette-recent";
+
+const kindOf = (group: string): CommandMenuItemKind => {
+  if (group === "Foundations") return "foundation";
+  if (group === "Comparisons") return "comparison";
+  if (group === "Contributing") return "page";
+  if (group === "Patterns" || group === "Composites") return "pattern";
+  return "component";
+};
 
 const goTo = (page: string, example?: string) => {
   window.location.hash = example ? `#${page}/${example}` : `#${page}`;
@@ -57,12 +67,16 @@ export const WorkbenchPalette = ({
   }, [recentIds]);
   const index = useMemo(() => {
     const aliases = Object.entries(required.aliases as Record<string, string>);
-    const pageItem = (page: { id: string; title: string }, group: string): CommandMenuItem => {
+    const pageItem = (
+      page: { id: string; title: string },
+      group: { title: string; icon: IconName }
+    ): CommandMenuItem => {
       const entry = componentCatalog.find((item) => item.id === page.id);
       return {
         id: `page:${page.id}`,
         label: page.title,
-        description: group,
+        icon: group.icon,
+        kind: kindOf(group.title),
         keywords: [
           page.id,
           ...(entry?.referenceNames ?? []),
@@ -76,13 +90,14 @@ export const WorkbenchPalette = ({
     };
     const pageGroups: CommandMenuGroup[] = groups.map((group) => ({
       label: group.title,
-      items: group.pages.map((page) => pageItem(page, group.title))
+      items: group.pages.map((page) => pageItem(page, group))
     }));
     const examples: CommandMenuItem[] = componentCatalog.flatMap((entry) =>
       entry.examples.map((example) => ({
         id: `example:${entry.id}:${example.id}`,
         label: example.title,
         description: entry.title,
+        kind: "example" as const,
         keywords: [entry.title, entry.id, example.id],
         onSelect: () => {
           remember(`example:${entry.id}:${example.id}`);
@@ -93,29 +108,39 @@ export const WorkbenchPalette = ({
     return { pageGroups, examples };
   }, [groups]);
   const actions: CommandMenuItem[] = [
-    { id: "action:theme", label: "Toggle theme", icon: "moon", onSelect: toggleTheme },
+    {
+      id: "action:theme",
+      label: "Toggle theme",
+      icon: "moon",
+      kind: "action",
+      onSelect: toggleTheme
+    },
     {
       id: "action:corners",
       label: "Toggle corners (square or soft)",
-      icon: "apps",
+      icon: SquareRoundCorner,
+      kind: "action",
       onSelect: toggleCorners
     },
     {
       id: "action:accent",
       label: "Open the accent picker",
-      icon: "sun",
+      icon: Palette,
+      kind: "action",
       onSelect: () => accent?.open()
     },
     {
       id: "action:human",
       label: "Switch to the Human view",
       icon: "user",
+      kind: "action",
       onSelect: () => setView("human")
     },
     {
       id: "action:agent",
       label: "Switch to the Agent view",
       icon: "agent",
+      kind: "action",
       onSelect: () => setView("agent")
     }
   ];
@@ -128,6 +153,7 @@ export const WorkbenchPalette = ({
       open={open}
       onOpenChange={onOpenChange}
       label="Search the design system"
+      footer="Infisical 2.0 design system"
       recent={recent}
       groups={[
         ...index.pageGroups,

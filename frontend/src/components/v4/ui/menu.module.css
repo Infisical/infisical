@@ -359,8 +359,9 @@
   display: flex;
   align-items: center;
   gap: var(--v4-space-12);
-  min-height: var(--v4-size-control-sm);
-  padding: var(--v4-space-4) var(--v4-space-12);
+  min-height: var(--v4-size-control-lg);
+  padding: 0 var(--v4-space-12);
+  background-color: var(--v4-tint);
   overflow: hidden;
   border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
   color: var(--v4-muted);

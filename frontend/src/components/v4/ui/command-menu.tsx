@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Columns2, LayoutTemplate, type LucideIcon, Palette, SquareCode, Zap } from "lucide-react";
 
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
@@ -23,7 +24,8 @@ import styles from "./picker.module.css";
 export type CommandMenuItem = {
   id: string;
   label: string;
-  icon?: IconName;
+  icon?: IconName | LucideIcon;
+  kind?: CommandMenuItemKind;
   media?: React.ReactNode;
   description?: string;
   meta?: string;
@@ -37,6 +39,34 @@ export type CommandMenuItem = {
   keepOpen?: boolean;
   danger?: boolean;
 };
+export type CommandMenuItemKind =
+  | "page"
+  | "component"
+  | "pattern"
+  | "foundation"
+  | "comparison"
+  | "example"
+  | "action"
+  | "secret"
+  | "setting"
+  | "project"
+  | "organization"
+  | "person";
+const kindIcons: Record<CommandMenuItemKind, IconName | LucideIcon> = {
+  page: "file",
+  component: "apps",
+  pattern: LayoutTemplate,
+  foundation: Palette,
+  comparison: Columns2,
+  example: SquareCode,
+  action: Zap,
+  secret: "key",
+  setting: "settings",
+  project: "folder",
+  organization: "building",
+  person: "user"
+};
+const kindLabel = (kind: CommandMenuItemKind) => kind.charAt(0).toUpperCase() + kind.slice(1);
 export type CommandMenuGroup = {
   label: string;
   items: readonly CommandMenuItem[];
@@ -248,7 +278,7 @@ export const CommandMenu = ({
           onKeyDown={(event) => {
             if (event.nativeEvent.isComposing || event.keyCode === 229) event.stopPropagation();
           }}
-          trailing={loading && <Spinner />}
+          trailing={loading ? <Spinner /> : <Kbd size="sm" keys="esc" />}
         />
       </div>
       <CommandEmpty>
@@ -282,9 +312,17 @@ export const CommandMenu = ({
                     {item.media ? (
                       <span data-menu-icon="">{item.media}</span>
                     ) : (
-                      item.icon && <Icon name={item.icon} />
+                      (() => {
+                        const glyph = item.icon ?? (item.kind && kindIcons[item.kind]);
+                        if (!glyph) return null;
+                        return typeof glyph === "string" ? (
+                          <Icon name={glyph} />
+                        ) : (
+                          <Icon icon={glyph} />
+                        );
+                      })()
                     )}
-                    <span data-command-label className={menu.text}>
+                    <span data-command-label className={cn(menu.text, styles.commandText)}>
                       <span className={cn(menu.title, item.mono && styles.mono)}>
                         {markLabel(item.label)}
                       </span>
@@ -292,7 +330,12 @@ export const CommandMenu = ({
                         <span className={menu.description}>{item.description}</span>
                       )}
                     </span>
-                    {item.meta && <span className={menu.meta}>{item.meta}</span>}
+                    {(item.meta ??
+                      (group.label === "Recent" && item.kind && kindLabel(item.kind))) && (
+                      <span className={menu.meta}>
+                        {item.meta ?? (item.kind && kindLabel(item.kind))}
+                      </span>
+                    )}
                     {item.shortcut && <CommandShortcut>{item.shortcut}</CommandShortcut>}
                   </CommandItem>
                 ))}
@@ -309,7 +352,7 @@ export const CommandMenu = ({
         <span className={menu.hint}>
           <Kbd size="sm" keys={["up"]} />
           <Kbd size="sm" keys={["down"]} />
-          Navigate
+          Move
         </span>
         <span className={menu.hint}>
           <Kbd size="sm" keys="enter" />
