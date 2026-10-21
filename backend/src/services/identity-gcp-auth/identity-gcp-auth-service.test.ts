@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { UNBOUND_AUTH_CUTOFF } from "../identity/identity-auth-trust-binding-fns";
 import { identityGcpAuthServiceFactory } from "./identity-gcp-auth-service";
 import { TGcpIdentityDetails } from "./identity-gcp-auth-types";
 
@@ -30,8 +29,6 @@ vi.mock("@fastify/request-context", () => ({
 const IDENTITY_ID = "5d3a8b2e-7c61-4b0f-9f3e-2a1c4d6e8f90";
 const ORG_ID = "org-id";
 const ACCESS_TOKEN = "access-token";
-const AFTER_CUTOFF = new Date(UNBOUND_AUTH_CUTOFF.getTime() + 24 * 60 * 60 * 1000);
-const BEFORE_CUTOFF = new Date(UNBOUND_AUTH_CUTOFF.getTime() - 24 * 60 * 60 * 1000);
 
 const SERVICE_ACCOUNT = "gce-sa@my-project.iam.gserviceaccount.com";
 const OTHER_SERVICE_ACCOUNT = "other-sa@other-project.iam.gserviceaccount.com";
@@ -46,7 +43,7 @@ const computeEngineDetails = {
 };
 
 type TGcpAuthRow = {
-  createdAt: Date;
+  requireAllowList: boolean;
   type: "gce" | "iam";
   allowedServiceAccounts: string | null;
   allowedProjects: string | null;
@@ -63,7 +60,7 @@ const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}) => {
     identityGcpAuthDAL: {
       findOne: vi.fn().mockResolvedValue({
         identityId: IDENTITY_ID,
-        createdAt: AFTER_CUTOFF,
+        requireAllowList: true,
         type: "gce",
         allowedServiceAccounts: null,
         allowedProjects: null,
@@ -251,10 +248,10 @@ describe("gcpAuthService.login trust binding", () => {
   });
 });
 
-describe("gcpAuthService.login unbound identities from before the cutoff", () => {
-  test("allows a GCE identity with no binding whose auth config predates the cutoff", async () => {
+describe("gcpAuthService.login legacy identities that do not require an allow list", () => {
+  test("allows a GCE identity with no binding saved before the allow list was required", async () => {
     const { result, issueIdentityAccessToken } = login(
-      { type: "gce", createdAt: BEFORE_CUTOFF },
+      { type: "gce", requireAllowList: false },
       { email: SERVICE_ACCOUNT, computeEngineDetails }
     );
 
@@ -262,17 +259,14 @@ describe("gcpAuthService.login unbound identities from before the cutoff", () =>
     expect(issueIdentityAccessToken).toHaveBeenCalledTimes(1);
   });
 
-  test("allows an IAM identity with no binding whose auth config predates the cutoff", async () => {
-    const { result } = login({ type: "iam", createdAt: BEFORE_CUTOFF }, { email: SERVICE_ACCOUNT });
+  test("allows an IAM identity with no binding saved before the allow list was required", async () => {
+    const { result } = login({ type: "iam", requireAllowList: false }, { email: SERVICE_ACCOUNT });
 
     await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
   });
 
-  test("denies an unbound identity whose auth config is created at the cutoff", async () => {
-    const { result } = login(
-      { type: "gce", createdAt: UNBOUND_AUTH_CUTOFF },
-      { email: SERVICE_ACCOUNT, computeEngineDetails }
-    );
+  test("denies an unbound identity once the allow list is required", async () => {
+    const { result } = login({ type: "gce", requireAllowList: true }, { email: SERVICE_ACCOUNT, computeEngineDetails });
 
     await expect(result).rejects.toMatchObject({ detail: { reasonCode: "trust_binding_missing" } });
   });

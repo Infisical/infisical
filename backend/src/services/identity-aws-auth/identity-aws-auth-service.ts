@@ -29,7 +29,6 @@ import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
 } from "@app/services/identity/identity-auth-method-events";
-import { isUnboundAuthGrandfathered } from "@app/services/identity/identity-auth-trust-binding-fns";
 
 import { ActorType } from "../auth/auth-type";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
@@ -156,7 +155,7 @@ export const identityAwsAuthServiceFactory = ({
 
     try {
       if (!hasAwsTrustBinding(identityAwsAuth)) {
-        if (!isUnboundAuthGrandfathered(identityAwsAuth.createdAt)) {
+        if (identityAwsAuth.requireAllowList) {
           throw new UnauthorizedError({
             message:
               "Access denied: this identity has no AWS account ID or principal ARN configured. An admin must add one before it can authenticate.",
@@ -450,6 +449,7 @@ export const identityAwsAuthServiceFactory = ({
           identityId: identityMembershipOrg.identity.id,
           type: "iam",
           stsEndpoint,
+          requireAllowList: true,
           allowedPrincipalArns,
           allowedAccountIds,
           accessTokenMaxTTL,
@@ -566,6 +566,7 @@ export const identityAwsAuthServiceFactory = ({
         identityAwsAuth.id,
         {
           stsEndpoint,
+          requireAllowList: true,
           allowedPrincipalArns,
           allowedAccountIds,
           accessTokenMaxTTL,

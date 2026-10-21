@@ -20,7 +20,8 @@ export const IdentityAwsAuthsSchema = z.object({
   stsEndpoint: z.string(),
   allowedPrincipalArns: z.string(),
   allowedAccountIds: z.string(),
-  accessTokenPeriod: z.coerce.number().default(0)
+  accessTokenPeriod: z.coerce.number().default(0),
+  requireAllowList: z.boolean().default(true)
 });
 
 export type TIdentityAwsAuths = z.infer<typeof IdentityAwsAuthsSchema>;

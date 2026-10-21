@@ -25,7 +25,6 @@ import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
 } from "@app/services/identity/identity-auth-method-events";
-import { isUnboundAuthGrandfathered } from "@app/services/identity/identity-auth-trust-binding-fns";
 
 import { ActorType } from "../auth/auth-type";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
@@ -111,7 +110,7 @@ export const identityGcpAuthServiceFactory = ({
 
     try {
       if (!hasGcpTrustBinding(identityGcpAuth)) {
-        if (!isUnboundAuthGrandfathered(identityGcpAuth.createdAt)) {
+        if (identityGcpAuth.requireAllowList) {
           throw new UnauthorizedError({
             message:
               "Access denied: this identity has no GCP service account, project, or zone configured. An admin must add one before it can authenticate.",
@@ -408,6 +407,7 @@ export const identityGcpAuthServiceFactory = ({
         {
           identityId: identityMembershipOrg.identity.id,
           type,
+          requireAllowList: true,
           allowedServiceAccounts,
           allowedProjects,
           allowedZones,
@@ -527,6 +527,7 @@ export const identityGcpAuthServiceFactory = ({
         identityGcpAuth.id,
         {
           type,
+          requireAllowList: true,
           allowedServiceAccounts,
           allowedProjects,
           allowedZones,
