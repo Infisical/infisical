@@ -86,7 +86,17 @@ const addAcceptedUsersToGroup = async ({
       continue;
     }
 
-    const usersToAddProjectKeyFor = users.filter((u) => !userKeysSet.has(`${projectId}-${u.id}`));
+    const usersMissingProjectKey = users.filter((u) => !userKeysSet.has(`${projectId}-${u.id}`));
+
+    // SSO-only users never get a key pair, and nothing shares the key later, so failing here would lock them
+    // out of the whole org (or roll back the login) over one legacy project they could not use anyway.
+    const usersToAddProjectKeyFor = usersMissingProjectKey.filter((u) => {
+      if (u.publicKey) return true;
+      logger.warn(
+        `Skipping legacy project key share for a user without a public key [userId=${u.id}] [projectId=${projectId}] [groupId=${group.id}]`
+      );
+      return false;
+    });
 
     if (usersToAddProjectKeyFor.length) {
       // there are users who need to be shared keys
@@ -141,16 +151,10 @@ const addAcceptedUsersToGroup = async ({
       });
 
       const projectKeysToAdd = usersToAddProjectKeyFor.map((user) => {
-        if (!user.publicKey) {
-          throw new NotFoundError({
-            message: `Failed to find user's public key in project with ID '${projectId}'`
-          });
-        }
-
         const { ciphertext: encryptedKey, nonce } = crypto
           .encryption()
           .asymmetric()
-          .encrypt(plaintextProjectKey, user.publicKey, botPrivateKey);
+          .encrypt(plaintextProjectKey, user.publicKey as string, botPrivateKey);
         return {
           encryptedKey,
           nonce,
