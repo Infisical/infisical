@@ -651,21 +651,22 @@
                 "group": "Get started",
                 "pages": [
                   "documentation/platform/pam/quick-starts/launch-first-session",
-                  {
-                    "group": "Concepts",
-                    "root": "documentation/platform/pam/concepts/overview",
-                    "pages": [
-                      "documentation/platform/pam/architecture"
-                    ]
-                  }
+                  "documentation/platform/pam/concepts/overview",
+                  "documentation/platform/pam/concepts/session-lifecycle",
+                  "documentation/platform/pam/architecture"
                 ]
               },
               {
-                "group": "Managing privileged access",
+                "group": "Accounts",
                 "pages": [
+                  "documentation/platform/pam/accounts/overview",
+                  "documentation/platform/pam/accounts/add",
+                  "documentation/platform/pam/accounts/connect",
+                  "documentation/platform/pam/accounts/view-credentials",
+                  "documentation/platform/pam/accounts/manage",
                   {
-                    "group": "Accounts",
-                    "root": "documentation/platform/pam/accounts/overview",
+                    "group": "Account types",
+                    "root": "documentation/platform/pam/accounts/account-types",
                     "pages": [
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
@@ -689,40 +690,38 @@
                       "documentation/platform/pam/accounts/windows",
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
-                  },
-                  {
-                    "group": "Access control",
-                    "root": "documentation/platform/pam/concepts/access-control",
-                    "pages": [
-                      "documentation/platform/pam/folders/overview",
-                      "documentation/platform/pam/templates/overview",
-                      {
-                        "group": "Access requests",
-                        "root": "documentation/platform/pam/access-requests/overview",
-                        "pages": [
-                          "documentation/platform/pam/access-requests/break-glass"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "AI agents",
-                    "root": "documentation/platform/pam/ai-agents/overview",
-                    "pages": [
-                      "documentation/platform/pam/ai-agents/unattended"
-                    ]
-                  },
-                  {
-                    "group": "Credential rotation",
-                    "root": "documentation/platform/pam/credential-rotation/overview",
-                    "pages": [
-                      "documentation/platform/pam/credential-rotation/postgresql",
-                      "documentation/platform/pam/credential-rotation/mysql",
-                      "documentation/platform/pam/credential-rotation/mssql",
-                      "documentation/platform/pam/credential-rotation/oracledb",
-                      "documentation/platform/pam/credential-rotation/windows"
-                    ]
                   }
+                ]
+              },
+              {
+                "group": "Access control",
+                "pages": [
+                  "documentation/platform/pam/concepts/access-control",
+                  "documentation/platform/pam/folders/overview",
+                  "documentation/platform/pam/templates/overview",
+                  "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/access-requests/break-glass"
+                ]
+              },
+              {
+                "group": "AI agents",
+                "pages": [
+                  "documentation/platform/pam/ai-agents/overview",
+                  "documentation/platform/pam/ai-agents/run",
+                  "documentation/platform/pam/ai-agents/instructions",
+                  "documentation/platform/pam/ai-agents/unattended",
+                  "documentation/platform/pam/ai-agents/review"
+                ]
+              },
+              {
+                "group": "Credential rotation",
+                "pages": [
+                  "documentation/platform/pam/credential-rotation/overview",
+                  "documentation/platform/pam/credential-rotation/postgresql",
+                  "documentation/platform/pam/credential-rotation/mysql",
+                  "documentation/platform/pam/credential-rotation/mssql",
+                  "documentation/platform/pam/credential-rotation/oracledb",
+                  "documentation/platform/pam/credential-rotation/windows"
                 ]
               },
               {
@@ -5215,24 +5214,12 @@
       "destination": "/documentation/platform/pam/concepts/overview"
     },
     {
-      "source": "/documentation/platform/pam/concepts/session-lifecycle",
-      "destination": "/documentation/platform/pam/concepts/overview"
-    },
-    {
       "source": "/documentation/platform/pam/guides/team-access",
       "destination": "/documentation/platform/pam/quick-starts/launch-first-session"
     },
     {
-      "source": "/documentation/platform/pam/accounts/connect",
-      "destination": "/documentation/platform/pam/accounts/overview#connect-to-an-account"
-    },
-    {
-      "source": "/documentation/platform/pam/accounts/view-credentials",
-      "destination": "/documentation/platform/pam/accounts/overview#view-credentials"
-    },
-    {
       "source": "/documentation/platform/pam/ai-agents/sandbox",
-      "destination": "/documentation/platform/pam/ai-agents/overview#sandbox"
+      "destination": "/documentation/platform/pam/ai-agents/run#sandbox"
     },
     {
       "source": "/documentation/platform/pam/dependencies/overview",

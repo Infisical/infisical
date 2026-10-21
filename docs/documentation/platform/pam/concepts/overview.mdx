@@ -37,21 +37,6 @@ Before anyone can hold a membership, they must be a member of PAM itself. To lea
 
 ## Sessions
 
-A session starts when someone connects to an account and ends when they disconnect. Infisical checks the following before it starts a session:
+A session starts when a person or [AI agent](/documentation/platform/pam/ai-agents/overview) connects to an account, and ends when they disconnect. Before the session starts, Infisical checks the person's role and the template's rules. The connection then runs through a [gateway](/documentation/platform/gateways/overview), which adds the account's credential, and Infisical records everything the person runs.
 
-1. The person has a role on the account or its folder that lets them launch sessions
-2. The person gives a reason, if the template requires one
-3. The person completes MFA, if the template requires it
-4. An approver has approved the person's [access request](/documentation/platform/pam/access-requests/overview), if the template requires approval
-
-The connection then runs through a [gateway](/documentation/platform/gateways/overview) on your network. The gateway connects to the database or server with the account's credential, so the credential never reaches the person's browser or machine.
-
-During the session, Infisical [records](/documentation/platform/pam/sessions/session-recording) the queries or commands that the person runs. Admins and Auditors on the account can review the recording while the session is still active.
-
-The session ends when one of the following happens:
-
-- The person disconnects
-- The session reaches the template's maximum session length
-- An Admin on the account [terminates the session](/documentation/platform/pam/sessions/overview)
-
-[AI agents](/documentation/platform/pam/ai-agents/overview) go through the same checks, and Infisical records their sessions the same way.
+To learn about each stage of a session, see [Session lifecycle](/documentation/platform/pam/concepts/session-lifecycle).

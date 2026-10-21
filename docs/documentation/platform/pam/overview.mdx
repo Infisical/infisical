@@ -9,28 +9,48 @@ Infisical Privileged Access Management (PAM) lets you securely manage access to 
 
 ## Get started
 
-Connect to your first account, then learn how the parts of PAM fit together:
+<Card title="Quickstart" icon="rocket" href="/documentation/platform/pam/quick-starts/launch-first-session">
+  Connect to a PostgreSQL database through Infisical PAM.
+</Card>
 
-<CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/documentation/platform/pam/quick-starts/launch-first-session">
-    Connect to a PostgreSQL database through Infisical PAM.
-  </Card>
+<CardGroup cols={3}>
   <Card title="Concepts" icon="book-open" href="/documentation/platform/pam/concepts/overview">
     Learn how Infisical PAM controls access to your infrastructure.
   </Card>
+  <Card title="Session lifecycle" icon="circle-play" href="/documentation/platform/pam/concepts/session-lifecycle">
+    Learn what happens from the moment someone connects to an account until the session ends.
+  </Card>
+  <Card title="Architecture" icon="network" href="/documentation/platform/pam/architecture">
+    Learn how PAM connects people and agents to your infrastructure through a Gateway.
+  </Card>
 </CardGroup>
 
-## Managing privileged access
-
-### Accounts
+## Accounts
 
 Add the databases, servers, clusters, and cloud accounts that people connect to:
 
-<Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
-  Store the credentials for a database or server that people and agents connect to through Infisical PAM.
-</Card>
+<CardGroup cols={3}>
+  <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
+    Store the credentials for a database or server that people and agents connect to through Infisical PAM.
+  </Card>
+  <Card title="Add an account" icon="plus" href="/documentation/platform/pam/accounts/add">
+    Store the connection details and credentials for a database or server in PAM.
+  </Card>
+  <Card title="Connect to an account" icon="plug" href="/documentation/platform/pam/accounts/connect">
+    Open a session on an account from your browser or the Infisical CLI.
+  </Card>
+  <Card title="View credentials" icon="eye" href="/documentation/platform/pam/accounts/view-credentials">
+    Reveal the password or key stored for an account.
+  </Card>
+  <Card title="Manage an account" icon="sliders-horizontal" href="/documentation/platform/pam/accounts/manage">
+    Change an account's details, access, and settings after you add it.
+  </Card>
+  <Card title="Account types" icon="layout-grid" href="/documentation/platform/pam/accounts/account-types">
+    Find the setup guide for each database, server, cluster, and cloud provider that PAM supports.
+  </Card>
+</CardGroup>
 
-### Access control
+## Access control
 
 Decide who can connect to each account, and which rules and approvals apply:
 
@@ -52,20 +72,29 @@ Decide who can connect to each account, and which rules and approvals apply:
   </Card>
 </CardGroup>
 
-### AI agents
+## AI agents
 
 Let AI agents work with your infrastructure through PAM:
 
-<CardGroup cols={2}>
+<CardGroup cols={3}>
   <Card title="AI agents" icon="bot" href="/documentation/platform/pam/ai-agents/overview">
     Give an AI agent access to your databases and servers without giving it a credential.
+  </Card>
+  <Card title="Run an agent" icon="play" href="/documentation/platform/pam/ai-agents/run">
+    Start an AI agent with access to the PAM accounts its task needs.
+  </Card>
+  <Card title="Agent instructions" icon="file-text" href="/documentation/platform/pam/ai-agents/instructions">
+    Tell an AI agent which PAM accounts it can use and how to reach them.
   </Card>
   <Card title="Run unattended" icon="clock" href="/documentation/platform/pam/ai-agents/unattended">
     Run an AI agent as its own machine identity.
   </Card>
+  <Card title="Review and stop an agent" icon="eye" href="/documentation/platform/pam/ai-agents/review">
+    Check what an AI agent did with your accounts and remove its access.
+  </Card>
 </CardGroup>
 
-### Credential rotation
+## Credential rotation
 
 Change the passwords stored in PAM on a schedule:
 

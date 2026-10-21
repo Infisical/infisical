@@ -1,0 +1,54 @@
+---
+title: "Session lifecycle"
+sidebarTitle: "Session lifecycle"
+description: "Learn what happens from the moment someone connects to an account until the session ends."
+---
+
+A session starts when a person or [AI agent](/documentation/platform/pam/ai-agents/overview) connects to an [account](/documentation/platform/pam/accounts/overview), and ends when they disconnect. This page describes each stage, from the checks Infisical runs before the session starts to the records it keeps afterward.
+
+## Before the session starts
+
+Infisical checks the following before it starts a session:
+
+1. The person has a [role](/documentation/platform/pam/concepts/access-control) on the account or its folder that lets them launch sessions
+2. The person gives a reason, if the [template](/documentation/platform/pam/templates/overview) requires one
+3. The person completes MFA, if the template requires it
+4. An approver has approved the person's [access request](/documentation/platform/pam/access-requests/overview), if the template requires approval
+
+AI agents go through the same checks. An agent can't answer a prompt, so you pass the reason with `--reason` when you start the agent, and the agent can't use accounts that require MFA. To learn more, see [Run an agent](/documentation/platform/pam/ai-agents/run).
+
+## Connecting
+
+The connection runs through a [gateway](/documentation/platform/gateways/overview) on your network. The gateway connects to the database or server with the account's credential, so the credential never reaches the person's browser or machine. For each step of the connection, see [Architecture](/documentation/platform/pam/architecture#how-a-connection-works).
+
+What the person sees depends on the account type and on whether they connect in the browser or with the CLI. To learn how to connect each way, see [Connect to an account](/documentation/platform/pam/accounts/connect).
+
+## During the session
+
+Infisical [records](/documentation/platform/pam/sessions/session-recording) the queries or commands that the person runs. Admins and Auditors on the account can review the recording while the session is still active.
+
+## Ending the session
+
+The session ends when one of the following happens:
+
+- The person disconnects
+- The session reaches the template's maximum session length
+- An Admin on the account [terminates the session](/documentation/platform/pam/sessions/overview)
+
+## After the session
+
+Infisical keeps the following records of each session:
+
+- **Recording**: Admins and Auditors on the account can review it on the [Sessions](/documentation/platform/pam/sessions/overview) page
+- **Audit log**: The [audit log](/documentation/platform/pam/auditing) has events for the session, such as **Start PAM Session** and **End PAM Session**
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Connect to an account" icon="plug" href="/documentation/platform/pam/accounts/connect">
+    Open a session on an account from your browser or the Infisical CLI.
+  </Card>
+  <Card title="Session recording" icon="video" href="/documentation/platform/pam/sessions/session-recording">
+    Review what happened during each session on your accounts.
+  </Card>
+</CardGroup>
