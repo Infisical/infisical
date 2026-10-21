@@ -118,7 +118,7 @@ export const AutoApprovalCard = ({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="border-b">
         <CardTitle className="flex items-center gap-1.5 text-base">
           Auto-Approval
           <Tooltip>
