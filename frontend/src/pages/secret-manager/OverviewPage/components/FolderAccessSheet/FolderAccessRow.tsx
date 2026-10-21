@@ -58,7 +58,7 @@ export const FolderAccessGrantRow = ({
     <ActorIdentity actor={actor} />
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="project" size="xs" className="shrink-0" isDisabled={isDisabled}>
+        <Button variant="project" size="sm" className="shrink-0" isDisabled={isDisabled}>
           Grant Access
           <ChevronDownIcon />
         </Button>
@@ -101,12 +101,12 @@ export const FolderAccessRow = ({
     return (
       <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
-        <Button variant="ghost" size="xs" className="shrink-0" isDisabled>
+        <Button variant="ghost" size="sm" className="shrink-0" isDisabled>
+          Full access on all folders
           <Badge variant="neutral" iconPosition="left">
             <ShieldIcon />
             Admin
           </Badge>
-          Full access on all folders
         </Button>
       </div>
     );
@@ -122,7 +122,8 @@ export const FolderAccessRow = ({
             <DropdownMenu>
               {access ? (
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="xs" isDisabled={isDisabled}>
+                  <Button variant="ghost" size="sm" isDisabled={isDisabled}>
+                    {FOLDER_ROLE_TIER_LABELS[access.permission]}
                     {isOverride && <Badge variant="warning">Override</Badge>}
                     {remainingTime && (
                       // the menu repeats the time left, so narrow sheets drop this badge to keep the
@@ -138,7 +139,6 @@ export const FolderAccessRow = ({
                         </Badge>
                       </span>
                     )}
-                    {FOLDER_ROLE_TIER_LABELS[access.permission]}
                     <ChevronDownIcon />
                   </Button>
                 </DropdownMenuTrigger>
@@ -146,7 +146,7 @@ export const FolderAccessRow = ({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="xs"
+                    size="sm"
                     className="max-w-48"
                     title={roleNames || undefined}
                     isDisabled={isDisabled}

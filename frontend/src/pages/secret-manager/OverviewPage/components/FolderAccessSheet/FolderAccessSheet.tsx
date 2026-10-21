@@ -49,6 +49,12 @@ import {
   toIdentityActor,
   toUserActor
 } from "./folder-access.utils";
+import {
+  EMPTY_FOLDER_ACCESS_FILTER,
+  FolderAccessFilter,
+  matchesFolderAccessFilter,
+  TFolderAccessFilter
+} from "./FolderAccessFilter";
 import { FolderAccessGrantRow, FolderAccessRow } from "./FolderAccessRow";
 import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
@@ -83,6 +89,8 @@ export const FolderAccessSheet = ({
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const [removalActor, setRemovalActor] = useState<TFolderAccessActor | null>(null);
+  const [filter, setFilter] = useState<TFolderAccessFilter>(EMPTY_FOLDER_ACCESS_FILTER);
+  const isFiltering = Boolean(filter.types.length || filter.kinds.length);
 
   const listArgs = {
     projectId,
@@ -115,22 +123,27 @@ export const FolderAccessSheet = ({
       [
         ...(users?.users ?? []).map(toUserActor),
         ...(identities?.identities ?? []).map(toIdentityActor)
-      ].sort(byAdminThenName),
-    [users, identities]
+      ]
+        .filter((actor) => matchesFolderAccessFilter(actor, filter))
+        .sort(byAdminThenName),
+    [users, identities, filter]
   );
 
   const isSearching = Boolean(debouncedSearch.trim());
 
-  // the same responses carry the members without access, so searching doubles as the grant flow
+  // the same responses carry the members without access, so searching doubles as the grant flow;
+  // members without access have no access kind, so an access filter hides them
   const candidates = useMemo(
     () =>
-      isSearching
+      isSearching && !filter.kinds.length
         ? [
             ...(users?.usersWithoutAccess ?? []).map(toUserActor),
             ...(identities?.identitiesWithoutAccess ?? []).map(toIdentityActor)
-          ].sort(byAdminThenName)
+          ]
+            .filter((actor) => !filter.types.length || filter.types.includes(actor.type))
+            .sort(byAdminThenName)
         : [],
-    [isSearching, users, identities]
+    [isSearching, users, identities, filter]
   );
 
   const isLoading = isUsersPending || isIdentitiesPending;
@@ -148,6 +161,13 @@ export const FolderAccessSheet = ({
   const pageEnd = Math.min(page * PER_PAGE, rosterCount);
 
   const emptyState = (() => {
+    if (isFiltering && rosterCount > 0) {
+      return {
+        title: "No matching access",
+        description:
+          "No one on this page matches these filters. Clear a filter, or check another page."
+      };
+    }
     if (rosterCount === 0) {
       return isSearching
         ? {
@@ -238,32 +258,35 @@ export const FolderAccessSheet = ({
           </SheetHeader>
 
           <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
-            <InputGroup>
-              <InputGroupAddon>
-                <SearchIcon />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search users and machine identities..."
-              />
-              {search && (
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    aria-label="Clear search"
-                    onClick={() => {
-                      setSearch("");
-                      setPage(1);
-                    }}
-                  >
-                    <XIcon />
-                  </InputGroupButton>
+            <div className="flex items-center gap-2">
+              <InputGroup className="flex-1">
+                <InputGroupAddon>
+                  <SearchIcon />
                 </InputGroupAddon>
-              )}
-            </InputGroup>
+                <InputGroupInput
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search users and machine identities..."
+                />
+                {search && (
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      aria-label="Clear search"
+                      onClick={() => {
+                        setSearch("");
+                        setPage(1);
+                      }}
+                    >
+                      <XIcon />
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                )}
+              </InputGroup>
+              <FolderAccessFilter value={filter} onChange={setFilter} />
+            </div>
 
             {isLoading && (
               <div className="space-y-2">
