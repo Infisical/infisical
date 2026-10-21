@@ -264,9 +264,13 @@ This profile gives each device the address of your endpoint and a single-use cha
     | **Root Certificate** | The trusted certificate profile you just created |
     | **Extended key usage** | **Client Authentication**, matching the certificate profile |
     | **Renewal threshold (%)** | 20 |
-    | **SCEP Server URLs** | The **SCEP endpoint URL** you copied from Infisical |
+    | **SCEP Server URLs** | The **SCEP endpoint URL** you copied from Infisical (remove `/pkiclient.exe` on Windows) |
 
     ![Intune SCEP certificate profile settings including the Infisical SCEP Server URL](/images/platform/pki/integrations/microsoft-intune/intune-scep-profile-settings.png)
+
+    <Warning>
+      On Windows, remove `/pkiclient.exe` from the end of the URL. Windows adds `/pkiclient.exe` to the URL itself, so if you leave it in, the device requests `.../pkiclient.exe/pkiclient.exe` and never enrolls. On Apple platforms, keep the full URL.
+    </Warning>
 
     **Certificate validity period** and **Extended key usage** are the two you're mirroring from [Step 1](#step-1-prepare-the-certificate-profile-in-infisical). Intune reports the enrollment as successful without comparing either one against the certificate it receives, so a mismatch here is never flagged.
 
