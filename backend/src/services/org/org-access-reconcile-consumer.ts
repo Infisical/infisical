@@ -1,4 +1,5 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -8,9 +9,14 @@ import {
   TEvent,
   TEventConsumerResult
 } from "@app/services/event-outbox/event-outbox-types";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
+import {
+  TProjectAccessRevokeServiceFactory,
+  TRevokedProjectAccess
+} from "@app/services/membership/project-access-revoke-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TOrgDALFactory } from "./org-dal";
 import {
@@ -20,8 +26,10 @@ import {
   GroupLinkRemovedPayloadSchema,
   GroupMembershipRemovedPayloadSchema,
   GroupRemovedPayloadSchema,
+  ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT,
   ORG_MEMBERSHIP_EVENTS,
   ORG_MEMBERSHIP_REMOVED_EVENT,
+  OrgAccessRemovalCause,
   OrgMembershipEventPayloadSchema,
   OrgMembershipRemovedPayloadSchema,
   TOrgMembershipActor,
@@ -37,12 +45,20 @@ export type TOrgAccessReconcileConsumerDep = {
     TOrgDALFactory,
     "findById" | "find" | "findActorsWithOrgAccess" | "lockActorsForOrgAccess" | "transaction"
   >;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  groupDAL: Pick<TGroupDALFactory, "findById">;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
-type TReconcileScope = { orgIds: string[]; actors: TOrgMembershipActor[]; groupId?: string };
+type TReconcileScope = {
+  orgIds: string[];
+  actors: TOrgMembershipActor[];
+  reason: OrgAccessRemovalCause;
+  groupId?: string;
+};
 
 const splitActors = (actors: TOrgMembershipActor[]) => ({
   userIds: actors.filter((a) => a.actorType === ActorType.USER).map((a) => a.actorId),
@@ -55,6 +71,9 @@ const splitActors = (actors: TOrgMembershipActor[]) => ({
 // already rejects these actors) and safe to re-run.
 export const orgAccessReconcileConsumerFactory = ({
   orgDAL,
+  userDAL,
+  identityDAL,
+  groupDAL,
   projectAccessRevokeService,
   auditLogService,
   usageMeteringService
@@ -69,21 +88,25 @@ export const orgAccessReconcileConsumerFactory = ({
     switch (event.eventType) {
       case GROUP_MEMBERSHIP_REMOVED_EVENT: {
         const { groupId, orgIds, members } = GroupMembershipRemovedPayloadSchema.parse(event.payload);
-        return async () => ({ orgIds, actors: members, groupId });
+        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
+        return async () => ({ orgIds, actors: members, reason, groupId });
       }
       case GROUP_LINK_REMOVED_EVENT: {
         const { orgId, groupId, members } = GroupLinkRemovedPayloadSchema.parse(event.payload);
-        return async () => ({ orgIds: [orgId], actors: members, groupId });
+        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
+        return async () => ({ orgIds: [orgId], actors: members, reason, groupId });
       }
       case GROUP_REMOVED_EVENT: {
         const { groupId, orgIds, members } = GroupRemovedPayloadSchema.parse(event.payload);
-        return async () => ({ orgIds, actors: members, groupId });
+        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
+        return async () => ({ orgIds, actors: members, reason, groupId });
       }
       case ORG_MEMBERSHIP_REMOVED_EVENT: {
         const { orgId, ...actor } = OrgMembershipRemovedPayloadSchema.parse(event.payload);
+        const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
         return async () => {
           const childOrgs = await orgDAL.find({ rootOrgId: orgId });
-          return { orgIds: [orgId, ...childOrgs.map((org) => org.id)], actors: [actor] };
+          return { orgIds: [orgId, ...childOrgs.map((org) => org.id)], actors: [actor], reason };
         };
       }
       default:
@@ -104,9 +127,19 @@ export const orgAccessReconcileConsumerFactory = ({
       return projectAccessRevokeService.revokeActorsInOrgs({ orgIds: [orgId], userIds, identityIds }, tx);
     });
 
+  // Names are read at log time, so a deleted group (or an actor since removed) simply has none.
+  const $describeActor = async ({ userId, identityId }: Pick<TRevokedProjectAccess, "userId" | "identityId">) => {
+    if (userId) {
+      const user = await userDAL.findById(userId);
+      return { userId, username: user?.username };
+    }
+    const identity = identityId ? await identityDAL.findById(identityId) : undefined;
+    return { identityId, identityName: identity?.name };
+  };
+
   // Actors are handled in small batches, each in its own short tx, since the rows they hold aren't bounded.
   // Side effects fire per batch after commit and only when rows were removed, so replays are no-ops.
-  const $reconcileOrg = async (orgId: string, scope: TReconcileScope, reason: string) => {
+  const $reconcileOrg = async (orgId: string, scope: TReconcileScope, groupName?: string) => {
     const org = await orgDAL.findById(orgId);
     if (!org) return;
 
@@ -120,7 +153,14 @@ export const orgAccessReconcileConsumerFactory = ({
             actor: { type: ActorType.PLATFORM, metadata: {} },
             event: {
               type: EventType.REVOKE_ORG_PROJECT_ACCESS,
-              metadata: { ...actor, projectIds, resources, reason, groupId: scope.groupId }
+              metadata: {
+                ...(await $describeActor(actor)),
+                projectIds,
+                resources,
+                reason: scope.reason,
+                groupId: scope.groupId,
+                groupName
+              }
             }
           });
         }
@@ -146,8 +186,10 @@ export const orgAccessReconcileConsumerFactory = ({
     }
 
     let scope: TReconcileScope;
+    let groupName: string | undefined;
     try {
       scope = await resolveScope();
+      if (scope.groupId) groupName = (await groupDAL.findById(scope.groupId))?.name;
     } catch (error) {
       logger.error(error, `org-access-reconcile: failed to resolve the orgs and actors to recheck [eventId=${id}]`);
       return {
@@ -160,7 +202,7 @@ export const orgAccessReconcileConsumerFactory = ({
     const errors: string[] = [];
     for await (const orgId of scope.orgIds) {
       try {
-        await $reconcileOrg(orgId, scope, event.eventType);
+        await $reconcileOrg(orgId, scope, groupName);
       } catch (error) {
         logger.error(error, `org-access-reconcile: failed for org ${orgId} (event ${id})`);
         errors.push(`org ${orgId}: ${error instanceof Error ? error.message : "Unknown error"}`);

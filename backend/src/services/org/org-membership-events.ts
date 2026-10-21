@@ -17,6 +17,21 @@ export const ORG_MEMBERSHIP_EVENTS = [
   ORG_MEMBERSHIP_REMOVED_EVENT
 ] as const;
 
+export enum OrgAccessRemovalCause {
+  RemovedFromGroup = "removed-from-group",
+  GroupUnlinkedFromOrg = "group-unlinked-from-org",
+  GroupDeleted = "group-deleted",
+  RemovedFromOrg = "removed-from-org"
+}
+
+export const ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT: Record<(typeof ORG_MEMBERSHIP_EVENTS)[number], OrgAccessRemovalCause> =
+  {
+    [GROUP_MEMBERSHIP_REMOVED_EVENT]: OrgAccessRemovalCause.RemovedFromGroup,
+    [GROUP_LINK_REMOVED_EVENT]: OrgAccessRemovalCause.GroupUnlinkedFromOrg,
+    [GROUP_REMOVED_EVENT]: OrgAccessRemovalCause.GroupDeleted,
+    [ORG_MEMBERSHIP_REMOVED_EVENT]: OrgAccessRemovalCause.RemovedFromOrg
+  };
+
 // Keeps each event well under MAX_OUTBOX_PAYLOAD_BYTES (~4 KB of org ids, ~6 KB of members). A group can be
 // linked into any number of sub-orgs, so both lists need a cap.
 const ORGS_PER_EVENT = 100;

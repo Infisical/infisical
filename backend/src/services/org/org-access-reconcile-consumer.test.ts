@@ -8,7 +8,8 @@ import {
   GROUP_LINK_REMOVED_EVENT,
   GROUP_MEMBERSHIP_REMOVED_EVENT,
   GROUP_REMOVED_EVENT,
-  ORG_MEMBERSHIP_REMOVED_EVENT
+  ORG_MEMBERSHIP_REMOVED_EVENT,
+  OrgAccessRemovalCause
 } from "./org-membership-events";
 
 vi.mock("@app/lib/logger", () => ({
@@ -36,6 +37,7 @@ const build = (opts?: {
   revoked?: TRevokedProjectAccess[];
   orgs?: Record<string, unknown>;
   childOrgs?: string[];
+  groupExists?: boolean;
 }) => {
   const tx = { raw: vi.fn().mockResolvedValue(undefined) };
   const sendPamCancellations = vi.fn();
@@ -54,6 +56,11 @@ const build = (opts?: {
       }),
       lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
       transaction: vi.fn(async (cb: (trx: unknown) => Promise<unknown>) => cb(tx))
+    },
+    userDAL: { findById: vi.fn(async (id: string) => ({ id, username: `${id}@example.com` })) },
+    identityDAL: { findById: vi.fn(async (id: string) => ({ id, name: `identity-${id}` })) },
+    groupDAL: {
+      findById: vi.fn(async (id: string) => ((opts?.groupExists ?? true) ? { id, name: "platform-team" } : undefined))
     },
     projectAccessRevokeService: {
       revokeActorsInOrgs: vi.fn(
@@ -80,6 +87,10 @@ const build = (opts?: {
   const consumer = orgAccessReconcileConsumerFactory(deps as never);
   return { consumer, deps, tx, sendPamCancellations };
 };
+
+const auditMetadata = (deps: ReturnType<typeof build>["deps"], call = 0) =>
+  (deps.auditLogService.createAuditLog.mock.calls[call] as [{ event: { metadata: Record<string, unknown> } }])[0].event
+    .metadata;
 
 describe("org access reconcile consumer", () => {
   test("subscribes to the four org membership events only", () => {
@@ -191,6 +202,7 @@ describe("org access reconcile consumer", () => {
     ]);
     expect(result.status).toBe(EventResultStatus.Delivered);
     expect(deps.orgDAL.transaction).not.toHaveBeenCalled();
+    expect(deps.groupDAL.findById).toHaveBeenCalledWith(GROUP_ID);
 
     const [orgResult] = await consumer.handle([userRemovedFromOrg()]);
 
@@ -206,22 +218,26 @@ describe("org access reconcile consumer", () => {
     expect(deps.auditLogService.createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         orgId: ORG_ID,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
         event: {
           type: EventType.REVOKE_ORG_PROJECT_ACCESS,
           metadata: {
             userId: USER_ID,
+            username: `${USER_ID}@example.com`,
             projectIds: [PROJECT_A, PROJECT_B],
             resources: [],
-            reason: ORG_MEMBERSHIP_REMOVED_EVENT,
-            groupId: undefined
+            reason: OrgAccessRemovalCause.RemovedFromOrg,
+            groupId: undefined,
+            groupName: undefined
           }
         }
       })
     );
+    expect(deps.groupDAL.findById).toHaveBeenCalledTimes(1);
     expect(deps.usageMeteringService.emit).toHaveBeenCalledTimes(3);
   });
 
-  test("logs an identity's revoked rows and resource grants under the identity with the group", async () => {
+  test("names the identity and the group that carried the lost path, and says which grants went", async () => {
     const { consumer, deps, tx } = build({
       revoked: [
         {
@@ -233,7 +249,7 @@ describe("org access reconcile consumer", () => {
     });
 
     const [result] = await consumer.handle([
-      makeEvent(GROUP_REMOVED_EVENT, {
+      makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, {
         groupId: GROUP_ID,
         orgIds: [ORG_ID],
         members: [{ actorType: ActorType.IDENTITY, actorId: IDENTITY_ID }]
@@ -245,14 +261,51 @@ describe("org access reconcile consumer", () => {
       { orgIds: [ORG_ID], userIds: [], identityIds: [IDENTITY_ID] },
       tx
     );
-    const [auditCall] = deps.auditLogService.createAuditLog.mock.calls[0] as [
-      { event: { metadata: Record<string, unknown> } }
-    ];
-    expect(auditCall.event.metadata).toMatchObject({
+    expect(auditMetadata(deps)).toEqual({
       identityId: IDENTITY_ID,
+      identityName: `identity-${IDENTITY_ID}`,
       projectIds: [PROJECT_A],
       resources: [{ projectId: PROJECT_A, resourceType: "pam-account", resourceId: uuid(302) }],
-      reason: GROUP_REMOVED_EVENT,
+      reason: OrgAccessRemovalCause.RemovedFromGroup,
+      groupId: GROUP_ID,
+      groupName: "platform-team"
+    });
+  });
+
+  test("a deleted group is logged by id only, with the deletion as the cause", async () => {
+    const { consumer, deps } = build({
+      groupExists: false,
+      revoked: [{ userId: USER_ID, projectIds: [PROJECT_A], resources: [] }]
+    });
+
+    await consumer.handle([
+      makeEvent(GROUP_REMOVED_EVENT, {
+        groupId: GROUP_ID,
+        orgIds: [ORG_ID],
+        members: [{ actorType: ActorType.USER, actorId: USER_ID }]
+      })
+    ]);
+
+    expect(auditMetadata(deps)).toMatchObject({
+      reason: OrgAccessRemovalCause.GroupDeleted,
+      groupId: GROUP_ID,
+      groupName: undefined
+    });
+  });
+
+  test("an unlink is logged with the unlink as the cause", async () => {
+    const { consumer, deps } = build({ revoked: [{ userId: USER_ID, projectIds: [PROJECT_A], resources: [] }] });
+
+    await consumer.handle([
+      makeEvent(GROUP_LINK_REMOVED_EVENT, {
+        orgId: ORG_ID,
+        groupId: GROUP_ID,
+        members: [{ actorType: ActorType.USER, actorId: USER_ID }]
+      })
+    ]);
+
+    expect(auditMetadata(deps)).toMatchObject({
+      reason: OrgAccessRemovalCause.GroupUnlinkedFromOrg,
       groupId: GROUP_ID
     });
   });
@@ -310,6 +363,7 @@ describe("org access reconcile consumer", () => {
   // Nothing in the DB says who to recheck anymore, only the payloads do.
   test("still reaps when the group lost its link and its member before the events were handled", async () => {
     const { consumer, deps } = build({
+      groupExists: false,
       revoked: [{ userId: USER_ID, projectIds: [PROJECT_A], resources: [] }]
     });
 
@@ -368,5 +422,6 @@ describe("org access reconcile consumer", () => {
     );
     expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenNthCalledWith(2, userIds.slice(ACTORS_PER_RECONCILE_TX), tx);
     expect(deps.auditLogService.createAuditLog).toHaveBeenCalledTimes(userIds.length);
+    expect(deps.groupDAL.findById).toHaveBeenCalledTimes(1);
   });
 });

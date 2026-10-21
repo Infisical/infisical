@@ -59,6 +59,7 @@ import {
   TOidcAuthDetails
 } from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { OrgAccessRemovalCause } from "@app/services/org/org-membership-events";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
@@ -2935,17 +2936,21 @@ interface UnlinkGroupFromSubOrgEvent {
 }
 
 // Logged by the reconcile consumer after the fact, so the actor is the platform and the cause is in
-// reason/groupId. `resources` are resource-level grants (PAM, Agent Vault, PKI apps, signers), including
-// ones in projects only reached through a group.
+// `reason`, with the group that carried the lost path when there was one. Names are resolved at log
+// time and omitted when the row is already gone (a deleted group). `resources` are resource-level
+// grants (PAM, Agent Vault, PKI apps, signers), including ones in projects only reached through a group.
 interface RevokeOrgProjectAccessEvent {
   type: EventType.REVOKE_ORG_PROJECT_ACCESS;
   metadata: {
     userId?: string;
+    username?: string;
     identityId?: string;
+    identityName?: string;
     projectIds: string[];
     resources: { projectId: string; resourceType: string; resourceId: string }[];
-    reason: string;
+    reason: OrgAccessRemovalCause;
     groupId?: string;
+    groupName?: string;
   };
 }
 
