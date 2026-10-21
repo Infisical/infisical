@@ -169,8 +169,8 @@ export const orgAccessReconcileConsumerFactory = ({
       }
 
       if (orgProjectIds.length && userIds.length) {
-        await additionalPrivilegeDAL.delete({ $in: { actorUserId: userIds, projectId: orgProjectIds } }, tx);
         await projectKeyDAL.delete({ $in: { receiverId: userIds, projectId: orgProjectIds } }, tx);
+        await additionalPrivilegeDAL.delete({ $in: { actorUserId: userIds, projectId: orgProjectIds } }, tx);
         await approvalPolicyDAL.deleteUserStepApproversInProjects(
           { projectIds: orgProjectIds, userIds, scopeTypes: APPLICATION_APPROVAL_SCOPES },
           tx

@@ -140,6 +140,16 @@ export const deleteOrgMembershipsFn = async ({
       .filter((el) => el.scope === AccessScope.Project && el.scopeProjectId)
       .map((el) => el.scopeProjectId as string);
 
+    await projectKeyDAL.delete(
+      {
+        $in: {
+          projectId: projectIds,
+          receiverId: membershipUserIds
+        }
+      },
+      tx
+    );
+
     await additionalPrivilegeDAL.delete(
       {
         $in: {
@@ -155,17 +165,6 @@ export const deleteOrgMembershipsFn = async ({
         projectIds,
         userIds: membershipUserIds,
         scopeTypes: APPLICATION_APPROVAL_SCOPES
-      },
-      tx
-    );
-
-    // Delete all the project keys of the user in the organization
-    await projectKeyDAL.delete(
-      {
-        $in: {
-          projectId: projectIds,
-          receiverId: membershipUserIds
-        }
       },
       tx
     );
