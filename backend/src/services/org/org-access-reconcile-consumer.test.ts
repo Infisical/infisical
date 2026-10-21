@@ -325,6 +325,27 @@ describe("org access reconcile consumer", () => {
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: [uuid(103)] } }, expect.anything());
   });
 
+  test("retries the event when a lookup before reconciling fails", async () => {
+    const { consumer, deps } = build();
+    deps.membershipDAL.find.mockRejectedValueOnce(new Error("connection reset"));
+    deps.groupDAL.findGroupActorsAndOrgs.mockRejectedValueOnce(new Error("connection reset"));
+    deps.orgDAL.find.mockRejectedValueOnce(new Error("connection reset"));
+
+    const results = await consumer.handle([
+      makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, { groupId: GROUP_ID, actorType: ActorType.USER, actorId: USER_ID }),
+      makeEvent(GROUP_LINK_REMOVED_EVENT, { orgId: SUB_ORG_ID, groupId: GROUP_ID }, 2),
+      makeEvent(ORG_MEMBERSHIP_REMOVED_EVENT, { orgId: ORG_ID, actorType: ActorType.USER, actorId: USER_ID }, 3)
+    ]);
+
+    expect(results.map((result) => result.status)).toEqual([
+      EventResultStatus.Retry,
+      EventResultStatus.Retry,
+      EventResultStatus.Retry
+    ]);
+    expect(results[0].error).toContain("connection reset");
+    expect(deps.membershipDAL.transaction).not.toHaveBeenCalled();
+  });
+
   test("fails terminally on a payload it cannot read or an event it does not know", async () => {
     const { consumer } = build();
 

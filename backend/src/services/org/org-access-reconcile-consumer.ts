@@ -104,26 +104,34 @@ export const orgAccessReconcileConsumerFactory = ({
 
   // Each event names what was removed; the orgs and actors to recheck follow from it. Only the group
   // removal carries them itself, because its cascade has already deleted what would be read here.
-  const $resolveScope = async (event: TEvent): Promise<TReconcileScope> => {
+  // Parsing happens here and the reads in the returned function, because a payload that fails to parse
+  // never will, while a read that fails is worth retrying.
+  const $parseScope = (event: TEvent): (() => Promise<TReconcileScope>) => {
     switch (event.eventType) {
       case GROUP_MEMBERSHIP_REMOVED_EVENT: {
         const { groupId, ...actor } = GroupMembershipRemovedPayloadSchema.parse(event.payload);
-        const groupOrgRows = await membershipDAL.find({ scope: AccessScope.Organization, actorGroupId: groupId });
-        return { orgIds: groupOrgRows.map((row) => row.scopeOrgId), actors: [actor], groupId };
+        return async () => {
+          const groupOrgRows = await membershipDAL.find({ scope: AccessScope.Organization, actorGroupId: groupId });
+          return { orgIds: groupOrgRows.map((row) => row.scopeOrgId), actors: [actor], groupId };
+        };
       }
       case GROUP_LINK_REMOVED_EVENT: {
         const { orgId, groupId } = GroupLinkRemovedPayloadSchema.parse(event.payload);
-        const { userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId);
-        return { orgIds: [orgId], actors: toOrgMembershipActors({ userIds, identityIds }), groupId };
+        return async () => {
+          const { userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId);
+          return { orgIds: [orgId], actors: toOrgMembershipActors({ userIds, identityIds }), groupId };
+        };
       }
       case GROUP_REMOVED_EVENT: {
         const { orgId, groupId, linkedOrgIds, members } = GroupRemovedPayloadSchema.parse(event.payload);
-        return { orgIds: [orgId, ...linkedOrgIds], actors: members, groupId };
+        return async () => ({ orgIds: [orgId, ...linkedOrgIds], actors: members, groupId });
       }
       case ORG_MEMBERSHIP_REMOVED_EVENT: {
         const { orgId, ...actor } = OrgMembershipRemovedPayloadSchema.parse(event.payload);
-        const childOrgs = await orgDAL.find({ rootOrgId: orgId });
-        return { orgIds: [orgId, ...childOrgs.map((org) => org.id)], actors: [actor] };
+        return async () => {
+          const childOrgs = await orgDAL.find({ rootOrgId: orgId });
+          return { orgIds: [orgId, ...childOrgs.map((org) => org.id)], actors: [actor] };
+        };
       }
       default:
         throw new Error(`No org membership event named '${event.eventType}'`);
@@ -240,14 +248,26 @@ export const orgAccessReconcileConsumerFactory = ({
 
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
     const id = String(event.id);
-    let scope: TReconcileScope;
+    let resolveScope: () => Promise<TReconcileScope>;
     try {
-      scope = await $resolveScope(event);
+      resolveScope = $parseScope(event);
     } catch (error) {
       return {
         id,
         status: EventResultStatus.Failed,
         error: `Unreadable org membership event: ${error instanceof Error ? error.message : "Unknown error"}`
+      };
+    }
+
+    let scope: TReconcileScope;
+    try {
+      scope = await resolveScope();
+    } catch (error) {
+      logger.error(error, `org-access-reconcile: failed to resolve the orgs and actors to recheck [eventId=${id}]`);
+      return {
+        id,
+        status: EventResultStatus.Retry,
+        error: `Could not resolve the orgs and actors to recheck: ${error instanceof Error ? error.message : "Unknown error"}`
       };
     }
 
