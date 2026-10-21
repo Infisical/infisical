@@ -3,6 +3,7 @@ import { OTPInput, OTPInputContext } from "input-otp";
 
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 
@@ -87,7 +88,9 @@ const InputOTPSeparator = React.forwardRef<
       className={controlStyles.otpSeparator}
       role="separator"
       {...props}
-    />
+    >
+      <Icon name="minus" size={16} />
+    </div>
   );
 });
 InputOTPSeparator.displayName = "InputOTPSeparator";

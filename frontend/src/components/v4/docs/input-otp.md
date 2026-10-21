@@ -72,7 +72,7 @@ Exports: InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot. Source TypeSc
 ## Behavior
 
 - One underlying input owns the whole string; onChange receives that string, including partial and empty values. maxLength defines completion; onComplete signals length completion, not successful verification.
-- Each slot is its own input-style cell: the Input's 36px height, control border, control surface and radius-control times corners, in mono, with a 6px gap between cells. The active cell draws the shared focus glow and a blinking caret; aria-invalid on InputOTP turns every cell to the invalid border (and the active one to the bad glow), and disabled dims the whole code. InputOTPSeparator is a 4px muted dot between groups, never a minus.
+- Each slot is its own input-style cell: the Input's 36px height, control border, control surface and radius-control times corners, in mono, with a 6px gap between cells. The active cell draws the shared focus glow and a blinking caret; aria-invalid on InputOTP turns every cell to the invalid border (and the active one to the bad glow), and disabled dims the whole code. InputOTPSeparator is a dash separator: the custom minus glyph at stroke-icon in muted, centered in the group gap; never dots.
 
 ## Accessibility
 

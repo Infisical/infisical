@@ -696,11 +696,11 @@
   opacity: 0.5;
 }
 .otpSeparator {
+  display: flex;
   flex: none;
-  width: var(--v4-space-4);
-  height: var(--v4-space-4);
-  border-radius: 50%;
-  background: var(--v4-faint);
+  align-items: center;
+  justify-content: center;
+  color: var(--v4-muted);
 }
 .otpCaretBox {
   position: absolute;
