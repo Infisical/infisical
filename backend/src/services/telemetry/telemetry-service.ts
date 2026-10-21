@@ -289,6 +289,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       ]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
+      properties.has_secret_scanning = Boolean(plan.secretScanning);
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }

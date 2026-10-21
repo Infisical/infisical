@@ -37,7 +37,7 @@ const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
 
 export const registerSecretScanningV2Router = async (server: FastifyZodProvider) => {
   // Only an open finding being closed out counts; reopening one, or moving it between closed statuses, does not.
-  const sendFindingResolvedTelemetry = (
+  const sendFindingClosedTelemetry = (
     req: FastifyRequest,
     {
       finding,
@@ -55,7 +55,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
 
     void server.services.telemetry
       .sendPostHogEvents({
-        event: PostHogEventTypes.SecretScanningFindingResolved,
+        event: PostHogEventTypes.SecretScanningFindingClosed,
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
@@ -311,7 +311,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         }
       });
 
-      sendFindingResolvedTelemetry(req, { finding, previousStatus });
+      sendFindingClosedTelemetry(req, { finding, previousStatus });
 
       return { finding };
     }
@@ -357,7 +357,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           }
         });
 
-        sendFindingResolvedTelemetry(req, { finding, previousStatus });
+        sendFindingClosedTelemetry(req, { finding, previousStatus });
 
         return finding;
       });

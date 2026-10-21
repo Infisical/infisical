@@ -238,7 +238,7 @@ export enum PostHogEventTypes {
   SecretScanningDataSourceCreated = "Secret Scanning Data Source Created",
   SecretScanningResourcesAdded = "Secret Scanning Resources Added",
   SecretScanningScanCompleted = "Secret Scanning Scan Completed",
-  SecretScanningFindingResolved = "Secret Scanning Finding Resolved",
+  SecretScanningFindingClosed = "Secret Scanning Finding Closed",
 
   // Groups
   GroupCreated = "Group Created",
@@ -1981,8 +1981,8 @@ export type TSecretScanningScanCompletedEvent = {
   };
 };
 
-export type TSecretScanningFindingResolvedEvent = {
-  event: PostHogEventTypes.SecretScanningFindingResolved;
+export type TSecretScanningFindingClosedEvent = {
+  event: PostHogEventTypes.SecretScanningFindingClosed;
   properties: {
     // how it was closed out: resolved, false-positive or ignore
     status: SecretScanningFindingStatus;
@@ -2832,7 +2832,7 @@ export type TPostHogEvent = {
   | TSecretScanningDataSourceCreatedEvent
   | TSecretScanningResourcesAddedEvent
   | TSecretScanningScanCompletedEvent
-  | TSecretScanningFindingResolvedEvent
+  | TSecretScanningFindingClosedEvent
   | TGroupCreatedEvent
   | TGroupUpdatedEvent
   | TGroupDeletedEvent
