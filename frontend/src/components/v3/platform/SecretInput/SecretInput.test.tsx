@@ -18,7 +18,7 @@ describe("SecretInput hidden values", () => {
 
   it("shows one dot per character when masking each character", () => {
     const markup = renderToStaticMarkup(
-      <SecretInput value="ab\ncd" valueAlwaysHidden maskEachCharacter readOnly />
+      <SecretInput value={"ab\ncd"} valueAlwaysHidden maskEachCharacter readOnly />
     );
     assert.ok(markup.includes("••\n••"));
   });
