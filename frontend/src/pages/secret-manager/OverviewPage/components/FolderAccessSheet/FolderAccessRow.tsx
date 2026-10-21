@@ -121,7 +121,9 @@ export const FolderAccessRow = ({
     return (
       <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
-        <p className="shrink-0 text-sm text-muted">Full access on all folders</p>
+        <Button variant="ghost" size="xs" className="shrink-0" isDisabled>
+          Full access on all folders
+        </Button>
       </div>
     );
   }
