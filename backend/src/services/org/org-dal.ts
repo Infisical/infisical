@@ -1235,12 +1235,17 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   // (actor, org) pairs with a project row in an org the actor no longer reaches. Skips ghost users (project
-  // bots), they never have an org row.
-  const findOrphanedProjectActors = async ({ limit }: { limit: number }, tx?: Knex) => {
-    try {
-      const conn = tx || db.replicaNode();
-      const m = TableName.Membership;
+  // bots), they never have an org row. One streaming pass over the project rows against a hash of the org
+  // rows; collapsing to distinct pairs first was measured and only moved the cost into an aggregate.
+  // Without a caller's tx it runs in its own replica transaction so `statementTimeoutMs` bounds it: a
+  // backstop that overruns should fail and log, not keep the replica busy after the cron has given up on it.
+  const findOrphanedProjectActors = async (
+    { limit, statementTimeoutMs }: { limit: number; statementTimeoutMs?: number },
+    tx?: Knex
+  ) => {
+    const m = TableName.Membership;
 
+    const query = async (conn: Knex): Promise<TOrphanedProjectActor[]> => {
       const noDirectOrgRow = (actorColumn: "actorUserId" | "actorIdentityId") =>
         conn
           .select(conn.raw("1"))
@@ -1286,7 +1291,15 @@ export const orgDALFactory = (db: TDbClient) => {
           actorIdentityId: row.actorIdentityId,
           scopeOrgId: row.scopeOrgId
         }))
-      ] as TOrphanedProjectActor[];
+      ];
+    };
+
+    try {
+      if (tx) return await query(tx);
+      return await db.replicaNode().transaction(async (trx) => {
+        if (statementTimeoutMs) await trx.raw(`SET LOCAL statement_timeout = ${Math.floor(statementTimeoutMs)}`);
+        return query(trx);
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "FindOrphanedProjectActors" });
     }

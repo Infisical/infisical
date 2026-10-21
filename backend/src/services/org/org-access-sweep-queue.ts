@@ -7,6 +7,7 @@ import { TOrgDALFactory } from "./org-dal";
 import { emitOrgMembershipRemoved, toOrgMembershipActors } from "./org-membership-events";
 
 export const ORG_ACCESS_SWEEP_LIMIT = 5000;
+export const ORG_ACCESS_SWEEP_STATEMENT_TIMEOUT_MS = 3 * 60_000;
 
 type TOrgAccessSweepQueueDep = {
   cronJob: TCronJobFactory;
@@ -20,7 +21,10 @@ export type TOrgAccessSweepQueueFactory = ReturnType<typeof orgAccessSweepQueueF
 // an org membership removal for each. Also cleans up data from before the events existed.
 export const orgAccessSweepQueueFactory = ({ cronJob, orgDAL, eventEmitter }: TOrgAccessSweepQueueDep) => {
   const runSweep = async () => {
-    const orphans = await orgDAL.findOrphanedProjectActors({ limit: ORG_ACCESS_SWEEP_LIMIT });
+    const orphans = await orgDAL.findOrphanedProjectActors({
+      limit: ORG_ACCESS_SWEEP_LIMIT,
+      statementTimeoutMs: ORG_ACCESS_SWEEP_STATEMENT_TIMEOUT_MS
+    });
 
     for await (const orphan of orphans) {
       await emitOrgMembershipRemoved(eventEmitter, {

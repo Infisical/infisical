@@ -1,7 +1,11 @@
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
 
-import { ORG_ACCESS_SWEEP_LIMIT, orgAccessSweepQueueFactory } from "./org-access-sweep-queue";
+import {
+  ORG_ACCESS_SWEEP_LIMIT,
+  ORG_ACCESS_SWEEP_STATEMENT_TIMEOUT_MS,
+  orgAccessSweepQueueFactory
+} from "./org-access-sweep-queue";
 import { ORG_MEMBERSHIP_REMOVED_EVENT } from "./org-membership-events";
 
 const { loggerWarn, appCfg } = vi.hoisted(() => ({
@@ -21,28 +25,33 @@ const ORG_B = uuid(2);
 const build = (orphans: { actorUserId: string | null; actorIdentityId: string | null; scopeOrgId: string }[]) => {
   const emitted: TEventInput[] = [];
   const register = vi.fn();
+  const findOrphanedProjectActors = vi.fn().mockResolvedValue(orphans);
   const queue = orgAccessSweepQueueFactory({
     cronJob: { register } as never,
-    orgDAL: { findOrphanedProjectActors: vi.fn().mockResolvedValue(orphans) },
+    orgDAL: { findOrphanedProjectActors },
     eventEmitter: {
       emit: async (event) => {
         emitted.push(event);
       }
     }
   });
-  return { queue, emitted, register };
+  return { queue, emitted, register, findOrphanedProjectActors };
 };
 
 describe("orgAccessSweepQueue", () => {
   beforeEach(() => loggerWarn.mockClear());
 
   test("reports each orphaned actor as a removed org membership", async () => {
-    const { queue, emitted } = build([
+    const { queue, emitted, findOrphanedProjectActors } = build([
       { actorUserId: uuid(10), actorIdentityId: null, scopeOrgId: ORG_A },
       { actorUserId: null, actorIdentityId: uuid(20), scopeOrgId: ORG_B }
     ]);
 
     expect(await queue.runSweep()).toEqual({ orphans: 2 });
+    expect(findOrphanedProjectActors).toHaveBeenCalledWith({
+      limit: ORG_ACCESS_SWEEP_LIMIT,
+      statementTimeoutMs: ORG_ACCESS_SWEEP_STATEMENT_TIMEOUT_MS
+    });
     expect(emitted).toEqual([
       {
         eventType: ORG_MEMBERSHIP_REMOVED_EVENT,
