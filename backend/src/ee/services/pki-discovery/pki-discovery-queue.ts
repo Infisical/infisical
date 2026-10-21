@@ -42,6 +42,7 @@ type TPkiDiscoveryQueueFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
 };
 
+const SCAN_WORKER_CONCURRENCY = 3;
 const RESCAN_WORKER_CONCURRENCY = 3;
 
 export type TPkiDiscoveryQueueFactory = ReturnType<typeof pkiDiscoveryQueueFactory>;
@@ -84,47 +85,51 @@ export const pkiDiscoveryQueueFactory = ({
   };
 
   const startPkiDiscoveryScanQueue = () => {
-    queueService.start(QueueName.PkiDiscoveryScan, async (job) => {
-      try {
-        if (job.name === QueueJobs.PkiDiscoveryRunScan) {
-          const { discoveryId } = job.data as { discoveryId: string };
+    queueService.start(
+      QueueName.PkiDiscoveryScan,
+      async (job) => {
+        try {
+          if (job.name === QueueJobs.PkiDiscoveryRunScan) {
+            const { discoveryId } = job.data as { discoveryId: string };
 
-          const discoveryConfig = await pkiDiscoveryConfigDAL.findById(discoveryId);
-          if (!discoveryConfig) {
-            logger.error({ discoveryId }, "Discovery config not found, skipping scan");
-            return;
+            const discoveryConfig = await pkiDiscoveryConfigDAL.findById(discoveryId);
+            if (!discoveryConfig) {
+              logger.error({ discoveryId }, "Discovery config not found, skipping scan");
+              return;
+            }
+
+            const discoveryType = (discoveryConfig.discoveryType as PkiDiscoveryType) || PkiDiscoveryType.Network;
+
+            switch (discoveryType) {
+              case PkiDiscoveryType.Network:
+                await executeScan(discoveryId, scanDeps);
+                break;
+              case PkiDiscoveryType.LinuxServer:
+                await executeLinuxServerScan(discoveryId, scanDeps);
+                break;
+              default:
+                throw new Error(`Unsupported discovery type: ${discoveryType as string}`);
+            }
+          } else if (job.name === QueueJobs.PkiDiscoveryScheduledScan) {
+            const dueConfigs = await pkiDiscoveryConfigDAL.findDueForScan();
+
+            for (const config of dueConfigs) {
+              // eslint-disable-next-line no-await-in-loop
+              await queueService.queue(
+                QueueName.PkiDiscoveryScan,
+                QueueJobs.PkiDiscoveryRunScan,
+                { discoveryId: config.id },
+                { jobId: `pki-discovery-scan-${config.id}` }
+              );
+            }
           }
-
-          const discoveryType = (discoveryConfig.discoveryType as PkiDiscoveryType) || PkiDiscoveryType.Network;
-
-          switch (discoveryType) {
-            case PkiDiscoveryType.Network:
-              await executeScan(discoveryId, scanDeps);
-              break;
-            case PkiDiscoveryType.LinuxServer:
-              await executeLinuxServerScan(discoveryId, scanDeps);
-              break;
-            default:
-              throw new Error(`Unsupported discovery type: ${discoveryType as string}`);
-          }
-        } else if (job.name === QueueJobs.PkiDiscoveryScheduledScan) {
-          const dueConfigs = await pkiDiscoveryConfigDAL.findDueForScan();
-
-          for (const config of dueConfigs) {
-            // eslint-disable-next-line no-await-in-loop
-            await queueService.queue(
-              QueueName.PkiDiscoveryScan,
-              QueueJobs.PkiDiscoveryRunScan,
-              { discoveryId: config.id },
-              { jobId: `pki-discovery-scan-${config.id}` }
-            );
-          }
+        } catch (error) {
+          logger.error({ error, jobName: job.name, jobId: job.id }, "PKI discovery queue job failed");
+          throw error;
         }
-      } catch (error) {
-        logger.error({ error, jobName: job.name, jobId: job.id }, "PKI discovery queue job failed");
-        throw error;
-      }
-    });
+      },
+      { concurrency: SCAN_WORKER_CONCURRENCY }
+    );
 
     queueService.start(
       QueueName.PkiDiscoveryRescan,

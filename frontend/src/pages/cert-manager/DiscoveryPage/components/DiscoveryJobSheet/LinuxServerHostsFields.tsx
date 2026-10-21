@@ -9,7 +9,10 @@ import {
   FieldContent,
   FieldDescription,
   FieldError,
-  FieldLabel
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
@@ -100,8 +103,16 @@ export const LinuxServerHostsFields = () => {
                 isOptionDisabled={isUnusable}
                 renderOption={(option) => {
                   let unusableLabel: string | null = null;
-                  if (isMissingGateway(option)) unusableLabel = "No gateway";
-                  else if (isGatewayOutdated(option)) unusableLabel = "Update gateway";
+                  let unusableHint: string | null = null;
+                  if (isMissingGateway(option)) {
+                    unusableLabel = "No gateway";
+                    unusableHint =
+                      "This SSH connection has no gateway. Add one to the connection to scan this server.";
+                  } else if (isGatewayOutdated(option)) {
+                    unusableLabel = "Update gateway";
+                    unusableHint =
+                      "This connection's gateway is too old for certificate scanning. Update it to the latest version.";
+                  }
                   return (
                     <AppConnectionOptionContent
                       data={resolveOption(option)}
@@ -111,7 +122,14 @@ export const LinuxServerHostsFields = () => {
                       }
                       label={
                         unusableLabel && (
-                          <span className="mr-2 shrink-0 text-xs text-muted">{unusableLabel}</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="pointer-events-auto mr-2 shrink-0 cursor-help text-xs text-muted">
+                                {unusableLabel}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">{unusableHint}</TooltipContent>
+                          </Tooltip>
                         )
                       }
                     />
