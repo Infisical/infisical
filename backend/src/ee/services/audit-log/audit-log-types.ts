@@ -2935,21 +2935,18 @@ interface UnlinkGroupFromSubOrgEvent {
   };
 }
 
-// Written by the reconcile consumer, so the actor is the platform and `reason` / `groupId` say why. Names
-// are looked up at log time and missing if the row's already gone. `resources` are resource-level grants
-// (PAM, Agent Vault, PKI apps, signers), including ones in projects only reached through a group.
+// Written by the reconcile consumer, so the actor is the platform and `reason` / `groupId` say why.
+// `resources` are resource-level grants (PAM, Agent Vault, PKI apps, signers), including ones in projects
+// only reached through a group.
 interface RevokeOrgProjectAccessEvent {
   type: EventType.REVOKE_ORG_PROJECT_ACCESS;
   metadata: {
     userId?: string;
-    username?: string;
     identityId?: string;
-    identityName?: string;
     projectIds: string[];
     resources: { projectId: string; resourceType: string; resourceId: string }[];
     reason: OrgAccessRemovalCause;
     groupId?: string;
-    groupName?: string;
   };
 }
 

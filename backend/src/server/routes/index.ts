@@ -3197,9 +3197,6 @@ export const registerRoutes = async (
   eventOutboxRegistry.register(
     orgAccessReconcileConsumerFactory({
       orgDAL,
-      userDAL,
-      identityDAL,
-      groupDAL,
       projectAccessRevokeService,
       auditLogService,
       usageMeteringService

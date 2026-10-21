@@ -37,7 +37,6 @@ const build = (opts?: {
   revoked?: TRevokedProjectAccess[];
   orgs?: Record<string, unknown>;
   childOrgs?: string[];
-  groupExists?: boolean;
 }) => {
   const tx = { raw: vi.fn().mockResolvedValue(undefined) };
   const sendPamCancellations = vi.fn();
@@ -56,11 +55,6 @@ const build = (opts?: {
       }),
       lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
       transaction: vi.fn(async (cb: (trx: unknown) => Promise<unknown>) => cb(tx))
-    },
-    userDAL: { findById: vi.fn(async (id: string) => ({ id, username: `${id}@example.com` })) },
-    identityDAL: { findById: vi.fn(async (id: string) => ({ id, name: `identity-${id}` })) },
-    groupDAL: {
-      findById: vi.fn(async (id: string) => ((opts?.groupExists ?? true) ? { id, name: "platform-team" } : undefined))
     },
     projectAccessRevokeService: {
       revokeActorsInOrgs: vi.fn(
@@ -202,7 +196,6 @@ describe("org access reconcile consumer", () => {
     ]);
     expect(result.status).toBe(EventResultStatus.Delivered);
     expect(deps.orgDAL.transaction).not.toHaveBeenCalled();
-    expect(deps.groupDAL.findById).toHaveBeenCalledWith(GROUP_ID);
 
     const [orgResult] = await consumer.handle([userRemovedFromOrg()]);
 
@@ -223,21 +216,19 @@ describe("org access reconcile consumer", () => {
           type: EventType.REVOKE_ORG_PROJECT_ACCESS,
           metadata: {
             userId: USER_ID,
-            username: `${USER_ID}@example.com`,
+            identityId: undefined,
             projectIds: [PROJECT_A, PROJECT_B],
             resources: [],
             reason: OrgAccessRemovalCause.RemovedFromOrg,
-            groupId: undefined,
-            groupName: undefined
+            groupId: undefined
           }
         }
       })
     );
-    expect(deps.groupDAL.findById).toHaveBeenCalledTimes(1);
     expect(deps.usageMeteringService.emit).toHaveBeenCalledTimes(3);
   });
 
-  test("names the identity and the group that carried the lost path, and says which grants went", async () => {
+  test("records the identity and the group that carried the lost path, and says which grants went", async () => {
     const { consumer, deps, tx } = build({
       revoked: [
         {
@@ -262,19 +253,17 @@ describe("org access reconcile consumer", () => {
       tx
     );
     expect(auditMetadata(deps)).toEqual({
+      userId: undefined,
       identityId: IDENTITY_ID,
-      identityName: `identity-${IDENTITY_ID}`,
       projectIds: [PROJECT_A],
       resources: [{ projectId: PROJECT_A, resourceType: "pam-account", resourceId: uuid(302) }],
       reason: OrgAccessRemovalCause.RemovedFromGroup,
-      groupId: GROUP_ID,
-      groupName: "platform-team"
+      groupId: GROUP_ID
     });
   });
 
-  test("a deleted group is logged by id only, with the deletion as the cause", async () => {
+  test("a group delete is logged with the deletion as the cause", async () => {
     const { consumer, deps } = build({
-      groupExists: false,
       revoked: [{ userId: USER_ID, projectIds: [PROJECT_A], resources: [] }]
     });
 
@@ -288,8 +277,7 @@ describe("org access reconcile consumer", () => {
 
     expect(auditMetadata(deps)).toMatchObject({
       reason: OrgAccessRemovalCause.GroupDeleted,
-      groupId: GROUP_ID,
-      groupName: undefined
+      groupId: GROUP_ID
     });
   });
 
@@ -363,7 +351,6 @@ describe("org access reconcile consumer", () => {
   // Nothing in the DB says who to recheck anymore, only the payloads do.
   test("still reaps when the group lost its link and its member before the events were handled", async () => {
     const { consumer, deps } = build({
-      groupExists: false,
       revoked: [{ userId: USER_ID, projectIds: [PROJECT_A], resources: [] }]
     });
 
@@ -422,6 +409,5 @@ describe("org access reconcile consumer", () => {
     );
     expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenNthCalledWith(2, userIds.slice(ACTORS_PER_RECONCILE_TX), tx);
     expect(deps.auditLogService.createAuditLog).toHaveBeenCalledTimes(userIds.length);
-    expect(deps.groupDAL.findById).toHaveBeenCalledTimes(1);
   });
 });

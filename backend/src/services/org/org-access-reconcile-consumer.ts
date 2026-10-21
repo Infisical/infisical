@@ -1,5 +1,4 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -9,14 +8,9 @@ import {
   TEvent,
   TEventConsumerResult
 } from "@app/services/event-outbox/event-outbox-types";
-import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import {
-  TProjectAccessRevokeServiceFactory,
-  TRevokedProjectAccess
-} from "@app/services/membership/project-access-revoke-service";
-import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 
 import { TOrgDALFactory } from "./org-dal";
 import {
@@ -45,9 +39,6 @@ export type TOrgAccessReconcileConsumerDep = {
     TOrgDALFactory,
     "findById" | "find" | "findActorsWithOrgAccess" | "lockActorsForOrgAccess" | "transaction"
   >;
-  userDAL: Pick<TUserDALFactory, "findById">;
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
-  groupDAL: Pick<TGroupDALFactory, "findById">;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
@@ -70,9 +61,6 @@ const splitActors = (actors: TOrgMembershipActor[]) => ({
 // validation already rejects these actors) and safe to re-run.
 export const orgAccessReconcileConsumerFactory = ({
   orgDAL,
-  userDAL,
-  identityDAL,
-  groupDAL,
   projectAccessRevokeService,
   auditLogService,
   usageMeteringService
@@ -125,18 +113,9 @@ export const orgAccessReconcileConsumerFactory = ({
       return projectAccessRevokeService.revokeActorsInOrgs({ orgIds: [orgId], userIds, identityIds }, tx);
     });
 
-  const $describeActor = async ({ userId, identityId }: Pick<TRevokedProjectAccess, "userId" | "identityId">) => {
-    if (userId) {
-      const user = await userDAL.findById(userId);
-      return { userId, username: user?.username };
-    }
-    const identity = identityId ? await identityDAL.findById(identityId) : undefined;
-    return { identityId, identityName: identity?.name };
-  };
-
   // Small actor batches, each in its own short tx, since what they hold isn't bounded. Side effects fire per
   // batch after commit and only when rows went, so replays are no-ops.
-  const $reconcileOrg = async (orgId: string, scope: TReconcileScope, groupName?: string) => {
+  const $reconcileOrg = async (orgId: string, scope: TReconcileScope) => {
     const org = await orgDAL.findById(orgId);
     if (!org) return;
 
@@ -144,19 +123,19 @@ export const orgAccessReconcileConsumerFactory = ({
       const outcome = await $revokeActors(orgId, splitActors(actors));
       if (outcome) outcome.sendPamCancellations();
       if (outcome?.revoked.length) {
-        for await (const { projectIds, resources, ...actor } of outcome.revoked) {
+        for await (const { userId, identityId, projectIds, resources } of outcome.revoked) {
           await auditLogService.createAuditLog({
             orgId,
             actor: { type: ActorType.PLATFORM, metadata: {} },
             event: {
               type: EventType.REVOKE_ORG_PROJECT_ACCESS,
               metadata: {
-                ...(await $describeActor(actor)),
+                userId,
+                identityId,
                 projectIds,
                 resources,
                 reason: scope.reason,
-                groupId: scope.groupId,
-                groupName
+                groupId: scope.groupId
               }
             }
           });
@@ -183,10 +162,8 @@ export const orgAccessReconcileConsumerFactory = ({
     }
 
     let scope: TReconcileScope;
-    let groupName: string | undefined;
     try {
       scope = await resolveScope();
-      if (scope.groupId) groupName = (await groupDAL.findById(scope.groupId))?.name;
     } catch (error) {
       logger.error(error, `org-access-reconcile: failed to resolve the orgs and actors to recheck [eventId=${id}]`);
       return {
@@ -199,7 +176,7 @@ export const orgAccessReconcileConsumerFactory = ({
     const errors: string[] = [];
     for await (const orgId of scope.orgIds) {
       try {
-        await $reconcileOrg(orgId, scope, groupName);
+        await $reconcileOrg(orgId, scope);
       } catch (error) {
         logger.error(error, `org-access-reconcile: failed for org ${orgId} (event ${id})`);
         errors.push(`org ${orgId}: ${error instanceof Error ? error.message : "Unknown error"}`);
