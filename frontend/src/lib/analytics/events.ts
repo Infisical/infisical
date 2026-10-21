@@ -128,7 +128,6 @@ type PaywallProperties = {
   paywallText: string;
   route: string;
   isEnterpriseFeature: boolean;
-  // the org's plan when the paywall was shown; the org group's plan is overwritten on every change
   plan: string;
 };
 
@@ -199,6 +198,7 @@ export type OnboardingResourceClickedProperties = {
 
 export type SecretScanningOpenedProperties = {
   hasSecretScanning: boolean;
+  plan: string;
 };
 
 export type OrganizationAnalyticsEventMap = {

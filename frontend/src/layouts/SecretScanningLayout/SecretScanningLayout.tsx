@@ -19,9 +19,10 @@ export const SecretScanningLayout = () => {
     openedOrgRef.current = currentOrg.id;
 
     analytics.captureForOrganization(AnalyticsEvent.SecretScanningOpened, currentOrg.id, {
-      hasSecretScanning: Boolean(subscription.secretScanning)
+      hasSecretScanning: Boolean(subscription.secretScanning),
+      plan: subscription.slug ?? "free"
     });
-  }, [currentOrg.id, subscription.secretScanning]);
+  }, [currentOrg.id, subscription.secretScanning, subscription.slug]);
 
   useEffect(() => {
     if (!isSecretScanningGated) return;
