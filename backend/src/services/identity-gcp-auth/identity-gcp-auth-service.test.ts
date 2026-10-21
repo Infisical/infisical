@@ -268,6 +268,10 @@ describe("gcpAuthService trust binding on write", () => {
     await expect(attach({ type: "gce", allowedZones: "us-central1-a" })).rejects.toThrow(BINDING_MESSAGE);
   });
 
+  test("attach rejects a list that only holds separators", async () => {
+    await expect(attach({ type: "iam", allowedServiceAccounts: ", " })).rejects.toThrow(BINDING_MESSAGE);
+  });
+
   test("attach rejects an IAM identity with a project but no service account", async () => {
     await expect(attach({ type: "iam", allowedProjects: "my-project" })).rejects.toThrow(BINDING_MESSAGE);
   });

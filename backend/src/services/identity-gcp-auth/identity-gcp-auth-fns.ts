@@ -7,6 +7,9 @@ import { UnauthorizedError } from "@app/lib/errors";
 
 import { TDecodedGcpIamAuthJwt, TGcpIdTokenPayload } from "./identity-gcp-auth-types";
 
+// A list like "," is not empty as a string but names nothing, so count entries rather than characters.
+const hasListEntry = (list?: string | null) => Boolean(list?.split(",").some((entry) => entry.trim()));
+
 // Zones are shared by every GCP customer, so a zone alone does not tie the identity to an owner. A project
 // does, because a project ID belongs to one customer. Zones can only narrow a service account or project.
 export const hasGcpTrustBinding = ({
@@ -18,9 +21,9 @@ export const hasGcpTrustBinding = ({
   allowedServiceAccounts?: string | null;
   allowedProjects?: string | null;
 }) => {
-  if (allowedServiceAccounts?.trim()) return true;
+  if (hasListEntry(allowedServiceAccounts)) return true;
   if (type === "iam") return false;
-  return Boolean(allowedProjects?.trim());
+  return hasListEntry(allowedProjects);
 };
 
 export const GCP_TRUST_BINDING_REQUIRED_MESSAGE =

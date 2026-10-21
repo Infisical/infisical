@@ -57,8 +57,9 @@ const buildSchema = (maxAccessTokenTTL: number) =>
     .required()
     .superRefine(superRefineAccessTokenTtl)
     .superRefine((data, ctx) => {
-      const hasServiceAccounts = Boolean(data.allowedServiceAccounts.trim());
-      const hasProjects = data.type === "gce" && Boolean(data.allowedProjects.trim());
+      const hasEntry = (list: string) => list.split(",").some((entry) => entry.trim());
+      const hasServiceAccounts = hasEntry(data.allowedServiceAccounts);
+      const hasProjects = data.type === "gce" && hasEntry(data.allowedProjects);
       if (!hasServiceAccounts && !hasProjects) {
         const message =
           "Configure at least one allowed GCP service account, or for GCE identities an allowed project.";
