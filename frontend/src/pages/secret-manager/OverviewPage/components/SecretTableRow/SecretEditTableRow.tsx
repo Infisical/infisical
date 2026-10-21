@@ -749,12 +749,33 @@ export const SecretEditTableRow = ({
   // isDirty covers both windows the parent has to protect: a non-batch edit waiting on the save
   // button, and a batch edit waiting on the 500ms debounce above, which clears it via reset()
   // once the change reaches the batch store.
+  //
+  // isFieldActive and isLoadingEditValue cover two more windows that carry nothing dirty and so
+  // would otherwise look discardable. A focused field is state the user can see and is about to
+  // use, and the resolved-value popover isFieldActive also tracks is rendered inside this row;
+  // unmounting either drops the caret or the popover with no way back. An Edit whose value is
+  // still being fetched is a request already in flight, and losing the row cancels it, so on a
+  // slow connection the click is silently thrown away.
+  //
+  // All four are booleans that flip at most once per interaction, and the parent's setter returns
+  // the same Set when membership has not changed, so this does not recompute the virtualizer's
+  // range while the user types.
   useEffect(() => {
     if (!unsavedChangeId || !onUnsavedChange) return undefined;
 
-    onUnsavedChange(unsavedChangeId, isDirty || hasOpenAnnotationDraft);
+    onUnsavedChange(
+      unsavedChangeId,
+      isDirty || hasOpenAnnotationDraft || isFieldActive || isLoadingEditValue
+    );
     return () => onUnsavedChange(unsavedChangeId, false);
-  }, [isDirty, hasOpenAnnotationDraft, unsavedChangeId, onUnsavedChange]);
+  }, [
+    isDirty,
+    hasOpenAnnotationDraft,
+    isFieldActive,
+    isLoadingEditValue,
+    unsavedChangeId,
+    onUnsavedChange
+  ]);
 
   // Reset form when a pending change is externally discarded (e.g. CommitForm discard button
   // or toggling batch mode off). We don't gate on isBatchMode because React batches the
