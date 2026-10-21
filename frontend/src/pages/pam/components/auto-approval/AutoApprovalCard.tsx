@@ -145,9 +145,10 @@ export const AutoApprovalCard = ({
             <section className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-4">
                 <FieldContent>
-                  <FieldTitle>Request Information</FieldTitle>
+                  <FieldTitle>Request Form Fields</FieldTitle>
                   <FieldDescription>
-                    Records requesters link when asking for access.
+                    Optional fields on the access request form, such as a Jira ticket. Rules check
+                    what requesters enter.
                   </FieldDescription>
                 </FieldContent>
                 <DisabledReason reason={addInputBlocker}>

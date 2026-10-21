@@ -226,7 +226,7 @@ export const AutoApprovalRuleCard = ({
 
   let addConditionBlocker: string | undefined;
   if (choices.length === 0) {
-    addConditionBlocker = "Add a field under Request Information first, so rules can check it.";
+    addConditionBlocker = "Add a field under Request Form Fields first.";
   } else if (menuGroups.length === 0) {
     addConditionBlocker = "Every available check is already in this rule.";
   }

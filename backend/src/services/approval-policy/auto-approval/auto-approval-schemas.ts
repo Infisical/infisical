@@ -21,7 +21,7 @@ export const AutoApprovalConfigSchema = z
         subject: IdentifierSchema.describe(DOCS.inputSubject)
       })
       .array()
-      .max(10, "A policy can ask for at most 10 pieces of request information")
+      .max(10, "A policy can have at most 10 request form fields")
       .describe(DOCS.inputs),
     rules: z
       .object({

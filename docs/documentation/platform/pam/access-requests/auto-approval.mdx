@@ -46,7 +46,7 @@ If an account's template doesn't allow auto-approval, the folder's rules don't a
 
 The **Auto-Approval** card on the folder's **Approvals** tab has two parts:
 
-- **Request Information**: the records that requesters can link when they request access, such as a Jira ticket (each one you add puts an optional field on the request form)
+- **Request Form Fields**: the optional fields on the request form where requesters link records from other services, such as a Jira ticket
 - **Rules**: the conditions a request has to meet to be approved without an approver
 
 A request is approved if every condition in at least one rule passes.
@@ -58,7 +58,7 @@ To add rules:
     On the **Accounts** page, select the folder's three dot menu, select **Configure**, then open the **Approvals** tab.
   </Step>
   <Step>
-    In the **Auto-Approval** card, under **Request Information**, select **Add Field** and choose the record to ask for, such as **Jira ticket** for your Jira connection.
+    In the **Auto-Approval** card, under **Request Form Fields**, select **Add Field** and choose the record to ask for, such as **Jira ticket** for your Jira connection.
   </Step>
   <Step>
     Under **Rules**, select **Add Rule**, then replace the rule's default name with one that describes what the rule checks, such as `Approved change ticket`. Approvers see this name on every request the rule approves. A new rule starts with the **hasn't been used before** and **is assigned to the requester** checks on each record the folder asks for.

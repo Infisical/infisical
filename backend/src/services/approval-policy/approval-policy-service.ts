@@ -2205,7 +2205,7 @@ export const approvalPolicyServiceFactory = ({
     return { grant: updatedGrant, request };
   };
 
-  // The request information a requester can link for a policy, or none when the resource keeps its rules off
+  // The request form fields a requester can fill in for a policy, or none when the resource keeps its rules off
   // Whether the policy's auto-approval rules apply to this request, and the inputs its form asks for
   const $getAutoApprovalRequestState = async (
     policyType: ApprovalPolicyType,

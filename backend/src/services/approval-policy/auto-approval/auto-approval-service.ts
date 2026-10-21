@@ -147,7 +147,7 @@ export const autoApprovalServiceFactory = ({
       }
       if (inputKeys.has(key)) {
         throw new BadRequestError({
-          message: `Request information asks for ${subject.input.label} from '${connection?.name}' more than once`
+          message: `The ${subject.input.label} field from '${connection?.name}' is added more than once`
         });
       }
       inputKeys.add(key);
@@ -168,7 +168,7 @@ export const autoApprovalServiceFactory = ({
         }
         if (!isRequester && !inputKeys.has(`${condition.connectionId}:${condition.subject}`)) {
           throw new BadRequestError({
-            message: `Rule '${name}' checks the ${subject.label} from '${connectionName}', so add it to the request information first`
+            message: `Rule '${name}' checks the ${subject.label} from '${connectionName}'. Add it to the request form fields first.`
           });
         }
 
@@ -290,7 +290,7 @@ export const autoApprovalServiceFactory = ({
       if (!connection || !definition) {
         throw new BadRequestError({
           message:
-            "The connection behind this request information is no longer available. Ask an admin to update the approval policy."
+            "The connection behind this request form field is no longer available. Ask an admin to update the approval policy."
         });
       }
 

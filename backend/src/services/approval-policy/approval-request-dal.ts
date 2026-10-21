@@ -78,7 +78,7 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Whether an approved request on the policy already linked this record through auto-approval request information
+  // Whether an approved request on the policy already linked this record through an auto-approval request form field
   const hasApprovedRequestLinkingRecord = async (
     {
       policyId,

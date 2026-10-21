@@ -111,7 +111,7 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
         const inputId = isRequester ? null : inputIdByKey.get(`${condition.connectionId}:${condition.subject}`);
         if (!isRequester && !inputId) {
           throw new BadRequestError({
-            message: `Rule '${rule.name}' checks '${condition.subject}', which is not in the policy's request information`
+            message: `Rule '${rule.name}' checks '${condition.subject}', which is not in the policy's request form fields`
           });
         }
 
