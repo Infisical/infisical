@@ -278,7 +278,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       }),
       response: {
         200: z.object({
-          autoApprovalInputs: AutoApprovalInputDetailsSchema.array(),
+          autoApprovalOnly: z.boolean(),
           steps: z.array(
             z.object({
               requiredApprovals: z.number(),

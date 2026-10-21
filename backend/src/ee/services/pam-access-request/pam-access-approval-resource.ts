@@ -396,7 +396,9 @@ export const pamAccessApprovalResourceFactory = ({
     projectId,
     policy,
     requestData,
-    actor
+    actor,
+    hasAutoApprovalRules,
+    skipsAutoApproval
   }) => {
     const inputs = requestData as TPamAccessRequestData;
     const ctx = toActorContext(actor);
@@ -458,10 +460,18 @@ export const pamAccessApprovalResourceFactory = ({
     }
 
     const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
-    if (policySteps.length === 0 || policySteps.some((step) => step.approvers.length === 0)) {
+    // A folder with rules and no approvers grants access only through its rules
+    const isRulesOnly = policySteps.length === 0 && hasAutoApprovalRules;
+    if (!isRulesOnly && (policySteps.length === 0 || policySteps.some((step) => step.approvers.length === 0))) {
       throw new BadRequestError({
         message:
           "This folder's approval policy has no approvers configured. Ask a folder admin to add approvers under the folder's Approvals tab, then submit your request again."
+      });
+    }
+    if (isRulesOnly && !skipsAutoApproval && !accessControls.allowAutoApproval) {
+      throw new BadRequestError({
+        message:
+          "Access to this account can't be requested. Its folder has no approvers. Its template also doesn't allow auto-approval. Ask an admin to add approvers to the folder or turn on Allow Auto-Approval in the template."
       });
     }
 

@@ -471,6 +471,16 @@ export const RequestAccessSheet = ({
                   </Field>
                 )}
               />
+              {!breakGlassOnSubmit && approverData?.autoApprovalOnly && (
+                <Alert variant="warning">
+                  <ShieldAlert />
+                  <AlertTitle>No one will review this request</AlertTitle>
+                  <AlertDescription>
+                    This folder has no approvers. Your request is approved only if it passes an
+                    auto-approval rule when you submit it. Otherwise it&apos;s rejected immediately.
+                  </AlertDescription>
+                </Alert>
+              )}
               {!breakGlassOnSubmit && autoApprovalInputDetails.length > 0 && (
                 <AutoApprovalRequestInputs
                   inputs={autoApprovalInputDetails}

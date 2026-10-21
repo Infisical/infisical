@@ -303,6 +303,8 @@ export type TApprovalResource<
     policy: TApprovalPolicy;
     requestData: TApprovalRequestData;
     actor: TApprovalActor;
+    hasAutoApprovalRules: boolean;
+    skipsAutoApproval: boolean;
   }) => Promise<void>;
   assertCanReview?: (args: {
     request: TApprovalRequests;

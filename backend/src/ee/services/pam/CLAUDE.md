@@ -209,7 +209,8 @@ from folder and account auditors (see the audit-log gotcha under Permissions).
 `requires-approval`, like break-glass) and rules on the folder's approval policy, which PAM saves through the
 folder's approval configuration. The rules belong to the shared approval module; PAM only implements
 `allowsAutoApproval`, the notification, and `PAM_ACCESS_REQUEST_AUTO_APPROVED`. A break-glass request skips
-them, since it approves itself.
+them, since it approves itself. A folder can have rules and no approvers; its requests are then granted by a
+rule or refused at submission.
 
 ## Discovery
 

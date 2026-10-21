@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Info, Link2, Plus, X } from "lucide-react";
+import { Info, Link2, Plus, TriangleAlert, X } from "lucide-react";
 
 import {
   Badge,
@@ -113,8 +113,9 @@ export const AutoApprovalCard = ({
               <Info className="size-3.5 text-muted" aria-label="When auto-approval applies" />
             </TooltipTrigger>
             <TooltipContent className="max-w-72">
-              Only applies to accounts whose template has Allow Auto-Approval on. Requests no rule
-              approves wait for the approvers below.
+              Only applies to accounts whose template has Allow Auto-Approval on. Requests that no
+              rule approves wait for the approvers below. Without approvers, those requests are
+              rejected immediately.
             </TooltipContent>
           </Tooltip>
         </CardTitle>
@@ -216,26 +217,25 @@ export const AutoApprovalCard = ({
             <section className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-4">
                 <SectionLabel>Rules</SectionLabel>
-                <DisabledReason
-                  reason={
-                    hasApprovers
-                      ? undefined
-                      : "Add an approver first. Requests no rule approves still need someone to approve them."
-                  }
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-dashed"
+                  onClick={addRule}
                 >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-dashed"
-                    isDisabled={!hasApprovers}
-                    onClick={addRule}
-                  >
-                    <Plus />
-                    Add Rule
-                  </Button>
-                </DisabledReason>
+                  <Plus />
+                  Add Rule
+                </Button>
               </div>
+
+              {!hasApprovers && draft.rules.length > 0 && (
+                <div className="flex items-center gap-2 rounded-md border border-warning/20 bg-warning/5 px-2.5 py-1.5 text-xs text-foreground/80">
+                  <TriangleAlert className="size-3.5 shrink-0 text-warning" />
+                  This folder has no approvers. Access requests that don&apos;t pass an
+                  auto-approval rule are rejected immediately.
+                </div>
+              )}
 
               {draft.rules.map((rule, index) => (
                 <AutoApprovalRuleCard

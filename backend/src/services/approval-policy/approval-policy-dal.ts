@@ -373,9 +373,9 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Of the given scopes, return those whose policy actually has at least one approver configured.
-  // A policy row with no approvers does not count as "configured".
-  const findScopeIdsWithApprovers = async (args: {
+  // Of the given scopes, those whose policy can grant a request: it has an approver or an auto-approval rule.
+  // A policy row with neither does not count as "configured".
+  const findRequestableScopeIds = async (args: {
     type: string;
     scopeType: string;
     scopeIds: string[];
@@ -388,16 +388,36 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
         .where(`${TableName.ApprovalPolicies}.type`, args.type)
         .where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType)
         .whereIn(`${TableName.ApprovalPolicies}.scopeId`, args.scopeIds)
-        .innerJoin(
-          TableName.ApprovalPolicySteps,
-          `${TableName.ApprovalPolicySteps}.policyId`,
-          `${TableName.ApprovalPolicies}.id`
-        )
-        .innerJoin(
-          TableName.ApprovalPolicyStepApprovers,
-          `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
-          `${TableName.ApprovalPolicySteps}.id`
-        )
+        .where((qb) => {
+          void qb
+            .whereExists((sub) => {
+              void sub
+                .select(dbInstance.raw("1"))
+                .from(TableName.ApprovalPolicySteps)
+                .innerJoin(
+                  TableName.ApprovalPolicyStepApprovers,
+                  `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
+                  `${TableName.ApprovalPolicySteps}.id`
+                )
+                .whereRaw("??.?? = ??.??", [
+                  TableName.ApprovalPolicySteps,
+                  "policyId",
+                  TableName.ApprovalPolicies,
+                  "id"
+                ]);
+            })
+            .orWhereExists((sub) => {
+              void sub
+                .select(dbInstance.raw("1"))
+                .from(TableName.ApprovalPolicyAutoApprovalRules)
+                .whereRaw("??.?? = ??.??", [
+                  TableName.ApprovalPolicyAutoApprovalRules,
+                  "policyId",
+                  TableName.ApprovalPolicies,
+                  "id"
+                ]);
+            });
+        })
         .distinct(`${TableName.ApprovalPolicies}.scopeId`)
         .select<{ scopeId: string | null }[]>(`${TableName.ApprovalPolicies}.scopeId`)) as {
         scopeId: string | null;
@@ -405,7 +425,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
       return rows.map((r) => r.scopeId).filter((id): id is string => Boolean(id));
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find scope ids with approvers" });
+      throw new DatabaseError({ error, name: "Find requestable scope ids" });
     }
   };
 
@@ -561,7 +581,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     findSecretAccessPolicyByEnvIdAndSecretPath,
     findPoliciesWhereSubjectIsApprover,
     isProjectApprover,
-    findScopeIdsWithApprovers,
+    findRequestableScopeIds,
     deleteStepApproversBySubject,
     deleteBypassersBySubject,
     deleteUserStepApproversInProjects

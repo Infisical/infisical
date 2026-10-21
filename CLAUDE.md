@@ -151,8 +151,10 @@ stop agreeing.
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a
 provider to `AUTO_APPROVAL_PROVIDER_REGISTRY`, keyed by its App Connection, not by per-product code. A
-resource gates them per request with `allowsAutoApproval`. The stored evidence holds data fetched from
-that service, so responses return only its outcome (`autoApproval`), never `autoApprovalEvidence`.
+resource gates them per request with `allowsAutoApproval`. A policy may have rules and no approvers (no
+steps): then a request no rule approves is refused at submission, and only break-glass gets past it. The
+stored evidence holds data fetched from that service, so responses return only its outcome (`autoApproval`),
+never `autoApprovalEvidence`.
 
 ### API Layer (Frontend)
 

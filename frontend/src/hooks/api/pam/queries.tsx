@@ -656,6 +656,7 @@ export const useGetPamAccountApprovers = (
       const { data } = await apiRequest.get<{
         steps: TPamApprovalWorkflowStep[];
         autoApprovalInputs: TAutoApprovalInputDetails[];
+        autoApprovalOnly: boolean;
       }>(`/api/v1/pam/access-requests/accounts/${accountId}/approvers`, { params: { accessType } });
       return data;
     }

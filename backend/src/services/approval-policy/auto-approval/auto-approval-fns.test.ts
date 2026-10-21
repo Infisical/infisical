@@ -1,6 +1,7 @@
 import {
   evaluateAutoApprovalRules,
   getAutoApprovalSummary,
+  getClosestFailedRule,
   toAutoApprovalOutcome,
   TResolvedAutoApprovalSubject
 } from "./auto-approval-fns";
@@ -196,5 +197,39 @@ describe("toAutoApprovalOutcome", () => {
       linkedRecords: [{ label: "Jira ticket", value: "PAY-123" }],
       conditions: ["Jira ticket has status Approved"]
     });
+  });
+});
+
+describe("getClosestFailedRule", () => {
+  const result = (passed: boolean, reason: string | null = null) => ({
+    id: "c",
+    connectionId: "conn",
+    subject: "submitted-ticket",
+    constraint: "status",
+    values: [],
+    description: "Jira ticket has status Approved",
+    passed,
+    reason
+  });
+
+  test("picks the failed rule with the fewest failed conditions, then the most passed", () => {
+    expect(
+      getClosestFailedRule({
+        rules: [
+          { id: "a", name: "Two misses", passed: false, conditions: [result(false, "a1"), result(false, "a2")] },
+          { id: "b", name: "One miss", passed: false, conditions: [result(false, "b1")] },
+          {
+            id: "c",
+            name: "One miss, more passes",
+            passed: false,
+            conditions: [result(true), result(false, "c1")]
+          }
+        ]
+      })
+    ).toEqual({ ruleName: "One miss, more passes", reason: "c1" });
+  });
+
+  test("is null when no rule failed", () => {
+    expect(getClosestFailedRule({ rules: [] })).toBeNull();
   });
 });

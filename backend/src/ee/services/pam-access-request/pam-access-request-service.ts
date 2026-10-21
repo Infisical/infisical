@@ -78,7 +78,7 @@ type TPamAccessRequestServiceFactoryDep = {
     | "revokeGrant"
     | "getActiveGrant"
     | "getAccessStatuses"
-    | "getScopeIdsWithApprovers"
+    | "getRequestableScopeIds"
     | "getBypassableScopeIds"
     | "reapScope"
     | "reapSubject"
@@ -574,11 +574,11 @@ export const pamAccessRequestServiceFactory = ({
     return new Map(accountIds.map((accountId, i) => [accountId, statuses[i]]));
   };
 
-  // A folder counts as "configured" only when its policy has at least one approver, so an empty policy
-  // surfaces the unavailable flag.
+  // A folder counts as "configured" only when its policy has an approver or an auto-approval rule, so an
+  // empty policy surfaces the unavailable flag.
   const getFolderPolicyConfigured = async (folderIds: string[]): Promise<Set<string>> =>
     new Set(
-      await approvalPolicyService.getScopeIdsWithApprovers(
+      await approvalPolicyService.getRequestableScopeIds(
         ApprovalPolicyType.PamAccess,
         ApprovalPolicyScope.PamFolder,
         folderIds
@@ -625,7 +625,7 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    if (!account.folderId) return { steps: [], autoApprovalInputs: [] };
+    if (!account.folderId) return { steps: [], autoApprovalInputs: [], autoApprovalOnly: false };
 
     return approvalPolicyService.getApproverRoster(
       ApprovalPolicyType.PamAccess,

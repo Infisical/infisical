@@ -108,3 +108,22 @@ export const getAutoApprovalSummary = (evidence: unknown) => {
     conditions: (rule?.conditions ?? []).map((condition) => condition.description)
   };
 };
+
+// The rule that came closest to passing best explains a refusal: fewest failed conditions, then most passed
+export const getClosestFailedRule = (evidence: Pick<TAutoApprovalEvidence, "rules">) => {
+  const [closest] = evidence.rules
+    .filter((rule) => !rule.passed)
+    .map((rule) => ({
+      rule,
+      failed: rule.conditions.filter((condition) => !condition.passed).length,
+      passed: rule.conditions.filter((condition) => condition.passed).length
+    }))
+    .sort((a, b) => a.failed - b.failed || b.passed - a.passed);
+  if (!closest) return null;
+
+  const failedCondition = closest.rule.conditions.find((condition) => !condition.passed);
+  return {
+    ruleName: closest.rule.name,
+    reason: failedCondition?.reason ?? failedCondition?.description ?? "a condition didn't pass"
+  };
+};

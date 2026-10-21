@@ -85,7 +85,7 @@ import {
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
 import { createApprovalRequestWithSteps } from "./approval-request-fns";
-import { toAutoApprovalOutcome } from "./auto-approval/auto-approval-fns";
+import { getClosestFailedRule, toAutoApprovalOutcome } from "./auto-approval/auto-approval-fns";
 import { TAutoApprovalServiceFactory } from "./auto-approval/auto-approval-service";
 import { TAutoApprovalConfig, TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
 
@@ -1247,12 +1247,16 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({ message: errorMessage });
     }
 
+    const storedAutoApproval = (await autoApprovalService.findByPolicyIds([policy.id])).get(policy.id);
+
     if (assertDomainCanCreateRequest) {
       await assertDomainCanCreateRequest({
         projectId,
         policy,
         requestData: requestData as TApprovalRequestData,
-        actor
+        actor,
+        hasAutoApprovalRules: Boolean(storedAutoApproval?.rules.length),
+        skipsAutoApproval: Boolean(skipAutoApproval)
       });
     }
 
@@ -1273,7 +1277,6 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
-    const storedAutoApproval = (await autoApprovalService.findByPolicyIds([policy.id])).get(policy.id);
     const parsedInputs = await autoApprovalService.parseInputValues({
       stored: storedAutoApproval,
       values: autoApprovalInputs ?? [],
@@ -1318,6 +1321,19 @@ export const approvalPolicyServiceFactory = ({
       });
 
       return { request: await $decorateRequest(approved, actor) };
+    }
+
+    // With rules and no approvers, only a rule can grant the request, so one no rule approves is refused now
+    if (storedAutoApproval?.rules.length && !skipAutoApproval) {
+      const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
+      if (!policySteps.some((step) => step.approvers.length > 0)) {
+        const closest = autoApprovalEvidence ? getClosestFailedRule(autoApprovalEvidence) : null;
+        throw new BadRequestError({
+          message: closest
+            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it. Closest rule "${closest.ruleName}": ${closest.reason}`
+            : "Request rejected. There are no approvers to review it. Auto-approval doesn't apply to this request either."
+        });
+      }
     }
 
     const created = await createRequestFromPolicy({
@@ -2121,17 +2137,20 @@ export const approvalPolicyServiceFactory = ({
   };
 
   // The request information a requester can link for a policy, or none when the resource keeps its rules off
-  const $getAutoApprovalInputs = async (
+  // Whether the policy's auto-approval rules apply to this request, and the inputs its form asks for
+  const $getAutoApprovalRequestState = async (
     policyType: ApprovalPolicyType,
     projectId: string,
     policyId: string,
     data: TApprovalPolicyInputs | TApprovalRequestData
   ) => {
     const stored = (await autoApprovalService.findByPolicyIds([policyId])).get(policyId);
-    if (!stored?.rules.length || !stored.inputs.length) return [];
+    if (!stored?.rules.length) return { applies: false, inputs: [] };
 
     const allowed = (await resources[policyType]?.allowsAutoApproval?.({ projectId, requestData: data })) ?? true;
-    return allowed ? autoApprovalService.getInputDetails(stored) : [];
+    if (!allowed) return { applies: false, inputs: [] };
+
+    return { applies: true, inputs: stored.inputs.length ? await autoApprovalService.getInputDetails(stored) : [] };
   };
 
   const checkPolicyMatch = async (
@@ -2168,7 +2187,7 @@ export const approvalPolicyServiceFactory = ({
       requiresApproval: !activeGrant,
       hasActiveGrant: !!activeGrant,
       constraints,
-      autoApprovalInputs: await $getAutoApprovalInputs(policyType, projectId, policy.id, inputs)
+      autoApprovalInputs: (await $getAutoApprovalRequestState(policyType, projectId, policy.id, inputs)).inputs
     };
   };
 
@@ -2309,14 +2328,14 @@ export const approvalPolicyServiceFactory = ({
     });
   };
 
-  const getScopeIdsWithApprovers = (
+  const getRequestableScopeIds = (
     policyType: ApprovalPolicyType,
     scopeType: ApprovalPolicyScope,
     scopeIds: string[]
   ) =>
     scopeIds.length === 0
       ? Promise.resolve([] as string[])
-      : approvalPolicyDAL.findScopeIdsWithApprovers({ type: policyType, scopeType, scopeIds });
+      : approvalPolicyDAL.findRequestableScopeIds({ type: policyType, scopeType, scopeIds });
 
   const getBypassableScopeIds = async (
     policyType: ApprovalPolicyType,
@@ -2566,9 +2585,13 @@ export const approvalPolicyServiceFactory = ({
       }));
     }
 
-    if (steps.length === 0) return { steps: [], autoApprovalInputs: [] };
+    const autoApproval = policy
+      ? await $getAutoApprovalRequestState(policyType, projectId, policy.id, inputs)
+      : { applies: false, inputs: [] };
+    // With no approvers, a request is only granted if a rule approves it when it's submitted
+    const autoApprovalOnly = autoApproval.applies && !steps.some((step) => step.approvers.length > 0);
 
-    const autoApprovalInputs = policy ? await $getAutoApprovalInputs(policyType, projectId, policy.id, inputs) : [];
+    if (steps.length === 0) return { steps: [], autoApprovalInputs: autoApproval.inputs, autoApprovalOnly };
 
     const approvers = steps.flatMap((step) => step.approvers);
     const userIds = approvers.filter((a) => a.type === ApproverType.User).map((a) => a.id);
@@ -2590,7 +2613,8 @@ export const approvalPolicyServiceFactory = ({
     });
 
     return {
-      autoApprovalInputs,
+      autoApprovalInputs: autoApproval.inputs,
+      autoApprovalOnly,
       steps: steps.map((step) => ({
         requiredApprovals: step.requiredApprovals,
         approvers: step.approvers.map((a) =>
@@ -2655,16 +2679,18 @@ export const approvalPolicyServiceFactory = ({
     });
 
     const hasApprovers = steps.some((step) => step.approvers.length > 0);
-    if (!hasApprovers) {
-      // A request no rule approves still needs someone who can approve it
-      if (autoApproval?.rules.length) {
-        throw new BadRequestError({ message: "Add at least one approver before adding auto-approval rules" });
-      }
+    // An omitted config leaves the stored rules in place, so they still count
+    const hasRules = autoApproval
+      ? autoApproval.rules.length > 0
+      : Boolean(existing && (await autoApprovalService.findByPolicyIds([existing.id])).get(existing.id)?.rules.length);
+
+    if (!hasApprovers && !hasRules) {
       if (existing) await deleteById(existing.id, actor, policyType);
       return { policyId: existing?.id ?? null };
     }
 
-    const policySteps = steps.map((step) => ({ ...step, notifyApprovers: true }));
+    // Without approvers the policy keeps no steps, and only its rules can approve a request
+    const policySteps = hasApprovers ? steps.map((step) => ({ ...step, notifyApprovers: true })) : [];
     const bypassFields = bypassers ? { bypassers } : {};
     const autoApprovalUpdate = autoApproval ? { autoApproval } : {};
 
@@ -2709,7 +2735,7 @@ export const approvalPolicyServiceFactory = ({
       $resource(policyType).matchPolicy(projectId, inputs),
     getActiveGrant,
     getAccessStatuses,
-    getScopeIdsWithApprovers,
+    getRequestableScopeIds,
     getBypassableScopeIds,
     reapScope,
     reapSubject,

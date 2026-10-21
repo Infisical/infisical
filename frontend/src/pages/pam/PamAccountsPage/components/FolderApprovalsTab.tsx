@@ -357,18 +357,14 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const handleSave = () => {
-    if (breakGlassUsers.length > 0 && approvers.length === 0) {
+    if (
+      breakGlassUsers.length > 0 &&
+      approvers.length === 0 &&
+      autoApprovalDraft.rules.length === 0
+    ) {
       createNotification({
         type: "error",
-        text: "Break-glass users need at least one approver to skip"
-      });
-      return;
-    }
-
-    if (autoApprovalDraft.rules.length > 0 && approvers.length === 0) {
-      createNotification({
-        type: "error",
-        text: "Auto-approval rules need at least one approver for the requests they don't approve"
+        text: "Break-glass users need approvers or auto-approval rules to skip"
       });
       return;
     }
