@@ -3915,6 +3915,13 @@ const OverviewPageContent = () => {
                         }
                         hasSearch={Boolean(searchFilter.trim())}
                         onSearchAllFolders={() => setIsSearchAllFoldersOpen(true)}
+                        onClearSearch={() => {
+                          overviewTelemetry.interaction({
+                            action: "search-cleared",
+                            source: "empty-state"
+                          });
+                          setSearchFilter("");
+                        }}
                       />
                     )}
                     {showOverviewSkeleton ? (
