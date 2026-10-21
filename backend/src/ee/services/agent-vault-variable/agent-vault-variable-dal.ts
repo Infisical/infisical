@@ -19,9 +19,12 @@ export type TAgentVaultVariableOrderBy = "key" | "serviceCount";
 // names one, so a global lookup never matches a personal key and the other way round.
 export type TAgentVaultVariableOwnerScope = { projectId: string; owner: TAgentVaultOwner | null };
 
-export type TFindAgentVaultVariablesDTO = TAgentVaultVariableOwnerScope & {
+// Each owner is one scope to list, null the global one: a list can span both for an admin.
+export type TFindAgentVaultVariablesDTO = { projectId: string; owners: (TAgentVaultOwner | null)[] } & {
   search?: string;
   keys?: string[];
+  // Counts only the services in these bundles toward serviceCount. Omit to count every one.
+  accessBundleIds?: string[];
   orderBy: TAgentVaultVariableOrderBy;
   orderDirection: "asc" | "desc";
   limit: number;
@@ -51,7 +54,7 @@ const VARIABLE_COLUMNS = [
 ] as const;
 
 // Each (variable, service) pair a reference row records: a service's own fields, or a member's value for one.
-const referencingServices = (conn: Knex, variableIds?: string[]) => {
+const referencingServices = (conn: Knex, variableIds?: string[] | Knex.QueryBuilder) => {
   const serviceRefs = conn(TableName.AgentVaultServiceVariableReference).select(
     `${TableName.AgentVaultServiceVariableReference}.variableId`,
     `${TableName.AgentVaultServiceVariableReference}.serviceId`
@@ -88,11 +91,32 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
   // Reads the primary even without a tx, so a variable created a moment ago is always listed. serviceCount counts
   // the services that use a variable, each once however many of its fields do.
   const findForList = async (
-    { projectId, owner, search, keys, orderBy, orderDirection, limit, offset }: TFindAgentVaultVariablesDTO,
+    {
+      projectId,
+      owners,
+      search,
+      keys,
+      accessBundleIds,
+      orderBy,
+      orderDirection,
+      limit,
+      offset
+    }: TFindAgentVaultVariablesDTO,
     tx?: Knex
   ): Promise<{ variables: TAgentVaultVariable[]; totalCount: number }> => {
     try {
       const conn = tx || db;
+      if (!owners.length) return { variables: [], totalCount: 0 };
+      const listed = () =>
+        conn(TableName.AgentVaultVariable)
+          .where(`${TableName.AgentVaultVariable}.projectId`, projectId)
+          .where((anyOwner) => {
+            owners.forEach((owner) => {
+              void anyOwner.orWhere((one) => {
+                void whereOwner(one, TableName.AgentVaultVariable, owner);
+              });
+            });
+          });
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         if (search) {
@@ -102,24 +126,27 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
         return query;
       };
 
-      const countResult = (await applyFilters(scoped(conn, { projectId, owner }))
+      const countResult = (await applyFilters(listed())
         .count(`${TableName.AgentVaultVariable}.id as count`)
         .first()) as { count: string } | undefined;
       const totalCount = parseInt(countResult?.count || "0", 10);
 
-      const pageQuery = applyFilters(scoped(conn, { projectId, owner })).limit(limit).offset(offset).select(columns);
+      const pageQuery = applyFilters(listed()).limit(limit).offset(offset).select(columns);
 
       if (orderBy === "serviceCount") {
         // Counted over this list's variables only; the references tables hold every org's.
         const usageCounts = conn
-          .from(referencingServices(conn).as("refs"))
-          .whereIn("refs.variableId", scoped(conn, { projectId, owner }).select(`${TableName.AgentVaultVariable}.id`))
+          .from(referencingServices(conn, listed().select(`${TableName.AgentVaultVariable}.id`)).as("refs"))
           .select("refs.variableId")
           .countDistinct("refs.serviceId as count")
-          .groupBy("refs.variableId")
-          .as("uc");
+          .groupBy("refs.variableId");
+        if (accessBundleIds) {
+          void usageCounts
+            .join(TableName.AgentVaultService, "refs.serviceId", `${TableName.AgentVaultService}.id`)
+            .whereIn(`${TableName.AgentVaultService}.accessBundleId`, accessBundleIds);
+        }
 
-        void pageQuery.leftJoin(usageCounts, function joinUsageCount() {
+        void pageQuery.leftJoin(usageCounts.as("uc"), function joinUsageCount() {
           this.on(db.raw(`uc."variableId" = ??.id`, [TableName.AgentVaultVariable]));
         });
         void pageQuery.orderByRaw(`COALESCE(uc.count, 0) ${orderDirection === "desc" ? "DESC" : "ASC"}`);

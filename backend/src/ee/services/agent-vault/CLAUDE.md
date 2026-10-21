@@ -8,12 +8,12 @@ would get something wrong from the code alone; cut anything the code already sta
 attaches the real credential on the way out. What an agent may reach lives in a **session** row on our side,
 never in anything the agent holds.
 
-| Noun              | What it is                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| **Access bundle** | A named set of services. The unit you grant                                                      |
-| **Service**       | One host pattern set plus its credential                                                         |
-| **Session**       | A minted token naming one actor, one of their bundles, and an expiry. The token _is_ the session |
-| **Proxy**         | One deployed egress node with its own CA. One row per box                                        |
+| Noun | What it is |
+| --- | --- |
+| **Access bundle** | A named set of services. The unit you grant |
+| **Service** | One host pattern set plus its credential |
+| **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
+| **Proxy** | One deployed egress node with its own CA. One row per box |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
@@ -129,8 +129,8 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 `agent-vault-host-pattern-fns.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
 the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
-- Paths are rejected _in a host pattern_; `allowedPathPrefixes` is a separate filter that never decodes.
-  A filter is judged by what it _allows_, so the refusals are the load-bearing half. The grammar is an
+- Paths are rejected *in a host pattern*; `allowedPathPrefixes` is a separate filter that never decodes.
+  A filter is judged by what it *allows*, so the refusals are the load-bearing half. The grammar is an
   allowlist because a prefix is compared against the escaped path: one carrying anything Go's encoder
   rewrites could never match. `agent-vault-path-prefix-schemas.ts` is the grammar of record, `policy.go` the match.
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
@@ -248,10 +248,11 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at
   all and the column is NULL. Code that reads `encryptedCredential` NULL as passthrough has to check
   `memberProvidedFields` first.
-- **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global`, the default, or
-  `personal`) picks the list and the owner of a new one; every variable read and lock in the DAL takes an owner
-  (`null` for global) so a global lookup never matches a personal key, and resolve expands each kind only against
-  its own. By id, a variable the caller may not act on is a 404, never a 403: someone else's personal one, and a
+- **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global` or `personal`) picks the
+  list and is required for a new one; a list without it returns everything the caller can see (their own, plus
+  the global ones for an admin), and the service sheet's picker asks for `global` explicitly. Every variable read
+  and lock in the DAL takes an owner (`null` for global) so a global lookup never matches a personal key, and
+  resolve expands each kind only against its own. By id, a variable the caller may not act on is a 404, never a 403: someone else's personal one, and a
   global one for a member. Global keys are unique per project (500 cap), personal ones per owner (100 cap), each
   enforced by a partial unique index plus an advisory lock per project or per owner.
 - **Everything personal is scoped to the caller, never to an id the caller sends.** No route names another actor,
@@ -262,7 +263,8 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   personal value against the session actor's personal variables only, so neither is ever expanded twice and a
   personal `{{KEY}}` can't reach a global variable. A service whose actor hasn't set every member-provided field
   goes out with `personalValuesMissing: true` and a passthrough credential. The proxy refuses it with a 403 (CLI
-  change); an older proxy that ignores the flag forwards the request without a credential, never with the admin's.
+  change); an older proxy that ignores the flag forwards it with the service's custom headers and substitutions
+  but no credential, never the admin's.
 - **A save is a PATCH**: a field sent replaces that field's saved value, a field left out keeps it, and every
   member-provided field must be set once it's applied. The save takes the service row `FOR SHARE` and re-checks
   the fields it validated against, so an admin changing them either waits for it or makes it 409. It also takes
@@ -287,11 +289,12 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. Used By on a variable reads
   both reference tables; any one variable only ever appears in one of them.
 - **The API calls them personal values**, the UI's word: a sub-resource of the service
-  (`PATCH`/`DELETE .../services/:serviceId/personal-values`), always the caller's own, with no collection route. Reads
-  ride along: the bundle read puts the caller's status on each
-  service (`personalValues`, null when nothing is member-provided), and the bundle list gives `servicesRequiringSetup` per bundle
-  plus a `requiresSetup=true` filter for the sidebar and banners. Both count only the bundles granted to the caller,
-  so an admin isn't nagged about bundles they reach only by role; the bundle read still shows them.
+  (`PATCH`/`DELETE .../services/:serviceId/personal-values`), always the caller's own, with no collection route.
+  Reads ride along: the bundle read puts the caller's status on each service (`personalValues`, null when nothing
+  is member-provided), and the bundle list gives `servicesRequiringSetup` (`{ id, name }`) per bundle plus a
+  `requiresSetup` filter for the sidebar and banners (`false` is the rest of what the caller reaches). Both count
+  only the bundles granted to the caller, so an admin isn't nagged about bundles they reach only by role; the
+  bundle read still shows them.
 
 ## Credentials at rest
 

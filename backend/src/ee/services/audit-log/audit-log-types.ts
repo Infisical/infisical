@@ -6640,8 +6640,6 @@ interface AgentVaultPersonalValuesSetEvent {
     serviceName: string;
     // The fields this update set. A field it left out kept its saved value.
     fields: string[];
-    // False the first time the actor sets up their personal values for this service.
-    replaced: boolean;
     variableKeys: string[];
   };
 }

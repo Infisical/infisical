@@ -89,7 +89,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
-            servicesRequiringSetup: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetup)
+            servicesRequiringSetup: z
+              .object({
+                id: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupId),
+                name: z.string().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupName)
+              })
+              .array()
+              .describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetup)
           }).array(),
           totalCount: z.number()
         })
@@ -542,7 +548,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { personalValues, replaced } = await server.services.agentVaultPersonalValue.setPersonalValues({
+      const { personalValues } = await server.services.agentVaultPersonalValue.setPersonalValues({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -562,7 +568,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceId: personalValues.serviceId,
             serviceName: personalValues.serviceName,
             fields: req.body.values.map((value) => value.field),
-            replaced,
             variableKeys: [
               ...new Set(
                 personalValues.fields

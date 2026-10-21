@@ -11,6 +11,7 @@ import {
 } from "@app/helpers/agentVaultVariables";
 import { useDebounce } from "@app/hooks";
 import {
+  AgentVaultVariableScope,
   useAgentVaultVariableKeyStatus,
   useListAgentVaultVariables
 } from "@app/hooks/api/agentVault";
@@ -43,7 +44,11 @@ export const useVariableAutocomplete = ({
   // Searched on the server, so the list never has to hold every variable. The last page stays up while the next
   // loads, filtered to the new text, which a longer query only narrows.
   const { data: searched, isPlaceholderData } = useListAgentVaultVariables(
-    { search: debouncedQuery || undefined, limit: SUGGESTION_LIMIT },
+    {
+      scope: AgentVaultVariableScope.Global,
+      search: debouncedQuery || undefined,
+      limit: SUGGESTION_LIMIT
+    },
     { enabled: isOpen && !isLocal }
   );
   // A search can show only so many, and the exact key may not be among them, so whether to offer to create it is
@@ -346,11 +351,18 @@ export const VariableSuggestions = ({
             </>
           ) : (
             <p className="px-2 py-1.5 text-xs text-muted">
-              {isLoading ? "Loading variables..." : "No variables yet. Type a key to create one."}
+              {isLoading && "Loading variables..."}
+              {!isLoading && isPicker && (
+                <>
+                  No variables yet. Type <code className="font-mono">{"{{"}</code> in the field to
+                  create one.
+                </>
+              )}
+              {!isLoading && !isPicker && "No variables yet. Type a key to create one."}
             </p>
           )}
-          {/* Only when the list was opened from the button: someone who typed {{ already knows. */}
-          {isPicker && (
+          {/* Only when the button opened a list there is something to pick from: someone who typed {{ already knows. */}
+          {isPicker && suggestions.length > 0 && (
             <>
               <div className="-mx-1 my-1 h-px bg-border" />
               <p className="px-2 py-1.5 text-xs text-muted">

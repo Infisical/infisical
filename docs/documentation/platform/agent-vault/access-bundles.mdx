@@ -12,10 +12,7 @@ You can reuse access bundles across as many sessions as you like. This makes the
 - A **marketing** bundle that grants access to Twilio and Google Docs
 
 <Frame>
-  <img
-    src="/images/platform/agent-vault/access-bundles-list.png"
-    alt="The Access Bundles page listing four access bundles with their services and member counts"
-  />
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing four access bundles with their services and member counts" />
 </Frame>
 
 ## Create an access bundle
@@ -24,14 +21,14 @@ To create a new access bundle:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Access Bundles** and select **Create Access
-    Bundle**.
+    In Agent Vault, go to **Access Bundles** and select **Create Access Bundle**.
   </Step>
   <Step>
-    Give the bundle a name that says what job it's for, like **code-review** or
-    **marketing**.
+    Give the bundle a name that says what job it's for, like **code-review** or **marketing**.
   </Step>
-  <Step>Select **Create**. The access bundle will appear in the list.</Step>
+  <Step>
+    Select **Create**. The access bundle will appear in the list.
+  </Step>
 </Steps>
 
 Now you can [add services](/documentation/platform/agent-vault/services#add-a-service) to the access bundle so agents using it can make authenticated requests.
@@ -81,9 +78,11 @@ To set up your personal values:
   </Step>
 </Steps>
 
-Only you can read your personal values, so admins can't see them either.
+Infisical never shows your personal values to anyone else, admins included.
 
 - To change your personal values, open the service's actions menu, select **Update My Personal Values**, and enter the values you want to change (a field you leave blank keeps its saved value)
 - To delete your personal values, select **Remove** in the same dialog, then select **Remove Personal Values**
 
 If an admin removes you from the access bundle or from Agent Vault, Infisical deletes the personal values you set up for its services.
+
+Machine identities can set up personal values too, through the [API](/api-reference/endpoints/agent-vault-services/set-personal-values). An identity keeps its own [personal variables](/documentation/platform/agent-vault/variables#personal-variables) the same way.

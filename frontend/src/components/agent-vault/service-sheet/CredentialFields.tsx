@@ -363,6 +363,18 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
   // A bearer token and a basic password are both credential-value.
   const secretCredentialField = AgentVaultVariableReferenceField.CredentialValue;
 
+  // Saving deletes what members set: all of it on a type change, or one field's when it's taken back.
+  const isDeletingAllMemberValues =
+    Boolean(storedType) && storedMemberFields.length > 0 && credentialType !== storedType;
+  const memberValuesNote = (field: TAgentVaultMemberProvidedField, label: string) =>
+    storedType === credentialType &&
+    storedMemberFields.includes(field) &&
+    !isMemberProvided(field) && (
+      <FieldDescription>
+        Members&apos; saved {label.toLowerCase()}s are deleted when you save.
+      </FieldDescription>
+    );
+
   useEffect(() => {
     if (!storedType || credentialType === storedType) return;
     if (isUntouched) setValue("secret", "");
@@ -429,6 +441,7 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
                 storedKeys={hasStoredValue(secretCredentialField) ? storedKeys.secret : undefined}
               />
             )}
+            {memberValuesNote(secretCredentialField, secretLabel)}
             <FieldError>{fieldState.error?.message}</FieldError>
           </FieldContent>
         </Field>
@@ -457,6 +470,11 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
                   ))}
                 </SelectContent>
               </Select>
+              {isDeletingAllMemberValues && (
+                <FieldDescription>
+                  Members&apos; saved values for this service are deleted when you save.
+                </FieldDescription>
+              )}
             </FieldContent>
           </Field>
         )}
@@ -526,6 +544,10 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
                           : undefined
                       }
                     />
+                  )}
+                  {memberValuesNote(
+                    AgentVaultVariableReferenceField.CredentialUsername,
+                    "Username"
                   )}
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>

@@ -209,8 +209,7 @@ const VariableForm = ({
         : undefined;
       if (
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
-        (serverResponse.message.endsWith("already exists.") ||
-          serverResponse.message.startsWith("You already have a variable named"))
+        (serverResponse.details as { field?: string } | undefined)?.field === "key"
       ) {
         setError("key", { type: TAKEN_KEY_ERROR_TYPE, message: serverResponse.message });
       }

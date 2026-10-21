@@ -53,9 +53,11 @@ const alignColumns = (rows: string[][]) => {
 
 type Props = {
   isUpdate: boolean;
+  /** The fields that were member-provided when the sheet opened, which have no stored value behind them. */
+  storedMemberFields?: TAgentVaultMemberProvidedField[];
 };
 
-export const ReviewFields = ({ isUpdate }: Props) => {
+export const ReviewFields = ({ isUpdate, storedMemberFields = [] }: Props) => {
   const { watch } = useFormContext<TServiceForm>();
   const form = watch();
 
@@ -83,7 +85,8 @@ export const ReviewFields = ({ isUpdate }: Props) => {
     field: TAgentVaultMemberProvidedField
   ) => {
     if (form.memberProvidedFields.includes(field)) return "Set by each member";
-    if (!isUpdate) return value ? "Set" : "None";
+    // A field taken back from members had no value of the admin's to replace or clear.
+    if (!isUpdate || storedMemberFields.includes(field)) return value ? "Set" : "None";
     if (value === UNCHANGED_SECRET) return "Unchanged";
     if (value) return "Replaced";
     return canClear ? "Cleared" : "Unchanged";

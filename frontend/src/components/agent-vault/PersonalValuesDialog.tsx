@@ -276,7 +276,9 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Set up {service?.name}</DialogTitle>
+          <DialogTitle>
+            {personalValues?.isConfigured ? "Update" : "Set Up"} Personal Values for {service?.name}
+          </DialogTitle>
           <DialogDescription>
             {personalValues?.isConfigured && lastSetAt
               ? `You set these up on ${format(new Date(lastSetAt), "MMM d, yyyy")}. Sessions you start with ${target?.accessBundleName} use them. A field you leave blank keeps its saved value.`

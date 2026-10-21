@@ -4484,9 +4484,11 @@ export const AGENT_VAULT = {
     offset: "How many access bundles to skip.",
     hostPatterns: "Every host pattern the access bundle's services cover.",
     requiresSetup:
-      "true lists only the access bundles granted to you, directly or through a group, that have services still requiring your personal values.",
+      "true lists only the access bundles granted to you, directly or through a group, that have services still requiring your personal values. false lists the rest of the access bundles you can reach. Omit to list them all.",
     servicesRequiringSetup:
-      "The names of the services in this access bundle that still require your personal values. Counted only for access bundles granted to you, so empty for one you reach only as an admin."
+      "The services in this access bundle that still require your personal values. Counted only for access bundles granted to you, so empty for one you reach only as an admin.",
+    servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
+    servicesRequiringSetupName: "The name of the service."
   },
   SERVICE: {
     serviceId: "The ID of the service.",
@@ -4560,9 +4562,9 @@ export const AGENT_VAULT = {
     scope:
       "global for a variable admins set up for services, or personal for one of your own, which only your personal values can use and only you can see. Personal keys are unique among your own variables.",
     listScope:
-      "Which variables to list: global (the default), which needs the admin role, or personal for your own. Nobody can list another member's personal variables.",
+      "Which variables to list: global, which needs the admin role, or personal for your own. Omit to list everything you can see: your own personal variables, plus the global ones if you're an admin. Nobody can list another member's personal variables.",
     createScope:
-      "global (the default) creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
+      "global creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
     key: "The name values use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",

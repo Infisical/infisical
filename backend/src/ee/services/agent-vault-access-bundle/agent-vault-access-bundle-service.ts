@@ -34,10 +34,7 @@ import {
   TAgentVaultActorNameDALs
 } from "../agent-vault/agent-vault-actor-name-fns";
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
-import {
-  AgentVaultBearerConfigSchema,
-  TAgentVaultCredentialConfig
-} from "../agent-vault/agent-vault-credential-schemas";
+import { TAgentVaultCredentialConfig } from "../agent-vault/agent-vault-credential-schemas";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
@@ -69,7 +66,6 @@ import {
   TAddMembersDTO,
   TAgentVaultBasicMemberField,
   TAgentVaultBearerMemberField,
-  TAgentVaultCredentialInput,
   TAgentVaultCredentialSummary,
   TAgentVaultCredentialUpdate,
   TAgentVaultVariableReferenceSummary,
@@ -84,6 +80,14 @@ import {
   TUpdateAccessBundleDTO,
   TUpdateServiceDTO
 } from "./agent-vault-access-bundle-types";
+import {
+  isStoredSecretReplaced,
+  mergeCredential,
+  needsStoredSecretFor,
+  nextMemberFieldsOf,
+  splitCredential,
+  TCredentialWrite
+} from "./agent-vault-credential-write-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "./agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceDALFactory } from "./agent-vault-service-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "./agent-vault-service-substitution-dal";
@@ -313,201 +317,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const getProjectCipher = (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-
-  // `null` clears the sealed column, `undefined` leaves it alone. $decryptCredential reads a NULL secret
-  // as passthrough, so the two are not interchangeable. The secret holds only the fields the admin sets, so a
-  // credential every member supplies in full stores none.
-  type TCredentialWrite = {
-    config: TAgentVaultCredentialConfig;
-    secret: Record<string, string> | null | undefined;
-    memberProvidedFields: TAgentVaultMemberProvidedField[] | null;
-  };
-
-  // Sending a value replaces the stored secret, and so does a write that drops a field the admin held: handing it to
-  // members, or changing the type over a secret that was stored.
-  const isStoredSecretReplaced = (
-    credential: TAgentVaultCredentialUpdate,
-    stored: TAgentVaultServices,
-    written: TCredentialWrite["secret"]
-  ) => {
-    if (written === undefined) return false;
-    if (credential.type !== stored.credentialType) return Boolean(stored.encryptedCredential) || written !== null;
-    if (credential.type === AgentVaultCredentialType.Passthrough) return false;
-
-    const previousMemberFields = (stored.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
-    const keyOfField: [TAgentVaultMemberProvidedField, string][] =
-      credential.type === AgentVaultCredentialType.Bearer
-        ? [[AgentVaultVariableReferenceField.CredentialValue, "value"]]
-        : [
-            [AgentVaultVariableReferenceField.CredentialUsername, "username"],
-            [AgentVaultVariableReferenceField.CredentialValue, "password"]
-          ];
-    return keyOfField.some(
-      ([field, key]) =>
-        (credential as Record<string, unknown>)[key] !== undefined ||
-        (!previousMemberFields.includes(field) && written?.[key] === undefined)
-    );
-  };
-
-  const BASIC_NEEDS_A_HALF_MESSAGE =
-    "A basic credential needs a username, a password, or both. Set one, or leave one to each member.";
-
-  // NULL, never an empty list, is what the column stores for a credential the admin sets in full.
-  const memberFieldsOf = (credential: TAgentVaultCredentialInput): TAgentVaultMemberProvidedField[] | null => {
-    if (credential.type === AgentVaultCredentialType.Passthrough) return null;
-    const fields = [...new Set<TAgentVaultMemberProvidedField>(credential.memberProvidedFields ?? [])];
-    return fields.length ? fields : null;
-  };
-
-  const splitCredential = (credential: TAgentVaultCredentialInput): TCredentialWrite => {
-    const memberProvidedFields = memberFieldsOf(credential);
-    const isMemberProvided = (field: TAgentVaultMemberProvidedField) => Boolean(memberProvidedFields?.includes(field));
-
-    switch (credential.type) {
-      case AgentVaultCredentialType.Bearer: {
-        const config = AgentVaultBearerConfigSchema.parse({
-          headerName: credential.headerName,
-          headerPrefix: credential.headerPrefix
-        });
-        if (isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)) {
-          return { config: { type: credential.type, ...config }, secret: null, memberProvidedFields };
-        }
-        if (credential.value === undefined) {
-          throw new BadRequestError({
-            message: "A bearer credential needs a token. Set one, or leave the token to each member."
-          });
-        }
-        return {
-          config: { type: credential.type, ...config },
-          secret: { value: credential.value },
-          memberProvidedFields
-        };
-      }
-      case AgentVaultCredentialType.Basic: {
-        const secret = Object.fromEntries(
-          (
-            [
-              [AgentVaultVariableReferenceField.CredentialUsername, "username", credential.username],
-              [AgentVaultVariableReferenceField.CredentialValue, "password", credential.password]
-            ] as const
-          ).flatMap(([field, key, value]) => (isMemberProvided(field) ? [] : [[key, value ?? ""]]))
-        ) as Record<string, string>;
-        if (!memberProvidedFields && !Object.values(secret).some(Boolean)) {
-          throw new BadRequestError({ message: BASIC_NEEDS_A_HALF_MESSAGE });
-        }
-        return {
-          config: { type: credential.type },
-          secret: Object.keys(secret).length ? secret : null,
-          memberProvidedFields
-        };
-      }
-      default:
-        return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null, memberProvidedFields: null };
-    }
-  };
-
-  // The member-provided fields a PATCH ends with: an omitted list keeps the stored one.
-  const nextMemberFieldsOf = (credential: TAgentVaultCredentialUpdate, stored: TAgentVaultServices) => {
-    if (credential.type !== stored.credentialType || credential.type === AgentVaultCredentialType.Passthrough) {
-      return memberFieldsOf(credential);
-    }
-    if (credential.memberProvidedFields === undefined) {
-      return (stored.memberProvidedFields as TAgentVaultMemberProvidedField[] | null | undefined) ?? null;
-    }
-    return memberFieldsOf(credential);
-  };
-
-  const mergeCredential = (
-    credential: TAgentVaultCredentialUpdate,
-    stored: TAgentVaultServices,
-    storedSecret: Record<string, string> | null
-  ): TCredentialWrite => {
-    if (credential.type !== stored.credentialType) {
-      if (
-        credential.type === AgentVaultCredentialType.Bearer &&
-        credential.value === undefined &&
-        !memberFieldsOf(credential)?.includes(AgentVaultVariableReferenceField.CredentialValue)
-      ) {
-        throw new BadRequestError({
-          message:
-            "Provide a new token when changing the credential type to bearer, or leave the token to each member. The stored secret belongs to the previous type"
-        });
-      }
-      return splitCredential(credential);
-    }
-
-    const prev = (stored.credentialConfig ?? {}) as { headerName?: string; headerPrefix?: string };
-    const previousMemberFields = (stored.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
-    const memberProvidedFields = nextMemberFieldsOf(credential, stored);
-    const memberFieldsChanged = !sameMemberProvidedFields(memberProvidedFields, previousMemberFields);
-    const isMemberProvided = (field: TAgentVaultMemberProvidedField) => Boolean(memberProvidedFields?.includes(field));
-
-    // The schema only sees the member-provided list a request sends. One that leaves the list out keeps the stored
-    // one, so a value for a field that list hands to members is refused here rather than dropped.
-    const memberFieldOfKey: Record<string, TAgentVaultMemberProvidedField> =
-      credential.type === AgentVaultCredentialType.Bearer
-        ? { value: AgentVaultVariableReferenceField.CredentialValue }
-        : {
-            username: AgentVaultVariableReferenceField.CredentialUsername,
-            password: AgentVaultVariableReferenceField.CredentialValue
-          };
-    const sentToMemberField = Object.entries(memberFieldOfKey).find(
-      ([key, field]) => (credential as Record<string, unknown>)[key] !== undefined && isMemberProvided(field)
-    );
-    if (sentToMemberField) {
-      throw new BadRequestError({
-        message: `Leave '${sentToMemberField[0]}' out: '${sentToMemberField[1]}' is member provided, so each member sets it. To set it yourself, send memberProvidedFields without '${sentToMemberField[1]}'.`
-      });
-    }
-
-    switch (credential.type) {
-      case AgentVaultCredentialType.Bearer: {
-        const config = {
-          type: credential.type,
-          headerName: credential.headerName ?? prev.headerName ?? "Authorization",
-          headerPrefix: credential.headerPrefix ?? prev.headerPrefix ?? ""
-        };
-        if (isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)) {
-          return { config, secret: memberFieldsChanged ? null : undefined, memberProvidedFields };
-        }
-        if (credential.value !== undefined) {
-          return { config, secret: { value: credential.value }, memberProvidedFields };
-        }
-        if (memberFieldsChanged) {
-          throw new BadRequestError({
-            message: "Provide a token when you stop leaving it to each member. Nothing is stored for it yet."
-          });
-        }
-        return { config, secret: undefined, memberProvidedFields };
-      }
-      case AgentVaultCredentialType.Basic: {
-        if (credential.username === undefined && credential.password === undefined && !memberFieldsChanged) {
-          return { config: { type: credential.type }, secret: undefined, memberProvidedFields };
-        }
-        // A half that was member-provided has nothing stored to keep, so taking it back starts it empty.
-        const adminHalf = (field: TAgentVaultMemberProvidedField, key: "username" | "password") => {
-          if (isMemberProvided(field)) return [];
-          const sent = credential[key];
-          if (sent !== undefined) return [[key, sent]];
-          return [[key, previousMemberFields.includes(field) ? "" : (storedSecret?.[key] ?? "")]];
-        };
-        const secret = Object.fromEntries([
-          ...adminHalf(AgentVaultVariableReferenceField.CredentialUsername, "username"),
-          ...adminHalf(AgentVaultVariableReferenceField.CredentialValue, "password")
-        ]) as Record<string, string>;
-        if (!memberProvidedFields && !Object.values(secret).some(Boolean)) {
-          throw new BadRequestError({ message: BASIC_NEEDS_A_HALF_MESSAGE });
-        }
-        return {
-          config: { type: credential.type },
-          secret: Object.keys(secret).length ? secret : null,
-          memberProvidedFields
-        };
-      }
-      default:
-        return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null, memberProvidedFields: null };
-    }
-  };
 
   const summarizeCredential = (service: TAgentVaultServices): TAgentVaultCredentialSummary => {
     const config = service.credentialConfig as Record<string, string>;
@@ -791,7 +600,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const owner = ownerOrNullOf(ctx);
     const pendingByBundleOf = async (bundleIds: string[]) => {
-      const byBundle = new Map<string, string[]>();
+      const byBundle = new Map<string, { id: string; name: string }[]>();
       if (!owner || !bundleIds.length) return byBundle;
       const statuses = await agentVaultPersonalValueService.findStatusesForOwner({
         projectId,
@@ -802,17 +611,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       statuses
         .filter((status) => !status.isConfigured)
         .forEach((status) =>
-          byBundle.set(status.accessBundleId, [...(byBundle.get(status.accessBundleId) ?? []), status.serviceName])
+          byBundle.set(status.accessBundleId, [
+            ...(byBundle.get(status.accessBundleId) ?? []),
+            { id: status.serviceId, name: status.serviceName }
+          ])
         );
       return byBundle;
     };
 
-    // The filter needs every granted bundle's status before it can page; the plain list only needs the page's.
-    if (requiresSetup) {
+    // Either filter needs every granted bundle's status before it can page; the plain list only needs the page's.
+    if (requiresSetup !== undefined) {
       const pendingByBundle = await pendingByBundleOf(grantedAccessBundleIds);
+      const pendingIds = [...pendingByBundle.keys()];
       const { accessBundles, totalCount } = await agentVaultAccessBundleDAL.findForList({
         projectId,
-        accessBundleIds: [...pendingByBundle.keys()],
+        ...(requiresSetup ? { accessBundleIds: pendingIds } : { accessBundleIds, excludeAccessBundleIds: pendingIds }),
         ...page
       });
       return {
@@ -1207,20 +1020,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const memberFieldsChanged =
       credentialTypeChanged ||
       (Boolean(credential) && !sameMemberProvidedFields(nextMemberFields, previousMemberFields));
-    const needsStoredSecret =
-      credential?.type === AgentVaultCredentialType.Basic &&
-      service.credentialType === AgentVaultCredentialType.Basic &&
-      Boolean(service.encryptedCredential) &&
-      (credential.username !== undefined || credential.password !== undefined || memberFieldsChanged) &&
-      (
-        [
-          [AgentVaultVariableReferenceField.CredentialUsername, "username"],
-          [AgentVaultVariableReferenceField.CredentialValue, "password"]
-        ] as const
-      ).some(
-        ([field, key]) =>
-          credential[key] === undefined && !nextMemberFields?.includes(field) && !previousMemberFields.includes(field)
-      );
+    const needsStoredSecret = Boolean(credential) && needsStoredSecretFor(credential!, service);
     const storedSecretCipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
     const storedSecret = storedSecretCipher
       ? (JSON.parse(

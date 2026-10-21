@@ -64,11 +64,9 @@ export enum AgentVaultVariableScope {
  * The fields an admin can leave to each member, named as variable references name them: `credential-value` is a
  * bearer token or a basic password, `credential-username` a basic username.
  */
-export type TAgentVaultMemberProvidedField =
-  | AgentVaultVariableReferenceField.CredentialValue
-  | AgentVaultVariableReferenceField.CredentialUsername;
-
-export const AGENT_VAULT_MEMBER_PROVIDED_FIELDS: readonly TAgentVaultMemberProvidedField[] = [
+export const AGENT_VAULT_MEMBER_PROVIDED_FIELDS = [
   AgentVaultVariableReferenceField.CredentialValue,
   AgentVaultVariableReferenceField.CredentialUsername
-];
+] as const;
+
+export type TAgentVaultMemberProvidedField = (typeof AGENT_VAULT_MEMBER_PROVIDED_FIELDS)[number];

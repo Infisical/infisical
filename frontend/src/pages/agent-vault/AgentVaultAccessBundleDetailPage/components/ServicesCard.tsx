@@ -242,92 +242,87 @@ export const ServicesCard = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayed.map((service) => {
-              const serviceValues = service.personalValues;
-              return (
-                <TableRow key={service.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <ServiceIcon hostPattern={service.hostPattern} />
-                      {service.name}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <HostsCell hostPattern={service.hostPattern} />
-                  </TableCell>
-                  <TableCell>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="text-sm">
-                          {format(new Date(service.createdAt), "MMM d, yyyy")}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {format(new Date(service.createdAt), "MMM d, yyyy h:mm a")}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-center">
-                      {serviceValues &&
-                        (serviceValues.isConfigured ? (
-                          <Badge variant="neutral" asChild>
-                            <button type="button" onClick={() => onSetUp(service)}>
-                              <CircleCheckIcon />
-                              Configured
-                            </button>
-                          </Badge>
-                        ) : (
-                          <Badge variant="warning" asChild>
-                            <button type="button" onClick={() => onSetUp(service)}>
-                              <TriangleAlertIcon />
-                              Requires Setup
-                            </button>
-                          </Badge>
-                        ))}
-                    </div>
-                  </TableCell>
-                  <TableCell variant="action">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {(canManage || serviceValues) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs" aria-label="Open service actions">
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            {serviceValues && (
-                              <DropdownMenuItem onClick={() => onSetUp(service)}>
-                                <KeyIcon />
-                                {serviceValues.isConfigured
-                                  ? "Update My Personal Values"
-                                  : "Set Up My Personal Values"}
-                              </DropdownMenuItem>
-                            )}
-                            {canManage && (
-                              <>
-                                <DropdownMenuItem onClick={() => onEdit(service)}>
-                                  <PencilIcon />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  onClick={() => setServiceToDelete(service)}
-                                >
-                                  <TrashIcon />
-                                  Delete
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {displayed.map((service) => (
+              <TableRow key={service.id}>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <ServiceIcon hostPattern={service.hostPattern} />
+                    {service.name}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <HostsCell hostPattern={service.hostPattern} />
+                </TableCell>
+                <TableCell>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-sm">
+                        {format(new Date(service.createdAt), "MMM d, yyyy")}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {format(new Date(service.createdAt), "MMM d, yyyy h:mm a")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <div className="flex justify-center">
+                    {service.personalValues &&
+                      (service.personalValues.isConfigured ? (
+                        <Badge variant="neutral" asChild>
+                          <button type="button" onClick={() => onSetUp(service)}>
+                            <CircleCheckIcon />
+                            Configured
+                          </button>
+                        </Badge>
+                      ) : (
+                        <Badge variant="warning" asChild>
+                          <button type="button" onClick={() => onSetUp(service)}>
+                            <TriangleAlertIcon />
+                            Requires Setup
+                          </button>
+                        </Badge>
+                      ))}
+                  </div>
+                </TableCell>
+                <TableCell variant="action">
+                  {(canManage || service.personalValues) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs" aria-label="Open service actions">
+                          <MoreHorizontalIcon />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent sideOffset={2} align="end">
+                        {service.personalValues && (
+                          <DropdownMenuItem onClick={() => onSetUp(service)}>
+                            <KeyIcon />
+                            {service.personalValues.isConfigured
+                              ? "Update My Personal Values"
+                              : "Set Up My Personal Values"}
+                          </DropdownMenuItem>
+                        )}
+                        {canManage && (
+                          <>
+                            <DropdownMenuItem onClick={() => onEdit(service)}>
+                              <PencilIcon />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setServiceToDelete(service)}
+                            >
+                              <TrashIcon />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       )}

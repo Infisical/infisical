@@ -208,7 +208,7 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
   memberCount: number;
   hostPatterns: string[];
   // Counted over the bundles granted to the caller, so empty on one an admin reaches only by role.
-  servicesRequiringSetup: string[];
+  servicesRequiringSetup: { id: string; name: string }[];
 };
 
 export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
@@ -446,7 +446,7 @@ export type TAgentVaultVariable = {
 };
 
 export type TCreateAgentVaultVariableDTO = {
-  scope?: AgentVaultVariableScope;
+  scope: AgentVaultVariableScope;
   key: string;
   value: string;
 };

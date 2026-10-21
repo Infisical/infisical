@@ -16,7 +16,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultVariableScope } from "../agent-vault/agent-vault-enums";
-import { ownerOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
+import { ownerOf, ownerOrNullOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { AGENT_VAULT_MAX_PERSONAL_VARIABLES, AGENT_VAULT_MAX_VARIABLES } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
@@ -86,6 +86,34 @@ export const agentVaultVariableServiceFactory = ({
     return { projectId, owner: ownerOf(ctx) };
   };
 
+  const resolveListOwners = async (
+    { projectId, ctx }: TAgentVaultVariableScoped,
+    scope?: AgentVaultVariableScope
+  ): Promise<(TAgentVaultOwner | null)[]> => {
+    if (scope) return [(await resolveScope({ projectId, ctx }, scope)).owner];
+
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultAccessBundleActions.Read,
+      ProjectPermissionSub.AgentVaultAccessBundles
+    );
+    const owners: (TAgentVaultOwner | null)[] = [];
+    if (
+      permission.can(ProjectPermissionAgentVaultAccessBundleActions.Edit, ProjectPermissionSub.AgentVaultAccessBundles)
+    ) {
+      owners.push(null);
+    }
+    const owner = ownerOrNullOf(ctx);
+    if (owner) owners.push(owner);
+    if (!owners.length) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      );
+    }
+    return owners;
+  };
+
   const notFound = (variableId: string) => new NotFoundError({ message: `Variable with ID '${variableId}' not found` });
 
   // A variable the caller may not act on reads exactly like one that does not exist, so an id never confirms that
@@ -116,16 +144,30 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   // A member who lost a bundle keeps their personal variables, but not a view into the bundle: its services drop out
-  // of what they see. Global variables are admin-only, and an admin reaches every bundle.
-  const splitByReach = async (
-    { projectId, ctx, owner }: { projectId: string; ctx: TGenericPermission; owner: TAgentVaultOwner | null },
-    services: TAgentVaultServiceUsingVariable[]
-  ) => {
-    if (!owner || !services.length) return { reachable: services, unreachable: [] };
+  // of what they see. Global variables are admin-only, and an admin reaches every bundle, so both get null.
+  const reachableBundleIdsOf = async ({
+    projectId,
+    ctx,
+    owner
+  }: {
+    projectId: string;
+    ctx: TGenericPermission;
+    owner: TAgentVaultOwner | null;
+  }) => {
+    if (!owner) return null;
     const { accessBundleIds } = await getAgentVaultReachability(
       { permissionService, membershipDAL },
       { projectId, ctx }
     );
+    return accessBundleIds;
+  };
+
+  const splitByReach = async (
+    args: { projectId: string; ctx: TGenericPermission; owner: TAgentVaultOwner | null },
+    services: TAgentVaultServiceUsingVariable[]
+  ) => {
+    if (!services.length) return { reachable: services, unreachable: [] };
+    const accessBundleIds = await reachableBundleIdsOf(args);
     if (!accessBundleIds) return { reachable: services, unreachable: [] };
     const reach = new Set(accessBundleIds);
     return {
@@ -157,6 +199,10 @@ export const agentVaultVariableServiceFactory = ({
   const duplicateKeyMessage = (key: string, { owner }: TAgentVaultVariableOwnerScope) =>
     owner ? `You already have a variable named '${key}'.` : `A variable named '${key}' already exists.`;
 
+  // `details.field` names the input at fault, so a form can show the message there without matching its text.
+  const duplicateKeyError = (key: string, scope: TAgentVaultVariableOwnerScope) =>
+    new BadRequestError({ message: duplicateKeyMessage(key, scope), details: { field: "key" } });
+
   const inUseMessage = (
     key: string,
     services: TAgentVaultServiceUsingVariable[],
@@ -179,19 +225,23 @@ export const agentVaultVariableServiceFactory = ({
     (await getProjectCipher(projectId)).encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
 
   const listVariables = async ({ projectId, ctx, scope: scopeName, limit, ...query }: TListVariablesDTO) => {
-    const scope = await resolveScope({ projectId, ctx }, scopeName);
+    const owners = await resolveListOwners({ projectId, ctx }, scopeName);
+    const personalOwner = owners.find((owner) => owner !== null) ?? null;
 
     // A lookup by keys returns every key that exists unless the caller caps it, so a missing entry always means
     // the key doesn't exist.
+    // The Used By sort counts only what the page will show.
+    const accessBundleIds = await reachableBundleIdsOf({ projectId, ctx, owner: personalOwner });
     const { variables, totalCount } = await agentVaultVariableDAL.findForList({
-      ...scope,
+      projectId,
+      owners,
       ...query,
+      accessBundleIds: accessBundleIds ?? undefined,
       limit: limit ?? query.keys?.length ?? AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT
     });
-    const { reachable } = await splitByReach(
-      { projectId, ctx, owner: scope.owner },
-      await agentVaultVariableDAL.findServicesUsing(variables.map((variable) => variable.id))
-    );
+    const services = await agentVaultVariableDAL.findServicesUsing(variables.map((variable) => variable.id));
+    const reach = accessBundleIds ? new Set(accessBundleIds) : null;
+    const reachable = reach ? services.filter((service) => reach.has(service.accessBundleId)) : services;
 
     return { variables: variables.map((variable) => projectVariable(variable, reachable)), totalCount };
   };
@@ -215,7 +265,7 @@ export const agentVaultVariableServiceFactory = ({
 
         const existing = await agentVaultVariableDAL.findKeys(scope, tx);
         if (existing.some((variable) => variable.key === key)) {
-          throw new BadRequestError({ message: duplicateKeyMessage(key, scope) });
+          throw duplicateKeyError(key, scope);
         }
         if (existing.length >= cap) {
           throw new BadRequestError({
@@ -240,7 +290,7 @@ export const agentVaultVariableServiceFactory = ({
     try {
       return { variable: projectVariable(await write(), []) };
     } catch (err) {
-      if (isUniqueViolation(err)) throw new BadRequestError({ message: duplicateKeyMessage(key, scope) });
+      if (isUniqueViolation(err)) throw duplicateKeyError(key, scope);
       throw err;
     }
   };
@@ -260,7 +310,7 @@ export const agentVaultVariableServiceFactory = ({
 
         if (key !== undefined && key !== current.key) {
           const clash = await agentVaultVariableDAL.findByKey({ key, ...scope }, tx);
-          if (clash) throw new BadRequestError({ message: duplicateKeyMessage(key, scope) });
+          if (clash) throw duplicateKeyError(key, scope);
         }
 
         // A rename is this row alone. Sealed text names the variable by id, so nothing that uses it changes.
@@ -278,7 +328,7 @@ export const agentVaultVariableServiceFactory = ({
       result = await write();
     } catch (err) {
       if (isUniqueViolation(err)) {
-        throw new BadRequestError({ message: duplicateKeyMessage(key ?? variable.key, scope) });
+        throw duplicateKeyError(key ?? variable.key, scope);
       }
       throw err;
     }

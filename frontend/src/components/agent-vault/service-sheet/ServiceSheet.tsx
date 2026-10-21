@@ -702,7 +702,12 @@ export const ServiceSheet = ({
                       </div>
                     </ServiceVariablesContext.Provider>
                   )}
-                  {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
+                  {current.step === ServiceStep.Review && (
+                    <ReviewFields
+                      isUpdate={isUpdate}
+                      storedMemberFields={service ? storedMemberFields(service) : undefined}
+                    />
+                  )}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">

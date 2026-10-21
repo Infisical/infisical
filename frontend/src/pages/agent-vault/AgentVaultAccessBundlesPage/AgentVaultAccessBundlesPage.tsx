@@ -18,6 +18,7 @@ import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
+import { nameList } from "@app/components/agent-vault/nameList";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Alert,
@@ -118,6 +119,8 @@ export const AgentVaultAccessBundlesPage = () => {
   // From its own query rather than the page shown, so a bundle on a later page is still called out.
   const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup();
   const bundlesNeedingSetup = requiringSetup?.accessBundles ?? [];
+  // The query loads at most a page of them; the count comes from the server.
+  const bundlesNeedingSetupCount = requiringSetup?.totalCount ?? 0;
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
@@ -172,9 +175,12 @@ export const AgentVaultAccessBundlesPage = () => {
           <TriangleAlertIcon />
           <AlertDescription>
             <p>
-              {bundlesNeedingSetup.length === 1
+              {bundlesNeedingSetupCount === 1
                 ? `${bundlesNeedingSetup[0].name} has services that require your personal values.`
-                : `${bundlesNeedingSetup.length} access bundles have services that require your personal values: ${bundlesNeedingSetup.map((bundle) => bundle.name).join(", ")}.`}{" "}
+                : `${bundlesNeedingSetupCount} access bundles have services that require your personal values: ${nameList(
+                    bundlesNeedingSetup.map((bundle) => bundle.name),
+                    bundlesNeedingSetupCount
+                  )}.`}{" "}
               Sessions can&apos;t reach those services until you set them up.
             </p>
             <AlertAction>
@@ -214,8 +220,8 @@ export const AgentVaultAccessBundlesPage = () => {
             </CardAction>
           )}
         </CardHeader>
-        <CardContent className="flex items-center gap-2">
-          <InputGroup className="flex-1">
+        <CardContent>
+          <InputGroup>
             <InputGroupAddon>
               <SearchIcon />
             </InputGroupAddon>
@@ -355,59 +361,60 @@ export const AgentVaultAccessBundlesPage = () => {
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
                               Your personal values are missing for{" "}
-                              {bundle.servicesRequiringSetup.join(", ")}.
+                              {nameList(
+                                bundle.servicesRequiringSetup.map((service) => service.name)
+                              )}
+                              .
                             </TooltipContent>
                           </Tooltip>
                         )}
                       </div>
                     </TableCell>
                     <TableCell variant="action">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {isAdmin && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="xs"
-                                aria-label="Open access bundle actions"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <MoreHorizontalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
-                              <DropdownMenuItem
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setBundleToManage(bundle);
-                                }}
-                              >
-                                <UsersIcon />
-                                Manage Access
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setBundleToEdit(bundle);
-                                }}
-                              >
-                                <PencilIcon />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setBundleToDelete(bundle);
-                                }}
-                              >
-                                <TrashIcon />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
+                      {isAdmin && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="Open access bundle actions"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent sideOffset={2} align="end">
+                            <DropdownMenuItem
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setBundleToManage(bundle);
+                              }}
+                            >
+                              <UsersIcon />
+                              Manage Access
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setBundleToEdit(bundle);
+                              }}
+                            >
+                              <PencilIcon />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setBundleToDelete(bundle);
+                              }}
+                            >
+                              <TrashIcon />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

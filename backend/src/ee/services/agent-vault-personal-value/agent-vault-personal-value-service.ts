@@ -300,7 +300,7 @@ export const agentVaultPersonalValueServiceFactory = ({
           { projectId: dto.projectId, owner, accessBundleIds: [service.accessBundleId], serviceId: service.id },
           tx
         );
-        return { personalValues: projected, replaced: existing.length > 0 };
+        return { personalValues: projected };
       });
 
     try {

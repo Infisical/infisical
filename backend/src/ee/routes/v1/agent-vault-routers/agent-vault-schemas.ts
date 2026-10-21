@@ -6,6 +6,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import {
+  AGENT_VAULT_MEMBER_PROVIDED_FIELDS,
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
@@ -50,7 +51,7 @@ const bearerMemberProvidedFieldsSchema = z
   .describe(AGENT_VAULT.SERVICE.bearerMemberProvidedFields);
 
 const basicMemberProvidedFieldsSchema = z
-  .enum([AgentVaultVariableReferenceField.CredentialUsername, AgentVaultVariableReferenceField.CredentialValue])
+  .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
   .array()
   .max(2)
   .describe(AGENT_VAULT.SERVICE.basicMemberProvidedFields);
@@ -220,7 +221,7 @@ export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal(AgentVaultCredentialType.Basic),
       memberProvidedFields: z
-        .enum([AgentVaultVariableReferenceField.CredentialUsername, AgentVaultVariableReferenceField.CredentialValue])
+        .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
         .array()
         .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
     })
@@ -271,9 +272,7 @@ export const AgentVaultVariableReferenceSchema = z.discriminatedUnion("field", [
   z
     .object({
       ...variableReferenceBase,
-      field: z
-        .enum([AgentVaultVariableReferenceField.CredentialValue, AgentVaultVariableReferenceField.CredentialUsername])
-        .describe(AGENT_VAULT.SERVICE.referenceField)
+      field: z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(AGENT_VAULT.SERVICE.referenceField)
     })
     .describe(JSON.stringify({ title: "Credential" })),
   z
@@ -359,9 +358,7 @@ export const AgentVaultVariableSchema = z.object({
   updatedAt: z.date().describe(AGENT_VAULT.VARIABLE.updatedAt)
 });
 
-const personalValueFieldSchema = z
-  .enum([AgentVaultVariableReferenceField.CredentialValue, AgentVaultVariableReferenceField.CredentialUsername])
-  .describe(AGENT_VAULT.PERSONAL_VALUE.field);
+const personalValueFieldSchema = z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(AGENT_VAULT.PERSONAL_VALUE.field);
 
 // The caller's own values for one service. Fields are listed as descriptors, so a custom header or substitution left
 // to members can join them with its id and no change to this shape.
@@ -386,12 +383,21 @@ export const AgentVaultPersonalValuesSchema = z
   })
   .describe(AGENT_VAULT.PERSONAL_VALUE.personalValues);
 
-export const AgentVaultPersonalValueInputSchema = z.object({
-  field: personalValueFieldSchema,
-  value: acceptsVariableReferences(
-    z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-  ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
-});
+// A username follows the admin's rule for one, a token or password the admin's rule for those.
+export const AgentVaultPersonalValueInputSchema = z.discriminatedUnion("field", [
+  z.object({
+    field: z.literal(AgentVaultVariableReferenceField.CredentialUsername).describe(AGENT_VAULT.PERSONAL_VALUE.field),
+    value: acceptsVariableReferences(
+      z.string().trim().min(1).max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+    ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
+  }),
+  z.object({
+    field: z.literal(AgentVaultVariableReferenceField.CredentialValue).describe(AGENT_VAULT.PERSONAL_VALUE.field),
+    value: acceptsVariableReferences(
+      z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+    ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
+  })
+]);
 
 const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; groupIds: string }) => ({
   userIds: z.string().uuid().array().default([]).describe(docs.userIds),

@@ -30,13 +30,11 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "listAgentVaultVariables",
-      description: "List Agent Vault's global variables, or your own personal ones",
+      description:
+        "List the Agent Vault variables you can see: your own personal ones, and the global ones if you're an admin",
       tags: [ApiDocsTags.AgentVaultVariables],
       querystring: z.object({
-        scope: z
-          .nativeEnum(AgentVaultVariableScope)
-          .default(AgentVaultVariableScope.Global)
-          .describe(AGENT_VAULT.VARIABLE.listScope),
+        scope: z.nativeEnum(AgentVaultVariableScope).optional().describe(AGENT_VAULT.VARIABLE.listScope),
         orderBy: z.enum(["key", "serviceCount"]).default("key").describe(AGENT_VAULT.VARIABLE.orderBy),
         orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.VARIABLE.orderDirection),
         keys: z
@@ -77,10 +75,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       description: "Create a global variable, or a personal one of your own",
       tags: [ApiDocsTags.AgentVaultVariables],
       body: z.object({
-        scope: z
-          .nativeEnum(AgentVaultVariableScope)
-          .default(AgentVaultVariableScope.Global)
-          .describe(AGENT_VAULT.VARIABLE.createScope),
+        scope: z.nativeEnum(AgentVaultVariableScope).describe(AGENT_VAULT.VARIABLE.createScope),
         key: AgentVaultVariableKeySchema.describe(AGENT_VAULT.VARIABLE.key),
         value: AgentVaultVariableValueSchema.describe(AGENT_VAULT.VARIABLE.value)
       }),

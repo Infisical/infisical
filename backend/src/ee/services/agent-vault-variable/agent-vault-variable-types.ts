@@ -6,9 +6,10 @@ import { TFindAgentVaultVariablesDTO } from "./agent-vault-variable-dal";
 export type TAgentVaultVariableScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TListVariablesDTO = TAgentVaultVariableScoped &
-  Omit<TFindAgentVaultVariablesDTO, "projectId" | "owner" | "limit"> & {
+  Omit<TFindAgentVaultVariablesDTO, "projectId" | "owners" | "limit" | "accessBundleIds"> & {
     limit?: number;
-    scope: AgentVaultVariableScope;
+    // Omitted lists everything the caller can see: their own, and the global ones too for an admin.
+    scope?: AgentVaultVariableScope;
   };
 
 export type TCreateVariableDTO = TAgentVaultVariableScoped & {

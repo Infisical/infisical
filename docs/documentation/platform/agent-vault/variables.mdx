@@ -36,7 +36,7 @@ To add a variable:
     Enter a **Key** and a **Value**. To view the value later, select the eye icon next to it. Each time someone views or copies a value, Infisical adds an event to the audit log.
 
     <Note>
-    A key can be up to 64 characters long. It must start with a letter and use only uppercase letters, numbers, and underscores. No two variables can have the same key.
+    A key can be up to 64 characters long. It must start with a letter and use only uppercase letters, numbers, and underscores. No two global variables can have the same key.
     </Note>
 
   </Step>
@@ -51,7 +51,7 @@ To add a variable:
 </Steps>
 
 <Note>
-Agent Vault can hold up to 500 variables.
+Agent Vault can hold up to 500 global variables.
 </Note>
 
 ## Use a variable in a service
@@ -157,4 +157,5 @@ To see your personal variables, go to **Variables** in Agent Vault. If you're an
 You add, update, and delete personal variables the same way as [global variables](#add-a-variable), with these limits:
 
 - You can keep up to 100 personal variables
+- Your personal variable keys need to be unique among your own variables only, so one can share a key with a global variable or with another member's personal variable
 - If your personal values for a service use a variable, you can't delete the variable until you change those values
