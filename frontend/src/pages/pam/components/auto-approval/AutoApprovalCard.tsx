@@ -256,7 +256,6 @@ export const AutoApprovalCard = ({
                   <Fragment key={rule.key}>
                     {index > 0 && <LogicConnector label="or" />}
                     <AutoApprovalRuleCard
-                      index={index}
                       rule={rule}
                       inputs={draft.inputs}
                       catalog={catalog}

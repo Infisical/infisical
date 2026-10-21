@@ -45,7 +45,6 @@ type TSubjectChoice = {
 };
 
 type Props = {
-  index: number;
   rule: TDraftRule;
   inputs: TAutoApprovalDraft["inputs"];
   catalog: TAutoApprovalCatalogConnection[];
@@ -177,7 +176,6 @@ const ConditionRow = ({
 };
 
 export const AutoApprovalRuleCard = ({
-  index,
   rule,
   inputs,
   catalog,
@@ -248,7 +246,6 @@ export const AutoApprovalRuleCard = ({
   return (
     <div className="rounded-md border border-border">
       <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
-        <span className="shrink-0 text-sm text-muted">Rule {index + 1}</span>
         <input
           value={rule.name}
           onChange={(e) => onChange({ ...rule, name: e.target.value })}
