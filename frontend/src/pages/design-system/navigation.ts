@@ -16,7 +16,51 @@ export const componentPages = componentCatalog.map(({ id, title, group }) => ({
   group
 }));
 export const guidancePages = [{ id: "rules", title: "Rules" }] as const;
-export const documentationPages = [...foundationPages, ...componentPages, ...guidancePages];
+export const comparisonPages = [
+  {
+    id: "compare-shell",
+    screen: "shell",
+    title: "App shell",
+    description: "The sidebar, top bar and switchers on payments-api, with page content left out."
+  },
+  {
+    id: "compare-home",
+    screen: "home",
+    title: "Organization home",
+    description: "The products with their live counts, stats in the card frame band."
+  },
+  {
+    id: "compare-secrets",
+    screen: "secrets",
+    title: "Secrets",
+    description: "payments-api in Development: 2 folders and 11 secrets in a DataTable."
+  },
+  {
+    id: "compare-access",
+    screen: "access",
+    title: "Access control",
+    description: "The 7 organization users and their roles, with the section tabs in PageHeader."
+  },
+  {
+    id: "compare-settings",
+    screen: "settings",
+    title: "Organization settings",
+    description: "General settings as SettingsCard sections with Field, Input and Select."
+  },
+  {
+    id: "compare-approvals",
+    screen: "approvals",
+    title: "Change requests",
+    description: "4 open production change requests in the ApprovalQueue pattern."
+  }
+] as const;
+export type ComparisonPage = (typeof comparisonPages)[number]["id"];
+export const documentationPages = [
+  ...foundationPages,
+  ...componentPages,
+  ...comparisonPages,
+  ...guidancePages
+];
 export type DocumentationPage = (typeof documentationPages)[number]["id"];
 export type ComponentPage = (typeof componentPages)[number]["id"];
 

@@ -17,10 +17,12 @@ import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group
 import logo from "./assets/infisical-logo.svg";
 import { AccentPanelButton, AccentPanelProvider, useAccentPanel } from "./accent-panel";
 import { AgentPage } from "./AgentPage";
+import { ComparisonPageView } from "./ComparisonPages";
 import { ComponentPreviewPage } from "./ComponentPreviewPage";
 import { ColorPage, OverviewPage, SpacingShapePage, TypographyPage } from "./FoundationPages";
 import { MotionPage } from "./InteractionPages";
 import {
+  comparisonPages,
   componentPages,
   type DocumentationPage,
   foundationPages,
@@ -58,6 +60,8 @@ const PageContent = ({ page }: { page: DocumentationPage }) => {
         </>
       );
     default:
+      if (page.startsWith("compare-"))
+        return <ComparisonPageView page={page as (typeof comparisonPages)[number]["id"]} />;
       return <ComponentPreviewPage page={page} />;
   }
 };
@@ -80,6 +84,7 @@ const navigationGroups = [
     title,
     pages: componentPages.filter((page) => page.group === title)
   })),
+  { title: "Comparisons", pages: comparisonPages },
   { title: "Contributing", pages: guidancePages }
 ];
 

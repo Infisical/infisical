@@ -33,3 +33,7 @@ The Infisical 2.0 line set (52 glyphs from #8691, ui/icon-data.ts) is the primar
 - Hover and press overlays on anything with content behind it are translucent ink (opacity-hover and opacity-press), never an opaque fill.
 - Loading: when the loaded shape is known, show Skeleton shapes that match it; use Loader only when the shape is unknown.
 - Focus: fields, slider thumbs and other glow-focused controls share one glow, size-focus-glow in focus-ring (neutral ink, never the accent).
+
+## Workbench comparisons
+
+`/design-system` has a Comparisons group: one page per product screen with a before/after slider (`pages/design-system/comparison-slider.tsx`, built from v4 Button, ToggleGroup and Icon). Before is a committed WebP of the current app on main (`assets/comparisons/<screen>-<light|dark>.webp`, 1706x971 at 2x, seeded data); after is the live page in `pages/design-system/compositions/`, built only from v4 components and following the dock's theme, corners and accent. The handle drags, takes Left and Right (Shift for 10%), Home and End, and Reset centers it; "Live, full width" shows the page unscaled so it can be clicked through. Compositions are workbench pages with fake data and no backend; never import them into product code.
