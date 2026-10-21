@@ -75,7 +75,7 @@ const RuleResults = ({ rules }: { rules: TRuleOutcome[] }) => (
       const passed = rule.conditions.every((condition) => condition.passed);
       return (
         <AccordionItem key={rule.id} value={rule.id} className="border-b-0">
-          <AccordionTrigger className="gap-2 text-xs font-normal group-data-[variant=ghost]/accordion:min-h-7 group-data-[variant=ghost]/accordion:py-1 [&>[data-slot=accordion-chevron]]:order-last [&>[data-slot=accordion-chevron]]:ml-auto [&>[data-slot=accordion-chevron]]:rotate-90 [&>[data-slot=accordion-chevron]]:opacity-50 group-data-[variant=ghost]/accordion:[&[data-state=open]>[data-slot=accordion-chevron]]:rotate-0">
+          <AccordionTrigger className="gap-2 text-xs font-normal group-data-[variant=ghost]/accordion:min-h-7 group-data-[variant=ghost]/accordion:py-1 [&>[data-slot=accordion-chevron]]:order-last [&>[data-slot=accordion-chevron]]:ml-auto [&>[data-slot=accordion-chevron]]:opacity-50">
             {passed ? (
               <Check className="size-3.5 shrink-0 text-success" />
             ) : (
