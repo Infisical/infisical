@@ -634,40 +634,25 @@
             "pages": [
               "documentation/platform/pam/overview",
               {
-                "group": "Privileged access manager",
+                "group": "Get started",
                 "pages": [
-                  {
-                    "group": "Quickstarts",
-                    "pages": [
-                      "documentation/platform/pam/quick-starts/launch-first-session"
-                    ]
-                  },
+                  "documentation/platform/pam/quick-starts/launch-first-session",
                   {
                     "group": "Concepts",
+                    "root": "documentation/platform/pam/concepts/overview",
                     "pages": [
-                      "documentation/platform/pam/concepts/pam-components",
-                      "documentation/platform/pam/concepts/session-lifecycle",
-                      "documentation/platform/pam/concepts/access-control"
-                    ]
-                  },
-                  {
-                    "group": "Guides",
-                    "pages": [
-                      "documentation/platform/pam/guides/team-access",
-                      "documentation/platform/pam/guides/ssh-certificate-auth"
+                      "documentation/platform/pam/architecture"
                     ]
                   }
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Managing privileged access",
                 "pages": [
-                  "documentation/platform/pam/folders/overview",
-                  "documentation/platform/pam/templates/overview",
                   {
                     "group": "Accounts",
+                    "root": "documentation/platform/pam/accounts/overview",
                     "pages": [
-                      "documentation/platform/pam/accounts/overview",
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
@@ -676,7 +661,13 @@
                       "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/snowflake",
                       "documentation/platform/pam/accounts/clickhouse",
-                      "documentation/platform/pam/accounts/ssh",
+                      {
+                        "group": "SSH",
+                        "root": "documentation/platform/pam/accounts/ssh",
+                        "pages": [
+                          "documentation/platform/pam/guides/ssh-certificate-auth"
+                        ]
+                      },
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
                       "documentation/platform/pam/accounts/gcp-service-account",
@@ -685,46 +676,64 @@
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
                   },
-                  "documentation/platform/pam/access-requests/overview",
-                  "documentation/platform/pam/ai-agents/overview",
+                  {
+                    "group": "Access control",
+                    "root": "documentation/platform/pam/concepts/access-control",
+                    "pages": [
+                      "documentation/platform/pam/folders/overview",
+                      "documentation/platform/pam/templates/overview",
+                      {
+                        "group": "Access requests",
+                        "root": "documentation/platform/pam/access-requests/overview",
+                        "pages": [
+                          "documentation/platform/pam/access-requests/break-glass"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "AI agents",
+                    "root": "documentation/platform/pam/ai-agents/overview",
+                    "pages": [
+                      "documentation/platform/pam/ai-agents/unattended"
+                    ]
+                  },
                   {
                     "group": "Credential rotation",
+                    "root": "documentation/platform/pam/credential-rotation/overview",
                     "pages": [
-                      "documentation/platform/pam/product-reference/credential-rotation/overview",
-                      "documentation/platform/pam/product-reference/credential-rotation/postgresql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mysql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mssql",
-                      "documentation/platform/pam/product-reference/credential-rotation/oracledb",
-                      "documentation/platform/pam/product-reference/credential-rotation/windows"
+                      "documentation/platform/pam/credential-rotation/postgresql",
+                      "documentation/platform/pam/credential-rotation/mysql",
+                      "documentation/platform/pam/credential-rotation/mssql",
+                      "documentation/platform/pam/credential-rotation/oracledb",
+                      "documentation/platform/pam/credential-rotation/windows"
                     ]
-                  },
-                  "documentation/platform/pam/product-reference/credential-health/overview",
-                  {
-                    "group": "Discovery",
-                    "pages": [
-                      "documentation/platform/pam/discovery/overview",
-                      "documentation/platform/pam/discovery/active-directory",
-                      "documentation/platform/pam/discovery/unix",
-                      "documentation/platform/pam/discovery/postgres",
-                      "documentation/platform/pam/discovery/mssql"
-                    ]
-                  },
-                  {
-                    "group": "Dependencies",
-                    "pages": [
-                      "documentation/platform/pam/dependencies/overview"
-                    ]
-                  },
+                  }
+                ]
+              },
+              {
+                "group": "Monitoring",
+                "pages": [
                   {
                     "group": "Sessions",
+                    "root": "documentation/platform/pam/sessions/overview",
                     "pages": [
-                      "documentation/platform/pam/sessions/overview",
                       "documentation/platform/pam/sessions/session-recording",
                       "documentation/platform/pam/sessions/external-storage"
                     ]
                   },
                   "documentation/platform/pam/auditing",
-                  "documentation/platform/pam/architecture"
+                  "documentation/platform/pam/credential-health/overview",
+                  {
+                    "group": "Discovery",
+                    "root": "documentation/platform/pam/discovery/overview",
+                    "pages": [
+                      "documentation/platform/pam/discovery/active-directory",
+                      "documentation/platform/pam/discovery/unix",
+                      "documentation/platform/pam/discovery/postgres",
+                      "documentation/platform/pam/discovery/mssql"
+                    ]
+                  }
                 ]
               }
             ]
@@ -5173,7 +5182,47 @@
     },
     {
       "source": "/documentation/platform/pam/product-reference/credential-rotation",
-      "destination": "/documentation/platform/pam/product-reference/credential-rotation/overview"
+      "destination": "/documentation/platform/pam/credential-rotation/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-rotation/:slug*",
+      "destination": "/documentation/platform/pam/credential-rotation/:slug*"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-health/overview",
+      "destination": "/documentation/platform/pam/credential-health/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/concepts/pam-components",
+      "destination": "/documentation/platform/pam/concepts/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/concepts/session-lifecycle",
+      "destination": "/documentation/platform/pam/concepts/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/guides/team-access",
+      "destination": "/documentation/platform/pam/quick-starts/launch-first-session"
+    },
+    {
+      "source": "/documentation/platform/pam/accounts/connect",
+      "destination": "/documentation/platform/pam/accounts/overview#connect-to-an-account"
+    },
+    {
+      "source": "/documentation/platform/pam/accounts/view-credentials",
+      "destination": "/documentation/platform/pam/accounts/overview#view-credentials"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/sandbox",
+      "destination": "/documentation/platform/pam/ai-agents/overview#sandbox"
+    },
+    {
+      "source": "/documentation/platform/pam/dependencies/overview",
+      "destination": "/documentation/platform/pam/credential-rotation/windows#dependencies"
+    },
+    {
+      "source": "/documentation/platform/pam/recording-storage",
+      "destination": "/documentation/platform/pam/sessions/external-storage"
     },
     {
       "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",

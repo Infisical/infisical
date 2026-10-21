@@ -1,22 +1,22 @@
 ---
 title: "AI agents"
-sidebarTitle: "AI agents"
-description: "Give an AI agent brokered access to your databases and servers without handing it a credential."
+sidebarTitle: "Overview"
+description: "Give an AI agent access to your databases and servers without giving it a credential."
 ---
 
-AI agents increasingly do work that needs privileged access: a coding agent tracing a bug through production data, or an agent you built yourself running a nightly task against a database. The usual way to arrange that is a connection string in the agent's environment, which leaves a long-lived credential sitting in a process that reads untrusted input all day.
+AI agents often need privileged access; for example, a coding agent that reads production data to trace a bug, or an agent you built that runs a nightly task against a database. If you put a connection string in the agent's environment, the agent holds a long-lived credential while it reads untrusted input.
 
-**Agentic access** brokers that access instead. One command opens the [accounts](/documentation/platform/pam/accounts/overview) an agent is allowed to use, hands it instructions describing them, and starts it inside a sandbox:
+Agentic access lets an agent use your PAM [accounts](/documentation/platform/pam/accounts/overview) without ever receiving their credentials. One command opens the accounts the agent can use, gives the agent instructions for reaching them, and starts the agent in a [sandbox](#sandbox):
 
 ```bash
 infisical pam agentic access -- claude
 ```
 
-From there the agent works on its own, and no credential ever reaches it. Any agent can be run this way: Claude Code, Codex, and Gemini are recognized by name and told what they can reach in their own format, and an agent you wrote yourself reads the same instructions from [an environment variable](#agents-you-build-yourself).
+You can run any agent this way. The CLI recognizes Claude Code, Codex, and Gemini by name, and an agent you build yourself can read the same instructions from [a file](#agents-you-build-yourself).
 
 ## How it works
 
-Each account the agent may use is opened as a port on `127.0.0.1`. The agent connects to a port the way it would connect to any database or host, and the [Gateway](/documentation/platform/gateways/overview) on the far side supplies the real credential:
+The CLI opens one port on `127.0.0.1` for each account the agent can use. The agent connects to a port the same way it connects to any database or server, and the [Gateway](/documentation/platform/gateways/overview) adds the account's credential to the connection:
 
 ```mermaid
 flowchart LR
@@ -28,7 +28,7 @@ flowchart LR
     CLI["Infisical CLI<br/>one local port per account"]
   end
 
-  GW["Gateway<br/>adds the real credential"]
+  GW["Gateway<br/>adds the credential"]
   TARGET[("Your databases<br/>and servers")]
   INF["Infisical<br/>policies, approvals, recordings"]
 
@@ -36,42 +36,40 @@ flowchart LR
   CLI -->|"encrypted tunnel"| GW
   GW --> TARGET
   CLI -.->|"opens the session"| INF
-  GW -.->|"records it"| INF
+  GW -.->|"records the session"| INF
 ```
 
-1. **The ports open first, and nothing is connected.** No [session](/documentation/platform/pam/sessions/overview) exists until the agent actually reaches for an account.
-2. **The agent connects when its task calls for it.** That first connection is what opens the session, subject to the usual checks: role, duration, and [approval](/documentation/platform/pam/access-requests/overview).
-3. **The Gateway holds the credential.** It injects it on the way to the database or host, so the agent authenticates to nothing and stores nothing.
-4. **Everything is recorded**, attributed to whoever the run authenticated as, exactly like a person's session.
+1. The CLI opens the ports and starts the agent
+2. When the agent first connects to an account, Infisical checks the role, the duration, and any [approval](/documentation/platform/pam/access-requests/overview) the account requires, then opens a [session](/documentation/platform/pam/sessions/overview)
+3. The Gateway adds the credential to the connection before it reaches the database or server, so the agent never receives the credential
+4. Infisical records the session under whoever the run authenticated as, the same way it records a person's session
+
+<Note>
+If the agent never connects to an account, Infisical doesn't open a session for it.
+</Note>
 
 ## Prerequisites
 
-- The [Infisical CLI](/cli/install) installed, and either `infisical login` completed or a machine identity to authenticate as.
-- The Connector or Admin [role](/documentation/platform/pam/concepts/access-control) on the folders or accounts the agent should reach, held by whoever the run authenticates as.
-- macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed. The sandbox comes from the operating system, so where one is unavailable the command refuses to start unless you [turn the sandbox off](#turning-the-sandbox-off) yourself.
+- The [Infisical CLI](/cli/install), logged in with `infisical login` or able to authenticate as a [machine identity](/documentation/platform/pam/ai-agents/unattended)
+- The Connector, Operator, or Admin [role](/documentation/platform/pam/concepts/access-control) on the folders or accounts the agent needs, held by whoever the run authenticates as
+- macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed, for the [sandbox](#sandbox) (on any other host, such as Windows, you must [turn the sandbox off](#turn-the-sandbox-off))
 
 ## Who the agent runs as
 
-An agent has no access of its own. It borrows the access of whoever starts the run, and that can be either of two things:
+An agent has no access of its own. It uses the roles of whoever starts the run, and Infisical attributes its sessions and access requests to that user or machine identity:
 
-- **You.** Log in with `infisical login` and the agent uses your own access. Its sessions and any access requests are attributed to you, exactly as if you had opened them yourself. This is the normal way to work with a coding agent at your terminal.
-- **A [machine identity](/documentation/platform/identities/machine-identities).** For an agent that runs with nobody watching, give it an identity of its own so its sessions and requests belong to it rather than to a person. See [Running unattended](#running-unattended).
+- **You:** Log in with `infisical login` before you start the agent (for a coding agent that you work with in your terminal)
+- **A machine identity:** Give the agent its own identity (for an agent that runs on a schedule or on a server), as described in [Run unattended](/documentation/platform/pam/ai-agents/unattended)
 
-Nothing else on this page changes between the two.
+## Start an agent
 
-## Starting an agent
-
-Everything after `--` is the command that starts your agent. By default it can reach every account you could launch a session on yourself, which is usually more than a single task needs, so narrow it with `--account`:
+Everything after `--` is the command that starts your agent. By default, the agent can use every account you can launch a session on. To give the agent only the accounts its task needs, add `--account` once for each account:
 
 ```bash
 infisical pam agentic access --account prod/orders-db --account prod/bastion -- claude
 ```
 
-<Tip>
-  Give the agent the accounts the task needs, not everything you have. The instructions tell it to stay on the accounts it was given, but a smaller set is a smaller blast radius.
-</Tip>
-
-Before the agent starts, the run prints what it can reach:
+Before the agent starts, the CLI prints the accounts the agent can use:
 
 ```text
   Infisical PAM proxies ready for claude
@@ -82,46 +80,85 @@ Before the agent starts, the run prints what it can reach:
 
   Not started:
     prod/legacy-db: you don't have permission to launch sessions for this account
-
-  Proxy logs: /Users/you/.infisical/pam-agentic/access.log
 ```
 
-Anything left out appears under **Not started** with the reason, so no account goes missing silently. One reason worth knowing in advance: an account whose [template](/documentation/platform/pam/templates/overview) requires a reason needs `--reason` on the command line, since the agent owns the terminal and there is nothing to prompt.
+If you don't pass `--account`, the CLI lists each account it left out under **Not started**, with the reason. If you pass `--account` and a named account can't be used, the command stops and prints the reason.
 
-Sessions are created lazily, on the agent's first connection to each account, so accounts it never touches produce no sessions at all.
+If an account's [template](/documentation/platform/pam/templates/overview) has **Require Reason** turned on, pass the reason with `--reason`. The CLI can't ask for a reason while the agent is running in the terminal.
+
+<Tip>
+For all flags available with the `infisical pam agentic access` command, check out the [CLI reference](/cli/reference#pam-agentic-access).
+</Tip>
 
 ### Supported account types
 
-Agents can reach:
+Agents can use the following account types:
 
-- **Databases** — [PostgreSQL](/documentation/platform/pam/accounts/postgresql), [MySQL](/documentation/platform/pam/accounts/mysql), [SQL Server](/documentation/platform/pam/accounts/mssql), [MongoDB](/documentation/platform/pam/accounts/mongodb), and [Redis](/documentation/platform/pam/accounts/redis)
-- **Servers** — [SSH](/documentation/platform/pam/accounts/ssh), and [Windows](/documentation/platform/pam/accounts/windows) over RDP
-- **Clusters** — [Kubernetes](/documentation/platform/pam/accounts/kubernetes)
+- **Databases:** [PostgreSQL](/documentation/platform/pam/accounts/postgresql), [MySQL](/documentation/platform/pam/accounts/mysql), [Microsoft SQL Server](/documentation/platform/pam/accounts/mssql), [MongoDB](/documentation/platform/pam/accounts/mongodb), and [Redis](/documentation/platform/pam/accounts/redis)
+- **Servers:** [SSH](/documentation/platform/pam/accounts/ssh) and [Windows](/documentation/platform/pam/accounts/windows) over RDP
+- **Clusters:** [Kubernetes](/documentation/platform/pam/accounts/kubernetes)
 
-Kubernetes accounts are set up for the agent automatically, so `kubectl` works inside the run without touching your own kubeconfig.
+For Kubernetes accounts, the CLI configures `kubectl` inside the run without changing your own kubeconfig.
 
 <Note>
-  Accounts whose template requires **MFA** can't be used here yet, whoever the run authenticates as. Reach those with `infisical pam access`, which prompts for MFA in the browser. Support for MFA in agent runs is planned.
+  Agents can't use accounts whose template has **Require MFA** turned on. To use one of those accounts yourself, run [`infisical pam access`](/cli/reference#pam-access), which asks you to complete MFA in your browser.
 </Note>
 
-## How the agent is told
+## Sandbox
 
-An agent that doesn't know these accounts exist won't use them, so every run writes an instruction document. It names the accounts the agent can reach, tells it that no credentials are needed because the Gateway supplies them, that everything it runs is recorded, and that it shouldn't connect to anything else.
+The CLI runs the agent in a sandbox that the operating system enforces. The sandbox stops the agent from reading your Infisical login, so the agent can't open sessions on accounts beyond the ones the run started with. The operating system applies the sandbox to the agent and to every process the agent starts, and the agent can't turn the sandbox off from inside it.
 
-The document is delivered in whichever way the agent understands, so there is nothing to configure:
+### What the agent can access
 
-| Agent | How it arrives |
+| The agent can | The agent can't |
 |---|---|
-| `claude` | Passed to Claude Code directly. Your repo is untouched. |
-| `codex` | A block in `AGENTS.md`, removed when the run ends. |
-| `gemini` | A block in `GEMINI.md`, removed when the run ends. |
-| Anything else | A block in `AGENTS.md`, removed when the run ends. |
+| Read and write files in your working directory | Read your Infisical login or credential store |
+| Use its own tools, subprocesses, and state | Open PAM sessions on other accounts |
+| Connect to the accounts the run started with | Use Docker or another container runtime |
 
-Use `--agent` if your agent runs under a wrapper script and isn't recognized by name.
+The agent can still read common development files such as `~/.aws`, `~/.ssh`, and `~/.kube`, so tasks like `git` over SSH keep working. The sandbox protects your access to PAM, not every secret on the machine.
+
+### Limits of the sandbox
+
+The sandbox adds protection, but it doesn't guarantee that an agent can't reach your secrets:
+
+- No operating system sandbox blocks every way to read files on the host, so an agent that is built or tricked into searching for secrets might find a way past it
+- The agent keeps its network access, so the sandbox doesn't stop the agent from sending data off the machine
+
+Whether or not the sandbox stops an agent, the account credentials never reach the machine. Each connection is a [session](/documentation/platform/pam/sessions/overview) that you can watch and terminate, and the agent's access is limited by role, duration, and [approval](/documentation/platform/pam/access-requests/overview).
+
+For a sensitive task, [run the agent as its own machine identity](/documentation/platform/pam/ai-agents/unattended) on a dedicated machine. The identity's roles then limit what the agent can reach, even if the agent gets past the sandbox.
+
+### Turn the sandbox off
+
+To run the agent without the sandbox, pass `--no-sandbox`:
+
+```bash
+infisical pam agentic access --no-sandbox -- claude
+```
+
+Without the sandbox, the agent can read your Infisical login and every other credential file on the machine. Keep the sandbox on wherever your operating system supports it.
+
+## Instructions for the agent
+
+The CLI writes an instruction file for each run. The file lists the accounts the agent can use and tells the agent that it doesn't need credentials, that Infisical records everything it runs, and that it shouldn't connect to anything else.
+
+The CLI delivers the instructions in a format each agent reads:
+
+| Agent | Where the instructions go |
+|---|---|
+| `claude` | Passed to Claude Code directly, without changing your repository |
+| `codex` | A block in `AGENTS.md`, removed when the run ends |
+| `gemini` | A block in `GEMINI.md`, removed when the run ends |
+| Any other agent | A block in `AGENTS.md`, removed when the run ends |
+
+<Note>
+If your agent runs under a wrapper script, the CLI can't recognize it by name. Pass `--agent` with `claude`, `codex`, `gemini`, or `generic` to choose the format.
+</Note>
 
 ### Agents you build yourself
 
-You aren't limited to the agents above. Every run exports **`INFISICAL_PAM_CONTEXT_FILE`**, the path to that same document, so an agent that follows no convention of its own can still be told what it may reach. Read the file and put it in front of your model:
+Every run sets the `INFISICAL_PAM_CONTEXT_FILE` environment variable to the path of the instruction file. To give your own agent the instructions, read the file and add its contents to your agent's system prompt:
 
 ```python
 import os
@@ -130,118 +167,45 @@ with open(os.environ["INFISICAL_PAM_CONTEXT_FILE"]) as file:
     pam_context = file.read()  # add this to your agent's system prompt
 ```
 
-The variable is set for every run, so a wrapper around one of the agents above can read it too.
-
-## The sandbox
-
-Instructions tell the agent where to go. The sandbox is an additional layer aimed at keeping it away from your Infisical credentials: while your login stays unreadable, an agent can't open sessions beyond the accounts, duration, and approvals the run was started with.
-
-| The agent can | The agent shouldn't be able to |
-|---|---|
-| Read and write in your working directory | Read your Infisical login or credential store |
-| Use its own tools, subprocesses, and state | Open PAM sessions on other accounts |
-| Reach the accounts listed when the run started | Use Docker or another container runtime |
-
-Everyday development files such as `~/.aws`, `~/.ssh`, and `~/.kube` stay readable, so ordinary work like `git` over SSH keeps working. The sandbox is aimed at your access to PAM itself, not at every secret on the machine.
-
-### How far the sandbox goes
-
-The sandbox does real work. It closes the paths an agent would actually take to your Infisical credentials, it survives the agent's own subprocesses because the operating system enforces it, and nothing the agent can do from inside lifts it.
-
-<Note>
-  **It's still defense in depth, not a guarantee.** No operating system sandbox is airtight, and this one isn't an exfiltration control either, since the agent keeps its own network access. An agent built or manipulated into hunting for secrets on the host may well be stopped, and may not be.
-</Note>
-
-Underneath it, PAM's own guarantees hold either way: the account's credential is never on the machine at all, every connection is a [session](/documentation/platform/pam/sessions/overview) you can watch and end, and access stays bounded by role, duration, and [approval](/documentation/platform/pam/access-requests/overview). For anything sensitive, [running the agent as its own scoped identity](#running-unattended) is what bounds the worst case.
-
-### Turning the sandbox off
-
-`--no-sandbox` runs the agent with no local boundary at all. Keep the sandbox on wherever your operating system provides one.
-
 ## Accounts that need approval
 
-Sensitive accounts can be put behind [approval](/documentation/platform/pam/access-requests/overview), and an agent is held to that gate like anyone else. Such an account is still offered to the agent, marked `[awaiting approval]` in the list above, and stays unusable until a person clears it.
+If an account requires [approval](/documentation/platform/pam/access-requests/overview), the CLI still opens a port for it and marks it `[awaiting approval]`. The agent can't use the account until an approver approves a request.
 
-The first time the agent reaches for one, a request is filed and that attempt fails. Once a reviewer approves it, the agent's next attempt works, with nothing to restart. A grant that expires part-way through a long run behaves the same way: the agent waits rather than losing the account.
+The first time the agent connects to the account, the CLI files a request and the connection fails. After an approver approves the request, the agent's next connection works without restarting the run. If the approved access expires during the run, the same thing happens again: the CLI files a new request, and the account works after an approver approves it.
 
-Pass `--no-approval-request` if you would rather nothing was filed on your behalf.
+To stop the CLI from filing requests, pass `--no-approval-request`. The CLI then leaves accounts that need approval out of the run.
 
-## Running unattended
+## Review what the agent did
 
-Everything so far assumed you at a terminal. An agent that runs on a schedule or on a server should instead run as its own machine identity, so its sessions and access requests belong to it rather than to a person.
-
-This is also the strongest way to run an agent you don't fully trust, watched or not: no human's credentials are part of the run at all, and the identity's scope becomes the ceiling on what the agent can reach.
-
-<Steps>
-  <Step title="Create the identity">
-    Go to **Privileged Access Management → Access Control**, open the **Identities** tab, and select **Add Identity**. **Create** makes an identity that belongs to PAM; **Assign** adds one that already exists in your organization. Either way, choose **Product Admin** or **Product Member**, the two roles PAM offers.
-
-    A new identity arrives with [Universal Auth](/documentation/platform/identities/universal-auth) attached, so its page has a **Client ID** and can generate a **Client Secret** right away. Attach a different [auth method](/documentation/platform/identities/machine-identities#authentication-methods) instead if the agent's host can authenticate itself through Kubernetes, AWS, GCP, Azure, OIDC, JWT, or LDAP.
-  </Step>
-  <Step title="Grant it access">
-    Open the [folder](/documentation/platform/pam/folders/overview) the agent needs, go to **Permissions**, select **Assign Access**, and give the identity the **Connector** role on the accounts its task needs and nothing else. Set an expiration if the access is temporary.
-  </Step>
-  <Step title="Run the agent as the identity">
-    Pass the credentials through the environment:
-
-    ```bash
-    export INFISICAL_AUTH_METHOD=universal-auth
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
-
-    infisical pam agentic access --reason "nightly triage agent" -- python triage_agent.py
-    ```
-  </Step>
-</Steps>
-
-<Tip>
-  Use the environment rather than `--client-secret` and friends. A secret on the command line lands in your shell history and is visible to anything that can list processes. The CLI also strips its own variables before the agent starts, so the agent never inherits the credentials the run was authenticated with.
-</Tip>
-
-See the [CLI reference](/cli/reference#pam-agentic-access) for the other authentication methods and their variables.
-
-For a sensitive workload, pair that with a **dedicated machine**: an isolated host or container holding nothing else worth taking, so even an agent that gets past every local defense finds only that one narrowly scoped identity. Its access is still bounded by role, duration, and [approval](/documentation/platform/pam/access-requests/overview), and everything it does is on record.
-
-## Reviewing what the agent did
-
-Because every connection is a normal PAM session, reviewing an agent's work is the same job as reviewing a person's. Each account it connected to has a [session](/documentation/platform/pam/sessions/overview) with its queries or commands in the [recording](/documentation/platform/pam/sessions/session-recording), attributed to whoever the run authenticated as. An identity has no email address, so its sessions and [audit log](/documentation/platform/pam/auditing) entries show **Machine Identity** where a person's email would appear.
+Every connection the agent makes is a normal PAM session. To review the agent's work, open its [sessions](/documentation/platform/pam/sessions/overview) and check the queries or commands in each [recording](/documentation/platform/pam/sessions/session-recording). Sessions show whoever the run authenticated as. If that's a machine identity, its sessions and [audit log](/documentation/platform/pam/auditing) events show **Machine Identity** where a person's email would appear.
 
 ## Frequently asked questions
 
 <AccordionGroup>
-  <Accordion title="An account is missing from the list">
-    Check the **Not started** list, printed with every run, which gives the reason for each account left out. If the account isn't there either, you can't launch sessions on it: check your role on the folder or account.
+  <Accordion title="Why is an account missing from the list?">
+    Check the **Not started** list that the CLI prints at the start of each run, which gives the reason for each account it left out. If the account isn't there either, whoever the run authenticated as can't launch sessions on it, so check their role on the folder or account.
   </Accordion>
-  <Accordion title="An account stays stuck on awaiting approval">
-    It's waiting on a person. Check the folder's **Approvals** tab: with no approvers seated there, no one can clear the request. After approval, the agent's next attempt works on its own.
+  <Accordion title="Why does an account stay on awaiting approval?">
+    The request is waiting for an approver. If the folder has no approvers on its **Approvals** tab, nobody can approve the request.
   </Accordion>
   <Accordion title="Can an agent approve an access request?">
-    No. Approving stays with people, whoever the agent runs as. It can file a request and wait for a user or group to clear it.
+    No. Only users and groups can approve requests, whoever the agent runs as.
   </Accordion>
-  <Accordion title="What does running as a machine identity change?">
-    The attribution. Sessions and access requests belong to the identity rather than to you, and its roles decide what the agent can reach.
+  <Accordion title="Why won't the command start on Linux?">
+    The sandbox isn't available, usually because bubblewrap isn't installed or the host restricts user namespaces. The error message says which. Install bubblewrap or allow user namespaces on the host, then run the command again.
   </Accordion>
-  <Accordion title="The command will not start on Linux">
-    The sandbox is unavailable, usually because bubblewrap is missing or user namespaces are restricted on the host. The message says which. The command stops rather than quietly running your agent without a boundary. Fix the host if you can, or pass [`--no-sandbox`](#turning-the-sandbox-off) deliberately.
-  </Accordion>
-  <Accordion title="How do I cut an agent off quickly?">
-    Remove its identity's role on the folder or account to stop it launching anything new, and terminate any live session from the **Sessions** page. For a gated account, revoking its grant on the folder's **Approvals** tab also ends its sessions right away.
+  <Accordion title="How do I stop an agent quickly?">
+    Remove the role that whoever the run authenticated as has on the folder or account, so the agent can't open new sessions. Then [terminate](/documentation/platform/pam/sessions/overview) the agent's active sessions on the **Sessions** page. If the account requires approval, [revoking the request](/documentation/platform/pam/access-requests/overview#revoke-access) also ends its sessions.
   </Accordion>
 </AccordionGroup>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Access Requests" icon="hand" href="/documentation/platform/pam/access-requests/overview">
-    Require approval before an agent can use an account.
+  <Card title="Run unattended" icon="bot" href="/documentation/platform/pam/ai-agents/unattended">
+    Run an AI agent as its own machine identity.
   </Card>
-  <Card title="Access Control" icon="shield-half" href="/documentation/platform/pam/concepts/access-control">
-    The roles you grant an agent's identity.
-  </Card>
-  <Card title="Session Recording" icon="video" href="/documentation/platform/pam/sessions/session-recording">
-    Review exactly what the agent ran.
-  </Card>
-  <Card title="CLI Reference" icon="terminal" href="/cli/reference#pam-agentic-access">
-    Every flag for `pam agentic access`.
+  <Card title="Session recording" icon="video" href="/documentation/platform/pam/sessions/session-recording">
+    Review what happened during each session on your accounts.
   </Card>
 </CardGroup>
