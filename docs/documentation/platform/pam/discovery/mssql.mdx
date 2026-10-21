@@ -77,3 +77,7 @@ The scan stages only enabled SQL logins. It skips Windows logins and SQL Server'
     Go to **Privileged Access Management** > **Accounts**, select each imported account, and enter the password for its login on the **Configuration** tab. The scan doesn't read passwords, so you can't connect to an imported account until you enter its password.
   </Step>
 </Steps>
+
+<Check>
+  Your SQL Server logins are in PAM. Anyone with access to the destination folder can launch sessions on them, and each scan of the source stages any new logins it finds.
+</Check>

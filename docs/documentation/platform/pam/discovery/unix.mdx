@@ -78,3 +78,7 @@ The scan stages only accounts that can sign in. It skips accounts whose shell is
     Go to **Privileged Access Management** > **Accounts**, select each imported account, and enter its credential on the **Configuration** tab. The scan doesn't read credentials, so you can't connect to an imported account until you enter its credential.
   </Step>
 </Steps>
+
+<Check>
+  Your Unix accounts are in PAM. Anyone with access to the destination folder can launch sessions on them, and each scan of the source stages any new accounts it finds.
+</Check>
