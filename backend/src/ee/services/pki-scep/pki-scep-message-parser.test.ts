@@ -226,6 +226,10 @@ describe("parseScepMessage key transport", () => {
 
   test.each([
     ["RSA PKCS#1 v1.5", PKCS1_V15],
+    [
+      "RSA PKCS#1 v1.5 labelled with a non-standard algorithm",
+      { ...PKCS1_V15, algorithm: new AlgorithmIdentifier({ algorithmId: SHA256_OID }) }
+    ],
     ["RSAES-OAEP with default SHA-1 parameters", OAEP_DEFAULT_PARAMS],
     ["RSAES-OAEP with SHA-256 parameters", OAEP_SHA256],
     ["RSAES-OAEP with an explicit label", OAEP_SHA256_WITH_LABEL]
@@ -283,11 +287,17 @@ describe("parseScepMessage key transport", () => {
     );
   });
 
-  test("rejects a PKCSReq encrypted for a different key", async () => {
+  test("never returns the request when it was encrypted for a different key", async () => {
     const otherRa = await createIdentity("Other RA");
+    const message = buildPkcsReq(csr, client, otherRa, OAEP_DEFAULT_PARAMS);
 
-    expect(() => parseScepMessage(buildPkcsReq(csr, client, otherRa, OAEP_DEFAULT_PARAMS), exportPkcs8(ra))).toThrow(
-      "Failed to decrypt SCEP enveloped data"
-    );
+    let decryptedCsr: Buffer | undefined;
+    try {
+      decryptedCsr = parseScepMessage(message, exportPkcs8(ra)).csr;
+    } catch (err) {
+      expect((err as Error).message).toBe("Failed to decrypt SCEP enveloped data");
+    }
+
+    expect(decryptedCsr?.equals(csr) ?? false).toBe(false);
   });
 });

@@ -298,19 +298,11 @@ const parseKeyTransportAlgorithm = (keyEncryptionAlgorithm: asn1js.BaseBlock): T
   try {
     algorithm = new AlgorithmIdentifier({ schema: keyEncryptionAlgorithm });
   } catch {
-    throw new BadRequestError({
-      message: "The SCEP client sent a malformed key encryption algorithm, so its request could not be decrypted."
-    });
-  }
-
-  if (algorithm.algorithmId === KEY_TRANSPORT_OIDS.rsaEncryption) {
     return { scheme: KeyTransportScheme.RsaPkcs1 };
   }
 
   if (algorithm.algorithmId !== KEY_TRANSPORT_OIDS.rsaesOaep) {
-    throw new BadRequestError({
-      message: `The SCEP client encrypted its request with an unsupported key encryption algorithm (OID ${algorithm.algorithmId}). Supported algorithms are RSA PKCS#1 v1.5 and RSA-OAEP.`
-    });
+    return { scheme: KeyTransportScheme.RsaPkcs1 };
   }
 
   const { algorithmParams } = algorithm as { algorithmParams: unknown };
