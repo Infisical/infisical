@@ -395,6 +395,7 @@ const OverviewPageContent = () => {
     select: (el) => ({
       secretPath: el.secretPath,
       search: el.search,
+      clearSearch: el.clearSearch,
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       honeyTokenId: el.honeyTokenId,
