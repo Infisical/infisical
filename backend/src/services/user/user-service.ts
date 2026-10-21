@@ -698,8 +698,9 @@ export const userServiceFactory = ({
   // password-only session could plant its own. A factor only counts if some org's login
   // would ask for it (an enforcing org overrides the user's preference), otherwise a
   // factor login ignores could be used to get around that org's enforcement. Without any
-  // such factor, registered ones still beat the password alone. Email is never a fallback:
-  // every account has one, so first-factor onboarding at login would always be challenged.
+  // such factor, the user's own factors still beat the password alone. Email only counts
+  // there if the user turned email MFA on: every account has an address, so counting it
+  // otherwise would challenge every first-factor onboarding at login.
   const getFactorEnrollmentStepUpMfaMethods = async (
     userId: string
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
@@ -724,7 +725,11 @@ export const userServiceFactory = ({
       loginMfaMethods.has(method)
     );
 
-    const accepted = loginFactors.length ? loginFactors : registeredFactors;
+    const hasPersonalEmailMfa =
+      hasEmail && user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL;
+    const accepted = loginFactors.length
+      ? loginFactors
+      : [...registeredFactors, ...(hasPersonalEmailMfa ? [MfaMethod.EMAIL] : [])];
     if (!accepted.length) return null;
 
     const preferred = accepted.find((method) => method === user.selectedMfaMethod);

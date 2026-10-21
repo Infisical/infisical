@@ -427,6 +427,29 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     });
   });
 
+  test("falls back to email MFA the user turned on when the org requires a factor they lack", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }]
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.EMAIL]
+    });
+  });
+
+  test("never challenges an account that has not turned MFA on and has no factor", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: false, selectedMfaMethod: null },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }]
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
+  });
+
   test("falls back to registered factors when the user has none that login asks for", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
@@ -491,5 +514,76 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
       challenge: MfaMethod.EMAIL,
       accepted: [MfaMethod.WEBAUTHN, MfaMethod.EMAIL]
     });
+  });
+});
+
+describe("getFactorEnrollmentStepUpMfaMethods rules hold for every combination", () => {
+  const { WEBAUTHN, TOTP, EMAIL } = MfaMethod;
+  type TOrg = { id: string; enforceMfa: boolean; selectedMfaMethod?: MfaMethod };
+  const orgSetups: TOrg[][] = [
+    [],
+    [{ id: "org-w", enforceMfa: true, selectedMfaMethod: WEBAUTHN }],
+    [{ id: "org-t", enforceMfa: true, selectedMfaMethod: TOTP }],
+    [{ id: "org-e", enforceMfa: true, selectedMfaMethod: EMAIL }],
+    [{ id: "org-loose", enforceMfa: false }],
+    [
+      { id: "org-w", enforceMfa: true, selectedMfaMethod: WEBAUTHN },
+      { id: "org-loose", enforceMfa: false }
+    ],
+    [
+      { id: "org-w", enforceMfa: true, selectedMfaMethod: WEBAUTHN },
+      { id: "org-t", enforceMfa: true, selectedMfaMethod: TOTP }
+    ]
+  ];
+
+  const cases = orgSetups.flatMap((orgs) =>
+    [true, false].flatMap((isMfaEnabled) =>
+      [null, EMAIL, TOTP, WEBAUTHN].flatMap((selectedMfaMethod) =>
+        [true, false].flatMap((hasPasskey) =>
+          [true, false].flatMap((hasTotp) =>
+            [true, false].map((smtp) => ({ orgs, isMfaEnabled, selectedMfaMethod, hasPasskey, hasTotp, smtp }))
+          )
+        )
+      )
+    )
+  );
+  const validCases = cases.filter(
+    (c) => (c.selectedMfaMethod !== TOTP || c.hasTotp) && (c.selectedMfaMethod !== WEBAUTHN || c.hasPasskey)
+  );
+
+  test.each(validCases)("%j", async ({ orgs, isMfaEnabled, selectedMfaMethod, hasPasskey, hasTotp, smtp }) => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled, selectedMfaMethod },
+      memberOrgIds: orgs.map((org) => org.id),
+      orgs,
+      hasTotp,
+      passkeyCount: hasPasskey ? 1 : 0,
+      smtp
+    });
+    const result = await service.getFactorEnrollmentStepUpMfaMethods(USER_ID);
+
+    const userLoginMethod = isMfaEnabled ? (selectedMfaMethod ?? EMAIL) : null;
+    const loginAsks = new Set(
+      (orgs.length ? orgs : [{ enforceMfa: false } as TOrg])
+        .map((org) => (org.enforceMfa ? (org.selectedMfaMethod ?? EMAIL) : userLoginMethod))
+        .filter(Boolean)
+    );
+    const held = [...(hasPasskey ? [WEBAUTHN] : []), ...(hasTotp ? [TOTP] : []), ...(smtp ? [EMAIL] : [])];
+    const heldThatLoginAsks = held.filter((method) => loginAsks.has(method));
+
+    // 1. A user holding a factor some login asks for is held to exactly those.
+    if (heldThatLoginAsks.length) {
+      expect(result?.accepted.slice().sort()).toEqual(heldThatLoginAsks.slice().sort());
+    }
+
+    // 2. An account with a factor of its own is always challenged.
+    const hasOwnFactor = hasPasskey || hasTotp || (smtp && isMfaEnabled && (selectedMfaMethod ?? EMAIL) === EMAIL);
+    if (hasOwnFactor) expect(result).not.toBeNull();
+
+    // 3. First-factor setup is never challenged.
+    if (!hasOwnFactor && !heldThatLoginAsks.length) expect(result).toBeNull();
+
+    // 4. The challenge is one of the accepted factors.
+    if (result) expect(result.accepted).toContain(result.challenge);
   });
 });
