@@ -746,6 +746,12 @@ export const SecretEditTableRow = ({
   // discards the draft, so an open editor is exactly the window that windowing can destroy.
   const hasOpenAnnotationDraft = isCommentOpen || isMetadataOpen;
 
+  // The same expression the sheet's own `open` prop uses. The fetch pin above ends the moment the
+  // value arrives, and that arrival and the sheet appearing happen in one commit, so without this
+  // a row that was scrolled out of the window during the fetch unmounts and takes the sheet with
+  // it. Scroll locking cannot cover that: the scrolling happened before the sheet existed.
+  const isValueSheetOpen = valueEditDraft?.scope === valueEditScope;
+
   // isDirty covers both windows the parent has to protect: a non-batch edit waiting on the save
   // button, and a batch edit waiting on the 500ms debounce above, which clears it via reset()
   // once the change reaches the batch store.
@@ -765,7 +771,7 @@ export const SecretEditTableRow = ({
 
     onUnsavedChange(
       unsavedChangeId,
-      isDirty || hasOpenAnnotationDraft || isFieldActive || isLoadingEditValue
+      isDirty || hasOpenAnnotationDraft || isFieldActive || isLoadingEditValue || isValueSheetOpen
     );
     return () => onUnsavedChange(unsavedChangeId, false);
   }, [
@@ -773,6 +779,7 @@ export const SecretEditTableRow = ({
     hasOpenAnnotationDraft,
     isFieldActive,
     isLoadingEditValue,
+    isValueSheetOpen,
     unsavedChangeId,
     onUnsavedChange
   ]);

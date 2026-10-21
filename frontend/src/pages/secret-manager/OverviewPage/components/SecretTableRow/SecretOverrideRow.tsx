@@ -89,6 +89,10 @@ export const SecretOverrideRow = ({
     { environment, secretPath, secretName, secretTags: ["*"] }
   );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  // This row is its own <tr>, so the primary editor's focus tracking does not cover it. Focus here
+  // is state the user can see and is about to use, and the virtualized parent only keeps rows it
+  // is told about, so an unchanged but focused override would otherwise be unmounted by a scroll.
+  const [isFieldActive, setIsFieldActive] = useState(false);
 
   const fetchOverrideValueParams = {
     environment,
@@ -134,9 +138,9 @@ export const SecretOverrideRow = ({
   useEffect(() => {
     if (!unsavedChangeId || !onUnsavedChange) return undefined;
 
-    onUnsavedChange(unsavedChangeId, isDirty);
+    onUnsavedChange(unsavedChangeId, isDirty || isFieldActive);
     return () => onUnsavedChange(unsavedChangeId, false);
-  }, [isDirty, unsavedChangeId, onUnsavedChange]);
+  }, [isDirty, isFieldActive, unsavedChangeId, onUnsavedChange]);
 
   const handleFormReset = () => {
     if (isCreatingOverride) {
@@ -219,9 +223,13 @@ export const SecretOverrideRow = ({
   return (
     <div
       className="flex w-full cursor-text items-center gap-2"
-      onFocusCapture={() => onActiveChange?.(true)}
+      onFocusCapture={() => {
+        setIsFieldActive(true);
+        onActiveChange?.(true);
+      }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsFieldActive(false);
           onActiveChange?.(false);
         }
       }}
