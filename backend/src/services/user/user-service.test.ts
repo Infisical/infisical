@@ -381,7 +381,7 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     });
   });
 
-  test("challenges the preferred factor and accepts any enrolled one", async () => {
+  test("only accepts the factor login asks for, not every registered one", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
       hasTotp: true,
@@ -390,7 +390,54 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
 
     await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
       challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP]
+    });
+  });
+
+  test("accepts every factor some org's login asks for", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      memberOrgIds: [ENFORCED_ORG_ID, "loose-org"],
+      orgs: [
+        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
+        { id: "loose-org", enforceMfa: false }
+      ],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
       accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
+    });
+  });
+
+  test("an old authenticator app can't stand in for the passkey an org enforces", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN]
+    });
+  });
+
+  test("falls back to registered factors when the user has none that login asks for", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }],
+      hasTotp: true
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP]
     });
   });
 
@@ -413,5 +460,36 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     });
 
     await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
+  });
+
+  test("does not count an email preference that an enforcing org overrides at login", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }],
+      passkeyCount: 1
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN]
+    });
+  });
+
+  test("counts an email preference while some org leaves the method to the user", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID, "loose-org"],
+      orgs: [
+        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
+        { id: "loose-org", enforceMfa: false }
+      ],
+      passkeyCount: 1
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.WEBAUTHN, MfaMethod.EMAIL]
+    });
   });
 });

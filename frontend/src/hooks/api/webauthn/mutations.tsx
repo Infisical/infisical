@@ -15,6 +15,7 @@ export const useVerifyRegistration = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },
     mutationFn: async (dto: TVerifyRegistrationDTO) => {
       const { data } = await apiRequest.post<TVerifyRegistrationResponse>(
         "/api/v1/user/me/webauthn/register/verify",

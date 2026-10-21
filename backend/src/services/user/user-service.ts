@@ -235,7 +235,7 @@ export const userServiceFactory = ({
     return { user: updatedUser, recoveryCodes };
   };
 
-  const findMfaEnforcingOrgs = async (userId: string) => {
+  const findMemberRootOrgs = async (userId: string) => {
     const memberships = await orgDAL.findActiveEffectiveOrgMembershipsByUserId(userId);
     if (!memberships.length) return [];
 
@@ -243,9 +243,11 @@ export const userServiceFactory = ({
       $in: { id: unique(memberships.map((membership) => membership.scopeOrgId)) }
     });
     const rootOrgIds = unique(memberOrgs.map((org) => org.rootOrgId ?? org.id));
-    const rootOrgs = await orgDAL.find({ $in: { id: rootOrgIds } });
-    return rootOrgs.filter((org) => org.enforceMfa);
+    return orgDAL.find({ $in: { id: rootOrgIds } });
   };
+
+  const findMfaEnforcingOrgs = async (userId: string) =>
+    (await findMemberRootOrgs(userId)).filter((org) => org.enforceMfa);
 
   const hasMfaEnforcingOrg = async (userId: string) => (await findMfaEnforcingOrgs(userId)).length > 0;
 
@@ -693,29 +695,36 @@ export const userServiceFactory = ({
   };
 
   // Adding a factor must be proven with one the account already relies on, or a
-  // password-only session could plant its own. Returns null for an account with none,
-  // so enforced-MFA onboarding at login can still enroll the first one.
+  // password-only session could plant its own. A factor only counts if some org's login
+  // would ask for it (an enforcing org overrides the user's preference), otherwise a
+  // factor login ignores could be used to get around that org's enforcement. Without any
+  // such factor, registered ones still beat the password alone. Email is never a fallback:
+  // every account has one, so first-factor onboarding at login would always be challenged.
   const getFactorEnrollmentStepUpMfaMethods = async (
     userId: string
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
     const user = await userDAL.findById(userId);
     if (!user) throw new NotFoundError({ message: "User not found" });
 
-    const [hasPasskey, hasTotp, enforcingOrgs] = await Promise.all([
+    const [hasPasskey, hasTotp, hasEmail, rootOrgs] = await Promise.all([
       isMfaMethodConfigured(user, MfaMethod.WEBAUTHN),
       isMfaMethodConfigured(user, MfaMethod.TOTP),
-      findMfaEnforcingOrgs(userId)
+      isMfaMethodConfigured(user, MfaMethod.EMAIL),
+      findMemberRootOrgs(userId)
     ]);
-    const isEmailRequiredAtLogin =
-      (user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL) ||
-      enforcingOrgs.some((org) => (org.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL);
-    const hasEmail = isEmailRequiredAtLogin && (await isMfaMethodConfigured(user, MfaMethod.EMAIL));
 
-    const accepted = [
-      ...(hasPasskey ? [MfaMethod.WEBAUTHN] : []),
-      ...(hasTotp ? [MfaMethod.TOTP] : []),
-      ...(hasEmail ? [MfaMethod.EMAIL] : [])
-    ];
+    const loginMfaMethods = new Set(
+      (rootOrgs.length ? rootOrgs : [{}])
+        .map((org) => getRequiredMfaMethod(org, user))
+        .filter(({ isMfaRequired }) => isMfaRequired)
+        .map(({ requiredMfaMethod }) => requiredMfaMethod)
+    );
+    const registeredFactors = [...(hasPasskey ? [MfaMethod.WEBAUTHN] : []), ...(hasTotp ? [MfaMethod.TOTP] : [])];
+    const loginFactors = [...registeredFactors, ...(hasEmail ? [MfaMethod.EMAIL] : [])].filter((method) =>
+      loginMfaMethods.has(method)
+    );
+
+    const accepted = loginFactors.length ? loginFactors : registeredFactors;
     if (!accepted.length) return null;
 
     const preferred = accepted.find((method) => method === user.selectedMfaMethod);

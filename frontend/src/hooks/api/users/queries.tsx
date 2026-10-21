@@ -414,6 +414,7 @@ export const useRevokeMySessions = () => {
 export const useEnrollMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },
     mutationFn: async (
       dto:
         | { method: MfaMethod.TOTP; totp: string }
