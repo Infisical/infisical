@@ -1,0 +1,19 @@
+.signup-card {
+  max-width: 400px;
+}
+
+.signup-card .card-body {
+  padding: 20px;
+}
+
+.signup-card .card-title {
+  font-size: 24px;
+}
+
+.signup-card .card-text {
+  font-size: 16px;
+}
+
+.signup-card .btn-primary {
+  width: 100%;
+}
