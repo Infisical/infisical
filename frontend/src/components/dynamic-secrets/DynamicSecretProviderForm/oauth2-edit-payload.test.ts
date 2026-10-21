@@ -77,6 +77,11 @@ describe("OAuth 2.0 edit payload", () => {
     });
   });
 
+  it("sends a cleared scope as an empty string so the stored one is replaced", () => {
+    const payload = getOAuth2EditPayload(editValues, editContext);
+    assert.equal((payload.data.inputs as { scope?: string }).scope, "");
+  });
+
   it("hydrates the stored auth method on edit", () => {
     const defaults = getOAuth2EditDefaultValues(editContext);
     assert.equal(defaults.inputs.clientAuth.method, OAuth2ClientAuthMethod.ClientSecretPost);

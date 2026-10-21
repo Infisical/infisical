@@ -62,6 +62,13 @@ describe("getInvisibleCharacterSummary", () => {
     ]);
   });
 
+  it("labels characters by their Unicode category", () => {
+    assert.deepEqual(
+      getInvisibleCharacterSummary("\u202e\u0085\u2028\u2029").map(({ label }) => label),
+      ["Bidirectional control", "Control character", "Line separator", "Paragraph separator"]
+    );
+  });
+
   it("reports astral characters by their full code point", () => {
     assert.deepEqual(getInvisibleCharacterSummary("a\u{1D173}b\u{1D173}"), [
       { codePoint: "U+1D173", label: "Formatting character", count: 2 }
