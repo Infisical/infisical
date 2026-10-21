@@ -78,7 +78,8 @@ export const AutoApprovalValuePicker = ({
         constraint.value === AutoApprovalConstraintValue.Many ? [...values, value] : [value]
       );
     },
-    formatLabel: (input: string) => `Use "${input.trim()}"`
+    formatLabel: (input: string) => `Use "${input.trim()}"`,
+    emptyLabel: "Type custom value"
   };
 
   const emptyMessage = isOptionsError
