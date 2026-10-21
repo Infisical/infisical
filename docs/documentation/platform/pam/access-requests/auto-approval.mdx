@@ -123,6 +123,10 @@ Infisical checks the rules once, when the request is submitted, by reading each 
 - If no record was linked, or Infisical can't read the record (the service doesn't respond or rejects the connection's credentials, the record doesn't exist, or the connection's user can't see it), every condition on that record fails
 - A record can be linked to any number of requests, and each request passes as long as the record still passes the rule (unless the rule also requires that the record **hasn't been used before**)
 
+<Warning>
+  Infisical trusts what the linked service reports. It can't tell whether a requester approved their own ticket or assigned another person's ticket to themselves before linking it. Prevent both in the service itself. For example, in Jira Service Management, exclude the reporter and assignee from approving requests, and limit who can assign tickets.
+</Warning>
+
 ## Next steps
 
 <CardGroup cols={2}>
