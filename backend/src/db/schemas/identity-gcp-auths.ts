@@ -20,8 +20,7 @@ export const IdentityGcpAuthsSchema = z.object({
   allowedServiceAccounts: z.string().nullable().optional(),
   allowedProjects: z.string().nullable().optional(),
   allowedZones: z.string().nullable().optional(),
-  accessTokenPeriod: z.coerce.number().default(0),
-  requireAllowList: z.boolean().default(true)
+  accessTokenPeriod: z.coerce.number().default(0)
 });
 
 export type TIdentityGcpAuths = z.infer<typeof IdentityGcpAuthsSchema>;

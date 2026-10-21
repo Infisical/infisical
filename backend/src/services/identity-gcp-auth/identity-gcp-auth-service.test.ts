@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { IdentityAuthMethod } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
+
 import { identityGcpAuthServiceFactory } from "./identity-gcp-auth-service";
 import { TGcpIdentityDetails } from "./identity-gcp-auth-types";
 
@@ -43,14 +46,13 @@ const computeEngineDetails = {
 };
 
 type TGcpAuthRow = {
-  requireAllowList: boolean;
   type: "gce" | "iam";
   allowedServiceAccounts: string | null;
   allowedProjects: string | null;
   allowedZones: string | null;
 };
 
-const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}) => {
+const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}, authMethods: string[] = []) => {
   const issueIdentityAccessToken = vi.fn().mockResolvedValue({
     accessToken: ACCESS_TOKEN,
     identityAccessToken: { id: "access-token-id" }
@@ -60,7 +62,6 @@ const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}) => {
     identityGcpAuthDAL: {
       findOne: vi.fn().mockResolvedValue({
         identityId: IDENTITY_ID,
-        requireAllowList: true,
         type: "gce",
         allowedServiceAccounts: null,
         allowedProjects: null,
@@ -79,7 +80,13 @@ const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}) => {
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, name: "org", slug: "org", rootOrgId: null, parentOrgId: null })
     } as never,
-    membershipIdentityDAL: { update: vi.fn().mockResolvedValue(undefined) } as never,
+    membershipIdentityDAL: {
+      update: vi.fn().mockResolvedValue(undefined),
+      getIdentityById: vi.fn().mockResolvedValue({
+        scopeOrgId: ORG_ID,
+        identity: { id: IDENTITY_ID, orgId: ORG_ID, projectId: null, authMethods }
+      })
+    } as never,
     keyStore: { setItemWithExpiryNX: vi.fn().mockResolvedValue(null) } as never,
     identityAccessTokenDAL: {} as never,
     permissionService: {} as never,
@@ -201,73 +208,83 @@ describe("gcpAuthService.login GCE allow lists", () => {
   });
 });
 
-// An identity with no binding would otherwise accept any token that carries its UUID as audience,
-// so the login refuses it before the token is looked at.
-describe("gcpAuthService.login trust binding", () => {
-  test("rejects a GCE identity with no service account, project, or zone before verifying the token", async () => {
-    const { result, issueIdentityAccessToken } = login(
-      { type: "gce" },
-      { email: SERVICE_ACCOUNT, computeEngineDetails }
-    );
+// Existing identities saved without a binding keep logging in, so the login only warns.
+describe("gcpAuthService.login without a trust binding", () => {
+  test("allows a GCE identity with no service account, project, or zone and logs a warning", async () => {
+    const { result } = login({ type: "gce" }, { email: SERVICE_ACCOUNT, computeEngineDetails });
 
-    await expect(result).rejects.toMatchObject({
-      detail: { reasonCode: "trust_binding_missing", identityId: IDENTITY_ID, orgId: ORG_ID }
-    });
-    expect(validateIdTokenIdentity).not.toHaveBeenCalled();
-    expect(issueIdentityAccessToken).not.toHaveBeenCalled();
+    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(IDENTITY_ID));
   });
 
-  // Zone names are shared by every GCP customer, so a zone alone must not count as a binding.
-  test("rejects a GCE identity bound only by zone", async () => {
-    const { result, issueIdentityAccessToken } = login(
-      { type: "gce", allowedZones: "us-central1-a" },
-      { email: SERVICE_ACCOUNT, computeEngineDetails }
-    );
+  test("allows an IAM identity with no service account and logs a warning", async () => {
+    const { result } = login({ type: "iam" }, { email: SERVICE_ACCOUNT });
 
-    await expect(result).rejects.toMatchObject({ detail: { reasonCode: "trust_binding_missing" } });
-    expect(issueIdentityAccessToken).not.toHaveBeenCalled();
+    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(IDENTITY_ID));
   });
 
-  test("rejects an IAM identity that has only project and zone set", async () => {
-    const { result } = login(
-      { type: "iam", allowedProjects: "my-project", allowedZones: "us-central1-a" },
-      { email: SERVICE_ACCOUNT }
-    );
+  test("does not warn when a service account is set", async () => {
+    const { result } = login({ type: "iam", allowedServiceAccounts: SERVICE_ACCOUNT }, { email: SERVICE_ACCOUNT });
 
-    await expect(result).rejects.toMatchObject({ detail: { reasonCode: "trust_binding_missing" } });
-    expect(validateIamIdentity).not.toHaveBeenCalled();
-  });
-
-  test("treats whitespace-only lists as unset", async () => {
-    const { result } = login(
-      { type: "gce", allowedServiceAccounts: "   ", allowedProjects: " ", allowedZones: "" },
-      { email: SERVICE_ACCOUNT, computeEngineDetails }
-    );
-
-    await expect(result).rejects.toMatchObject({ detail: { reasonCode: "trust_binding_missing" } });
+    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 });
 
-describe("gcpAuthService.login legacy identities that do not require an allow list", () => {
-  test("allows a GCE identity with no binding saved before the allow list was required", async () => {
-    const { result, issueIdentityAccessToken } = login(
-      { type: "gce", requireAllowList: false },
-      { email: SERVICE_ACCOUNT, computeEngineDetails }
+// Attach and update are the only places a binding can be saved, so they are what keeps new identities bound. The
+// permission service is an empty object here, so a call that got past the binding check would throw a TypeError
+// instead of the binding message.
+describe("gcpAuthService trust binding on write", () => {
+  const BINDING_MESSAGE = "Configure at least one allowed GCP service account";
+
+  const attach = (body: Record<string, unknown>) => {
+    const { service } = makeService({}, []);
+    return service.attachGcpAuth({
+      identityId: IDENTITY_ID,
+      actorOrgId: ORG_ID,
+      type: "gce",
+      allowedServiceAccounts: "",
+      allowedProjects: "",
+      allowedZones: "",
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenNumUsesLimit: 0,
+      accessTokenTrustedIps: [],
+      ...body
+    } as never);
+  };
+
+  const update = (existing: Partial<TGcpAuthRow>, body: Record<string, unknown>) => {
+    const { service } = makeService(existing, [IdentityAuthMethod.GCP_AUTH]);
+    return service.updateGcpAuth({ identityId: IDENTITY_ID, actorOrgId: ORG_ID, ...body } as never);
+  };
+
+  test("attach rejects a GCE identity with no binding", async () => {
+    await expect(attach({ type: "gce" })).rejects.toThrow(BINDING_MESSAGE);
+  });
+
+  test("attach rejects a GCE identity bound only by zone", async () => {
+    await expect(attach({ type: "gce", allowedZones: "us-central1-a" })).rejects.toThrow(BINDING_MESSAGE);
+  });
+
+  test("attach rejects an IAM identity with a project but no service account", async () => {
+    await expect(attach({ type: "iam", allowedProjects: "my-project" })).rejects.toThrow(BINDING_MESSAGE);
+  });
+
+  test("update rejects clearing the last binding", async () => {
+    await expect(
+      update({ type: "gce", allowedServiceAccounts: SERVICE_ACCOUNT }, { allowedServiceAccounts: "" })
+    ).rejects.toThrow(BINDING_MESSAGE);
+  });
+
+  test("update rejects a change to an identity that has no binding and does not add one", async () => {
+    await expect(update({ type: "gce" }, { accessTokenTTL: 1800 })).rejects.toThrow(BINDING_MESSAGE);
+  });
+
+  test("update rejects switching a project-bound GCE identity to IAM", async () => {
+    await expect(update({ type: "gce", allowedProjects: "my-project" }, { type: "iam" })).rejects.toThrow(
+      BINDING_MESSAGE
     );
-
-    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
-    expect(issueIdentityAccessToken).toHaveBeenCalledTimes(1);
-  });
-
-  test("allows an IAM identity with no binding saved before the allow list was required", async () => {
-    const { result } = login({ type: "iam", requireAllowList: false }, { email: SERVICE_ACCOUNT });
-
-    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
-  });
-
-  test("denies an unbound identity once the allow list is required", async () => {
-    const { result } = login({ type: "gce", requireAllowList: true }, { email: SERVICE_ACCOUNT, computeEngineDetails });
-
-    await expect(result).rejects.toMatchObject({ detail: { reasonCode: "trust_binding_missing" } });
   });
 });

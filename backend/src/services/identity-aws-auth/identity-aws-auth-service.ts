@@ -155,21 +155,7 @@ export const identityAwsAuthServiceFactory = ({
 
     try {
       if (!hasAwsTrustBinding(identityAwsAuth)) {
-        if (identityAwsAuth.requireAllowList) {
-          throw new UnauthorizedError({
-            message:
-              "Access denied: this identity has no AWS account ID or principal ARN configured. An admin must add one before it can authenticate.",
-            detail: {
-              reasonCode: "trust_binding_missing",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-        }
-        logger.warn(
-          `AWS Auth Login: identity has no trust binding and its auth config predates enforcement, allowing [identity-id=${identity.id}]`
-        );
+        logger.warn(`AWS Auth Login: identity has no trust binding, allowing [identity-id=${identity.id}]`);
       }
 
       const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
@@ -449,7 +435,6 @@ export const identityAwsAuthServiceFactory = ({
           identityId: identityMembershipOrg.identity.id,
           type: "iam",
           stsEndpoint,
-          requireAllowList: true,
           allowedPrincipalArns,
           allowedAccountIds,
           accessTokenMaxTTL,
@@ -566,7 +551,6 @@ export const identityAwsAuthServiceFactory = ({
         identityAwsAuth.id,
         {
           stsEndpoint,
-          requireAllowList: true,
           allowedPrincipalArns,
           allowedAccountIds,
           accessTokenMaxTTL,

@@ -110,21 +110,7 @@ export const identityGcpAuthServiceFactory = ({
 
     try {
       if (!hasGcpTrustBinding(identityGcpAuth)) {
-        if (identityGcpAuth.requireAllowList) {
-          throw new UnauthorizedError({
-            message:
-              "Access denied: this identity has no GCP service account, project, or zone configured. An admin must add one before it can authenticate.",
-            detail: {
-              reasonCode: "trust_binding_missing",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-        }
-        logger.warn(
-          `GCP Auth Login: identity has no trust binding and its auth config predates enforcement, allowing [identity-id=${identity.id}]`
-        );
+        logger.warn(`GCP Auth Login: identity has no trust binding, allowing [identity-id=${identity.id}]`);
       }
 
       let gcpIdentityDetails: TGcpIdentityDetails;
@@ -407,7 +393,6 @@ export const identityGcpAuthServiceFactory = ({
         {
           identityId: identityMembershipOrg.identity.id,
           type,
-          requireAllowList: true,
           allowedServiceAccounts,
           allowedProjects,
           allowedZones,
@@ -527,7 +512,6 @@ export const identityGcpAuthServiceFactory = ({
         identityGcpAuth.id,
         {
           type,
-          requireAllowList: true,
           allowedServiceAccounts,
           allowedProjects,
           allowedZones,
