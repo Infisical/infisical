@@ -36,10 +36,24 @@
   animation: dialogOut var(--v4-duration-exit-slow) var(--v4-ease-exit) both;
 }
 .palette {
-  top: 33%;
+  --v4-palette-top: clamp(var(--v4-space-48), 13vh, calc(3 * var(--v4-space-48)));
+  top: var(--v4-palette-top);
+  display: flex;
+  flex-direction: column;
   max-width: var(--v4-size-dialog-wide);
+  max-height: calc(100dvh - var(--v4-palette-top) - var(--v4-space-16));
   overflow: hidden;
   translate: -50% 0;
+}
+.palette [cmdk-root] {
+  min-height: 0;
+}
+.palette [cmdk-list] {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.palette [cmdk-item] {
+  min-height: var(--v4-size-control-md);
 }
 .close[data-slot] {
   position: absolute;

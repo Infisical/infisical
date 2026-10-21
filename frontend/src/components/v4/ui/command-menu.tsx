@@ -288,7 +288,7 @@ export const CommandMenu = ({
                       <span className={cn(menu.title, item.mono && styles.mono)}>
                         {markLabel(item.label)}
                       </span>
-                      {item.description && (
+                      {item.description && item.description !== group.label && (
                         <span className={menu.description}>{item.description}</span>
                       )}
                     </span>
