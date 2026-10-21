@@ -86,7 +86,7 @@ type DropdownMenuProps = Omit<
   "disabled"
 > & {
   inset?: boolean;
-  variant?: "default" | "danger";
+  variant?: "default" | "danger" | "warning";
   isDisabled?: boolean;
   isDisabledFocusable?: boolean;
 };
@@ -119,6 +119,7 @@ const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
         className={cn(
           "text-sm",
           "data-[variant=danger]:text-danger data-[variant=danger]:focus:bg-danger/10 data-[variant=danger]:*:[svg]:!text-danger",
+          "data-[variant=warning]:text-warning data-[variant=warning]:focus:bg-warning/10 data-[variant=warning]:*:[svg]:!text-warning",
           "relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 outline-0 select-none focus:bg-foreground/5",
           "data-[disabled]:opacity-50 data-[inset]:pl-8",
           isFocusableDisabled

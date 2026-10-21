@@ -21,6 +21,7 @@ type Props = {
   onEditTemporaryAccess?: () => void;
   onRemove?: () => void;
   removeLabel?: string;
+  removeVariant?: "danger" | "warning";
 };
 
 // option rows follow the Combobox rich option shape: label over a muted text-xs description, with the
@@ -45,7 +46,8 @@ export const TierDropdown = ({
   onSelectTier,
   onEditTemporaryAccess,
   onRemove,
-  removeLabel = "Remove access"
+  removeLabel = "Remove access",
+  removeVariant = "danger"
 }: Props) => {
   // without a folder grant there is nothing else to act on, so the tiers are the whole menu
   if (!activeTier) {
@@ -63,7 +65,7 @@ export const TierDropdown = ({
   }
 
   return (
-    <DropdownMenuContent align="end" className="w-60">
+    <DropdownMenuContent align="end" className="w-72">
       <DropdownMenuSub>
         <DropdownMenuSubTrigger>
           <ShieldIcon />
@@ -82,7 +84,7 @@ export const TierDropdown = ({
         </DropdownMenuItem>
       )}
       {onRemove && (
-        <DropdownMenuItem variant="danger" onClick={onRemove}>
+        <DropdownMenuItem variant={removeVariant} onClick={onRemove}>
           <Trash2Icon />
           {removeLabel}
         </DropdownMenuItem>

@@ -9,10 +9,7 @@ import {
   Input,
   Popover,
   PopoverAnchor,
-  PopoverContent,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  PopoverContent
 } from "@app/components/v3";
 import { SecretFolderRole } from "@app/hooks/api/folderAccess";
 
@@ -31,31 +28,13 @@ import { TierDropdown } from "./TierDropdown";
 
 const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
 
-// every badge in the name row keeps the shared Badge sizing so they all line up at one height
-const NAME_BADGE_CLASS_NAME = "shrink-0";
-
-const ActorIdentity = ({
-  actor,
-  children
-}: {
-  actor: TFolderAccessActor;
-  children?: React.ReactNode;
-}) => (
+const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
   <>
     <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
       {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
     </div>
     <div className="min-w-0 flex-1">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
-        {actor.isProjectAdmin && (
-          <Badge variant="neutral" iconPosition="left" className={NAME_BADGE_CLASS_NAME}>
-            <ShieldIcon />
-            Admin
-          </Badge>
-        )}
-        {children}
-      </div>
+      <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
       <p className="truncate text-xs text-muted">{actor.subtitle}</p>
     </div>
   </>
@@ -104,6 +83,7 @@ export const FolderAccessRow = ({
   const firstName = actor.name.split(" ")[0];
   const isRangeValid = isValidTemporaryRange(range);
   const roleNames = actor.roles.map((role) => role.name).join(", ");
+  const isOverride = Boolean(access && actor.roles.length > 0);
 
   const remainingTime =
     access?.isTemporary && access?.temporaryAccessEndTime
@@ -122,6 +102,10 @@ export const FolderAccessRow = ({
       <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
         <Button variant="ghost" size="xs" className="shrink-0" isDisabled>
+          <Badge variant="neutral" iconPosition="left">
+            <ShieldIcon />
+            Admin
+          </Badge>
           Full access on all folders
         </Button>
       </div>
@@ -130,40 +114,7 @@ export const FolderAccessRow = ({
 
   return (
     <div className={ROW_CLASS_NAME}>
-      <ActorIdentity actor={actor}>
-        {Boolean(remainingTime && remainingTime?.expiresAt) && (
-          <Tooltip>
-            <TooltipTrigger>
-              <Badge
-                variant={remainingTime?.isExpired ? "danger" : "neutral"}
-                iconPosition="left"
-                className={NAME_BADGE_CLASS_NAME}
-              >
-                <ClockIcon />
-                {remainingTime?.isExpired ? "Access Expired" : `Expires in ${remainingTime?.value}`}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              Access {remainingTime?.isExpired ? "expired" : "expires"} on{" "}
-              {formatExpiryFull(remainingTime?.expiresAt || new Date())}
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {access && actor.roles.length > 0 && (
-          <Tooltip>
-            <TooltipTrigger>
-              <Badge variant="warning" className={NAME_BADGE_CLASS_NAME}>
-                Overrides project role
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              This folder permission takes precedence over the access {actor.name} gets from their
-              project role.
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </ActorIdentity>
+      <ActorIdentity actor={actor} />
 
       <Popover open={isTemporaryOpen} onOpenChange={setIsTemporaryOpen}>
         <PopoverAnchor asChild>
@@ -172,6 +123,17 @@ export const FolderAccessRow = ({
               {access ? (
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="xs" isDisabled={isDisabled}>
+                    {isOverride && <Badge variant="warning">Override</Badge>}
+                    {remainingTime && (
+                      <Badge
+                        variant={remainingTime.isExpired ? "danger" : "neutral"}
+                        iconPosition="left"
+                        title={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
+                      >
+                        <ClockIcon />
+                        {remainingTime.isExpired ? "Expired" : remainingTime.value}
+                      </Badge>
+                    )}
                     {FOLDER_ROLE_TIER_LABELS[access.permission]}
                     <ChevronDownIcon />
                   </Button>
@@ -200,7 +162,7 @@ export const FolderAccessRow = ({
                 }
                 temporaryLabel={
                   remainingTime && remainingTime?.expiresAt ? (
-                    <span className="flex flex-1 items-center justify-between gap-2">
+                    <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
                       Edit temporary access
                       <span className="text-xs text-muted">
                         {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
@@ -213,7 +175,8 @@ export const FolderAccessRow = ({
                 onSelectTier={onSetTier}
                 onEditTemporaryAccess={access ? openTemporary : undefined}
                 onRemove={access ? onRemove : undefined}
-                removeLabel="Remove folder access"
+                removeLabel={isOverride ? "Remove access override" : "Remove folder access"}
+                removeVariant={isOverride ? "warning" : "danger"}
               />
             </DropdownMenu>
           </div>
