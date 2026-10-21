@@ -3,7 +3,7 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { groupBy } from "@app/lib/fn";
+import { chunkArray, groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
@@ -40,6 +40,8 @@ import {
 } from "./org-membership-events";
 
 export const ORG_ACCESS_RECONCILE_CONSUMER = "org-access-reconcile";
+export const ACTORS_PER_RECONCILE_TX = 10;
+const RECONCILE_STATEMENT_TIMEOUT_MS = 30_000;
 
 export type TOrgAccessReconcileConsumerDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "find" | "findActorsWithOrgAccess" | "lockActorsForOrgAccess">;
@@ -72,8 +74,8 @@ const splitActors = (actors: TOrgMembershipActor[]) => ({
 
 // Keeps project memberships in an org only for actors that still reach it (direct org row or a group
 // holding one). Events say what got removed; we figure out who might've lost their last path, recheck
-// against current state and delete what's orphaned, one short tx per org. Not on the enforcement path
-// (token validation already rejects these actors) and safe to re-run.
+// against current state and delete what's orphaned. Not on the enforcement path (token validation
+// already rejects these actors) and safe to re-run.
 export const orgAccessReconcileConsumerFactory = ({
   orgDAL,
   projectDAL,
@@ -122,13 +124,14 @@ export const orgAccessReconcileConsumerFactory = ({
 
   // Privileges, keys and resource rows are keyed on actor + project and can exist in group-only projects
   // (e.g. a group-derived PAM admin's personal folder-admin row), so they're reaped across the whole org
-  // or they come back on re-add. Side effects fire only when rows were removed, so replays are no-ops.
-  const $reconcileOrg = async (orgId: string, scope: TReconcileScope, reason: string) => {
-    const org = await orgDAL.findById(orgId);
-    if (!org) return;
-    const candidates = splitActors(scope.actors);
-
-    const outcome = await membershipDAL.transaction(async (tx) => {
+  // or they come back on re-add.
+  const $revokeActors = async (
+    orgId: string,
+    orgProjectIds: string[],
+    candidates: { userIds: string[]; identityIds: string[] }
+  ) =>
+    membershipDAL.transaction(async (tx) => {
+      await tx.raw(`SET LOCAL statement_timeout = ${RECONCILE_STATEMENT_TIMEOUT_MS}`);
       await orgDAL.lockActorsForOrgAccess([...candidates.userIds, ...candidates.identityIds], tx);
 
       const withAccess = await orgDAL.findActorsWithOrgAccess({ orgId, ...candidates }, tx);
@@ -144,7 +147,6 @@ export const orgAccessReconcileConsumerFactory = ({
         ? await membershipDAL.find({ ...projectScope, $in: { actorIdentityId: identityIds } }, { tx })
         : [];
 
-      const orgProjectIds = (await projectDAL.find({ orgId }, { tx })).map((project) => project.id);
       const resourceScope = { scope: RESOURCE_SCOPE };
       const userResourceRows =
         orgProjectIds.length && userIds.length
@@ -214,25 +216,33 @@ export const orgAccessReconcileConsumerFactory = ({
       return { revoked, sendPamCancellations };
     });
 
-    if (!outcome) return;
-    outcome.sendPamCancellations();
+  // Actors are handled in small batches, each in its own short tx, since the rows they hold aren't bounded.
+  // Side effects fire per batch after commit and only when rows were removed, so replays are no-ops.
+  const $reconcileOrg = async (orgId: string, scope: TReconcileScope, reason: string) => {
+    const org = await orgDAL.findById(orgId);
+    if (!org) return;
+    const orgProjectIds = (await projectDAL.find({ orgId })).map((project) => project.id);
 
-    if (!outcome.revoked.length) return;
-
-    for await (const { projectIds, resources, ...actor } of outcome.revoked) {
-      await auditLogService.createAuditLog({
-        orgId,
-        actor: { type: ActorType.PLATFORM, metadata: {} },
-        event: {
-          type: EventType.REVOKE_ORG_PROJECT_ACCESS,
-          metadata: { ...actor, projectIds, resources, reason, groupId: scope.groupId }
+    for await (const actors of chunkArray(scope.actors, ACTORS_PER_RECONCILE_TX)) {
+      const outcome = await $revokeActors(orgId, orgProjectIds, splitActors(actors));
+      if (outcome) outcome.sendPamCancellations();
+      if (outcome?.revoked.length) {
+        for await (const { projectIds, resources, ...actor } of outcome.revoked) {
+          await auditLogService.createAuditLog({
+            orgId,
+            actor: { type: ActorType.PLATFORM, metadata: {} },
+            event: {
+              type: EventType.REVOKE_ORG_PROJECT_ACCESS,
+              metadata: { ...actor, projectIds, resources, reason, groupId: scope.groupId }
+            }
+          });
         }
-      });
-    }
 
-    usageMeteringService.emit(orgId, SecretIdentities.key);
-    usageMeteringService.emit(orgId, PamIdentities.key);
-    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+        usageMeteringService.emit(orgId, SecretIdentities.key);
+        usageMeteringService.emit(orgId, PamIdentities.key);
+        usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+      }
+    }
   };
 
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {

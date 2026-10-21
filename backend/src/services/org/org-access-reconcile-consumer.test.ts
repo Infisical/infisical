@@ -3,7 +3,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
 
-import { orgAccessReconcileConsumerFactory } from "./org-access-reconcile-consumer";
+import { ACTORS_PER_RECONCILE_TX, orgAccessReconcileConsumerFactory } from "./org-access-reconcile-consumer";
 import {
   GROUP_LINK_REMOVED_EVENT,
   GROUP_MEMBERSHIP_REMOVED_EVENT,
@@ -52,7 +52,7 @@ const build = (opts?: {
   orgs?: Record<string, unknown>;
   childOrgs?: string[];
 }) => {
-  const tx = { sentinel: true };
+  const tx = { raw: vi.fn().mockResolvedValue(undefined) };
   const deps = {
     orgDAL: {
       findById: vi.fn((id: string) => {
@@ -424,6 +424,45 @@ describe("org access reconcile consumer", () => {
       { scope: AccessScope.Project, scopeOrgId: ORG_ID, $in: { actorUserId: [USER_ID] } },
       { tx }
     );
-    expect(deps.projectDAL.find).toHaveBeenCalledWith({ orgId: ORG_ID }, { tx });
+    expect(deps.projectDAL.find).toHaveBeenCalledWith({ orgId: ORG_ID });
+  });
+
+  test("splits the actors into short, time-boxed transactions and logs each batch after it commits", async () => {
+    const userIds = Array.from({ length: ACTORS_PER_RECONCILE_TX + 1 }, (_, i) => uuid(200 + i));
+    const { consumer, deps, tx } = build({
+      projectRows: userIds.map((actorUserId, i) => ({ id: uuid(300 + i), actorUserId, scopeProjectId: PROJECT_A }))
+    });
+    deps.membershipDAL.find.mockImplementation((filter: { scope: string; $in?: { actorUserId?: string[] } }) =>
+      Promise.resolve(
+        filter.scope === AccessScope.Project
+          ? (filter.$in?.actorUserId ?? []).map((actorUserId) => ({
+              id: actorUserId,
+              actorUserId,
+              scope: filter.scope,
+              scopeProjectId: PROJECT_A
+            }))
+          : []
+      )
+    );
+
+    const [result] = await consumer.handle([
+      makeEvent(GROUP_LINK_REMOVED_EVENT, {
+        orgId: ORG_ID,
+        groupId: GROUP_ID,
+        members: userIds.map((actorId) => ({ actorType: ActorType.USER, actorId }))
+      })
+    ]);
+
+    expect(result.status).toBe(EventResultStatus.Delivered);
+    expect(deps.membershipDAL.transaction).toHaveBeenCalledTimes(2);
+    expect(tx.raw).toHaveBeenCalledTimes(2);
+    expect(tx.raw).toHaveBeenCalledWith(expect.stringContaining("SET LOCAL statement_timeout"));
+    expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenNthCalledWith(
+      1,
+      userIds.slice(0, ACTORS_PER_RECONCILE_TX),
+      tx
+    );
+    expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenNthCalledWith(2, userIds.slice(ACTORS_PER_RECONCILE_TX), tx);
+    expect(deps.auditLogService.createAuditLog).toHaveBeenCalledTimes(userIds.length);
   });
 });

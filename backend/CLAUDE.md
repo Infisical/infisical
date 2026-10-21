@@ -899,12 +899,13 @@ itself whether the actor still reaches the org.
   the consumer runs. Both lists are paged at 100 (one event per org page x member page) because the outbox
   rejects payloads over 16 KiB, which rolls back the removal. Any new path removing one of these must emit
   the matching event. The daily `org-access-reconcile-sweep` cron is a backstop, not a substitute.
-- **The consumer (`org-access-reconcile`) rechecks against current state**, one short tx per org. Orgs and
+- **The consumer (`org-access-reconcile`) rechecks against current state**, in batches of 10 actors per org,
+  each in its own short tx with a `statement_timeout`, since the rows an actor holds aren't bounded. Orgs and
   actors come from the payload for group events, and from the org plus its sub-orgs for a membership
   removal. Actors with no path left lose their project rows in that org, plus privileges, project keys,
   approver slots and resource memberships (PAM, Agent Vault, PKI apps, signers) across every project in the
   org, since those can exist in group-only projects. PAM cancellations, the `revoke-org-project-access`
-  audit log and usage meters fire after commit and only when something was removed, so replays are silent.
+  audit log and usage meters fire after each batch commits, only when something was removed, so replays are silent.
 - **Not on the enforcement path.** Token validation already rejects actors with no effective org membership
   (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat counts and SCIM.
 - **`orgDAL.lockActorsForOrgAccess`** is taken (sorted) by the add-to-group helpers and the consumer, so
