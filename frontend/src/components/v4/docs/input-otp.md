@@ -72,6 +72,7 @@ Exports: InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot. Source TypeSc
 ## Behavior
 
 - One underlying input owns the whole string; onChange receives that string, including partial and empty values. maxLength defines completion; onComplete signals length completion, not successful verification.
+- Each slot is its own input-style cell: the Input's 36px height, control border, control surface and radius-control times corners, in mono, with a 6px gap between cells. The active cell draws the shared focus glow and a blinking caret; aria-invalid on InputOTP turns every cell to the invalid border (and the active one to the bad glow), and disabled dims the whole code. InputOTPSeparator is a 4px muted dot between groups, never a minus.
 
 ## Accessibility
 
@@ -107,6 +108,7 @@ Save this example at `src/pages/design-system/examples/input-otp/default.tsx`; i
 Registry items used: @infisical/input-otp, @infisical/label. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
+import { Fragment } from "react";
 import * as UI from "../../../../components/v4/ui/input-otp";
 import { Label } from "../../../../components/v4/ui/label";
 const specimens = [
@@ -140,17 +142,15 @@ export default function Example() {
       {specimens.map((specimen) => (<div key={specimen.id} className="space-y-3">
           <Label htmlFor={specimen.id}>{specimen.label}</Label>
           <UI.InputOTP id={specimen.id} maxLength={6} containerClassName="flex-wrap" pattern="^[0-9]+$" aria-describedby={`${specimen.id}-help`} disabled={specimen.disabled} aria-invalid={specimen.invalid || undefined} defaultValue={specimen.value}>
-            <UI.InputOTPGroup>
-              {[0, 1].map((index) => (<UI.InputOTPSlot key={index} index={index} aria-invalid={specimen.invalid || undefined}/>))}
-            </UI.InputOTPGroup>
-            <UI.InputOTPSeparator />
-            <UI.InputOTPGroup>
-              {[2, 3].map((index) => (<UI.InputOTPSlot key={index} index={index} aria-invalid={specimen.invalid || undefined}/>))}
-            </UI.InputOTPGroup>
-            <UI.InputOTPSeparator />
-            <UI.InputOTPGroup>
-              {[4, 5].map((index) => (<UI.InputOTPSlot key={index} index={index} aria-invalid={specimen.invalid || undefined}/>))}
-            </UI.InputOTPGroup>
+            {[
+                [0, 1, 2],
+                [3, 4, 5]
+            ].map((group, position) => (<Fragment key={group[0]}>
+                {position > 0 && <UI.InputOTPSeparator />}
+                <UI.InputOTPGroup>
+                  {group.map((index) => (<UI.InputOTPSlot key={index} index={index}/>))}
+                </UI.InputOTPGroup>
+              </Fragment>))}
           </UI.InputOTP>
           <p id={`${specimen.id}-help`}>{specimen.help}</p>
         </div>))}

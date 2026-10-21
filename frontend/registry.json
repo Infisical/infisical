@@ -1478,7 +1478,6 @@
       "name": "input-otp",
       "type": "registry:ui",
       "registryDependencies": [
-        "@infisical/icon",
         "@infisical/infisical-base"
       ],
       "dependencies": [

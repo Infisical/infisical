@@ -653,9 +653,79 @@
   font-weight: var(--v4-type-mono-font-weight);
   letter-spacing: var(--v4-type-mono-letter-spacing);
 }
+.otp {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+}
+.otpGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-6);
+}
 .otpSlot[data-slot] {
-  min-width: var(--v4-size-control-default, var(--v4-size-control-sm));
-  min-height: var(--v4-size-control-default, var(--v4-size-control-sm));
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-control-md);
+  height: var(--v4-size-control-md);
+  border: var(--v4-size-control-border) solid var(--v4-control);
+  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  background-color: var(--v4-control-surface);
+  color: var(--v4-ink);
+  transition-property: border-color, box-shadow, background-color;
+  transition-duration: var(--v4-duration-fast);
+  transition-timing-function: var(--v4-ease-fade);
+}
+.otpSlot[data-active="true"] {
+  z-index: 1;
+  border-color: var(--v4-ink);
+  box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
+}
+.otp:has(input[aria-invalid="true"]) .otpSlot[data-slot] {
+  border-color: var(--v4-control-invalid-border);
+}
+.otp:has(input[aria-invalid="true"]) .otpSlot[data-active="true"] {
+  border-color: var(--v4-bad);
+  box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring-bad);
+}
+.otp:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.otpSeparator {
+  flex: none;
+  width: var(--v4-space-4);
+  height: var(--v4-space-4);
+  border-radius: 50%;
+  background: var(--v4-faint);
+}
+.otpCaretBox {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.otpCaret {
+  width: 1px;
+  height: var(--v4-size-icon);
+  background: var(--v4-ink);
+  /* v4-check-ignore motion-literal -- caret blink period, one owner */
+  animation: otpCaret 1s steps(1, end) infinite;
+}
+@keyframes otpCaret {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .otpCaret {
+    animation: none;
+  }
 }
 @container (max-width: 24rem) {
   .cardHeader {

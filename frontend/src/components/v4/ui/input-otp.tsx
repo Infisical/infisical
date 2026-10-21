@@ -3,7 +3,6 @@ import { OTPInput, OTPInputContext } from "input-otp";
 
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
-import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 
@@ -22,10 +21,7 @@ const InputOTP = React.forwardRef<
     <OTPInput
       ref={ref}
       data-slot="input-otp"
-      containerClassName={cn(
-        "cn-input-otp flex items-center has-disabled:opacity-50",
-        containerClassName
-      )}
+      containerClassName={cn(controlStyles.otp, containerClassName)}
       spellCheck={false}
       value={current}
       onChange={setCurrent}
@@ -44,7 +40,7 @@ const InputOTPGroup = React.forwardRef<
     <div
       ref={ref}
       data-slot="input-otp-group"
-      className={cn("has-aria-invalid:border-destructive flex items-center rounded-lg", className)}
+      className={cn(controlStyles.otpGroup, className)}
       {...props}
     />
   );
@@ -65,18 +61,13 @@ const InputOTPSlot = React.forwardRef<
       ref={ref}
       data-slot="input-otp-slot"
       data-active={isActive}
-      className={cn(
-        controlStyles.otpSlot,
-        controlStyles.technical,
-        "border-input aria-invalid:border-destructive data-[active=true]:aria-invalid:border-destructive relative flex items-center justify-center border-y border-r bg-[color:var(--v4-control-surface)] transition-all outline-none first:rounded-l-lg first:border-l last:rounded-r-lg data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:ring-2 data-[active=true]:ring-[color:var(--v4-focus-ring)] data-[active=true]:aria-invalid:ring-[color:var(--v4-focus-ring-bad)]",
-        className
-      )}
+      className={cn(controlStyles.otpSlot, controlStyles.technical, className)}
       {...props}
     >
       {char}
       {hasFakeCaret && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-4 w-px animate-caret-blink bg-foreground" />
+        <div className={controlStyles.otpCaretBox}>
+          <div className={controlStyles.otpCaret} />
         </div>
       )}
     </div>
@@ -91,13 +82,12 @@ const InputOTPSeparator = React.forwardRef<
   return (
     <div
       ref={ref}
+      aria-hidden="true"
       data-slot="input-otp-separator"
-      className="flex items-center [&_svg:not([class*='size-'])]:size-4"
+      className={controlStyles.otpSeparator}
       role="separator"
       {...props}
-    >
-      <Icon name="minus" />
-    </div>
+    />
   );
 });
 InputOTPSeparator.displayName = "InputOTPSeparator";

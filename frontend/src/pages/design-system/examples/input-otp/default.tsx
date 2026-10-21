@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+
 import * as UI from "@app/components/v4/ui/input-otp";
 import { Label } from "@app/components/v4/ui/label";
 
@@ -45,35 +47,19 @@ export default function Example() {
             aria-invalid={specimen.invalid || undefined}
             defaultValue={specimen.value}
           >
-            <UI.InputOTPGroup>
-              {[0, 1].map((index) => (
-                <UI.InputOTPSlot
-                  key={index}
-                  index={index}
-                  aria-invalid={specimen.invalid || undefined}
-                />
-              ))}
-            </UI.InputOTPGroup>
-            <UI.InputOTPSeparator />
-            <UI.InputOTPGroup>
-              {[2, 3].map((index) => (
-                <UI.InputOTPSlot
-                  key={index}
-                  index={index}
-                  aria-invalid={specimen.invalid || undefined}
-                />
-              ))}
-            </UI.InputOTPGroup>
-            <UI.InputOTPSeparator />
-            <UI.InputOTPGroup>
-              {[4, 5].map((index) => (
-                <UI.InputOTPSlot
-                  key={index}
-                  index={index}
-                  aria-invalid={specimen.invalid || undefined}
-                />
-              ))}
-            </UI.InputOTPGroup>
+            {[
+              [0, 1, 2],
+              [3, 4, 5]
+            ].map((group, position) => (
+              <Fragment key={group[0]}>
+                {position > 0 && <UI.InputOTPSeparator />}
+                <UI.InputOTPGroup>
+                  {group.map((index) => (
+                    <UI.InputOTPSlot key={index} index={index} />
+                  ))}
+                </UI.InputOTPGroup>
+              </Fragment>
+            ))}
           </UI.InputOTP>
           <p id={`${specimen.id}-help`}>{specimen.help}</p>
         </div>
