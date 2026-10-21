@@ -271,9 +271,12 @@ enum KeyTransportScheme {
   RsaOaep = "rsa-oaep"
 }
 
-type TKeyTransport =
+type TKeyTransport = { algorithmOid?: string } & (
   | { scheme: KeyTransportScheme.RsaPkcs1 }
-  | { scheme: KeyTransportScheme.RsaOaep; hash: string; label?: Buffer };
+  | { scheme: KeyTransportScheme.RsaOaep; hash: string; label?: Buffer }
+);
+
+const MAX_REPORTED_OID_LENGTH = 64;
 
 const OAEP_P_SOURCE_TAG_NUMBER = 2;
 
@@ -301,8 +304,9 @@ const parseKeyTransportAlgorithm = (keyEncryptionAlgorithm: asn1js.BaseBlock): T
     return { scheme: KeyTransportScheme.RsaPkcs1 };
   }
 
+  const algorithmOid = algorithm.algorithmId.slice(0, MAX_REPORTED_OID_LENGTH);
   if (algorithm.algorithmId !== KEY_TRANSPORT_OIDS.rsaesOaep) {
-    return { scheme: KeyTransportScheme.RsaPkcs1 };
+    return { scheme: KeyTransportScheme.RsaPkcs1, algorithmOid };
   }
 
   const { algorithmParams } = algorithm as { algorithmParams: unknown };
@@ -325,7 +329,7 @@ const parseKeyTransportAlgorithm = (keyEncryptionAlgorithm: asn1js.BaseBlock): T
         paramElement.idBlock.tagClass === 3 && paramElement.idBlock.tagNumber === OAEP_P_SOURCE_TAG_NUMBER
     ) ?? false;
   if (!hasExplicitPSource) {
-    return { scheme: KeyTransportScheme.RsaOaep, hash };
+    return { scheme: KeyTransportScheme.RsaOaep, hash, algorithmOid };
   }
 
   const { pSourceAlgorithm } = oaepParams;
@@ -336,8 +340,8 @@ const parseKeyTransportAlgorithm = (keyEncryptionAlgorithm: asn1js.BaseBlock): T
     });
   }
 
-  const labelBytes = Buffer.from(label.valueBlock.valueHexView);
-  return { scheme: KeyTransportScheme.RsaOaep, hash, label: labelBytes.length ? labelBytes : undefined };
+  const labelBytes = Buffer.from(label.getValue());
+  return { scheme: KeyTransportScheme.RsaOaep, hash, label: labelBytes.length ? labelBytes : undefined, algorithmOid };
 };
 
 const decryptEnvelopedDataRaw = (
@@ -389,8 +393,13 @@ const decryptEnvelopedDataRaw = (
     throw new BadRequestError({ message: "No RecipientInfo found in EnvelopedData" });
   }
 
-  const firstRecipientInfo = recipientInfosSet.valueBlock.value[0] as asn1js.Sequence;
-  const ktri = firstRecipientInfo.valueBlock.value;
+  const firstRecipientInfo = recipientInfosSet.valueBlock.value[0];
+  const ktri = firstRecipientInfo instanceof asn1js.Sequence ? firstRecipientInfo.valueBlock.value : [];
+  if (ktri.length !== 4) {
+    throw new BadRequestError({
+      message: "The SCEP request's recipient info is malformed, so its request could not be decrypted."
+    });
+  }
 
   // The encryptedKey is the LAST element of KeyTransRecipientInfo
   // Per RFC 5652: version, rid, keyEncryptionAlgorithm, encryptedKey
@@ -458,7 +467,9 @@ const decryptEnvelopedDataRaw = (
   try {
     plainText = symmetricDecrypt(encryptedContent, contentEncryptionKey, iv, cipherOid);
   } catch {
-    throw new BadRequestError({ message: "Failed to decrypt SCEP enveloped data" });
+    throw new BadRequestError({
+      message: `Failed to decrypt SCEP enveloped data (key encryption algorithm ${keyTransport.algorithmOid ?? "unreadable"})`
+    });
   }
 
   return { plainText, cipherOid };

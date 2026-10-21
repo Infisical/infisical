@@ -45,6 +45,10 @@ https://app.infisical.com/scep/{profile_id}/pkiclient.exe
 
 For self-hosted Infisical instances, replace `app.infisical.com` with your instance's domain.
 
+<Note>
+  Windows adds `/pkiclient.exe` to the SCEP server URL itself. If you configure Windows devices, including through an MDM tool such as Microsoft Intune, remove `/pkiclient.exe` from the end of the URL. Other SCEP clients, such as Apple devices and sscep, use the full URL.
+</Note>
+
 ## Guides
 
 <CardGroup cols={2}>

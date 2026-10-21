@@ -295,7 +295,9 @@ describe("parseScepMessage key transport", () => {
     try {
       decryptedCsr = parseScepMessage(message, exportPkcs8(ra)).csr;
     } catch (err) {
-      expect((err as Error).message).toBe("Failed to decrypt SCEP enveloped data");
+      expect((err as Error).message).toBe(
+        `Failed to decrypt SCEP enveloped data (key encryption algorithm ${KEY_TRANSPORT_OIDS.rsaesOaep})`
+      );
     }
 
     expect(decryptedCsr?.equals(csr) ?? false).toBe(false);
