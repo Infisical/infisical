@@ -11,8 +11,8 @@ import {
   DelegatedApprovalRequestStatus
 } from "@app/services/delegated-approval/delegated-approval-enums";
 import {
-  getDelegatedApprovalConnectionError,
-  isApprovalRequestExpired
+  isApprovalRequestExpired,
+  requireDelegatedApprovalConnection
 } from "@app/services/delegated-approval/delegated-approval-guards";
 import {
   DELEGATED_APPROVAL_FINAL_STATE,
@@ -36,8 +36,7 @@ import { DelegatedApprovalDecision, DelegatedApprovalDecisionOutcome } from "./d
 import {
   describeDelegatedApprovalPermissions,
   haveSameDelegatedApprovalPermissions,
-  normalizeDelegatedApprovalPermissions,
-  recordDelegatedApprovalDecisionOutcome
+  normalizeDelegatedApprovalPermissions
 } from "./delegated-approval-decision-fns";
 import {
   TApplyDelegatedApprovalDecisionDTO,
@@ -112,7 +111,10 @@ export const delegatedApprovalDecisionServiceFactory = ({
     }
   };
 
-  const $fail = async (context: TDelegatedApprovalDecisionContext, reason: string) => {
+  const $terminal = async (
+    context: TDelegatedApprovalDecisionContext,
+    reason: string
+  ): Promise<TApplyDelegatedApprovalDecisionResult> => {
     try {
       await failDelegatedApprovalRequest(
         { id: context.delegatedRequestId, requestId: context.approvalRequest.id, reason },
@@ -125,16 +127,17 @@ export const delegatedApprovalDecisionServiceFactory = ({
       );
     }
     await $audit(context, { outcome: DelegatedApprovalDecisionOutcome.Failed, reason });
+    logger.error(
+      `Delegated approval decision failed [delegatedRequestId=${context.delegatedRequestId}] [approvalRequestId=${context.approvalRequest.id}] [reason=${reason}]`
+    );
+    return { status: EventResultStatus.Failed, error: reason };
   };
 
   const $finalize = async (
     context: TDelegatedApprovalDecisionContext,
     decided: TDecidedDelegatedApprovalReadResult,
     postApprovalTxRoutine: TApprovalResource["postApprovalTxRoutine"]
-  ): Promise<{
-    outcome: TDelegatedApprovalFinalizeOutcome;
-    result: TApplyDelegatedApprovalDecisionResult;
-  }> => {
+  ): Promise<TDelegatedApprovalFinalizeOutcome> => {
     const outcome = await approvalRequestDAL.transaction(async (tx): Promise<TDelegatedApprovalFinalizeOutcome> => {
       const locked = await approvalRequestDAL.findByIdForUpdate(context.approvalRequest.id, tx);
       if (!locked) return { kind: "gone" };
@@ -163,28 +166,34 @@ export const delegatedApprovalDecisionServiceFactory = ({
       );
       if (!finalized) return { kind: "raced" };
 
-      if (isApproved) {
-        await approvalRequestDAL.updateById(locked.id, { status: ApprovalRequestStatus.Approved }, tx);
-        await postApprovalTxRoutine?.(locked as TApprovalRequest, tx);
-      } else {
-        await approvalRequestDAL.updateById(locked.id, { status: ApprovalRequestStatus.Rejected }, tx);
-      }
+      await approvalRequestDAL.updateById(
+        locked.id,
+        { status: isApproved ? ApprovalRequestStatus.Approved : ApprovalRequestStatus.Rejected },
+        tx
+      );
+      if (isApproved) await postApprovalTxRoutine?.(locked as TApprovalRequest, tx);
       return { kind: "applied" };
     });
 
-    const result = await recordDelegatedApprovalDecisionOutcome(outcome, { context, decided, audit: $audit });
-    return { outcome, result };
-  };
-
-  const $terminal = async (
-    context: TDelegatedApprovalDecisionContext,
-    reason: string
-  ): Promise<TApplyDelegatedApprovalDecisionResult> => {
-    await $fail(context, reason);
-    logger.error(
-      `Delegated approval decision failed [delegatedRequestId=${context.delegatedRequestId}] [approvalRequestId=${context.approvalRequest.id}] [reason=${reason}]`
-    );
-    return { status: EventResultStatus.Failed, error: reason };
+    switch (outcome.kind) {
+      case "applied":
+        await $audit(context, { outcome: DelegatedApprovalDecisionOutcome.Applied, decided });
+        logger.info(
+          `Delegated approval decision applied [delegatedRequestId=${context.delegatedRequestId}] [approvalRequestId=${context.approvalRequest.id}] [decision=${decided.decision}]`
+        );
+        break;
+      case "late":
+        await $audit(context, { outcome: DelegatedApprovalDecisionOutcome.Failed, reason: outcome.reason, decided });
+        logger.warn(
+          `Delegated approval decision arrived too late [delegatedRequestId=${context.delegatedRequestId}] [approvalRequestId=${context.approvalRequest.id}] [reason=${outcome.reason}]`
+        );
+        break;
+      default:
+        logger.info(
+          `Delegated approval request was finalized while its decision was being read, skipping [delegatedRequestId=${context.delegatedRequestId}] [outcome=${outcome.kind}]`
+        );
+    }
+    return outcome;
   };
 
   // Reads the decision back from the delegated approval system and finalizes the request. Retry
@@ -261,21 +270,21 @@ export const delegatedApprovalDecisionServiceFactory = ({
     }
 
     const rawConnection = await appConnectionDAL.findById(delegatedPolicy.connectionId);
-    const connectionError = getDelegatedApprovalConnectionError({
-      rawConnection,
-      delegatedPolicy,
-      organizationId: approvalRequest.organizationId
-    });
-    if (connectionError || !rawConnection) {
-      return $terminal(context, connectionError ?? "The policy's App Connection was not found.");
-    }
+    const postApprovalTxRoutine = isDelegatedApprovalSupportedPolicyType(approvalRequest.type)
+      ? approvalResources[approvalRequest.type]?.postApprovalTxRoutine
+      : undefined;
 
-    const providerName = context.delegatedApprovalType;
     let decided: TDecidedDelegatedApprovalReadResult;
-    let postApprovalTxRoutine: TApprovalResource["postApprovalTxRoutine"]; // no need to be a let
     try {
       const provider = getDelegatedApprovalProvider(delegatedPolicy.type);
-      const connection = await decryptAppConnection(rawConnection, kmsService);
+      const connection = await decryptAppConnection(
+        requireDelegatedApprovalConnection({
+          rawConnection,
+          delegatedPolicy,
+          organizationId: approvalRequest.organizationId
+        }),
+        kmsService
+      );
       const result = await provider.fetchDecision(
         { delegatedRequestId, approvalRequestId: approvalRequest.id, providerRequestId: context.providerRequestId },
         connection
@@ -291,7 +300,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
 
       if (result.approvalRequestId && result.approvalRequestId !== approvalRequest.id) {
         throw new UnrecoverableError(
-          `${providerName} returned the record of a different request ('${result.approvalRequestId}'). Create the request again.`
+          `${delegatedApprovalName} returned the record of a different request ('${result.approvalRequestId}'). Create the request again.`
         );
       }
 
@@ -301,16 +310,13 @@ export const delegatedApprovalDecisionServiceFactory = ({
         const approved = normalizeDelegatedApprovalPermissions(result.permissions);
         if (!haveSameDelegatedApprovalPermissions(requested, approved)) {
           throw new UnrecoverableError(
-            `${providerName} approved different permissions than this request asked for. Requested: ${describeDelegatedApprovalPermissions(requested)}. Approved in ${providerName}: ${describeDelegatedApprovalPermissions(approved)}. The request was closed. Create the request again.`
+            `${delegatedApprovalName} approved different permissions than this request asked for. Requested: ${describeDelegatedApprovalPermissions(requested)}. Approved in ${delegatedApprovalName}: ${describeDelegatedApprovalPermissions(approved)}. The request was closed. Create the request again.`
           );
         }
 
-        postApprovalTxRoutine = isDelegatedApprovalSupportedPolicyType(approvalRequest.type)
-          ? approvalResources[approvalRequest.type]?.postApprovalTxRoutine
-          : undefined;
         if (!postApprovalTxRoutine) {
           throw new UnrecoverableError(
-            `Requests of type '${approvalRequest.type}' cannot be granted from a decision made in ${providerName}.`
+            `Requests of type '${approvalRequest.type}' cannot be granted from a decision made in ${delegatedApprovalName}.`
           );
         }
       }
@@ -328,7 +334,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
       return { status: EventResultStatus.Retry, error: message };
     }
 
-    const { outcome: finalized, result } = await $finalize(context, decided, postApprovalTxRoutine);
+    const finalized = await $finalize(context, decided, postApprovalTxRoutine);
     if (finalized.kind === "applied") {
       const notify = isDelegatedApprovalSupportedPolicyType(approvalRequest.type)
         ? decisionNotifiers[approvalRequest.type]
@@ -344,7 +350,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
         }
       }
     }
-    return result;
+    return { status: EventResultStatus.Delivered };
   };
 
   return { applyDecision };

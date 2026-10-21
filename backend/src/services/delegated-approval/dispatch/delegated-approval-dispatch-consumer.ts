@@ -24,8 +24,8 @@ import {
 } from "../delegated-approval-events";
 import {
   DelegatedApprovalRequestBlocker,
-  getDelegatedApprovalConnectionError,
-  getDelegatedApprovalRequestBlocker
+  getDelegatedApprovalRequestBlocker,
+  requireDelegatedApprovalConnection
 } from "../delegated-approval-guards";
 import { TDelegatedApprovalPolicyDALFactory } from "../delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "../delegated-approval-request-dal";
@@ -56,7 +56,7 @@ const BLOCKER_MESSAGES: Record<DelegatedApprovalRequestBlocker, string> = {
 type TDelegatedApprovalDispatchConsumerDep = {
   delegatedApprovalRequestDAL: Pick<
     TDelegatedApprovalRequestDALFactory,
-    "findById" | "transaction" | "update" | "updateById"
+    "findById" | "primaryNode" | "update" | "updateById"
   >;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
   delegatedApprovalCallbackService: Pick<
@@ -154,23 +154,23 @@ export const delegatedApprovalDispatchConsumerFactory = ({
         );
       }
 
+      const primary = delegatedApprovalRequestDAL.primaryNode();
       const [project, rawConnection] = await Promise.all([
-        projectDAL.findById(approvalRequest.projectId),
-        appConnectionDAL.findById(delegatedPolicy.connectionId)
+        projectDAL.findById(approvalRequest.projectId, primary),
+        appConnectionDAL.findById(delegatedPolicy.connectionId, primary)
       ]);
       if (!project) {
         throw new UnrecoverableError("The project of the approval request no longer exists.");
       }
-      const connectionError = getDelegatedApprovalConnectionError({
-        rawConnection,
-        delegatedPolicy,
-        organizationId: approvalRequest.organizationId
-      });
-      if (connectionError || !rawConnection) {
-        throw new UnrecoverableError(connectionError ?? "The policy's App Connection was not found.");
-      }
 
-      const connection = await decryptAppConnection(rawConnection, kmsService);
+      const connection = await decryptAppConnection(
+        requireDelegatedApprovalConnection({
+          rawConnection,
+          delegatedPolicy,
+          organizationId: approvalRequest.organizationId
+        }),
+        kmsService
+      );
 
       const callbackToken = await delegatedApprovalCallbackService.getOrIssueCallbackToken({
         delegatedRequest,

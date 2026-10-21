@@ -14,5 +14,7 @@ export const DelegatedApprovalCallbackEventPayloadSchema = z.object({
 
 export type TDelegatedApprovalCallbackEventPayload = z.infer<typeof DelegatedApprovalCallbackEventPayloadSchema>;
 
+const DELEGATED_APPROVAL_CALLBACK_EVENTS = new Set<string>(Object.values(DelegatedApprovalCallbackEvent));
+
 export const isDelegatedApprovalCallbackEvent = (eventType: string): eventType is DelegatedApprovalCallbackEvent =>
-  (Object.values(DelegatedApprovalCallbackEvent) as string[]).includes(eventType);
+  DELEGATED_APPROVAL_CALLBACK_EVENTS.has(eventType);

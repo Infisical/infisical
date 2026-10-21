@@ -45,14 +45,16 @@ export const delegatedApprovalCallbackServiceFactory = ({
 
     const token = generateCallbackToken();
     const encryptedCallbackToken = encryptor({ plainText: Buffer.from(token) }).cipherTextBlob;
-    const current = await delegatedApprovalRequestDAL.transaction(async (tx) => {
-      const [issued] = await delegatedApprovalRequestDAL.update(
-        { id: delegatedRequest.id, encryptedCallbackToken: null },
-        { encryptedCallbackToken },
-        tx
-      );
-      return issued ?? delegatedApprovalRequestDAL.findById(delegatedRequest.id, tx);
-    });
+    const [issued] = await delegatedApprovalRequestDAL.update(
+      { id: delegatedRequest.id, encryptedCallbackToken: null },
+      { encryptedCallbackToken }
+    );
+    if (issued) return token;
+
+    const current = await delegatedApprovalRequestDAL.findById(
+      delegatedRequest.id,
+      delegatedApprovalRequestDAL.primaryNode()
+    );
     if (!current?.encryptedCallbackToken) return null;
 
     return decryptor({ cipherTextBlob: current.encryptedCallbackToken }).toString();

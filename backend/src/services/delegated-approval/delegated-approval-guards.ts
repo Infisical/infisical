@@ -1,10 +1,12 @@
-import { TApprovalRequests } from "@app/db/schemas";
+import { UnrecoverableError } from "bullmq";
+
+import { TAppConnections, TApprovalRequests } from "@app/db/schemas";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
 import { DelegatedApprovalPolicyType } from "./delegated-approval-enums";
 import { DELEGATED_APPROVAL_CONNECTION_MAP } from "./delegated-approval-maps";
-import { TApprovalRequestExpiry, TGetDelegatedApprovalConnectionErrorDTO } from "./delegated-approval-types";
+import { TApprovalRequestExpiry, TRequireDelegatedApprovalConnectionDTO } from "./delegated-approval-types";
 
 // let's create this helper function inside the access approval global request bridge service
 export const isApprovalRequestExpired = (request: TApprovalRequestExpiry, now: Date = new Date()): boolean =>
@@ -32,13 +34,15 @@ export const getDelegatedApprovalRequestBlocker = (
 
 // The connection a policy names must still exist in the request's org; anything else reads as "not
 // found" so one org cannot learn another org's connection ids.
-export const getDelegatedApprovalConnectionError = ({
+export const requireDelegatedApprovalConnection = <T extends Pick<TAppConnections, "orgId">>({
   rawConnection,
   delegatedPolicy,
   organizationId
-}: TGetDelegatedApprovalConnectionErrorDTO): string | null => {
-  if (rawConnection && rawConnection.orgId === organizationId) return null;
+}: TRequireDelegatedApprovalConnectionDTO<T>): T => {
+  if (rawConnection && rawConnection.orgId === organizationId) return rawConnection;
 
   const connectionApp = DELEGATED_APPROVAL_CONNECTION_MAP[delegatedPolicy.type as DelegatedApprovalPolicyType];
-  return `App Connection with ID '${delegatedPolicy.connectionId}' was not found. Select a ${APP_CONNECTION_NAME_MAP[connectionApp]} Connection on the policy and create the request again.`;
+  throw new UnrecoverableError(
+    `App Connection with ID '${delegatedPolicy.connectionId}' was not found. Select a ${APP_CONNECTION_NAME_MAP[connectionApp]} Connection on the policy and create the request again.`
+  );
 };

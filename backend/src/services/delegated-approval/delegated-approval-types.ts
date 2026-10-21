@@ -64,13 +64,13 @@ export type TUpdateDelegatedApprovalRequestDTO = {
 export type TApprovalRequestExpiry = { expiresAt?: Date | string | null };
 
 export type TLoadDelegatedApprovalContextDeps = {
-  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "transaction">;
+  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "primaryNode">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById">;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
 };
 
-export type TGetDelegatedApprovalConnectionErrorDTO = {
-  rawConnection: Pick<TAppConnections, "orgId"> | null | undefined;
+export type TRequireDelegatedApprovalConnectionDTO<T extends Pick<TAppConnections, "orgId">> = {
+  rawConnection: T | null | undefined;
   delegatedPolicy: Pick<TDelegatedApprovalPolicies, "type" | "connectionId">;
   organizationId: string;
 };

@@ -11,11 +11,12 @@ export type TDelegatedApprovalRequestDALFactory = ReturnType<typeof delegatedApp
 
 export type TDelegatedApprovalRequestWithApprovalRequest = TDelegatedApprovalRequests & {
   approvalRequestOrganizationId: string;
-  approvalRequestStatus: string;
 };
 
 export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.DelegatedApprovalRequests);
+
+  const primaryNode = () => db.primaryNode();
 
   const findByProviderRequestId = async (providerRequestId: string) => {
     try {
@@ -28,10 +29,7 @@ export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .where(`${TableName.DelegatedApprovalRequests}.providerRequestId`, providerRequestId)
         .select(selectAllTableCols(TableName.DelegatedApprovalRequests))
-        .select(
-          db.ref("organizationId").withSchema(TableName.ApprovalRequests).as("approvalRequestOrganizationId"),
-          db.ref("status").withSchema(TableName.ApprovalRequests).as("approvalRequestStatus")
-        )
+        .select(db.ref("organizationId").withSchema(TableName.ApprovalRequests).as("approvalRequestOrganizationId"))
         .first();
       return (row as TDelegatedApprovalRequestWithApprovalRequest | undefined) ?? null;
     } catch (error) {
@@ -56,5 +54,5 @@ export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByProviderRequestId, claimDecisionRead };
+  return { ...orm, primaryNode, findByProviderRequestId, claimDecisionRead };
 };

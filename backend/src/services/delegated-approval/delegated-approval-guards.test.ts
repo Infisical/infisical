@@ -1,3 +1,4 @@
+import { UnrecoverableError } from "bullmq";
 import { describe, expect, test } from "vitest";
 
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
@@ -5,9 +6,9 @@ import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-po
 import { DelegatedApprovalPolicyType } from "./delegated-approval-enums";
 import {
   DelegatedApprovalRequestBlocker,
-  getDelegatedApprovalConnectionError,
   getDelegatedApprovalRequestBlocker,
-  isApprovalRequestExpired
+  isApprovalRequestExpired,
+  requireDelegatedApprovalConnection
 } from "./delegated-approval-guards";
 
 const pending = { status: ApprovalRequestStatus.Pending, expiresAt: null as Date | null };
@@ -40,28 +41,24 @@ describe("getDelegatedApprovalRequestBlocker", () => {
   });
 });
 
-describe("getDelegatedApprovalConnectionError", () => {
-  test("accepts the policy's connection in the request's org", () => {
+describe("requireDelegatedApprovalConnection", () => {
+  test("returns the policy's connection when it is in the request's org", () => {
+    const rawConnection = { orgId: "org-1" };
+
     expect(
-      getDelegatedApprovalConnectionError({
-        rawConnection: { orgId: "org-1" },
-        delegatedPolicy: policy,
-        organizationId: "org-1"
-      })
-    ).toBeNull();
+      requireDelegatedApprovalConnection({ rawConnection, delegatedPolicy: policy, organizationId: "org-1" })
+    ).toBe(rawConnection);
   });
 
   test.each([
     ["is missing", null],
     ["belongs to another org", { orgId: "org-2" }]
   ])("names the connection and the app to pick when the connection %s", (_, rawConnection) => {
-    const error = getDelegatedApprovalConnectionError({
-      rawConnection,
-      delegatedPolicy: policy,
-      organizationId: "org-1"
-    });
+    const requireConnection = () =>
+      requireDelegatedApprovalConnection({ rawConnection, delegatedPolicy: policy, organizationId: "org-1" });
 
-    expect(error).toContain("App Connection with ID 'connection-1' was not found");
-    expect(error).toContain("ServiceNow Connection");
+    expect(requireConnection).toThrow(UnrecoverableError);
+    expect(requireConnection).toThrow("App Connection with ID 'connection-1' was not found");
+    expect(requireConnection).toThrow("ServiceNow Connection");
   });
 });

@@ -50,6 +50,7 @@ const APPROVAL_REQUEST_ID = "33333333-3333-3333-3333-333333333333";
 const ORG_ID = "22222222-2222-2222-2222-222222222222";
 const EXTERNAL_ID = "snow-1";
 const TX = { tx: true } as never;
+const PRIMARY = { primary: true } as never;
 const waitingDelegatedRequest = {
   id: DELEGATED_REQUEST_ID,
   requestId: APPROVAL_REQUEST_ID,
@@ -122,7 +123,7 @@ const buildConsumer = ({
   const delegatedApprovalDecisionService = delegatedApprovalDecisionServiceFactory({
     delegatedApprovalRequestDAL: {
       findById: vi.fn(async () => row),
-      transaction: async (cb: (tx: never) => Promise<unknown>) => cb(TX),
+      primaryNode: () => PRIMARY,
       update
     },
     delegatedApprovalPolicyDAL: { findOne: vi.fn().mockResolvedValue(policy) },

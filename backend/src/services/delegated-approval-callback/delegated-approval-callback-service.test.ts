@@ -35,6 +35,7 @@ const encrypt = (plainText: Buffer) => Buffer.concat([CIPHER_PREFIX, plainText])
 const decrypt = (cipherTextBlob: Buffer) => cipherTextBlob.subarray(CIPHER_PREFIX.length);
 
 const TX = { isTx: true };
+const PRIMARY = { isPrimary: true };
 
 const makeService = ({
   stored = true,
@@ -43,6 +44,7 @@ const makeService = ({
   const delegatedApprovalRequestDAL = {
     update: vi.fn(async (_filter: unknown, patch: object) => (stored ? [{ id: "delegated-1", ...patch }] : [])),
     transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(TX)),
+    primaryNode: vi.fn(() => PRIMARY),
     findById: vi.fn(async (): Promise<unknown> => currentRow),
     findByProviderRequestId: vi.fn(async (): Promise<unknown> => null),
     claimDecisionRead: vi.fn(async (): Promise<unknown> => ({ id: "delegated-1" }))
@@ -94,8 +96,7 @@ describe("getOrIssueCallbackToken", () => {
     });
     expect(delegatedApprovalRequestDAL.update).toHaveBeenCalledWith(
       { id: "delegated-1", encryptedCallbackToken: null },
-      { encryptedCallbackToken: encrypt(Buffer.from(token as string)) },
-      TX
+      { encryptedCallbackToken: encrypt(Buffer.from(token as string)) }
     );
   });
 
@@ -111,8 +112,8 @@ describe("getOrIssueCallbackToken", () => {
     expect(delegatedApprovalRequestDAL.update).not.toHaveBeenCalled();
   });
 
-  test("falls back to the token a concurrent attempt stored first", async () => {
-    const { service } = makeService({
+  test("falls back to the token a concurrent attempt stored first, read from the primary", async () => {
+    const { service, delegatedApprovalRequestDAL } = makeService({
       stored: false,
       currentRow: { encryptedCallbackToken: encrypt(Buffer.from("winner-token")) }
     });
@@ -123,6 +124,7 @@ describe("getOrIssueCallbackToken", () => {
     });
 
     expect(token).toBe("winner-token");
+    expect(delegatedApprovalRequestDAL.findById).toHaveBeenCalledWith("delegated-1", PRIMARY);
   });
 
   test("returns null when the request vanished before a token could be stored", async () => {
@@ -150,7 +152,6 @@ describe("handleCallback", () => {
     providerRequestId: EXTERNAL_ID,
     callbackAttempts: 0,
     approvalRequestOrganizationId: "org-1",
-    approvalRequestStatus: ApprovalRequestStatus.Pending,
     ...overrides
   });
 

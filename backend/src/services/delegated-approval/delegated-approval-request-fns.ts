@@ -49,21 +49,21 @@ export const failDelegatedApprovalRequest = (
   return tx ? run(tx) : approvalRequestDAL.transaction(run);
 };
 
+// The rows a worker needs to act on a delegated request, read from the primary because they were
+// committed together with the event that woke the worker.
 export const loadDelegatedApprovalContext = async (
   delegatedRequestId: string,
   { delegatedApprovalRequestDAL, approvalRequestDAL, delegatedApprovalPolicyDAL }: TLoadDelegatedApprovalContextDeps
 ) => {
-  // The rows a worker needs to act on a delegated request, read from the primary because they were
-  // committed together with the event that woke the worker.
-  return delegatedApprovalRequestDAL.transaction(async (tx) => {
-    const delegatedRequest = await delegatedApprovalRequestDAL.findById(delegatedRequestId, tx);
-    if (!delegatedRequest) return null;
+  const primary = delegatedApprovalRequestDAL.primaryNode();
 
-    const approvalRequest = await approvalRequestDAL.findById(delegatedRequest.requestId, tx);
-    const delegatedPolicy = approvalRequest?.policyId
-      ? await delegatedApprovalPolicyDAL.findOne({ policyId: approvalRequest.policyId }, tx)
-      : null;
+  const delegatedRequest = await delegatedApprovalRequestDAL.findById(delegatedRequestId, primary);
+  if (!delegatedRequest) return null;
 
-    return { delegatedRequest, approvalRequest, delegatedPolicy };
-  });
+  const approvalRequest = await approvalRequestDAL.findById(delegatedRequest.requestId, primary);
+  const delegatedPolicy = approvalRequest?.policyId
+    ? await delegatedApprovalPolicyDAL.findOne({ policyId: approvalRequest.policyId }, primary)
+    : null;
+
+  return { delegatedRequest, approvalRequest, delegatedPolicy };
 };

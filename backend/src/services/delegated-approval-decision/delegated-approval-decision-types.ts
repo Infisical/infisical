@@ -46,7 +46,7 @@ export type TDelegatedApprovalDecisionAuditMetadata = {
 };
 
 export type TDelegatedApprovalDecisionServiceFactoryDep = {
-  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "transaction" | "update">;
+  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "primaryNode" | "update">;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "findByIdForUpdate" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
