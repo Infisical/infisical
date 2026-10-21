@@ -92,7 +92,7 @@ The service runs as root on Linux and as LocalSystem on Windows, so it runs its 
 - `/etc/infisical/agents/<name>.service-config.yaml` on Linux
 - `%ProgramFiles%\Infisical\Agent\<name>\service-config.yaml` on Windows, next to the service's own copy of `infisical.exe` (to upgrade the service, uninstall it and install it again)
 
-To change the config, edit the copy, then stop and start the service. You can also edit the original and install the service again.
+To change the config, edit the original, then uninstall and install the service again. If you edit the copy instead, stop and start the service to apply the change, and also make the change in the original, because `uninstall` deletes the copy.
 
 `install` refuses a config that:
 
@@ -148,7 +148,7 @@ Stop an agent service and wait for the agent to exit. If the config sets `infisi
   ]}
 >
 
-Stop an agent service and remove it, along with the service's copy of the config. The original config and the agent's logs stay where they are.
+Stop an agent service and remove it, along with the service's copy of the config, so changes made only to the copy are lost. The original config and the agent's logs stay where they are.
 
 </CLICommand>
 
