@@ -427,9 +427,8 @@ export const groupServiceFactory = ({
       await emitGroupRemoved(
         eventEmitter,
         {
-          orgId: actorOrgId,
           groupId,
-          linkedOrgIds: orgIds.filter((id) => id !== actorOrgId),
+          orgIds: [actorOrgId, ...orgIds],
           members: toOrgMembershipActors({ userIds, identityIds })
         },
         tx

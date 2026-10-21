@@ -888,18 +888,22 @@ membership can't tell on its own whether the actor still reaches the org.
 
 - **Every removal of an org path is a fact event, emitted inside the transaction that removed it.** Four
   events, all `com.infisical.organization.<entity>.removed.v1` per the event naming ADR, each saying what
-  went away and nothing about who lost access: `group-membership` (`groupId` + actor, from the two
-  group-removal helpers in `group-fns.ts`, which covers the manual route plus SCIM, LDAP, OIDC and SAML
-  sync), `group-link` (`orgId` + `groupId`, from `membershipGroupService.detachGroupFromOrg`, used by
-  `group-service.ts` and the org-scope group membership `DELETE`), `group` (`orgId`, `groupId`,
-  `linkedOrgIds` and a member snapshot, from the owned and SCIM group deletes, read through
-  `groupDAL.findGroupActorsAndOrgs` before the cascade removes it) and `membership` (`orgId` + actor, from
-  `deleteOrgMembershipsFn` and the sweep). Actors are `{ actorType: user | identity, actorId }`. A new path
+  went away and nothing about who lost access: `group-membership` (`groupId`, the group's `orgIds` and the
+  `members` who left, from the two group-removal helpers in `group-fns.ts`, which covers the manual route
+  plus SCIM, LDAP, OIDC and SAML sync), `group-link` (`orgId`, `groupId` and the group's `members`, from
+  `membershipGroupService.detachGroupFromOrg`, used by `group-service.ts` and the org-scope group
+  membership `DELETE`), `group` (`groupId`, `orgIds` and all `members`, from the owned and SCIM group
+  deletes, read through `groupDAL.findGroupActorsAndOrgs` before the cascade removes it) and `membership`
+  (`orgId` + actor, from `deleteOrgMembershipsFn` and the sweep). Actors are
+  `{ actorType: user | identity, actorId }`. The group events carry the orgs and members as they were at
+  removal time, never left for the consumer to read: removing a member and then unlinking the group before
+  the consumer runs would otherwise leave neither event able to name that member in that org. Both lists
+  are paged (100 each, one event per org page x member page), because a group can be linked into any
+  number of sub-orgs and the outbox rejects a payload over 16 KiB, which rolls back the removal. A new path
   that removes a group membership, link, group or org membership must emit the matching event. The daily
   `org-access-reconcile-sweep` cron is a backstop, not a substitute.
 - **The consumer (`org-access-reconcile`) subscribes to all four, works out the orgs and actors to recheck**
-  (a group's org rows for a membership removal, its members for a link removal, the snapshot for a group
-  removal, the org plus its sub-orgs for an org membership removal) **and recomputes from current state**,
+  (from the payload for the three group events, the org plus its sub-orgs for an org membership removal) **and recomputes from current state**,
   one short transaction per org. Actors with no path left lose their project rows in that org, plus privileges, project keys and
   application approver slots across every project of the org, since those are keyed on actor + project
   and may exist for group-only projects. PAM cancellations, the `revoke-org-project-access` audit event

@@ -590,9 +590,17 @@ export const removeUsersFromGroupByUserIds = async ({
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
+    const groupOrgRows = await membershipGroupDAL.find(
+      { scope: AccessScope.Organization, actorGroupId: group.id },
+      { tx }
+    );
     await emitGroupMembershipRemoved(
       eventEmitter,
-      { groupId: group.id, actors: toOrgMembershipActors({ userIds: foundMembers.map((m) => m.id) }) },
+      {
+        groupId: group.id,
+        orgIds: groupOrgRows.map((row) => row.scopeOrgId),
+        actors: toOrgMembershipActors({ userIds: foundMembers.map((m) => m.id) })
+      },
       tx
     );
 
@@ -720,9 +728,14 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
+    const groupOrgRows = await membershipDAL.find({ scope: AccessScope.Organization, actorGroupId: group.id }, { tx });
     await emitGroupMembershipRemoved(
       eventEmitter,
-      { groupId: group.id, actors: toOrgMembershipActors({ identityIds: identityIdsArray }) },
+      {
+        groupId: group.id,
+        orgIds: groupOrgRows.map((row) => row.scopeOrgId),
+        actors: toOrgMembershipActors({ identityIds: identityIdsArray })
+      },
       tx
     );
 

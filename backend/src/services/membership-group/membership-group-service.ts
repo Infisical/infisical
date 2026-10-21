@@ -25,7 +25,7 @@ import { ApprovalPolicyType } from "@app/services/approval-policy/approval-polic
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { emitGroupLinkRemoved } from "@app/services/org/org-membership-events";
+import { emitGroupLinkRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
@@ -416,7 +416,11 @@ export const membershipGroupServiceFactory = ({
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
 
-    await emitGroupLinkRemoved(eventEmitter, { orgId, groupId }, tx);
+    await emitGroupLinkRemoved(
+      eventEmitter,
+      { orgId, groupId, members: toOrgMembershipActors({ userIds, identityIds }) },
+      tx
+    );
   };
 
   const deleteMembership = async (dto: TDeleteMembershipGroupDTO, externalTx?: Knex) => {

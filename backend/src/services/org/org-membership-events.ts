@@ -17,7 +17,9 @@ export const ORG_MEMBERSHIP_EVENTS = [
   ORG_MEMBERSHIP_REMOVED_EVENT
 ] as const;
 
-// keeps one event well under MAX_OUTBOX_PAYLOAD_BYTES
+// Together these keep one event well under MAX_OUTBOX_PAYLOAD_BYTES (about 4 KB of org ids, 6 KB of members);
+// a group can be linked into any number of sub-orgs, so neither list may go unbounded.
+const ORGS_PER_EVENT = 100;
 const MEMBERS_PER_EVENT = 100;
 
 const ActorSchema = z.object({
@@ -26,20 +28,26 @@ const ActorSchema = z.object({
 });
 export type TOrgMembershipActor = z.infer<typeof ActorSchema>;
 
-export const GroupMembershipRemovedPayloadSchema = ActorSchema.extend({ groupId: z.string().uuid() });
-export const GroupLinkRemovedPayloadSchema = z.object({ orgId: z.string().uuid(), groupId: z.string().uuid() });
-// The cascade removes the group's members and links before the consumer runs, so the event carries them.
-export const GroupRemovedPayloadSchema = z.object({
+// Each group event carries the orgs and actors it affects, read when the removal happened: by the time the
+// consumer runs, a later removal (or the group delete cascade) may have taken away the rows that would say.
+// A group membership removal names the members who left; a group removal names all of them. Both list every
+// org the group held a row in, the group's own org included.
+const GroupScopePayloadSchema = z.object({
+  groupId: z.string().uuid(),
+  orgIds: z.array(z.string().uuid()).max(ORGS_PER_EVENT),
+  members: z.array(ActorSchema).max(MEMBERS_PER_EVENT)
+});
+export const GroupMembershipRemovedPayloadSchema = GroupScopePayloadSchema;
+export const GroupRemovedPayloadSchema = GroupScopePayloadSchema;
+export const GroupLinkRemovedPayloadSchema = z.object({
   orgId: z.string().uuid(),
   groupId: z.string().uuid(),
-  linkedOrgIds: z.array(z.string().uuid()),
   members: z.array(ActorSchema).max(MEMBERS_PER_EVENT)
 });
 export const OrgMembershipRemovedPayloadSchema = ActorSchema.extend({ orgId: z.string().uuid() });
 
 export const OrgMembershipEventPayloadSchema = z.union([
-  GroupMembershipRemovedPayloadSchema,
-  GroupRemovedPayloadSchema,
+  GroupScopePayloadSchema,
   GroupLinkRemovedPayloadSchema,
   OrgMembershipRemovedPayloadSchema
 ]);
@@ -62,39 +70,55 @@ const emitAll = async (eventEmitter: TEventEmitter, events: TEventInput[], tx?: 
   }
 };
 
-export const emitGroupMembershipRemoved = (
+// Big lists are paged across events so each fits the outbox; an empty one is still one page.
+const page = <T>(items: T[], size: number): T[][] => (items.length ? chunkArray(items, size) : [[]]);
+
+// One event per (org page, member page), so every member is rechecked in every org.
+const pageGroupScope = (orgIds: string[], members: TOrgMembershipActor[]) =>
+  page([...new Set(orgIds)], ORGS_PER_EVENT).flatMap((orgPage) =>
+    page(members, MEMBERS_PER_EVENT).map((memberPage) => ({ orgIds: orgPage, members: memberPage }))
+  );
+
+export const emitGroupMembershipRemoved = async (
   eventEmitter: TEventEmitter,
-  { groupId, actors }: { groupId: string; actors: TOrgMembershipActor[] },
+  { groupId, orgIds, actors }: { groupId: string; orgIds: string[]; actors: TOrgMembershipActor[] },
   tx?: Knex
-) =>
-  emitAll(
+) => {
+  if (!actors.length) return;
+  await emitAll(
     eventEmitter,
-    actors.map((actor) => ({ eventType: GROUP_MEMBERSHIP_REMOVED_EVENT, payload: { groupId, ...actor } })),
+    pageGroupScope(orgIds, actors).map((scope) => ({
+      eventType: GROUP_MEMBERSHIP_REMOVED_EVENT,
+      payload: { groupId, ...scope }
+    })),
     tx
   );
+};
 
 export const emitGroupLinkRemoved = (
   eventEmitter: TEventEmitter,
-  { orgId, groupId }: { orgId: string; groupId: string },
-  tx?: Knex
-) => eventEmitter.emit({ eventType: GROUP_LINK_REMOVED_EVENT, payload: { orgId, groupId } }, tx);
-
-// One group removal is one fact, but a big member list is paged across events so each fits the outbox.
-export const emitGroupRemoved = (
-  eventEmitter: TEventEmitter,
-  {
-    orgId,
-    groupId,
-    linkedOrgIds,
-    members
-  }: { orgId: string; groupId: string; linkedOrgIds: string[]; members: TOrgMembershipActor[] },
+  { orgId, groupId, members }: { orgId: string; groupId: string; members: TOrgMembershipActor[] },
   tx?: Knex
 ) =>
   emitAll(
     eventEmitter,
-    (members.length ? chunkArray(members, MEMBERS_PER_EVENT) : [[]]).map((page) => ({
+    page(members, MEMBERS_PER_EVENT).map((memberPage) => ({
+      eventType: GROUP_LINK_REMOVED_EVENT,
+      payload: { orgId, groupId, members: memberPage }
+    })),
+    tx
+  );
+
+export const emitGroupRemoved = (
+  eventEmitter: TEventEmitter,
+  { groupId, orgIds, members }: { groupId: string; orgIds: string[]; members: TOrgMembershipActor[] },
+  tx?: Knex
+) =>
+  emitAll(
+    eventEmitter,
+    pageGroupScope(orgIds, members).map((scope) => ({
       eventType: GROUP_REMOVED_EVENT,
-      payload: { orgId, groupId, linkedOrgIds: [...new Set(linkedOrgIds)], members: page }
+      payload: { groupId, ...scope }
     })),
     tx
   );

@@ -44,8 +44,6 @@ const build = (opts?: {
   projectRows?: TRow[];
   orgs?: Record<string, unknown>;
   childOrgs?: string[];
-  groupOrgIds?: string[];
-  groupMembers?: { userIds?: string[]; identityIds?: string[] };
 }) => {
   const tx = { sentinel: true };
   const deps = {
@@ -63,19 +61,9 @@ const build = (opts?: {
       }),
       lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined)
     },
-    groupDAL: {
-      findGroupActorsAndOrgs: vi.fn().mockResolvedValue({
-        orgIds: opts?.groupOrgIds ?? [],
-        userIds: opts?.groupMembers?.userIds ?? [],
-        identityIds: opts?.groupMembers?.identityIds ?? []
-      })
-    },
     projectDAL: { find: vi.fn().mockResolvedValue([{ id: PROJECT_A }, { id: PROJECT_B }, { id: PROJECT_C }]) },
     membershipDAL: {
-      find: vi.fn((filter: { scope: string; $in?: { actorUserId?: string[]; actorIdentityId?: string[] } }) => {
-        if (filter.scope === AccessScope.Organization) {
-          return Promise.resolve((opts?.groupOrgIds ?? []).map((scopeOrgId) => ({ scopeOrgId })));
-        }
+      find: vi.fn((filter: { $in?: { actorUserId?: string[]; actorIdentityId?: string[] } }) => {
         const rows = opts?.projectRows ?? [];
         if (filter.$in?.actorUserId) return Promise.resolve(rows.filter((row) => Boolean(row.actorUserId)));
         return Promise.resolve(rows.filter((row) => Boolean(row.actorIdentityId)));
@@ -121,14 +109,17 @@ describe("org access reconcile consumer", () => {
   });
 
   describe("works out which orgs and actors to recheck from each event", () => {
-    test("a group membership removal rechecks every org the group holds a row in", async () => {
-      const { consumer, deps } = build({ groupOrgIds: [ORG_ID, SUB_ORG_ID] });
+    test("a group membership removal rechecks the orgs the group held when the actor left it", async () => {
+      const { consumer, deps } = build();
 
       await consumer.handle([
-        makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, { groupId: GROUP_ID, actorType: ActorType.USER, actorId: USER_ID })
+        makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, {
+          groupId: GROUP_ID,
+          orgIds: [ORG_ID, SUB_ORG_ID],
+          members: [{ actorType: ActorType.USER, actorId: USER_ID }]
+        })
       ]);
 
-      expect(deps.membershipDAL.find).toHaveBeenCalledWith({ scope: AccessScope.Organization, actorGroupId: GROUP_ID });
       expect(deps.orgDAL.findActorsWithOrgAccess).toHaveBeenCalledTimes(2);
       expect(deps.orgDAL.findActorsWithOrgAccess).toHaveBeenCalledWith(
         { orgId: SUB_ORG_ID, userIds: [USER_ID], identityIds: [] },
@@ -136,12 +127,20 @@ describe("org access reconcile consumer", () => {
       );
     });
 
-    test("a group link removal rechecks the group's current members in that org", async () => {
-      const { consumer, deps } = build({ groupMembers: { userIds: [USER_ID], identityIds: [IDENTITY_ID] } });
+    test("a group link removal rechecks the members the group had when it was unlinked", async () => {
+      const { consumer, deps } = build();
 
-      await consumer.handle([makeEvent(GROUP_LINK_REMOVED_EVENT, { orgId: SUB_ORG_ID, groupId: GROUP_ID })]);
+      await consumer.handle([
+        makeEvent(GROUP_LINK_REMOVED_EVENT, {
+          orgId: SUB_ORG_ID,
+          groupId: GROUP_ID,
+          members: [
+            { actorType: ActorType.USER, actorId: USER_ID },
+            { actorType: ActorType.IDENTITY, actorId: IDENTITY_ID }
+          ]
+        })
+      ]);
 
-      expect(deps.groupDAL.findGroupActorsAndOrgs).toHaveBeenCalledWith(GROUP_ID);
       expect(deps.orgDAL.findActorsWithOrgAccess).toHaveBeenCalledWith(
         { orgId: SUB_ORG_ID, userIds: [USER_ID], identityIds: [IDENTITY_ID] },
         expect.anything()
@@ -153,14 +152,12 @@ describe("org access reconcile consumer", () => {
 
       await consumer.handle([
         makeEvent(GROUP_REMOVED_EVENT, {
-          orgId: ORG_ID,
           groupId: GROUP_ID,
-          linkedOrgIds: [SUB_ORG_ID],
+          orgIds: [ORG_ID, SUB_ORG_ID],
           members: [{ actorType: ActorType.IDENTITY, actorId: IDENTITY_ID }]
         })
       ]);
 
-      expect(deps.groupDAL.findGroupActorsAndOrgs).not.toHaveBeenCalled();
       expect(deps.orgDAL.findActorsWithOrgAccess).toHaveBeenCalledTimes(2);
       expect(deps.orgDAL.findActorsWithOrgAccess).toHaveBeenCalledWith(
         { orgId: SUB_ORG_ID, userIds: [], identityIds: [IDENTITY_ID] },
@@ -203,9 +200,13 @@ describe("org access reconcile consumer", () => {
     });
 
     const [result] = await consumer.handle([
-      makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, { groupId: GROUP_ID, actorType: ActorType.USER, actorId: USER_ID })
+      makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, {
+        groupId: GROUP_ID,
+        orgIds: [],
+        members: [{ actorType: ActorType.USER, actorId: USER_ID }]
+      })
     ]);
-    // no group org rows mocked, so resolve yields no orgs; drive the reconcile with an org membership event
+    // a group that held no org rows names no orgs; drive the reconcile with an org membership event
     expect(result.status).toBe(EventResultStatus.Delivered);
     expect(deps.membershipDAL.transaction).not.toHaveBeenCalled();
 
@@ -261,9 +262,8 @@ describe("org access reconcile consumer", () => {
 
     const [result] = await consumer.handle([
       makeEvent(GROUP_REMOVED_EVENT, {
-        orgId: ORG_ID,
         groupId: GROUP_ID,
-        linkedOrgIds: [],
+        orgIds: [ORG_ID],
         members: [{ actorType: ActorType.IDENTITY, actorId: IDENTITY_ID }]
       })
     ]);
@@ -327,23 +327,33 @@ describe("org access reconcile consumer", () => {
 
   test("retries the event when a lookup before reconciling fails", async () => {
     const { consumer, deps } = build();
-    deps.membershipDAL.find.mockRejectedValueOnce(new Error("connection reset"));
-    deps.groupDAL.findGroupActorsAndOrgs.mockRejectedValueOnce(new Error("connection reset"));
     deps.orgDAL.find.mockRejectedValueOnce(new Error("connection reset"));
 
+    const [result] = await consumer.handle([userRemovedFromOrg()]);
+
+    expect(result.status).toBe(EventResultStatus.Retry);
+    expect(result.error).toContain("connection reset");
+    expect(deps.membershipDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("still reaps when the group lost its link and its member before the events were handled", async () => {
+    // the group no longer holds a row in the sub-org nor lists the user, so only the payloads say who to recheck
+    const { consumer, deps } = build({
+      projectRows: [{ id: uuid(105), actorUserId: USER_ID, scopeProjectId: PROJECT_A }]
+    });
+
     const results = await consumer.handle([
-      makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, { groupId: GROUP_ID, actorType: ActorType.USER, actorId: USER_ID }),
-      makeEvent(GROUP_LINK_REMOVED_EVENT, { orgId: SUB_ORG_ID, groupId: GROUP_ID }, 2),
-      makeEvent(ORG_MEMBERSHIP_REMOVED_EVENT, { orgId: ORG_ID, actorType: ActorType.USER, actorId: USER_ID }, 3)
+      makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, {
+        groupId: GROUP_ID,
+        orgIds: [SUB_ORG_ID],
+        members: [{ actorType: ActorType.USER, actorId: USER_ID }]
+      }),
+      makeEvent(GROUP_LINK_REMOVED_EVENT, { orgId: SUB_ORG_ID, groupId: GROUP_ID, members: [] }, 2)
     ]);
 
-    expect(results.map((result) => result.status)).toEqual([
-      EventResultStatus.Retry,
-      EventResultStatus.Retry,
-      EventResultStatus.Retry
-    ]);
-    expect(results[0].error).toContain("connection reset");
-    expect(deps.membershipDAL.transaction).not.toHaveBeenCalled();
+    expect(results.map((result) => result.status)).toEqual([EventResultStatus.Delivered, EventResultStatus.Delivered]);
+    expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: [uuid(105)] } }, expect.anything());
+    expect(deps.auditLogService.createAuditLog).toHaveBeenCalledWith(expect.objectContaining({ orgId: SUB_ORG_ID }));
   });
 
   test("fails terminally on a payload it cannot read or an event it does not know", async () => {

@@ -1,7 +1,6 @@
 import { AccessScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { groupBy } from "@app/lib/fn";
@@ -40,7 +39,6 @@ import {
   ORG_MEMBERSHIP_REMOVED_EVENT,
   OrgMembershipEventPayloadSchema,
   OrgMembershipRemovedPayloadSchema,
-  toOrgMembershipActors,
   TOrgMembershipActor,
   TOrgMembershipEventPayload
 } from "./org-membership-events";
@@ -49,7 +47,6 @@ export const ORG_ACCESS_RECONCILE_CONSUMER = "org-access-reconcile";
 
 export type TOrgAccessReconcileConsumerDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "find" | "findActorsWithOrgAccess" | "lockActorsForOrgAccess">;
-  groupDAL: Pick<TGroupDALFactory, "findGroupActorsAndOrgs">;
   projectDAL: Pick<TProjectDALFactory, "find">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
@@ -85,7 +82,6 @@ const splitActors = (actors: TOrgMembershipActor[]) => ({
 // meantime keeps everything.
 export const orgAccessReconcileConsumerFactory = ({
   orgDAL,
-  groupDAL,
   projectDAL,
   membershipDAL,
   membershipRoleDAL,
@@ -102,29 +98,23 @@ export const orgAccessReconcileConsumerFactory = ({
   const eventTypes = new Set<string>(ORG_MEMBERSHIP_EVENTS);
   const subscribesTo = (eventType: string) => eventTypes.has(eventType);
 
-  // Each event names what was removed; the orgs and actors to recheck follow from it. Only the group
-  // removal carries them itself, because its cascade has already deleted what would be read here.
-  // Parsing happens here and the reads in the returned function, because a payload that fails to parse
+  // The group events carry the orgs and actors to recheck, captured when the removal happened, because
+  // later removals can delete the rows that would say. Only the access check reads current state.
+  // Parsing happens here and any read in the returned function, because a payload that fails to parse
   // never will, while a read that fails is worth retrying.
   const $parseScope = (event: TEvent): (() => Promise<TReconcileScope>) => {
     switch (event.eventType) {
       case GROUP_MEMBERSHIP_REMOVED_EVENT: {
-        const { groupId, ...actor } = GroupMembershipRemovedPayloadSchema.parse(event.payload);
-        return async () => {
-          const groupOrgRows = await membershipDAL.find({ scope: AccessScope.Organization, actorGroupId: groupId });
-          return { orgIds: groupOrgRows.map((row) => row.scopeOrgId), actors: [actor], groupId };
-        };
+        const { groupId, orgIds, members } = GroupMembershipRemovedPayloadSchema.parse(event.payload);
+        return async () => ({ orgIds, actors: members, groupId });
       }
       case GROUP_LINK_REMOVED_EVENT: {
-        const { orgId, groupId } = GroupLinkRemovedPayloadSchema.parse(event.payload);
-        return async () => {
-          const { userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId);
-          return { orgIds: [orgId], actors: toOrgMembershipActors({ userIds, identityIds }), groupId };
-        };
+        const { orgId, groupId, members } = GroupLinkRemovedPayloadSchema.parse(event.payload);
+        return async () => ({ orgIds: [orgId], actors: members, groupId });
       }
       case GROUP_REMOVED_EVENT: {
-        const { orgId, groupId, linkedOrgIds, members } = GroupRemovedPayloadSchema.parse(event.payload);
-        return async () => ({ orgIds: [orgId, ...linkedOrgIds], actors: members, groupId });
+        const { groupId, orgIds, members } = GroupRemovedPayloadSchema.parse(event.payload);
+        return async () => ({ orgIds, actors: members, groupId });
       }
       case ORG_MEMBERSHIP_REMOVED_EVENT: {
         const { orgId, ...actor } = OrgMembershipRemovedPayloadSchema.parse(event.payload);

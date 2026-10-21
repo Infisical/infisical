@@ -1817,9 +1817,8 @@ export const scimServiceFactory = ({
       await emitGroupRemoved(
         eventEmitter,
         {
-          orgId,
           groupId,
-          linkedOrgIds: orgIds.filter((id) => id !== orgId),
+          orgIds: [orgId, ...orgIds],
           members: toOrgMembershipActors({ userIds, identityIds })
         },
         tx
