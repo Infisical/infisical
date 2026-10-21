@@ -31,8 +31,8 @@ import { TierDropdown } from "./TierDropdown";
 
 const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
 
-// every badge in the name row shares the Admin badge's compact height
-const NAME_BADGE_CLASS_NAME = "min-h-0 shrink-0 py-0";
+// every badge in the name row keeps the shared Badge sizing so they all line up at one height
+const NAME_BADGE_CLASS_NAME = "shrink-0";
 
 const ActorIdentity = ({
   actor,
@@ -176,10 +176,15 @@ export const FolderAccessRow = ({
                 </DropdownMenuTrigger>
               ) : (
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="xs" isDisabled={isDisabled}>
-                    <span>
-                      {roleNames || "Role"} <span className="text-muted">(Project)</span>
-                    </span>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="max-w-48"
+                    title={roleNames || undefined}
+                    isDisabled={isDisabled}
+                  >
+                    <span className="truncate">{roleNames || "Role"}</span>
+                    <span className="-ml-1.5 shrink-0 text-muted">(Project)</span>
                     <ChevronDownIcon />
                   </Button>
                 </DropdownMenuTrigger>
