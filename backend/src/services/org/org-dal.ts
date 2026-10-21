@@ -1306,12 +1306,15 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   // Serializes group additions with the reconcile consumer per actor, so access granted between its check
-  // and its deletes doesn't get reaped. Sorted to avoid deadlocks.
+  // and its deletes doesn't get reaped. One statement for the whole set: a SCIM sync can add thousands of
+  // members in one request and everything else on that path is batched. The function scan emits the array
+  // in order and the lock call runs per row, so a sorted array is taken in sorted order, which is what
+  // keeps two callers from deadlocking on each other.
   const lockActorsForOrgAccess = async (actorIds: string[], tx: Knex) => {
+    const keys = [...new Set(actorIds)].sort().map((actorId) => PgSqlLock.OrgAccessReconcile(actorId));
+    if (!keys.length) return;
     try {
-      for await (const actorId of [...new Set(actorIds)].sort()) {
-        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgAccessReconcile(actorId)]);
-      }
+      await tx.raw("SELECT pg_advisory_xact_lock(k) FROM unnest(?::int[]) AS k", [keys]);
     } catch (error) {
       throw new DatabaseError({ error, name: "LockActorsForOrgAccess" });
     }
