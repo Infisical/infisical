@@ -83,19 +83,21 @@ export function EmptyResourceDisplay({
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
       {hasSearch && (onSearchAllFolders || onClearSearch) && (
-        <EmptyContent className="flex-row justify-center gap-2">
-          {onClearSearch && (
-            <Button variant="outline" size="xs" onClick={onClearSearch}>
-              <XIcon />
-              Clear Search
-            </Button>
-          )}
-          {onSearchAllFolders && (
-            <Button variant="outline" size="xs" onClick={onSearchAllFolders}>
-              <GlobeIcon />
-              Search All Folders
-            </Button>
-          )}
+        <EmptyContent>
+          <div className="flex gap-2">
+            {onClearSearch && (
+              <Button variant="outline" size="xs" onClick={onClearSearch}>
+                <XIcon />
+                Clear Search
+              </Button>
+            )}
+            {onSearchAllFolders && (
+              <Button variant="outline" size="xs" onClick={onSearchAllFolders}>
+                <GlobeIcon />
+                Search All Folders
+              </Button>
+            )}
+          </div>
         </EmptyContent>
       )}
     </Empty>
