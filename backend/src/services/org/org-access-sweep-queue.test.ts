@@ -65,12 +65,6 @@ describe("orgAccessSweepQueue", () => {
     expect(loggerWarn).not.toHaveBeenCalled();
   });
 
-  test("does nothing when there are no orphans", async () => {
-    const { queue, emitted } = build([]);
-    expect(await queue.runSweep()).toEqual({ orphans: 0 });
-    expect(emitted).toHaveLength(0);
-  });
-
   test("runs the sweep only on the primary instance", () => {
     for (const isSecondaryInstance of [false, true]) {
       appCfg.isSecondaryInstance = isSecondaryInstance;

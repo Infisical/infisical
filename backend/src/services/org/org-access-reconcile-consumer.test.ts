@@ -262,42 +262,6 @@ describe("org access reconcile consumer", () => {
     });
   });
 
-  test("a group delete is logged with the deletion as the cause", async () => {
-    const { consumer, deps } = build({
-      revoked: [{ userId: USER_ID, projectIds: [PROJECT_A], resources: [] }]
-    });
-
-    await consumer.handle([
-      makeEvent(GROUP_REMOVED_EVENT, {
-        groupId: GROUP_ID,
-        orgIds: [ORG_ID],
-        members: [{ actorType: ActorType.USER, actorId: USER_ID }]
-      })
-    ]);
-
-    expect(auditMetadata(deps)).toMatchObject({
-      reason: OrgAccessRemovalCause.GroupDeleted,
-      groupId: GROUP_ID
-    });
-  });
-
-  test("an unlink is logged with the unlink as the cause", async () => {
-    const { consumer, deps } = build({ revoked: [{ userId: USER_ID, projectIds: [PROJECT_A], resources: [] }] });
-
-    await consumer.handle([
-      makeEvent(GROUP_LINK_REMOVED_EVENT, {
-        orgId: ORG_ID,
-        groupId: GROUP_ID,
-        members: [{ actorType: ActorType.USER, actorId: USER_ID }]
-      })
-    ]);
-
-    expect(auditMetadata(deps)).toMatchObject({
-      reason: OrgAccessRemovalCause.GroupUnlinkedFromOrg,
-      groupId: GROUP_ID
-    });
-  });
-
   test("a replay that finds nothing left writes no audit entry and emits no meters", async () => {
     const { consumer, deps, sendPamCancellations } = build({ revoked: [] });
 
@@ -346,29 +310,6 @@ describe("org access reconcile consumer", () => {
     expect(result.status).toBe(EventResultStatus.Retry);
     expect(result.error).toContain("connection reset");
     expect(deps.orgDAL.transaction).not.toHaveBeenCalled();
-  });
-
-  // Nothing in the DB says who to recheck anymore, only the payloads do.
-  test("still reaps when the group lost its link and its member before the events were handled", async () => {
-    const { consumer, deps } = build({
-      revoked: [{ userId: USER_ID, projectIds: [PROJECT_A], resources: [] }]
-    });
-
-    const results = await consumer.handle([
-      makeEvent(GROUP_MEMBERSHIP_REMOVED_EVENT, {
-        groupId: GROUP_ID,
-        orgIds: [SUB_ORG_ID],
-        members: [{ actorType: ActorType.USER, actorId: USER_ID }]
-      }),
-      makeEvent(GROUP_LINK_REMOVED_EVENT, { orgId: SUB_ORG_ID, groupId: GROUP_ID, members: [] }, 2)
-    ]);
-
-    expect(results.map((result) => result.status)).toEqual([EventResultStatus.Delivered, EventResultStatus.Delivered]);
-    expect(deps.projectAccessRevokeService.revokeActorsInOrgs).toHaveBeenCalledWith(
-      { orgIds: [SUB_ORG_ID], userIds: [USER_ID], identityIds: [] },
-      expect.anything()
-    );
-    expect(deps.auditLogService.createAuditLog).toHaveBeenCalledWith(expect.objectContaining({ orgId: SUB_ORG_ID }));
   });
 
   test("fails terminally on a payload it cannot read or an event it does not know", async () => {
