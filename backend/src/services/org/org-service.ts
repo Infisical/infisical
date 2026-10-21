@@ -58,9 +58,6 @@ import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-r
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
-import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
-import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -72,11 +69,11 @@ import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { resolveMembershipRoleSlugs, roleNeedsPrivilegeBoundary } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
-import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -123,7 +120,6 @@ type TOrgServiceFactoryDep = {
     TProjectMembershipDALFactory,
     "findProjectMembershipsByUserId" | "findProjectMembershipsByUserIds"
   >;
-  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey" | "create">;
   orgMembershipDAL: Pick<
     TOrgMembershipDALFactory,
     "findOrgMembershipById" | "findRecentInvitedMemberships" | "updateLastInvitedAtByIds"
@@ -144,9 +140,7 @@ type TOrgServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
-  additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
-  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
@@ -171,7 +165,6 @@ export const orgServiceFactory = ({
   smtpService,
   projectDAL,
   projectMembershipDAL,
-  projectKeyDAL,
   orgMembershipDAL,
   tokenService,
   licenseService,
@@ -186,9 +179,7 @@ export const orgServiceFactory = ({
   membershipUserDAL,
   membershipDAL,
   userGroupMembershipDAL,
-  additionalPrivilegeDAL,
-  approvalPolicyDAL,
-  alertChannelRecipientDAL,
+  projectAccessRevokeService,
   certificatePolicyDAL,
   usageMeteringService,
   pamSessionDAL,
@@ -1389,18 +1380,12 @@ export const orgServiceFactory = ({
       orgMembershipIds: [membershipId],
       orgId,
       orgDAL,
-      projectKeyDAL,
       userAliasDAL,
       licenseService,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
-      membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL,
-      approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      pamSessionDAL,
-      gatewayV2Service,
+      projectAccessRevokeService,
       eventEmitter
     });
 
@@ -1448,18 +1433,12 @@ export const orgServiceFactory = ({
       orgMembershipIds: membershipIds,
       orgId,
       orgDAL,
-      projectKeyDAL,
       userAliasDAL,
       licenseService,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
-      membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL,
-      approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      pamSessionDAL,
-      gatewayV2Service,
+      projectAccessRevokeService,
       eventEmitter
     });
 

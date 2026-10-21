@@ -1,21 +1,13 @@
 import { AccessScope } from "@app/db/schemas";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
-import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { emitOrgMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
-import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
-import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
-import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
-import { APPLICATION_APPROVAL_SCOPES } from "../membership/application-membership-cleanup-service";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 
@@ -25,36 +17,26 @@ type TDeleteOrgMemberships = {
   orgDAL: Pick<TOrgDALFactory, "transaction" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "find" | "countActiveAdmins">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
-  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   userId?: string;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
-  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   eventEmitter: TEventEmitter;
 };
 
-// Only reaps projects held directly. The reconcile consumer handles what was reached through groups, here
-// and in sub-orgs.
+// Removes the users from the org and its sub-orgs outright: their org rows, their groups there and
+// everything they held in those projects. The event is still emitted so the reconcile consumer can
+// confirm nothing is left.
 export const deleteOrgMembershipsFn = async ({
   orgMembershipIds,
   orgId,
   orgDAL,
-  projectKeyDAL,
   userAliasDAL,
   licenseService,
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
-  additionalPrivilegeDAL,
-  approvalPolicyDAL,
-  alertChannelRecipientDAL,
-  pamSessionDAL,
-  gatewayV2Service,
+  projectAccessRevokeService,
   eventEmitter
 }: TDeleteOrgMemberships) => {
   let sendPamCancellations = () => {};
@@ -101,24 +83,26 @@ export const deleteOrgMembershipsFn = async ({
       tx
     );
 
-    // Get all the project memberships of the users in the organization
-    const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx });
+    const childOrgIds = (await orgDAL.find({ rootOrgId: orgId }, { tx })).map((org) => org.id);
+    const orgIds = [orgId, ...childOrgIds];
 
-    // Delete all the project memberships of the users in the organization
-    const otherMemberships = await membershipUserDAL.delete(
-      {
-        $in: {
-          scopeOrgId: [orgId].concat(childOrgs.map((el) => el.id)),
-          actorUserId: membershipUserIds
-        }
-      },
-      tx
-    );
+    if (childOrgIds.length) {
+      await membershipUserDAL.delete(
+        {
+          scope: AccessScope.Organization,
+          $in: {
+            scopeOrgId: childOrgIds,
+            actorUserId: membershipUserIds
+          }
+        },
+        tx
+      );
+    }
 
     const orgGroups = await membershipUserDAL.find(
       {
         $in: {
-          scopeOrgId: [orgId].concat(childOrgs.map((el) => el.id))
+          scopeOrgId: orgIds
         },
         $notNull: ["actorGroupId"]
       },
@@ -136,54 +120,17 @@ export const deleteOrgMembershipsFn = async ({
       },
       tx
     );
-    const projectIds = otherMemberships
-      .filter((el) => el.scope === AccessScope.Project && el.scopeProjectId)
-      .map((el) => el.scopeProjectId as string);
 
-    await projectKeyDAL.delete(
-      {
-        $in: {
-          projectId: projectIds,
-          receiverId: membershipUserIds
-        }
-      },
+    ({ sendPamCancellations } = await projectAccessRevokeService.revokeActorsInOrgs(
+      { orgIds, userIds: membershipUserIds },
       tx
-    );
-
-    await additionalPrivilegeDAL.delete(
-      {
-        $in: {
-          projectId: projectIds,
-          actorUserId: membershipUserIds
-        }
-      },
-      tx
-    );
-
-    await approvalPolicyDAL.deleteUserStepApproversInProjects(
-      {
-        projectIds,
-        userIds: membershipUserIds,
-        scopeTypes: APPLICATION_APPROVAL_SCOPES
-      },
-      tx
-    );
-
-    await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: membershipUserIds }, tx);
+    ));
 
     await emitOrgMembershipRemoved(
       eventEmitter,
       { orgId, actors: toOrgMembershipActors({ userIds: membershipUserIds }) },
       tx
     );
-
-    sendPamCancellations = await terminatePamSessionsForUsers({
-      orgIds: [orgId, ...childOrgs.map((el) => el.id)],
-      userIds: membershipUserIds,
-      pamSessionDAL,
-      gatewayV2Service,
-      tx
-    });
 
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
     return orgMemberships;

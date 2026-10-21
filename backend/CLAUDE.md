@@ -904,10 +904,14 @@ itself whether the actor still reaches the org.
 - **The consumer (`org-access-reconcile`) rechecks against current state**, in batches of 10 actors per org,
   each in its own short tx with a `statement_timeout`, since the rows an actor holds aren't bounded. Orgs and
   actors come from the payload for group events, and from the org plus its sub-orgs for a membership
-  removal. Actors with no path left lose their project rows in that org, plus privileges, project keys,
-  approver slots and resource memberships (PAM, Agent Vault, PKI apps, signers) across every project in the
-  org, since those can exist in group-only projects. PAM cancellations, the `revoke-org-project-access`
-  audit log and usage meters fire after each batch commits, only when something was removed, so replays are silent.
+  removal. Actors with no path left go through `projectAccessRevokeService.revokeActorsInOrgs`
+  (`services/membership/project-access-revoke-service.ts`), the one definition of what leaving an org's
+  projects takes away: project rows, resource rows (PAM, Agent Vault, PKI apps, signers, through
+  `applicationMembershipCleanupService`), project keys, privileges, approver slots, alert recipient slots and
+  live PAM sessions, across every project in the org since those can exist in group-only projects.
+  `deleteOrgMembershipsFn` uses the same service, so don't add a third copy of that list. PAM
+  cancellations, the `revoke-org-project-access` audit log and usage meters fire after each batch commits,
+  only when something was removed, so replays are silent.
 - **Not on the enforcement path.** Token validation already rejects actors with no effective org membership
   (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat counts and SCIM.
 - **`orgDAL.lockActorsForOrgAccess`** is taken (sorted) by the add-to-group helpers and the consumer, so

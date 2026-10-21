@@ -9,11 +9,9 @@ import {
   TMembershipRolesInsert
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -29,19 +27,18 @@ import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/serv
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { isCustomOrgRole } from "../org/org-role-fns";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectAccessRequestDALFactory } from "../project/project-access-request-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSmtpService } from "../smtp/smtp-service";
 import { getServerCfg } from "../super-admin/super-admin-service";
@@ -76,7 +73,6 @@ type TMembershipUserServiceFactoryDep = {
     | "getResourcePermission"
   >;
   licenseService: TLicenseServiceFactory;
-  projectKeyDAL: TProjectKeyDALFactory;
   userAliasDAL: TUserAliasDALFactory;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
@@ -88,14 +84,12 @@ type TMembershipUserServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   eventEmitter: TEventEmitter;
 };
 
@@ -108,7 +102,6 @@ export const membershipUserServiceFactory = ({
   userDAL,
   permissionService,
   orgDAL,
-  projectKeyDAL,
   userAliasDAL,
   licenseService,
   smtpService,
@@ -118,14 +111,12 @@ export const membershipUserServiceFactory = ({
   additionalPrivilegeDAL,
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
-  approvalPolicyDAL,
+  projectAccessRevokeService,
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
   usageMeteringService,
   alertChannelRecipientDAL,
-  pamSessionDAL,
-  gatewayV2Service,
   eventEmitter
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
@@ -600,18 +591,12 @@ export const membershipUserServiceFactory = ({
           orgMembershipIds: [existingMembership.id],
           orgId: dto.permission.orgId,
           orgDAL,
-          projectKeyDAL,
           userAliasDAL,
           licenseService,
           userId: dto.permission.id,
           membershipUserDAL,
           userGroupMembershipDAL,
-          membershipRoleDAL,
-          additionalPrivilegeDAL,
-          approvalPolicyDAL,
-          alertChannelRecipientDAL,
-          pamSessionDAL,
-          gatewayV2Service,
+          projectAccessRevokeService,
           eventEmitter
         });
         return doc;

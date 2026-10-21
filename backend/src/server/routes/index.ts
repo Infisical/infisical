@@ -449,6 +449,7 @@ import {
 import { applicationMembershipCleanupServiceFactory } from "@app/services/membership/application-membership-cleanup-service";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { projectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { membershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
@@ -979,6 +980,17 @@ export const registerRoutes = async (
 
   const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
 
+  const projectAccessRevokeService = projectAccessRevokeServiceFactory({
+    membershipDAL,
+    projectDAL,
+    projectKeyDAL,
+    additionalPrivilegeDAL,
+    applicationMembershipCleanupService,
+    alertChannelRecipientDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
+  });
+
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
     membershipRoleDAL,
@@ -989,7 +1001,6 @@ export const registerRoutes = async (
     roleDAL,
     userDAL,
     projectDAL,
-    projectKeyDAL,
     smtpService,
     tokenService,
     userAliasDAL,
@@ -997,13 +1008,11 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     projectAccessRequestDAL,
     applicationMembershipCleanupService,
-    approvalPolicyDAL,
+    projectAccessRevokeService,
     emailDomainDAL,
     oidcConfigDAL,
     samlConfigDAL,
     usageMeteringService,
-    pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service,
     eventEmitter: eventOutboxService
   });
 
@@ -1483,8 +1492,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     additionalPrivilegeDAL,
-    approvalPolicyDAL,
     alertChannelRecipientDAL,
+    projectAccessRevokeService,
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
@@ -1691,7 +1700,6 @@ export const registerRoutes = async (
     projectDAL,
     projectMembershipDAL,
     orgMembershipDAL,
-    projectKeyDAL,
     smtpService,
     userDAL,
     groupDAL,
@@ -1705,11 +1713,9 @@ export const registerRoutes = async (
     membershipDAL,
     roleDAL,
     userGroupMembershipDAL,
-    additionalPrivilegeDAL,
-    approvalPolicyDAL,
+    projectAccessRevokeService,
     certificatePolicyDAL,
     usageMeteringService,
-    alertChannelRecipientDAL,
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service,
     eventEmitter: eventOutboxService
@@ -3191,15 +3197,7 @@ export const registerRoutes = async (
   eventOutboxRegistry.register(
     orgAccessReconcileConsumerFactory({
       orgDAL,
-      projectDAL,
-      membershipDAL,
-      membershipRoleDAL,
-      additionalPrivilegeDAL,
-      projectKeyDAL,
-      approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      pamSessionDAL,
-      gatewayV2Service,
+      projectAccessRevokeService,
       auditLogService,
       usageMeteringService
     })

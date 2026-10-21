@@ -80,5 +80,38 @@ export const applicationMembershipCleanupServiceFactory = ({
     );
   };
 
-  return { cleanupActorApplicationMemberships, cleanupUsersApplicationMemberships };
+  // Returns the resource rows it removed, so a caller can say which grants went.
+  const cleanupActorsApplicationMembershipsInProjects = async (
+    { projectIds, userIds, identityIds }: { projectIds: string[]; userIds: string[]; identityIds: string[] },
+    tx: Knex
+  ) => {
+    if (!projectIds.length) return [];
+
+    if (userIds.length) {
+      await approvalPolicyDAL.deleteUserStepApproversInProjects(
+        { projectIds, userIds, scopeTypes: APPLICATION_APPROVAL_SCOPES },
+        tx
+      );
+    }
+
+    const userRows = userIds.length
+      ? await membershipDAL.delete(
+          { scope: RESOURCE_SCOPE, $in: { scopeProjectId: projectIds, actorUserId: userIds } },
+          tx
+        )
+      : [];
+    const identityRows = identityIds.length
+      ? await membershipDAL.delete(
+          { scope: RESOURCE_SCOPE, $in: { scopeProjectId: projectIds, actorIdentityId: identityIds } },
+          tx
+        )
+      : [];
+    return [...userRows, ...identityRows];
+  };
+
+  return {
+    cleanupActorApplicationMemberships,
+    cleanupUsersApplicationMemberships,
+    cleanupActorsApplicationMembershipsInProjects
+  };
 };
