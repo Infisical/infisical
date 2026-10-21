@@ -45,6 +45,9 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+    {{- with $infisicalValues.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+    {{- end }}
     {{- if $infisicalValues.image.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}

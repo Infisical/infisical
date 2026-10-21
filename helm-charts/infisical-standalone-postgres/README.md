@@ -1,6 +1,6 @@
 # infisical-standalone
 
-![Version: 1.11.0](https://img.shields.io/badge/Version-1.11.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
+![Version: 1.12.0](https://img.shields.io/badge/Version-1.12.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
 
 A helm chart to deploy Infisical
 
@@ -38,6 +38,7 @@ A helm chart to deploy Infisical
 | infisical.name | string | `"infisical"` |  |
 | infisical.podAnnotations | object | `{}` | Custom annotations for Infisical pods |
 | infisical.podSecurityContext | object | `{"fsGroup":1001}` | Pod-level security context for the Infisical pod. Sets only `fsGroup` so mounted volumes are writable by the non-root user. Other hardening lives in `containerSecurityContext`, so `extraContainers` and `extraInitContainers` keep their original user. Set to `null` to omit. |
+| infisical.priorityClassName | string | `""` | PriorityClass name for the Infisical pods. Leave empty to use the cluster default |
 | infisical.replicaCount | int | `2` | Number of pod replicas for high availability |
 | infisical.resources.limits.memory | string | `"600Mi"` | Memory limit for Infisical container |
 | infisical.resources.requests.cpu | string | `"350m"` | CPU request for Infisical container |

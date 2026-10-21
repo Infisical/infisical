@@ -77,6 +77,8 @@ infisical:
   tolerations: []
   # -- Node selector for pod placement
   nodeSelector: {}
+  # -- PriorityClass name for the Infisical pods. Leave empty to use the cluster default
+  priorityClassName: ""
   # -- Topology spread constraints for multi-zone deployments
   # -- Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
   topologySpreadConstraints: []
