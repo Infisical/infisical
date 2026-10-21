@@ -26,6 +26,9 @@ export type TAutoApprovalDraft = {
 // Mirrors the Jira provider's constraint; other providers name theirs the same way
 export const ASSIGNED_TO_REQUESTER_CONSTRAINT = "assigned-to-requester";
 
+// Mirrors the reuse check the engine adds to every record a requester links
+export const UNUSED_CONSTRAINT = "not-used-before";
+
 export const newKey = () => crypto.randomUUID();
 
 export const EMPTY_AUTO_APPROVAL_DRAFT: TAutoApprovalDraft = { inputs: [], rules: [] };
@@ -112,10 +115,11 @@ export const getRuleError = (
     : null;
 };
 
-// A ticket condition without an assignee check lets anyone link someone else's approved ticket
-export const getUnboundInputSubjects = (
+// The rule checks a record without this check, like an assignee check or the reuse check
+export const getSubjectsMissingCheck = (
   rule: TDraftRule,
-  catalog: TAutoApprovalCatalogConnection[] | undefined
+  catalog: TAutoApprovalCatalogConnection[] | undefined,
+  constraintId: string
 ) => {
   const linked = new Map<string, TDraftCondition>();
   rule.conditions
@@ -126,17 +130,35 @@ export const getUnboundInputSubjects = (
 
   return [...linked.values()].filter((condition) => {
     const { subject } = findSubject(catalog, condition.connectionId, condition.subject);
-    const offersAssigneeCheck = subject?.constraints.some(
-      (constraint) => constraint.id === ASSIGNED_TO_REQUESTER_CONSTRAINT
-    );
+    const offersCheck = subject?.constraints.some((constraint) => constraint.id === constraintId);
     return (
-      offersAssigneeCheck &&
+      offersCheck &&
       !rule.conditions.some(
         (other) =>
           other.connectionId === condition.connectionId &&
           other.subject === condition.subject &&
-          other.constraint === ASSIGNED_TO_REQUESTER_CONSTRAINT
+          other.constraint === constraintId
       )
     );
   });
 };
+
+// A new rule starts single use and bound to the requester for every record the folder asks for
+export const getDefaultRuleConditions = (
+  inputs: TAutoApprovalDraft["inputs"],
+  catalog: TAutoApprovalCatalogConnection[] | undefined
+): TDraftCondition[] =>
+  inputs.flatMap(({ connectionId, subject: subjectId }) => {
+    const { subject } = findSubject(catalog, connectionId, subjectId);
+    return [UNUSED_CONSTRAINT, ASSIGNED_TO_REQUESTER_CONSTRAINT]
+      .filter((constraintId) =>
+        subject?.constraints.some((constraint) => constraint.id === constraintId)
+      )
+      .map((constraint) => ({
+        key: newKey(),
+        connectionId,
+        subject: subjectId,
+        constraint,
+        values: []
+      }));
+  });

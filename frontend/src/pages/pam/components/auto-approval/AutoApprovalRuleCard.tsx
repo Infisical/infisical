@@ -26,11 +26,12 @@ import {
   findSubject,
   getConditionError,
   getRuleError,
-  getUnboundInputSubjects,
+  getSubjectsMissingCheck,
   newKey,
   TAutoApprovalDraft,
   TDraftCondition,
-  TDraftRule
+  TDraftRule,
+  UNUSED_CONSTRAINT
 } from "./autoApprovalDraft";
 import { DisabledReason, SectionLabel } from "./AutoApprovalLabels";
 import { AutoApprovalValuePicker } from "./AutoApprovalValuePicker";
@@ -179,7 +180,22 @@ export const AutoApprovalRuleCard = ({
 }: Props) => {
   const choices = getSubjectChoices(inputs, catalog);
   const ruleError = showErrors ? getRuleError(rule, catalog) : null;
-  const unbound = getUnboundInputSubjects(rule, catalog);
+  const missingChecks = [
+    ...getSubjectsMissingCheck(rule, catalog, ASSIGNED_TO_REQUESTER_CONSTRAINT).map(
+      (condition) => ({
+        condition,
+        constraint: ASSIGNED_TO_REQUESTER_CONSTRAINT,
+        message: (label: string) => `Anyone could link someone else's ${label}.`,
+        action: "Add assignee check"
+      })
+    ),
+    ...getSubjectsMissingCheck(rule, catalog, UNUSED_CONSTRAINT).map((condition) => ({
+      condition,
+      constraint: UNUSED_CONSTRAINT,
+      message: (label: string) => `The same ${label} can be reused for any number of requests.`,
+      action: "Add reuse check"
+    }))
+  ];
 
   // Each check appears once per rule, so the menu only offers the ones not added yet
   const menuGroups = choices
@@ -277,17 +293,15 @@ export const AutoApprovalRuleCard = ({
             </div>
           )}
 
-          {unbound.map((condition) => {
+          {missingChecks.map(({ condition, constraint, message, action }) => {
             const { subject } = findSubject(catalog, condition.connectionId, condition.subject);
             return (
               <div
-                key={`${condition.connectionId}:${condition.subject}`}
-                className="flex max-w-full items-center gap-2 rounded-md border border-warning/20 bg-warning/5 px-2.5 py-1.5 text-xs"
+                key={`${condition.connectionId}:${condition.subject}:${constraint}`}
+                className="flex w-full items-center gap-2 rounded-md border border-warning/20 bg-warning/5 px-2.5 py-1.5 text-xs"
               >
                 <ShieldAlert className="size-3.5 shrink-0 text-warning" />
-                <span className="text-muted">
-                  Anyone could link someone else&apos;s {subject?.label ?? "record"}.
-                </span>
+                <span className="flex-1 text-muted">{message(subject?.label ?? "record")}</span>
                 <Button
                   type="button"
                   variant="text"
@@ -297,11 +311,11 @@ export const AutoApprovalRuleCard = ({
                     addCondition({
                       connectionId: condition.connectionId,
                       subject: condition.subject,
-                      constraint: ASSIGNED_TO_REQUESTER_CONSTRAINT
+                      constraint
                     })
                   }
                 >
-                  Add assignee check
+                  {action}
                 </Button>
               </div>
             );

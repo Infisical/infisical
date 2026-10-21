@@ -28,7 +28,12 @@ import {
   ApprovalPolicyType
 } from "@app/hooks/api/approvalPolicies";
 
-import { findSubject, newKey, TAutoApprovalDraft } from "./autoApprovalDraft";
+import {
+  findSubject,
+  getDefaultRuleConditions,
+  newKey,
+  TAutoApprovalDraft
+} from "./autoApprovalDraft";
 import { DisabledReason, SectionLabel } from "./AutoApprovalLabels";
 import { AutoApprovalRuleCard } from "./AutoApprovalRuleCard";
 
@@ -92,7 +97,11 @@ export const AutoApprovalCard = ({
       ...draft,
       rules: [
         ...draft.rules,
-        { key: newKey(), name: `Rule ${draft.rules.length + 1}`, conditions: [] }
+        {
+          key: newKey(),
+          name: `Rule ${draft.rules.length + 1}`,
+          conditions: getDefaultRuleConditions(draft.inputs, catalog)
+        }
       ]
     });
 
