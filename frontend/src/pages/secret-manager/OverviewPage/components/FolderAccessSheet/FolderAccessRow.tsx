@@ -125,14 +125,18 @@ export const FolderAccessRow = ({
                   <Button variant="ghost" size="xs" isDisabled={isDisabled}>
                     {isOverride && <Badge variant="warning">Override</Badge>}
                     {remainingTime && (
-                      <Badge
-                        variant={remainingTime.isExpired ? "danger" : "neutral"}
-                        iconPosition="left"
-                        title={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
-                      >
-                        <ClockIcon />
-                        {remainingTime.isExpired ? "Expired" : remainingTime.value}
-                      </Badge>
+                      // the menu repeats the time left, so narrow sheets drop this badge to keep the
+                      // member name visible
+                      <span className="hidden sm:contents">
+                        <Badge
+                          variant={remainingTime.isExpired ? "danger" : "neutral"}
+                          iconPosition="left"
+                          title={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
+                        >
+                          <ClockIcon />
+                          {remainingTime.isExpired ? "Expired" : remainingTime.value}
+                        </Badge>
+                      </span>
                     )}
                     {FOLDER_ROLE_TIER_LABELS[access.permission]}
                     <ChevronDownIcon />
