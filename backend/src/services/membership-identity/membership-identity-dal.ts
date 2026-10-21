@@ -466,26 +466,60 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         })
         .select("actorIdentityId");
 
+      const identityColumns = [
+        db.ref("id").withSchema(TableName.Identity),
+        db.ref("name").withSchema(TableName.Identity),
+        db.ref("hasDeleteProtection").withSchema(TableName.Identity)
+      ];
+
+      // A project can take anyone who can be granted access in its org, the same rule as
+      // findActorsWithActiveOrgAccess.
+      if (scopeData.scope === AccessScope.Project) {
+        const directOrgIdentities = (activeOnly: boolean) =>
+          db
+            .replicaNode()(TableName.Membership)
+            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+            .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
+            .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+            .where((qb) => {
+              if (activeOnly) void qb.where(`${TableName.Membership}.isActive`, true);
+            })
+            .select("actorIdentityId");
+        const activeGroupOrgIdentities = db
+          .replicaNode()(TableName.IdentityGroupMembership)
+          .join(
+            TableName.Membership,
+            `${TableName.Membership}.actorGroupId`,
+            `${TableName.IdentityGroupMembership}.groupId`
+          )
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
+          .where(`${TableName.Membership}.isActive`, true)
+          .select(`${TableName.IdentityGroupMembership}.identityId`);
+
+        return await db
+          .replicaNode()(TableName.Identity)
+          .whereNull(`${TableName.Identity}.projectId`)
+          .where((qb) => {
+            void qb.whereIn(`${TableName.Identity}.id`, directOrgIdentities(true)).orWhere((viaGroup) => {
+              void viaGroup
+                .whereIn(`${TableName.Identity}.id`, activeGroupOrgIdentities)
+                .whereNotIn(`${TableName.Identity}.id`, directOrgIdentities(false));
+            });
+          })
+          .whereNotIn(`${TableName.Identity}.id`, identitiesConnectedToOrg)
+          .select(identityColumns);
+      }
+
       const docs = await db
         .replicaNode()(TableName.Membership)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .whereNull(`${TableName.Identity}.projectId`)
-        .where((qb) => {
-          // if sub org pick from root and if project pick from org of project
-          if (scopeData.scope === AccessScope.Organization) {
-            void qb.where(`${TableName.Membership}.scopeOrgId`, rootOrgId);
-          } else {
-            void qb.where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId);
-          }
-        })
+        .where(`${TableName.Membership}.scopeOrgId`, rootOrgId)
         .whereNotIn(`${TableName.Membership}.actorIdentityId`, identitiesConnectedToOrg)
-        .select(
-          db.ref("id").withSchema(TableName.Identity),
-          db.ref("name").withSchema(TableName.Identity),
-          db.ref("hasDeleteProtection").withSchema(TableName.Identity)
-        );
+        .select(identityColumns);
 
       return docs;
     } catch (error) {

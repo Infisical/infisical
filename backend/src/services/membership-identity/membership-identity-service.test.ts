@@ -86,7 +86,13 @@ const createService = ({
         .fn()
         .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : []))
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({}), findEffectiveOrgMembership: vi.fn() } as never,
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({}),
+      findActorsWithActiveOrgAccess: vi.fn(async ({ identityIds }: { identityIds: string[] }) => ({
+        userIds: new Set<string>(),
+        identityIds: new Set(identityIds)
+      }))
+    } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     identityDAL: {
       findById: vi.fn().mockResolvedValue({ orgId: ROOT_ORG_ID, projectId: null })

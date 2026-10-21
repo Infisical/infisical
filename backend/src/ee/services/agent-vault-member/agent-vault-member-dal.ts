@@ -248,6 +248,65 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
           .whereNotNull(`${TableName.Membership}.${column}`)
           .select(column);
 
+      // The org's own rows plus a synthetic active row for every user or identity reaching it only through an
+      // active group, shaped like and aliased as the memberships table so the filters below read both alike.
+      const m = TableName.Membership;
+      const orgActors = () => {
+        const direct = conn(m)
+          .where(`${m}.scope`, AccessScope.Organization)
+          .where(`${m}.scopeOrgId`, orgId)
+          .select(
+            `${m}.id`,
+            `${m}.scope`,
+            `${m}.scopeOrgId`,
+            `${m}.isActive`,
+            `${m}.status`,
+            `${m}.actorUserId`,
+            `${m}.actorIdentityId`,
+            `${m}.actorGroupId`
+          );
+        const viaGroupOnly = (
+          groupTable: TableName.UserGroupMembership | TableName.IdentityGroupMembership,
+          groupActorColumn: "userId" | "identityId",
+          actorColumn: "actorUserId" | "actorIdentityId"
+        ) =>
+          conn(groupTable)
+            .join(`${m} as groupOrg`, "groupOrg.actorGroupId", `${groupTable}.groupId`)
+            .where("groupOrg.scope", AccessScope.Organization)
+            .where("groupOrg.scopeOrgId", orgId)
+            .where("groupOrg.isActive", true)
+            .whereNotExists(
+              conn(`${m} as directRow`)
+                .select(conn.raw("1"))
+                .where("directRow.scope", AccessScope.Organization)
+                .where("directRow.scopeOrgId", orgId)
+                .whereRaw("?? = ??", [`directRow.${actorColumn}`, `${groupTable}.${groupActorColumn}`])
+            )
+            .distinct(
+              db.ref(groupActorColumn).withSchema(groupTable).as("id"),
+              db.raw("?::text as scope", [AccessScope.Organization]),
+              db.raw(`?::uuid as "scopeOrgId"`, [orgId]),
+              db.raw(`true as "isActive"`),
+              db.raw("null::text as status"),
+              actorColumn === "actorUserId"
+                ? db.ref(groupActorColumn).withSchema(groupTable).as("actorUserId")
+                : db.raw(`null::uuid as "actorUserId"`),
+              actorColumn === "actorIdentityId"
+                ? db.ref(groupActorColumn).withSchema(groupTable).as("actorIdentityId")
+                : db.raw(`null::uuid as "actorIdentityId"`),
+              db.raw(`null::uuid as "actorGroupId"`)
+            );
+
+        return conn.from(
+          direct
+            .unionAll([
+              viaGroupOnly(TableName.UserGroupMembership, "userId", "actorUserId"),
+              viaGroupOnly(TableName.IdentityGroupMembership, "identityId", "actorIdentityId")
+            ])
+            .as(m)
+        );
+      };
+
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query
           .where(`${TableName.Membership}.scope`, AccessScope.Organization)
@@ -299,12 +358,12 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         return query;
       };
 
-      const countResult = (await applyFilters(conn(TableName.Membership))
-        .count(`${TableName.Membership}.id as count`)
-        .first()) as { count: string } | undefined;
+      const countResult = (await applyFilters(orgActors()).count(`${TableName.Membership}.id as count`).first()) as
+        | { count: string }
+        | undefined;
       const totalCount = parseInt(countResult?.count || "0", 10);
 
-      const rows = (await applyFilters(conn(TableName.Membership))
+      const rows = (await applyFilters(orgActors())
         .select(
           db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("machineIdentityId"),

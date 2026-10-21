@@ -1,6 +1,15 @@
+import { randomUUID } from "node:crypto";
+
 import { eventOutbox } from "e2e-test/fakes/event-outbox-queue";
 
-import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipRole,
+  ProjectMembershipRole,
+  RESOURCE_SCOPE,
+  ResourceType,
+  TableName
+} from "@app/db/schemas";
 import { EventOutboxStatus } from "@app/services/event-outbox/event-outbox-types";
 import { ORG_ACCESS_RECONCILE_CONSUMER } from "@app/services/org/org-access-reconcile-consumer";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -16,6 +25,12 @@ import {
 } from "../../testUtils/groups";
 import { createIdentityActor } from "../../testUtils/identities";
 import { pollUntil } from "../../testUtils/poll";
+import {
+  addIdentityToProjectRequest,
+  inviteUsersToProject,
+  listAvailableProjectIdentities,
+  listAvailableProjectUsers
+} from "../../testUtils/project-members";
 import { addUserMembership, createUser, deleteUsers } from "../../testUtils/users";
 
 // A user reaches a sub-org only through a root group linked into it. Removing the group path has to
@@ -185,9 +200,145 @@ describe("Org access reconcile", () => {
     expect(await projectRows(rootProjectId, { actorIdentityId: identityId })).toHaveLength(1);
   });
 
+  // An indirect member (in the sub-org only through a linked root group) can be assigned to a sub-org
+  // project directly, without becoming a direct sub-org member, and loses it again once the path goes.
+  test("a user who reaches the sub-org only through a group can be added to its project", async () => {
+    const groupId = await createLinkedGroup("assign-grp");
+    const { userId, username } = await createUser("assign-user");
+    createdUserIds.push(userId);
+    await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
+    await testDb(TableName.UserGroupMembership).insert({ userId, groupId });
+
+    const available = await listAvailableProjectUsers({ projectId: subOrgProjectId, authToken: subOrgToken });
+    expect(available.map((user) => user.id)).toContain(userId);
+
+    await inviteUsersToProject({ projectId: subOrgProjectId, usernames: [username], authToken: subOrgToken }).expect(
+      (res) => expect(res.statusCode).toBe(200)
+    );
+
+    expect(await projectRows(subOrgProjectId, { actorUserId: userId })).toHaveLength(1);
+    expect(
+      await testDb(TableName.Membership).where({
+        scope: AccessScope.Organization,
+        scopeOrgId: subOrgId,
+        actorUserId: userId
+      })
+    ).toHaveLength(0);
+    const afterAdd = await listAvailableProjectUsers({ projectId: subOrgProjectId, authToken: subOrgToken });
+    expect(afterAdd.map((user) => user.id)).not.toContain(userId);
+
+    await removeUserFromGroup({ groupId, username, authToken: rootToken });
+    await reconcile();
+
+    await pollUntil({
+      describe: "the indirect member's project row to be revoked once the group path is gone",
+      read: () => projectRows(subOrgProjectId, { actorUserId: userId }),
+      done: (rows) => rows.length === 0
+    });
+  });
+
+  test("a user with no path into the sub-org is not offered for its project", async () => {
+    const { userId } = await createUser("assign-outsider");
+    createdUserIds.push(userId);
+    await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
+
+    const available = await listAvailableProjectUsers({ projectId: subOrgProjectId, authToken: subOrgToken });
+    expect(available.map((user) => user.id)).not.toContain(userId);
+  });
+
+  test("a machine identity that reaches the sub-org only through a group can be added to its project", async () => {
+    const groupId = await createLinkedGroup("assign-identity-grp");
+    const { identityId } = await createIdentityActor({ orgId: rootOrgId, authToken: rootToken });
+    createdIdentityIds.push(identityId);
+    await testDb(TableName.IdentityGroupMembership).insert({ identityId, groupId });
+
+    const available = await listAvailableProjectIdentities({ projectId: subOrgProjectId, authToken: subOrgToken });
+    expect(available.map((identity) => identity.id)).toContain(identityId);
+
+    await addIdentityToProjectRequest({ projectId: subOrgProjectId, identityId, authToken: subOrgToken }).expect(
+      (res) => expect(res.statusCode).toBe(200)
+    );
+    expect(await projectRows(subOrgProjectId, { actorIdentityId: identityId })).toHaveLength(1);
+  });
+
+  test("the available lists answer 404 for a project outside the caller's org", async () => {
+    await listAvailableProjectUsers({ projectId: rootProjectId, authToken: subOrgToken }).expect((res) =>
+      expect(res.statusCode).toBe(404)
+    );
+    await listAvailableProjectIdentities({ projectId: rootProjectId, authToken: subOrgToken }).expect((res) =>
+      expect(res.statusCode).toBe(404)
+    );
+  });
+
+  // PAM and Agent Vault run over one implicit project per org, and add members through their own routes.
+  const asSubOrg = (method: "GET" | "POST", url: string, body?: Record<string, unknown>) =>
+    testServer.inject({ method, url, headers: { authorization: `Bearer ${subOrgToken}` }, ...(body ? { body } : {}) });
+
+  const implicitProjectId = async (product: "pam" | "agent-vault") => {
+    const res = await asSubOrg("GET", `/api/v1/${product}/project`);
+    expect(res.statusCode).toBe(200);
+    return res.json().projectId as string;
+  };
+
+  test("PAM takes a group-only user and identity of the sub-org, and a root group linked into it", async () => {
+    const groupId = await createLinkedGroup("pam-grp");
+    const { userId, username } = await createUser("pam-user");
+    createdUserIds.push(userId);
+    await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
+    await testDb(TableName.UserGroupMembership).insert({ userId, groupId });
+    const { identityId } = await createIdentityActor({ orgId: rootOrgId, authToken: rootToken });
+    createdIdentityIds.push(identityId);
+    await testDb(TableName.IdentityGroupMembership).insert({ identityId, groupId });
+    const pamProjectId = await implicitProjectId("pam");
+
+    const available = await listAvailableProjectUsers({ projectId: pamProjectId, authToken: subOrgToken });
+    expect(available.map((user) => user.id)).toContain(userId);
+
+    const userRes = await asSubOrg("POST", "/api/v1/pam/memberships/users", { userIds: [userId], role: "member" });
+    expect(userRes.statusCode).toBe(200);
+    const identityRes = await asSubOrg("POST", `/api/v1/pam/memberships/identities/${identityId}`, { role: "member" });
+    expect(identityRes.statusCode).toBe(200);
+    const groupRes = await asSubOrg("POST", `/api/v1/pam/memberships/groups/${groupId}`, { role: "member" });
+    expect(groupRes.statusCode).toBe(200);
+
+    expect(await projectRows(pamProjectId, { actorUserId: userId })).toHaveLength(1);
+    expect(await projectRows(pamProjectId, { actorIdentityId: identityId })).toHaveLength(1);
+
+    await removeUserFromGroup({ groupId, username, authToken: rootToken });
+    await reconcile();
+    await pollUntil({
+      describe: "the group-only PAM member to lose their membership once the group path is gone",
+      read: () => projectRows(pamProjectId, { actorUserId: userId }),
+      done: (rows) => rows.length === 0
+    });
+  });
+
+  test("Agent Vault offers and takes a user who reaches the sub-org only through a group", async () => {
+    const groupId = await createLinkedGroup("av-grp");
+    const { userId } = await createUser("av-user");
+    createdUserIds.push(userId);
+    await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
+    await testDb(TableName.UserGroupMembership).insert({ userId, groupId });
+    const agentVaultProjectId = await implicitProjectId("agent-vault");
+    // A lazily created Agent Vault project starts empty; an org admin joins it before managing members.
+    const join = await asSubOrg(
+      "POST",
+      `/api/v1/organization-admin/projects/${agentVaultProjectId}/grant-admin-access`
+    );
+    expect(join.statusCode, join.payload).toBe(200);
+
+    const availableRes = await asSubOrg("GET", "/api/v1/agent-vault/members/available?actorType=user&limit=100");
+    expect(availableRes.statusCode, availableRes.payload).toBe(200);
+    expect((availableRes.json().actors as { id: string }[]).map((actor) => actor.id)).toContain(userId);
+
+    const addRes = await asSubOrg("POST", "/api/v1/agent-vault/members", { userIds: [userId], role: "member" });
+    expect(addRes.statusCode, addRes.payload).toBe(200);
+    expect(await projectRows(agentVaultProjectId, { actorUserId: userId })).toHaveLength(1);
+  });
+
   // The sweep's query is what backs the daily backstop, so it is checked against real rows: an actor
   // with a project row and no path into that org is an orphan, and every kind of path clears them.
-  test("the sweep query finds an actor with a project row and no path into the org, and nothing else", async () => {
+  test("the sweep query finds an actor with a project or resource row and no path into the org, and nothing else", async () => {
     const orgDAL = orgDALFactory(testDb);
     const groupId = await createLinkedGroup("reconcile-sweep-grp");
 
@@ -212,10 +363,34 @@ describe("Org access reconcile", () => {
 
     const { userId: viaGroupUserId } = await createRootUserWithProjects("reconcile-via-group", [groupId]);
 
+    // Resource rows with no project row behind them, like a group-derived PAM admin's personal folder row.
+    const resourceRow = (actor: { actorUserId?: string; actorIdentityId?: string }, resourceType: ResourceType) => ({
+      scope: RESOURCE_SCOPE,
+      scopeOrgId: subOrgId,
+      scopeProjectId: subOrgProjectId,
+      scopeResourceType: resourceType,
+      scopeResourceId: randomUUID(),
+      ...actor
+    });
+    const { userId: resourceOnlyUserId } = await createUser("reconcile-resource-only");
+    createdUserIds.push(resourceOnlyUserId);
+    const { identityId: resourceOnlyIdentityId } = await createIdentityActor({
+      orgId: rootOrgId,
+      authToken: rootToken
+    });
+    createdIdentityIds.push(resourceOnlyIdentityId);
+    await testDb(TableName.Membership).insert([
+      resourceRow({ actorUserId: resourceOnlyUserId }, ResourceType.PamFolder),
+      resourceRow({ actorIdentityId: resourceOnlyIdentityId }, ResourceType.AgentVaultAccessBundle),
+      resourceRow({ actorUserId: viaGroupUserId }, ResourceType.PamFolder)
+    ]);
+
     const orphans = await orgDAL.findOrphanedProjectActors({ limit: 100_000 });
     const orphanPairs = orphans.map((row) => `${row.actorUserId ?? row.actorIdentityId}:${row.scopeOrgId}`);
 
     expect(orphanPairs).toContain(`${orphanUserId}:${subOrgId}`);
+    expect(orphanPairs).toContain(`${resourceOnlyUserId}:${subOrgId}`);
+    expect(orphanPairs).toContain(`${resourceOnlyIdentityId}:${subOrgId}`);
     expect(orphanPairs).not.toContain(`${directUserId}:${subOrgId}`);
     expect(orphanPairs).not.toContain(`${viaGroupUserId}:${subOrgId}`);
     expect(orphanPairs).not.toContain(`${viaGroupUserId}:${rootOrgId}`);

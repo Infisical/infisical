@@ -27,6 +27,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -46,7 +47,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
@@ -305,6 +306,8 @@ export const agentVaultMembershipServiceFactory = ({
     resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, actors);
 
   // resolveSession refuses an actor with no active org membership, so one added without it could never mint.
+  // Users and identities count when they have an active row of their own or an active group reaching the org;
+  // the reconcile consumer revokes the membership if that group path goes away.
   const assertActorsAreAddable = async (actors: TAgentVaultNamedActor[], orgId: string, projectId: string) => {
     const groupIds = named(actors, AgentVaultMemberType.Group);
     const machineIdentityIds = named(actors, AgentVaultMemberType.MachineIdentity);
@@ -318,21 +321,21 @@ export const agentVaultMembershipServiceFactory = ({
         ? membershipDAL.find({ scope: AccessScope.Organization, scopeOrgId: orgId, $in: { [column]: ids } })
         : [];
 
-    const [groupMemberships, identityMemberships, userMemberships, identities] = await Promise.all([
-      orgScoped("actorGroupId", groupIds),
-      orgScoped("actorIdentityId", machineIdentityIds),
-      orgScoped("actorUserId", userIds),
-      machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds } }) : []
-    ]);
+    const [groupMemberships, identityMemberships, userMemberships, identities, withActiveOrgAccess] = await Promise.all(
+      [
+        orgScoped("actorGroupId", groupIds),
+        orgScoped("actorIdentityId", machineIdentityIds),
+        orgScoped("actorUserId", userIds),
+        machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds } }) : [],
+        orgDAL.findActorsWithActiveOrgAccess({ orgId, userIds, identityIds: machineIdentityIds })
+      ]
+    );
 
-    // A row of the actor's own, not one it inherits from a group. An actor that reaches the org only
-    // through a group is meant to reach Agent Vault the same way, by the group being a member, so it is
-    // never granted a membership here. Authentication is separate and still resolves it through groups.
     const activeIds = (memberships: TMemberships[], column: TActorColumn) =>
       new Set(memberships.filter((membership) => membership.isActive).map((membership) => membership[column]));
 
-    const userMemberIds = activeIds(userMemberships, "actorUserId");
-    const identityMemberIds = activeIds(identityMemberships, "actorIdentityId");
+    const userMemberIds = withActiveOrgAccess.userIds;
+    const identityMemberIds = withActiveOrgAccess.identityIds;
 
     // Active, so a deactivated group cannot be restored to Agent Vault by adding it again.
     const foundGroups = activeIds(groupMemberships, "actorGroupId");
@@ -343,7 +346,10 @@ export const agentVaultMembershipServiceFactory = ({
 
     // Keyed on the membership, so an identity in another org stays a 404 rather than reaching the
     // active-member check below, which would confirm it exists.
-    const foundIdentities = new Set(identityMemberships.map((membership) => membership.actorIdentityId));
+    const foundIdentities = new Set([
+      ...identityMemberships.map((membership) => membership.actorIdentityId),
+      ...identityMemberIds
+    ]);
     const identityById = new Map(identities.map((identity) => [identity.id, identity]));
     const missingIdentities = machineIdentityIds.filter((id) => !foundIdentities.has(id));
     if (missingIdentities.length) {
@@ -459,6 +465,16 @@ export const agentVaultMembershipServiceFactory = ({
       const skipped = actors.filter((actor) => existing.has(actorKey(actor)));
       const toCreate = actors.filter((actor) => !existing.has(actorKey(actor)));
       if (!toCreate.length) return { created: [], skipped };
+
+      await lockAndAssertActiveOrgAccess(
+        {
+          orgDAL,
+          orgId: ctx.actorOrgId,
+          userIds: named(toCreate, AgentVaultMemberType.User),
+          identityIds: named(toCreate, AgentVaultMemberType.MachineIdentity)
+        },
+        tx
+      );
 
       const memberships = await membershipDAL.insertMany(
         toCreate.map((actor) => ({

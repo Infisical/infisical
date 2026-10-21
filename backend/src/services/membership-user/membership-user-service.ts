@@ -25,6 +25,7 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { AuthMethod } from "../auth/auth-type";
@@ -61,7 +62,10 @@ import { newProjectMembershipUserFactory } from "./project/project-membership-us
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction" | "find" | "findActorsWithOrgAccess">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    "findById" | "transaction" | "find" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess"
+  >;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;
   permissionService: Pick<
@@ -315,15 +319,24 @@ export const membershipUserServiceFactory = ({
         actorUserId: users.map((el) => el.id)
       }
     });
+    const existingUserIds = new Set(existingMemberships.map((el) => el.actorUserId as string));
+    if (scopeData.scope === AccessScope.Organization && data.skipUsersWithOrgAccess) {
+      const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({
+        orgId: scopeData.orgId,
+        userIds: users.map((el) => el.id),
+        identityIds: []
+      });
+      withOrgAccess.userIds.forEach((userId) => existingUserIds.add(userId));
+    }
 
-    if (existingMemberships.length === users.length) return { memberships: [] };
+    if (users.every((user) => existingUserIds.has(user.id))) return { memberships: [] };
     const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
     const serverCfg = await getServerCfg();
     const isEmailLoginEnabled =
       !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
 
-    const newMembershipUsers = users.filter((user) => !existingMemberships?.find((el) => el.actorUserId === user.id));
+    const newMembershipUsers = users.filter((user) => !existingUserIds.has(user.id));
     await factory.onCreateMembershipUserGuard(dto, newMembershipUsers);
     const newMemberships = newMembershipUsers.map((user) => {
       let status: OrgMembershipStatus | undefined;
@@ -369,6 +382,12 @@ export const membershipUserServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
+      if (scopeData.scope === AccessScope.Project) {
+        await lockAndAssertActiveOrgAccess(
+          { orgDAL, orgId: scopeData.orgId, userIds: newMembershipUsers.map((user) => user.id) },
+          tx
+        );
+      }
       const docs = await membershipUserDAL.insertMany(newMemberships, tx);
 
       const roleDocs: TMembershipRolesInsert[] = [];
@@ -690,19 +709,31 @@ export const membershipUserServiceFactory = ({
     return membership;
   };
 
-  // Should only be used for sub organization as of now
+  // The list is made of org members, so at project scope it's gated on org member read alone, plus a check
+  // that the project belongs to the org.
   const listAvailableUsers = async (dto: TListMembershipUserDTO) => {
     const { scopeData } = dto;
-    const factory = scopeFactory[scopeData.scope];
 
-    await factory.onListMembershipUserGuard(dto);
+    if (scopeData.scope === AccessScope.Project) {
+      await scopeFactory[AccessScope.Organization].onListMembershipUserGuard({
+        ...dto,
+        scopeData: { scope: AccessScope.Organization, orgId: scopeData.orgId }
+      });
+      const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
+        projectDAL.findById(scopeData.projectId)
+      );
+      if (project?.orgId !== scopeData.orgId) {
+        throw new NotFoundError({ message: `Project with ID '${scopeData.projectId}' not found` });
+      }
+    } else {
+      await scopeFactory[scopeData.scope].onListMembershipUserGuard(dto);
+    }
 
     const organizationDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.scopeData.orgId), () =>
       orgDAL.findById(dto.scopeData.orgId)
     );
-    if (!organizationDetails.rootOrgId) return { users: [] };
 
-    const users = await membershipUserDAL.listAvailableUsers(organizationDetails.id, organizationDetails.rootOrgId);
+    const users = await membershipUserDAL.listAvailableUsers(scopeData, organizationDetails.rootOrgId);
     return { users };
   };
 

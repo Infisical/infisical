@@ -17,8 +17,8 @@ type TOrgAccessSweepQueueDep = {
 
 export type TOrgAccessSweepQueueFactory = ReturnType<typeof orgAccessSweepQueueFactory>;
 
-// Backstop for the reconcile consumer: finds project rows whose actor no longer reaches the org and emits
-// an org membership removal for each. Also cleans up data from before the events existed.
+// Backstop for the reconcile consumer: finds project and resource rows whose actor no longer reaches the org
+// and emits an org membership removal for each. Also cleans up data from before the events existed.
 export const orgAccessSweepQueueFactory = ({ cronJob, orgDAL, eventEmitter }: TOrgAccessSweepQueueDep) => {
   const runSweep = async () => {
     const orphans = await orgDAL.findOrphanedProjectActors({
@@ -53,7 +53,7 @@ export const orgAccessSweepQueueFactory = ({ cronJob, orgDAL, eventEmitter }: TO
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         const { orphans } = await runSweep();
-        logger.info(`cron[org-access-reconcile-sweep]: queued ${orphans} orphaned project memberships`);
+        logger.info(`cron[org-access-reconcile-sweep]: queued ${orphans} actors with orphaned memberships`);
       }
     });
   };

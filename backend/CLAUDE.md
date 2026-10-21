@@ -898,28 +898,72 @@ itself whether the actor still reaches the org.
 
   Group events snapshot orgs and members at removal time, since a later removal can wipe those rows before
   the consumer runs. The org list always comes from `groupDAL.findGroupOrgIds` (the owning org plus every
-  org the group is linked into), so no emit site assembles it by hand. Both lists are paged at 100 (one event per org page x member page) because the outbox
-  rejects payloads over 16 KiB, which rolls back the removal. Any new path removing one of these must emit
-  the matching event. The daily `org-access-reconcile-sweep` cron is a backstop, not a substitute.
-- **The consumer (`org-access-reconcile`) rechecks against current state**, in batches of 10 actors per org,
-  each in its own short tx with a `statement_timeout`, since the rows an actor holds aren't bounded. Orgs and
-  actors come from the payload for group events, and from the org plus its sub-orgs for a membership
-  removal. Actors with no path left go through `projectAccessRevokeService.revokeActorsInOrgs`
-  (`services/membership/project-access-revoke-service.ts`), the one definition of what leaving an org's
-  projects takes away: project rows, resource rows (PAM, Agent Vault, PKI apps, signers, through
+  org the group is linked into), so no emit site builds it by hand. Both lists are paged at 100 (one event
+  per org page x member page) because the outbox rejects payloads over 16 KiB, which rolls back the removal.
+  Any new path removing one of these must emit the matching event.
+- **What leaving an org's projects takes away is defined once**, in
+  `projectAccessRevokeService.revokeActorsInOrgs` (`services/membership/project-access-revoke-service.ts`):
+  project rows, resource rows (PAM, Agent Vault, PKI apps, signers, through
   `applicationMembershipCleanupService`), project keys, privileges, approver slots, alert recipient slots and
-  live PAM sessions, across every project in the org since those can exist in group-only projects.
-  `deleteOrgMembershipsFn` uses the same service, so don't add a third copy of that list. PAM
-  cancellations, the `revoke-org-project-access` audit log and usage meters fire after each batch commits,
-  only when something was removed, so replays are silent.
+  live PAM sessions, across every project in the given orgs since those can exist in group-only projects.
+  It runs in the caller's tx and hands back the PAM cancellation sender for after commit. Don't add another
+  copy of that list.
+- **Removing a user from an org tears down synchronously, an identity doesn't.** `deleteOrgMembershipsFn`
+  (org member removal, bulk removal, SCIM deprovision) drops the user's org rows in the sub-orgs, their
+  groups there and calls `revokeActorsInOrgs` for the org plus its sub-orgs in the same tx; its event only
+  lets the consumer confirm nothing's left. Identity removal just writes the revocation marker and emits, so
+  the consumer does all the project cleanup.
+- **The consumer (`org-access-reconcile`) rechecks against current state.** Orgs and actors come from the
+  payload for group events, and from the org plus its sub-orgs for a membership removal. Per org it works in
+  batches of 10 actors, each its own tx with `SET LOCAL statement_timeout` (30s) that locks the actors,
+  rechecks `findActorsWithOrgAccess` and calls `revokeActorsInOrgs` for whoever has no path left, since the
+  rows an actor holds aren't bounded. PAM cancellations, the `revoke-org-project-access` audit log and usage
+  meters fire after each batch commits and only when something was removed, so replays are silent.
+- **The audit event is written for admins.** The actor is the platform; `reason` is an
+  `OrgAccessRemovalCause` mapped from the event type, and `username` / `identityName` / `groupName` are
+  read at log time (left out when the row is already gone, e.g. a deleted group). `projectIds` are project
+  memberships, `resources` the resource grants.
+- **The daily `org-access-reconcile-sweep` cron is a backstop, not a substitute.** It looks for project and
+  resource rows whose actor no longer reaches the org (ghost users skipped) and emits a `membership` event
+  per (actor, org) pair, capped at 5000 per run, in a replica tx with a 3 minute `statement_timeout`.
+  Resource rows count on their own, because a resource grant can exist with no project row behind it (a
+  group-derived PAM admin's personal folder row), and the consumer reaps both.
 - **Not on the enforcement path.** Token validation already rejects actors with no effective org membership
   (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat counts and SCIM.
-- **`orgDAL.lockActorsForOrgAccess`** is taken (sorted) by the add-to-group helpers and the consumer, so
-  access granted between the consumer's check and its deletes doesn't get reaped. Take it in any new path
-  that grants an org path outside `group-fns.ts`.
-- **Adding a user to a project checks effective org membership** (`orgDAL.findActorsWithOrgAccess`), so
-  group-only users can get a direct project membership. That's the row the consumer revokes once the group
-  path goes away.
+- **`orgDAL.lockActorsForOrgAccess`** (advisory xact locks, one statement over the sorted ids so callers
+  can't deadlock) serializes everything that grants against the consumer, so access granted between its
+  check and its deletes doesn't get reaped or outlive it. Two kinds of caller take it:
+  - The add-to-group helpers in `group-fns.ts` (the SSO and SCIM services only pass it through). Take it in
+    any new path that grants an org path outside them.
+  - Every path that writes a project or resource membership for a user or identity, through
+    `lockAndAssertActiveOrgAccess` (`services/org/org-access-fns.ts`), which locks and rechecks
+    `findActorsWithActiveOrgAccess` inside the write's own transaction: the generic user and identity
+    `createMembership` at project scope, PAM's `addProductMember`, `addProductUserMembers` and
+    `addResourceMember`, and Agent Vault's `addProductMembers`. A new add path must call it before its write;
+    the pre-checks outside the transaction stay for their error messages but don't close the race.
+- **Indirect members can be assigned to projects, PAM and Agent Vault included.** Users and identities that
+  reach an org only through a linked group can get a direct project membership; that's the row the consumer
+  revokes once the group path goes away. Two helpers on `org-dal.ts`, and picking the wrong one is the bug:
+  - `findActorsWithActiveOrgAccess` answers "can we grant this actor access now": an active direct org row,
+    or no direct row and an active group holding one (a deactivated direct member stays out, matching
+    `findEffectiveOrgMembership`). Every add path uses it: the project user and identity guards, the
+    `skipUsersWithOrgAccess` step of the project invite routes, PAM's `validateActorExists` /
+    `addProductUserMembers` and Agent Vault's `assertActorsAreAddable`. The candidate lists
+    (`.../memberships/available-users`, `.../available-identities`, Agent Vault's `findAvailableActors`)
+    apply the same rule in SQL.
+  - `findActorsWithOrgAccess` answers "does this actor still reach the org", ignoring deactivation, and is
+    only for the reconcile consumer: deactivating someone must not reap their project rows.
+  - The project invite routes (`POST /v1/projects/:projectId/memberships`, its deprecated v2 twin and the
+    cert manager `/users` route) pass `skipUsersWithOrgAccess` to the org-scope `createMembership`, so a
+    group-only user isn't turned into a direct org member, emailed an org invite, or held to org
+    `Member.Create`. Brand-new emails still go through the full org invite.
+  - The project candidate lists are org member lists, so at project scope they're gated on org
+    `Member.Read` / `Identity.Read` only, plus a 404 when the project isn't in the caller's org. The project
+    and PAM add-member modals read `available-users`; Agent Vault keeps its own `/agent-vault/members/available`.
+
+`e2e-test/routes/v1/org-access-reconcile.spec.ts` covers the sub-org flows end to end against real
+Postgres (group removal, unlink, identities, a second path keeping access, the sweep query); the unit
+tests mock the DALs.
 
 ### Soft-Delete + Async Cleanup
 

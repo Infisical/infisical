@@ -37,7 +37,7 @@ import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TProjectMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithOrgAccess">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -70,7 +70,8 @@ export const newProjectMembershipUserFactory = ({
 
   const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
-  // Users reaching the org through a direct row or a group can both get a project membership.
+  // Users with an active org row of their own or an active group reaching the org can get a project
+  // membership, the same rule every other add path uses (findActorsWithActiveOrgAccess).
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
     newUsers
@@ -86,7 +87,7 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
 
-    const withOrgAccess = await orgDAL.findActorsWithOrgAccess({
+    const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({
       orgId: dto.permission.orgId,
       userIds: newUsers.map((el) => el.id),
       identityIds: []
@@ -178,7 +179,7 @@ export const newProjectMembershipUserFactory = ({
         actorUserId: newMemberIds
       }
     });
-    const withOrgAccess = await orgDAL.findActorsWithOrgAccess({
+    const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({
       orgId: dto.permission.orgId,
       userIds: newMemberIds,
       identityIds: []

@@ -8,6 +8,7 @@ import {
   OrgMembershipStatus,
   ProjectType,
   ProjectVersion,
+  RESOURCE_SCOPE,
   TableName,
   TMemberships,
   TMembershipsInsert,
@@ -1234,9 +1235,60 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // (actor, org) pairs with a project row in an org the actor no longer reaches. Skips ghost users (project
-  // bots), they never have an org row. One streaming pass over the project rows against a hash of the org
-  // rows; collapsing to distinct pairs first was measured and only moved the cost into an aggregate.
+  // Actors that can be granted access in the org right now: an active direct org row, or no direct row and
+  // an active group that holds one. A deactivated direct member stays out even if a group reaches the org,
+  // matching findEffectiveOrgMembership, which resolves the direct row first.
+  const findActorsWithActiveOrgAccess = async (
+    { orgId, userIds, identityIds }: { orgId: string; userIds: string[]; identityIds: string[] },
+    tx?: Knex
+  ): Promise<TOrgAccessActors> => {
+    try {
+      const conn = tx || db.replicaNode();
+      const orgRows = () =>
+        conn(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .where(`${TableName.Membership}.scopeOrgId`, orgId);
+
+      const active = async (
+        ids: string[],
+        actorColumn: "actorUserId" | "actorIdentityId",
+        groupTable: TableName.UserGroupMembership | TableName.IdentityGroupMembership,
+        groupActorColumn: "userId" | "identityId"
+      ) => {
+        if (!ids.length) return new Set<string>();
+        const direct = (await orgRows()
+          .whereIn(`${TableName.Membership}.${actorColumn}`, ids)
+          .select(
+            db.ref(actorColumn).withSchema(TableName.Membership).as("actorId"),
+            db.ref("isActive").withSchema(TableName.Membership)
+          )) as { actorId: string; isActive: boolean }[];
+        const withDirectRow = new Set(direct.map((row) => row.actorId));
+        const viaGroup = (await orgRows()
+          .join(groupTable, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
+          .whereIn(`${groupTable}.${groupActorColumn}`, ids)
+          .where(`${TableName.Membership}.isActive`, true)
+          .select(db.ref(groupActorColumn).withSchema(groupTable).as("actorId"))) as { actorId: string }[];
+
+        return new Set([
+          ...direct.filter((row) => row.isActive).map((row) => row.actorId),
+          ...viaGroup.map((row) => row.actorId).filter((actorId) => !withDirectRow.has(actorId))
+        ]);
+      };
+
+      return {
+        userIds: await active(userIds, "actorUserId", TableName.UserGroupMembership, "userId"),
+        identityIds: await active(identityIds, "actorIdentityId", TableName.IdentityGroupMembership, "identityId")
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindActorsWithActiveOrgAccess" });
+    }
+  };
+
+  // (actor, org) pairs with a project or resource row (PAM, Agent Vault, PKI apps, signers) in an org the
+  // actor no longer reaches. Resource rows count on their own: a group-derived PAM admin's personal folder
+  // row can exist with no project row behind it. Skips ghost users (project bots), they never have an org
+  // row. One streaming pass over those rows against a hash of the org rows; collapsing to distinct pairs
+  // first was measured and only moved the cost into an aggregate.
   // Without a caller's tx it runs in its own replica transaction so `statementTimeoutMs` bounds it: a
   // backstop that overruns should fail and log, not keep the replica busy after the cron has given up on it.
   const findOrphanedProjectActors = async (
@@ -1269,7 +1321,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
       const userRows = (await conn(m)
         .join(TableName.Users, `${TableName.Users}.id`, `${m}.actorUserId`)
-        .where(`${m}.scope`, AccessScope.Project)
+        .whereIn(`${m}.scope`, [AccessScope.Project, RESOURCE_SCOPE])
         .where(`${TableName.Users}.isGhost`, false)
         .whereNotExists(noDirectOrgRow("actorUserId"))
         .whereNotExists(noGroupOrgRow(TableName.UserGroupMembership, "userId", "actorUserId"))
@@ -1277,7 +1329,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .limit(limit)) as { actorUserId: string; scopeOrgId: string }[];
 
       const identityRows = (await conn(m)
-        .where(`${m}.scope`, AccessScope.Project)
+        .whereIn(`${m}.scope`, [AccessScope.Project, RESOURCE_SCOPE])
         .whereNotNull(`${m}.actorIdentityId`)
         .whereNotExists(noDirectOrgRow("actorIdentityId"))
         .whereNotExists(noGroupOrgRow(TableName.IdentityGroupMembership, "identityId", "actorIdentityId"))
@@ -1343,6 +1395,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findEffectiveOrgMemberships,
     findActiveEffectiveOrgMembershipsByUserId,
     findActorsWithOrgAccess,
+    findActorsWithActiveOrgAccess,
     findOrphanedProjectActors,
     lockActorsForOrgAccess,
     findMembershipWithScimFilter,
