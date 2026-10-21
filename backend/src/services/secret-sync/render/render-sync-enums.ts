@@ -1,6 +1,7 @@
 export enum RenderSyncScope {
   Service = "service",
-  EnvironmentGroup = "environment-group"
+  EnvironmentGroup = "environment-group",
+  Workflow = "workflow"
 }
 
 export enum RenderSyncType {
