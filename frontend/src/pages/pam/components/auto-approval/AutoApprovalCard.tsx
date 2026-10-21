@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Info, Link2, Plus, TriangleAlert, X } from "lucide-react";
 
@@ -34,7 +35,7 @@ import {
   newKey,
   TAutoApprovalDraft
 } from "./autoApprovalDraft";
-import { DisabledReason, SectionLabel } from "./AutoApprovalLabels";
+import { DisabledReason, LogicConnector, SectionLabel } from "./AutoApprovalLabels";
 import { AutoApprovalRuleCard } from "./AutoApprovalRuleCard";
 
 type Props = {
@@ -246,33 +247,37 @@ export const AutoApprovalCard = ({
                 </div>
               )}
 
-              {draft.rules.map((rule, index) => (
-                <AutoApprovalRuleCard
-                  key={rule.key}
-                  index={index}
-                  rule={rule}
-                  inputs={draft.inputs}
-                  catalog={catalog}
-                  policyType={policyType}
-                  scope={scope}
-                  scopeId={scopeId}
-                  showErrors={showErrors}
-                  onChange={(next) =>
-                    onChange({
-                      ...draft,
-                      rules: draft.rules.map((candidate) =>
-                        candidate.key === next.key ? next : candidate
-                      )
-                    })
-                  }
-                  onRemove={() =>
-                    onChange({
-                      ...draft,
-                      rules: draft.rules.filter((candidate) => candidate.key !== rule.key)
-                    })
-                  }
-                />
-              ))}
+              <div className="flex flex-col">
+                {draft.rules.map((rule, index) => (
+                  <Fragment key={rule.key}>
+                    {index > 0 && <LogicConnector label="or" />}
+                    <AutoApprovalRuleCard
+                      index={index}
+                      rule={rule}
+                      inputs={draft.inputs}
+                      catalog={catalog}
+                      policyType={policyType}
+                      scope={scope}
+                      scopeId={scopeId}
+                      showErrors={showErrors}
+                      onChange={(next) =>
+                        onChange({
+                          ...draft,
+                          rules: draft.rules.map((candidate) =>
+                            candidate.key === next.key ? next : candidate
+                          )
+                        })
+                      }
+                      onRemove={() =>
+                        onChange({
+                          ...draft,
+                          rules: draft.rules.filter((candidate) => candidate.key !== rule.key)
+                        })
+                      }
+                    />
+                  </Fragment>
+                ))}
+              </div>
             </section>
           </>
         )}

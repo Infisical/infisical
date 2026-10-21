@@ -91,6 +91,7 @@ const getSubjectChoices = (
 };
 
 const ConditionRow = ({
+  showConnector,
   condition,
   rule,
   catalog,
@@ -101,6 +102,7 @@ const ConditionRow = ({
   onChange,
   onRemove
 }: {
+  showConnector: boolean;
   condition: TDraftCondition;
   rule: TDraftRule;
   catalog: TAutoApprovalCatalogConnection[];
@@ -131,10 +133,18 @@ const ConditionRow = ({
   );
 
   return (
-    <div className="flex flex-col gap-1 py-1.5 pr-1.5 pl-2.5">
+    <div className="relative flex flex-col gap-1 py-1.5 pr-1.5 pl-2.5">
+      {showConnector && (
+        <span className="absolute top-0 left-4 -translate-y-1/2 bg-card px-1 text-[10px] leading-none font-medium tracking-wider text-muted uppercase">
+          and
+        </span>
+      )}
       <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
         <Badge variant="neutral">{subject?.label ?? "Unavailable record"}</Badge>
         <span className="text-sm text-foreground">{constraint?.label ?? condition.constraint}</span>
+        {constraint?.value === AutoApprovalConstraintValue.Many && (
+          <span className="text-xs text-muted">one of</span>
+        )}
         {constraint && constraint.value !== AutoApprovalConstraintValue.None && (
           <div className="max-w-72 min-w-40 flex-1">
             <AutoApprovalValuePicker
@@ -269,9 +279,10 @@ export const AutoApprovalRuleCard = ({
         <div className="flex flex-col items-start gap-2">
           {rule.conditions.length > 0 && (
             <div className="flex w-full flex-col divide-y divide-border rounded-md border border-border">
-              {rule.conditions.map((condition) => (
+              {rule.conditions.map((condition, conditionIndex) => (
                 <ConditionRow
                   key={condition.key}
+                  showConnector={conditionIndex > 0}
                   condition={condition}
                   rule={rule}
                   catalog={catalog}

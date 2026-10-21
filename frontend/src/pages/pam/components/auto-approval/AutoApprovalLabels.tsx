@@ -24,3 +24,11 @@ export const DisabledReason = ({
     </Tooltip>
   );
 };
+
+export const LogicConnector = ({ label }: { label: string }) => (
+  <div className="flex py-1.5 pl-4">
+    <span className="rounded-sm border border-border bg-foreground/5 px-1 py-0.5 text-[9px] leading-none font-medium tracking-wider text-muted uppercase">
+      {label}
+    </span>
+  </div>
+);
