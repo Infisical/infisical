@@ -2,6 +2,9 @@ import { Fragment } from "react";
 import { Plus, ShieldAlert, Trash2, X } from "lucide-react";
 
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
   Badge,
   Button,
   DropdownMenu,
@@ -304,28 +307,33 @@ export const AutoApprovalRuleCard = ({
           {missingChecks.map(({ condition, constraint, message, action }) => {
             const { subject } = findSubject(catalog, condition.connectionId, condition.subject);
             return (
-              <div
+              <Alert
                 key={`${condition.connectionId}:${condition.subject}:${constraint}`}
-                className="flex w-full items-center gap-2 rounded-md border border-warning/20 bg-warning/5 px-2.5 py-1.5 text-xs"
+                variant="warning"
+                className="py-1.5"
               >
-                <ShieldAlert className="size-3.5 shrink-0 text-warning" />
-                <span className="flex-1 text-muted">{message(subject?.label ?? "record")}</span>
-                <Button
-                  type="button"
-                  variant="text"
-                  size="xs"
-                  className="shrink-0 font-medium"
-                  onClick={() =>
-                    addCondition({
-                      connectionId: condition.connectionId,
-                      subject: condition.subject,
-                      constraint
-                    })
-                  }
-                >
-                  {action}
-                </Button>
-              </div>
+                <ShieldAlert />
+                <AlertDescription className="text-xs">
+                  <span>{message(subject?.label ?? "record")}</span>
+                  <AlertAction>
+                    <Button
+                      type="button"
+                      variant="warning"
+                      size="xs"
+                      className="h-6"
+                      onClick={() =>
+                        addCondition({
+                          connectionId: condition.connectionId,
+                          subject: condition.subject,
+                          constraint
+                        })
+                      }
+                    >
+                      {action}
+                    </Button>
+                  </AlertAction>
+                </AlertDescription>
+              </Alert>
             );
           })}
 
