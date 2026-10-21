@@ -1,7 +1,11 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TDelegatedApprovalRequests } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+
+import { DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
 
 export type TDelegatedApprovalRequestDALFactory = ReturnType<typeof delegatedApprovalRequestDALFactory>;
 
@@ -35,5 +39,22 @@ export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByProviderRequestId };
+  // Concurrent claims on one row serialize on its lock, and the loser re-evaluates the WHERE against the
+  // winner's write, so only one caller gets the row back.
+  const claimDecisionRead = async ({ id, staleBefore }: { id: string; staleBefore: Date }, tx?: Knex) => {
+    try {
+      const [row] = await (tx || db)(TableName.DelegatedApprovalRequests)
+        .where({ id, status: DelegatedApprovalRequestStatus.WaitingApproval })
+        .where((qb) => {
+          void qb.whereNull("decisionReadRequestedAt").orWhere("decisionReadRequestedAt", "<", staleBefore);
+        })
+        .update({ decisionReadRequestedAt: new Date() })
+        .returning("*");
+      return (row as TDelegatedApprovalRequests | undefined) ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DelegatedApprovalRequest: claimDecisionRead" });
+    }
+  };
+
+  return { ...orm, findByProviderRequestId, claimDecisionRead };
 };

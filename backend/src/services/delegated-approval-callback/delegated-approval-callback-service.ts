@@ -9,7 +9,8 @@ import {
   DELEGATED_APPROVAL_CALLBACK_ATTEMPTS_EXHAUSTED_REASON,
   DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS,
   DELEGATED_APPROVAL_CALLBACK_PATH,
-  DELEGATED_APPROVAL_CALLBACK_TOKEN_PREFIX
+  DELEGATED_APPROVAL_CALLBACK_TOKEN_PREFIX,
+  DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS
 } from "./delegated-approval-callback-constants";
 import { TDelegatedApprovalCallbackEventPayload } from "./delegated-approval-callback-events";
 import { generateCallbackToken, isTokenMatch, rejectApprovalCallback } from "./delegated-approval-callback-fns";
@@ -119,10 +120,28 @@ export const delegatedApprovalCallbackServiceFactory = ({
       event,
       externalId
     };
-    await eventEmitter.emit({ eventType: event, idempotencyKey: `${delegatedRequest.id}:${attempts}`, payload });
+    // A read-back already in flight will see the decision this callback announces, so a repeat only
+    // starts another once that one has had time to finish.
+    const outcome = await delegatedApprovalRequestDAL.transaction(async (tx) => {
+      const claimed = await delegatedApprovalRequestDAL.claimDecisionRead(
+        { id: delegatedRequest.id, staleBefore: new Date(Date.now() - DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS) },
+        tx
+      );
+      if (!claimed) {
+        const current = await delegatedApprovalRequestDAL.findById(delegatedRequest.id, tx);
+        return current?.status === DelegatedApprovalRequestStatus.WaitingApproval ? "deduplicated" : "closed";
+      }
+
+      await eventEmitter.emit({ eventType: event, idempotencyKey: `${delegatedRequest.id}:${attempts}`, payload }, tx);
+      return "accepted";
+    });
+
+    if (outcome === "closed") {
+      throw rejectApprovalCallback("request is not awaiting a decision", logContext);
+    }
 
     logger.info(
-      `Delegated approval callback accepted [delegatedRequestId=${delegatedRequest.id}] [approvalRequestId=${delegatedRequest.requestId}] [event=${event}] [attempt=${attempts}]`
+      `Delegated approval callback ${outcome} [delegatedRequestId=${delegatedRequest.id}] [approvalRequestId=${delegatedRequest.requestId}] [event=${event}] [attempt=${attempts}]`
     );
 
     return { delegatedRequestId: delegatedRequest.id };

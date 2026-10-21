@@ -8,13 +8,38 @@ package servicenow
 import (
 	"net/http"
 	"sync"
+
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
 // Instance is one ServiceNow instance as one integration user sees it, addressed by
 // the username a test invented.
 type Instance struct {
-	UserSysID string `json:"userSysId"`
+	UserSysID      string                    `json:"userSysId"`
+	AccessRequests map[string]*AccessRequest `json:"accessRequests"`
 
-	mu  sync.Mutex
-	mux *http.ServeMux
+	mu     sync.Mutex
+	mux    *http.ServeMux
+	events fakenet.Emitter
+}
+
+// AccessRequest is a record of the Infisical Approvals application, keyed by its sys_id.
+// Everything above Decision is what Infisical sent; Decision and DecisionNotes are what
+// an approver records in ServiceNow, and stay empty until a test seeds them.
+type AccessRequest struct {
+	SysID          string   `json:"sysId"`
+	RequestID      string   `json:"requestId"`
+	CallbackURL    string   `json:"callbackUrl"`
+	CallbackToken  string   `json:"callbackToken"`
+	Environment    string   `json:"environment"`
+	SecretPath     string   `json:"secretPath"`
+	RequestorEmail string   `json:"requestorEmail"`
+	Permissions    []string `json:"permissions"`
+
+	Decision      string `json:"decision,omitempty"`
+	DecisionNotes string `json:"decisionNotes,omitempty"`
+}
+
+func (rec *AccessRequest) detail() AccessRequestDetail {
+	return AccessRequestDetail{SysID: rec.SysID, RequestID: rec.RequestID}
 }

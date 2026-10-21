@@ -148,6 +148,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     url: "/",
     method: "GET",
     schema: {
+      operationId: "listAccessApprovalRequests",
       querystring: z.object({
         projectSlug: z.string().trim(),
         authorUserId: z.string().trim().optional(),

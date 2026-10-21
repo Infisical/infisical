@@ -8,7 +8,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TServiceNowConnection } from "@app/services/app-connection/servicenow";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { DELEGATED_APPROVAL_CALLBACK_PATH } from "@app/services/delegated-approval-callback/delegated-approval-callback-constants";
 import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 import { DelegatedApprovalDecision } from "@app/services/delegated-approval-decision/delegated-approval-decision-enums";
 import { TDelegatedApprovalDecisionReadResult } from "@app/services/delegated-approval-decision/delegated-approval-decision-types";
@@ -28,8 +27,8 @@ import {
 import { ServiceNowDecision, ServiceNowRequestOperation, ServiceNowRequestType } from "./servicenow-enums";
 import {
   ServiceNowAccessRequestPayloadSchema,
-  ServiceNowAccessResponseRecordSchema,
   ServiceNowAccessRequestResponseSchema,
+  ServiceNowAccessResponseRecordSchema,
   ServiceNowErrorResponseSchema
 } from "./servicenow-schemas";
 import {
@@ -92,7 +91,7 @@ export const buildServiceNowAccessRequestPayload = (
 ): TServiceNowAccessRequestPayload => {
   const parsed = ServiceNowAccessRequestPayloadSchema.safeParse({
     request_id: input.approvalRequestId,
-    callback_url: `https://columbus-stretchable-omega.ngrok-free.dev${DELEGATED_APPROVAL_CALLBACK_PATH}`,
+    callback_url: input.callback.url,
     callback_token: input.callback.token,
     product_type: input.productType,
     ...(input.project ? { project_id: input.project.id, project_name: input.project.name } : {}),

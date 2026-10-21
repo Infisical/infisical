@@ -207,7 +207,6 @@ export const delegatedApprovalDecisionServiceFactory = ({
     }
     const { delegatedRequest, approvalRequest, delegatedPolicy } = delegatedApprovalContext;
 
-    // move this to a helper function
     if (DELEGATED_APPROVAL_FINAL_STATE.has(delegatedRequest.status as DelegatedApprovalRequestStatus)) {
       logger.info(
         `Delegated approval request was already finalized, skipping decision [delegatedRequestId=${delegatedRequestId}] [status=${delegatedRequest.status}]`
@@ -235,8 +234,6 @@ export const delegatedApprovalDecisionServiceFactory = ({
       return { status: EventResultStatus.Delivered };
     }
 
-    // finished helper function
-
     const delegatedApprovalName =
       delegatedPolicy && Object.hasOwn(DELEGATED_APPROVAL_NAME_MAP, delegatedPolicy.type)
         ? DELEGATED_APPROVAL_NAME_MAP[delegatedPolicy.type as DelegatedApprovalPolicyType]
@@ -248,8 +245,6 @@ export const delegatedApprovalDecisionServiceFactory = ({
       approvalRequest,
       delegatedApprovalType: delegatedApprovalName ?? "the delegated approval system"
     };
-
-    // move this to a helper function
 
     if (!delegatedPolicy) {
       return $terminal(

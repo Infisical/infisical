@@ -194,9 +194,13 @@ the body carries no decision, which a later worker reads back from the provider.
 wrong token for a known record still burns the request, and on the sixth callback sets the row `failed` with a
 readable `statusReason` and cancels the attached approval request in the same transaction, so the policy is freed
 and the UI stops offering Cancel. Every other refusal (bad or missing token, request not `waiting_approval`)
-gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event: `eventType` is the body's event and
-`idempotencyKey` is the delegated request id plus the attempt count, so a repeat of one delivery is dropped
-while a fresh notification after an earlier read-back ran out of retries is not. The
+gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event, and
+only when it wins `claimDecisionRead`: a conditional update of `decisionReadRequestedAt`, in the emit's
+transaction, that one of any number of concurrent callbacks wins. A repeat while a read-back is still in
+flight gets the same 200 and emits nothing; a claim older than `DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS`
+(70 minutes, past the outbox's last retry) has expired, so a fresh notification after an earlier read-back
+ran out of retries still starts one. `eventType` is the
+body's event and `idempotencyKey` is the delegated request id plus the attempt count. The
 `delegated-approval-decision` consumer (`backend/src/services/delegated-approval-decision/`, a thin outbox
 adapter over `delegatedApprovalDecisionService.applyDecision`) then reads the decision back through the
 policy's app connection: `TDelegatedApprovalProvider.fetchDecision` returns `pending` or a decision with

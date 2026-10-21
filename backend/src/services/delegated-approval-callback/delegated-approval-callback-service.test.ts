@@ -21,7 +21,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 // eslint-disable-next-line import/first
 import {
   DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS,
-  DELEGATED_APPROVAL_CALLBACK_PATH
+  DELEGATED_APPROVAL_CALLBACK_PATH,
+  DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS
 } from "./delegated-approval-callback-constants";
 // eslint-disable-next-line import/first
 import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-enums";
@@ -42,8 +43,9 @@ const makeService = ({
   const delegatedApprovalRequestDAL = {
     update: vi.fn(async (_filter: unknown, patch: object) => (stored ? [{ id: "delegated-1", ...patch }] : [])),
     transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(TX)),
-    findById: vi.fn(async () => currentRow),
-    findByProviderRequestId: vi.fn(async (): Promise<unknown> => null)
+    findById: vi.fn(async (): Promise<unknown> => currentRow),
+    findByProviderRequestId: vi.fn(async (): Promise<unknown> => null),
+    claimDecisionRead: vi.fn(async (): Promise<unknown> => ({ id: "delegated-1" }))
   };
   const kmsService = {
     createCipherPairWithDataKey: vi.fn(async () => ({
@@ -276,16 +278,55 @@ describe("handleCallback", () => {
       type: KmsDataKey.Organization,
       orgId: "org-1"
     });
-    expect(eventEmitter.emit).toHaveBeenCalledWith({
-      eventType: EVENT,
-      idempotencyKey: "delegated-1:1",
-      payload: {
-        delegatedRequestId: "delegated-1",
-        approvalRequestId: "request-1",
-        orgId: "org-1",
-        event: EVENT,
-        externalId: EXTERNAL_ID
-      }
-    });
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      {
+        eventType: EVENT,
+        idempotencyKey: "delegated-1:1",
+        payload: {
+          delegatedRequestId: "delegated-1",
+          approvalRequestId: "request-1",
+          orgId: "org-1",
+          event: EVENT,
+          externalId: EXTERNAL_ID
+        }
+      },
+      TX
+    );
+  });
+
+  test("claims the read-back in the emit's transaction, expiring claims older than their TTL", async () => {
+    vi.useFakeTimers({ now: new Date("2026-10-21T12:00:00.000Z") });
+    try {
+      const { service, delegatedApprovalRequestDAL } = makeCallbackService();
+
+      await service.handleCallback(callback());
+
+      expect(delegatedApprovalRequestDAL.claimDecisionRead).toHaveBeenCalledWith(
+        { id: "delegated-1", staleBefore: new Date(Date.now() - DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS) },
+        TX
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("accepts a repeat without emitting while another read-back holds the claim", async () => {
+    const { service, delegatedApprovalRequestDAL, eventEmitter } = makeCallbackService();
+    delegatedApprovalRequestDAL.claimDecisionRead.mockResolvedValue(null);
+    delegatedApprovalRequestDAL.findById.mockResolvedValue(makeDelegatedRequest());
+
+    await expect(service.handleCallback(callback())).resolves.toEqual({ delegatedRequestId: "delegated-1" });
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("rejects a callback whose request stopped awaiting a decision before the claim", async () => {
+    const { service, delegatedApprovalRequestDAL, eventEmitter } = makeCallbackService();
+    delegatedApprovalRequestDAL.claimDecisionRead.mockResolvedValue(null);
+    delegatedApprovalRequestDAL.findById.mockResolvedValue(
+      makeDelegatedRequest({ status: DelegatedApprovalRequestStatus.Approved })
+    );
+
+    await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(ForbiddenRequestError);
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 });

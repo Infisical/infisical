@@ -786,6 +786,141 @@ func (e UpdateAccessApprovalPolicy500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus.
+const (
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusApproved        ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "approved"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusFailed          ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "failed"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusFailedDispatch  ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "failed_dispatch"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusPendingDispatch ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "pending_dispatch"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusRejected        ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "rejected"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusWaitingApproval ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "waiting_approval"
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus enum.
+func (e ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusApproved:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusFailed:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusFailedDispatch:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusPendingDispatch:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusRejected:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusWaitingApproval:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType.
+const (
+	ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalTypeServicenow ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType enum.
+func (e ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests400JSONResponseBodyStatusCode.
+const (
+	ListAccessApprovalRequests400JSONResponseBodyStatusCodeN400 ListAccessApprovalRequests400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests400JSONResponseBodyStatusCode enum.
+func (e ListAccessApprovalRequests400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests401JSONResponseBodyStatusCode.
+const (
+	ListAccessApprovalRequests401JSONResponseBodyStatusCodeN401 ListAccessApprovalRequests401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests401JSONResponseBodyStatusCode enum.
+func (e ListAccessApprovalRequests401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests403JSONResponseBodyStatusCode.
+const (
+	ListAccessApprovalRequests403JSONResponseBodyStatusCodeN403 ListAccessApprovalRequests403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests403JSONResponseBodyStatusCode enum.
+func (e ListAccessApprovalRequests403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests404JSONResponseBodyStatusCode.
+const (
+	ListAccessApprovalRequests404JSONResponseBodyStatusCodeN404 ListAccessApprovalRequests404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests404JSONResponseBodyStatusCode enum.
+func (e ListAccessApprovalRequests404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests422JSONResponseBodyStatusCode.
+const (
+	ListAccessApprovalRequests422JSONResponseBodyStatusCodeN422 ListAccessApprovalRequests422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests422JSONResponseBodyStatusCode enum.
+func (e ListAccessApprovalRequests422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests500JSONResponseBodyStatusCode.
+const (
+	ListAccessApprovalRequests500JSONResponseBodyStatusCodeN500 ListAccessApprovalRequests500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests500JSONResponseBodyStatusCode enum.
+func (e ListAccessApprovalRequests500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateAccessApprovalRequest400JSONResponseBodyStatusCode.
 const (
 	CreateAccessApprovalRequest400JSONResponseBodyStatusCodeN400 CreateAccessApprovalRequest400JSONResponseBodyStatusCode = 400
@@ -4386,6 +4521,126 @@ func (e ListProjectSecretsDetails500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for HandleDelegatedApprovalCallbackJSONBodyEvent.
+const (
+	SecretsManagementAccessRequest HandleDelegatedApprovalCallbackJSONBodyEvent = "secrets_management.access_request"
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallbackJSONBodyEvent enum.
+func (e HandleDelegatedApprovalCallbackJSONBodyEvent) Valid() bool {
+	switch e {
+	case SecretsManagementAccessRequest:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallbackJSONBodyVersion.
+const (
+	N1 HandleDelegatedApprovalCallbackJSONBodyVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallbackJSONBodyVersion enum.
+func (e HandleDelegatedApprovalCallbackJSONBodyVersion) Valid() bool {
+	switch e {
+	case N1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback400JSONResponseBodyStatusCodeN400 HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback401JSONResponseBodyStatusCodeN401 HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback403JSONResponseBodyStatusCodeN403 HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback404JSONResponseBodyStatusCodeN404 HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback422JSONResponseBodyStatusCodeN422 HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback500JSONResponseBodyStatusCodeN500 HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListEmailDomains400JSONResponseBodyStatusCode.
 const (
 	ListEmailDomains400JSONResponseBodyStatusCodeN400 ListEmailDomains400JSONResponseBodyStatusCode = 400
@@ -7961,16 +8216,16 @@ func (e MergeSecretApprovalRequest500JSONResponseBodyStatusCode) Valid() bool {
 
 // Defines values for ReviewSecretApprovalRequestJSONBodyStatus.
 const (
-	Approved ReviewSecretApprovalRequestJSONBodyStatus = "approved"
-	Rejected ReviewSecretApprovalRequestJSONBodyStatus = "rejected"
+	ReviewSecretApprovalRequestJSONBodyStatusApproved ReviewSecretApprovalRequestJSONBodyStatus = "approved"
+	ReviewSecretApprovalRequestJSONBodyStatusRejected ReviewSecretApprovalRequestJSONBodyStatus = "rejected"
 )
 
 // Valid indicates whether the value is a known member of the ReviewSecretApprovalRequestJSONBodyStatus enum.
 func (e ReviewSecretApprovalRequestJSONBodyStatus) Valid() bool {
 	switch e {
-	case Approved:
+	case ReviewSecretApprovalRequestJSONBodyStatusApproved:
 		return true
-	case Rejected:
+	case ReviewSecretApprovalRequestJSONBodyStatusRejected:
 		return true
 	default:
 		return false
@@ -13748,6 +14003,37 @@ type UpdateAccessApprovalPolicy422JSONResponseBodyStatusCode float32
 // UpdateAccessApprovalPolicy500JSONResponseBodyStatusCode defines parameters for UpdateAccessApprovalPolicy.
 type UpdateAccessApprovalPolicy500JSONResponseBodyStatusCode float32
 
+// ListAccessApprovalRequestsParams defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequestsParams struct {
+	ProjectSlug  string  `form:"projectSlug" json:"projectSlug"`
+	AuthorUserId *string `form:"authorUserId,omitempty" json:"authorUserId,omitempty"`
+	EnvSlug      *string `form:"envSlug,omitempty" json:"envSlug,omitempty"`
+}
+
+// ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus string
+
+// ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType string
+
+// ListAccessApprovalRequests400JSONResponseBodyStatusCode defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests400JSONResponseBodyStatusCode float32
+
+// ListAccessApprovalRequests401JSONResponseBodyStatusCode defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests401JSONResponseBodyStatusCode float32
+
+// ListAccessApprovalRequests403JSONResponseBodyStatusCode defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests403JSONResponseBodyStatusCode float32
+
+// ListAccessApprovalRequests404JSONResponseBodyStatusCode defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests404JSONResponseBodyStatusCode float32
+
+// ListAccessApprovalRequests422JSONResponseBodyStatusCode defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests422JSONResponseBodyStatusCode float32
+
+// ListAccessApprovalRequests500JSONResponseBodyStatusCode defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests500JSONResponseBodyStatusCode float32
+
 // CreateAccessApprovalRequestJSONBody defines parameters for CreateAccessApprovalRequest.
 type CreateAccessApprovalRequestJSONBody struct {
 	IsTemporary    bool       `json:"isTemporary"`
@@ -17126,6 +17412,50 @@ type ListProjectSecretsDetails422JSONResponseBodyStatusCode float32
 
 // ListProjectSecretsDetails500JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails500JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallbackJSONBody defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallbackJSONBody struct {
+	Details struct {
+		// ExternalId The delegated approval system's record ID for the request.
+		ExternalId string `json:"externalId"`
+	} `json:"details"`
+
+	// Event The event Infisical named when it created the request, returned unchanged.
+	Event HandleDelegatedApprovalCallbackJSONBodyEvent `json:"event"`
+
+	// Version The callback contract version.
+	Version HandleDelegatedApprovalCallbackJSONBodyVersion `json:"version"`
+}
+
+// HandleDelegatedApprovalCallbackParams defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallbackParams struct {
+	// InfisicalApprovalToken The callback token Infisical issued when it sent the request.
+	InfisicalApprovalToken *string `json:"infisical-approval-token,omitempty"`
+}
+
+// HandleDelegatedApprovalCallbackJSONBodyEvent defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallbackJSONBodyEvent string
+
+// HandleDelegatedApprovalCallbackJSONBodyVersion defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallbackJSONBodyVersion float32
+
+// HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode float32
 
 // ListEmailDomains400JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
 type ListEmailDomains400JSONResponseBodyStatusCode float32
@@ -21011,6 +21341,9 @@ type CreateUniversalAuthClientSecretJSONRequestBody CreateUniversalAuthClientSec
 
 // LoginWithUniversalAuthJSONRequestBody defines body for LoginWithUniversalAuth for application/json ContentType.
 type LoginWithUniversalAuthJSONRequestBody LoginWithUniversalAuthJSONBody
+
+// HandleDelegatedApprovalCallbackJSONRequestBody defines body for HandleDelegatedApprovalCallback for application/json ContentType.
+type HandleDelegatedApprovalCallbackJSONRequestBody HandleDelegatedApprovalCallbackJSONBody
 
 // CreateEmailDomainJSONRequestBody defines body for CreateEmailDomain for application/json ContentType.
 type CreateEmailDomainJSONRequestBody CreateEmailDomainJSONBody
@@ -26483,6 +26816,9 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	UpdateAccessApprovalPolicy(ctx context.Context, policyId string, body UpdateAccessApprovalPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListAccessApprovalRequests performs a GET /api/v1/access-approvals/requests (the `ListAccessApprovalRequests` operationId) request.
+	ListAccessApprovalRequests(ctx context.Context, params *ListAccessApprovalRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateAccessApprovalRequestWithBody performs a POST /api/v1/access-approvals/requests (the `CreateAccessApprovalRequest` operationId) request,
 	// with any type of body and a specified content type.
 	CreateAccessApprovalRequestWithBody(ctx context.Context, params *CreateAccessApprovalRequestParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -26579,6 +26915,18 @@ type ClientInterface interface {
 	//
 	// List project secrets details.
 	ListProjectSecretsDetails(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// HandleDelegatedApprovalCallbackWithBody performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Receive a decision notification from a delegated approval system.
+	HandleDelegatedApprovalCallbackWithBody(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// HandleDelegatedApprovalCallback performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Receive a decision notification from a delegated approval system.
+	HandleDelegatedApprovalCallback(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 	ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -27352,6 +27700,19 @@ func (c *Client) UpdateAccessApprovalPolicy(ctx context.Context, policyId string
 	return c.Client.Do(req)
 }
 
+// ListAccessApprovalRequests performs a GET /api/v1/access-approvals/requests (the `ListAccessApprovalRequests` operationId) request.
+func (c *Client) ListAccessApprovalRequests(ctx context.Context, params *ListAccessApprovalRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAccessApprovalRequestsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateAccessApprovalRequestWithBody performs a POST /api/v1/access-approvals/requests (the `CreateAccessApprovalRequest` operationId) request,
 // with any type of body and a specified content type.
 func (c *Client) CreateAccessApprovalRequestWithBody(ctx context.Context, params *CreateAccessApprovalRequestParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -27629,6 +27990,38 @@ func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUnive
 // List project secrets details.
 func (c *Client) ListProjectSecretsDetails(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListProjectSecretsDetailsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// HandleDelegatedApprovalCallbackWithBody performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
+// with any type of body and a specified content type.
+//
+// Receive a decision notification from a delegated approval system.
+func (c *Client) HandleDelegatedApprovalCallbackWithBody(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHandleDelegatedApprovalCallbackRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// HandleDelegatedApprovalCallback performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Receive a decision notification from a delegated approval system.
+func (c *Client) HandleDelegatedApprovalCallback(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHandleDelegatedApprovalCallbackRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -30011,6 +30404,80 @@ func NewUpdateAccessApprovalPolicyRequestWithBody(server string, policyId string
 	return req, nil
 }
 
+// NewListAccessApprovalRequestsRequest constructs an http.Request for the ListAccessApprovalRequests method
+func NewListAccessApprovalRequestsRequest(server string, params *ListAccessApprovalRequestsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/access-approvals/requests")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectSlug", params.ProjectSlug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.AuthorUserId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "authorUserId", *params.AuthorUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.EnvSlug != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "envSlug", *params.EnvSlug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateAccessApprovalRequestRequest calls the generic CreateAccessApprovalRequest builder with application/json body
 func NewCreateAccessApprovalRequestRequest(server string, params *CreateAccessApprovalRequestParams, body CreateAccessApprovalRequestJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -30650,6 +31117,61 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewHandleDelegatedApprovalCallbackRequest calls the generic HandleDelegatedApprovalCallback builder with application/json body
+func NewHandleDelegatedApprovalCallbackRequest(server string, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewHandleDelegatedApprovalCallbackRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewHandleDelegatedApprovalCallbackRequestWithBody constructs an http.Request for the HandleDelegatedApprovalCallback method, with any body, and a specified content type
+func NewHandleDelegatedApprovalCallbackRequestWithBody(server string, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/delegated-approvals/callback")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.InfisicalApprovalToken != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "infisical-approval-token", *params.InfisicalApprovalToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("infisical-approval-token", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -35572,6 +36094,11 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	UpdateAccessApprovalPolicyWithResponse(ctx context.Context, policyId string, body UpdateAccessApprovalPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAccessApprovalPolicyResponse, error)
 
+	// ListAccessApprovalRequestsWithResponse performs a GET /api/v1/access-approvals/requests (the `ListAccessApprovalRequests` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListAccessApprovalRequestsWithResponse(ctx context.Context, params *ListAccessApprovalRequestsParams, reqEditors ...RequestEditorFn) (*ListAccessApprovalRequestsResponse, error)
+
 	// CreateAccessApprovalRequestWithBodyWithResponse performs a POST /api/v1/access-approvals/requests (the `CreateAccessApprovalRequest` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -35690,6 +36217,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListProjectSecretsDetailsWithResponse(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error)
+
+	// HandleDelegatedApprovalCallbackWithBodyWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Receive a decision notification from a delegated approval system.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	HandleDelegatedApprovalCallbackWithBodyWithResponse(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*HandleDelegatedApprovalCallbackResponse, error)
+
+	// HandleDelegatedApprovalCallbackWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Receive a decision notification from a delegated approval system.
+	HandleDelegatedApprovalCallbackWithResponse(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*HandleDelegatedApprovalCallbackResponse, error)
 
 	// ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 	//
@@ -37621,6 +38162,337 @@ func (r UpdateAccessApprovalPolicyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateAccessApprovalPolicyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAccessApprovalRequestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Requests []struct {
+			ApprovedAt     *time.Time `json:"approvedAt,omitempty"`
+			ApprovedByUser *struct {
+				Email     *string `json:"email,omitempty"`
+				FirstName *string `json:"firstName,omitempty"`
+				LastName  *string `json:"lastName,omitempty"`
+				UserId    string  `json:"userId"`
+				Username  string  `json:"username"`
+			} `json:"approvedByUser"`
+			ApprovedByUserId  *openapi_types.UUID `json:"approvedByUserId,omitempty"`
+			BypassReason      *string             `json:"bypassReason,omitempty"`
+			CreatedAt         time.Time           `json:"createdAt"`
+			DelegatedApproval *struct {
+				// Status Where the request stands in the delegated approval system that reviews it.
+				Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
+
+				// StatusReason Why the request is not progressing in, or could not be completed by, the delegated approval system, when that is the case.
+				StatusReason *string `json:"statusReason"`
+			} `json:"delegatedApproval,omitempty"`
+			EditNote        *string             `json:"editNote,omitempty"`
+			EditedByUserId  *openapi_types.UUID `json:"editedByUserId,omitempty"`
+			EnvironmentName string              `json:"environmentName"`
+			ExpiresAt       *time.Time          `json:"expiresAt,omitempty"`
+			Id              openapi_types.UUID  `json:"id"`
+			IsApproved      bool                `json:"isApproved"`
+			IsTemporary     bool                `json:"isTemporary"`
+			Note            *string             `json:"note,omitempty"`
+			Permissions     interface{}         `json:"permissions,omitempty"`
+			Policy          struct {
+				AllowedSelfApprovals bool    `json:"allowedSelfApprovals"`
+				Approvals            float32 `json:"approvals"`
+				Approvers            []struct {
+					ApprovalsRequired     *float32 `json:"approvalsRequired,omitempty"`
+					Email                 *string  `json:"email,omitempty"`
+					IsOrgMembershipActive *bool    `json:"isOrgMembershipActive,omitempty"`
+					Sequence              *float32 `json:"sequence,omitempty"`
+					UserId                *string  `json:"userId,omitempty"`
+					Username              *string  `json:"username,omitempty"`
+				} `json:"approvers"`
+				Bypassers         []string `json:"bypassers"`
+				DelegatedApproval *struct {
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
+				DeletedAt             *time.Time `json:"deletedAt,omitempty"`
+				EnforcementLevel      string     `json:"enforcementLevel"`
+				EnvId                 string     `json:"envId"`
+				Id                    *string    `json:"id"`
+				MaxTimePeriod         *string    `json:"maxTimePeriod,omitempty"`
+				Name                  string     `json:"name"`
+				RequestExpirationTime *string    `json:"requestExpirationTime,omitempty"`
+				SecretPath            *string    `json:"secretPath,omitempty"`
+			} `json:"policy"`
+			PolicyId  *openapi_types.UUID `json:"policyId"`
+			Privilege *struct {
+				IsTemporary              bool        `json:"isTemporary"`
+				MembershipId             string      `json:"membershipId"`
+				Permissions              interface{} `json:"permissions,omitempty"`
+				TemporaryAccessEndTime   *time.Time  `json:"temporaryAccessEndTime,omitempty"`
+				TemporaryAccessStartTime *time.Time  `json:"temporaryAccessStartTime,omitempty"`
+				TemporaryMode            *string     `json:"temporaryMode,omitempty"`
+				TemporaryRange           *string     `json:"temporaryRange,omitempty"`
+			} `json:"privilege"`
+			PrivilegeDeletedAt *time.Time          `json:"privilegeDeletedAt,omitempty"`
+			PrivilegeId        *openapi_types.UUID `json:"privilegeId,omitempty"`
+			RequestedByUser    struct {
+				Email     *string `json:"email,omitempty"`
+				FirstName *string `json:"firstName,omitempty"`
+				LastName  *string `json:"lastName,omitempty"`
+				UserId    string  `json:"userId"`
+				Username  string  `json:"username"`
+			} `json:"requestedByUser"`
+			RequestedByUserId openapi_types.UUID `json:"requestedByUserId"`
+			Reviewers         []struct {
+				IsOrgMembershipActive *bool  `json:"isOrgMembershipActive,omitempty"`
+				Status                string `json:"status"`
+				UserId                string `json:"userId"`
+			} `json:"reviewers"`
+			RevokedAt     *time.Time `json:"revokedAt,omitempty"`
+			RevokedByUser *struct {
+				Email     *string `json:"email,omitempty"`
+				FirstName *string `json:"firstName,omitempty"`
+				LastName  *string `json:"lastName,omitempty"`
+				UserId    string  `json:"userId"`
+				Username  string  `json:"username"`
+			} `json:"revokedByUser"`
+			RevokedByUserId *openapi_types.UUID `json:"revokedByUserId,omitempty"`
+			Status          *string             `json:"status,omitempty"`
+			TemporaryRange  *string             `json:"temporaryRange,omitempty"`
+			UpdatedAt       time.Time           `json:"updatedAt"`
+		} `json:"requests"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ListAccessApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ListAccessApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ListAccessApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ListAccessApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                  `json:"error"`
+		Message    interface{}                                             `json:"message,omitempty"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ListAccessApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ListAccessApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAccessApprovalRequestsResponse) GetJSON200() *struct {
+	Requests []struct {
+		ApprovedAt     *time.Time `json:"approvedAt,omitempty"`
+		ApprovedByUser *struct {
+			Email     *string `json:"email,omitempty"`
+			FirstName *string `json:"firstName,omitempty"`
+			LastName  *string `json:"lastName,omitempty"`
+			UserId    string  `json:"userId"`
+			Username  string  `json:"username"`
+		} `json:"approvedByUser"`
+		ApprovedByUserId  *openapi_types.UUID `json:"approvedByUserId,omitempty"`
+		BypassReason      *string             `json:"bypassReason,omitempty"`
+		CreatedAt         time.Time           `json:"createdAt"`
+		DelegatedApproval *struct {
+			// Status Where the request stands in the delegated approval system that reviews it.
+			Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
+
+			// StatusReason Why the request is not progressing in, or could not be completed by, the delegated approval system, when that is the case.
+			StatusReason *string `json:"statusReason"`
+		} `json:"delegatedApproval,omitempty"`
+		EditNote        *string             `json:"editNote,omitempty"`
+		EditedByUserId  *openapi_types.UUID `json:"editedByUserId,omitempty"`
+		EnvironmentName string              `json:"environmentName"`
+		ExpiresAt       *time.Time          `json:"expiresAt,omitempty"`
+		Id              openapi_types.UUID  `json:"id"`
+		IsApproved      bool                `json:"isApproved"`
+		IsTemporary     bool                `json:"isTemporary"`
+		Note            *string             `json:"note,omitempty"`
+		Permissions     interface{}         `json:"permissions,omitempty"`
+		Policy          struct {
+			AllowedSelfApprovals bool    `json:"allowedSelfApprovals"`
+			Approvals            float32 `json:"approvals"`
+			Approvers            []struct {
+				ApprovalsRequired     *float32 `json:"approvalsRequired,omitempty"`
+				Email                 *string  `json:"email,omitempty"`
+				IsOrgMembershipActive *bool    `json:"isOrgMembershipActive,omitempty"`
+				Sequence              *float32 `json:"sequence,omitempty"`
+				UserId                *string  `json:"userId,omitempty"`
+				Username              *string  `json:"username,omitempty"`
+			} `json:"approvers"`
+			Bypassers         []string `json:"bypassers"`
+			DelegatedApproval *struct {
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
+			DeletedAt             *time.Time `json:"deletedAt,omitempty"`
+			EnforcementLevel      string     `json:"enforcementLevel"`
+			EnvId                 string     `json:"envId"`
+			Id                    *string    `json:"id"`
+			MaxTimePeriod         *string    `json:"maxTimePeriod,omitempty"`
+			Name                  string     `json:"name"`
+			RequestExpirationTime *string    `json:"requestExpirationTime,omitempty"`
+			SecretPath            *string    `json:"secretPath,omitempty"`
+		} `json:"policy"`
+		PolicyId  *openapi_types.UUID `json:"policyId"`
+		Privilege *struct {
+			IsTemporary              bool        `json:"isTemporary"`
+			MembershipId             string      `json:"membershipId"`
+			Permissions              interface{} `json:"permissions,omitempty"`
+			TemporaryAccessEndTime   *time.Time  `json:"temporaryAccessEndTime,omitempty"`
+			TemporaryAccessStartTime *time.Time  `json:"temporaryAccessStartTime,omitempty"`
+			TemporaryMode            *string     `json:"temporaryMode,omitempty"`
+			TemporaryRange           *string     `json:"temporaryRange,omitempty"`
+		} `json:"privilege"`
+		PrivilegeDeletedAt *time.Time          `json:"privilegeDeletedAt,omitempty"`
+		PrivilegeId        *openapi_types.UUID `json:"privilegeId,omitempty"`
+		RequestedByUser    struct {
+			Email     *string `json:"email,omitempty"`
+			FirstName *string `json:"firstName,omitempty"`
+			LastName  *string `json:"lastName,omitempty"`
+			UserId    string  `json:"userId"`
+			Username  string  `json:"username"`
+		} `json:"requestedByUser"`
+		RequestedByUserId openapi_types.UUID `json:"requestedByUserId"`
+		Reviewers         []struct {
+			IsOrgMembershipActive *bool  `json:"isOrgMembershipActive,omitempty"`
+			Status                string `json:"status"`
+			UserId                string `json:"userId"`
+		} `json:"reviewers"`
+		RevokedAt     *time.Time `json:"revokedAt,omitempty"`
+		RevokedByUser *struct {
+			Email     *string `json:"email,omitempty"`
+			FirstName *string `json:"firstName,omitempty"`
+			LastName  *string `json:"lastName,omitempty"`
+			UserId    string  `json:"userId"`
+			Username  string  `json:"username"`
+		} `json:"revokedByUser"`
+		RevokedByUserId *openapi_types.UUID `json:"revokedByUserId,omitempty"`
+		Status          *string             `json:"status,omitempty"`
+		TemporaryRange  *string             `json:"temporaryRange,omitempty"`
+		UpdatedAt       time.Time           `json:"updatedAt"`
+	} `json:"requests"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListAccessApprovalRequestsResponse) GetJSON400() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ListAccessApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAccessApprovalRequestsResponse) GetJSON401() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ListAccessApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAccessApprovalRequestsResponse) GetJSON403() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ListAccessApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAccessApprovalRequestsResponse) GetJSON404() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ListAccessApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListAccessApprovalRequestsResponse) GetJSON422() *struct {
+	Error      string                                                  `json:"error"`
+	Message    interface{}                                             `json:"message,omitempty"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ListAccessApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListAccessApprovalRequestsResponse) GetJSON500() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ListAccessApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAccessApprovalRequestsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAccessApprovalRequestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAccessApprovalRequestsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAccessApprovalRequestsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -39920,6 +40792,157 @@ func (r ListProjectSecretsDetailsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListProjectSecretsDetailsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type HandleDelegatedApprovalCallbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Message string `json:"message"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                       `json:"error"`
+		Message    interface{}                                                  `json:"message,omitempty"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON200() *struct {
+	Message string `json:"message"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON400() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON401() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON403() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON404() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON422() *struct {
+	Error      string                                                       `json:"error"`
+	Message    interface{}                                                  `json:"message,omitempty"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON500() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r HandleDelegatedApprovalCallbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r HandleDelegatedApprovalCallbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r HandleDelegatedApprovalCallbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r HandleDelegatedApprovalCallbackResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -55841,6 +56864,17 @@ func (c *ClientWithResponses) UpdateAccessApprovalPolicyWithResponse(ctx context
 	return ParseUpdateAccessApprovalPolicyResponse(rsp)
 }
 
+// ListAccessApprovalRequestsWithResponse performs a GET /api/v1/access-approvals/requests (the `ListAccessApprovalRequests` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListAccessApprovalRequestsWithResponse(ctx context.Context, params *ListAccessApprovalRequestsParams, reqEditors ...RequestEditorFn) (*ListAccessApprovalRequestsResponse, error) {
+	rsp, err := c.ListAccessApprovalRequests(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAccessApprovalRequestsResponse(rsp)
+}
+
 // CreateAccessApprovalRequestWithBodyWithResponse performs a POST /api/v1/access-approvals/requests (the `CreateAccessApprovalRequest` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -56072,6 +57106,32 @@ func (c *ClientWithResponses) ListProjectSecretsDetailsWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseListProjectSecretsDetailsResponse(rsp)
+}
+
+// HandleDelegatedApprovalCallbackWithBodyWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
+// with any type of body and a specified content type.
+//
+// Receive a decision notification from a delegated approval system.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) HandleDelegatedApprovalCallbackWithBodyWithResponse(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*HandleDelegatedApprovalCallbackResponse, error) {
+	rsp, err := c.HandleDelegatedApprovalCallbackWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHandleDelegatedApprovalCallbackResponse(rsp)
+}
+
+// HandleDelegatedApprovalCallbackWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Receive a decision notification from a delegated approval system.
+func (c *ClientWithResponses) HandleDelegatedApprovalCallbackWithResponse(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*HandleDelegatedApprovalCallbackResponse, error) {
+	rsp, err := c.HandleDelegatedApprovalCallback(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHandleDelegatedApprovalCallbackResponse(rsp)
 }
 
 // ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
@@ -58509,6 +59569,198 @@ func ParseUpdateAccessApprovalPolicyResponse(rsp *http.Response) (*UpdateAccessA
 	return response, nil
 }
 
+// ParseListAccessApprovalRequestsResponse parses an HTTP response from a ListAccessApprovalRequestsWithResponse call
+func ParseListAccessApprovalRequestsResponse(rsp *http.Response) (*ListAccessApprovalRequestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAccessApprovalRequestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Requests []struct {
+				ApprovedAt     *time.Time `json:"approvedAt,omitempty"`
+				ApprovedByUser *struct {
+					Email     *string `json:"email,omitempty"`
+					FirstName *string `json:"firstName,omitempty"`
+					LastName  *string `json:"lastName,omitempty"`
+					UserId    string  `json:"userId"`
+					Username  string  `json:"username"`
+				} `json:"approvedByUser"`
+				ApprovedByUserId  *openapi_types.UUID `json:"approvedByUserId,omitempty"`
+				BypassReason      *string             `json:"bypassReason,omitempty"`
+				CreatedAt         time.Time           `json:"createdAt"`
+				DelegatedApproval *struct {
+					// Status Where the request stands in the delegated approval system that reviews it.
+					Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
+
+					// StatusReason Why the request is not progressing in, or could not be completed by, the delegated approval system, when that is the case.
+					StatusReason *string `json:"statusReason"`
+				} `json:"delegatedApproval,omitempty"`
+				EditNote        *string             `json:"editNote,omitempty"`
+				EditedByUserId  *openapi_types.UUID `json:"editedByUserId,omitempty"`
+				EnvironmentName string              `json:"environmentName"`
+				ExpiresAt       *time.Time          `json:"expiresAt,omitempty"`
+				Id              openapi_types.UUID  `json:"id"`
+				IsApproved      bool                `json:"isApproved"`
+				IsTemporary     bool                `json:"isTemporary"`
+				Note            *string             `json:"note,omitempty"`
+				Permissions     interface{}         `json:"permissions,omitempty"`
+				Policy          struct {
+					AllowedSelfApprovals bool    `json:"allowedSelfApprovals"`
+					Approvals            float32 `json:"approvals"`
+					Approvers            []struct {
+						ApprovalsRequired     *float32 `json:"approvalsRequired,omitempty"`
+						Email                 *string  `json:"email,omitempty"`
+						IsOrgMembershipActive *bool    `json:"isOrgMembershipActive,omitempty"`
+						Sequence              *float32 `json:"sequence,omitempty"`
+						UserId                *string  `json:"userId,omitempty"`
+						Username              *string  `json:"username,omitempty"`
+					} `json:"approvers"`
+					Bypassers         []string `json:"bypassers"`
+					DelegatedApproval *struct {
+						// Type The delegated approval system that reviews requests made against this policy.
+						Type ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType `json:"type"`
+					} `json:"delegatedApproval,omitempty"`
+					DeletedAt             *time.Time `json:"deletedAt,omitempty"`
+					EnforcementLevel      string     `json:"enforcementLevel"`
+					EnvId                 string     `json:"envId"`
+					Id                    *string    `json:"id"`
+					MaxTimePeriod         *string    `json:"maxTimePeriod,omitempty"`
+					Name                  string     `json:"name"`
+					RequestExpirationTime *string    `json:"requestExpirationTime,omitempty"`
+					SecretPath            *string    `json:"secretPath,omitempty"`
+				} `json:"policy"`
+				PolicyId  *openapi_types.UUID `json:"policyId"`
+				Privilege *struct {
+					IsTemporary              bool        `json:"isTemporary"`
+					MembershipId             string      `json:"membershipId"`
+					Permissions              interface{} `json:"permissions,omitempty"`
+					TemporaryAccessEndTime   *time.Time  `json:"temporaryAccessEndTime,omitempty"`
+					TemporaryAccessStartTime *time.Time  `json:"temporaryAccessStartTime,omitempty"`
+					TemporaryMode            *string     `json:"temporaryMode,omitempty"`
+					TemporaryRange           *string     `json:"temporaryRange,omitempty"`
+				} `json:"privilege"`
+				PrivilegeDeletedAt *time.Time          `json:"privilegeDeletedAt,omitempty"`
+				PrivilegeId        *openapi_types.UUID `json:"privilegeId,omitempty"`
+				RequestedByUser    struct {
+					Email     *string `json:"email,omitempty"`
+					FirstName *string `json:"firstName,omitempty"`
+					LastName  *string `json:"lastName,omitempty"`
+					UserId    string  `json:"userId"`
+					Username  string  `json:"username"`
+				} `json:"requestedByUser"`
+				RequestedByUserId openapi_types.UUID `json:"requestedByUserId"`
+				Reviewers         []struct {
+					IsOrgMembershipActive *bool  `json:"isOrgMembershipActive,omitempty"`
+					Status                string `json:"status"`
+					UserId                string `json:"userId"`
+				} `json:"reviewers"`
+				RevokedAt     *time.Time `json:"revokedAt,omitempty"`
+				RevokedByUser *struct {
+					Email     *string `json:"email,omitempty"`
+					FirstName *string `json:"firstName,omitempty"`
+					LastName  *string `json:"lastName,omitempty"`
+					UserId    string  `json:"userId"`
+					Username  string  `json:"username"`
+				} `json:"revokedByUser"`
+				RevokedByUserId *openapi_types.UUID `json:"revokedByUserId,omitempty"`
+				Status          *string             `json:"status,omitempty"`
+				TemporaryRange  *string             `json:"temporaryRange,omitempty"`
+				UpdatedAt       time.Time           `json:"updatedAt"`
+			} `json:"requests"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ListAccessApprovalRequests400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ListAccessApprovalRequests401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ListAccessApprovalRequests403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ListAccessApprovalRequests404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    interface{}                                             `json:"message,omitempty"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ListAccessApprovalRequests422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ListAccessApprovalRequests500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateAccessApprovalRequestResponse parses an HTTP response from a CreateAccessApprovalRequestWithResponse call
 func ParseCreateAccessApprovalRequestResponse(rsp *http.Response) (*CreateAccessApprovalRequestResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -59939,6 +61191,108 @@ func ParseListProjectSecretsDetailsResponse(rsp *http.Response) (*ListProjectSec
 			Message    string                                                 `json:"message"`
 			ReqId      string                                                 `json:"reqId"`
 			StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseHandleDelegatedApprovalCallbackResponse parses an HTTP response from a HandleDelegatedApprovalCallbackWithResponse call
+func ParseHandleDelegatedApprovalCallbackResponse(rsp *http.Response) (*HandleDelegatedApprovalCallbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &HandleDelegatedApprovalCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    interface{}                                                  `json:"message,omitempty"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

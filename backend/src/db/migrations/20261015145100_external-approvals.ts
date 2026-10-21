@@ -32,6 +32,7 @@ export async function up(knex: Knex): Promise<void> {
       t.binary("encryptedCallbackToken").nullable();
       t.text("statusReason").nullable();
       t.string("providerRequestId").nullable().index();
+      t.timestamp("decisionReadRequestedAt", { useTz: true }).nullable();
 
       t.timestamps(true, true, true);
     });

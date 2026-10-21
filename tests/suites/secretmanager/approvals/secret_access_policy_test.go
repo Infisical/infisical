@@ -125,7 +125,7 @@ func newDelegatedAccessPolicy(t *testing.T, proj *fixture.Project, conn *fixture
 }
 
 // requestAccess fails unless the requester's ask to read a folder is left pending.
-func requestAccess(t *testing.T, requester *harness.Principal, proj *fixture.Project, env, secretPath string) {
+func requestAccess(t *testing.T, requester *harness.Principal, proj *fixture.Project, env, secretPath string) uuid.UUID {
 	t.Helper()
 	body := jsonBody(t, map[string]any{
 		"permissions": []any{
@@ -138,6 +138,7 @@ func requestAccess(t *testing.T, requester *harness.Principal, proj *fixture.Pro
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "requesting access returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	require.Equal(t, new("pending"), res.JSON200.Approval.Status)
+	return res.JSON200.Approval.Id
 }
 
 func accessPolicyName(t *testing.T, proj *fixture.Project, policyID uuid.UUID) string {

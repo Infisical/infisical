@@ -87,6 +87,8 @@ output-options:
     - updateAccessApprovalPolicy
     - getAccessApprovalPolicy
     - createAccessApprovalRequest
+    - listAccessApprovalRequests
+    - handleDelegatedApprovalCallback
     - createGroup
     - addUserToGroup
     - removeUserFromGroup
