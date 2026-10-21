@@ -29,8 +29,7 @@ import {
 } from "./folder-access.utils";
 import { TierDropdown } from "./TierDropdown";
 
-const ROW_CLASS_NAME =
-  "flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-container-hover";
+const ROW_CLASS_NAME = "flex items-center gap-3 border-b border-border py-3";
 
 const ActorIdentity = ({
   actor,
@@ -82,12 +81,7 @@ export const FolderAccessGrantRow = ({
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
-      <TierDropdown
-        headerNote={`Grant ${actor.name.split(" ")[0]} access to this folder.`}
-        temporaryLabel="Add temporary access"
-        onSelectTier={onSetTier}
-        onEditTemporaryAccess={() => {}}
-      />
+      <TierDropdown onSelectTier={onSetTier} />
     </DropdownMenu>
   </div>
 );
@@ -124,7 +118,7 @@ export const FolderAccessRow = ({
     return (
       <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
-        <p className="shrink-0 pr-2 text-sm text-muted">Full access on all folders</p>
+        <p className="shrink-0 text-sm text-muted">Full access on all folders</p>
       </div>
     );
   }
@@ -168,12 +162,7 @@ export const FolderAccessRow = ({
             <DropdownMenu>
               {access ? (
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="min-w-24 justify-between"
-                    isDisabled={isDisabled}
-                  >
+                  <Button variant="ghost" size="sm" isDisabled={isDisabled}>
                     {FOLDER_ROLE_TIER_LABELS[access.permission]}
                     <ChevronDownIcon />
                   </Button>
@@ -199,25 +188,25 @@ export const FolderAccessRow = ({
               )}
               <TierDropdown
                 activeTier={access?.permission ?? null}
-                headerNote={
+                footerNote={
                   access
                     ? undefined
-                    : `Set folder access for ${firstName}. This overrides their project role inside this folder.`
+                    : `Choosing a tier overrides ${firstName}'s project role in this folder.`
                 }
                 temporaryLabel={
                   remainingTime && remainingTime?.expiresAt ? (
-                    <div className="flex flex-col gap-1">
-                      <p>Edit temporary access</p>
-                      <p className="text-xs text-foreground opacity-50">
-                        {remainingTime.isExpired ? "Expired" : "Expires in"} {remainingTime.value}
-                      </p>
-                    </div>
+                    <span className="flex flex-1 items-center justify-between gap-2">
+                      Edit temporary access
+                      <span className="text-xs text-muted">
+                        {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
+                      </span>
+                    </span>
                   ) : (
                     "Add temporary access"
                   )
                 }
                 onSelectTier={onSetTier}
-                onEditTemporaryAccess={openTemporary}
+                onEditTemporaryAccess={access ? openTemporary : undefined}
                 onRemove={access ? onRemove : undefined}
                 removeLabel="Remove folder access"
               />
