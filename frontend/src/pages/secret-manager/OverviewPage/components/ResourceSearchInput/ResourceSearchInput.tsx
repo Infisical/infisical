@@ -42,7 +42,7 @@ export const ResourceSearchInput = ({
 
   // local input state so typing doesn't re-render the whole table
   const [inputValue, setInputValue] = useState(externalValue);
-  const [debouncedInputValue] = useDebounce(inputValue);
+  const [debouncedInputValue, setDebouncedInputValue] = useDebounce(inputValue);
   const previousExternalValue = useRef(externalValue);
   const lastEmittedValue = useRef(externalValue);
 
@@ -69,6 +69,7 @@ export const ResourceSearchInput = ({
 
   const handleClear = () => {
     setInputValue("");
+    setDebouncedInputValue("");
     lastEmittedValue.current = "";
     onChange("");
   };
