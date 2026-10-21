@@ -5111,7 +5111,7 @@
     },
     {
       "source": "/documentation/getting-started/cli",
-      "destination": "/cli/usage"
+      "destination": "/documentation/guides/local-development"
     },
     {
       "source": "/documentation/getting-started/docker",
