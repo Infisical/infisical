@@ -14,6 +14,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  FieldContent,
+  FieldDescription,
+  FieldTitle,
   IconButton,
   ProviderIcon,
   Tooltip,
@@ -35,7 +38,7 @@ import {
   newKey,
   TAutoApprovalDraft
 } from "./autoApprovalDraft";
-import { DisabledReason, LogicConnector, SectionLabel } from "./AutoApprovalLabels";
+import { DisabledReason, LogicConnector } from "./AutoApprovalLabels";
 import { AutoApprovalRuleCard } from "./AutoApprovalRuleCard";
 
 type Props = {
@@ -141,12 +144,12 @@ export const AutoApprovalCard = ({
           <>
             <section className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <SectionLabel>Request Information</SectionLabel>
-                  <p className="text-sm text-muted">
+                <FieldContent>
+                  <FieldTitle>Request Information</FieldTitle>
+                  <FieldDescription>
                     Records requesters link when asking for access.
-                  </p>
-                </div>
+                  </FieldDescription>
+                </FieldContent>
                 <DisabledReason reason={addInputBlocker}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild disabled={Boolean(addInputBlocker)}>
@@ -226,7 +229,7 @@ export const AutoApprovalCard = ({
 
             <section className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-4">
-                <SectionLabel>Rules</SectionLabel>
+                <FieldTitle>Rules</FieldTitle>
                 <Button
                   type="button"
                   variant="outline"
