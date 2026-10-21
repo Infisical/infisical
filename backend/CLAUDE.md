@@ -777,48 +777,66 @@ whenever the pod dies or Redis is down in that window. It's not alert-specific:
 at-least-once delivery of a domain event registers next to it.
 
 **Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
-`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]`
-(the CloudEvents envelope from the Event Standards and Versioning ADR) and return `TEventConsumerResult` with an
-`EventResultStatus`. Names with "outbox" in them (the DAL, queue, cron jobs, metrics,
-`EventOutboxStatus`, `TOutboxFlushKey`) describe the mechanism and stay inside the module and its
-wiring. A dependency field for the emitter is `eventEmitter`, not `eventOutboxService`.
+`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]` (the
+CloudEvents envelope) and return `TEventConsumerResult` with an `EventResultStatus`. Names with "outbox"
+in them (the DAL, queue, cron jobs, metrics, `EventOutboxStatus`, `TOutboxFlushKey`) describe the
+mechanism and stay inside the module and its wiring. A dependency field for the emitter is
+`eventEmitter`, not `eventOutboxService`.
 
-**Emitting:** `eventEmitter.emit(events, tx)`. Pass the transaction of the write the event describes, so the event is exactly as durable as that write. Omit `tx` only when there is no such write left to be atomic with (for example after it already committed); the insert then runs on its own.
+#### How to implement an event
 
-```ts
-await someDAL.transaction(async (tx) => {
-  const request = await approvalRequestDAL.create({ ... }, tx);
-  await eventEmitter.emit(
-    [
-      {
-        id: crypto.randomUUID(),
-        type: "approval.workflow.request_opened",
-        data: { orgId, projectId, resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
-      }
-    ],
-    tx
-  );
-});
-```
+Events are public API: their names and shapes are a contract we can't take back. Read the
+[Event Standards and Versioning ADR](https://app.notion.com/p/3c2564692229804b93a1d0ff069016d6) and, for
+an event about something being created, updated or deleted, the
+[CRUD Event Design ADR](https://app.notion.com/p/3ff5646922298176bd92f298433f7d60). The steps below
+summarise them.
 
-- Only `subscribesTo(eventType)` runs before the insert, in memory. Whether a customer configured
-  anything for this resource is decided in the worker; a row nobody wanted is marked `Delivered` and
-  pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
-  adding a read to the emit path.
-- A malformed event throws, and fails the caller's write with it: an id that is not a UUID, a bad
-  type, `data` over 16KB, or `data` a consumer's `dataSchema` rejects is logged, counted on
-  `infisical.event_outbox.rejected.count`, and thrown before any DB access. Committing the write
-  without its event would break the guarantee that consumers hear about every change. The insert itself
-  is not caught either: a swallowed insert failure hands the caller a poisoned transaction (`25P02` on
-  its next statement).
-- `emit` writes a batch in one go (eg one event per secret in a bulk write), in chunks of 1000 rows to
-  stay under Postgres's bind parameter limit.
-- Every event carries its UUID `id` from the moment it is built, and every consumer's row for it stores
-  it as `eventId`. A consumer reports its results by that id, so `(consumer, eventId)` is unique and a
-  repeated insert is dropped. Generate ids with `crypto.randomUUID()` (`defineEvent`'s `build` does):
-  deriving one from the entity and a date silently drops a legitimate repeat (eg a reminder moved back
-  onto a date it already fired on). `eventId` is nullable only in the table, because a pod on the
-  previous release writes rows without it during a rolling deploy; `claimBatch` gives those rows one.
+1. **Define it with `defineEvent`, in the domain that emits it.** It goes in that domain's `*-events.ts`
+   (eg `secret-folder/secret-folder-events.ts`), never in a consumer (see "The event contract belongs to
+   the domain" below). The name is `com.infisical.<domain>.<entity>.<action>.v<version>`: lower-kebab
+   segments, a singular entity, a past-tense action, and words a customer recognises rather than
+   implementation detail. `defineEvent` throws on boot for a name that breaks this. Start at `v1` and
+   bump only for a breaking change to `data`; adding an optional field is not one.
+2. **Give `data` what a consumer needs to decide whether it cares and to find the thing again, not the
+   thing itself.** That is ids, the owning scope (eg `projectId`) and the location where there is one
+   (eg `environment` and `secretPath`). Consumers read the current state from the source. Never put
+   secret values, credentials or other sensitive content in an event.
+3. **For create, update and delete, use one `modified` event per entity.** Its `data` carries
+   `modificationType` (`created`, `updated` or `deleted`) and, on an update that changed a field the
+   event carries, `previous` with only those fields' earlier values. A change that keeps the entity's id
+   is one `updated` event (eg a folder rename). A change that gives it a new id is `deleted` for the old
+   id and `created` for the new one (eg a secret move). A delete that cascades is one event for the
+   entity deleted, which covers everything beneath it. The secret, folder and secret import events
+   (`secret-v2-bridge/secret-events.ts`, `secret-folder/secret-folder-events.ts`,
+   `secret-import/secret-import-events.ts`) are the reference.
+4. **Emit it in the transaction of the write it describes**, so the event is exactly as durable as that
+   write: `SomeEventV1.emit(eventEmitter, data, tx)`, or `build` several and pass them to
+   `eventEmitter.emit(events, tx)` in one call. Omit `tx` only when there is no such write left to be
+   atomic with (eg after it already committed); the insert then runs on its own. Nothing around the emit
+   is caught: a swallowed insert failure hands the caller a poisoned transaction (`25P02` on its next
+   statement). When several services emit the same event, give it one helper in the domain's events
+   file rather than repeating the call.
+
+   ```ts
+   await folderDAL.transaction(async (tx) => {
+     const folder = await folderDAL.create({ ... }, tx);
+     await FolderModifiedEventV1.emit(
+       eventEmitter,
+       { folderId: folder.id, projectId, environment, secretPath, modificationType: EventModificationType.Created },
+       tx
+     );
+   });
+   ```
+
+5. **Consume it with an `IEventConsumer`** whose `subscribesTo` matches the definition's `type` and
+   whose `dataSchema` is the definition's `data` schema. Nothing is written for an event no consumer
+   subscribes to. Only `subscribesTo` runs before the insert, in memory: whether a customer configured
+   anything for the resource is decided in the worker, and a row nobody wanted is marked `Delivered` and
+   pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
+   adding a read to the emit path.
+
+Events named before the ADR (eg `identity.authentication.auth-method-changed`) keep their names until
+they move to it.
 
 **How delivery works:**
 
@@ -878,14 +896,6 @@ emit site shows up in the logs on its first event.
 
 Approval lifecycle events reach the outbox through `TApprovalResource.buildEvent`, which the approval
 service emits inside each transition's transaction (PAM folder alerts use it).
-
-**New events follow the Event Standards and Versioning ADR (CloudEvents 1.0).** Define them with
-`defineEvent` (`event-outbox/event-definition.ts`), which names the event
-`com.infisical.<domain>.<entity>.<action>.v<version>` and throws at module load on a name that breaks the
-convention. Emit one with `SomeEventV1.emit(eventEmitter, data, tx)`, or `build` several and pass them to
-`eventEmitter.emit` together. A consumer uses the definition's `data` schema as its `dataSchema`. The
-events emitted before the ADR (eg `identity.authentication.auth-method-changed`) keep their names, and
-their `source` comes from the first segment of the name.
 
 **The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
 event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)
