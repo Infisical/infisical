@@ -238,23 +238,20 @@ export const samlConfigServiceFactory = ({
       for (const groupName of groupsToAdd) {
         const group = orgGroupsMap.get(groupName);
         if (group) {
-          try {
-            await addUsersToGroupByUserIds({
-              userIds: [userId],
-              group,
-              userDAL,
-              userGroupMembershipDAL,
-              orgDAL,
-              projectKeyDAL,
-              projectDAL,
-              projectBotDAL,
-              membershipGroupDAL,
-              usageMeteringService,
-              tx: transaction
-            });
-          } catch (error) {
-            // Continue if user already in group
-          }
+          await addUsersToGroupByUserIds({
+            userIds: [userId],
+            group,
+            userDAL,
+            userGroupMembershipDAL,
+            orgDAL,
+            projectKeyDAL,
+            projectDAL,
+            projectBotDAL,
+            membershipGroupDAL,
+            usageMeteringService,
+            shouldFailOnMissingMembers: false,
+            tx: transaction
+          });
         }
       }
 
@@ -263,24 +260,21 @@ export const samlConfigServiceFactory = ({
         if (groupName) {
           const group = orgGroupsMap.get(groupName);
           if (group) {
-            try {
-              await removeUsersFromGroupByUserIds({
-                userIds: [userId],
-                group,
-                userDAL,
-                userGroupMembershipDAL,
-                membershipGroupDAL,
-                groupDAL,
-                projectKeyDAL,
-                additionalPrivilegeDAL,
-                usageMeteringService,
-                alertChannelRecipientDAL,
-                eventEmitter,
-                tx: transaction
-              });
-            } catch (error) {
-              // Continue if user not in group
-            }
+            await removeUsersFromGroupByUserIds({
+              userIds: [userId],
+              group,
+              userDAL,
+              userGroupMembershipDAL,
+              membershipGroupDAL,
+              groupDAL,
+              projectKeyDAL,
+              additionalPrivilegeDAL,
+              usageMeteringService,
+              alertChannelRecipientDAL,
+              eventEmitter,
+              shouldFailOnMissingMembers: false,
+              tx: transaction
+            });
           }
         }
       }

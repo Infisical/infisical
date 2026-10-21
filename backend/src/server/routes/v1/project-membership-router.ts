@@ -369,7 +369,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_USERS.LIST_AVAILABLE_USERS.projectId)
+        projectId: z.string().trim().uuid().describe(PROJECT_USERS.LIST_AVAILABLE_USERS.projectId)
       }),
       response: {
         200: z.object({

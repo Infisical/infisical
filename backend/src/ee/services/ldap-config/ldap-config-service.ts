@@ -671,9 +671,7 @@ export const ldapConfigServiceFactory = ({
     let user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
       if (groups && !isStaleAlias) {
-        const allLdapGroupMaps = await ldapGroupMapDAL.find({
-          ldapConfigId
-        });
+        const allLdapGroupMaps = await ldapGroupMapDAL.find({ ldapConfigId }, { tx });
 
         // cn equality in LDAP is case-insensitive (caseIgnoreMatch).
         const userLdapGroupCns = new Set(groups.map((group) => group.cn.toLowerCase()));
@@ -681,21 +679,27 @@ export const ldapConfigServiceFactory = ({
           .filter((groupMap) => userLdapGroupCns.has(groupMap.ldapGroupCN.toLowerCase()))
           .map((groupMap) => groupMap.groupId);
 
-        const groupsToBePartOf = await groupDAL.find({
-          orgId,
-          $in: {
-            id: ldapGroupIdsToBePartOf
-          }
-        });
+        const groupsToBePartOf = await groupDAL.find(
+          {
+            orgId,
+            $in: {
+              id: ldapGroupIdsToBePartOf
+            }
+          },
+          { tx }
+        );
         const toBePartOfGroupIdsSet = new Set(groupsToBePartOf.map((groupToBePartOf) => groupToBePartOf.id));
 
         const ldapGroupIdsCurrentlyPartOf = (
-          await userGroupMembershipDAL.find({
-            userId: newUser.id,
-            $in: {
-              groupId: allLdapGroupMaps.map((groupMap) => groupMap.groupId)
-            }
-          })
+          await userGroupMembershipDAL.find(
+            {
+              userId: newUser.id,
+              $in: {
+                groupId: allLdapGroupMaps.map((groupMap) => groupMap.groupId)
+              }
+            },
+            { tx }
+          )
         ).map((userGroupMembership) => userGroupMembership.groupId);
 
         const userGroupMembershipGroupIdsSet = new Set(ldapGroupIdsCurrentlyPartOf);
@@ -719,12 +723,15 @@ export const ldapConfigServiceFactory = ({
           }
         }
 
-        const groupsCurrentlyPartOf = await groupDAL.find({
-          orgId,
-          $in: {
-            id: ldapGroupIdsCurrentlyPartOf
-          }
-        });
+        const groupsCurrentlyPartOf = await groupDAL.find(
+          {
+            orgId,
+            $in: {
+              id: ldapGroupIdsCurrentlyPartOf
+            }
+          },
+          { tx }
+        );
 
         for await (const group of groupsCurrentlyPartOf) {
           if (!toBePartOfGroupIdsSet.has(group.id)) {
