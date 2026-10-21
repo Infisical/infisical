@@ -131,6 +131,7 @@ type Props = {
     environmentSlug: string;
   }) => void;
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
+  timestampSortField?: "createdAt" | "updatedAt";
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
 };
@@ -178,6 +179,7 @@ export const SecretTableRow = ({
   onUnsavedChange,
   onCopySecret,
   onAccessInsightsUpgrade,
+  timestampSortField,
   activityId,
   onActivityChange
 }: Props) => {
@@ -546,6 +548,8 @@ export const SecretTableRow = ({
             }
             onAccessInsightsUpgrade={onAccessInsightsUpgrade}
             onExpandedChange={setIsSingleEnvBaseActive}
+            lastEdited={timestampSortField ? singleEnvSecret : undefined}
+            timestampField={timestampSortField}
           />
         ) : (
           <TableCell

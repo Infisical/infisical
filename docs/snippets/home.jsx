@@ -173,6 +173,27 @@ export const HomeSteps = ({ steps, panels }) => {
 // into an agent preserves the code fencing.
 export const PromptBlock = ({ text }) => {
   const [status, setStatus] = useState(null);
+  const bodyRef = useRef(null);
+
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return undefined;
+    const update = () => {
+      const remaining = body.scrollHeight - body.clientHeight - body.scrollTop;
+      body.style.setProperty("--ifx-prompt-fade-top", `${Math.min(body.scrollTop, 32)}px`);
+      body.style.setProperty("--ifx-prompt-fade-bottom", `${Math.min(Math.max(remaining, 0), 32)}px`);
+    };
+    update();
+    body.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(body);
+    Array.from(body.children).forEach((child) => observer.observe(child));
+    return () => {
+      body.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, []);
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -185,7 +206,7 @@ export const PromptBlock = ({ text }) => {
   const paragraphs = text.split("\n\n");
   return (
     <div className="ifx-prompt">
-      <div className="ifx-prompt__body">
+      <div className="ifx-prompt__body" ref={bodyRef}>
         {paragraphs.map((paragraph, i) => (
           <p key={i} className="ifx-prompt__p">
             {paragraph.split(/(`[^`]+`)/g).map((segment, j) =>

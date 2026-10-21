@@ -912,6 +912,7 @@ export enum EventType {
   ENABLE_PKI_SIGNER = "enable-pki-signer",
   DISABLE_PKI_SIGNER = "disable-pki-signer",
   REISSUE_PKI_SIGNER_CERTIFICATE = "reissue-pki-signer-certificate",
+  IMPORT_PKI_SIGNER_CERTIFICATE = "import-pki-signer-certificate",
   EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
   UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
   PKI_SIGNER_REQUEST_TO_SIGN = "pki-signer-request-to-sign",
@@ -5036,6 +5037,8 @@ interface CreatePkiSignerEvent {
     approvalPolicyId?: string | null;
     keySource?: CertKeySource;
     hsmConnectorId?: string | null;
+    hsmKeyLabel?: string;
+    hsmKeyId?: string;
     externalConfiguration?: TSignerExternalConfigurationInput;
   };
 }
@@ -5136,6 +5139,25 @@ interface ReissuePkiSignerCertificateEvent {
     hsmConnectorId?: string;
     hsmKeyAlgorithm?: string;
     externalConfiguration?: TSignerExternalConfigurationInput;
+  };
+}
+
+interface ImportPkiSignerCertificateEvent {
+  type: EventType.IMPORT_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    caId: string;
+    caName: string;
+    externalOrderId: string;
+    certificateId?: string | null;
+    commonName?: string;
+    keyAlgorithm?: string;
+    hsmConnectorId: string;
+    hsmConnectorName: string;
+    hsmKeyLabel: string;
+    hsmKeyId?: string;
+    certificateRenewBeforeDays?: number | null;
   };
 }
 
@@ -8437,6 +8459,7 @@ export type Event =
   | EnablePkiSignerEvent
   | DisablePkiSignerEvent
   | ReissuePkiSignerCertificateEvent
+  | ImportPkiSignerCertificateEvent
   | ExportPkiSignerCertificateEvent
   | UpdatePkiSignerApprovalPolicyEvent
   | PkiSignerRequestToSignEvent
