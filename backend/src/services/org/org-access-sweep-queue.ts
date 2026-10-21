@@ -1,3 +1,4 @@
+import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
@@ -41,10 +42,12 @@ export const orgAccessSweepQueueFactory = ({ cronJob, orgDAL, eventEmitter }: TO
   };
 
   const init = () => {
+    const appCfg = getConfig();
     cronJob.register({
       name: CronJobName.OrgAccessReconcileSweep,
       pattern: "0 4 * * *",
       runHashTtlS: 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         const { orphans } = await runSweep();
         logger.info(`cron[org-access-reconcile-sweep]: queued ${orphans} orphaned project memberships`);

@@ -4,7 +4,11 @@ import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
 import { ORG_ACCESS_SWEEP_LIMIT, orgAccessSweepQueueFactory } from "./org-access-sweep-queue";
 import { ORG_MEMBERSHIP_REMOVED_EVENT } from "./org-membership-events";
 
-const { loggerWarn } = vi.hoisted(() => ({ loggerWarn: vi.fn<(...args: unknown[]) => void>() }));
+const { loggerWarn, appCfg } = vi.hoisted(() => ({
+  loggerWarn: vi.fn<(...args: unknown[]) => void>(),
+  appCfg: { isSecondaryInstance: false }
+}));
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => appCfg }));
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: loggerWarn, error: () => {}, debug: () => {} },
   initLogger: () => {}
@@ -16,8 +20,9 @@ const ORG_B = uuid(2);
 
 const build = (orphans: { actorUserId: string | null; actorIdentityId: string | null; scopeOrgId: string }[]) => {
   const emitted: TEventInput[] = [];
+  const register = vi.fn();
   const queue = orgAccessSweepQueueFactory({
-    cronJob: { register: vi.fn() } as never,
+    cronJob: { register } as never,
     orgDAL: { findOrphanedProjectActors: vi.fn().mockResolvedValue(orphans) },
     eventEmitter: {
       emit: async (event) => {
@@ -25,7 +30,7 @@ const build = (orphans: { actorUserId: string | null; actorIdentityId: string | 
       }
     }
   });
-  return { queue, emitted };
+  return { queue, emitted, register };
 };
 
 describe("orgAccessSweepQueue", () => {
@@ -55,6 +60,16 @@ describe("orgAccessSweepQueue", () => {
     const { queue, emitted } = build([]);
     expect(await queue.runSweep()).toEqual({ orphans: 0 });
     expect(emitted).toHaveLength(0);
+  });
+
+  test("runs the sweep only on the primary instance", () => {
+    for (const isSecondaryInstance of [false, true]) {
+      appCfg.isSecondaryInstance = isSecondaryInstance;
+      const { queue, register } = build([]);
+      queue.init();
+      expect(register).toHaveBeenCalledWith(expect.objectContaining({ enabled: !isSecondaryInstance }));
+    }
+    appCfg.isSecondaryInstance = false;
   });
 
   test("warns when a run hits its row limit", async () => {
