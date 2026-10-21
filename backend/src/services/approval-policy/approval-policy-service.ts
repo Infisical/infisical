@@ -87,7 +87,13 @@ import {
 import { createApprovalRequestWithSteps } from "./approval-request-fns";
 import { getClosestFailedRule, toAutoApprovalOutcome } from "./auto-approval/auto-approval-fns";
 import { TAutoApprovalServiceFactory } from "./auto-approval/auto-approval-service";
-import { TAutoApprovalConfig, TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
+import {
+  AUTO_APPROVAL_UNUSED_CONSTRAINT,
+  TAutoApprovalConfig,
+  TAutoApprovalEvidence,
+  TParsedAutoApprovalInput,
+  TStoredAutoApproval
+} from "./auto-approval/auto-approval-types";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -1112,6 +1118,68 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
+  // Inputs a rule requires to be unused whose record an earlier approved request on this policy already linked
+  const $findUsedInputIds = async (
+    policyId: string,
+    stored: TStoredAutoApproval,
+    parsedInputs: TParsedAutoApprovalInput[]
+  ) => {
+    const checkedInputIds = new Set(
+      stored.rules.flatMap((rule) =>
+        rule.conditions
+          .filter((condition) => condition.constraint === AUTO_APPROVAL_UNUSED_CONSTRAINT && condition.inputId)
+          .map((condition) => condition.inputId as string)
+      )
+    );
+    const used = await Promise.all(
+      parsedInputs
+        .filter((input) => checkedInputIds.has(input.inputId))
+        .map(async (input) =>
+          (await approvalRequestDAL.hasApprovedRequestLinkingRecord({
+            policyId,
+            connectionId: input.connectionId,
+            subject: input.subject,
+            recordId: input.id
+          }))
+            ? input.inputId
+            : null
+        )
+    );
+    return new Set(used.filter((inputId): inputId is string => Boolean(inputId)));
+  };
+
+  // Two requests can pass the reuse check at once, so the approving one locks and rechecks its records
+  const $claimUnusedRecords = async (policyId: string, evidence: TAutoApprovalEvidence, tx: Knex) => {
+    const rule = evidence.rules.find((candidate) => candidate.id === evidence.approvedByRuleId);
+    const claimed = evidence.inputs.filter((input) =>
+      rule?.conditions.some(
+        (condition) =>
+          condition.constraint === AUTO_APPROVAL_UNUSED_CONSTRAINT &&
+          condition.connectionId === input.connectionId &&
+          condition.subject === input.subject
+      )
+    );
+    if (!claimed.length) return;
+
+    const keys = claimed.map((input) => `auto-approval:${policyId}:${input.connectionId}:${input.subject}:${input.id}`);
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest(?::text[]) AS key ORDER BY key", [keys]);
+
+    const used = await Promise.all(
+      claimed.map(async (input) =>
+        (await approvalRequestDAL.hasApprovedRequestLinkingRecord(
+          { policyId, connectionId: input.connectionId, subject: input.subject, recordId: input.id },
+          tx
+        ))
+          ? input
+          : null
+      )
+    );
+    const taken = used.find(Boolean);
+    if (taken) {
+      throw new BadRequestError({ message: `${taken.label} ${taken.id} was just used for another request` });
+    }
+  };
+
   const $createAutoApprovedRequest = async ({
     projectId,
     policy,
@@ -1138,6 +1206,8 @@ export const approvalPolicyServiceFactory = ({
     const resource = $resource(policy.type as ApprovalPolicyType);
 
     const approved = await approvalRequestDAL.transaction(async (tx) => {
+      await $claimUnusedRecords(policy.id, evidence, tx);
+
       const created = await createApprovalRequestWithSteps(
         {
           projectId,
@@ -1293,6 +1363,7 @@ export const approvalPolicyServiceFactory = ({
         autoApprovalEvidence = await autoApprovalService.evaluate({
           stored: storedAutoApproval,
           parsedInputs,
+          usedInputIds: await $findUsedInputIds(policy.id, storedAutoApproval, parsedInputs),
           orgId: actor.orgId,
           projectId,
           ctx: {

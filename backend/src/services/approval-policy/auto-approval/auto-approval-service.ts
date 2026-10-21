@@ -23,6 +23,8 @@ import {
 import { AUTO_APPROVAL_APPS, getAutoApprovalProvider } from "./auto-approval-providers";
 import {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
+  AUTO_APPROVAL_UNUSED_CONSTRAINT,
+  AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
   AutoApprovalConstraintValue,
   TAutoApprovalConfig,
   TAutoApprovalContext,
@@ -35,6 +37,17 @@ import {
 } from "./auto-approval-types";
 
 const RESOLVE_TIMEOUT_MS = 20_000;
+
+const UNUSED_CONSTRAINT = { label: AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL, value: AutoApprovalConstraintValue.None };
+
+// A subject the requester links offers the reuse check on top of its provider's own checks
+const getConstraintDefinition = (
+  subject: { input: unknown; constraints: Record<string, { label: string; value: AutoApprovalConstraintValue }> },
+  constraintId: string
+) =>
+  subject.input && constraintId === AUTO_APPROVAL_UNUSED_CONSTRAINT
+    ? UNUSED_CONSTRAINT
+    : subject.constraints[constraintId];
 
 type TAutoApprovalServiceFactoryDep = {
   approvalPolicyAutoApprovalDAL: TApprovalPolicyAutoApprovalDALFactory;
@@ -159,7 +172,7 @@ export const autoApprovalServiceFactory = ({
           });
         }
 
-        const constraint = subject.constraints[condition.constraint];
+        const constraint = getConstraintDefinition(subject, condition.constraint);
         if (!constraint) {
           throw new BadRequestError({
             message: `Rule '${name}' uses '${condition.constraint}', which is not a check on the ${subject.label}. Use one of: ${Object.keys(
@@ -300,12 +313,15 @@ export const autoApprovalServiceFactory = ({
   const evaluate = async ({
     stored,
     parsedInputs,
+    usedInputIds,
     orgId,
     projectId,
     ctx
   }: {
     stored: TStoredAutoApproval;
     parsedInputs: TParsedAutoApprovalInput[];
+    // Inputs whose linked record an earlier approved request on the policy already used
+    usedInputIds: Set<string>;
     orgId: string;
     projectId: string;
     ctx: TAutoApprovalContext;
@@ -385,7 +401,18 @@ export const autoApprovalServiceFactory = ({
               RESOLVE_TIMEOUT_MS,
               `${getAppName(connection.app)} didn't respond in time`
             );
-            return [key, { ...target, label, definition, facts, error: null }];
+            return [
+              key,
+              {
+                ...target,
+                label,
+                definition,
+                facts,
+                error: null,
+                recordId: parsedInput?.id ?? null,
+                previouslyUsed: Boolean(target.inputId && usedInputIds.has(target.inputId))
+              }
+            ];
           } catch (error) {
             if (!(error instanceof BadRequestError)) {
               logger.error(error, `Auto-approval subject resolution failed [connectionId=${target.connectionId}]`);
@@ -453,12 +480,17 @@ export const autoApprovalServiceFactory = ({
               id,
               label: subject.label,
               input: subject.input ? { label: subject.input.label, placeholder: subject.input.placeholder } : null,
-              constraints: Object.entries(subject.constraints).map(([constraintId, constraint]) => ({
-                id: constraintId,
-                label: constraint.label,
-                value: constraint.value,
-                hasOptions: Boolean(constraint.listOptions)
-              }))
+              constraints: [
+                ...Object.entries(subject.constraints).map(([constraintId, constraint]) => ({
+                  id: constraintId,
+                  label: constraint.label,
+                  value: constraint.value,
+                  hasOptions: Boolean(constraint.listOptions)
+                })),
+                ...(subject.input
+                  ? [{ id: AUTO_APPROVAL_UNUSED_CONSTRAINT, ...UNUSED_CONSTRAINT, hasOptions: false }]
+                  : [])
+              ]
             }))
           }
         ];

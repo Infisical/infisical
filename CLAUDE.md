@@ -153,6 +153,8 @@ Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and ar
 provider to `AUTO_APPROVAL_PROVIDER_REGISTRY`, keyed by its App Connection, not by per-product code. A
 resource gates them per request with `allowsAutoApproval`. A policy may have rules and no approvers (no
 steps): then a request no rule approves is refused at submission, and only break-glass gets past it. The
+engine itself adds a reuse check (`not-used-before`) to every input, answered from the policy's approved
+requests' evidence and claimed under an advisory lock in the auto-approve transaction. The
 stored evidence holds data fetched from that service, so responses return only its outcome (`autoApproval`),
 never `autoApprovalEvidence`.
 

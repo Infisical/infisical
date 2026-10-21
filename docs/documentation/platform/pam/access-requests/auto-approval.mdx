@@ -79,6 +79,8 @@ Each condition runs one check on a linked record, and the checks available depen
   If a record has an **is assigned to the requester** check, add that check to every rule that checks the record. Without it, a requester can link a record that belongs to someone else and still pass the rule.
 </Warning>
 
+Every linked record also has a **hasn't been used before** check. It passes only if no earlier approved request in the folder linked the same record. Use it when one approval in the other service should grant access only once.
+
 ### Jira ticket
 
 | Check | Passes when |
@@ -119,7 +121,7 @@ Infisical checks the rules once, when the request is submitted, by reading each 
 
 - Later changes in the service don't affect the result, so closing a ticket doesn't revoke access that a rule granted, and a pending request isn't approved when its record passes later
 - If no record was linked, or Infisical can't read the record (the service doesn't respond or rejects the connection's credentials, the record doesn't exist, or the connection's user can't see it), every condition on that record fails
-- A record can be linked to any number of requests, and each request passes as long as the record still passes the rule
+- A record can be linked to any number of requests, and each request passes as long as the record still passes the rule (unless the rule also requires that the record **hasn't been used before**)
 
 ## Next steps
 

@@ -78,6 +78,29 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Whether an approved request on the policy already linked this record through auto-approval request information
+  const hasApprovedRequestLinkingRecord = async (
+    {
+      policyId,
+      connectionId,
+      subject,
+      recordId
+    }: { policyId: string; connectionId: string; subject: string; recordId: string },
+    tx?: Knex
+  ) => {
+    try {
+      const row = await (tx || db.replicaNode())(TableName.ApprovalRequests)
+        .where({ policyId, status: ApprovalRequestStatus.Approved })
+        .whereRaw(`"autoApprovalEvidence" -> 'inputs' @> ?::jsonb`, [
+          JSON.stringify([{ connectionId, subject, id: recordId }])
+        ])
+        .first("id");
+      return Boolean(row);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Check approved request linking record" });
+    }
+  };
+
   const findStepsByRequestId = async (requestId: string, tx?: Knex) => {
     try {
       const dbInstance = tx || db.replicaNode();
@@ -215,6 +238,7 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     ...orm,
     findStepsByRequestId,
     findStepsByRequestIds,
+    hasApprovedRequestLinkingRecord,
     findByProjectId,
     findByIdForUpdate,
     findPendingByPolicyIdForUpdate,

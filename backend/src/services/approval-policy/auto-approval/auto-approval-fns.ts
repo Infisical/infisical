@@ -2,6 +2,8 @@ import { logger } from "@app/lib/logger";
 
 import {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
+  AUTO_APPROVAL_UNUSED_CONSTRAINT,
+  AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
   TAutoApprovalContext,
   TAutoApprovalEvidence,
   TAutoApprovalOutcome,
@@ -21,6 +23,8 @@ export type TResolvedAutoApprovalSubject = {
   definition: TAutoApprovalSubject<any, any> | null;
   facts: unknown;
   error: string | null;
+  recordId?: string | null;
+  previouslyUsed?: boolean;
 };
 
 // Every condition in a rule must pass and the first passing rule approves
@@ -32,7 +36,9 @@ export const evaluateAutoApprovalRules = (
   const evaluated = rules.map((rule) => {
     const conditions = rule.conditions.map((condition) => {
       const subject = subjects.get(getAutoApprovalSubjectKey(condition));
-      const constraint = subject?.definition?.constraints[condition.constraint];
+      const isUnusedCheck =
+        condition.constraint === AUTO_APPROVAL_UNUSED_CONSTRAINT && Boolean(subject?.definition?.input);
+      const constraint = isUnusedCheck ? undefined : subject?.definition?.constraints[condition.constraint];
       const base = {
         id: condition.id,
         connectionId: condition.connectionId,
@@ -41,13 +47,24 @@ export const evaluateAutoApprovalRules = (
         values: condition.values,
         description: describeAutoApprovalCondition(
           subject?.label ?? condition.subject,
-          constraint?.label ?? condition.constraint,
+          isUnusedCheck ? AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL : (constraint?.label ?? condition.constraint),
           condition.values
         )
       };
 
-      if (!subject || !constraint) return { ...base, passed: false, reason: "This check is no longer available" };
+      if (!subject || (!constraint && !isUnusedCheck)) {
+        return { ...base, passed: false, reason: "This check is no longer available" };
+      }
       if (subject.error) return { ...base, passed: false, reason: subject.error };
+      if (!constraint) {
+        return subject.previouslyUsed
+          ? {
+              ...base,
+              passed: false,
+              reason: `${subject.label} ${subject.recordId} was already used for another request`
+            }
+          : { ...base, passed: true, reason: null };
+      }
 
       try {
         const result = constraint.test(subject.facts, condition.values, ctx);

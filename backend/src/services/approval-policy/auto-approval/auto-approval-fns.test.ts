@@ -7,6 +7,7 @@ import {
 } from "./auto-approval-fns";
 import {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
+  AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AutoApprovalConstraintValue,
   TAutoApprovalContext,
   TAutoApprovalSubject,
@@ -116,6 +117,26 @@ describe("evaluateAutoApprovalRules", () => {
     expect(
       evaluateAutoApprovalRules([{ id: "rule-1", name: "Empty", conditions: [] }], resolved("Approved"), ctx)
     ).toMatchObject({ approvedByRuleId: null });
+  });
+
+  test("passes the reuse check only for a record no earlier approved request linked", () => {
+    const unusedRules = [
+      { id: "rule-1", name: "Single use", conditions: [condition("c-1", AUTO_APPROVAL_UNUSED_CONSTRAINT, [])] }
+    ];
+    const subjects = (previouslyUsed: boolean) =>
+      new Map<string, TResolvedAutoApprovalSubject>([
+        [
+          "input-1",
+          { label: "Jira ticket", definition: ticket, facts: {}, error: null, recordId: "PAY-123", previouslyUsed }
+        ]
+      ]);
+
+    expect(evaluateAutoApprovalRules(unusedRules, subjects(false), ctx).approvedByRuleId).toBe("rule-1");
+    expect(evaluateAutoApprovalRules(unusedRules, subjects(true), ctx).rules[0].conditions[0]).toMatchObject({
+      description: "Jira ticket hasn't been used before",
+      passed: false,
+      reason: "Jira ticket PAY-123 was already used for another request"
+    });
   });
 });
 

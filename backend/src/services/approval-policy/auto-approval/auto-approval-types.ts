@@ -18,6 +18,10 @@ export type TAutoApprovalProviderDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
+// Infisical runs this check itself, against its own approved requests, on every record a requester links
+export const AUTO_APPROVAL_UNUSED_CONSTRAINT = "not-used-before";
+export const AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL = "hasn't been used before";
+
 export type TAutoApprovalContext = {
   requester: {
     email: string | null;
