@@ -1263,7 +1263,8 @@ export const registerRoutes = async (
     keyStore,
     usageMeteringService,
     alertService,
-    identityAccessTokenService
+    identityAccessTokenService,
+    eventEmitter: eventOutboxService
   });
 
   const auditLogStreamService = auditLogStreamServiceFactory({

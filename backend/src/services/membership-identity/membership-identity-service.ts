@@ -10,6 +10,7 @@ import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -21,6 +22,7 @@ import { TApplicationMembershipCleanupServiceFactory } from "../membership/appli
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { emitOrgMembershipRemoved, toOrgMembershipActors } from "../org/org-membership-events";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -59,6 +61,7 @@ type TMembershipIdentityServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "insertOrgMembershipRevocationMarker" | "removeOrgMembershipRevocationMarkers" | "bumpIdentityRevocationVersion"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -77,7 +80,8 @@ export const membershipIdentityServiceFactory = ({
   keyStore,
   usageMeteringService,
   alertService,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -461,13 +465,19 @@ export const membershipIdentityServiceFactory = ({
         }
       }
 
-      // Durable deny atomic with the org-membership removal.
+      // Durable deny atomic with the org-membership removal. The identity's project rows in this org
+      // and its sub-orgs are left to the reconcile consumer, which the event triggers.
       if (scopeData.scope === AccessScope.Organization) {
         await identityAccessTokenService.insertOrgMembershipRevocationMarker({
           identityId: dto.selector.identityId,
           orgId: scopeData.orgId,
           tx
         });
+        await emitOrgMembershipRemoved(
+          eventEmitter,
+          { orgId: scopeData.orgId, actors: toOrgMembershipActors({ identityIds: [dto.selector.identityId] }) },
+          tx
+        );
       }
 
       await alertService.deleteAlertsForResource(

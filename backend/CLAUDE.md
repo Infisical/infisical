@@ -893,7 +893,8 @@ itself whether the actor still reaches the org.
   - `group-link`: `orgId`, `groupId`, the group's `members`. From `membershipGroupService.detachGroupFromOrg`.
   - `group`: `groupId`, `orgIds`, all `members`. From owned and SCIM group deletes, read with
     `groupDAL.findGroupActorsAndOrgs` before the cascade.
-  - `membership`: `orgId` + actor. From `deleteOrgMembershipsFn` and the sweep.
+  - `membership`: `orgId` + actor. From `deleteOrgMembershipsFn` (users), the org branch of
+    `membershipIdentityService.deleteMembership` (identities) and the sweep.
 
   Group events snapshot orgs and members at removal time, since a later removal can wipe those rows before
   the consumer runs. Both lists are paged at 100 (one event per org page x member page) because the outbox
