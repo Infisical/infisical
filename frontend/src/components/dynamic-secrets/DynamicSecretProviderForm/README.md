@@ -65,4 +65,3 @@ This foundation adapts the core contract from checkpoint commit `2eca032d7dc` wi
 | Number input handling | Rewritten to emit numbers before validation, resolving the unresolved PR #7529 finding |
 | Production provider definitions and provider-family tests | Rejected from this foundation; owned by ENG-5513 through ENG-5516 |
 | Route removal, Overview redesign, sheet/lease work, and unrelated primitive changes | Rejected as outside ENG-5518 |
-
