@@ -66,12 +66,3 @@ This foundation adapts the core contract from checkpoint commit `2eca032d7dc` wi
 | Production provider definitions and provider-family tests | Rejected from this foundation; owned by ENG-5513 through ENG-5516 |
 | Route removal, Overview redesign, sheet/lease work, and unrelated primitive changes | Rejected as outside ENG-5518 |
 
-## Verification
-
-The reusable Node test harness lives in `providerContractTestHarness.ts`. The adjacent contract test uses only a test-local provider definition and covers scalar metadata, numeric parsing, masked edit defaults, environment and TTL defaults, validation, create/edit adapters, gateway and username-template normalization, nested values, registry composition, and a custom-renderer escape hatch.
-
-Run it from `frontend/`:
-
-```sh
-TSX_TSCONFIG_PATH=tsconfig.app.json ./node_modules/.bin/tsx --test src/components/dynamic-secrets/DynamicSecretProviderForm/*.test.ts
-```
