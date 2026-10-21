@@ -33,7 +33,7 @@
   flex: none;
   align-items: center;
   gap: var(--v4-space-8);
-  padding: var(--v4-space-8) var(--v4-space-8) 0;
+  padding: var(--v4-sidebar-tools-top, var(--v4-space-8)) var(--v4-space-8) 0;
 }
 .toolsEnd {
   display: flex;
