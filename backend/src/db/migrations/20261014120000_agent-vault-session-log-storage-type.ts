@@ -7,30 +7,20 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.AgentVaultSessionLogConfig, (t) => {
       t.string("storageType", 16).notNullable().defaultTo("default");
     });
+
+    // Rows recording to a bucket so far point at the customer's own bucket.
+    await knex(TableName.AgentVaultSessionLogConfig)
+      .where({ enabled: true })
+      .whereNotNull("appConnectionId")
+      .whereNotNull("bucket")
+      .whereNotNull("region")
+      .update({ storageType: "external" });
+
+    // Everything else was off: rows without a bucket never recorded, and turning off now forgets the bucket.
+    await knex(TableName.AgentVaultSessionLogConfig)
+      .whereNot({ storageType: "external" })
+      .update({ enabled: false, appConnectionId: null, bucket: null, region: null, keyPrefix: null });
   }
-
-  // Every row with a bucket so far points at the customer's own bucket.
-  await knex(TableName.AgentVaultSessionLogConfig)
-    .whereNotNull("appConnectionId")
-    .whereNotNull("bucket")
-    .whereNotNull("region")
-    .update({ storageType: "external" });
-
-  // Turning session logs off before ever saving a bucket, or detaching the connection, left rows with no bucket.
-  // Those were always off, so they become an off default-storage row and stay off, rather than reading as on in
-  // default storage.
-  await knex(TableName.AgentVaultSessionLogConfig)
-    .where((qb) => {
-      void qb.whereNull("appConnectionId").orWhereNull("bucket").orWhereNull("region");
-    })
-    .update({
-      storageType: "default",
-      enabled: false,
-      appConnectionId: null,
-      bucket: null,
-      region: null,
-      keyPrefix: null
-    });
 }
 
 export async function down(knex: Knex): Promise<void> {

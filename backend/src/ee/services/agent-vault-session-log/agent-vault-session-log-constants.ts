@@ -56,9 +56,12 @@ export const AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS = 120; // 2 minutes
 // mention the AWS account, bucket and connection.
 export const AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE =
   "Session logs can't be read right now. Try again in a bit, or ask an Agent Vault admin if it keeps happening.";
-// Default storage belongs to whoever runs Infisical, so no org admin can fix it.
+// Default storage belongs to whoever runs Infisical, so no org admin can fix it: Infisical on cloud, the server
+// administrator when self-hosted.
 export const AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE =
   "Session logs can't be read right now. Try again in a bit, or contact Infisical support if it keeps happening.";
+export const AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_SELF_HOSTED_MESSAGE =
+  "Session logs can't be read right now. Try again in a bit, or contact your server administrator if it keeps happening.";
 export const AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE =
   "Session logs can't be read. Ask an Agent Vault admin to check the session log settings.";
 

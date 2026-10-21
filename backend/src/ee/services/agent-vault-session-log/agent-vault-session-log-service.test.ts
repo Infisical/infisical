@@ -38,6 +38,7 @@ vi.mock("@app/services/object-storage/object-storage-default-fns", () => ({
   isDefaultStorageConfigured: () => defaultStorage.configured
 }));
 vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isCloud: true }) }));
 vi.mock("./agent-vault-session-log-secrets", () => ({ unwrapSessionLogKey: vi.fn(async () => Buffer.alloc(32, 7)) }));
 
 const presignPut = vi.fn(async ({ name }: { name: string }) => ({
@@ -1050,7 +1051,9 @@ describe("updateSessionLogSettings: turning off", () => {
       storageType: ObjectStorageType.External,
       appConnectionId: CONNECTION_ID,
       appConnectionName: "prod-logs",
-      bucket: "my-bucket"
+      bucket: "my-bucket",
+      region: "us-east-1",
+      keyPrefix: "logs"
     });
     expect(result.settings).toBeNull();
   });
@@ -1078,7 +1081,9 @@ describe("updateSessionLogSettings: turning off", () => {
       storageType: ObjectStorageType.Default,
       appConnectionId: null,
       appConnectionName: null,
-      bucket: null
+      bucket: null,
+      region: null,
+      keyPrefix: null
     });
   });
 

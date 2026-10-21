@@ -1,4 +1,5 @@
 import { ProjectType, TAgentVaultSessionLogConfigs } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { isDefaultStorageConfigured } from "@app/services/object-storage/object-storage-default-fns";
@@ -10,7 +11,10 @@ import {
 } from "@app/services/object-storage/object-storage-types";
 
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
-import { AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE } from "./agent-vault-session-log-constants";
+import {
+  AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE,
+  AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_SELF_HOSTED_MESSAGE
+} from "./agent-vault-session-log-constants";
 
 export type TSessionLogStorage =
   | { type: ObjectStorageType.Default }
@@ -79,6 +83,8 @@ export type TPreviousSessionLogStorage = {
   appConnectionId: string | null;
   appConnectionName: string | null;
   bucket: string | null;
+  region: string | null;
+  keyPrefix: string | null;
 };
 
 // Turning off on an instance without default storage reads back as no settings, and is still recorded as off. Off has no
@@ -104,7 +110,9 @@ export const buildSessionLogSettingsAuditMetadata = ({
     previousStorageType: previous?.storageType ?? null,
     previousAppConnectionId: previous?.appConnectionId ?? null,
     previousAppConnectionName: previous?.appConnectionName ?? null,
-    previousBucket: previous?.bucket ?? null
+    previousBucket: previous?.bucket ?? null,
+    previousRegion: previous?.region ?? null,
+    previousKeyPrefix: previous?.keyPrefix ?? null
   };
 };
 
@@ -128,7 +136,12 @@ const UNREACHABLE_BUCKET_MESSAGE = (bucket: string) =>
 // whoever runs the instance, who finds the cause in the server logs, and an org admin can't fix it in settings.
 export const describeStorageFailure = (error: ObjectStorageError, use: "read" | "check") => {
   if (error.storageType === ObjectStorageType.Default) {
-    return { isTemporary: true, message: AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE };
+    return {
+      isTemporary: true,
+      message: getConfig().isCloud
+        ? AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE
+        : AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_SELF_HOSTED_MESSAGE
+    };
   }
 
   const { reason, details } = error;

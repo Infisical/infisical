@@ -1,16 +1,26 @@
 import { S3ServiceException } from "@aws-sdk/client-s3";
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
-import { AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE } from "./agent-vault-session-log-constants";
+import {
+  AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE,
+  AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_SELF_HOSTED_MESSAGE
+} from "./agent-vault-session-log-constants";
 import {
   buildSessionLogSettingsAuditMetadata,
   describeStorageFailure,
   toEffectiveSessionLogConfig
 } from "./agent-vault-session-log-storage-fns";
+
+const instance = vi.hoisted(() => ({ isCloud: true }));
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isCloud: instance.isCloud }) }));
+
+beforeEach(() => {
+  instance.isCloud = true;
+});
 
 describe("toEffectiveSessionLogConfig", () => {
   const external = {
@@ -213,6 +223,19 @@ describe("describeStorageFailure", () => {
       });
     }
   });
+
+  test("on a self-hosted instance, default storage problems point at the server administrator", () => {
+    instance.isCloud = false;
+    const error = toObjectStorageError(s3Error("AccessDenied"), {
+      storageType: ObjectStorageType.Default,
+      bucket: "instance-bucket",
+      region: "us-east-1"
+    }) as ObjectStorageError;
+    expect(describeStorageFailure(error, "read")).toEqual({
+      isTemporary: true,
+      message: AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_SELF_HOSTED_MESSAGE
+    });
+  });
 });
 
 describe("buildSessionLogSettingsAuditMetadata", () => {
@@ -236,7 +259,9 @@ describe("buildSessionLogSettingsAuditMetadata", () => {
           storageType: ObjectStorageType.Default,
           appConnectionId: null,
           appConnectionName: null,
-          bucket: null
+          bucket: null,
+          region: null,
+          keyPrefix: null
         }
       })
     ).toEqual({
@@ -250,7 +275,9 @@ describe("buildSessionLogSettingsAuditMetadata", () => {
       previousStorageType: ObjectStorageType.Default,
       previousAppConnectionId: null,
       previousAppConnectionName: null,
-      previousBucket: null
+      previousBucket: null,
+      previousRegion: null,
+      previousKeyPrefix: null
     });
   });
 
@@ -263,7 +290,9 @@ describe("buildSessionLogSettingsAuditMetadata", () => {
           storageType: ObjectStorageType.External,
           appConnectionId: "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11",
           appConnectionName: "globex-aws",
-          bucket: "globex-audit"
+          bucket: "globex-audit",
+          region: "eu-west-1",
+          keyPrefix: "logs"
         }
       })
     ).toMatchObject({
@@ -272,7 +301,9 @@ describe("buildSessionLogSettingsAuditMetadata", () => {
       bucket: null,
       previousStorageType: ObjectStorageType.External,
       previousAppConnectionName: "globex-aws",
-      previousBucket: "globex-audit"
+      previousBucket: "globex-audit",
+      previousRegion: "eu-west-1",
+      previousKeyPrefix: "logs"
     });
   });
 });

@@ -148,13 +148,22 @@ export const agentVaultSessionLogServiceFactory = ({
   // The storage a save replaced, named for the audit log while its connection still exists.
   const $describePreviousStorage = async (storage: TSessionLogStorage): Promise<TPreviousSessionLogStorage> => {
     if (storage.type === ObjectStorageType.Default) {
-      return { storageType: storage.type, appConnectionId: null, appConnectionName: null, bucket: null };
+      return {
+        storageType: storage.type,
+        appConnectionId: null,
+        appConnectionName: null,
+        bucket: null,
+        region: null,
+        keyPrefix: null
+      };
     }
     return {
       storageType: storage.type,
       appConnectionId: storage.appConnectionId,
       appConnectionName: (await appConnectionDAL.findById(storage.appConnectionId))?.name ?? null,
-      bucket: storage.bucket
+      bucket: storage.bucket,
+      region: storage.region,
+      keyPrefix: storage.keyPrefix
     };
   };
 

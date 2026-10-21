@@ -34,6 +34,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   AgentVaultSessionLogDecision,
@@ -416,8 +417,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
     );
   }
 
-  // Off and off-plan hide recorded logs, for ended sessions too. Only a running session is offered Settings or an
-  // upgrade; turning logs on can't record one that ended.
+  // Off and off-plan hide recorded logs, for ended sessions too. Upgrading shows them again, so every admin is offered
+  // it; only a running session is offered Settings, since turning logs on can't record one that ended.
   if (!isPending && !isPlaceholderData && !isLoadError && disabledReason) {
     if (disabledReason === "not-on-plan") {
       return (
@@ -430,7 +431,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                 : "Ask an Agent Vault administrator about upgrading."}
             </EmptyDescription>
           </EmptyHeader>
-          {isAdmin && isActive && (
+          {isAdmin && (
             <Button variant="av" onClick={() => setIsUpgradeOpen(true)}>
               Upgrade
             </Button>
@@ -555,7 +556,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
             {isDefaultStorage ? (
               <p>
                 Your browser couldn&apos;t download this session&apos;s logs. Your network may be
-                blocking them. Try again, or contact Infisical support if it keeps happening.
+                blocking them. Try again, or contact{" "}
+                {isInfisicalCloud() ? "Infisical support" : "your server administrator"} if it keeps
+                happening.
               </p>
             ) : (
               <div className="flex flex-col gap-1">

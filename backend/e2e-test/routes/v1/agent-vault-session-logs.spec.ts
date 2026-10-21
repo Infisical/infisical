@@ -22,7 +22,10 @@ import { chunkIdTimeMs, toRev } from "@app/ee/services/agent-vault-session-log/a
 import { initLogger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { up as addSessionLogStorageType } from "../../../src/db/migrations/20261014120000_agent-vault-session-log-storage-type";
+import {
+  down as dropSessionLogStorageType,
+  up as addSessionLogStorageType
+} from "../../../src/db/migrations/20261014120000_agent-vault-session-log-storage-type";
 
 initLogger();
 
@@ -420,30 +423,33 @@ describe("Agent Vault session logs", async () => {
       }
     });
 
-    test("the storage type migration keeps saved buckets external, and turns rows without one off", async () => {
-      // The migration ran before this suite, so its updates are run again on rows shaped like the ones it meets.
+    test("the storage type migration keeps buckets that are on external, and turns every other row off", async () => {
       fakeDefaultStorage.set();
-      await testDb("agent_vault_session_log_configs").insert({
-        projectId,
-        enabled: true,
-        storageType: "default",
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs"
-      });
-      await addSessionLogStorageType(testDb);
-      expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toEqual({
+      const bucketColumns = { appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" };
+      // Rolls the migration back and applies it to one row shaped like those saved before it.
+      const migrateRow = async (row: Record<string, unknown>) => {
+        await testDb("agent_vault_session_log_configs").where({ projectId }).del();
+        await dropSessionLogStorageType(testDb);
+        await testDb("agent_vault_session_log_configs").insert({ projectId, ...row });
+        await addSessionLogStorageType(testDb);
+        return settingsOf(await inject("GET", SETTINGS_URL)).settings;
+      };
+
+      expect(await migrateRow({ enabled: true, ...bucketColumns })).toEqual({
         enabled: true,
         storage: externalStorage()
       });
+      expect(await migrateRow({ enabled: false, ...bucketColumns })).toEqual({
+        enabled: false,
+        storage: { type: "default" }
+      });
+      expect(await migrateRow({ enabled: true })).toEqual({ enabled: false, storage: { type: "default" } });
 
-      await testDb("agent_vault_session_log_configs")
-        .where({ projectId })
-        .update({ storageType: "external", appConnectionId: null });
+      // Once the column exists, applying it again leaves rows saved since alone.
+      await testDb("agent_vault_session_log_configs").where({ projectId }).update({ enabled: true });
       await addSessionLogStorageType(testDb);
       expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toEqual({
-        enabled: false,
+        enabled: true,
         storage: { type: "default" }
       });
     });

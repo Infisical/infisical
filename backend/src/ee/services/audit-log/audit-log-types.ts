@@ -6475,6 +6475,8 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
     previousAppConnectionId?: string | null;
     previousAppConnectionName?: string | null;
     previousBucket?: string | null;
+    previousRegion?: string | null;
+    previousKeyPrefix?: string | null;
   };
 }
 
