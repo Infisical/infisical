@@ -84,7 +84,7 @@ const PrincipalSecrets = ({ data }: SecretsProps) => {
             <Table>
               <TableBody>
                 {shown.map((secret) => (
-                  <TableRow key={`${secret.secretPath}/${secret.secretKey}`}>
+                  <TableRow key={`${secret.secretPath}/${secret.secretKey}`} className="group/row">
                     <TableCell isTruncatable className="max-w-64 font-mono">
                       <span className="truncate">{secret.secretKey}</span>
                     </TableCell>
