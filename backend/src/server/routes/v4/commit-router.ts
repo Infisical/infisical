@@ -69,7 +69,7 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "createCommitV4",
       tags: [ApiDocsTags.Secrets],
       description:
@@ -202,7 +202,7 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, res) => {
       const {
         projectId,
