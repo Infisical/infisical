@@ -9,6 +9,7 @@ import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -112,7 +113,8 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
             properties: {
               identityId: identityAliCloudAuth.identityId,
               orgId: identity.orgId,
-              authMethod: IdentityAuthMethod.ALICLOUD_AUTH
+              authMethod: IdentityAuthMethod.ALICLOUD_AUTH,
+              channel: getUserAgentType(req.headers["user-agent"])
             }
           })
           .catch((error) => {
