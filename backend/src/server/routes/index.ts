@@ -357,8 +357,7 @@ import { convertorServiceFactory } from "@app/services/convertor/convertor-servi
 import { delegatedApprovalPolicyDALFactory } from "@app/services/delegated-approval/delegated-approval-policy-dal";
 import { delegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
 import { delegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { delegatedApprovalDispatchQueueFactory } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-queue";
-import { delegatedApprovalCallbackEventConsumerFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-event-consumer";
+import { delegatedApprovalDispatchConsumerFactory } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-consumer";
 import { delegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
 import { encryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
@@ -3248,16 +3247,17 @@ export const registerRoutes = async (
     eventEmitter: eventOutboxService
   });
 
-  const delegatedApprovalDispatchQueue = delegatedApprovalDispatchQueueFactory({
-    delegatedApprovalRequestDAL,
-    delegatedApprovalPolicyDAL,
-    delegatedApprovalCallbackService,
-    approvalRequestDAL,
-    projectDAL,
-    appConnectionDAL,
-    kmsService,
-    queueService
-  });
+  eventOutboxRegistry.register(
+    delegatedApprovalDispatchConsumerFactory({
+      delegatedApprovalRequestDAL,
+      delegatedApprovalPolicyDAL,
+      delegatedApprovalCallbackService,
+      approvalRequestDAL,
+      projectDAL,
+      appConnectionDAL,
+      kmsService
+    })
+  );
 
   const delegatedApprovalService = delegatedApprovalServiceFactory({
     delegatedApprovalPolicyDAL,
@@ -3265,7 +3265,7 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     appConnectionDAL,
     appConnectionService,
-    delegatedApprovalDispatchQueue
+    eventEmitter: eventOutboxService
   });
 
   const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({
@@ -3282,8 +3282,8 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     secretAccessApprovalGlobalPolicyBridgeDAL,
     secretAccessApprovalGlobalRequestBridgeDAL,
+    approvalPolicyDAL,
     delegatedApprovalService,
-    delegatedApprovalDispatchQueue,
     smtpService,
     notificationService,
     kmsService,
@@ -4624,7 +4624,6 @@ export const registerRoutes = async (
   healthAlert.init();
   alertQueue.init();
   eventOutboxQueue.init();
-  delegatedApprovalDispatchQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pkiSyncHealthCheckQueue.init();

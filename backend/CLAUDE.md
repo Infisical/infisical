@@ -774,7 +774,9 @@ Invariants worth knowing before extending it:
 an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
 whenever the pod dies or Redis is down in that window. It's not alert-specific:
 `alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
-at-least-once delivery of a domain event registers next to it.
+at-least-once delivery of a domain event registers next to it. The delegated approval dispatch consumer
+(`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`) is the second: it calls the external
+approval system inline from `handle()` and maps the outcome to `Delivered` / `Retry` / `Failed`, with no queue hop.
 
 **Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
 `TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]`

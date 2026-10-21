@@ -401,7 +401,7 @@ type ComboboxListProps<TOption> = Omit<
   creationError: { error: unknown; inputValue: string } | null;
   isCreationPending: boolean;
   selectedValues: ReadonlySet<string>;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
   maxHeight: string;
 };
 

@@ -6,6 +6,7 @@ import { apiRequest } from "@app/config/request";
 import { DelegatedApprovalRequestStatus } from "../delegatedApprovals/enums";
 import { ApiErrorTypes } from "../types";
 import { accessApprovalKeys } from "./queries";
+import { markDelegatedDispatchRetry } from "./retrying-delegated-dispatch";
 import {
   TAccessApproval,
   TAccessApprovalRequest,
@@ -212,6 +213,7 @@ export const useRetryDelegatedApprovalDispatch = () => {
       return data;
     },
     onSuccess: (_, { requestId, projectSlug }) => {
+      markDelegatedDispatchRetry(requestId);
       queryClient.setQueriesData<TAccessApprovalRequest[]>(
         { queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug) },
         (requests) =>
@@ -243,7 +245,7 @@ export const useCancelAccessRequest = () => {
   >({
     mutationFn: async ({ requestId }) => {
       const { data } = await apiRequest.post(
-        `/api/v1/access-approvals/requests/${requestId}/cancel`
+        `/api/v1/access-approvals/requests/${requestId}/cancel-delegated-dispatch`
       );
       return data;
     },

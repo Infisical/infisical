@@ -20,7 +20,7 @@ Infisical is an open-source secret management platform. Monorepo layout:
 infisical/
 ├── backend/               # Fastify 4 API server (see backend/CLAUDE.md)
 ├── backend-go/            # Go API server — partial rewrite (see backend-go/CLAUDE.md)
-├── frontend/              # React 18 SPA (see frontend/CLAUDE.md)
+├── frontend/              # React 19 SPA (see frontend/CLAUDE.md)
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/CLAUDE.md)
 ├── tests/                 # Go blackbox suite — real containers, HTTP only (see tests/CLAUDE.md)
@@ -38,7 +38,7 @@ infisical/
 
 - **`backend/`** — Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/CLAUDE.md`](backend/CLAUDE.md) for architecture, patterns, and commands.
 - **`backend-go/`** — Go API server (partial rewrite), chi + chita framework, raw pgx queries, same PostgreSQL database. See [`backend-go/CLAUDE.md`](backend-go/CLAUDE.md) for architecture, patterns, and commands.
-- **`frontend/`** — React 18 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
+- **`frontend/`** — React 19 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
 - **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 - **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/CLAUDE.md`](e2e/CLAUDE.md) for the harness and the one-time gamma bootstrap.
@@ -50,6 +50,7 @@ Enterprise features live in `backend/src/ee/` (services and routes), registered 
 ### Self-Hosted Deployment
 
 Infisical supports self-hosted deployment via Docker. Key considerations:
+
 - **`Dockerfile.standalone-infisical`** — single-container image with both frontend and backend; used for simple deployments.
 - **`Dockerfile.fips.standalone-infisical`** — FIPS 140-2 compliant variant for regulated environments. Be strict about not introducing dependencies that break FIPS compliance.
 - **`docker-compose.prod.yml`** — production compose with backend, PostgreSQL, and Redis.
@@ -79,7 +80,7 @@ That list describes what the guide currently covers; it is **not** a test for wh
 
 ### Code Comments
 
-**Default to no comments.** One earns its place only by explaining *why*: a non-obvious constraint, a workaround, an ordering dependency, or logic that looks wrong until you know the reason.
+**Default to no comments.** One earns its place only by explaining _why_: a non-obvious constraint, a workaround, an ordering dependency, or logic that looks wrong until you know the reason.
 
 Never write: narration restating the next line; section headers inside a function (`// --- validation ---`); change history (`// Added retry logic`, `// NEW`); references to plans, tickets, PRs, or reviewers; docstrings restating the signature; commented-out code.
 
@@ -118,6 +119,7 @@ Secret Scanning has one active project per organization (the newest). Like Certi
 ### Service Factory + Manual DI (Backend)
 
 No IoC container in either backend. Every service is a factory function with explicit dependencies.
+
 - **Node.js**: Wired in `backend/src/server/routes/index.ts` — see `backend/CLAUDE.md`.
 - **Go**: Wired in `backend-go/internal/server/api/api.go` via `NewRegistry()` — see `backend-go/CLAUDE.md`.
 
@@ -145,7 +147,7 @@ which every type now uses for policy CRUD, requests, approve, reject and grant r
 endpoint**: `access-approval-*` and `secret-approval-*` predate this module and are what we are
 converging away from. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
-Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
+Any rule about what is _allowed_ belongs in the resource, or the product's own API and the shared API
 stop agreeing.
 
 A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
@@ -158,23 +160,28 @@ rules in `assertDelegatedApprovalPolicyConstraints` when another policy type opt
 policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses the rest, and secret change
 policies return it as a 400 rather than dropping the field.
 
-Delivery to the delegated system is asynchronous and lives in `delegated-approval/dispatch/`. The request
-bridge creates the `delegated_approval_requests` row inside the request's own transaction and enqueues the
-`DelegatedApprovalDispatch` job after commit; the worker moves the row `pending_dispatch` → `waiting_approval` (storing the provider's record id in
-`providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read, and BullMQ retries put it back
-to `pending_dispatch`. A user resends a `failed_dispatch` request with
-`POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The product's bridge checks who may
-retry, and `delegatedApprovalService.retryDispatch` checks the request can be retried and only re-enqueues the
-fixed-id dispatch job: the worker stays the only writer of the status, so a retry cannot run beside an attempt
-BullMQ already has scheduled, and a retry that loses that race leaves the row retryable. A delegated request has
-no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel` is the only way to close
+Delivery to the delegated system is asynchronous and goes through the event outbox (see `backend/CLAUDE.md`).
+`delegatedApprovalService.createRequest` writes the `delegated_approval_requests` row and emits
+`delegated-approval.request.dispatch-requested` (`delegated-approval-events.ts`) in the caller's transaction, so
+the dispatch is exactly as durable as the request; never enqueue it after commit. The
+`delegated-approval-dispatch` consumer (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`)
+calls the provider inline and moves the row `pending_dispatch` → `waiting_approval` (storing the provider's
+record id in `providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read. A transient
+failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUTBOX_ATTEMPTS`); the reason text
+promises that retry on every attempt because the consumer cannot see the attempt count. A user resends a
+`failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
+product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
+retried and emits the same event with no transaction. One flush runs per consumer at a time, so two dispatches
+of one request never run together; a second event for a request that was already delivered is marked delivered
+without calling the provider. A delegated request has
+no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel-delegated-dispatch` is the only way to close
 one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
 policy blocked by pending requests is freed for editing. Every provider implements `TDelegatedApprovalProvider` against the same
 `TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`
 (`dispatch/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
-builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The worker
-reads from the primary, never checks the license, and throws bullmq's `UnrecoverableError` for anything a retry
-cannot fix. The callback contract (token issuance, the inbound route; approve / reject later) is its own
+builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The consumer
+reads from the primary, never checks the license, and treats bullmq's `UnrecoverableError` as the terminal failure
+signal, returning `Failed` for it and `Retry` for anything else. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
 module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
 callback branch. A request gets exactly one callback token for its whole life: it is random, prefixed `inf_ext_`,
 issued on the first dispatch attempt, and stored encrypted under the org KMS key in `encryptedCallbackToken` so

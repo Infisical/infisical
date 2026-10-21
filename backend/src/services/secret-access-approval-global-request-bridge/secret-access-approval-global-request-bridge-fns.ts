@@ -96,7 +96,7 @@ export const toLegacyAccessApprovalRequestFields = (
     temporaryRange: data.temporaryRange,
     permissions: data.permissions,
     note: request.justification ?? null,
-    privilegeId: grant?.status === ApprovalRequestGrantStatus.Active ? request.privilegeId : null,
+    privilegeId: isRevoked ? null : request.privilegeId,
     status,
     expiresAt: request.expiresAt ?? null,
     approvedAt: grant?.createdAt ?? null,

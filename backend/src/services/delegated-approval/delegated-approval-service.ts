@@ -10,8 +10,10 @@ import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connec
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
+import { emitDelegatedApprovalDispatchRequested } from "./delegated-approval-events";
 import { assertPolicyTypeSupportsDelegatedApproval, listDelegatedApprovalOptions } from "./delegated-approval-fns";
 import { DELEGATED_APPROVAL_CONNECTION_MAP, DELEGATED_APPROVAL_NAME_MAP } from "./delegated-approval-maps";
 import { TDelegatedApprovalPolicyDALFactory } from "./delegated-approval-policy-dal";
@@ -26,7 +28,6 @@ import {
   TUpdateDelegatedApprovalRequestDTO,
   TValidateDelegatedApprovalConnectionDTO
 } from "./delegated-approval-types";
-import { TDelegatedApprovalDispatchQueueFactory } from "./dispatch/delegated-approval-dispatch-queue";
 
 type TDelegatedApprovalServiceFactoryDep = {
   delegatedApprovalPolicyDAL: TDelegatedApprovalPolicyDALFactory;
@@ -34,7 +35,7 @@ type TDelegatedApprovalServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  delegatedApprovalDispatchQueue: Pick<TDelegatedApprovalDispatchQueueFactory, "queueDispatch">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TDelegatedApprovalServiceFactory = ReturnType<typeof delegatedApprovalServiceFactory>;
@@ -45,7 +46,7 @@ export const delegatedApprovalServiceFactory = ({
   approvalPolicyDAL,
   appConnectionDAL,
   appConnectionService,
-  delegatedApprovalDispatchQueue
+  eventEmitter
 }: TDelegatedApprovalServiceFactoryDep) => {
   const $assertConnectionMatches = async (
     {
@@ -148,22 +149,16 @@ export const delegatedApprovalServiceFactory = ({
     return (policy as TDelegatedApprovalPolicy | undefined) ?? null;
   };
 
-  const createRequest = async (
-    {
-      approvalRequest,
-      status = DelegatedApprovalRequestStatus.PendingDispatch,
-      statusReason
-    }: TCreateDelegatedApprovalRequestDTO,
-    tx?: Knex
-  ) => {
+  const createRequest = async ({ approvalRequest }: TCreateDelegatedApprovalRequestDTO, tx?: Knex) => {
     assertPolicyTypeSupportsDelegatedApproval(approvalRequest.type);
 
     try {
-      const request = await delegatedApprovalRequestDAL.create(
-        { requestId: approvalRequest.id, status, statusReason },
+      const request = (await delegatedApprovalRequestDAL.create(
+        { requestId: approvalRequest.id, status: DelegatedApprovalRequestStatus.PendingDispatch },
         tx
-      );
-      return request as TDelegatedApprovalRequest;
+      )) as TDelegatedApprovalRequest;
+      await emitDelegatedApprovalDispatchRequested(eventEmitter, { delegatedRequestId: request.id }, tx);
+      return request;
     } catch (err) {
       if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
         throw new BadRequestError({
@@ -217,7 +212,7 @@ export const delegatedApprovalServiceFactory = ({
       });
     }
 
-    await delegatedApprovalDispatchQueue.queueDispatch({ delegatedRequestId: delegatedRequest.id });
+    await emitDelegatedApprovalDispatchRequested(eventEmitter, { delegatedRequestId: delegatedRequest.id });
 
     return { delegatedRequest, delegatedPolicy };
   };

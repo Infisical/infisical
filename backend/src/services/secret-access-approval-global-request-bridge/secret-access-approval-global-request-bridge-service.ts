@@ -37,6 +37,7 @@ import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-a
 import { ActorType } from "@app/services/auth/auth-type";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
+import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";
 import {
   collectSecretAccessPolicyGroupIds,
   collectSecretAccessRequestUserIds,
@@ -77,8 +78,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
   additionalPrivilegeDAL,
   secretAccessApprovalGlobalPolicyBridgeDAL,
   secretAccessApprovalGlobalRequestBridgeDAL,
+  approvalPolicyDAL,
   delegatedApprovalService,
-  delegatedApprovalDispatchQueue,
   smtpService,
   notificationService,
   kmsService,
@@ -264,6 +265,26 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     }
   };
 
+  const $describeRequestForAudit = async (request: Awaited<ReturnType<typeof $findRequestById>>) => {
+    if (!request.policyId) {
+      throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
+    }
+    const policy = await $findPolicyById(
+      request.policyId,
+      "The policy associated with this access request has been deleted."
+    );
+    const { envSlug, secretPath } = verifyRequestedPermissions({
+      permissions: getSecretAccessRequestData(request).permissions
+    });
+    return {
+      policyName: policy.name,
+      requesterName: request.requesterName,
+      requesterEmail: request.requesterEmail,
+      environment: envSlug,
+      secretPath
+    };
+  };
+
   const isGlobalAccessApprovalRequest = async (requestId: string) =>
     Boolean(await approvalRequestDAL.findOne({ id: requestId, type: ApprovalPolicyType.SecretAccess }));
 
@@ -296,16 +317,12 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       throw new BadRequestError({ message: constraintValidation.errors?.join("; ") ?? "Policy constraints not met" });
     }
 
-    const [requestedByUser, project, delegatedPolicy] = await Promise.all([
+    const [requestedByUser, project] = await Promise.all([
       userDAL.findById(requestedByUserId),
-      projectDAL.findById(projectId),
-      policy.steps.length ? null : delegatedApprovalService.getPolicyByPolicyId(policy.id)
+      projectDAL.findById(projectId)
     ]);
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-    if (!policy.steps.length && !delegatedPolicy) {
-      throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
-    }
 
     const activeGrant = await secretAccessApprovalGlobalResource.canAccess(projectId, requestedByUserId, {
       envId,
@@ -332,14 +349,29 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     const parsedMs = requestExpirationTime ? ms(requestExpirationTime) : null;
     const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
-    const { created, delegatedRequest } = await approvalRequestDAL.transaction(async (tx) => {
+    // A policy update locks the policy row for update, so sharing it here keeps a request from being
+    // created with approver steps the update is replacing with a delegated reviewer, or the reverse.
+    const { approvalRequest: created, policySteps } = await approvalRequestDAL.transaction(async (tx) => {
+      const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({ message: `Policy '${policy.name}' was deleted before the request could be created` });
+      }
+
+      const currentSteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id, tx);
+      const delegatedPolicy = currentSteps.length
+        ? null
+        : await delegatedApprovalService.getPolicyByPolicyId(policy.id, tx);
+      if (!currentSteps.length && !delegatedPolicy) {
+        throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
+      }
+
       const approvalRequest = await createApprovalRequestWithSteps(
         {
           projectId,
           organizationId: actorOrgId,
           policyId: policy.id,
           policyType: ApprovalPolicyType.SecretAccess,
-          policySteps: policy.steps,
+          policySteps: currentSteps,
           requestData,
           justification: note || null,
           expiresAt,
@@ -351,18 +383,14 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
         tx
       );
-      return {
-        created: approvalRequest,
-        delegatedRequest: delegatedPolicy ? await delegatedApprovalService.createRequest({ approvalRequest }, tx) : null
-      };
+      if (delegatedPolicy) {
+        await delegatedApprovalService.createRequest({ approvalRequest }, tx);
+      }
+      return { approvalRequest, policySteps: currentSteps };
     });
 
-    if (delegatedRequest) {
-      await delegatedApprovalDispatchQueue.queueDispatch({ delegatedRequestId: delegatedRequest.id });
-    }
-
     const request = await $findRequestById(created.id);
-    const [firstStep] = policy.steps;
+    const [firstStep] = policySteps;
     if (firstStep) {
       await notifySecretAccessStepApprovers(
         {
@@ -394,7 +422,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       action: AccessRequestWebhookAction.Created,
       request: legacyRequest,
       project,
-      policy: { ...policy, hasSequencedApprovers: policy.steps.length > 1 },
+      policy: { ...policy, hasSequencedApprovers: policySteps.length > 1 },
       requestedByUser,
       envName
     });
@@ -412,6 +440,10 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     actorAuthMethod
   }: TReviewSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
+    const delegatedRequest = await delegatedApprovalService.getRequestByRequestId(request.id);
+    if (delegatedRequest) {
+      throw new BadRequestError({ message: externallyReviewedAccessRequestMessage(requestId) });
+    }
     if (!request.policyId) {
       throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
     }
@@ -419,6 +451,9 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       request.policyId,
       "The policy associated with this access request has been deleted."
     );
+    if (policy.delegatedApproval) {
+      throw new BadRequestError({ message: externallyReviewedAccessRequestMessage(requestId) });
+    }
     if (!request.requesterId) {
       throw new NotFoundError({ message: "The user who created this access request no longer exists" });
     }
@@ -863,11 +898,13 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     }
 
     const { delegatedPolicy } = await delegatedApprovalService.retryDispatch({ approvalRequest: request });
+    const auditDetails = await $describeRequestForAudit(request);
 
     return {
       request: { ...toLegacyAccessApprovalRequest(request), policyId: delegatedPolicy.policyId },
       projectId: request.projectId,
-      delegatedApprovalType: delegatedPolicy.type
+      delegatedApprovalType: delegatedPolicy.type,
+      ...auditDetails
     };
   };
 
@@ -913,10 +950,12 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     });
 
     const cancelled = await $findRequestByIdFromPrimary(requestId);
+    const auditDetails = await $describeRequestForAudit(cancelled);
 
     return {
       request: { ...toLegacyAccessApprovalRequest(cancelled), policyId },
-      projectId: request.projectId
+      projectId: request.projectId,
+      ...auditDetails
     };
   };
 

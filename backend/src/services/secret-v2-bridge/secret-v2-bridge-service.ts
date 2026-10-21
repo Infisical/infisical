@@ -123,7 +123,7 @@ import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
 
 type SecretMetricOp = {
-  duration: "read" | "write" | "delete";
+  duration: "read" | "write";
   write?: "create" | "update" | "delete";
 };
 
@@ -4032,11 +4032,11 @@ export const secretV2BridgeServiceFactory = ({
 
   return {
     createSecret: withSecretMetrics(createSecret, { duration: "write", write: "create" }),
-    deleteSecret: withSecretMetrics(deleteSecret, { duration: "delete", write: "delete" }),
+    deleteSecret: withSecretMetrics(deleteSecret, { duration: "write", write: "delete" }),
     updateSecret: withSecretMetrics(updateSecret, { duration: "write", write: "update" }),
     createManySecret: withSecretMetrics(createManySecret, { duration: "write", write: "create" }),
     updateManySecret: withSecretMetrics(updateManySecret, { duration: "write", write: "update" }),
-    deleteManySecret: withSecretMetrics(deleteManySecret, { duration: "delete", write: "delete" }),
+    deleteManySecret: withSecretMetrics(deleteManySecret, { duration: "write", write: "delete" }),
     getSecrets: withSecretMetrics(getSecrets, { duration: "read" }),
     getSecretByName,
     getSecretVersions,

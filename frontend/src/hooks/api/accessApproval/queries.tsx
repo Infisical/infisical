@@ -6,6 +6,7 @@ import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import { DelegatedApprovalRequestStatus } from "../delegatedApprovals/enums";
 import { TProjectPermission } from "../roles/types";
+import { hasDelegatedDispatchRetries } from "./retrying-delegated-dispatch";
 import {
   TAccessApprovalPolicy,
   TAccessApprovalRequest,
@@ -141,6 +142,7 @@ export const useGetAccessApprovalRequests = ({
     refetchInterval:
       options?.refetchInterval ??
       ((query) =>
+        hasDelegatedDispatchRetries() ||
         query.state.data?.some(
           (request) =>
             request.delegatedApproval?.status === DelegatedApprovalRequestStatus.PendingDispatch

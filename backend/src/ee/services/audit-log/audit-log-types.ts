@@ -7175,7 +7175,12 @@ interface AccessApprovalRequestDelegatedDispatchRetryEvent {
   metadata: {
     requestId: string;
     requestedByUserId: string;
+    requestedByUserName: string;
+    requestedByUserEmail: string;
     policyId: string;
+    policyName: string;
+    environment: string;
+    secretPath: string;
     delegatedApprovalType: string;
   };
 }
@@ -7185,7 +7190,12 @@ interface AccessApprovalRequestCancelEvent {
   metadata: {
     requestId: string;
     requestedByUserId: string;
+    requestedByUserName: string;
+    requestedByUserEmail: string;
     policyId: string;
+    policyName: string;
+    environment: string;
+    secretPath: string;
   };
 }
 
