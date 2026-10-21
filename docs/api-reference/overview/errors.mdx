@@ -31,7 +31,7 @@ A few endpoints implement well-known protocols and return the error shape those 
 
 - **OAuth 2.0 token endpoints** (for example, `POST /api/v1/oauth/token`) return `{ error, error_description }` per [RFC 6749 §5.2](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2)
 - **SCIM endpoints** (`/api/v1/scim/...`) return the SCIM error object (`schemas`, `status`, `detail`, `scimType`) per [RFC 7644 §3.12](https://datatracker.ietf.org/doc/html/rfc7644#section-3.12)
-- **ACME endpoints** (`/api/v1/pki/acme/...`) return `application/problem+json` per [RFC 8555 §6.7](https://datatracker.ietf.org/doc/html/rfc8555#section-6.7)
+- **ACME endpoints** (`/api/v1/cert-manager/acme/...`) return `application/problem+json` per [RFC 8555 §6.7](https://datatracker.ietf.org/doc/html/rfc8555#section-6.7)
 
 ## Common status codes
 
