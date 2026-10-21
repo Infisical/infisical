@@ -5110,6 +5110,18 @@
       "destination": "/documentation/getting-started/set-up-with-ai"
     },
     {
+      "source": "/documentation/getting-started/cli",
+      "destination": "/cli/usage"
+    },
+    {
+      "source": "/documentation/getting-started/docker",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/documentation/getting-started/sdks",
+      "destination": "/sdks/overview"
+    },
+    {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"
     },
