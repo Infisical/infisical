@@ -1,4 +1,4 @@
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
@@ -17,13 +17,9 @@ import {
 } from "@app/services/event-outbox/event-outbox-types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import {
-  APPLICATION_APPROVAL_SCOPES,
-  TApplicationMembershipCleanupServiceFactory
-} from "@app/services/membership/application-membership-cleanup-service";
+import { APPLICATION_APPROVAL_SCOPES } from "@app/services/membership/application-membership-cleanup-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
-import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 
@@ -53,10 +49,6 @@ export type TOrgAccessReconcileConsumerDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
-  applicationMembershipCleanupService: Pick<
-    TApplicationMembershipCleanupServiceFactory,
-    "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
-  >;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -64,7 +56,13 @@ export type TOrgAccessReconcileConsumerDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
-type TRevokedActor = { userId?: string; identityId?: string; projectIds: string[] };
+type TRevokedResource = { projectId: string; resourceType: string; resourceId: string };
+type TRevokedActor = {
+  userId?: string;
+  identityId?: string;
+  projectIds: string[];
+  resources: TRevokedResource[];
+};
 type TReconcileScope = { orgIds: string[]; actors: TOrgMembershipActor[]; groupId?: string };
 
 const splitActors = (actors: TOrgMembershipActor[]) => ({
@@ -88,7 +86,6 @@ export const orgAccessReconcileConsumerFactory = ({
   additionalPrivilegeDAL,
   projectKeyDAL,
   approvalPolicyDAL,
-  applicationMembershipCleanupService,
   alertChannelRecipientDAL,
   pamSessionDAL,
   gatewayV2Service,
@@ -149,15 +146,34 @@ export const orgAccessReconcileConsumerFactory = ({
         ? await membershipDAL.find({ ...projectScope, $in: { actorIdentityId: identityIds } }, { tx })
         : [];
 
-      const membershipIds = [...userRows, ...identityRows].map((row) => row.id);
+      // Everything below is keyed on actor + project rather than on a project membership, and may exist for
+      // projects reached only through a group (a group-derived PAM admin creating a folder gets a personal
+      // folder-admin row with no project row), so reap across the whole org or it reactivates on re-add.
+      const orgProjectIds = (await projectDAL.find({ orgId }, { tx })).map((project) => project.id);
+      const resourceScope = { scope: RESOURCE_SCOPE };
+      const userResourceRows =
+        orgProjectIds.length && userIds.length
+          ? await membershipDAL.find(
+              { ...resourceScope, $in: { scopeProjectId: orgProjectIds, actorUserId: userIds } },
+              { tx }
+            )
+          : [];
+      const identityResourceRows =
+        orgProjectIds.length && identityIds.length
+          ? await membershipDAL.find(
+              { ...resourceScope, $in: { scopeProjectId: orgProjectIds, actorIdentityId: identityIds } },
+              { tx }
+            )
+          : [];
+
+      const membershipIds = [...userRows, ...identityRows, ...userResourceRows, ...identityResourceRows].map(
+        (row) => row.id
+      );
       if (membershipIds.length) {
         await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
         await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
       }
 
-      // keyed on actor + project, not on a membership, and may exist for projects reached only through a
-      // group; reap across the whole org so nothing reactivates on re-add
-      const orgProjectIds = (await projectDAL.find({ orgId }, { tx })).map((project) => project.id);
       if (orgProjectIds.length && userIds.length) {
         await additionalPrivilegeDAL.delete({ $in: { actorUserId: userIds, projectId: orgProjectIds } }, tx);
         await projectKeyDAL.delete({ $in: { receiverId: userIds, projectId: orgProjectIds } }, tx);
@@ -168,24 +184,6 @@ export const orgAccessReconcileConsumerFactory = ({
       }
       if (orgProjectIds.length && identityIds.length) {
         await additionalPrivilegeDAL.delete({ $in: { actorIdentityId: identityIds, projectId: orgProjectIds } }, tx);
-      }
-
-      const userRowsByProject = groupBy(userRows, (row) => row.scopeProjectId as string);
-      for await (const [projectId, rows] of Object.entries(userRowsByProject)) {
-        await applicationMembershipCleanupService.cleanupUsersApplicationMemberships(
-          { projectId, userIds: rows.map((row) => row.actorUserId as string) },
-          tx
-        );
-      }
-      for await (const row of identityRows) {
-        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
-          {
-            projectId: row.scopeProjectId as string,
-            actorKind: ApplicationMemberKind.Identity,
-            actorId: row.actorIdentityId as string
-          },
-          tx
-        );
       }
 
       if (userIds.length) {
@@ -200,16 +198,23 @@ export const orgAccessReconcileConsumerFactory = ({
         tx
       });
 
-      const projectIdsOf = (rows: typeof userRows) => rows.map((row) => row.scopeProjectId as string);
+      const toRevoked = (rows: typeof userRows) => ({
+        projectIds: rows.filter((row) => row.scope === AccessScope.Project).map((row) => row.scopeProjectId as string),
+        resources: rows
+          .filter((row) => row.scope === RESOURCE_SCOPE)
+          .map((row) => ({
+            projectId: row.scopeProjectId as string,
+            resourceType: row.scopeResourceType as string,
+            resourceId: row.scopeResourceId as string
+          }))
+      });
       const revoked: TRevokedActor[] = [
-        ...Object.entries(groupBy(userRows, (row) => row.actorUserId as string)).map(([userId, rows]) => ({
-          userId,
-          projectIds: projectIdsOf(rows)
-        })),
-        ...Object.entries(groupBy(identityRows, (row) => row.actorIdentityId as string)).map(([identityId, rows]) => ({
-          identityId,
-          projectIds: projectIdsOf(rows)
-        }))
+        ...Object.entries(groupBy([...userRows, ...userResourceRows], (row) => row.actorUserId as string)).map(
+          ([userId, rows]) => ({ userId, ...toRevoked(rows) })
+        ),
+        ...Object.entries(
+          groupBy([...identityRows, ...identityResourceRows], (row) => row.actorIdentityId as string)
+        ).map(([identityId, rows]) => ({ identityId, ...toRevoked(rows) }))
       ];
       return { revoked, sendPamCancellations };
     });
@@ -220,13 +225,13 @@ export const orgAccessReconcileConsumerFactory = ({
     // at-least-once delivery: a replay finds no rows and returns above, so these fire once
     if (!outcome.revoked.length) return;
 
-    for await (const { projectIds, ...actor } of outcome.revoked) {
+    for await (const { projectIds, resources, ...actor } of outcome.revoked) {
       await auditLogService.createAuditLog({
         orgId,
         actor: { type: ActorType.PLATFORM, metadata: {} },
         event: {
           type: EventType.REVOKE_ORG_PROJECT_ACCESS,
-          metadata: { ...actor, projectIds, reason, groupId: scope.groupId }
+          metadata: { ...actor, projectIds, resources, reason, groupId: scope.groupId }
         }
       });
     }

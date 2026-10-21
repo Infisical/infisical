@@ -904,10 +904,13 @@ membership can't tell on its own whether the actor still reaches the org.
   `org-access-reconcile-sweep` cron is a backstop, not a substitute.
 - **The consumer (`org-access-reconcile`) subscribes to all four, works out the orgs and actors to recheck**
   (from the payload for the three group events, the org plus its sub-orgs for an org membership removal) **and recomputes from current state**,
-  one short transaction per org. Actors with no path left lose their project rows in that org, plus privileges, project keys and
-  application approver slots across every project of the org, since those are keyed on actor + project
-  and may exist for group-only projects. PAM cancellations, the `revoke-org-project-access` audit event
-  and the usage meters fire after commit, only when rows were removed, so a replay logs nothing.
+  one short transaction per org. Actors with no path left lose their project rows in that org, plus privileges, project keys,
+  application approver slots and resource-scope memberships (PAM folders and accounts, Agent Vault, PKI
+  applications, signers) across every project of the org, since those are keyed on actor + project and may
+  exist for group-only projects: a group-derived PAM admin who creates a folder gets a personal
+  folder-admin row with no project row behind it. PAM cancellations, the `revoke-org-project-access` audit event
+  (`projectIds` for project memberships, `resources` for resource grants) and the usage meters fire after
+  commit, only when rows were removed, so a replay logs nothing.
 - **It's not on the enforcement path.** Token validation already rejects an actor with no effective org
   membership (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat
   counts and SCIM reads.

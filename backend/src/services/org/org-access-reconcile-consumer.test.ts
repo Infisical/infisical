@@ -1,8 +1,7 @@
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
-import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 
 import { orgAccessReconcileConsumerFactory } from "./org-access-reconcile-consumer";
 import {
@@ -37,11 +36,19 @@ const makeEvent = (eventType: string, payload: Record<string, unknown>, id = 1):
 const userRemovedFromOrg = (orgId = ORG_ID) =>
   makeEvent(ORG_MEMBERSHIP_REMOVED_EVENT, { orgId, actorType: ActorType.USER, actorId: USER_ID });
 
-type TRow = { id: string; actorUserId?: string; actorIdentityId?: string; scopeProjectId: string };
+type TRow = {
+  id: string;
+  actorUserId?: string;
+  actorIdentityId?: string;
+  scopeProjectId: string;
+  scopeResourceType?: string;
+  scopeResourceId?: string;
+};
 
 const build = (opts?: {
   withAccess?: { userIds?: string[]; identityIds?: string[] };
   projectRows?: TRow[];
+  resourceRows?: TRow[];
   orgs?: Record<string, unknown>;
   childOrgs?: string[];
 }) => {
@@ -63,10 +70,10 @@ const build = (opts?: {
     },
     projectDAL: { find: vi.fn().mockResolvedValue([{ id: PROJECT_A }, { id: PROJECT_B }, { id: PROJECT_C }]) },
     membershipDAL: {
-      find: vi.fn((filter: { $in?: { actorUserId?: string[]; actorIdentityId?: string[] } }) => {
-        const rows = opts?.projectRows ?? [];
-        if (filter.$in?.actorUserId) return Promise.resolve(rows.filter((row) => Boolean(row.actorUserId)));
-        return Promise.resolve(rows.filter((row) => Boolean(row.actorIdentityId)));
+      find: vi.fn((filter: { scope: string; $in?: { actorUserId?: string[]; actorIdentityId?: string[] } }) => {
+        const rows = (filter.scope === RESOURCE_SCOPE ? opts?.resourceRows : opts?.projectRows) ?? [];
+        const ofKind = rows.filter((row) => Boolean(filter.$in?.actorUserId ? row.actorUserId : row.actorIdentityId));
+        return Promise.resolve(ofKind.map((row) => ({ ...row, scope: filter.scope })));
       }),
       delete: vi.fn().mockResolvedValue([]),
       transaction: vi.fn(async (cb: (trx: unknown) => Promise<unknown>) => cb(tx))
@@ -75,10 +82,6 @@ const build = (opts?: {
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue([]) },
     projectKeyDAL: { delete: vi.fn().mockResolvedValue([]) },
     approvalPolicyDAL: { deleteUserStepApproversInProjects: vi.fn().mockResolvedValue(undefined) },
-    applicationMembershipCleanupService: {
-      cleanupActorApplicationMemberships: vi.fn().mockResolvedValue(undefined),
-      cleanupUsersApplicationMemberships: vi.fn().mockResolvedValue(undefined)
-    },
     alertChannelRecipientDAL: { pruneOutOfScopeRecipients: vi.fn().mockResolvedValue(0) },
     pamSessionDAL: { findLiveByOrgAndUserIds: vi.fn(), update: vi.fn() },
     gatewayV2Service: { getPAMConnectionDetails: vi.fn() },
@@ -230,7 +233,6 @@ describe("org access reconcile consumer", () => {
       expect.objectContaining({ projectIds: allProjects, userIds: [USER_ID] }),
       tx
     );
-    expect(deps.applicationMembershipCleanupService.cleanupUsersApplicationMemberships).toHaveBeenCalledTimes(2);
     expect(deps.alertChannelRecipientDAL.pruneOutOfScopeRecipients).toHaveBeenCalledWith({ userIds: [USER_ID] }, tx);
     expect(terminatePamSessionsForUsers).toHaveBeenCalledWith(
       expect.objectContaining({ orgIds: [ORG_ID], userIds: [USER_ID], tx })
@@ -246,6 +248,7 @@ describe("org access reconcile consumer", () => {
           metadata: {
             userId: USER_ID,
             projectIds: [PROJECT_A, PROJECT_B],
+            resources: [],
             reason: ORG_MEMBERSHIP_REMOVED_EVENT,
             groupId: undefined
           }
@@ -255,9 +258,18 @@ describe("org access reconcile consumer", () => {
     expect(deps.usageMeteringService.emit).toHaveBeenCalledTimes(3);
   });
 
-  test("revokes an identity's rows and application memberships and logs it under the identity with the group", async () => {
+  test("revokes an identity's rows and resource grants and logs it under the identity with the group", async () => {
     const { consumer, deps, tx } = build({
-      projectRows: [{ id: uuid(102), actorIdentityId: IDENTITY_ID, scopeProjectId: PROJECT_A }]
+      projectRows: [{ id: uuid(102), actorIdentityId: IDENTITY_ID, scopeProjectId: PROJECT_A }],
+      resourceRows: [
+        {
+          id: uuid(202),
+          actorIdentityId: IDENTITY_ID,
+          scopeProjectId: PROJECT_A,
+          scopeResourceType: "pam-account",
+          scopeResourceId: uuid(302)
+        }
+      ]
     });
 
     const [result] = await consumer.handle([
@@ -269,13 +281,16 @@ describe("org access reconcile consumer", () => {
     ]);
 
     expect(result.status).toBe(EventResultStatus.Delivered);
-    expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: [uuid(102)] } }, tx);
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+      {
+        scope: RESOURCE_SCOPE,
+        $in: { scopeProjectId: [PROJECT_A, PROJECT_B, PROJECT_C], actorIdentityId: [IDENTITY_ID] }
+      },
+      { tx }
+    );
+    expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: [uuid(102), uuid(202)] } }, tx);
     expect(deps.additionalPrivilegeDAL.delete).toHaveBeenCalledWith(
       { $in: { actorIdentityId: [IDENTITY_ID], projectId: [PROJECT_A, PROJECT_B, PROJECT_C] } },
-      tx
-    );
-    expect(deps.applicationMembershipCleanupService.cleanupActorApplicationMemberships).toHaveBeenCalledWith(
-      { projectId: PROJECT_A, actorKind: ApplicationMemberKind.Identity, actorId: IDENTITY_ID },
       tx
     );
     expect(deps.projectKeyDAL.delete).not.toHaveBeenCalled();
@@ -285,9 +300,40 @@ describe("org access reconcile consumer", () => {
     expect(auditCall.event.metadata).toMatchObject({
       identityId: IDENTITY_ID,
       projectIds: [PROJECT_A],
+      resources: [{ projectId: PROJECT_A, resourceType: "pam-account", resourceId: uuid(302) }],
       reason: GROUP_REMOVED_EVENT,
       groupId: GROUP_ID
     });
+  });
+
+  test("reaps a resource grant in a project the user only reached through a group, and logs it", async () => {
+    // a group-derived PAM admin who created a folder holds a personal folder-admin row but no project row
+    const { consumer, deps, tx } = build({
+      resourceRows: [
+        {
+          id: uuid(203),
+          actorUserId: USER_ID,
+          scopeProjectId: PROJECT_C,
+          scopeResourceType: "pam-folder",
+          scopeResourceId: uuid(303)
+        }
+      ]
+    });
+
+    const [result] = await consumer.handle([userRemovedFromOrg()]);
+
+    expect(result.status).toBe(EventResultStatus.Delivered);
+    expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith({ $in: { membershipId: [uuid(203)] } }, tx);
+    expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: [uuid(203)] } }, tx);
+    const [auditCall] = deps.auditLogService.createAuditLog.mock.calls[0] as [
+      { event: { metadata: Record<string, unknown> } }
+    ];
+    expect(auditCall.event.metadata).toMatchObject({
+      userId: USER_ID,
+      projectIds: [],
+      resources: [{ projectId: PROJECT_C, resourceType: "pam-folder", resourceId: uuid(303) }]
+    });
+    expect(deps.usageMeteringService.emit).toHaveBeenCalledTimes(3);
   });
 
   test("a replay that finds no project rows left writes no audit entry and emits no meters", async () => {

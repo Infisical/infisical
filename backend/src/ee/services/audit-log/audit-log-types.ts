@@ -2941,7 +2941,11 @@ interface RevokeOrgProjectAccessEvent {
   metadata: {
     userId?: string;
     identityId?: string;
+    // projects whose membership was removed
     projectIds: string[];
+    // resource-level grants removed (PAM folders and accounts, Agent Vault, PKI applications, signers),
+    // including ones in projects the actor only reached through a group
+    resources: { projectId: string; resourceType: string; resourceId: string }[];
     reason: string;
     groupId?: string;
   };

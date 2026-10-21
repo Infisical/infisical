@@ -3197,7 +3197,6 @@ export const registerRoutes = async (
       additionalPrivilegeDAL,
       projectKeyDAL,
       approvalPolicyDAL,
-      applicationMembershipCleanupService,
       alertChannelRecipientDAL,
       pamSessionDAL,
       gatewayV2Service,
