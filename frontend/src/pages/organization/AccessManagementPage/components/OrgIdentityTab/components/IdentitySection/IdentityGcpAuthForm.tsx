@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -54,7 +55,19 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       accessTokenTrustedIps: trustedIpsSchema
     })
     .required()
-    .superRefine(superRefineAccessTokenTtl);
+    .superRefine(superRefineAccessTokenTtl)
+    .superRefine((data, ctx) => {
+      const hasServiceAccounts = Boolean(data.allowedServiceAccounts.trim());
+      const hasProjects = data.type === "gce" && Boolean(data.allowedProjects.trim());
+      if (!hasServiceAccounts && !hasProjects) {
+        const message =
+          "Configure at least one allowed GCP service account, or for GCE identities an allowed project.";
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["allowedServiceAccounts"], message });
+        if (data.type === "gce") {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["allowedProjects"], message });
+        }
+      }
+    });
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
@@ -247,7 +260,7 @@ export const IdentityGcpAuthForm = ({
               render={({ field, fieldState: { error } }) => (
                 <Field>
                   <FieldLabel htmlFor="allowedServiceAccounts">
-                    Allowed Service Account Emails (optional)
+                    Allowed Service Account Emails
                   </FieldLabel>
                   <Input
                     {...field}
@@ -256,6 +269,11 @@ export const IdentityGcpAuthForm = ({
                     type="text"
                     isError={Boolean(error)}
                   />
+                  <FieldDescription>
+                    {watchedType === "gce"
+                      ? "At least one of allowed service account emails or allowed projects is required."
+                      : "Required for GCP IAM Auth."}
+                  </FieldDescription>
                   <FieldError>{error?.message}</FieldError>
                 </Field>
               )}
@@ -266,13 +284,17 @@ export const IdentityGcpAuthForm = ({
                 name="allowedProjects"
                 render={({ field, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel htmlFor="allowedProjects">Allowed Projects (optional)</FieldLabel>
+                    <FieldLabel htmlFor="allowedProjects">Allowed Projects</FieldLabel>
                     <Input
                       {...field}
                       id="allowedProjects"
                       placeholder="my-gcp-project, ..."
                       isError={Boolean(error)}
                     />
+                    <FieldDescription>
+                      At least one of allowed service account emails or allowed projects is
+                      required.
+                    </FieldDescription>
                     <FieldError>{error?.message}</FieldError>
                   </Field>
                 )}
