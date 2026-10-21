@@ -278,6 +278,50 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * The owner's live project admin roles, direct or through a group they are in, taken FOR SHARE with their membership
+   * rows. A demotion or a removal deletes these rows in its own transaction, so this waits for one in flight and then
+   * sees the rows gone.
+   */
+  const lockAdminRolesForOwner = async (
+    { projectId, owner }: { projectId: string; owner: TAgentVaultOwner },
+    tx: Knex
+  ): Promise<{ id: string }[]> => {
+    try {
+      return (await tx(TableName.Membership)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.isActive`, true)
+        .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+        .where((live) => {
+          void live
+            .where(`${TableName.MembershipRole}.isTemporary`, false)
+            .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", tx.fn.now());
+        })
+        .where((holder) => {
+          void holder
+            .where(
+              owner.userId ? `${TableName.Membership}.actorUserId` : `${TableName.Membership}.actorIdentityId`,
+              (owner.userId ?? owner.identityId) as string
+            )
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, function ownerGroups() {
+              if (owner.userId) {
+                void this.select("groupId").from(TableName.UserGroupMembership).where({ userId: owner.userId });
+              } else {
+                void this.select("groupId")
+                  .from(TableName.IdentityGroupMembership)
+                  .where({ identityId: owner.identityId as string });
+              }
+            });
+        })
+        .forShare()
+        .select(`${TableName.MembershipRole}.id`)) as { id: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault admin roles for owner" });
+    }
+  };
+
   // Every member's values for the service, except those for the fields still left to members.
   const deleteForServiceExceptFields = async (
     { serviceId, keepFields }: { serviceId: string; keepFields: string[] },
@@ -301,7 +345,8 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     lockForOwnerAndService,
     findForResolve,
     deleteForActorsWithoutGrant,
-    lockGrantsForOwner
+    lockGrantsForOwner,
+    lockAdminRolesForOwner
   };
 };
 

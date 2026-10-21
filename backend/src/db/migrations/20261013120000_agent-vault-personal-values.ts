@@ -5,6 +5,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 const PROJECT_KEY_UNIQUE = "agent_vault_variables_projectid_key_unique";
 const GLOBAL_KEY_UNIQUE = "agent_vault_variables_global_key_unique";
+const SERVICE_REFERENCE_VARIABLE_FK = "agent_vault_service_variable_references_variableid_foreign";
 const USER_KEY_UNIQUE = "agent_vault_variables_user_key_unique";
 const IDENTITY_KEY_UNIQUE = "agent_vault_variables_identity_key_unique";
 
@@ -155,7 +156,15 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.AgentVaultVariable, "userId")) {
     await knex.raw(`DROP VIEW IF EXISTS analytics.??`, [TableName.AgentVaultVariable]);
     // Variables of one owner can't move into the global namespace, where their keys may clash.
-    await knex(TableName.AgentVaultVariable).whereNotNull("userId").orWhereNotNull("identityId").delete();
+    await knex(TableName.AgentVaultVariable)
+      .where((owned) => {
+        void owned.whereNotNull("userId").orWhereNotNull("identityId");
+      })
+      .delete();
+    // The delete queues the deferred reference check, and Postgres won't alter a table with one pending. Run it now,
+    // then put the constraint back to deferred for the rest of the batch.
+    await knex.raw(`SET CONSTRAINTS ?? IMMEDIATE`, [SERVICE_REFERENCE_VARIABLE_FK]);
+    await knex.raw(`SET CONSTRAINTS ?? DEFERRED`, [SERVICE_REFERENCE_VARIABLE_FK]);
     await knex.raw(`DROP INDEX IF EXISTS ??`, [GLOBAL_KEY_UNIQUE]);
     await knex.raw(`DROP INDEX IF EXISTS ??`, [USER_KEY_UNIQUE]);
     await knex.raw(`DROP INDEX IF EXISTS ??`, [IDENTITY_KEY_UNIQUE]);

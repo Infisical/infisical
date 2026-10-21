@@ -237,15 +237,19 @@ export const agentVaultPersonalValueServiceFactory = ({
         ) {
           throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
         }
-        // A member reaches the bundle only through a grant, and a revoke clears what they saved. Saving under the
-        // grant's lock means a revoke can't land between the reach check above and this write and leave values
-        // behind. An admin reaches every bundle without one.
-        if (!isAdmin) {
-          const grants = await agentVaultPersonalValueDAL.lockGrantsForOwner(
-            { projectId: dto.projectId, accessBundleId: service.accessBundleId, owner },
-            tx
-          );
-          if (!grants.length) throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
+        // A revoke, a removal or a demotion clears what the caller saved on bundles they lose. Saving under the lock
+        // of whatever grants the reach (a grant, or for an admin without one, their admin role) means none of those
+        // can land between the reach check above and this write and leave values behind.
+        const grants = await agentVaultPersonalValueDAL.lockGrantsForOwner(
+          { projectId: dto.projectId, accessBundleId: service.accessBundleId, owner },
+          tx
+        );
+        const adminRoles =
+          !grants.length && isAdmin
+            ? await agentVaultPersonalValueDAL.lockAdminRolesForOwner({ projectId: dto.projectId, owner }, tx)
+            : [];
+        if (!grants.length && !adminRoles.length) {
+          throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
         }
 
         // A field left out keeps its saved value, so a member adds a newly required field without retyping the rest.

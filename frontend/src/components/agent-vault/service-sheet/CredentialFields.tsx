@@ -29,7 +29,6 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -298,7 +297,7 @@ const MemberProvidedToggle = ({
             className="size-3.5 text-muted"
           />
         </HoverCardTrigger>
-        <HoverCardContent className="w-80 text-xs">
+        <HoverCardContent className="w-80">
           <p>Choose who sets the {label.toLowerCase()} the proxy sends for this service.</p>
           <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
             <li>Off: you set the {label.toLowerCase()} here, and every session uses it.</li>
@@ -318,9 +317,7 @@ const MemberProvidedToggle = ({
           </a>
         </HoverCardContent>
       </HoverCard>
-      <Label htmlFor={id} className="text-xs font-normal text-muted">
-        Member provided
-      </Label>
+      <FieldLabel htmlFor={id}>Member provided</FieldLabel>
       <Toggle id={id} size="sm" variant="av" checked={isOn} onCheckedChange={onChange} />
     </div>
   );

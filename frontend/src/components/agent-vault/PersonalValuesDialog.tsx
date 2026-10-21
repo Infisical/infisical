@@ -340,7 +340,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
               })}
 
               <DialogFooter className="sm:justify-between">
-                {personalValues?.isConfigured ? (
+                {savedFields.size > 0 ? (
                   <Button type="button" variant="danger" onClick={() => setIsRemoveOpen(true)}>
                     Remove
                   </Button>

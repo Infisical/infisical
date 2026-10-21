@@ -241,6 +241,21 @@ const createMemberIdentity = async (name: string) => {
   };
 };
 
+// Resolves once a backend waits on a lock the given one holds: by then a request has done everything it
+// does before the lock and is queued behind it.
+const waitUntilBlockedBy = async (pid: number, attemptsLeft = 200): Promise<void> => {
+  const { rows } = await testDb.raw(
+    "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
+    [pid]
+  );
+  if (rows[0].waiting > 0) return;
+  if (attemptsLeft === 0) throw new Error(`No request queued behind the lock held by backend ${pid}`);
+  await new Promise((resolve) => {
+    setTimeout(resolve, 25);
+  });
+  await waitUntilBlockedBy(pid, attemptsLeft - 1);
+};
+
 // Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
 const createProxyCaPem = async () => {
   const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
@@ -977,21 +992,6 @@ describe("Agent Vault V1 Router", async () => {
         return `${row.serviceId} ${row.field}${target ? `:${target}` : ""} ${row.variableId}`;
       });
       expect(actual.sort()).toEqual(expected.sort());
-    };
-
-    // Resolves once a backend waits on a lock the given one holds: by then a request has done everything it
-    // does before the lock and is queued behind it.
-    const waitUntilBlockedBy = async (pid: number, attemptsLeft = 200): Promise<void> => {
-      const { rows } = await testDb.raw(
-        "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
-        [pid]
-      );
-      if (rows[0].waiting > 0) return;
-      if (attemptsLeft === 0) throw new Error(`No request queued behind the lock held by backend ${pid}`);
-      await new Promise((resolve) => {
-        setTimeout(resolve, 25);
-      });
-      await waitUntilBlockedBy(pid, attemptsLeft - 1);
     };
 
     test("a service uses a variable by key, and resolve puts the value in its place", async () => {
@@ -2260,6 +2260,47 @@ describe("Agent Vault V1 Router", async () => {
         expect(await testDb("agent_vault_personal_values").where({ identityId: member.id })).toHaveLength(0);
       } finally {
         await member.cleanup();
+      }
+    });
+
+    test("an admin's save on a bundle they hold no grant on waits for a demotion, then 404s", async () => {
+      const bundle = await createAccessBundle("mp-admin-race");
+      const service = await createService(bundle.id, {
+        name: "vercel",
+        hostPattern: "api.vercel.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+
+      const admin = await createMemberIdentity(`mp-admin-race-${Date.now()}`);
+      try {
+        expect(
+          (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [admin.id], role: "admin" }))
+            .statusCode
+        ).toBe(200);
+        const membership = await testDb("memberships").where({ scope: "project", actorIdentityId: admin.id }).first();
+
+        // What a demotion does: replace the admin role, and hold it until it commits.
+        const trx = await testDb.transaction();
+        let pending: ReturnType<typeof setValues> | undefined;
+        try {
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          await trx("membership_roles").where({ membershipId: membership.id }).delete();
+          await trx("membership_roles").insert({ membershipId: membership.id, role: "member" });
+
+          pending = setValues(admin.as, bundle.id, service.id, { "credential-value": "raced" });
+          await waitUntilBlockedBy(rows[0].pid);
+          await trx.commit();
+
+          expect((await pending).statusCode).toBe(404);
+        } catch (err) {
+          if (!trx.isCompleted()) await trx.rollback();
+          // Let the save finish before cleanup, so a failure here doesn't leave state for the tests after it.
+          await pending?.catch(() => undefined);
+          throw err;
+        }
+        expect(await testDb("agent_vault_personal_values").where({ identityId: admin.id })).toHaveLength(0);
+      } finally {
+        await admin.cleanup();
       }
     });
 

@@ -265,7 +265,10 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   change); an older proxy that ignores the flag forwards the request without a credential, never with the admin's.
 - **A save is a PATCH**: a field sent replaces that field's saved value, a field left out keeps it, and every
   member-provided field must be set once it's applied. The save takes the service row `FOR SHARE` and re-checks
-  the fields it validated against, so an admin changing them either waits for it or makes it 409.
+  the fields it validated against, so an admin changing them either waits for it or makes it 409. It also takes
+  whatever grants the caller's reach `FOR SHARE`: their grants on the bundle, or for an admin without one, their
+  admin role rows. A revoke, removal or demotion then either waits for the save and clears it, or lands first and
+  the save 404s.
 - **A service update deletes only the values that no longer apply**, in the same transaction that writes the
   service row: a credential type change deletes every member's values for the service, and taking a field back
   from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only
