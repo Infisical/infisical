@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Repository-wide guidance for coding agents working in Infisical. Packages and subsystems have their own `AGENTS.md` files, listed in [Where guidance lives](#where-guidance-lives). Read the ones that cover the code you are changing.
+Repository-wide guidance for coding agents working in Infisical. Packages and subsystems have their own `AGENTS.md` files. Read the ones that cover the code you are changing, starting from the table below.
 
 ## Essential Commands
 
@@ -14,46 +14,19 @@ Both backend and frontend use `@app/*` as path alias to `./src/*`.
 
 ## Repository Structure
 
-Infisical is an open-source secret management platform. Monorepo layout:
+Infisical is an open-source secret management platform. Each package below has its own `AGENTS.md`; read it before working there.
 
-```
-infisical/
-├── backend/               # Fastify 4 API server (see backend/AGENTS.md)
-├── backend-go/            # Go API server — partial rewrite (see backend-go/AGENTS.md)
-├── frontend/              # React 19 SPA (see frontend/AGENTS.md)
-├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/AGENTS.md)
-├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/AGENTS.md)
-├── tests/                 # Go blackbox suite — real containers, HTTP only (see tests/AGENTS.md)
-├── docs/                  # Documentation site (Mintlify-based)
-├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
-├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
-├── docker-compose.prod.yml       # Production deployment stack
-├── docker-compose.bdd.yml        # BDD testing environment
-├── docker-compose.e2e-dbs.yml    # E2E test databases (Oracle, SAP, Snowflake, etc.)
-├── Dockerfile.standalone-infisical       # Standalone image (frontend + backend)
-├── Dockerfile.fips.standalone-infisical  # FIPS-compliant standalone image
-├── .github/               # CI workflows, PR template
-└── AGENTS.md               # This file
-```
+| Directory | What it is |
+|---|---|
+| [`backend/`](backend/AGENTS.md) | Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. Its `AGENTS.md` links the subsystem files under `backend/src/`. |
+| [`backend-go/`](backend-go/AGENTS.md) | Go API server (partial rewrite), chi + chita, raw pgx queries, same PostgreSQL database. |
+| [`frontend/`](frontend/AGENTS.md) | React 19 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. |
+| `wasm/<crate>/` | Rust crates compiled to WASM for the frontend, with bindings committed under `frontend/src/lib/<crate>/`. Run the rebuild command in the crate's `AGENTS.md` (e.g. [`wasm/ironrdp-decoder/AGENTS.md`](wasm/ironrdp-decoder/AGENTS.md)) after any change to its `src/` or `Cargo.toml`. |
+| [`e2e/`](e2e/AGENTS.md) | Playwright suite against a deployed gamma; a failure blocks every prod deploy. Distinct from `backend/e2e-test/` (in-process Vitest). |
+| [`tests/`](tests/AGENTS.md) | Go blackbox suite: a real Infisical in Docker, HTTP only, so it runs against the Node and Go servers unchanged. |
+| [`docs/`](docs/AGENTS.md) | Mintlify documentation site, with its own Dockerfile. Reference it for up-to-date feature descriptions and API usage. |
 
-- **`backend/`** — Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/AGENTS.md`](backend/AGENTS.md) for architecture, patterns, and commands.
-- **`backend-go/`** — Go API server (partial rewrite), chi + chita framework, raw pgx queries, same PostgreSQL database. See [`backend-go/AGENTS.md`](backend-go/AGENTS.md) for architecture, patterns, and commands.
-- **`frontend/`** — React 19 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/AGENTS.md`](frontend/AGENTS.md) for architecture, patterns, and commands.
-- **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `AGENTS.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/AGENTS.md`](wasm/ironrdp-decoder/AGENTS.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
-- **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
-- **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/AGENTS.md`](e2e/AGENTS.md) for the harness and the one-time gamma bootstrap.
-
-- **`tests/`** — Go blackbox suite. Boots a real Infisical in Docker and talks to it over HTTP only, so the same tests run against the Node and Go servers unchanged. Distinct from `backend/e2e-test/` (in-process Vitest, compiled against the Node source) and from `e2e/` (Playwright against a deployed gamma). `make test-suites` from `tests/` runs everything; see [`tests/AGENTS.md`](tests/AGENTS.md) before writing one.
-
-Enterprise features live in `backend/src/ee/` (services and routes), registered before community routes so they can override/extend them.
-
-### Self-Hosted Deployment
-
-Infisical supports self-hosted deployment via Docker. Key considerations:
-- **`Dockerfile.standalone-infisical`** — single-container image with both frontend and backend; used for simple deployments.
-- **`Dockerfile.fips.standalone-infisical`** — FIPS 140-2 compliant variant for regulated environments. Be strict about not introducing dependencies that break FIPS compliance.
-- **`docker-compose.prod.yml`** — production compose with backend, PostgreSQL, and Redis.
-- New backend dependencies should be evaluated carefully — they affect container size, FIPS compliance, and the encryption boundary. Check `docs/` for self-hosted deployment documentation when in doubt.
+Also at the root: `build-versions.env` (see Dependency Policy), `docker-compose.{dev,prod,bdd,e2e-dbs}.yml`, `Dockerfile.standalone-infisical` and its FIPS variant (see the self-hosting notes in `backend/AGENTS.md`), and `.github/` (CI workflows, PR template). Skills live in `.agents/skills/`: `docs-style` (any work under `docs/`) and `testing-secrets-ui` (end-to-end checks of the secrets UI).
 
 ### Dependency Policy
 
@@ -65,51 +38,11 @@ file and the `ARG` defaults together.
 
 Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm packages (configured via `.npmrc` in each directory). This means `npm install` will only resolve package versions published at least 7 days ago, as a supply-chain security measure.
 
-The backend installs with the npm bundled in Node 26 (11.x), which skips dependency install scripts unless `allowScripts` in `backend/package.json` approves them. The install still succeeds when a script is skipped, so a native addon that was not approved fails only when it is first `require`d. When adding or bumping a dependency with an install script, run `npm install-scripts ls` and approve or deny what it lists (`npm install-scripts approve <pkg>`).
-
-## Where guidance lives
-
-Agents that load `AGENTS.md` files only for the directories they work in will not see a nested file until they open code under it. Use this table to find the one that applies.
-
-| Area | Read |
-|---|---|
-| Node backend: commands, testing, architecture, wiring | [`backend/AGENTS.md`](backend/AGENTS.md) |
-| Backend minimum quality bar, for every backend change | [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md) |
-| Alerting (shared module) | [`backend/src/services/alert/AGENTS.md`](backend/src/services/alert/AGENTS.md) |
-| Event outbox | [`backend/src/services/event-outbox/AGENTS.md`](backend/src/services/event-outbox/AGENTS.md) |
-| Permissions (CASL) | [`backend/src/ee/services/permission/AGENTS.md`](backend/src/ee/services/permission/AGENTS.md) |
-| Delegated OAuth tokens | [`backend/src/services/oauth-client/AGENTS.md`](backend/src/services/oauth-client/AGENTS.md) |
-| Provisioning identifiers and IdP profile sync | [`backend/src/services/user-alias/AGENTS.md`](backend/src/services/user-alias/AGENTS.md) |
-| Scheduled jobs (cron manager) | [`backend/src/lib/cron/AGENTS.md`](backend/src/lib/cron/AGENTS.md) |
-| Audit log storage and event classes | [`backend/src/ee/services/audit-log/AGENTS.md`](backend/src/ee/services/audit-log/AGENTS.md) |
-| OpenTelemetry metrics | [`backend/src/lib/telemetry/AGENTS.md`](backend/src/lib/telemetry/AGENTS.md) |
-| PostHog product analytics (backend) | [`backend/src/services/telemetry/AGENTS.md`](backend/src/services/telemetry/AGENTS.md) and [`ANALYTICS.md`](ANALYTICS.md) |
-| Internal CA revocation (CRL, OCSP) and key sources | [`backend/src/services/certificate-authority/AGENTS.md`](backend/src/services/certificate-authority/AGENTS.md) |
-| Instance root encryption key | [`backend/src/services/kms/AGENTS.md`](backend/src/services/kms/AGENTS.md) |
-| PAM backend | [`backend/src/ee/services/pam/AGENTS.md`](backend/src/ee/services/pam/AGENTS.md) |
-| Agent Vault backend | [`backend/src/ee/services/agent-vault/AGENTS.md`](backend/src/ee/services/agent-vault/AGENTS.md) |
-| Go backend | [`backend-go/AGENTS.md`](backend-go/AGENTS.md) |
-| Frontend | [`frontend/AGENTS.md`](frontend/AGENTS.md) |
-| UI design system and product voice | [`DESIGN.md`](DESIGN.md) |
-| Shared frontend component deprecations | [`frontend/src/components/COMPONENT_LIFECYCLE.md`](frontend/src/components/COMPONENT_LIFECYCLE.md) |
-| WASM crates | `wasm/<crate>/AGENTS.md`, for example [`wasm/ironrdp-decoder/AGENTS.md`](wasm/ironrdp-decoder/AGENTS.md) |
-| Playwright suite against gamma | [`e2e/AGENTS.md`](e2e/AGENTS.md) |
-| Go blackbox API suite | [`tests/AGENTS.md`](tests/AGENTS.md) |
-| Documentation | the `docs-style` skill and [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) |
-
-Skills live in `.agents/skills/`: `docs-style` (any work under `docs/`) and `testing-secrets-ui` (end-to-end checks of the secrets UI).
-
-## Backend Code Quality
-
-**Read [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md) for every backend change, and check the change against it before calling the work done.** This applies to all work under `backend/`: new features, refactors, bug fixes, and reviews alike.
-
-It is a floor, not an exhaustive standard: user-understandable error messages and no pointless 500s, explicit validation on every API input, correct pagination when calling third-party APIs, avoiding deadlock conditions on a small connection pool (thread `tx`, keep transactions short), REST-aligned API interfaces, and audit log events an admin can actually read.
-
-That list describes what the guide currently covers; it is **not** a test for whether the guide applies. Do not skip it because a change does not look like one of those topics. Read it, then decide which items are relevant.
-
-Some of it needs judgment rather than a mechanical check. The deadlock rules cannot be caught by testing one request at a time. And a design that breaks REST should be raised with the author, with the conforming alternative proposed, rather than implemented silently or quietly "fixed" (some deviations are deliberate).
-
 ## Cross-Cutting Patterns
+
+### Backend Code Quality
+
+**Read [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md) for every backend change, and check the change against it before calling the work done.** This applies to all work under `backend/`: new features, refactors, bug fixes, and reviews alike. `backend/AGENTS.md` explains how to apply it.
 
 ### Code Comments
 
@@ -125,17 +58,11 @@ Read [`ANALYTICS.md`](ANALYTICS.md) before adding or changing product analytics.
 
 ### Design System & Voice
 
-The v3 visual system (colors, typography, components, layout) and product voice/content tone are documented in [`DESIGN.md`](DESIGN.md). Read it before producing new UI or user-visible copy. Before changing a shared frontend component's lifecycle, read the [shared component lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) for current deprecations, blockers, and replacement decisions. Frontend conventions, including inline creation in entity pickers, are in [`frontend/AGENTS.md`](frontend/AGENTS.md).
+Read [`DESIGN.md`](DESIGN.md) before producing new UI or user-visible copy, and the [shared component lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) before changing a shared frontend component's lifecycle.
 
 ### Documentation
 
-**Use the `docs-style` skill for any work under `docs/`** (`.agents/skills/docs-style/`). It carries the procedure for the [Documentation Style Guide](docs/STYLE_GUIDE.md): what belongs on a page, and the sentence-level review pass Vale cannot check.
-
-If the user wrote or edited the docs prose themselves, don't just accept it. Tell them the `docs-style` skill can run the review pass over their changes, and offer to run it.
-
-The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
-
-Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It lints only the `.mdx` files the branch touched; `make lint-docs` checks every page. The `Check docs style` GitHub workflow runs that same script, so local and CI agree by construction. Every rule except `Infisical.EmDashes` reports at error level, including `Infisical.UIActions` (click/tap where the verb should be select) and `Infisical.Contractions`, so the run fails if either one reports a finding. `Infisical.EmDashes` reports at warning level and never changes the exit code -- read the printed output, not just the status. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked. A clean run is not a substitute for reading the guide: the judgment calls it cannot check are the ones that matter most.
+**Use the `docs-style` skill for any work under `docs/`** (`.agents/skills/docs-style/`), and read [`docs/AGENTS.md`](docs/AGENTS.md) for the review pass and `make lint-docs-branch`. If the user wrote or edited the docs prose themselves, don't just accept it. Tell them the `docs-style` skill can run the review pass over their changes, and offer to run it.
 
 ### Auth & Permissions
 
@@ -174,4 +101,4 @@ Alerting (`backend/src/services/alert/`) and approvals (`backend/src/services/ap
 
 ## Keeping AGENTS.md Files Up to Date
 
-When a change adds a service, a pattern, or an invariant an agent would otherwise get wrong, update the `AGENTS.md` closest to that code. Put cross-cutting rules here, package rules in the package file, and subsystem detail in a file next to the subsystem's code, then add it to [Where guidance lives](#where-guidance-lives). Keep each file a map rather than a spec: concepts, where things live, and non-obvious invariants. Leave signatures, field lists, and step-by-step mechanics to the code.
+When a change adds a service, a pattern, or an invariant an agent would otherwise get wrong, update the `AGENTS.md` closest to that code. Put cross-cutting rules here, package rules in the package file, and subsystem detail in a file next to the subsystem's code, then link it from its package's `AGENTS.md`. Keep each file a map rather than a spec: concepts, where things live, and non-obvious invariants. Leave signatures, field lists, and step-by-step mechanics to the code.
