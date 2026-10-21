@@ -219,7 +219,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         actorName = req.auth.identityName;
       }
 
-      const { session, token, ttl, onBehalfOf } = await server.services.agentVaultSession.mintSession({
+      const { session, token, ttlSeconds, onBehalfOf } = await server.services.agentVaultSession.mintSession({
         actorName,
         actorEmail,
         projectId: req.internalAgentVaultProjectId,
@@ -252,7 +252,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         properties: {
           sessionId: session.id,
           accessBundleId: session.accessBundles[0].id,
-          ttlSeconds: ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : Math.floor(ms(ttl) / 1000),
+          ttlSeconds,
           isOnBehalfOfUser: Boolean(onBehalfOf)
         }
       });

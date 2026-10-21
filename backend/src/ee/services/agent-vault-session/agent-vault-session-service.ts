@@ -250,7 +250,8 @@ export const agentVaultSessionServiceFactory = ({
       }
     }
 
-    const expiresAt = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : new Date(Date.now() + ms(ttl));
+    const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
+    const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);
     const { token, tokenHash } = generateSessionToken();
 
     const sessionId = crypto.nativeCrypto.randomUUID();
@@ -320,7 +321,7 @@ export const agentVaultSessionServiceFactory = ({
         }))
       },
       token,
-      ttl,
+      ttlSeconds: ttlMs === null ? null : Math.floor(ttlMs / 1000),
       onBehalfOf: onBehalfOfUser
         ? { userId: onBehalfOfUser.user.id, username: onBehalfOfUser.user.username, email: onBehalfOfUser.user.email }
         : null
