@@ -358,3 +358,60 @@ describe("getStepUpMfaMethod", () => {
     });
   });
 });
+
+describe("getFactorEnrollmentStepUpMfaMethods", () => {
+  test("lets an account with no factor enroll its first one unchallenged", async () => {
+    const service = buildMfaService({
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }]
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
+  });
+
+  test("challenges an existing passkey before another one is added", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
+      passkeyCount: 1
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN]
+    });
+  });
+
+  test("challenges the preferred factor and accepts any enrolled one", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      hasTotp: true,
+      passkeyCount: 2
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
+    });
+  });
+
+  test("counts email as a factor when login already requires it", async () => {
+    const service = buildMfaService({
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.EMAIL }]
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.EMAIL]
+    });
+  });
+
+  test("does not count email when SMTP cannot deliver a code", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      smtp: false
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
+  });
+});

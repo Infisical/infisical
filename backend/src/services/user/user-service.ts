@@ -666,10 +666,13 @@ export const userServiceFactory = ({
   // substitute.
   const getStepUpMfaMethod = async (
     userId: string,
-    orgId: string,
+    orgId: string | undefined,
     excludeMethod?: MfaMethod
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] }> => {
-    const [user, sessionOrg] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+    const [user, sessionOrg] = await Promise.all([
+      userDAL.findById(userId),
+      orgId ? orgDAL.findById(orgId) : undefined
+    ]);
     const org =
       sessionOrg?.rootOrgId && sessionOrg.rootOrgId !== sessionOrg.id
         ? await orgDAL.findById(sessionOrg.rootOrgId)
@@ -687,6 +690,36 @@ export const userServiceFactory = ({
     const replacement = await findReplacementMfaMethod(user, excludeMethod);
     if (!replacement) return asRequired;
     return { challenge: replacement, accepted: [requiredMfaMethod, replacement] };
+  };
+
+  // Adding a factor must be proven with one the account already relies on, or a
+  // password-only session could plant its own. Returns null for an account with none,
+  // so enforced-MFA onboarding at login can still enroll the first one.
+  const getFactorEnrollmentStepUpMfaMethods = async (
+    userId: string
+  ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new NotFoundError({ message: "User not found" });
+
+    const [hasPasskey, hasTotp, enforcingOrgs] = await Promise.all([
+      isMfaMethodConfigured(user, MfaMethod.WEBAUTHN),
+      isMfaMethodConfigured(user, MfaMethod.TOTP),
+      findMfaEnforcingOrgs(userId)
+    ]);
+    const isEmailRequiredAtLogin =
+      (user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL) ||
+      enforcingOrgs.some((org) => (org.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL);
+    const hasEmail = isEmailRequiredAtLogin && (await isMfaMethodConfigured(user, MfaMethod.EMAIL));
+
+    const accepted = [
+      ...(hasPasskey ? [MfaMethod.WEBAUTHN] : []),
+      ...(hasTotp ? [MfaMethod.TOTP] : []),
+      ...(hasEmail ? [MfaMethod.EMAIL] : [])
+    ];
+    if (!accepted.length) return null;
+
+    const preferred = accepted.find((method) => method === user.selectedMfaMethod);
+    return { challenge: preferred ?? accepted[0], accepted };
   };
 
   const deleteUser = async (userId: string) => {
@@ -894,6 +927,7 @@ export const userServiceFactory = ({
     deleteUser,
     getMe,
     getStepUpMfaMethod,
+    getFactorEnrollmentStepUpMfaMethods,
     isStepUpMfaRequired,
     resolveMfaMethodAfterRemoval,
     assertMfaFactorRemovable,

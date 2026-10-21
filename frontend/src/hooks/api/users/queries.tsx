@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
+import { getMfaStepUpChallenge } from "@app/helpers/mfaSession";
 import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { getAuthToken, queryClient as qc } from "@app/hooks/api/reactQuery";
 
@@ -495,7 +496,9 @@ export const useGetUserTotpRegistration = (options?: { enabled?: boolean }) => {
 
       return data;
     },
-    enabled: options?.enabled ?? true
+    enabled: options?.enabled ?? true,
+    // Retrying a step-up error would mint a second challenge and email a second code.
+    retry: (failureCount, error) => !getMfaStepUpChallenge(error) && failureCount < 1
   });
 };
 
