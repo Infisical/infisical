@@ -51,6 +51,50 @@ export const productSections: SidebarProps["sections"] = [
     ]
   }
 ];
+export const pkiSections: SidebarProps["sections"] = [
+  {
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: "home" },
+      { id: "inventory", label: "Inventory", icon: "cert" },
+      { id: "discovery", label: "Discovery", icon: "search" },
+      { id: "requests", label: "Approval requests", icon: "inbox", count: 2 }
+    ]
+  },
+  {
+    label: "Resources",
+    items: [
+      { id: "applications", label: "Applications", icon: "apps" },
+      { id: "signers", label: "Signers", icon: "file" },
+      { id: "authorities", label: "Certificate authorities", icon: "building" },
+      { id: "policies", label: "Certificate policies", icon: "check-c" },
+      { id: "profiles", label: "Certificate profiles", icon: "folder" }
+    ]
+  },
+  {
+    label: "Administration",
+    items: [
+      { id: "access", label: "Access control", icon: "user" },
+      { id: "audit", label: "Audit logs", icon: "history" },
+      { id: "settings", label: "Settings", icon: "settings" }
+    ]
+  }
+];
+export const kmsSections: SidebarProps["sections"] = [
+  {
+    items: [
+      { id: "keys", label: "Keys", icon: "key" },
+      { id: "kmip", label: "KMIP", icon: "machine" }
+    ]
+  },
+  {
+    label: "Administration",
+    items: [
+      { id: "access", label: "Access control", icon: "user" },
+      { id: "audit", label: "Audit logs", icon: "history" },
+      { id: "settings", label: "Settings", icon: "settings" }
+    ]
+  }
+];
 export const settingsSections: SidebarProps["sections"] = [
   {
     items: [
@@ -78,15 +122,17 @@ const products = [
 const projects = [
   { value: "payments-api", label: "payments-api", mono: true },
   { value: "web-dashboard", label: "web-dashboard", mono: true },
-  { value: "platform-core", label: "platform-core", mono: true }
+  { value: "platform-core", label: "platform-core", mono: true },
+  { value: "internal-pki", label: "internal-pki", mono: true },
+  { value: "kms-keys", label: "kms-keys", mono: true }
 ];
 const labelOf = (options: { value: string; label: string }[], value: string) =>
   options.find((option) => option.value === value)?.label ?? value;
 
-export const useCrumbs = () => {
+export const useCrumbs = (initial: { product?: string; project?: string } = {}) => {
   const [org, setOrg] = useState("acme");
-  const [product, setProduct] = useState("secrets");
-  const [project, setProject] = useState("payments-api");
+  const [product, setProduct] = useState(initial.product ?? "secrets");
+  const [project, setProject] = useState(initial.project ?? "payments-api");
   return {
     org: {
       label: labelOf(organizations, org),
@@ -119,35 +165,51 @@ const barActions = (
   </TooltipProvider>
 );
 
-export type ShellLevel = "org" | "settings" | "product" | "project";
+export type ShellLevel = "org" | "settings" | "product" | "project" | "pki" | "kms";
 const levelSections: Record<ShellLevel, SidebarProps["sections"]> = {
   org: orgSections,
   settings: settingsSections,
   product: productSections,
-  project: projectSections
+  project: projectSections,
+  pki: pkiSections,
+  kms: kmsSections
 };
-const opens: Record<string, { level: ShellLevel; page: string }> = {
-  settings: { level: "settings", page: "general" },
-  projects: { level: "project", page: "secrets" }
+const projectHome: Record<string, { level: ShellLevel; page: string }> = {
+  secrets: { level: "project", page: "secrets" },
+  certs: { level: "pki", page: "inventory" },
+  kms: { level: "kms", page: "keys" }
 };
 const parent: Record<Exclude<ShellLevel, "org">, { level: ShellLevel; page: string }> = {
   settings: { level: "org", page: "settings" },
   product: { level: "org", page: "home" },
-  project: { level: "product", page: "projects" }
+  project: { level: "product", page: "projects" },
+  pki: { level: "product", page: "projects" },
+  kms: { level: "product", page: "projects" }
 };
+const projectLevels: readonly ShellLevel[] = ["project", "pki", "kms"];
 
 export const Shell = ({
   level: initialLevel,
   current,
   crumbs: initialCrumbs,
+  product: initialProduct,
+  project: initialProject,
+  onNavigate,
   children
 }: {
   level: ShellLevel;
   current: string;
   crumbs: readonly BreadcrumbCrumb[];
+  product?: string;
+  project?: string;
+  onNavigate?: (page: string) => void;
   children?: ReactNode;
 }) => {
-  const { org, product, project } = useCrumbs();
+  const { org, product, project } = useCrumbs({ product: initialProduct, project: initialProject });
+  const opens: Record<string, { level: ShellLevel; page: string }> = {
+    settings: { level: "settings", page: "general" },
+    projects: projectHome[initialProduct ?? "secrets"]
+  };
   const [at, setAt] = useState({ level: initialLevel, page: current });
   const sections = levelSections[at.level];
   const pageLabel =
@@ -157,7 +219,9 @@ export const Shell = ({
     org: [org, { label: pageLabel }],
     settings: [org, { label: "Settings" }, { label: pageLabel }],
     product: [org, product, { label: pageLabel }],
-    project: [org, product, project, { label: pageLabel }]
+    project: [org, product, project, { label: pageLabel }],
+    pki: [org, product, project, { label: pageLabel }],
+    kms: [org, product, project, { label: pageLabel }]
   };
   const crumbs = at.level === initialLevel && at.page === current ? initialCrumbs : trail[at.level];
   const scope =
@@ -167,7 +231,7 @@ export const Shell = ({
           id: at.level,
           back: {
             id: `back-${at.level}`,
-            label: at.level === "project" ? product.label : org.label
+            label: projectLevels.includes(at.level) ? product.label : org.label
           },
           sections: sections ?? []
         };
@@ -181,6 +245,7 @@ export const Shell = ({
         onNavigate={(item) => {
           if (item.id.startsWith("back-") && at.level !== "org") setAt(parent[at.level]);
           else setAt((item.drillIn && opens[item.id]) || { level: at.level, page: item.id });
+          onNavigate?.(item.id);
         }}
         search={{ onClick: () => {} }}
         user={user}

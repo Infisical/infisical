@@ -93,8 +93,9 @@ const DropdownMenuItem = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
     variant?: "default" | "destructive";
+    description?: React.ReactNode;
   }
->(({ className, inset, variant = "default", children, ...props }, ref) => {
+>(({ className, inset, variant = "default", description, children, ...props }, ref) => {
   return (
     <DropdownMenuPrimitive.Item
       ref={ref}
@@ -104,7 +105,18 @@ const DropdownMenuItem = React.forwardRef<
       className={cn(menu.row, className)}
       {...props}
     >
-      {menuRowContent(children)}
+      {description === undefined
+        ? menuRowContent(children)
+        : React.Children.map(children, (child) =>
+            typeof child === "string" || typeof child === "number" ? (
+              <span className={menu.text}>
+                <span className={menu.title}>{child}</span>
+                <span className={menu.description}>{description}</span>
+              </span>
+            ) : (
+              child
+            )
+          )}
     </DropdownMenuPrimitive.Item>
   );
 });

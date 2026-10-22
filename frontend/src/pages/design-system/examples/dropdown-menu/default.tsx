@@ -35,7 +35,9 @@ export default function Example() {
               Show metadata and close
             </UI.DropdownMenuCheckboxItem>
             <UI.DropdownMenuSeparator />
-            <UI.DropdownMenuItem disabled>Delete protected environment</UI.DropdownMenuItem>
+            <UI.DropdownMenuItem disabled description="Turn off protection first">
+              Delete protected environment
+            </UI.DropdownMenuItem>
           </UI.DropdownMenuContent>
         </UI.DropdownMenu>
         {details && <p className="text-sm">Staging connection</p>}

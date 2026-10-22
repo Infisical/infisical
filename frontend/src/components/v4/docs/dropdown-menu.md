@@ -51,6 +51,7 @@ Exports: DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 - Highlighted, open and active rows use a translucent ink overlay at the opacity-hover token, so the menu surface behind shows through; they never take an opaque fill.
 - Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.
 - Radix Root owns open/onOpenChange. Action items close after onSelect; checkbox/radio changes stay open by default and can opt into closeOnSelect.
+- DropdownMenuItem takes an optional description, a muted second line under its label. A disabled item uses it for the reason it is unavailable, so the action stays visible and explains itself.
 
 ## Accessibility
 
@@ -146,7 +147,9 @@ export default function Example() {
               Show metadata and close
             </UI.DropdownMenuCheckboxItem>
             <UI.DropdownMenuSeparator />
-            <UI.DropdownMenuItem disabled>Delete protected environment</UI.DropdownMenuItem>
+            <UI.DropdownMenuItem disabled description="Turn off protection first">
+              Delete protected environment
+            </UI.DropdownMenuItem>
           </UI.DropdownMenuContent>
         </UI.DropdownMenu>
         {details && <p className="text-sm">Staging connection</p>}

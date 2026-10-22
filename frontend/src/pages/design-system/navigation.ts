@@ -52,6 +52,13 @@ export const comparisonPages = [
     screen: "approvals",
     title: "Change requests",
     description: "4 open production change requests in the ApprovalQueue pattern."
+  },
+  {
+    id: "compare-certificates",
+    screen: "certificates",
+    title: "Certificates",
+    description:
+      "The internal-pki inventory in a DataTable, with each certificate opening its detail page."
   }
 ] as const;
 export type ComparisonPage = (typeof comparisonPages)[number]["id"];
