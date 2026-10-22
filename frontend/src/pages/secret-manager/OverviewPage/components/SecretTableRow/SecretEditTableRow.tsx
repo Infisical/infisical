@@ -1118,6 +1118,10 @@ export const SecretEditTableRow = ({
     const invocation = valueSheetFlow.current;
     if (isValueSheetReadOnly || valueEditDraft?.scope !== valueEditScope) return;
     if (isBatchMode) {
+      if (batchAutoApplyTimer.current) {
+        clearTimeout(batchAutoApplyTimer.current);
+        applyBatchEditsRef.current?.();
+      }
       const pendingChangeId = findPendingChangeId() ?? secretId;
       await onSecretUpdate({
         env: environment,
