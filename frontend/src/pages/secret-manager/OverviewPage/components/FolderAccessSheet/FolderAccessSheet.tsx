@@ -26,6 +26,7 @@ import {
   InputGroupButton,
   InputGroupInput,
   Pagination,
+  Separator,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -286,13 +287,6 @@ export const FolderAccessSheet = ({
     };
   })();
 
-  const inProjectEmptyText = (() => {
-    if (isSearching) return "No project member without access matches your search.";
-    return rosterCount > PER_PAGE
-      ? "Everyone on this page of project members has access to this folder."
-      : "Everyone in this project has access to this folder.";
-  })();
-
   // failures are already surfaced by the global MutationCache.onError toast, which carries the
   // server's own message, so only the success side is announced here
   const notifySuccess = (text: string) => createNotification({ text, type: "success" });
@@ -474,40 +468,31 @@ export const FolderAccessSheet = ({
               >
                 <AccordionItem value={NO_ACCESS_SECTION}>
                   <AccordionTrigger>
-                    No Access
-                    <span className="font-normal text-muted tabular-nums">
-                      {candidates.length + orgCandidates.actors.length}
-                      {orgCandidates.hasMore && "+"}
+                    <span className="shrink-0">No Access</span>
+                    <span className="flex-1">
+                      <Separator />
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
-                    <section className="flex flex-col">
-                      <SectionLabel title="In Project" count={candidates.length} />
-                      {!candidates.length && (
-                        <p className="py-2.5 text-xs text-muted">{inProjectEmptyText}</p>
-                      )}
-                      {candidates.map((actor) => (
-                        <FolderAccessGrantRow
-                          key={`${actor.type}-${actor.id}`}
-                          actor={actor}
-                          isDisabled={isGrantLocked}
-                          onSetTier={(tier) => setTier(actor, tier)}
-                        />
-                      ))}
-                    </section>
-                    {showsOrgMembers && (
+                    {Boolean(candidates.length) && (
+                      <section className="flex flex-col">
+                        <SectionLabel title="In Project" count={candidates.length} />
+                        {candidates.map((actor) => (
+                          <FolderAccessGrantRow
+                            key={`${actor.type}-${actor.id}`}
+                            actor={actor}
+                            isDisabled={isGrantLocked}
+                            onSetTier={(tier) => setTier(actor, tier)}
+                          />
+                        ))}
+                      </section>
+                    )}
+                    {showsOrgMembers && Boolean(orgCandidates.actors.length) && (
                       <section className="flex flex-col">
                         <SectionLabel
                           title="In Organization, Not in Project"
                           count={orgCandidates.actors.length}
                         />
-                        {!orgCandidates.actors.length && (
-                          <p className="py-2.5 text-xs text-muted">
-                            {isSearching
-                              ? "No one outside this project matches your search."
-                              : "Everyone in your organization is already in this project."}
-                          </p>
-                        )}
                         {orgCandidates.actors.map((actor) => (
                           <FolderAccessGrantRow
                             key={`${actor.type}-${actor.id}`}
