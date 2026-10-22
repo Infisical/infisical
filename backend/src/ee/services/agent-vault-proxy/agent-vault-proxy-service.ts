@@ -346,9 +346,13 @@ export const agentVaultProxyServiceFactory = ({
 
   // Every proxy calls this on start. One serving its own CA reports it and gets none back; either way the row
   // ends up showing the CA the most recent start serves.
-  const bootstrap = async ({ proxyId, servedCaCertificate }: TBootstrapProxyDTO) => {
+  const bootstrap = async ({ proxyId, tokenVersion, servedCaCertificate }: TBootstrapProxyDTO) => {
     const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
     if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
+    // The auth check ran on an earlier read; a rotation landing in between must not hand the old token the new CA.
+    if (proxy.tokenVersion !== tokenVersion) {
+      throw new UnauthorizedError({ name: "ProxyTokenRejected", message: "Agent Vault proxy token has been revoked" });
+    }
 
     const servedCa = servedCaCertificate ? parseRootCaCertificate(servedCaCertificate) : null;
     const rootCa = servedCa ? null : await $getOrCreateRootCa(proxy);

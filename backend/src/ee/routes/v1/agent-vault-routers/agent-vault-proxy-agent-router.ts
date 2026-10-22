@@ -8,6 +8,7 @@ import {
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { UnauthorizedError } from "@app/lib/errors";
 import {
   agentVaultHeartbeatLimit,
   agentVaultResolveLimit,
@@ -63,11 +64,16 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       }
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      server.services.agentVaultProxy.bootstrap({
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
+        throw new UnauthorizedError({ message: "A proxy token is required" });
+      }
+      return server.services.agentVaultProxy.bootstrap({
         proxyId: req.permission.id,
+        tokenVersion: req.auth.token.tokenVersion,
         servedCaCertificate: req.body.servedCaCertificate
-      })
+      });
+    }
   });
 
   server.route({

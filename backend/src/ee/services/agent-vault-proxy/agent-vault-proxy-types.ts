@@ -37,6 +37,7 @@ export type TProxyByIdDTO = TAgentVaultProxyScoped & { proxyId: string };
 
 export type TBootstrapProxyDTO = {
   proxyId: string;
+  tokenVersion: number;
   servedCaCertificate?: string;
 };
 
