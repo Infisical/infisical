@@ -397,6 +397,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     onValueChange={onChange}
                     multiple
                     getOptionValue={(option) => option.slug}
+                    getOptionKeywords={(option) => [option.slug]}
                     getOptionLabel={(option) => option.name}
                     isError={Boolean(error)}
                     isLoading={isReferenceDataLoading}

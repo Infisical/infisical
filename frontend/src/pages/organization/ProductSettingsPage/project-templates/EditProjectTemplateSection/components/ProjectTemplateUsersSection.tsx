@@ -289,6 +289,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                                         field.onChange(selected.map((s) => s.slug));
                                       }}
                                       getOptionValue={(option) => option.slug}
+                                      getOptionKeywords={(option) => [option.slug]}
                                       getOptionLabel={(option) => option.name}
                                       placeholder="Select roles..."
                                       searchAriaLabel="Search roles"
@@ -358,6 +359,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                       value={field.value}
                       onValueChange={field.onChange}
                       getOptionValue={(option) => option.value}
+                      getOptionKeywords={(option) => [option.value]}
                       getOptionLabel={(option) => option.label}
                       placeholder="Select one or more users..."
                       searchAriaLabel="Search users"
@@ -385,6 +387,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                       value={field.value}
                       onValueChange={field.onChange}
                       getOptionValue={(option) => option.slug}
+                      getOptionKeywords={(option) => [option.slug]}
                       getOptionLabel={(option) => option.name}
                       placeholder="Select roles..."
                       searchAriaLabel="Search roles"

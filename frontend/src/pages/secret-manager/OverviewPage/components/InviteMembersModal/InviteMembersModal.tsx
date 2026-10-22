@@ -218,6 +218,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
                   onValueChange={onChange}
                   options={filteredRoles}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
                   placeholder="Select role..."
                   searchAriaLabel="Search roles"

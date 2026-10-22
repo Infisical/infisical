@@ -367,6 +367,7 @@ const ProjectIdentityFormContent = ({
                     placeholder="Select role..."
                     searchAriaLabel="Search roles"
                     getOptionValue={(option) => option.slug}
+                    getOptionKeywords={(option) => [option.slug]}
                     getOptionLabel={(option) => option.name}
                     renderOption={(option) => <RoleOptionContent role={option} />}
                     isError={Boolean(error)}

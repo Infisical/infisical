@@ -200,6 +200,7 @@ export const OrgGroupModal = ({
               value={value}
               isError={Boolean(error)}
               getOptionValue={(option) => option.slug}
+              getOptionKeywords={(option) => [option.slug]}
               getOptionLabel={(option) => option.name}
               renderOption={(option) => <RoleOptionContent role={option} />}
             />

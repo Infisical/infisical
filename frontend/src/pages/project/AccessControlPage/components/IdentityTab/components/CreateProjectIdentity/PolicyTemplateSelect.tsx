@@ -90,6 +90,7 @@ export const PolicyTemplateSelect = ({ projectType }: Props) => {
       placeholder="Select additional privileges..."
       searchAriaLabel="Search additional privileges"
       getOptionValue={(option) => option.id}
+      getOptionKeywords={(option) => [option.id]}
       getOptionLabel={(option) => option.name}
       renderOption={(option) => <TemplateOptionRow option={option} />}
       onValueChange={(newValue) =>

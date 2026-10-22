@@ -166,6 +166,7 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
                   onValueChange={onChange}
                   value={value}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
                   renderOption={(option) => <RoleOptionContent role={option} />}
                   isError={Boolean(error)}
