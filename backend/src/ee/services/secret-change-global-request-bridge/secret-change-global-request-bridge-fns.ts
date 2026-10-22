@@ -84,7 +84,6 @@ export type TSecretChangeRequestSideEffectsDTO = {
   actorId: string;
   actorOrgId: string;
   tx?: Knex;
-  throwOnEmailFailure?: boolean;
 };
 
 export type TSecretChangeGlobalRequestFnsFactory = ReturnType<typeof secretChangeGlobalRequestFnsFactory>;
@@ -202,9 +201,9 @@ export const secretChangeGlobalRequestFnsFactory = ({
   }: Pick<TSecretChangeRequestSideEffectsDTO, "policy" | "tx"> & {
     requestId: string;
     projectId: string;
-  }): Promise<unknown[]> => {
+  }) => {
     const approverUserIds = unique(policy.userApprovers.map((approver) => approver.userId));
-    if (!approverUserIds.length) return [];
+    if (!approverUserIds.length) return;
 
     const approvers = await userDAL.find({ $in: { id: approverUserIds } }, { tx });
     const project = await projectDAL.findProjectWithOrg(projectId, tx);
@@ -221,7 +220,6 @@ export const secretChangeGlobalRequestFnsFactory = ({
       }))
     );
 
-    const failures: unknown[] = [];
     for await (const approver of approvers) {
       if (!approver.email) continue;
       try {
@@ -241,11 +239,8 @@ export const secretChangeGlobalRequestFnsFactory = ({
           error,
           `Failed to send secret change request email to approver [requestId=${requestId}] [userId=${approver.id}]`
         );
-        failures.push(error);
       }
     }
-
-    return failures;
   };
 
   const queueChangeRequestWebhook = async ({
@@ -320,8 +315,7 @@ export const secretChangeGlobalRequestFnsFactory = ({
     actor,
     actorId,
     actorOrgId,
-    tx,
-    throwOnEmailFailure
+    tx
   }: TSecretChangeRequestSideEffectsDTO) => {
     const findUser = () => userDAL.findById(actorId, tx);
     const user =
@@ -357,12 +351,7 @@ export const secretChangeGlobalRequestFnsFactory = ({
       }
     });
 
-    const emailFailures = await $sendApproverNotifications({
-      policy,
-      requestId: approvalRequest.id,
-      projectId: project.id,
-      tx
-    });
+    await $sendApproverNotifications({ policy, requestId: approvalRequest.id, projectId: project.id, tx });
 
     try {
       await queueChangeRequestWebhook({
@@ -400,8 +389,6 @@ export const secretChangeGlobalRequestFnsFactory = ({
         }
       })
       .catch(() => {});
-
-    if (throwOnEmailFailure && emailFailures.length) throw emailFailures[0];
   };
 
   return { resolveRequester, queueChangeRequestWebhook, runSecretChangeRequestSideEffects };
