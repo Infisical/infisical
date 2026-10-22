@@ -71,6 +71,7 @@ export const CloudflareCustomCertificatePkiSyncFields = () => {
               placeholder={connectionId ? "Select a zone..." : "Select a connection first"}
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              getOptionKeywords={(option) => [option.id]}
               isError={Boolean(error)}
             />
             <FieldError errors={[error]} />

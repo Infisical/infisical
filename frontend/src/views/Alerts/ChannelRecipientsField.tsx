@@ -118,6 +118,7 @@ const RecipientSelect = ({
       isError={isError}
       getOptionGroup={(option) => option.groupLabel}
       getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
+      getOptionKeywords={(option) => [`${option.principalType}-${option.principalId}`]}
       getOptionLabel={(option) => option.label}
       renderOption={formatOptionLabel}
       renderValue={formatOptionLabel}

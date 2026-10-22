@@ -241,6 +241,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                         placeholder="Select an AWS App Connection..."
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                       />
                       <FieldError errors={[error]} />
                     </Field>

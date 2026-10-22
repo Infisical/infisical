@@ -125,6 +125,7 @@ export const ProductsField = () => {
         placeholder="All products"
         searchAriaLabel="Search products"
         getOptionValue={(option) => option.value}
+        getOptionKeywords={(option) => [option.value]}
         getOptionLabel={(option) => option.label}
         renderOption={(option) => {
           const Icon = option.value === ALL_VALUE ? GlobeIcon : PRODUCT_ICONS[option.value];

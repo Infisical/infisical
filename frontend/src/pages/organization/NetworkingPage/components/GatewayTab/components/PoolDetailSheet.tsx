@@ -187,6 +187,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                           isDisabled={isDisabled || addGateway.isPending}
                           getOptionLabel={(option) => option.label}
                           getOptionValue={(option) => option.value}
+                          getOptionKeywords={(option) => [option.value]}
                         />
                       </div>
                       <Button

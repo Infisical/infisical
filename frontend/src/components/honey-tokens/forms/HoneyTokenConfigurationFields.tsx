@@ -36,6 +36,7 @@ export const HoneyTokenConfigurationFields = ({ environments }: Props) => {
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 isError={Boolean(error)}
               />
             </FieldContent>

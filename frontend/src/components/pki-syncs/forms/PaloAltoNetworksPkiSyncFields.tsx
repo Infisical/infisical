@@ -203,6 +203,7 @@ export const PaloAltoNetworksPkiSyncFields = ({
             }}
             getOptionLabel={(option) => getPaloAltoNetworksProfileLabel(option)}
             getOptionValue={(option) => getProfileValue(option)}
+            getOptionKeywords={(option) => [getProfileValue(option)]}
             placeholder={profilePlaceholder}
             isError={Boolean(profileError)}
           />

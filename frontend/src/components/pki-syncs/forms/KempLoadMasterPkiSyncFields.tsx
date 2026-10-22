@@ -61,6 +61,7 @@ export const KempLoadMasterPkiSyncFields = () => {
               onValueChange={(option) => onChange(option?.id)}
               getOptionLabel={(option) => getVirtualServiceLabel(option)}
               getOptionValue={(option) => option.id}
+              getOptionKeywords={(option) => [option.id]}
               placeholder={
                 connectionId
                   ? "Leave unset to import certificate only"

@@ -186,6 +186,7 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
                 }
                 getOptionLabel={(option) => option.label}
                 getOptionValue={(option) => option.value}
+                getOptionKeywords={(option) => [option.value]}
               />
             );
           }
