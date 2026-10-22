@@ -156,13 +156,25 @@ export const FolderAccessSheet = ({
     isFetching: isIdentitiesFetching
   } = useListFolderAccessIdentities(listArgs);
 
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id, {
+  const {
+    data: orgUsers,
+    isPending: isOrgUsersPending,
+    isError: isOrgUsersError
+  } = useGetOrgUsers(currentOrg.id, {
     enabled: isOpen && showsNoAccess && canAddUsers
   });
-  const { data: projectUsers } = useGetWorkspaceUsers(projectId, undefined, undefined, {
+  const {
+    data: projectUsers,
+    isPending: isProjectUsersPending,
+    isError: isProjectUsersError
+  } = useGetWorkspaceUsers(projectId, true, undefined, {
     enabled: isOpen && showsNoAccess && canAddUsers
   });
-  const { data: orgIdentities } = useQuery({
+  const {
+    data: orgIdentities,
+    isPending: isOrgIdentitiesPending,
+    isError: isOrgIdentitiesError
+  } = useQuery({
     ...projectIdentityMembershipQuery.listAvailable({
       projectId,
       projectType: currentProject.type
@@ -213,19 +225,20 @@ export const FolderAccessSheet = ({
     const matchesQuery = (values: (string | undefined)[]) =>
       !query || values.some((value) => value?.toLowerCase().includes(query));
     const projectUserIds = new Set((projectUsers ?? []).map(({ user }) => user.id));
-    const matchingUsers = canAddUsers
-      ? (orgUsers ?? []).filter(
-          (orgUser) =>
-            orgUser.isActive &&
-            !projectUserIds.has(orgUser.user.id) &&
-            matchesQuery([
-              orgUser.user.firstName,
-              orgUser.user.lastName,
-              orgUser.user.email,
-              orgUser.inviteEmail
-            ])
-        )
-      : [];
+    const matchingUsers =
+      canAddUsers && orgUsers && projectUsers && !isOrgUsersError && !isProjectUsersError
+        ? (orgUsers ?? []).filter(
+            (orgUser) =>
+              orgUser.isActive &&
+              !projectUserIds.has(orgUser.user.id) &&
+              matchesQuery([
+                orgUser.user.firstName,
+                orgUser.user.lastName,
+                orgUser.user.email,
+                orgUser.inviteEmail
+              ])
+          )
+        : [];
     // this endpoint ignores its name filter and returns every available identity, so it is matched here
     const matchingIdentities = canAddIdentities
       ? (orgIdentities ?? []).filter((identity) => matchesQuery([identity.name]))
@@ -247,10 +260,20 @@ export const FolderAccessSheet = ({
     debouncedSearch,
     orgUsers,
     projectUsers,
+    isOrgUsersError,
+    isProjectUsersError,
     orgIdentities
   ]);
 
   const isLoading = isUsersPending || isIdentitiesPending;
+  const isOrgLoading =
+    showsNoAccess &&
+    ((canAddUsers && (isOrgUsersPending || isProjectUsersPending)) ||
+      (canAddIdentities && isOrgIdentitiesPending));
+  const isOrgError =
+    showsNoAccess &&
+    ((canAddUsers && (isOrgUsersError || isProjectUsersError)) ||
+      (canAddIdentities && isOrgIdentitiesError));
   // a granted candidate stays in this list until the refetch lands, and a second pick would send a
   // duplicate create that the server rejects
   const isGrantLocked =
@@ -352,6 +375,13 @@ export const FolderAccessSheet = ({
       return;
     }
     setTier(actor, tier);
+    queryClient.invalidateQueries({
+      predicate: ({ queryKey }) =>
+        (queryKey[0] as { projectId?: string })?.projectId === projectId &&
+        (queryKey[1] === "folder-access-users" ||
+          queryKey[1] === "folder-access-identities" ||
+          queryKey[1] === "project-users")
+    });
   };
 
   const removeAccess = (actor: TFolderAccessActor) => {
@@ -434,6 +464,22 @@ export const FolderAccessSheet = ({
                   <EmptyDescription>{emptyState.description}</EmptyDescription>
                 </EmptyHeader>
               </Empty>
+            )}
+
+            {!isLoading &&
+              isSearching &&
+              !actors.length &&
+              !candidates.length &&
+              !orgCandidates.actors.length &&
+              !isOrgLoading &&
+              !isOrgError && (
+                <p className="text-sm text-muted">No members match your search and filters.</p>
+              )}
+            {isOrgError && (
+              <p className="text-sm text-danger">
+                Could not load organization members. Check your member read permissions and try
+                again.
+              </p>
             )}
 
             {!isLoading && Boolean(actors.length) && (
