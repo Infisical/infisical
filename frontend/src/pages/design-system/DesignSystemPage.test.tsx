@@ -251,6 +251,21 @@ it.each(["#button", "#button-directions"])(
 
 it("opens compact mobile navigation, follows a destination and restores its stable trigger", async () => {
   window.location.hash = "#button";
+  const width = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(390);
+  const computed = window.getComputedStyle;
+  const computedStyle = vi
+    .spyOn(window, "getComputedStyle")
+    .mockImplementation((element, pseudo) => {
+      const style = computed(element, pseudo);
+      if (!(element as HTMLElement).matches?.('[data-slot="app-shell"]')) return style;
+      return new Proxy(style, {
+        get: (target, key) =>
+          key === "getPropertyValue"
+            ? (name: string) =>
+                name === "--v4-size-shell-collapse" ? "800px" : target.getPropertyValue(name)
+            : Reflect.get(target, key)
+      });
+    });
   const rootRoute = createRootRoute({ component: ThemeLayout });
   const docsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -265,28 +280,29 @@ it("opens compact mobile navigation, follows a destination and restores its stab
     await router.load();
     root.render(<RouterProvider<typeof router> router={router} />);
   });
-  const trigger = host.querySelector<HTMLButtonElement>(
-    '[aria-label="Open documentation navigation"]'
+  const trigger = [...host.querySelectorAll<HTMLButtonElement>("[data-slot=top-bar] button")].find(
+    (button) => button.textContent === "Open navigation"
   );
-  expect(trigger?.textContent).toBe("");
+  expect(trigger?.getAttribute("aria-haspopup")).toBe("dialog");
+  expect(host.querySelector('[data-slot="app-shell"] > [data-slot="sidebar"]')).toBeNull();
   expect(host.querySelector("select")).toBeNull();
   expect(host.querySelectorAll("header")).toHaveLength(1);
   trigger?.focus();
   await React.act(async () => trigger?.click());
   let panel = document.querySelector('[data-slot="sheet-content"]');
   expect(panel?.getAttribute("role")).toBe("dialog");
-  expect(panel?.querySelector('img[alt="Infisical"]')?.getAttribute("src")).toContain(
-    "infisical-logo.svg"
-  );
+  expect(panel?.querySelector('[data-slot="sidebar"]')).not.toBeNull();
   expect(document.activeElement).toBe(panel?.querySelector('a[aria-current="page"]'));
   const colors = panel?.querySelector<HTMLAnchorElement>('a[href="#colors"]');
   await React.act(async () => colors?.click());
-  await React.act(
-    async () =>
-      new Promise((resolve) => {
-        setTimeout(resolve, 0);
-      })
-  );
+  for (let tick = 0; tick < 3; tick += 1)
+    // eslint-disable-next-line no-await-in-loop
+    await React.act(
+      async () =>
+        new Promise((resolve) => {
+          setTimeout(resolve, 0);
+        })
+    );
   expect(window.location.hash).toBe("#colors");
   expect(host.querySelector("[data-document-view]")?.id).toBe("colors");
   expect(document.querySelector('[data-slot="sheet-content"]')).toBeNull();
@@ -311,6 +327,8 @@ it("opens compact mobile navigation, follows a destination and restores its stab
   const dock = host.querySelector("[data-documentation-dock]");
   expect(dock?.querySelector('[aria-label="Documentation view"]')).not.toBeNull();
   expect(dock?.querySelector('[aria-label="Switch to light theme"]')).not.toBeNull();
+  width.mockRestore();
+  computedStyle.mockRestore();
 });
 
 it("keeps the current page on screen until the next page's examples have loaded", async () => {

@@ -3,21 +3,13 @@ import { startTransition, Suspense, useEffect, useRef, useState } from "react";
 import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
 import { type ComponentGroup } from "@app/components/v4/contracts/types";
 import { V4Scope } from "@app/components/v4/scope";
+import tokens from "@app/components/v4/tokens.json";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { Kbd } from "@app/components/v4/ui/kbd";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-  SheetTrigger
-} from "@app/components/v4/ui/sheet";
 import { Sidebar } from "@app/components/v4/ui/sidebar";
 import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
-import { AppInset, AppShell, TopBar } from "@app/components/v4/ui/top-bar";
+import { AppInset, AppShell, scrollInsetTo, TopBar } from "@app/components/v4/ui/top-bar";
 
-import logo from "./assets/infisical-logo.svg";
 import { AccentPanelButton, AccentPanelProvider, useAccentPanel } from "./accent-panel";
 import { AgentPage } from "./AgentPage";
 import { ComparisonPageView } from "./ComparisonPages";
@@ -37,6 +29,13 @@ import { WorkbenchPalette } from "./workbench-palette";
 
 import "@app/components/v4/v4.css";
 import dockStyles from "./dock.module.css";
+
+const pullRequest = "https://github.com/Infisical/infisical/pull/8753";
+const documentation = "https://infisical.com/docs";
+const openLink = (href: string) => {
+  if (href.startsWith("#")) window.location.hash = href;
+  else window.open(href, "_blank", "noreferrer");
+};
 
 const dockInset = "var(--v4-space-16) + env(safe-area-inset-bottom)";
 
@@ -114,54 +113,6 @@ const sidebarSections = navigationGroups.map((group) => ({
 const groupOf = (page: string) =>
   navigationGroups.find((group) => group.pages.some((entry) => entry.id === page));
 
-const Brand = ({ theme, onSelect }: { theme: "light" | "dark"; onSelect?: () => void }) => (
-  <a
-    href="#overview"
-    onClick={onSelect}
-    aria-label="Infisical 2.0 overview"
-    className="flex w-fit items-center gap-2 text-sm font-medium"
-  >
-    <img
-      src={logo}
-      width={126}
-      height={20}
-      alt="Infisical"
-      style={{ filter: theme === "dark" ? "invert(1)" : undefined }}
-    />
-    <span>2.0</span>
-  </a>
-);
-
-const DocumentationNavigation = ({
-  currentPage,
-  onSelect
-}: {
-  currentPage: string;
-  onSelect?: () => void;
-}) => (
-  <nav aria-label="Design system">
-    {navigationGroups.map((group) => (
-      <div key={group.title} className="mb-7">
-        <p className="text-muted-foreground mb-2 px-2 text-xs font-medium">{group.title}</p>
-        <ul className="space-y-0.5">
-          {group.pages.map((page) => (
-            <li key={page.id}>
-              <a
-                href={`#${page.id}`}
-                onClick={onSelect}
-                aria-current={page.id === currentPage ? "page" : undefined}
-                className={`flex min-h-8 items-center rounded-md px-2 text-sm hover:bg-sidebar-accent ${page.id === currentPage ? "bg-sidebar-accent font-medium text-sidebar-foreground" : "text-muted-foreground"}`}
-              >
-                {page.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ))}
-  </nav>
-);
-
 const DockAccentButton = () => {
   const panel = useAccentPanel();
   return (
@@ -185,12 +136,10 @@ const DockAccentButton = () => {
 
 export const DesignSystemPage = () => {
   const [view, setView] = useState<"human" | "agent">("human");
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const mobileNavigation = useRef<HTMLDivElement>(null);
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState<number>();
-  const { resolvedTheme: theme, setTheme } = useTheme();
+  const { resolvedTheme: theme, theme: themeChoice, setTheme } = useTheme();
   const [corners, setCorners] = useState<"square" | "soft">(() => {
     try {
       return window.localStorage.getItem("v4-corners") === "soft" ? "soft" : "square";
@@ -225,7 +174,7 @@ export const DesignSystemPage = () => {
       const target = document.querySelector<HTMLElement>(
         `[data-component="${currentPage}"][data-example="${example}"]`
       );
-      if (target) target.scrollIntoView({ block: "start" });
+      if (target) scrollInsetTo(target);
       else if (performance.now() - started < 3000) frame = requestAnimationFrame(seek);
     };
     frame = requestAnimationFrame(seek);
@@ -233,18 +182,39 @@ export const DesignSystemPage = () => {
   }, [currentPage, example]);
   const nextTheme = theme === "dark" ? "light" : "dark";
   return (
-    <V4Scope className="flex h-svh flex-col overflow-hidden" theme={theme} corners={corners}>
+    <V4Scope className="flex h-dvh flex-col overflow-clip" theme={theme} corners={corners}>
       <AccentPanelProvider>
         <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
           Skip to content
         </a>
-        <AppShell className="min-h-0 flex-1">
+        <AppShell>
           <Sidebar
-            className="hidden lg:flex"
             label="Design system"
-            footerItems={[
-              { id: "workbench", label: "Infisical 2.0 workbench", icon: "apps", href: "#overview" }
-            ]}
+            user={{
+              name: "Infisical 2.0 workbench",
+              email: "",
+              meta: `Design system v${tokens.version}`,
+              media: <Icon name="apps" />,
+              items: [
+                { label: "Overview", icon: "home", onSelect: () => openLink("#overview") },
+                { label: "Rules", icon: "file", onSelect: () => openLink("#rules") },
+                { type: "separator" },
+                {
+                  label: "Pull request on GitHub",
+                  icon: "external",
+                  onSelect: () => openLink(pullRequest)
+                },
+                {
+                  label: "Documentation",
+                  icon: "external",
+                  onSelect: () => openLink(documentation)
+                }
+              ]
+            }}
+            theme={{
+              value: themeChoice === "system" ? "system" : theme,
+              onChange: (value) => setTheme(value, "design-system")
+            }}
             sections={sidebarSections}
             current={currentPage}
             search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
@@ -260,64 +230,8 @@ export const DesignSystemPage = () => {
                     currentPage
                 }
               ]}
-              actions={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  icon="search"
-                  aria-keyshortcuts="Meta+K Control+K"
-                  onClick={() => setPaletteOpen(true)}
-                >
-                  Search
-                  <Kbd keys="mod+K" size="sm" />
-                </Button>
-              }
+              search={{ onClick: () => setPaletteOpen(true), label: "Search" }}
             />
-            <div className="flex shrink-0 items-center justify-between px-4 pt-3 lg:hidden">
-              <Brand theme={theme} />
-              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    iconOnly
-                    icon="menu"
-                    aria-label="Open documentation navigation"
-                  />
-                </SheetTrigger>
-                <SheetContent
-                  ref={mobileNavigation}
-                  side="left"
-                  style={{ width: "min(18rem, calc(100vw - var(--v4-space-32)))" }}
-                  onOpenAutoFocus={(event) => {
-                    const current =
-                      mobileNavigation.current?.querySelector<HTMLAnchorElement>(
-                        'a[aria-current="page"]'
-                      );
-                    if (current) {
-                      event.preventDefault();
-                      current.focus();
-                    }
-                  }}
-                >
-                  <SheetTitle className="sr-only">Documentation navigation</SheetTitle>
-                  <SheetDescription className="sr-only">
-                    Browse foundations, components and contribution guidance.
-                  </SheetDescription>
-                  <div className="shrink-0 px-6 pt-7 pb-2">
-                    <Brand theme={theme} onSelect={() => setMobileOpen(false)} />
-                  </div>
-                  <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-                    <DocumentationNavigation
-                      currentPage={currentPage}
-                      onSelect={() => setMobileOpen(false)}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
             <Suspense
               fallback={
                 <p role="status" className="px-4 pt-5 text-sm lg:px-10 lg:pt-8">

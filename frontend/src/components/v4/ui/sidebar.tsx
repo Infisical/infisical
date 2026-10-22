@@ -13,10 +13,12 @@ import {
   DropdownMenuTrigger
 } from "./dropdown-menu";
 import { Icon, type IconName } from "./icon";
+import { Sheet, SheetContent, SheetTitle } from "./sheet";
 import { Switcher, type SwitcherAction, type SwitcherActionDivider } from "./switcher";
 import { Tabs, TabsList, TabsTrigger } from "./tabs";
 import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 import { Tooltip, TooltipProvider } from "./tooltip";
+import { useAppShell } from "./top-bar";
 
 import menu from "./menu.module.css";
 import styles from "./sidebar.module.css";
@@ -55,6 +57,8 @@ export interface SidebarUser {
   name: string;
   email: string;
   initials?: string;
+  media?: React.ReactNode;
+  meta?: string;
   items?: (SwitcherAction | SwitcherActionDivider)[];
   href?: string;
   onClick?: () => void;
@@ -413,7 +417,23 @@ export const Sidebar = ({
   }, [current, currentSpace, setSpaceId]);
   const activeSpace = spaces?.find((entry) => entry.id === spaceId) ?? spaces?.[0];
   const shownSections = scope?.sections ?? activeSpace?.sections ?? sections ?? [];
-  const rail = collapsible && isCollapsed;
+  const shell = useAppShell();
+  const setHasNavigation = shell?.setHasNavigation;
+  React.useEffect(() => {
+    if (!setHasNavigation) return undefined;
+    setHasNavigation(true);
+    return () => setHasNavigation(false);
+  }, [setHasNavigation]);
+  const sheet = Boolean(shell?.narrow);
+  const setNavigationOpen = shell?.setNavigationOpen;
+  const openedAt = React.useRef(current);
+  React.useEffect(() => {
+    if (!sheet || !setNavigationOpen) return;
+    if (openedAt.current !== current) setNavigationOpen(false);
+    openedAt.current = current;
+  }, [current, sheet, setNavigationOpen]);
+  const navigate = onNavigate;
+  const rail = !sheet && collapsible && isCollapsed;
   const view = scope?.id ?? activeSpace?.id ?? "root";
   const navRef = React.useRef<HTMLDivElement>(null);
   const backRef = React.useRef<HTMLElement | null>(null);
@@ -450,7 +470,12 @@ export const Sidebar = ({
     </Tooltip>
   );
   const user = accountUser ?? { name: "", email: "" };
-  const userAvatar = <Avatar size={20} name={user.name} initials={user.initials} />;
+  const userAvatar = user.media ? (
+    <span className={styles.accountMedia}>{user.media}</span>
+  ) : (
+    <Avatar size={20} name={user.name} initials={user.initials} />
+  );
+  const userMeta = user.meta ?? user.email;
   const account = (
     <button
       type="button"
@@ -460,26 +485,29 @@ export const Sidebar = ({
       {userAvatar}
       <span className={styles.accountText}>
         <span className={styles.accountName}>{user.name}</span>
-        <span className={styles.accountMeta}>{org ? org.name : user.email}</span>
+        <span className={styles.accountMeta}>{org ? org.name : userMeta}</span>
       </span>
       <Icon name="chev-ud" size={16} className={styles.trailing} />
     </button>
   );
   const hasMenu = Boolean(org || user.items?.length || theme || user.href || user.onClick);
-  return (
+  const content = (
     <TooltipProvider>
       <aside
         data-slot="sidebar"
         data-collapsed={rail || undefined}
+        data-sheet={sheet || undefined}
         data-edge={edge || undefined}
         className={cn(styles.sidebar, className)}
       >
         {header}
         <div className={styles.tools}>
-          {collapsible &&
-            tool(rail ? "Expand sidebar" : "Collapse sidebar", "sidebar", () =>
-              setCollapsed(!isCollapsed)
-            )}
+          {sheet
+            ? tool("Close navigation", "sidebar", () => shell?.setNavigationOpen(false))
+            : collapsible &&
+              tool(rail ? "Expand sidebar" : "Collapse sidebar", "sidebar", () =>
+                setCollapsed(!isCollapsed)
+              )}
           <span className={styles.toolsEnd}>
             {search &&
               tool(search.label ?? "Search", "search", search.onClick, search.shortcut ?? "mod+K")}
@@ -574,7 +602,7 @@ export const Sidebar = ({
                   item={{ ...scope.back, icon: "chev-left" }}
                   rail={rail}
                   back
-                  onNavigate={onNavigate}
+                  onNavigate={navigate}
                 />
               </div>
             )}
@@ -600,7 +628,7 @@ export const Sidebar = ({
                   }
                   current={current}
                   rail={rail}
-                  onNavigate={onNavigate}
+                  onNavigate={navigate}
                 />
               </div>
             ))}
@@ -612,7 +640,7 @@ export const Sidebar = ({
                 items={footerItems}
                 current={current}
                 rail={rail}
-                onNavigate={onNavigate}
+                onNavigate={navigate}
               />
             </div>
           )}
@@ -624,6 +652,7 @@ export const Sidebar = ({
                 label={org ? "Switch organization" : "Account"}
                 width={264}
                 side={rail ? "right" : "top"}
+                align="start"
                 options={(org?.options ?? []).map((option) => ({
                   value: option.value,
                   label: option.label,
@@ -694,7 +723,7 @@ export const Sidebar = ({
                 {userAvatar}
                 <span className={styles.accountText}>
                   <span className={styles.accountName}>{user.name}</span>
-                  <span className={styles.accountMeta}>{user.email}</span>
+                  <span className={styles.accountMeta}>{userMeta}</span>
                 </span>
               </div>
             )}
@@ -702,5 +731,33 @@ export const Sidebar = ({
         )}
       </aside>
     </TooltipProvider>
+  );
+  if (!sheet || !shell) return content;
+  return (
+    <Sheet open={shell.navigationOpen} onOpenChange={shell.setNavigationOpen}>
+      <SheetContent
+        side="left"
+        showCloseButton={false}
+        aria-describedby={undefined}
+        className={styles.sheet}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          shell.navigationTrigger.current?.focus();
+        }}
+        onOpenAutoFocus={(event) => {
+          const target = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(
+            '[aria-current="page"]'
+          );
+          if (!target) return;
+          event.preventDefault();
+          target.focus();
+        }}
+      >
+        <SheetTitle className={styles.srOnly}>
+          {label ?? (activeSpace ? `${activeSpace.label} navigation` : "Main")}
+        </SheetTitle>
+        {content}
+      </SheetContent>
+    </Sheet>
   );
 };

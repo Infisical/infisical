@@ -3,10 +3,12 @@
     var(--v4-space-shell-gap) + var(--v4-size-control-border) +
       (var(--v4-size-shell-bar) - var(--v4-size-control-md)) / 2
   );
+  position: relative;
   display: flex;
   min-width: 0;
   height: 100%;
   min-height: 0;
+  overflow: clip;
   background: var(--v4-sidebar);
 }
 .inset {
@@ -16,6 +18,7 @@
     calc((100cqi - var(--v4-size-measure-page)) / 2)
   );
   container-type: inline-size;
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -36,6 +39,14 @@
 .shell > .inset:first-child {
   margin-inline-start: var(--v4-space-shell-gap);
 }
+.shell[data-narrow] > .inset {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+.inset:has(> .topBar) {
+  scroll-padding-top: calc(var(--v4-size-shell-bar) + var(--v4-space-16));
+}
 
 .gutter {
   padding: var(--v4-space-40) var(--v4-page-gutter, var(--v4-space-40));
@@ -54,7 +65,15 @@
   border-bottom: 1px solid var(--v4-line-soft);
   background: var(--v4-inset);
 }
+.topBar[data-narrow] {
+  gap: var(--v4-space-8);
+  padding-inline: var(--v4-space-8);
+}
+.menu {
+  flex: none;
+}
 .trail {
+  min-width: 0;
   flex: 1 1 auto;
   width: auto;
 }

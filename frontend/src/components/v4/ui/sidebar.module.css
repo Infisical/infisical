@@ -546,3 +546,29 @@
     animation-name: scopeFade;
   }
 }
+.accountMedia {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-badge);
+  height: var(--v4-size-badge);
+  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  background: var(--v4-ink);
+  color: var(--v4-on-ink);
+}
+.accountMedia > svg {
+  width: var(--v4-size-icon-xs);
+  height: var(--v4-size-icon-xs);
+}
+.sheet.sheet[data-side] {
+  gap: 0;
+  width: fit-content;
+  max-width: calc(100vw - var(--v4-space-48));
+  padding: 0;
+  overflow: hidden;
+  background: var(--v4-sidebar);
+}
+.sheet > .sidebar {
+  height: 100%;
+}

@@ -2142,10 +2142,12 @@
         "@infisical/dropdown-menu",
         "@infisical/icon",
         "@infisical/infisical-base",
+        "@infisical/sheet",
         "@infisical/switcher",
         "@infisical/tabs",
         "@infisical/toggle-group",
-        "@infisical/tooltip"
+        "@infisical/tooltip",
+        "@infisical/top-bar"
       ],
       "files": [
         {
@@ -2504,7 +2506,9 @@
       "type": "registry:ui",
       "registryDependencies": [
         "@infisical/breadcrumb",
-        "@infisical/infisical-base"
+        "@infisical/button",
+        "@infisical/infisical-base",
+        "@infisical/kbd"
       ],
       "files": [
         {

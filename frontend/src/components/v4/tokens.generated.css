@@ -26,6 +26,7 @@
   --v4-space-content-section: var(--v4-space-32);
   --v4-space-shell-gap: var(--v4-space-8);
   --v4-size-shell-bar: var(--v4-space-48);
+  --v4-size-shell-collapse: 800px;
   --v4-space-surface-inset: var(--v4-space-16);
   --v4-space-surface-inset-sm: var(--v4-space-12);
   --v4-space-overlay-inset: var(--v4-space-20);
