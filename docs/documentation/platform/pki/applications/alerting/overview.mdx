@@ -25,11 +25,11 @@ Infisical checks for expiring certificates once a day, and sends issuance, renew
 
 ## Choose where to create an alert
 
-You can create an alert for all of Certificate Management or for one [application](/documentation/platform/pki/applications/overview):
+You can create an alert for all of Infisical Certificate Management or for one [application](/documentation/platform/pki/applications/overview):
 
 | | Certificate Management alert | Application alert |
 | --- | --- | --- |
-| Covers | Every certificate in Certificate Management, or the ones that match its [filters](#filter-a-certificate-management-alert) | Every certificate in the application |
+| Covers | Every certificate in Infisical Certificate Management, or the ones that match its [filters](#filter-a-certificate-management-alert) | Every certificate in the application |
 | Created in | **Certificate Manager** > **Settings** > **Alerts** | The application's **Settings** tab |
 | Who can create it | The Certificate Management **Admin** role | The **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) |
 | Events | Certificate events, plus [signer certificate expiration](#signer-certificate-expiration) for code signing | Certificate events, with one alert for each event |
@@ -40,13 +40,13 @@ If you delete an application, Infisical deletes its alerts too.
 
 ## Filter a Certificate Management alert
 
-Without filters, a Certificate Management alert covers every certificate in Certificate Management. Each filter you add narrows the alert, and a certificate must match every filter:
+Without filters, a Certificate Management alert covers every certificate in Infisical Certificate Management. Each filter you add narrows the alert, and a certificate must match every filter:
 
 | Filter | Certificates covered |
 |--------|----------------------|
 | **Applications** | Certificates in one of the selected applications (up to 100) |
 | **Certificate Profiles** | Certificates issued from one of the selected profiles (up to 100) |
-| **Source** | Certificates with one of the selected sources: **Managed** for certificates issued through Certificate Management, **Imported**, or **Discovered** |
+| **Source** | Certificates with one of the selected sources: **Managed** for certificates issued through Infisical Certificate Management, **Imported**, or **Discovered** |
 
 For example, a **Source** filter set to **Imported** covers every imported certificate, including ones outside any application or profile. Add an **Applications** filter as well, and the alert covers only the imported certificates in those applications.
 
