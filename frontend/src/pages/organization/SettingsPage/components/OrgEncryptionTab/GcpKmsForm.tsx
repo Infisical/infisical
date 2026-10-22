@@ -559,6 +559,7 @@ export const GcpKmsForm = ({
                     }}
                     getOptionLabel={(option) => option.label}
                     getOptionValue={(option) => option.value}
+                    getOptionKeywords={(option) => [option.value]}
                     renderOption={formatOptionLabel}
                     renderValue={formatOptionLabel}
                   />
@@ -585,6 +586,7 @@ export const GcpKmsForm = ({
                     onValueChange={field.onChange}
                     getOptionLabel={(option) => option.label}
                     getOptionValue={(option) => option.value}
+                    getOptionKeywords={(option) => [option.value]}
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

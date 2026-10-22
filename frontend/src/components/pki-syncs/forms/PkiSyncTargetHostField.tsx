@@ -94,7 +94,7 @@ export const PkiSyncTargetHostField = ({ applicationId }: Props) => {
               value={value ? { value, label: value } : null}
               onValueChange={(newValue) => onChange(newValue?.value ?? "")}
               creation={{ onCreate: (inputValue) => onChange(inputValue.trim()) }}
-              onSearchChange={setSearch}
+              onInputValueChange={setSearch}
               options={options}
               isLoading={isPending}
               getOptionLabel={(option) => option.label}
