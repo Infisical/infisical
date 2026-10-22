@@ -42,6 +42,7 @@ WantedBy=multi-user.target`;
 const dockerCommand = (token: string, siteUrl: string) =>
   `docker run -d --name agent-vault-proxy \\
   -p 17323:17323 \\
+  -v agent-vault-proxy:/etc/infisical/agent-vault \\
   -e INFISICAL_AGENT_VAULT_PROXY_TOKEN=${token} \\
   infisical/cli agent-vault proxy \\
   --domain ${siteUrl}`;

@@ -59,12 +59,13 @@ The commands look like this:
     ```bash
     docker run -d --name agent-vault-proxy \
       -p 17323:17323 \
+      -v agent-vault-proxy:/etc/infisical/agent-vault \
       -e INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
       infisical/cli agent-vault proxy \
       --domain <your-instance-url>
     ```
 
-    To let the container start while [Infisical is unreachable](#command-flags), add `-v agent-vault-proxy:/etc/infisical/agent-vault` so that the proxy keeps its cache when the container is re-created.
+    The volume keeps the proxy's [cache](#command-flags), so the proxy can start even if Infisical is unreachable.
   </Tab>
   <Tab title="Kubernetes">
     ```yaml expandable
