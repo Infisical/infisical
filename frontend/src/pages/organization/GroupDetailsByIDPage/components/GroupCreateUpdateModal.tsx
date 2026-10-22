@@ -5,9 +5,10 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -16,7 +17,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -177,16 +177,18 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="role">Role</FieldLabel>
-                <FilterableSelect
-                  inputId="role"
+                <Combobox
+                  id="role"
                   options={roles}
                   placeholder="Select role..."
-                  onChange={onChange}
+                  searchAriaLabel="Search roles"
+                  isClearable={false}
+                  onValueChange={onChange}
                   value={value}
                   isError={Boolean(error)}
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
-                  components={{ Option: RoleOption }}
+                  renderOption={(option) => <RoleOptionContent role={option} />}
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>
