@@ -1,5 +1,6 @@
 import { AxiosError, isAxiosError } from "axios";
 import sodium from "libsodium-wrappers";
+import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -68,6 +69,24 @@ const GITHUB_SECRET_TYPES: Record<GitHubSyncSecretType, TGitHubSecretTypeDefinit
 
 const CODESPACES_ON_GITHUB_SERVER_MESSAGE =
   "Codespaces secrets are not available on GitHub Enterprise Server. Choose the Actions or Dependabot secret type, or use a GitHub.com connection.";
+
+const GITHUB_SECRET_NAME_PATTERN = new RE2(/^[A-Za-z_][A-Za-z0-9_]*$/);
+
+const GITHUB_SECRET_NAME_RULE =
+  "GitHub does not accept secret names unless they contain only letters, digits, and underscores, and start with a letter or an underscore. Spaces are not allowed.";
+
+const assertGitHubSecretNames = (names: string[]) => {
+  const invalidNames = names.filter((name) => !GITHUB_SECRET_NAME_PATTERN.test(name));
+  if (!invalidNames.length) return;
+
+  throw new SecretSyncError({
+    secretKey: invalidNames[0],
+    shouldRetry: false,
+    message: `${GITHUB_SECRET_NAME_RULE} Rename the secrets that failed this check: ${invalidNames
+      .map((name) => `"${name}"`)
+      .join(", ")}.`
+  });
+};
 
 // actions is the default for legacy syncs
 export const getGitHubSyncSecretType = (destinationConfig: { secretType?: GitHubSyncSecretType }) =>
@@ -326,6 +345,8 @@ export const GithubSyncFns = {
     const deps = { gatewayV2Service, gatewayPoolService };
     const ogSecretMap = payload.flatten();
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
+
+    assertGitHubSecretNames(Object.keys(secretMap));
 
     const { name: secretTypeName, limit } = GITHUB_SECRET_TYPES[getGitHubSyncSecretType(secretSync.destinationConfig)];
     const level = secretSync.destinationConfig.scope === GitHubSyncScope.Organization ? "organization" : "repository";

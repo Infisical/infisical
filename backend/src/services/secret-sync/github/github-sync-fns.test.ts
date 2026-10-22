@@ -275,6 +275,48 @@ describe("GithubSyncFns.syncSecrets", () => {
 
     expect(callsWith("PUT")).toHaveLength(1000);
   });
+
+  it.each(["BAD NAME", "BAD-NAME", "1LEADING"])(
+    "refuses %s before calling GitHub and names that secret",
+    async (key) => {
+      const error = await runSync(
+        makeSync(repoConfig(GitHubSyncSecretType.Dependabot)),
+        makePayload([key, "VALID_NAME"])
+      ).catch((err: unknown) => err);
+
+      expect(error).toBeInstanceOf(SecretSyncError);
+      expect(error).toMatchObject({
+        shouldRetry: false,
+        secretKey: key,
+        message: `GitHub does not accept secret names unless they contain only letters, digits, and underscores, and start with a letter or an underscore. Spaces are not allowed. Rename the secrets that failed this check: "${key}".`
+      });
+      expect((error as SecretSyncError).message).not.toContain("VALID_NAME");
+      expect(requestMock).not.toHaveBeenCalled();
+      expect(paginatedMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it("names every secret GitHub would reject", async () => {
+    const error = await runSync(
+      makeSync(repoConfig(GitHubSyncSecretType.Dependabot)),
+      makePayload(["BAD NAME", "1LEADING", "VALID_NAME"])
+    ).catch((err: unknown) => err);
+
+    expect(error).toMatchObject({
+      shouldRetry: false,
+      secretKey: "BAD NAME",
+      message: expect.stringContaining('Rename the secrets that failed this check: "BAD NAME", "1LEADING".')
+    });
+    expect((error as SecretSyncError).message).not.toContain("VALID_NAME");
+    expect(requestMock).not.toHaveBeenCalled();
+    expect(paginatedMock).not.toHaveBeenCalled();
+  });
+
+  it("syncs a secret name that starts with an underscore", async () => {
+    await runSync(makeSync(repoConfig(GitHubSyncSecretType.Dependabot)), makePayload(["_TOKEN"]));
+
+    expect(callsWith("PUT")[0].url).toBe("https://api.github.com/repos/acme/app/dependabot/secrets/_TOKEN");
+  });
 });
 
 describe("GitHub permission errors", () => {
