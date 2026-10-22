@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { subject } from "@casl/ability";
 
 import { ComboboxSheetCreationConfig, DiscardChangesAlertDialog } from "@app/components/v3";
 import {
@@ -32,10 +33,19 @@ export const useProfileCreation = <TOption = ProfileOption,>(
     cancelRef.current = cancel;
     requestDiscard();
   };
+  const canAttachProfile = (slug: string) =>
+    permission.can(
+      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+      subject(ProjectPermissionSub.CertificateProfiles, { slug })
+    );
 
   if (
     !permission.can(
       ProjectPermissionCertificateProfileActions.Create,
+      ProjectPermissionSub.CertificateProfiles
+    ) ||
+    !permission.can(
+      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
       ProjectPermissionSub.CertificateProfiles
     )
   )
@@ -54,8 +64,23 @@ export const useProfileCreation = <TOption = ProfileOption,>(
           isOpen
           onClose={complete}
           onCancel={() => requestCancel(cancel)}
-          onComplete={onCreated}
+          onComplete={(profile) => {
+            if (!canAttachProfile(profile.slug)) {
+              throw new Error(
+                "The profile was created, but you no longer have permission to attach it to an application."
+              );
+            }
+            return onCreated(profile);
+          }}
           initialSlug={initialInput}
+          validateSlug={(slug) =>
+            permission.can(
+              ProjectPermissionCertificateProfileActions.Create,
+              subject(ProjectPermissionSub.CertificateProfiles, { slug })
+            ) && canAttachProfile(slug)
+              ? undefined
+              : "You don't have permission to create and attach a profile with this name. Choose an allowed name."
+          }
           onDirtyChange={setIsDirty}
           onPendingChange={setIsPending}
         />

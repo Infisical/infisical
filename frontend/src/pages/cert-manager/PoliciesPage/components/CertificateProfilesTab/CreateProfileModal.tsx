@@ -539,6 +539,7 @@ interface Props {
   profile?: TCertificateProfileWithDetails;
   mode?: "create" | "edit" | "clone";
   onComplete?: (profile: TCertificateProfile) => void | Promise<void>;
+  validateSlug?: (slug: string) => string | undefined;
 }
 
 type ProfileFormProps = Props & {
@@ -555,6 +556,7 @@ export const CreateProfileForm = ({
   mode = "create",
   onComplete,
   initialSlug = "",
+  validateSlug,
   onCancel,
   onDirtyChange,
   onPendingChange
@@ -950,6 +952,12 @@ export const CreateProfileForm = ({
   };
 
   const onFormSubmit = async (data: FormData) => {
+    const slugError = savedProfile ? undefined : validateSlug?.(data.slug);
+    if (slugError) {
+      setSelectedStepIndex(0);
+      setError("slug", { type: "permission", message: slugError });
+      return;
+    }
     try {
       await saveProfile(data);
     } catch (error) {

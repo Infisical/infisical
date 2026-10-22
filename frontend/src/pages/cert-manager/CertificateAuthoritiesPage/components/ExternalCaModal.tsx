@@ -1024,7 +1024,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
                     type="button"
                     disabled={isPendingSave}
                     onClick={() => {
-                      discardActionRef.current = () => setSelectedType(null);
+                      discardActionRef.current = () => {
+                        reset();
+                        setSelectedType(null);
+                      };
                       requestDiscard();
                     }}
                     className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
