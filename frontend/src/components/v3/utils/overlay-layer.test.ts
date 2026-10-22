@@ -17,7 +17,7 @@ const createLayers = () => {
 
 const createLayerChain = (configs: { isPending: boolean; isModal: boolean }[]) => {
   const values: ReturnType<typeof useOverlayLayer>["contextValue"][] = [];
-  const Probe = ({ index }: { index: number }) => {
+  const Probe = ({ index }: { index: number }): ReactNode => {
     const layer = useOverlayLayer(configs[index].isPending, configs[index].isModal);
     values.push(layer.contextValue);
     return createElement(
