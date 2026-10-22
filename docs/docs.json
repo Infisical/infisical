@@ -562,7 +562,8 @@
                     "group": "Discovery",
                     "root": "documentation/platform/pki/discovery/overview",
                     "pages": [
-                      "documentation/platform/pki/discovery/network"
+                      "documentation/platform/pki/discovery/network",
+                      "documentation/platform/pki/discovery/linux-server"
                     ]
                   },
                   {
