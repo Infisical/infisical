@@ -10,10 +10,10 @@ import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { UnauthorizedError } from "@app/lib/errors";
 import {
+  agentVaultBootstrapLimit,
   agentVaultHeartbeatLimit,
   agentVaultResolveLimit,
-  agentVaultSessionLogChunkLimit,
-  writeLimit
+  agentVaultSessionLogChunkLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -38,7 +38,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
   server.route({
     method: "POST",
     url: "/bootstrap",
-    config: { rateLimit: writeLimit },
+    config: { rateLimit: agentVaultBootstrapLimit },
     schema: {
       hide: true,
       operationId: "bootstrapAgentVaultProxy",
