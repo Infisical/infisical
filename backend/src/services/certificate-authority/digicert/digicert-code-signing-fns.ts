@@ -11,7 +11,10 @@ import {
 } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractExternallyIssuedCertificateFields } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  getCertificateDeletedMessage
+} from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TDigiCertExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -367,6 +370,14 @@ export const digiCertCodeSigningFns = ({
     });
 
     const existingCert = await certificateDAL.findOne({ serialNumber: certObj.serialNumber });
+    if (existingCert?.deletedAt) {
+      throw new BadRequestError({
+        message: getCertificateDeletedMessage(
+          { ...existingCert, deletedAt: existingCert.deletedAt },
+          "be downloaded. Request a new code signing certificate instead"
+        )
+      });
+    }
     if (existingCert) {
       if (existingCert.caId !== ca.id) throw differentCaError;
       return { certificatePem: leaf, existingCertificateId: existingCert.id, insert: null };

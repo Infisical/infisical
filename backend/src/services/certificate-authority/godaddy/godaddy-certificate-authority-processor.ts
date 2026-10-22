@@ -15,9 +15,11 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
+import { TCertificateDALFactory } from "../../certificate/certificate-dal";
 import { CertificateIssuanceOperation, CertificateRequestStatus } from "../../certificate-common/certificate-constants";
 import { reportCertificateIssued } from "../../certificate-common/certificate-telemetry-fns";
 import { TCertificateRequestDALFactory } from "../../certificate-request/certificate-request-dal";
+import { failRenewalIfOriginalDeleted } from "../../certificate-request/certificate-request-fns";
 import {
   TAttachCertificateToRequestDTO,
   TUpdateCertificateRequestStatusDTO
@@ -60,6 +62,7 @@ export type TGoDaddyCertificateRequestServiceDep = {
 };
 
 export type TProcessGoDaddyRequestDeps = {
+  certificateDAL: Pick<TCertificateDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -152,6 +155,18 @@ export const processGoDaddyPendingValidationRequest = async (
     logger.info(`GoDaddy validation timed out [certificateRequestId=${request.id}]`);
     return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };
   }
+
+  const abandonedRenewal =
+    parsed.godaddy.isRenewal && parsed.godaddy.originalCertificateId
+      ? await failRenewalIfOriginalDeleted({
+          certificateDAL: deps.certificateDAL,
+          certificateRequestService: deps.certificateRequestService,
+          certificateRequestId: request.id,
+          originalCertificateId: parsed.godaddy.originalCertificateId,
+          upstreamOrderReference: `GoDaddy certificate ${parsed.godaddy.certificateId}`
+        })
+      : null;
+  if (abandonedRenewal) return abandonedRenewal;
 
   const client = await getOrCreateClient(request, deps, clientCache);
 

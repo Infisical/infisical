@@ -91,6 +91,7 @@ describe("CertificateV3Service", () => {
     TCertificateDALFactory,
     | "findOne"
     | "findById"
+    | "findByIdForUpdate"
     | "updateById"
     | "transaction"
     | "create"
@@ -102,6 +103,7 @@ describe("CertificateV3Service", () => {
   > = {
     findOne: vi.fn(),
     findById: vi.fn(),
+    findByIdForUpdate: vi.fn(),
     findCertificatesMatchingSyncFilters: vi.fn().mockResolvedValue([]),
     findActiveCertificatesByIds: vi.fn().mockResolvedValue([]),
     updateById: vi.fn(),
@@ -262,6 +264,7 @@ describe("CertificateV3Service", () => {
       const mockTx = {};
       return callback(mockTx);
     });
+    vi.mocked(mockCertificateDAL.findByIdForUpdate).mockImplementation((id: string) => mockCertificateDAL.findById(id));
     vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(null);
     vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
       enrollmentType: null,
@@ -3131,6 +3134,28 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow("Certificate is revoked and cannot be renewed");
+    });
+
+    it("should reject renewal if certificate is deleted", async () => {
+      const deletedCert = {
+        ...mockOriginalCert,
+        deletedAt: new Date("2026-10-20T14:38:27.000Z")
+      };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(deletedCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(deletedCert);
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+        callback({})
+      );
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("was deleted on 2026-10-20T14:38:27.000Z and can no longer be renewed or changed");
     });
 
     it("should reject renewal if CA is inactive", async () => {

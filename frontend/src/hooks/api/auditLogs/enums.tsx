@@ -98,6 +98,7 @@ export enum EventType {
   IMPORT_CERT = "import-cert",
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
+  RESTORE_CERT = "restore-cert",
   REVOKE_CERT = "revoke-cert",
   ASSIGN_CERT_TO_APPLICATION = "assign-cert-to-application",
   CREATE_PKI_APPLICATION = "create-pki-application",

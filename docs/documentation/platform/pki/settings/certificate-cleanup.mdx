@@ -4,7 +4,7 @@ sidebarTitle: "Certificate cleanup"
 description: "Automatically remove expired certificates to keep your inventory organized."
 ---
 
-Automatically remove expired certificates from your Certificate Manager. Cleanup runs daily and deletes certificates that have been expired for a configurable number of days.
+Automatically remove expired certificates from your Certificate Manager. Cleanup runs daily and permanently removes certificates that have been expired for a configurable number of days. If you delete a certificate yourself instead, its details stay in the inventory.
 
 <Info>
   This setting is managed by product admins and applies to all certificates in the Certificate Manager.
@@ -24,9 +24,9 @@ Automatically remove expired certificates from your Certificate Manager. Cleanup
     
     | Value | Behavior |
     |-------|----------|
-    | `3` | Certificates are deleted 3 days after expiration |
-    | `7` | Certificates are deleted 7 days after expiration |
-    | `30` | Certificates are deleted 30 days after expiration |
+    | `3` | Certificates are permanently removed 3 days after expiration |
+    | `7` | Certificates are permanently removed 7 days after expiration |
+    | `30` | Certificates are permanently removed 30 days after expiration |
     
     <Note>
       Values must be between 1 and 30 days.

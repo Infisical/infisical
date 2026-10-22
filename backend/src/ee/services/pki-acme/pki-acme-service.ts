@@ -29,6 +29,8 @@ import {
 } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { assertCertificateMaterialAvailable } from "@app/services/certificate/certificate-fns";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -149,6 +151,7 @@ type TPkiAcmeServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
@@ -205,6 +208,7 @@ export const pkiAcmeServiceFactory = ({
   certificateAuthorityDAL,
   certificateProfileDAL,
   certificateBodyDAL,
+  certificateDAL,
   certificatePolicyDAL,
   acmeAccountDAL,
   acmeOrderDAL,
@@ -1660,6 +1664,9 @@ export const pkiAcmeServiceFactory = ({
     if (!syncedOrder.certificateId) {
       throw new NotFoundError({ message: "The certificate for this ACME order no longer exists" });
     }
+
+    const certificate = await certificateDAL.findById(syncedOrder.certificateId);
+    if (certificate) assertCertificateMaterialAvailable(certificate);
 
     const certBody = await certificateBodyDAL.findOne({ certId: syncedOrder.certificateId });
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({

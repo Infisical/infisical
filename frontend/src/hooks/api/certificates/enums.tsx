@@ -2,7 +2,8 @@ export enum CertStatus {
   ACTIVE = "active",
   RENEWED = "renewed",
   EXPIRED = "expired",
-  REVOKED = "revoked"
+  REVOKED = "revoked",
+  DELETED = "deleted"
 }
 
 export enum CertKeyAlgorithm {
@@ -57,6 +58,11 @@ export enum CertificateRenewalKeySource {
   New = "new",
   Reuse = "reuse",
   Csr = "csr"
+}
+
+export enum CertificateRestoreSource {
+  Import = "import",
+  Discovery = "discovery"
 }
 
 export enum CertSource {

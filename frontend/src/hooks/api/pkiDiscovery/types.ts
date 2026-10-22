@@ -71,6 +71,7 @@ export type TPkiDiscovery = {
   discoveryType: PkiDiscoveryType;
   targetConfig: TPkiDiscoveryTargetConfig;
   isAutoScanEnabled: boolean;
+  restoreDeletedCertificates: boolean;
   scanIntervalDays: number | null;
   gatewayId: string | null;
   gatewayPoolId: string | null;
@@ -138,6 +139,7 @@ export type TPkiInstallationCert = {
   notBefore?: string | null;
   notAfter?: string | null;
   status?: string | null;
+  deletedAt?: string | null;
   friendlyName?: string | null;
   fingerprintSha256?: string | null;
 };
@@ -180,6 +182,7 @@ export type TCreatePkiDiscoveryDTO = {
   discoveryType?: PkiDiscoveryType;
   targetConfig: TPkiDiscoveryTargetConfig;
   isAutoScanEnabled?: boolean;
+  restoreDeletedCertificates?: boolean;
   scanIntervalDays?: number;
   gatewayId?: string;
   gatewayPoolId?: string;
@@ -191,6 +194,7 @@ export type TUpdatePkiDiscoveryDTO = {
   description?: string | null;
   targetConfig?: TPkiDiscoveryTargetConfig;
   isAutoScanEnabled?: boolean;
+  restoreDeletedCertificates?: boolean;
   scanIntervalDays?: number | null;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;

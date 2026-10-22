@@ -85,9 +85,11 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                   >
                     <TableCell>{cert.commonName || "N/A"}</TableCell>
                     <TableCell>
-                      {expiryDetails ? (
+                      {cert.deletedAt && <Badge variant="neutral">Deleted</Badge>}
+                      {!cert.deletedAt && expiryDetails && (
                         <Badge variant={expiryDetails.variant}>{expiryDetails.label}</Badge>
-                      ) : (
+                      )}
+                      {!cert.deletedAt && !expiryDetails && (
                         <Badge variant="neutral">Unknown</Badge>
                       )}
                     </TableCell>

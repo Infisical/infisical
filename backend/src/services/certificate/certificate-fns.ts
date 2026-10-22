@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
+import { TCertificates } from "@app/db/schemas";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -530,19 +531,15 @@ export const extractExternallyIssuedCertificateFields = (
   };
 };
 
-export const linkRenewedCertificate = async (
-  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
-  originalCertificateId: string,
-  renewedCertificateId: string,
-  tx?: Knex
-) => {
-  const originalCertificate = await certificateDAL.findById(originalCertificateId, tx);
-
-  if (originalCertificate?.orderId) {
-    await certificateDAL.updateById(renewedCertificateId, { orderId: originalCertificate.orderId }, tx);
-  }
-
-  await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
+export const resolveCertificateStatus = (certificate: {
+  status: string;
+  notAfter: Date;
+  renewedByCertificateId?: string | null;
+}): CertStatus => {
+  if (certificate.status === CertStatus.REVOKED) return CertStatus.REVOKED;
+  if (new Date(certificate.notAfter).getTime() <= Date.now()) return CertStatus.EXPIRED;
+  if (certificate.renewedByCertificateId) return CertStatus.RENEWED;
+  return CertStatus.ACTIVE;
 };
 
 export const resolveCertificateDeletionEligibility = (certificate: {
@@ -559,4 +556,112 @@ export const resolveCertificateDeletionEligibility = (certificate: {
   if (hasExpired) return CertificateDeletionEligibility.Expired;
 
   return null;
+};
+
+type TDeletableCertificate = {
+  friendlyName?: string | null;
+  commonName?: string | null;
+  serialNumber: string;
+  deletedAt?: Date | null;
+};
+
+export const getCertificateDisplayName = (certificate: Omit<TDeletableCertificate, "deletedAt">) =>
+  certificate.friendlyName || certificate.commonName || certificate.serialNumber;
+
+export const assertCertificateMaterialAvailable = (certificate: TDeletableCertificate) => {
+  if (!certificate.deletedAt) return;
+
+  throw new BadRequestError({
+    message: `Certificate '${getCertificateDisplayName(certificate)}' was deleted on ${new Date(certificate.deletedAt).toISOString()}. Its certificate and private key are no longer available.`
+  });
+};
+
+export const getCertificateDeletedMessage = (
+  certificate: TDeletableCertificate & { deletedAt: Date },
+  blockedAction = "be renewed or changed"
+) =>
+  `Certificate '${getCertificateDisplayName(certificate)}' was deleted on ${new Date(certificate.deletedAt).toISOString()} and can no longer ${blockedAction}.`;
+
+export const assertCertificateNotDeleted = (certificate: TDeletableCertificate, blockedAction?: string) => {
+  if (!certificate.deletedAt) return;
+
+  throw new BadRequestError({
+    message: getCertificateDeletedMessage({ ...certificate, deletedAt: certificate.deletedAt }, blockedAction)
+  });
+};
+
+export const lockRenewalOriginalCertificate = async (
+  certificateDAL: Pick<TCertificateDALFactory, "findByIdForUpdate">,
+  originalCertificateId: string,
+  tx: Knex,
+  issuedSerialNumber?: string
+) => {
+  const originalCertificate = await certificateDAL.findByIdForUpdate(originalCertificateId, tx);
+  if (originalCertificate?.deletedAt) {
+    const deletedMessage = getCertificateDeletedMessage({
+      ...originalCertificate,
+      deletedAt: originalCertificate.deletedAt
+    });
+    throw new BadRequestError({
+      message: issuedSerialNumber
+        ? `${deletedMessage} The certificate authority already issued the renewed certificate with serial number '${issuedSerialNumber}'. Revoke it at the certificate authority if you don't need it.`
+        : deletedMessage
+    });
+  }
+  return originalCertificate;
+};
+
+export const linkRenewedCertificate = async (
+  certificateDAL: Pick<TCertificateDALFactory, "updateById">,
+  lockedOriginalCertificate: Pick<TCertificates, "id" | "orderId">,
+  renewedCertificateId: string,
+  tx: Knex
+) => {
+  if (lockedOriginalCertificate.orderId) {
+    await certificateDAL.updateById(renewedCertificateId, { orderId: lockedOriginalCertificate.orderId }, tx);
+  }
+
+  await certificateDAL.updateById(lockedOriginalCertificate.id, { renewedByCertificateId: renewedCertificateId }, tx);
+};
+
+type TRestorableImportData = {
+  applicationId: string | null;
+  caId: string | null;
+  profileId: string | null;
+  externalMetadata: unknown;
+  source: string;
+  altNames?: string;
+  renewBeforeDays?: number;
+};
+
+export const canRestoreDeletedCertificate = (
+  deletedCertificate: Pick<TCertificates, "deletedAt" | "projectId" | "applicationId" | "profileId" | "caId">,
+  target: Pick<TRestorableImportData, "applicationId" | "profileId" | "caId"> & { projectId: string }
+) =>
+  Boolean(deletedCertificate.deletedAt) &&
+  deletedCertificate.projectId === target.projectId &&
+  (deletedCertificate.applicationId ?? null) === target.applicationId &&
+  (deletedCertificate.profileId ?? null) === target.profileId &&
+  (target.profileId
+    ? !(deletedCertificate.caId && target.caId && deletedCertificate.caId !== target.caId)
+    : !deletedCertificate.caId);
+
+export const buildRestoredImportData = <T extends TRestorableImportData>(
+  deletedCertificate: TCertificates,
+  importedData: T
+) => {
+  return {
+    ...importedData,
+    caId: deletedCertificate.caId ?? importedData.caId,
+    profileId: deletedCertificate.profileId ?? importedData.profileId,
+    externalMetadata: deletedCertificate.externalMetadata ?? importedData.externalMetadata,
+    source:
+      deletedCertificate.source === CertificateSource.Discovered
+        ? importedData.source
+        : (deletedCertificate.source ?? null),
+    altNames: importedData.altNames ?? null,
+    renewBeforeDays: importedData.renewBeforeDays ?? null,
+    renewalError: null,
+    discoveryMetadata: null
+  };
 };

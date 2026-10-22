@@ -518,6 +518,25 @@ describe("CertificateEstV3Service", () => {
 
       expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
     });
+
+    it("should reject re-enrollment when the client certificate was deleted", async () => {
+      mockCertificateDAL.findOne.mockResolvedValue({
+        status: CertStatus.ACTIVE,
+        deletedAt: new Date(),
+        commonName: "device.example.com",
+        serialNumber: "01"
+      });
+
+      await expect(
+        service.simpleReenrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+        })
+      ).rejects.toThrow("was deleted and can no longer be re-enrolled");
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
+    });
   });
 
   describe("getCaCertsByProfile", () => {

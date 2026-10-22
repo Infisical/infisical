@@ -37,6 +37,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
@@ -140,6 +141,7 @@ type TCertificateV3ServiceFactoryDep = {
     TCertificateDALFactory,
     | "findOne"
     | "findById"
+    | "findByIdForUpdate"
     | "updateById"
     | "transaction"
     | "create"
@@ -2321,6 +2323,8 @@ export const certificateV3ServiceFactory = ({
       permissionService,
       resourceMetadataDAL
     });
+
+    assertCertificateNotDeleted(certificate);
 
     if (metadata && projectPermission) {
       assertCanEditCertificateResult({

@@ -2,19 +2,28 @@ import { createPrivateKey, generateKeyPairSync, webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
+import { TCertificates } from "@app/db/schemas";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
+  assertCertificateMaterialAvailable,
+  assertCertificateNotDeleted,
   buildCertificateBundle,
+  buildRestoredImportData,
+  canRestoreDeletedCertificate,
   CertificateThumbprintAlgorithm,
   extractCertificateFields,
   extractExternallyIssuedCertificateFields,
+  getCertificateDisplayName,
+  linkRenewedCertificate,
+  lockRenewalOriginalCertificate,
   normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
   parsePemCertificateChain,
-  resolveCertificateDeletionEligibility
+  resolveCertificateDeletionEligibility,
+  resolveCertificateStatus
 } from "./certificate-fns";
 import { CertExtendedKeyUsage, CertificateDeletionEligibility, CertKeyUsage, CertStatus } from "./certificate-types";
 
@@ -280,6 +289,22 @@ describe("extractExternallyIssuedCertificateFields", () => {
   });
 });
 
+describe("resolveCertificateStatus", () => {
+  const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  it("derives revoked > expired > renewed > active from the stored columns", () => {
+    expect(resolveCertificateStatus({ status: CertStatus.REVOKED, notAfter: past })).toBe(CertStatus.REVOKED);
+    expect(
+      resolveCertificateStatus({ status: CertStatus.ACTIVE, notAfter: past, renewedByCertificateId: "next" })
+    ).toBe(CertStatus.EXPIRED);
+    expect(
+      resolveCertificateStatus({ status: CertStatus.ACTIVE, notAfter: future, renewedByCertificateId: "next" })
+    ).toBe(CertStatus.RENEWED);
+    expect(resolveCertificateStatus({ status: CertStatus.ACTIVE, notAfter: future })).toBe(CertStatus.ACTIVE);
+  });
+});
+
 describe("resolveCertificateDeletionEligibility", () => {
   const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -349,6 +374,69 @@ describe("resolveCertificateDeletionEligibility", () => {
   it("allows a revoked certificate once it has expired", () => {
     expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: past })).toBe(
       CertificateDeletionEligibility.Expired
+    );
+  });
+});
+
+describe("deleted certificate guards", () => {
+  const deletedAt = new Date("2026-10-20T14:38:27.000Z");
+  const certificate = { friendlyName: "web", commonName: "web.example.com", serialNumber: "0a1b2c" };
+
+  it("lets a certificate that was never deleted through", () => {
+    expect(() => assertCertificateMaterialAvailable(certificate)).not.toThrow();
+    expect(() => assertCertificateNotDeleted({ ...certificate, deletedAt: null })).not.toThrow();
+  });
+
+  it("refuses the certificate and private key of a deleted certificate, naming it and the date", () => {
+    expect(() => assertCertificateMaterialAvailable({ ...certificate, deletedAt })).toThrow(
+      new BadRequestError({
+        message:
+          "Certificate 'web' was deleted on 2026-10-20T14:38:27.000Z. Its certificate and private key are no longer available."
+      })
+    );
+  });
+
+  it("refuses to act on a deleted certificate", () => {
+    expect(() => assertCertificateNotDeleted({ ...certificate, deletedAt })).toThrow(BadRequestError);
+    expect(() => assertCertificateNotDeleted({ ...certificate, deletedAt })).toThrow(
+      "Certificate 'web' was deleted on 2026-10-20T14:38:27.000Z and can no longer be renewed or changed."
+    );
+  });
+
+  it("falls back to the common name and then the serial number when the name is empty", () => {
+    expect(getCertificateDisplayName({ ...certificate, friendlyName: "" })).toBe("web.example.com");
+    expect(getCertificateDisplayName({ ...certificate, friendlyName: "", commonName: "" })).toBe("0a1b2c");
+  });
+});
+
+describe("renewal link", () => {
+  const tx = {} as Parameters<typeof linkRenewedCertificate>[3];
+
+  it("points the locked original at its successor and carries the order over", async () => {
+    const dal = { updateById: vi.fn().mockResolvedValue({}) };
+
+    await linkRenewedCertificate(dal, { id: "cert-old", orderId: "order-1" }, "cert-new", tx);
+
+    expect(dal.updateById).toHaveBeenCalledWith("cert-new", { orderId: "order-1" }, tx);
+    expect(dal.updateById).toHaveBeenCalledWith("cert-old", { renewedByCertificateId: "cert-new" }, tx);
+  });
+
+  it("refuses to lock a certificate deleted while the renewal was in flight", async () => {
+    const dal = {
+      findByIdForUpdate: vi.fn().mockResolvedValue({
+        id: "cert-old",
+        commonName: "web.example.com",
+        serialNumber: "01",
+        deletedAt: new Date("2026-10-20T14:38:27.000Z")
+      })
+    };
+
+    await expect(lockRenewalOriginalCertificate(dal, "cert-old", tx)).rejects.toThrow(
+      "Certificate 'web.example.com' was deleted on 2026-10-20T14:38:27.000Z and can no longer be renewed or changed."
+    );
+    expect(dal.findByIdForUpdate).toHaveBeenCalledWith("cert-old", tx);
+    await expect(lockRenewalOriginalCertificate(dal, "cert-old", tx, "7f02")).rejects.toThrow(
+      "The certificate authority already issued the renewed certificate with serial number '7f02'."
     );
   });
 });
@@ -432,5 +520,76 @@ describe("parsePemCertificateChain", () => {
     const rootLines = (await makeCertPem("Root")).split("\n");
     rootLines[2] = `${rootLines[2].slice(0, 5)}!${rootLines[2].slice(6)}`;
     expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${rootLines.join("\n")}`)).toBeNull();
+  });
+});
+
+describe("buildRestoredImportData", () => {
+  const deleted = {
+    id: "cert-1",
+    friendlyName: "web",
+    commonName: "web.example.com",
+    serialNumber: "0a1b",
+    fingerprintSha256: "AA:BB",
+    projectId: "project-1",
+    applicationId: null,
+    caId: "ca-1",
+    profileId: "profile-1",
+    externalMetadata: null,
+    source: null
+  } as unknown as TCertificates;
+  const imported: {
+    projectId: string;
+    applicationId: string | null;
+    caId: string | null;
+    profileId: string | null;
+    externalMetadata: unknown;
+    source: string;
+    fingerprintSha256: string;
+    altNames: string;
+    renewBeforeDays?: number;
+  } = {
+    projectId: "project-1",
+    applicationId: null,
+    caId: null,
+    profileId: null,
+    externalMetadata: null,
+    source: CertificateSource.Imported,
+    fingerprintSha256: "AA:BB",
+    altNames: "web.example.com"
+  };
+
+  it("keeps the deleted row's issuer link and clears stale state", () => {
+    const restored = buildRestoredImportData(deleted, imported);
+
+    expect(restored.caId).toBe("ca-1");
+    expect(restored.profileId).toBe("profile-1");
+    expect(restored.source).toBeNull();
+    expect(restored.renewalError).toBeNull();
+    expect(restored.renewBeforeDays).toBeNull();
+  });
+
+  it("marks a restored discovered certificate as imported", () => {
+    const restored = buildRestoredImportData(
+      { ...deleted, caId: null, profileId: null, source: CertificateSource.Discovered },
+      imported
+    );
+
+    expect(restored.source).toBe(CertificateSource.Imported);
+  });
+
+  it("restores only into the same project, Application, profile and certificate authority", () => {
+    const deletedRow = { ...deleted, deletedAt: new Date("2026-10-20T14:38:27.000Z") };
+    expect(canRestoreDeletedCertificate(deletedRow, imported)).toBe(false);
+    expect(canRestoreDeletedCertificate(deletedRow, { ...imported, profileId: "profile-1", caId: "ca-1" })).toBe(true);
+    expect(canRestoreDeletedCertificate(deletedRow, { ...imported, profileId: "profile-1" })).toBe(true);
+    expect(canRestoreDeletedCertificate({ ...deletedRow, profileId: null, caId: null }, imported)).toBe(true);
+    expect(canRestoreDeletedCertificate({ ...deletedRow, profileId: null }, imported)).toBe(false);
+    expect(canRestoreDeletedCertificate(deletedRow, { ...imported, applicationId: "app-2" })).toBe(false);
+    expect(canRestoreDeletedCertificate(deletedRow, { ...imported, profileId: "profile-2" })).toBe(false);
+    expect(canRestoreDeletedCertificate(deletedRow, { ...imported, caId: "ca-2" })).toBe(false);
+    expect(
+      canRestoreDeletedCertificate(deletedRow, { ...imported, projectId: "project-2", profileId: "profile-1" })
+    ).toBe(false);
+    expect(canRestoreDeletedCertificate(deleted, imported)).toBe(false);
   });
 });

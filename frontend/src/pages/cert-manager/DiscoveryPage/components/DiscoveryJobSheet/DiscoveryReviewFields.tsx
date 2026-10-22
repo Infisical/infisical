@@ -117,6 +117,11 @@ export const DiscoveryReviewFields = () => {
         </ReviewDetail>
         <ReviewDetail label="Name">{values.name}</ReviewDetail>
         <ReviewDetail label="Schedule">{scheduleLabel}</ReviewDetail>
+        <ReviewDetail label="Restore Deleted Certificates">
+          <Badge variant={values.restoreDeletedCertificates ? "success" : "neutral"}>
+            {values.restoreDeletedCertificates ? "Enabled" : "Disabled"}
+          </Badge>
+        </ReviewDetail>
         <ReviewDetail label="Description">{values.description}</ReviewDetail>
       </ReviewGroup>
     </div>

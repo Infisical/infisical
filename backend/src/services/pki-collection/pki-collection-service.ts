@@ -5,6 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 
 import { TPkiCollectionDALFactory } from "./pki-collection-dal";
@@ -262,6 +263,7 @@ export const pkiCollectionServiceFactory = ({
           id: itemId
         });
         if (!certificate) throw new NotFoundError({ message: `Certificate with ID '${itemId}' not found` });
+        assertCertificateNotDeleted(certificate, "be added to a collection");
 
         pkiCollectionItem = await pkiCollectionItemDAL.create({
           pkiCollectionId: collectionId,

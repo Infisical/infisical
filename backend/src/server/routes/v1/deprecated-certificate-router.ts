@@ -13,7 +13,12 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import { CertExtendedKeyUsage, CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertificateRestoreSource,
+  CertKeyUsage,
+  CrlReason
+} from "@app/services/certificate/certificate-types";
 import {
   validateAltNamesField,
   validateCaDateField
@@ -325,7 +330,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, privateKey, serialNumber, cert, applicationName } =
+      const { certificate, certificateChain, privateKey, serialNumber, cert, applicationName, restoredFromDeletion } =
         await server.services.certificate.importCert({
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -337,16 +342,28 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: cert.projectId,
-        event: {
-          type: EventType.IMPORT_CERT,
-          metadata: {
-            certId: cert.id,
-            cn: cert.commonName,
-            serialNumber,
-            applicationId: cert.applicationId,
-            applicationName
-          }
-        }
+        event: restoredFromDeletion
+          ? {
+              type: EventType.RESTORE_CERT,
+              metadata: {
+                certId: cert.id,
+                cn: cert.commonName,
+                serialNumber,
+                restoredVia: CertificateRestoreSource.Import,
+                applicationId: cert.applicationId,
+                applicationName
+              }
+            }
+          : {
+              type: EventType.IMPORT_CERT,
+              metadata: {
+                certId: cert.id,
+                cn: cert.commonName,
+                serialNumber,
+                applicationId: cert.applicationId,
+                applicationName
+              }
+            }
       });
 
       return {
@@ -541,7 +558,8 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Delete certificate. Only expired, discovered, or imported certificates can be deleted.",
+      description:
+        "Delete a certificate and its private key. Its details stay in the inventory with a deleted status. Deleting a certificate does not revoke it.",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
@@ -552,14 +570,15 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { deletedCert, applicationName, deletionEligibility } = await server.services.certificate.deleteCert({
-        serialNumber: req.params.serialNumber,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        auditLogInfo: req.auditLogInfo
-      });
+      const { deletedCert, applicationName, statusAtDeletion, deletionAllowedReason } =
+        await server.services.certificate.deleteCert({
+          serialNumber: req.params.serialNumber,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          auditLogInfo: req.auditLogInfo
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -573,7 +592,8 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
             serialNumber: deletedCert.serialNumber,
             notAfter: deletedCert.notAfter.toISOString(),
             source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
-            deletionAllowedReason: deletionEligibility,
+            statusAtDeletion,
+            deletionAllowedReason,
             applicationId: deletedCert.applicationId,
             applicationName
           }

@@ -726,6 +726,8 @@ export const pkiScepServiceFactory = ({
       const failReasonByDenyReason: Record<ScepRenewalDenyReason, string> = {
         [ScepRenewalDenyReason.InvalidSigner]:
           "Signer certificate is missing, malformed, expired, revoked, or does not chain to profile CA",
+        [ScepRenewalDenyReason.SignerDeleted]:
+          "Signer certificate was deleted and can no longer be renewed. Enroll a new certificate instead",
         [ScepRenewalDenyReason.WrongProfile]: "Signer certificate does not belong to this profile",
         [ScepRenewalDenyReason.WrongApplication]:
           "Signer certificate was not issued through the application handling this request",

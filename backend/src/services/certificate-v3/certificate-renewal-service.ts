@@ -20,6 +20,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted, lockRenewalOriginalCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import {
@@ -136,6 +137,7 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
     | "findById"
+    | "findByIdForUpdate"
     | "updateById"
     | "transaction"
     | "create"
@@ -265,6 +267,8 @@ export const certificateRenewalServiceFactory = ({
     },
     tx: Knex
   ) => {
+    await lockRenewalOriginalCertificate(certificateDAL, originalCert.id, tx);
+
     const renewalUpdate: {
       profileId?: string | null;
       renewedFromCertificateId?: string;
@@ -587,7 +591,7 @@ export const certificateRenewalServiceFactory = ({
     { certificateId, keySource }: { certificateId: string; keySource: CertificateRenewalKeySource },
     tx: Knex
   ) => {
-    const originalCert = await certificateDAL.findById(certificateId, tx);
+    const originalCert = await certificateDAL.findByIdForUpdate(certificateId, tx);
     if (!originalCert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
@@ -1120,6 +1124,8 @@ export const certificateRenewalServiceFactory = ({
           ? undefined
           : await $authorizeRenewal({ originalCert, profile, actorCtx, isEditingCertificate }, tx);
 
+        assertCertificateNotDeleted(originalCert);
+
         const { issuerType, ca, caType, policy } = await $resolveRenewalIssuer(
           {
             originalCert,
@@ -1536,6 +1542,8 @@ export const certificateRenewalServiceFactory = ({
       permissionService,
       resourceMetadataDAL
     });
+
+    assertCertificateNotDeleted(certificate);
 
     if (!certificate.profileId) {
       throw new BadRequestError({
