@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BadgeCheckIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
   Button,
+  Combobox,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Field,
   FieldContent,
@@ -13,10 +14,10 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -29,6 +30,7 @@ import {
   useListEffectiveSignerMembers,
   usePreApproveSigning
 } from "@app/hooks/api/signers";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import {
   pickDeclaredScope,
   ScopeFieldsFormSection,
@@ -75,6 +77,7 @@ const schema = z
 type FormData = z.infer<typeof schema>;
 
 export const PreApproveSigningSheet = ({ isOpen, onOpenChange, signerId }: Props) => {
+  const memberId = useId();
   const users = useListEffectiveSignerMembers({ signerId, kind: "user" });
   const identities = useListEffectiveSignerMembers({ signerId, kind: "identity" });
   const { data: policy } = useGetSignerPolicy(signerId);
@@ -114,7 +117,12 @@ export const PreApproveSigningSheet = ({ isOpen, onOpenChange, signerId }: Props
     scope: []
   });
 
-  const { control, handleSubmit, reset } = useForm<FormData>({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isDirty }
+  } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: buildDefaults()
   });
@@ -124,12 +132,20 @@ export const PreApproveSigningSheet = ({ isOpen, onOpenChange, signerId }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxSignings, maxWindowDuration]);
 
+  const close = () => {
+    reset(buildDefaults());
+    onOpenChange(false);
+  };
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: close });
   const handleClose = (open: boolean) => {
-    if (!open) reset(buildDefaults());
-    onOpenChange(open);
+    if (submitting) return;
+    if (open) onOpenChange(true);
+    else requestDiscard();
   };
 
   const onSubmit = async (data: FormData) => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       const [kind, id] = data.granteeKey.split(":");
@@ -142,7 +158,7 @@ export const PreApproveSigningSheet = ({ isOpen, onOpenChange, signerId }: Props
         requestedWindowDuration: resolveSigningWindow(data.requestedWindowDuration),
         scope: pickDeclaredScope(data.scope)
       });
-      handleClose(false);
+      close();
     } catch {
       // The mutation cache reports the failure, so showing it here would duplicate the toast.
       // Caught only so the sheet stays open for another attempt.
@@ -152,143 +168,156 @@ export const PreApproveSigningSheet = ({ isOpen, onOpenChange, signerId }: Props
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
-        <SheetHeader className="border-b">
-          <SheetTitle>
-            <div className="flex w-full items-start gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/10 text-warning">
-                <BadgeCheckIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-x-2 text-label">Pre-approve signing</div>
-                <p className="text-sm leading-4 text-muted">
-                  Grant an Operator or machine identity a signed-off window without an approval
-                  flow.
-                </p>
-              </div>
-            </div>
-          </SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleClose}>
+        <SheetContent size="wide" isPending={submitting}>
+          <SheetHeader>
+            <SheetTitle>Pre-approve Signing</SheetTitle>
+            <SheetDescription>
+              Grant an Operator or machine identity a signed-off window without an approval flow.
+            </SheetDescription>
+          </SheetHeader>
 
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(onSubmit)}>
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
-              <FieldGroup>
-                <Controller
-                  name="granteeKey"
-                  control={control}
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel>Member</FieldLabel>
-                      <FieldContent>
-                        <FilterableSelect
-                          options={memberOptions}
-                          value={memberOptions.find((o) => o.value === field.value) ?? null}
-                          onChange={(selected) =>
-                            field.onChange((selected as MemberOption | null)?.value ?? "")
-                          }
-                          placeholder="Pick a member..."
-                          isError={Boolean(error)}
-                        />
-                        <FieldError errors={[error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
+          <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(onSubmit)}>
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <fieldset
+                disabled={submitting}
+                className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6"
+              >
+                <FieldGroup>
+                  <Controller
+                    name="granteeKey"
+                    control={control}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel htmlFor={memberId}>Member</FieldLabel>
+                        <FieldContent>
+                          <Combobox
+                            ref={field.ref}
+                            id={memberId}
+                            name={field.name}
+                            onBlur={field.onBlur}
+                            options={memberOptions}
+                            getOptionValue={(option) => option.value}
+                            getOptionLabel={(option) => option.label}
+                            value={memberOptions.find((o) => o.value === field.value) ?? null}
+                            onValueChange={(selected) => field.onChange(selected?.value ?? "")}
+                            isLoading={users.isPending || identities.isPending}
+                            isDisabled={submitting}
+                            placeholder="Pick a member..."
+                            isError={Boolean(error)}
+                          />
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
 
-                <Controller
-                  name="requestedSignings"
-                  control={control}
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel>How many signatures</FieldLabel>
-                      <FieldContent>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={maxSignings ?? undefined}
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            field.onChange(raw === "" ? null : Number(raw));
-                          }}
-                          placeholder={
-                            maxSignings
-                              ? `Up to ${maxSignings}`
-                              : "Leave empty to rely on the time window"
-                          }
-                          isError={Boolean(error)}
-                        />
-                        <FieldDescription>
-                          {maxSignings
-                            ? `Policy caps each approval at ${maxSignings} signature${maxSignings === 1 ? "" : "s"}.`
-                            : "Leave empty to rely on the time window."}
-                        </FieldDescription>
-                        <FieldError errors={[error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
+                  <Controller
+                    name="requestedSignings"
+                    control={control}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel>How many signatures</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={maxSignings ?? undefined}
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              field.onChange(raw === "" ? null : Number(raw));
+                            }}
+                            placeholder={
+                              maxSignings
+                                ? `Up to ${maxSignings}`
+                                : "Leave empty to rely on the time window"
+                            }
+                            isError={Boolean(error)}
+                          />
+                          <FieldDescription>
+                            {maxSignings
+                              ? `Policy caps each approval at ${maxSignings} signature${maxSignings === 1 ? "" : "s"}.`
+                              : "Leave empty to rely on the time window."}
+                          </FieldDescription>
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
 
-                <SigningWindowField
-                  control={control}
-                  name="requestedWindowDuration"
-                  maxWindowDuration={maxWindowDuration}
-                />
+                  <SigningWindowField
+                    control={control}
+                    name="requestedWindowDuration"
+                    maxWindowDuration={maxWindowDuration}
+                  />
 
-                <ScopeFieldsFormSection control={control} />
+                  <ScopeFieldsFormSection control={control} />
 
-                <Controller
-                  name="justification"
-                  control={control}
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel>Reason</FieldLabel>
-                      <FieldContent>
-                        <TextArea
-                          {...field}
-                          placeholder="Why is this being pre-approved?"
-                          rows={3}
-                          isError={Boolean(error)}
-                        />
-                        <FieldError errors={[error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-              </FieldGroup>
-            </div>
+                  <Controller
+                    name="justification"
+                    control={control}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel>Reason</FieldLabel>
+                        <FieldContent>
+                          <TextArea
+                            {...field}
+                            placeholder="Why is this being pre-approved?"
+                            rows={3}
+                            isError={Boolean(error)}
+                          />
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                </FieldGroup>
+              </fieldset>
 
-            <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
-              <div className="mb-auto">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                    Pre-approving
+              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                <div className="mb-auto">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                      Pre-approving
+                    </p>
+                    <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.preApprove} />
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-foreground">What this does</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    Pre-approving skips the review step: the moment you save, the member you pick
+                    can sign. It produces the same access record an approved request would, so it
+                    appears on the Approvals tab with its own signature counter and expiry, and you
+                    can revoke it there at any time.
                   </p>
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.preApprove} />
                 </div>
-                <p className="mt-4 text-sm font-semibold text-foreground">What this does</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  Pre-approving skips the review step: the moment you save, the member you pick can
-                  sign. It produces the same access record an approved request would, so it appears
-                  on the Approvals tab with its own signature counter and expiry, and you can revoke
-                  it there at any time.
-                </p>
-              </div>
-            </aside>
-          </div>
+              </aside>
+            </div>
 
-          <SheetFooter className="flex-row items-center justify-end border-t">
-            <Button type="button" variant="outline" onClick={() => handleClose(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="project" isPending={submitting}>
-              Pre-approve
-            </Button>
-          </SheetFooter>
-        </form>
-      </SheetContent>
-    </Sheet>
+            <SheetFooter className="flex-row items-center justify-end border-t">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => handleClose(false)}
+                isDisabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="project" isPending={submitting}>
+                Pre-approve
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your signing pre-approval changes will be lost."
+      />
+    </>
   );
 };
