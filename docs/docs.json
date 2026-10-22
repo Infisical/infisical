@@ -528,7 +528,8 @@
                     "group": "Discovery",
                     "root": "documentation/platform/pki/discovery/overview",
                     "pages": [
-                      "documentation/platform/pki/discovery/network"
+                      "documentation/platform/pki/discovery/network",
+                      "documentation/platform/pki/discovery/linux-server"
                     ]
                   },
                   {
@@ -5124,6 +5125,18 @@
     {
       "source": "/ai/model-context-protocol",
       "destination": "/documentation/getting-started/set-up-with-ai"
+    },
+    {
+      "source": "/documentation/getting-started/cli",
+      "destination": "/documentation/guides/local-development"
+    },
+    {
+      "source": "/documentation/getting-started/docker",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/documentation/getting-started/sdks",
+      "destination": "/sdks/overview"
     },
     {
       "source": "/integrations/platforms/docker-intro",
