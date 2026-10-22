@@ -19,6 +19,8 @@ type Props = {
   isPending: boolean;
   folderPath: string;
   environmentName: string;
+  // callers that do not load the member's project roles cannot tell an override from a plain grant
+  isRoleContextKnown?: boolean;
 };
 
 export const RemoveFolderAccessDialog = ({
@@ -27,7 +29,8 @@ export const RemoveFolderAccessDialog = ({
   onConfirm,
   isPending,
   folderPath,
-  environmentName
+  environmentName,
+  isRoleContextKnown = true
 }: Props) => {
   const isOpen = Boolean(actor);
 
@@ -45,7 +48,7 @@ export const RemoveFolderAccessDialog = ({
           <AlertDialogTitle>
             {isOverride ? "Remove Access Override" : "Remove Folder Access"}
           </AlertDialogTitle>
-          {isOverride ? (
+          {isOverride && (
             <AlertDialogDescription>
               The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
               will fall back to their{" "}
@@ -54,11 +57,21 @@ export const RemoveFolderAccessDialog = ({
               {tierLabel ? ` This ${tierLabel} override` : " This override"} currently replaces that
               role here, so removing it can broaden or narrow their access.
             </AlertDialogDescription>
-          ) : (
+          )}
+          {isRoleContextKnown && !isOverride && (
             <AlertDialogDescription>
               The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
               will lose access to <span className="font-mono text-foreground">{folderPath}</span> on{" "}
               {environmentName}. No project role grants them access to this folder.
+            </AlertDialogDescription>
+          )}
+          {!isRoleContextKnown && (
+            <AlertDialogDescription>
+              The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
+              will fall back to their project role permissions in{" "}
+              <span className="font-mono text-foreground">{folderPath}</span> on {environmentName}.
+              {tierLabel ? ` This ${tierLabel} grant` : " This grant"} currently replaces those
+              permissions here, so removing it can change their access.
             </AlertDialogDescription>
           )}
         </AlertDialogHeader>
