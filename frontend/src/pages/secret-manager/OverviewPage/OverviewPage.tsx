@@ -2723,6 +2723,32 @@ const OverviewPageContent = () => {
         return;
       }
 
+      const savedKey =
+        pendingSecret.type === PendingAction.Update ? pendingSecret.newSecretName : undefined;
+      if (
+        savedKey &&
+        savedKey !== pendingSecret.secretKey &&
+        draft?.type === PendingAction.Update
+      ) {
+        removePendingChange(draft.id, "secret", context);
+        addPendingChange(
+          {
+            ...draft,
+            secretKey: savedKey,
+            newSecretName: draft.newSecretName !== savedKey ? draft.newSecretName : undefined,
+            originalValue: pendingSecret.secretValue ?? draft.originalValue,
+            originalComment: pendingSecret.secretComment ?? draft.originalComment,
+            originalSkipMultilineEncoding:
+              pendingSecret.skipMultilineEncoding ?? draft.originalSkipMultilineEncoding,
+            originalTags: pendingSecret.tags ?? draft.originalTags,
+            originalSecretMetadata: pendingSecret.secretMetadata ?? draft.originalSecretMetadata,
+            timestamp: Date.now()
+          },
+          context
+        );
+        return;
+      }
+
       const [createdSecret] = appliedSecrets;
       if (
         pendingSecret.type !== PendingAction.Create ||
