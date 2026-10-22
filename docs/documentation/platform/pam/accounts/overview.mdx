@@ -4,9 +4,9 @@ sidebarTitle: "Overview"
 description: "Store the credentials for a database or server that people and agents connect to through Infisical PAM."
 ---
 
-An account is one set of credentials for a database, server, cluster, or cloud provider, along with the details Infisical needs to reach it. People and [AI agents](/documentation/platform/pam/ai-agents/overview) connect to an account through Infisical. A [gateway](/documentation/platform/gateways/overview) supplies the credential, so whoever connects never sees it.
+An account is a privileged identity on a database, server, cluster, or cloud provider, such as a database superuser or a domain admin, that people and [AI agents](/documentation/platform/pam/ai-agents/overview) use through Infisical. Infisical stores the account's credential along with the details it needs to reach the target. When someone connects, a [gateway](/documentation/platform/gateways/overview) supplies the credential, so whoever connects never sees it.
 
-Each account belongs to one [folder](/documentation/platform/pam/folders/overview), which sets who can use the account. Each account also uses one [account template](/documentation/platform/pam/templates/overview), which sets the account type and the rules for its sessions.
+Each account belongs to one [folder](/documentation/platform/pam/folders/overview). A role on the folder gives access to every account in it, and you can also give someone a role on a single account. Each account also uses one [account template](/documentation/platform/pam/templates/overview), which sets the account type and the rules for its sessions.
 
 <CardGroup cols={2}>
   <Card title="Add an account" icon="plus" href="/documentation/platform/pam/accounts/add">

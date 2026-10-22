@@ -4,7 +4,7 @@ sidebarTitle: "Architecture"
 description: "Learn how PAM connects people and agents to your infrastructure through a Gateway."
 ---
 
-In Infisical PAM, nothing connects to your databases and servers directly. Every connection goes through a [Gateway](/documentation/platform/gateways/overview) that you run in your own network. The Gateway adds the account's credentials and records the session, so the person or agent connecting never holds the credentials.
+In Infisical PAM, people and agents never connect to your databases and servers directly. Every connection goes through [Gateway](/documentation/platform/gateways/overview) that you run in your own network. The Gateway adds the account's credentials and records the session, so the person or agent never holds the credentials.
 
 ## Components
 
@@ -12,10 +12,12 @@ In Infisical PAM, nothing connects to your databases and servers directly. Every
 flowchart LR
   CLIENT["Client<br/>browser or CLI"]
   INF["Infisical<br/>credentials, permissions, recordings"]
+  RELAY["Relay<br/>managed by Infisical or by you"]
   GW["Gateway<br/>in your network"]
   TARGET[("Your databases<br/>and servers")]
 
-  CLIENT -->|"encrypted tunnel"| GW
+  CLIENT -->|"encrypted tunnel"| RELAY
+  GW -->|"outbound tunnel"| RELAY
   CLIENT -.->|"requests the session"| INF
   GW -.->|"fetches credentials, uploads recordings"| INF
   GW --> TARGET
@@ -23,8 +25,13 @@ flowchart LR
 
 - **Infisical**: Stores the account credentials, checks permissions and [template](/documentation/platform/pam/templates/overview) policies, and stores session recordings
 - **Gateway**: A service you deploy in your private network that connects to your databases and servers, adds the credentials, and records each session
-- **Client**: The browser for web access, or the [Infisical CLI](/cli/reference#pam), which opens an encrypted tunnel to the Gateway (an [AI agent](/documentation/platform/pam/ai-agents/overview) connects through the CLI)
+- **Relay**: A server that passes the client's connection to the Gateway over a tunnel that the Gateway opens outbound (Infisical runs relays for Infisical Cloud, or you can [run your own](/documentation/platform/gateways/relay-deployment/overview))
+- **Client**: The browser for web access, or the [Infisical CLI](/cli/reference#pam), which opens an encrypted tunnel to the Gateway (for web access, Infisical opens the tunnel on the browser's behalf, and an [AI agent](/documentation/platform/pam/ai-agents/overview) connects through the CLI)
 - **Actor**: The user or [machine identity](/documentation/platform/identities/machine-identities) that the session belongs to (Infisical checks the actor's permissions and records the actor in the audit log)
+
+<Note>
+A Gateway in [direct listen mode](#network-security) accepts connections itself, so it doesn't use a relay.
+</Note>
 
 [AWS IAM accounts](/documentation/platform/pam/accounts/aws-iam) are the one account type that doesn't use a Gateway. Infisical gives the user temporary credentials for the IAM role, and [AWS CloudTrail records what the user does](/documentation/platform/pam/accounts/aws-iam#track-activity-in-aws).
 
@@ -36,7 +43,7 @@ When an actor connects to an [account](/documentation/platform/pam/accounts/over
 2. Infisical checks that the actor has a [role](/documentation/platform/pam/concepts/access-control) that can launch sessions on the account
 3. Infisical applies the template's policies, such as requiring a reason or MFA, and limiting the session's duration
 4. If the account requires approval, Infisical checks that the actor has an approved [access request](/documentation/platform/pam/access-requests/overview)
-5. The client opens an encrypted tunnel to the Gateway
+5. The client opens an encrypted tunnel to the Gateway, through a relay or, in direct listen mode, straight to the Gateway
 6. The Gateway fetches the account's credentials from Infisical and connects to the database or server with them
 7. The actor works with the database or server through the Gateway, which records the session
 
