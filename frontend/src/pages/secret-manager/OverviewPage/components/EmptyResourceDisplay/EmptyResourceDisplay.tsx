@@ -1,4 +1,4 @@
-import { FolderPlusIcon, GlobeIcon, LayersIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { FolderPlusIcon, GlobeIcon, LayersIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -18,6 +18,7 @@ type Props = {
   onAddEnvironment?: () => void;
   hasSearch?: boolean;
   onSearchAllFolders?: () => void;
+  onClearSearch?: () => void;
   isTableRow?: boolean;
 };
 
@@ -27,6 +28,7 @@ export function EmptyResourceDisplay({
   onAddEnvironment,
   hasSearch,
   onSearchAllFolders,
+  onClearSearch,
   isTableRow
 }: Props) {
   if (variant === "no-environments") {
@@ -80,12 +82,22 @@ export function EmptyResourceDisplay({
         <EmptyTitle>{title}</EmptyTitle>
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
-      {hasSearch && onSearchAllFolders && (
+      {hasSearch && (onSearchAllFolders || onClearSearch) && (
         <EmptyContent>
-          <Button variant="outline" size="xs" onClick={onSearchAllFolders}>
-            <GlobeIcon />
-            Search All Folders
-          </Button>
+          <div className="flex gap-2">
+            {onClearSearch && (
+              <Button variant="outline" size="xs" onClick={onClearSearch}>
+                <XIcon />
+                Clear Search
+              </Button>
+            )}
+            {onSearchAllFolders && (
+              <Button variant="outline" size="xs" onClick={onSearchAllFolders}>
+                <GlobeIcon />
+                Search All Folders
+              </Button>
+            )}
+          </div>
         </EmptyContent>
       )}
     </Empty>

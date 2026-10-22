@@ -30,7 +30,7 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteServiceToken } from "@app/hooks/api";
 
 import { AddServiceTokenModal } from "./AddServiceTokenModal";
@@ -40,6 +40,7 @@ type DeleteModalData = { name: string; id: string };
 
 export const ServiceTokenSection = withProjectPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const { t } = useTranslation();
 
     const deleteServiceToken = useDeleteServiceToken();
@@ -88,7 +89,7 @@ export const ServiceTokenSection = withProjectPermission(
               >
                 {(isAllowed) => (
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     onClick={() => {
                       handlePopUpOpen("createAPIToken");
                     }}

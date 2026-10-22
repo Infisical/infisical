@@ -5,15 +5,11 @@ export type TGetUserSignerPermissionDTO = {
   signerId: string;
 };
 
-export type TSignerExternalConfiguration =
-  | {
-      caType: CaType.DIGICERT;
-      reissueFromExternalOrderId?: string;
-    }
-  | {
-      caType: CaType.ADCS;
-      template?: string;
-    };
+export type TSignerExternalConfiguration = {
+  reissueFromExternalOrderId?: string;
+  importFromExternalOrderId?: string;
+  template?: string;
+};
 
 export enum SignerStatus {
   Pending = "pending",
@@ -34,7 +30,8 @@ export enum SignerKeyAlgorithm {
 
 export enum CertKeySource {
   Infisical = "infisical",
-  Hsm = "hsm"
+  Hsm = "hsm",
+  AwsKms = "aws-kms"
 }
 
 export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly SignerKeyAlgorithm[] = [
@@ -357,6 +354,8 @@ export type TCreateSignerApprovalPolicyInput = {
 export type TSignerCertificateInput = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
+  hsmKeyLabel?: string;
+  hsmKeyId?: string;
 };
 
 export type TCreateSignerDTO = {
@@ -393,12 +392,22 @@ export type TReissueSignerCertificateDTO = {
   commonName?: string;
   certificateTtlDays?: number;
   keyAlgorithm?: SignerKeyAlgorithm;
-  certificate?: {
-    keySource: CertKeySource;
-    hsmConnectorId?: string;
-  };
+  certificate?: TSignerCertificateInput;
   externalConfiguration?: TSignerExternalConfiguration;
 };
+
+export type TImportSignerCertificateDTO = {
+  signerId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
+  certificateRenewBeforeDays?: number | null;
+};
+
+export type TCheckSignerCertificateImportDTO = Omit<
+  TImportSignerCertificateDTO,
+  "signerId" | "certificateRenewBeforeDays"
+>;
 
 export type TEnableSignerDTO = { signerId: string };
 export type TDisableSignerDTO = { signerId: string };

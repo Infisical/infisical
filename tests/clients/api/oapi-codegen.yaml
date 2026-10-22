@@ -101,3 +101,28 @@ output-options:
     - getOrgMembership
     - updateOrgMembership
     - getCurrentUser
+    - createScimToken
+    - listScimTokens
+    - deleteScimToken
+    - listScimEvents
+    - getScimServiceProviderConfig
+    - listScimUsers
+    - getScimUser
+    - createScimUser
+    - replaceScimUser
+    - patchScimUser
+    - deleteScimUser
+    - listScimGroups
+    - getScimGroup
+    - createScimGroup
+    - replaceScimGroup
+    - patchScimGroup
+    - deleteScimGroup
+    - createOidcConfig
+    - updateOidcConfig
+    - getOidcConfig
+    - redirectOidcLogin
+    - oidcCallback
+    - listExternalGroupOrgRoleMappings
+    - updateExternalGroupOrgRoleMappings
+    - requestEmailChangeOtp

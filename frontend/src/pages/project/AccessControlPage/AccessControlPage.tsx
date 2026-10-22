@@ -12,6 +12,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -24,6 +25,7 @@ import {
 } from "./components";
 
 const Page = () => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -80,7 +82,7 @@ const Page = () => {
         </PageHeader>
         {hasTabs ? (
           <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
-            <TabsList variant="project" aria-label="Project access control sections">
+            <TabsList variant={scopeVariant} aria-label="Project access control sections">
               <TabsTrigger value={ProjectAccessControlTabs.Member}>Users</TabsTrigger>
               <TabsTrigger value={ProjectAccessControlTabs.Identities}>
                 Machine Identities

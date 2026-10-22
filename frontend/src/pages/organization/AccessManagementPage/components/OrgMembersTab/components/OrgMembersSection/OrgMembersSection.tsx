@@ -21,7 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionMemberActions,
@@ -213,7 +213,7 @@ export const OrgMembersSection = () => {
         setCompleteInviteLinks={setCompleteInviteLinks}
       />
       <AddSubOrgMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMember.isOpen}
         title={`Are you sure you want to remove member with username ${
           (popUp?.removeMember?.data as { username: string })?.username || ""
@@ -227,7 +227,7 @@ export const OrgMembersSection = () => {
           )
         }
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deactivateMember.isOpen}
         title={`Are you sure you want to deactivate member with username ${
           (popUp?.deactivateMember?.data as { username: string })?.username || ""
@@ -242,7 +242,7 @@ export const OrgMembersSection = () => {
         }
         confirmLabel="Deactivate"
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMembers.isOpen}
         title="Are you sure you want to remove the following members?"
         description="This action is irreversible."
@@ -292,7 +292,7 @@ export const OrgMembersSection = () => {
             </ul>
           </div>
         </div>
-      </DeleteConfirmDialog>
+      </ConfirmationAlertDialog>
       <UpgradeGate
         paywallKey="organization.org-members"
         isOpen={popUp.upgradePlan.isOpen}

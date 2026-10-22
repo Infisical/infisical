@@ -16,7 +16,7 @@ infisical:
 
     image:
       # -- Infisical Infisical CLI image tag version
-      tag: "0.41.86"
+      tag: "0.44.6"
 
     # -- Template for the data/stringData section of the Kubernetes secret. Available functions: encodeBase64
     secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
@@ -65,7 +65,7 @@ infisical:
     # -- Image repository for the Infisical service
     repository: infisical/infisical
     # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
-    tag: "v0.158.0"
+    tag: "v0.167.0"
     # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
     # -- Secret references for pulling the image, if needed

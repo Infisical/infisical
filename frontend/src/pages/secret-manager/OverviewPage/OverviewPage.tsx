@@ -34,7 +34,8 @@ import {
   GitCommitIcon,
   InfoIcon,
   LockIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from "lucide-react";
 import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
@@ -94,7 +95,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogBody,
   DialogContent,
@@ -396,6 +397,7 @@ const OverviewPageContent = () => {
     select: (el) => ({
       secretPath: el.secretPath,
       search: el.search,
+      clearSearch: el.clearSearch,
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       honeyTokenId: el.honeyTokenId,
@@ -564,10 +566,10 @@ const OverviewPageContent = () => {
   // (not mount-only) because the tree is rendered inside this page, so navigating from a node
   // updates the params without remounting.
   useEffect(() => {
-    const { search, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
+    const { search, clearSearch, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
     const hasEnvLink = Boolean(envSlugs?.length);
 
-    if (!search && !tags && !filterBy && !hasEnvLink) return;
+    if (!search && !clearSearch && !tags && !filterBy && !hasEnvLink) return;
     // Env link present but envs not loaded yet → wait so we don't strip it before applying.
     if (hasEnvLink && userAvailableEnvs.length === 0) return;
 
@@ -611,9 +613,12 @@ const OverviewPageContent = () => {
       }
     }
 
+    if (clearSearch) setSearchFilter("");
+
     navigate({ search: query, replace: true });
   }, [
     routerSearch.search,
+    routerSearch.clearSearch,
     routerSearch.tags,
     routerSearch.filterBy,
     routerSearch.environments?.join(","),
@@ -1183,14 +1188,14 @@ const OverviewPageContent = () => {
   const previousTelemetry = useRef<{
     telemetry: typeof overviewTelemetry;
     flows: typeof telemetryFlows;
-  }>();
+  }>(undefined);
   useEffect(() => {
     if (previousTelemetry.current && previousTelemetry.current.flows !== telemetryFlows)
       previousTelemetry.current.telemetry.cancelOpenFlows();
     previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
   }, [overviewTelemetry, telemetryFlows]);
-  const viewedProjectRef = useRef<string>();
-  const loadedProjectRef = useRef<string>();
+  const viewedProjectRef = useRef<string>(undefined);
+  const loadedProjectRef = useRef<string>(undefined);
   useEffect(() => {
     if (!isProjectV3 || viewedProjectRef.current === projectId) return;
     viewedProjectRef.current = projectId;
@@ -3689,6 +3694,7 @@ const OverviewPageContent = () => {
                 className="mr-1.5 shrink-0"
                 onClick={handleCurrentFolderAccessOpen}
               >
+                <UsersIcon />
                 Manage Access
               </Button>
             )}
@@ -4050,6 +4056,13 @@ const OverviewPageContent = () => {
                         }
                         hasSearch={Boolean(searchFilter.trim())}
                         onSearchAllFolders={() => setIsSearchAllFoldersOpen(true)}
+                        onClearSearch={() => {
+                          overviewTelemetry.interaction({
+                            action: "search-cleared",
+                            source: "empty-state"
+                          });
+                          setSearchFilter("");
+                        }}
                       />
                     )}
                     {showOverviewSkeleton ? (
@@ -4318,6 +4331,7 @@ const OverviewPageContent = () => {
                             }
                             activityId={getTableRowActivityId("secret", key)}
                             onActivityChange={handleTableRowActivityChange}
+                            timestampSortField={isTimestampSort ? orderBy : undefined}
                           />
                         ))}
                         {tableView === "table" && (
@@ -4947,7 +4961,7 @@ const OverviewPageContent = () => {
           environmentName={singleEnvName}
         />
       )}
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
         title="Delete Environment"

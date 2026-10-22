@@ -73,7 +73,7 @@ export const Default: Story = {
             and footer.
           </p>
         </div>
-        <SheetFooter>
+        <SheetFooter className="justify-end">
           <SheetClose asChild>
             <Button variant="ghost">Cancel</Button>
           </SheetClose>
@@ -301,7 +301,7 @@ export const WithForm: Story = {
             <Input id="sheet-title" defaultValue="Software Engineer" />
           </div>
         </div>
-        <SheetFooter>
+        <SheetFooter className="justify-end">
           <SheetClose asChild>
             <Button variant="ghost">Cancel</Button>
           </SheetClose>
@@ -343,7 +343,7 @@ export const ScrollableContent: Story = {
             </div>
           ))}
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
           <SheetClose asChild>
             <Button variant="ghost">Close</Button>
           </SheetClose>
