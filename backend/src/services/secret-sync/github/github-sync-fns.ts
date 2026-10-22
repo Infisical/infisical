@@ -71,12 +71,16 @@ const CODESPACES_ON_GITHUB_SERVER_MESSAGE =
   "Codespaces secrets are not available on GitHub Enterprise Server. Choose the Actions or Dependabot secret type, or use a GitHub.com connection.";
 
 const GITHUB_SECRET_NAME_PATTERN = new RE2(/^[A-Za-z_][A-Za-z0-9_]*$/);
+const GITHUB_RESERVED_PREFIX = new RE2(/^GITHUB_/i);
 
 const GITHUB_SECRET_NAME_RULE =
-  "GitHub does not accept secret names unless they contain only letters, digits, and underscores, and start with a letter or an underscore. Spaces are not allowed.";
+  "GitHub does not accept secret names unless they contain only letters, digits, and underscores, and start with a letter or an underscore. Spaces are not allowed. Names cannot start with GITHUB_, regardless of case.";
+
+const isGitHubSecretName = (name: string) =>
+  GITHUB_SECRET_NAME_PATTERN.test(name) && !GITHUB_RESERVED_PREFIX.test(name);
 
 const assertGitHubSecretNames = (names: string[]) => {
-  const invalidNames = names.filter((name) => !GITHUB_SECRET_NAME_PATTERN.test(name));
+  const invalidNames = names.filter((name) => !isGitHubSecretName(name));
   if (!invalidNames.length) return;
 
   throw new SecretSyncError({

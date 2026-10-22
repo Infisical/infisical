@@ -276,7 +276,7 @@ describe("GithubSyncFns.syncSecrets", () => {
     expect(callsWith("PUT")).toHaveLength(1000);
   });
 
-  it.each(["BAD NAME", "BAD-NAME", "1LEADING"])(
+  it.each(["BAD NAME", "BAD-NAME", "1LEADING", "GITHUB_TOKEN"])(
     "refuses %s before calling GitHub and names that secret",
     async (key) => {
       const error = await runSync(
@@ -288,7 +288,7 @@ describe("GithubSyncFns.syncSecrets", () => {
       expect(error).toMatchObject({
         shouldRetry: false,
         secretKey: key,
-        message: `GitHub does not accept secret names unless they contain only letters, digits, and underscores, and start with a letter or an underscore. Spaces are not allowed. Rename the secrets that failed this check: "${key}".`
+        message: `GitHub does not accept secret names unless they contain only letters, digits, and underscores, and start with a letter or an underscore. Spaces are not allowed. Names cannot start with GITHUB_, regardless of case. Rename the secrets that failed this check: "${key}".`
       });
       expect((error as SecretSyncError).message).not.toContain("VALID_NAME");
       expect(requestMock).not.toHaveBeenCalled();
@@ -310,6 +310,27 @@ describe("GithubSyncFns.syncSecrets", () => {
     expect((error as SecretSyncError).message).not.toContain("VALID_NAME");
     expect(requestMock).not.toHaveBeenCalled();
     expect(paginatedMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a secret that starts with github_ regardless of case", async () => {
+    const error = await runSync(
+      makeSync(repoConfig(GitHubSyncSecretType.Dependabot)),
+      makePayload(["github_token", "VALID_NAME"])
+    ).catch((err: unknown) => err);
+
+    expect(error).toMatchObject({
+      shouldRetry: false,
+      secretKey: "GITHUB_TOKEN",
+      message: expect.stringContaining('"GITHUB_TOKEN"')
+    });
+    expect(requestMock).not.toHaveBeenCalled();
+    expect(paginatedMock).not.toHaveBeenCalled();
+  });
+
+  it("syncs a secret that contains GITHUB_ but does not start with it", async () => {
+    await runSync(makeSync(repoConfig(GitHubSyncSecretType.Dependabot)), makePayload(["MY_GITHUB_TOKEN"]));
+
+    expect(callsWith("PUT")[0].url).toBe("https://api.github.com/repos/acme/app/dependabot/secrets/MY_GITHUB_TOKEN");
   });
 
   it("syncs a secret name that starts with an underscore", async () => {
