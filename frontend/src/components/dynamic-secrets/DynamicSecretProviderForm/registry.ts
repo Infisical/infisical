@@ -58,6 +58,16 @@ export const DYNAMIC_SECRET_PROVIDER_PICKER_ORDER = [
   DynamicSecretProviders.Kafka
 ] as const satisfies readonly DynamicSecretProviders[];
 
+type TProvidersMissingFromPickerOrder = Exclude<
+  DynamicSecretProviders,
+  (typeof DYNAMIC_SECRET_PROVIDER_PICKER_ORDER)[number]
+>;
+export const isDynamicSecretProviderPickerOrderExhaustive: [
+  TProvidersMissingFromPickerOrder
+] extends [never]
+  ? true
+  : TProvidersMissingFromPickerOrder = true;
+
 const DYNAMIC_SECRET_PROVIDER_DOCS_SLUG: Partial<Record<DynamicSecretProviders, string>> = {
   [DynamicSecretProviders.SqlDatabase]: "postgresql",
   [DynamicSecretProviders.MongoAtlas]: "mongo-atlas"

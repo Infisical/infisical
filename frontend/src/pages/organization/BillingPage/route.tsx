@@ -18,7 +18,7 @@ export const Route = createFileRoute(
     return {
       breadcrumbs: [
         {
-          label: "Billing"
+          label: "Usage & Billing"
         }
       ]
     };

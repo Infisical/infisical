@@ -28,17 +28,16 @@ export type TCreateSignerApprovalPolicyInput = {
 export type TSignerCertificateInput = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
+  hsmKeyLabel?: string;
+  hsmKeyId?: string;
 };
 
-export type TSignerExternalConfigurationInput =
-  | {
-      caType: CaType.DIGICERT;
-      reissueFromExternalOrderId?: string;
-    }
-  | {
-      caType: CaType.ADCS;
-      template?: string;
-    };
+export type TSignerExternalConfigurationInput = {
+  caType?: CaType.DIGICERT | CaType.ADCS;
+  reissueFromExternalOrderId?: string;
+  importFromExternalOrderId?: string;
+  template?: string;
+};
 
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
@@ -142,6 +141,21 @@ export type TReissueCertificateDTO = {
   keyAlgorithm?: CertKeyAlgorithm;
   certificate?: TSignerCertificateInput;
   externalConfiguration?: TSignerExternalConfigurationInput;
+} & TActorPermission;
+
+export type TImportCertificateDTO = {
+  signerId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
+  certificateRenewBeforeDays?: number | null;
+} & TActorPermission;
+
+export type TCheckCertificateImportDTO = {
+  projectId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
 } & TActorPermission;
 
 export type TExportCertificateDTO = {

@@ -7,6 +7,11 @@ import {
 } from "@app/hooks/api/signers";
 import { slugSchema } from "@app/lib/schemas";
 
+import {
+  ExternalOrderMode,
+  isUsingExistingCertificate
+} from "../../../components/DigiCertExistingOrderField";
+
 export const basicsSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
   description: z.string().trim().max(256).optional()
@@ -38,14 +43,19 @@ export const certificateSchema = z
     keyAlgorithm: z.nativeEnum(SignerKeyAlgorithm).default(SignerKeyAlgorithm.RSA_2048),
     keySource: z.nativeEnum(CertKeySource).default(CertKeySource.Infisical),
     hsmConnectorId: z.string().uuid().optional().nullable(),
-    // DigiCert code signing only: reissue into this existing order instead of placing a new one.
-    reissueFromExternalOrderId: z.string().nullable().optional().default(null),
+    externalOrderId: z.string().nullable().optional().default(null),
+    externalOrderMode: z.nativeEnum(ExternalOrderMode).default(ExternalOrderMode.Reissue),
+    hsmKeyLabel: z.string().trim().max(128).optional().default(""),
+    hsmKeyId: z.string().trim().max(256).optional().default(""),
+    hsmKeyIdRequired: z.boolean().optional().default(false),
+    hsmKeyUnresolved: z.boolean().optional().default(false),
     // AD CS only: the certificate template this signer requests when issuing.
     adcsTemplate: z.string().trim().optional().default("")
   })
   .refine(
     (data) =>
       data.certificateRenewBeforeDays == null ||
+      Boolean(data.externalOrderId) ||
       data.certificateRenewBeforeDays < data.certificateTtlDays,
     {
       message: "Renew before must be less than the certificate validity (days).",
@@ -56,9 +66,22 @@ export const certificateSchema = z
     message: "Pick an HSM Connector.",
     path: ["hsmConnectorId"]
   })
+  .refine((data) => !isUsingExistingCertificate(data) || Boolean(data.hsmKeyLabel), {
+    message: "Enter the label of the certificate's private key on the HSM.",
+    path: ["hsmKeyLabel"]
+  })
+  .refine(
+    (data) => !isUsingExistingCertificate(data) || !data.hsmKeyIdRequired || Boolean(data.hsmKeyId),
+    { message: "Select which key to use.", path: ["hsmKeyId"] }
+  )
+  .refine((data) => !isUsingExistingCertificate(data) || !data.hsmKeyUnresolved, {
+    message: "Wait for the key lookup, or enter the label of a private key on the HSM.",
+    path: ["hsmKeyLabel"]
+  })
   .refine(
     (data) =>
       data.keySource !== CertKeySource.Hsm ||
+      isUsingExistingCertificate(data) ||
       HSM_SUPPORTED_KEY_ALGORITHMS.includes(data.keyAlgorithm),
     {
       message:
