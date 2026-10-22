@@ -905,6 +905,7 @@ a.ifx-card:hover .ifx-card__icon {
   top: calc(1.5rem + 11px);
   right: 1.5rem;
   transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .ifx-card__title {
