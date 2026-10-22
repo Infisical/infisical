@@ -78,7 +78,7 @@ Infisical stores session logs under `<prefix>/` in the bucket, where `<prefix>` 
     {
       "Sid": "AllowSessionLogObjects",
       "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:PutObjectTagging", "s3:GetObject", "s3:DeleteObject"],
+      "Action": ["s3:PutObject", "s3:PutObjectTagging", "s3:GetObject"],
       "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
     },
     {

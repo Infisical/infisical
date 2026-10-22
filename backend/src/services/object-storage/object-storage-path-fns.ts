@@ -26,7 +26,7 @@ export const s3BucketNameSchema = z
   .string()
   .trim()
   .max(63, BUCKET_NAME_RULE)
-  .regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, BUCKET_NAME_RULE);
+  .regex(new RE2(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/), BUCKET_NAME_RULE);
 
 export const isS3DirectoryBucket = (bucket: string) => bucket.endsWith("--x-s3");
 
@@ -36,7 +36,7 @@ export const keyPrefixSchema = (max: number) =>
     .string()
     .trim()
     .max(max, `May be at most ${max} characters`)
-    .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "May only contain letters, numbers and ! - _ . ' ( ) /")
+    .regex(new RE2(/^[A-Za-z0-9!\-_.'()/]*$/), "May only contain letters, numbers and ! - _ . ' ( ) /")
     .refine(
       (v) => v === "" || v.split("/").every(Boolean),
       "Must be folder names separated by single slashes, with no slash at the start or end, like 'logs/agent-vault'"

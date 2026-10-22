@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
@@ -171,7 +172,7 @@ export const objectStorageEnvSchema = z.object({
   OBJECT_STORAGE_S3_REGION: zpStr(
     z
       .string()
-      .regex(/^[a-z]{2}(-gov)?-[a-z]+-\d+$/, "Must be an AWS region, like us-east-1")
+      .regex(new RE2(/^[a-z]{2}(-gov)?-[a-z]+-\d+$/), "Must be an AWS region, like us-east-1")
       .optional()
   ),
   OBJECT_STORAGE_S3_ACCESS_KEY_ID: zpStr(z.string().max(128).optional()),
