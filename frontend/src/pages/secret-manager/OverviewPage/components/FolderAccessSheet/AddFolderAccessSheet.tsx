@@ -5,7 +5,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
-  FilterableSelect,
+  Combobox,
   Label,
   Sheet,
   SheetContent,
@@ -25,10 +25,7 @@ import {
 
 import { DEFAULT_TEMPORARY_RANGE } from "./folder-access.const";
 import { byName, TFolderAccessActor, toIdentityActor, toUserActor } from "./folder-access.utils";
-import {
-  FolderAccessActorMultiValueLabel,
-  FolderAccessActorOption
-} from "./FolderAccessActorOption";
+import { FolderAccessActorOption, FolderAccessActorValue } from "./FolderAccessActorOption";
 import { FolderTierRadioGroup } from "./FolderTierRadioGroup";
 import { TemporaryAccessPopover } from "./TemporaryAccessPopover";
 
@@ -157,27 +154,23 @@ export const AddFolderAccessSheet = ({
 
         <div className="thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4">
           <div className="space-y-2">
-            <Label>Users & machine identities</Label>
-            <FilterableSelect
-              isMulti
+            <Label htmlFor="folder-access-actors">Users & machine identities</Label>
+            <Combobox
+              id="folder-access-actors"
+              multiple
               value={selected}
               options={candidates}
               isLoading={isUsersPending || isIdentitiesPending}
-              onInputChange={(value, { action }) => {
-                if (action === "input-change") setSearch(value);
-              }}
-              onChange={(value) => setSelected((value ?? []) as TFolderAccessActor[])}
-              components={{
-                Option: FolderAccessActorOption,
-                MultiValueLabel: FolderAccessActorMultiValueLabel
-              }}
-              getOptionValue={(option) => `${option.type}-${option.id}`}
-              getOptionLabel={(option) => option.name}
               // the candidate lists are already searched server side, so the label-only
               // client filter would drop matches found by email or identity metadata
-              filterOption={null}
+              onSearchChange={setSearch}
+              onValueChange={setSelected}
+              renderOption={(option) => <FolderAccessActorOption actor={option} />}
+              renderValue={(option) => <FolderAccessActorValue actor={option} />}
+              getOptionValue={(option) => `${option.type}-${option.id}`}
+              getOptionLabel={(option) => option.name}
               placeholder="Search users & machine identities"
-              noOptionsMessage={({ inputValue }) =>
+              emptyMessage={(inputValue) =>
                 inputValue
                   ? "No matches found"
                   : "Every project member already has access to this folder."

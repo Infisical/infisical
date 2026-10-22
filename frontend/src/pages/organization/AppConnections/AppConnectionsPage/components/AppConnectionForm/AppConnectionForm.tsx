@@ -181,22 +181,27 @@ type UpdateFormProps = FormProps & {
 };
 
 const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps) => {
-  const { layout } = useAppConnectionForm();
+  const { layout, onPendingChange } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const createAppConnection = useCreateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[app];
 
   const submitForm = async (formData: AppConnectionFormData) => {
-    const connection = await createAppConnection.mutateAsync({
-      ...formData,
-      projectId
-    });
-    createNotification({
-      text: `Successfully added ${appName} Connection`,
-      type: "success"
-    });
-    onComplete(connection);
+    onPendingChange?.(true);
+    try {
+      const connection = await createAppConnection.mutateAsync({
+        ...formData,
+        projectId
+      });
+      createNotification({
+        text: `Successfully added ${appName} Connection`,
+        type: "success"
+      });
+      onComplete(connection);
+    } finally {
+      onPendingChange?.(false);
+    }
   };
 
   const onSubmit = async (formData: AppConnectionFormData) => {
@@ -435,22 +440,27 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
 };
 
 const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
-  const { layout } = useAppConnectionForm();
+  const { layout, onPendingChange } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const updateAppConnection = useUpdateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
   const submitForm = async (formData: AppConnectionFormData) => {
-    const connection = await updateAppConnection.mutateAsync({
-      connectionId: appConnection.id,
-      ...formData
-    });
-    createNotification({
-      text: `Successfully updated ${appName} Connection`,
-      type: "success"
-    });
-    onComplete(connection);
+    onPendingChange?.(true);
+    try {
+      const connection = await updateAppConnection.mutateAsync({
+        connectionId: appConnection.id,
+        ...formData
+      });
+      createNotification({
+        text: `Successfully updated ${appName} Connection`,
+        type: "success"
+      });
+      onComplete(connection);
+    } finally {
+      onPendingChange?.(false);
+    }
   };
 
   const onSubmit = async (formData: AppConnectionFormData) => {
@@ -752,6 +762,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
 type Props = {
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  onPendingChange?: (isPending: boolean) => void;
   layout?: "sheet" | "dialog";
   projectId?: string;
   projectType?: ProjectType;
@@ -763,6 +774,7 @@ type Props = {
 export const AppConnectionForm = ({
   onCancel,
   onDirtyChange,
+  onPendingChange,
   layout = "sheet",
   projectId,
   projectType,
@@ -771,8 +783,8 @@ export const AppConnectionForm = ({
   const { app, appConnection } = props;
 
   const contextValue = useMemo(
-    () => ({ onCancel, onDirtyChange, layout }),
-    [onCancel, onDirtyChange, layout]
+    () => ({ onCancel, onDirtyChange, onPendingChange, layout }),
+    [onCancel, onDirtyChange, onPendingChange, layout]
   );
 
   return (
