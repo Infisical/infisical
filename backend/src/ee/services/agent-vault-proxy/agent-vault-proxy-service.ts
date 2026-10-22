@@ -187,18 +187,22 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   // Every proxy created or rotated gets a CA. Only proxies enrolled before that reach the fill-in path, and
-  // several of their starts can race: storeRootCaIfMissing lets one win and the rest read its CA back.
+  // several of their starts can race: storeRootCaIfMissing lets one win and the rest read its CA back. A
+  // rotation can also land while the CA is being made, and its CA must never reach the old token.
   const $getOrCreateRootCa = async (proxy: TAgentVaultProxies): Promise<TProxyRootCa> => {
     const existing = await $openRootCa(proxy);
     if (existing) return existing;
 
     const { row, privateKey } = await $newRootCa(proxy.projectId);
-    const stored = await agentVaultProxyDAL.storeRootCaIfMissing(proxy.id, row);
+    const stored = await agentVaultProxyDAL.storeRootCaIfMissing(proxy.id, proxy.tokenVersion, row);
     if (stored) return { certificate: row.rootCaCertificate, privateKey };
 
     // Read on the primary, inside a transaction: the replica may not have the winner's CA yet.
     const winner = await agentVaultProxyDAL.transaction((tx) => agentVaultProxyDAL.findById(proxy.id, tx));
     if (!winner) throw new UnauthorizedError({ message: "This proxy no longer exists" });
+    if (winner.tokenVersion !== proxy.tokenVersion) {
+      throw new UnauthorizedError({ name: "ProxyTokenRejected", message: "Agent Vault proxy token has been revoked" });
+    }
     const opened = await $openRootCa(winner);
     if (!opened) throw new InternalServerError({ message: "Failed to load this proxy's certificate authority" });
     return opened;

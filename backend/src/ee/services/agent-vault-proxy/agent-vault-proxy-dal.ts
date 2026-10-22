@@ -98,9 +98,11 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Only fills an empty CA, so two starts racing to create one can't overwrite each other.
+  // Only fills an empty CA, and only at the token version the caller was checked against, so neither a racing
+  // start nor a rotation that landed in between can be overwritten.
   const storeRootCaIfMissing = async (
     id: string,
+    tokenVersion: number,
     ca: Pick<
       TAgentVaultProxies,
       "rootCaCertificate" | "encryptedRootCaPrivateKey" | "rootCaFingerprint" | "rootCaExpiresAt"
@@ -109,7 +111,7 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
   ): Promise<TAgentVaultProxies | undefined> => {
     try {
       const [updated] = (await (tx || db)(TableName.AgentVaultProxy)
-        .where({ id })
+        .where({ id, tokenVersion })
         .whereNull("rootCaCertificate")
         .update(ca)
         .returning("*")) as TAgentVaultProxies[];
