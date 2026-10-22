@@ -2467,7 +2467,7 @@ export const ALERTING = {
   GET: {
     alertId: "The ID of the alert to get.",
     filters:
-      "The resources named in the alert's condition, such as applications and certificate profiles, each as `{ id, name }`. `name` is null for a deleted resource."
+      "The resources named in the alert's condition, such as applications, certificate profiles, and signers, each as `{ id, name }`. `name` is null for a deleted resource."
   },
   UPDATE: {
     alertId: "The ID of the alert to update.",

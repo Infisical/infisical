@@ -6,6 +6,7 @@ import { MAX_CERTIFICATE_ALERT_FILTER_IDS } from "@app/hooks/api/alerts";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { CertSource } from "@app/hooks/api/certificates/enums";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { useListSigners } from "@app/hooks/api/signers";
 
 import { CertificateFilterKind, getFilterName } from "./types";
 
@@ -14,6 +15,7 @@ type TFilterOption = { id: string; name: string };
 type Props = {
   value: string[];
   conditionNames: Record<string, string>;
+  projectId: string;
   onChange: (selected: TFilterOption[]) => void;
 };
 
@@ -101,6 +103,31 @@ export const ProfileFilterSelect = (props: Props) => {
       isLoading={isPending}
       onSearchChange={setSearch}
       placeholder="Select profiles"
+    />
+  );
+};
+
+export const SignerFilterSelect = (props: Props) => {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const { data, isPending } = useListSigners({
+    projectId: props.projectId,
+    limit: MAX_CERTIFICATE_ALERT_FILTER_IDS,
+    ...(debouncedSearch ? { search: debouncedSearch } : {})
+  });
+  const options = useMemo(
+    () => (data?.signers ?? []).map(({ id, name }) => ({ id, name })),
+    [data]
+  );
+
+  return (
+    <FilterCombobox
+      {...props}
+      kind={CertificateFilterKind.Signers}
+      options={options}
+      isLoading={isPending}
+      onSearchChange={setSearch}
+      placeholder="Select signers"
     />
   );
 };

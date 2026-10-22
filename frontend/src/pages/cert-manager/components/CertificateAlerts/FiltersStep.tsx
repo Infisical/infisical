@@ -25,37 +25,50 @@ import { CertStatus } from "@app/hooks/api/certificates/enums";
 import {
   ApplicationFilterSelect,
   ProfileFilterSelect,
+  SignerFilterSelect,
   SourceFilterSelect
 } from "./CertificateFilterSelects";
 import {
   CERTIFICATE_FILTER_DEFINITIONS,
   CertificateFilterKind,
-  NO_FILTERS_DESCRIPTION,
+  getFilterKinds,
+  getNoFiltersDescription,
+  isSignerEventType,
   TCertificateAlertForm
 } from "./types";
 
 const MATCHED_PAGE_SIZE = 20;
 
-const FILTER_KINDS = Object.values(CertificateFilterKind);
+const CERTIFICATE_FILTER_KINDS = [
+  CertificateFilterKind.Applications,
+  CertificateFilterKind.Profiles,
+  CertificateFilterKind.Sources
+] as const;
 
 const FILTER_SELECTS = {
   [CertificateFilterKind.Applications]: ApplicationFilterSelect,
   [CertificateFilterKind.Profiles]: ProfileFilterSelect,
-  [CertificateFilterKind.Sources]: SourceFilterSelect
+  [CertificateFilterKind.Sources]: SourceFilterSelect,
+  [CertificateFilterKind.Signers]: SignerFilterSelect
 };
 
 type Props = { form: UseFormReturn<TCertificateAlertForm>; projectId: string };
 
-export const FiltersStep = ({ form, projectId }: Props) => {
-  const applicationIds = useWatch({
-    control: form.control,
-    name: CertificateFilterKind.Applications
-  });
-  const profileIds = useWatch({ control: form.control, name: CertificateFilterKind.Profiles });
-  const sources = useWatch({ control: form.control, name: CertificateFilterKind.Sources });
-  const conditionNames = useWatch({ control: form.control, name: "conditionNames" });
-  const filters = { applicationIds, profileIds, sources };
+type TCertificateFilters = Pick<
+  TCertificateAlertForm,
+  | CertificateFilterKind.Applications
+  | CertificateFilterKind.Profiles
+  | CertificateFilterKind.Sources
+>;
 
+const MatchedCertificatesPreview = ({
+  filters,
+  projectId
+}: {
+  filters: TCertificateFilters;
+  projectId: string;
+}) => {
+  const { applicationIds, profileIds, sources } = filters;
   const previewFilters = {
     applicationIds: applicationIds?.length ? applicationIds : undefined,
     profileIds: profileIds?.length ? profileIds : undefined,
@@ -83,19 +96,11 @@ export const FiltersStep = ({ form, projectId }: Props) => {
     source: previewFilters.sources
   });
 
-  const setFilter = (kind: CertificateFilterKind, ids: string[] | undefined) =>
-    form.setValue(kind, ids as TCertificateAlertForm[typeof kind], {
-      shouldDirty: true,
-      shouldValidate: true
-    });
-  const addFilter = (kind: CertificateFilterKind) => form.setValue(kind, [], { shouldDirty: true });
-
-  const presentKinds = FILTER_KINDS.filter((kind) => filters[kind] !== undefined);
-  const addableKinds = FILTER_KINDS.filter((kind) => filters[kind] === undefined);
-
   const matchedCount = preview?.totalCount ?? 0;
-  const isPreviewFiltered = FILTER_KINDS.some((kind) => previewFilters[kind] !== undefined);
-  const hasUnfinishedFilter = FILTER_KINDS.some((kind) => filters[kind]?.length === 0);
+  const isPreviewFiltered = CERTIFICATE_FILTER_KINDS.some(
+    (kind) => previewFilters[kind] !== undefined
+  );
+  const hasUnfinishedFilter = CERTIFICATE_FILTER_KINDS.some((kind) => filters[kind]?.length === 0);
   const certificatesLabel = `${matchedCount} active certificate${matchedCount === 1 ? "" : "s"}`;
   let previewSummary = "Loading the certificates this alert covers.";
   if (isPreviewError && !isPreviewing) {
@@ -129,100 +134,7 @@ export const FiltersStep = ({ form, projectId }: Props) => {
   const showPreviewRows = !isPreviewError && !hasUnfinishedFilter;
 
   return (
-    <div className="flex flex-col">
-      <div>
-        <p className="text-sm font-medium text-foreground">Filters</p>
-        <p className="mt-0.5 text-xs text-muted">
-          A certificate is covered only when it matches every filter below.
-        </p>
-      </div>
-
-      {presentKinds.length > 0 ? (
-        <div className="mt-3 flex flex-col gap-3">
-          {presentKinds.map((kind, index) => {
-            const Select = FILTER_SELECTS[kind];
-            const { label } = CERTIFICATE_FILTER_DEFINITIONS[kind];
-            return (
-              <Fragment key={kind}>
-                {index > 0 && (
-                  <div className="flex items-center gap-3">
-                    <span className="h-px flex-1 bg-border" />
-                    <span className="text-xs font-medium text-muted">AND</span>
-                    <span className="h-px flex-1 bg-border" />
-                  </div>
-                )}
-                <div className="flex items-start gap-3">
-                  <Field className="min-w-0 flex-1">
-                    <FieldLabel className="text-xs">{label}</FieldLabel>
-                    <FieldContent>
-                      <Select
-                        value={filters[kind] ?? []}
-                        conditionNames={conditionNames}
-                        onChange={(selected) => {
-                          if (kind !== CertificateFilterKind.Sources) {
-                            form.setValue("conditionNames", {
-                              ...conditionNames,
-                              ...Object.fromEntries(selected.map(({ id, name }) => [id, name]))
-                            });
-                          }
-                          setFilter(
-                            kind,
-                            selected.map(({ id }) => id)
-                          );
-                        }}
-                      />
-                      <FieldError errors={[form.formState.errors[kind]]} />
-                    </FieldContent>
-                  </Field>
-                  <IconButton
-                    type="button"
-                    size="xs"
-                    variant="ghost"
-                    className="mt-6.5"
-                    aria-label={`Remove ${label} filter`}
-                    onClick={() => setFilter(kind, undefined)}
-                  >
-                    <TrashIcon className="size-4" />
-                  </IconButton>
-                </div>
-              </Fragment>
-            );
-          })}
-        </div>
-      ) : (
-        <Empty className="mt-3 flex-none border py-8">
-          <EmptyMedia variant="icon">
-            <FilterIcon />
-          </EmptyMedia>
-          <EmptyDescription>{NO_FILTERS_DESCRIPTION} Add a filter to narrow it.</EmptyDescription>
-        </Empty>
-      )}
-
-      {addableKinds.length > 0 && (
-        <div className="mt-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm">
-                <PlusIcon className="size-3.5" />
-                Add Filter
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              {addableKinds.map((kind) => (
-                <DropdownMenuItem key={kind} onClick={() => addFilter(kind)}>
-                  <div className="flex flex-col">
-                    <span>{CERTIFICATE_FILTER_DEFINITIONS[kind].label}</span>
-                    <span className="text-xs text-muted">
-                      {CERTIFICATE_FILTER_DEFINITIONS[kind].hint}
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
-
+    <>
       <div className="mt-8 flex items-end justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-foreground">Matched Certificates</p>
@@ -261,6 +173,135 @@ export const FiltersStep = ({ form, projectId }: Props) => {
           />
         )}
       </div>
+    </>
+  );
+};
+
+export const FiltersStep = ({ form, projectId }: Props) => {
+  const eventType = useWatch({ control: form.control, name: "eventType" });
+  const applicationIds = useWatch({
+    control: form.control,
+    name: CertificateFilterKind.Applications
+  });
+  const profileIds = useWatch({ control: form.control, name: CertificateFilterKind.Profiles });
+  const sources = useWatch({ control: form.control, name: CertificateFilterKind.Sources });
+  const signerIds = useWatch({ control: form.control, name: CertificateFilterKind.Signers });
+  const conditionNames = useWatch({ control: form.control, name: "conditionNames" });
+  const filters = { applicationIds, profileIds, sources, signerIds };
+  const isSignerEvent = isSignerEventType(eventType);
+
+  const setFilter = (kind: CertificateFilterKind, ids: string[] | undefined) =>
+    form.setValue(kind, ids as TCertificateAlertForm[typeof kind], {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  const addFilter = (kind: CertificateFilterKind) => form.setValue(kind, [], { shouldDirty: true });
+
+  const filterKinds = getFilterKinds(eventType);
+  const presentKinds = filterKinds.filter((kind) => filters[kind] !== undefined);
+  const addableKinds = filterKinds.filter((kind) => filters[kind] === undefined);
+
+  return (
+    <div className="flex flex-col">
+      <div>
+        <p className="text-sm font-medium text-foreground">Filters</p>
+        <p className="mt-0.5 text-xs text-muted">
+          {isSignerEvent
+            ? "Only the certificates of the signers selected below are covered."
+            : "A certificate is covered only when it matches every filter below."}
+        </p>
+      </div>
+
+      {presentKinds.length > 0 ? (
+        <div className="mt-3 flex flex-col gap-3">
+          {presentKinds.map((kind, index) => {
+            const Select = FILTER_SELECTS[kind];
+            const { label } = CERTIFICATE_FILTER_DEFINITIONS[kind];
+            return (
+              <Fragment key={kind}>
+                {index > 0 && (
+                  <div className="flex items-center gap-3">
+                    <span className="h-px flex-1 bg-border" />
+                    <span className="text-xs font-medium text-muted">AND</span>
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                )}
+                <div className="flex items-start gap-3">
+                  <Field className="min-w-0 flex-1">
+                    <FieldLabel className="text-xs">{label}</FieldLabel>
+                    <FieldContent>
+                      <Select
+                        value={filters[kind] ?? []}
+                        conditionNames={conditionNames}
+                        projectId={projectId}
+                        onChange={(selected) => {
+                          if (kind !== CertificateFilterKind.Sources) {
+                            form.setValue("conditionNames", {
+                              ...conditionNames,
+                              ...Object.fromEntries(selected.map(({ id, name }) => [id, name]))
+                            });
+                          }
+                          setFilter(
+                            kind,
+                            selected.map(({ id }) => id)
+                          );
+                        }}
+                      />
+                      <FieldError errors={[form.formState.errors[kind]]} />
+                    </FieldContent>
+                  </Field>
+                  <IconButton
+                    type="button"
+                    size="xs"
+                    variant="ghost"
+                    className="mt-6.5"
+                    aria-label={`Remove ${label} filter`}
+                    onClick={() => setFilter(kind, undefined)}
+                  >
+                    <TrashIcon className="size-4" />
+                  </IconButton>
+                </div>
+              </Fragment>
+            );
+          })}
+        </div>
+      ) : (
+        <Empty className="mt-3 flex-none border py-8">
+          <EmptyMedia variant="icon">
+            <FilterIcon />
+          </EmptyMedia>
+          <EmptyDescription>
+            {getNoFiltersDescription(eventType)} Add a filter to narrow it.
+          </EmptyDescription>
+        </Empty>
+      )}
+
+      {addableKinds.length > 0 && (
+        <div className="mt-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm">
+                <PlusIcon className="size-3.5" />
+                Add Filter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              {addableKinds.map((kind) => (
+                <DropdownMenuItem key={kind} onClick={() => addFilter(kind)}>
+                  <div className="flex flex-col">
+                    <span>{CERTIFICATE_FILTER_DEFINITIONS[kind].label}</span>
+                    <span className="text-xs text-muted">
+                      {CERTIFICATE_FILTER_DEFINITIONS[kind].hint}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
+      {!isSignerEvent && <MatchedCertificatesPreview filters={filters} projectId={projectId} />}
     </div>
   );
 };
