@@ -88,6 +88,12 @@
 .tabsList[data-variant="underline"][data-orientation="horizontal"] {
   padding-inline: 0;
 }
+.tabsList[data-variant="segmented"][data-orientation="horizontal"] {
+  padding: var(--v4-space-2);
+}
+.tabsList[data-variant="segmented"][data-orientation="horizontal"] [role="tab"] {
+  min-height: calc(var(--v4-size-control-default) - 2 * var(--v4-space-2));
+}
 .tabsList[data-variant="underline"] .tabIndicator.tabIndicator {
   background: transparent;
   box-shadow: none;

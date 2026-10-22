@@ -114,7 +114,11 @@ export const ComparisonSlider = ({ title, before, After }: ComparisonSliderProps
             {shot ? (
               <img src={shot} alt={`${title}, current app on main (${theme} theme)`} />
             ) : (
-              <div className={styles.missing}>No capture for this theme</div>
+              <div className={styles.missing}>
+                {before.light || before.dark
+                  ? "No capture for this theme"
+                  : "The before capture is pending"}
+              </div>
             )}
           </div>
           <span className={styles.label} style={{ left: "var(--v4-space-8)" }}>

@@ -78,7 +78,7 @@ export function ListRow({
       data-disabled={disabled || undefined}
       data-resolved={resolved || undefined}
       data-size={context?.size}
-      data-interactive={(!disabled && (href || button)) || undefined}
+      data-interactive={(!disabled && Boolean(href || button)) || undefined}
     >
       {context?.multiple && (
         <span className={styles.rowCheck}>

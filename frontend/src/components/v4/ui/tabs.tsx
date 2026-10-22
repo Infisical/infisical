@@ -78,11 +78,12 @@ const Tabs = React.forwardRef<React.ComponentRef<typeof TabsPrimitive.Root>, Tab
                 </TabsTrigger>
               ))}
             </TabsList>
-            {tabs.map((tab) => (
-              <TabsContent key={tab.value} value={tab.value}>
-                {tab.content}
-              </TabsContent>
-            ))}
+            {tabs.some((tab) => tab.content != null) &&
+              tabs.map((tab) => (
+                <TabsContent key={tab.value} value={tab.value}>
+                  {tab.content}
+                </TabsContent>
+              ))}
           </>
         ) : (
           children

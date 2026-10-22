@@ -65,6 +65,13 @@ export const comparisonPages = [
     screen: "kms",
     title: "KMS keys",
     description: "The 7 keys in kms-keys with their usage, algorithm, status and key actions."
+  },
+  {
+    id: "compare-connections",
+    screen: "connections",
+    title: "App connections",
+    description:
+      "9 app connections with method, owner and status, and New connection opens a three-step Sheet."
   }
 ] as const;
 export type ComparisonPage = (typeof comparisonPages)[number]["id"];
