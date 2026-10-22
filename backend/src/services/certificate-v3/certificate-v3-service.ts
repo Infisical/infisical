@@ -142,6 +142,7 @@ type TCertificateV3ServiceFactoryDep = {
     | "findOne"
     | "findById"
     | "findByIdForUpdate"
+    | "findByIdForShare"
     | "updateById"
     | "transaction"
     | "create"
@@ -2340,6 +2341,11 @@ export const certificateV3ServiceFactory = ({
 
     if (metadata) {
       await certificateDAL.transaction(async (tx) => {
+        const lockedCertificate = await certificateDAL.findByIdForShare(certificateId, tx);
+        if (!lockedCertificate) {
+          throw new NotFoundError({ message: "Certificate not found" });
+        }
+        assertCertificateNotDeleted(lockedCertificate);
         await resourceMetadataDAL.delete({ certificateId }, tx);
         await insertMetadataForCertificate(resourceMetadataDAL, {
           metadata,

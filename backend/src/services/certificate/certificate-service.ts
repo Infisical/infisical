@@ -20,7 +20,7 @@ import {
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -607,8 +607,11 @@ export const certificateServiceFactory = ({
       : await $parseStoredCertificateBody(cert)
           .then((parsed) => parsed?.fingerprints)
           .catch((error: unknown) => {
-            logger.warn(error, `Could not read fingerprints before deleting certificate [certificateId=${cert.id}]`);
-            return undefined;
+            logger.error(error, `Could not read fingerprints before deleting certificate [certificateId=${cert.id}]`);
+            throw new InternalServerError({
+              error,
+              message: `Certificate '${getCertificateDisplayName(cert)}' could not be read to record its fingerprint, which is needed to recognize it if it is imported or discovered again. It was not deleted. Try again in a few minutes.`
+            });
           });
 
     const { deletedCert, pkiSyncIdsHoldingCertificate } = await certificateDAL.transaction(async (tx) => {
@@ -666,7 +669,7 @@ export const certificateServiceFactory = ({
     return {
       deletedCert,
       statusAtDeletion: resolveCertificateStatus(deletedCert),
-      deletionAllowedReason: resolveCertificateDeletionEligibility(deletedCert) ?? undefined,
+      deletionAllowedReason: resolveCertificateDeletionEligibility(deletedCert),
       applicationName: await $resolveApplicationName(deletedCert.applicationId)
     };
   };
@@ -1867,9 +1870,19 @@ export const certificateServiceFactory = ({
       });
     }
 
-    assertCertificateNotDeleted(cert);
-
-    const [updatedCert] = await certificateDAL.update({ id: cert.id }, { applicationId });
+    const updatedCert = await certificateDAL.transaction(async (tx) => {
+      const lockedCert = await certificateDAL.findByIdForUpdate(cert.id, tx);
+      if (!lockedCert) {
+        throw new NotFoundError({ message: `Certificate with id '${certificateId}' not found.` });
+      }
+      assertCertificateNotDeleted(lockedCert);
+      if (lockedCert.applicationId) {
+        throw new BadRequestError({
+          message: "This certificate is already assigned to an Application and cannot be moved."
+        });
+      }
+      return certificateDAL.updateById(cert.id, { applicationId }, tx);
+    });
 
     await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
 

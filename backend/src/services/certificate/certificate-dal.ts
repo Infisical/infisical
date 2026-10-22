@@ -1529,21 +1529,6 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findLiveIdsForShare = async (ids: string[], tx: Knex): Promise<string[]> => {
-    if (ids.length === 0) return [];
-    try {
-      const rows = (await tx(TableName.Certificate)
-        .whereIn("id", ids)
-        .whereNull("deletedAt")
-        .orderBy("id")
-        .forShare()
-        .select("id")) as Array<{ id: string }>;
-      return rows.map(({ id }) => id);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find live certificate ids for share" });
-    }
-  };
-
   const primaryNode = () => db.primaryNode();
 
   return {
@@ -1551,7 +1536,6 @@ export const certificateDALFactory = (db: TDbClient) => {
     ...certificateOrm,
     findByIdForUpdate,
     findByIdForShare,
-    findLiveIdsForShare,
     restoreDeleted,
     create,
     countCertificatesInProject,

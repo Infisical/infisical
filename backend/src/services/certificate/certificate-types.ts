@@ -24,7 +24,8 @@ export enum CertStatus {
 export enum CertificateDeletionEligibility {
   Expired = "expired",
   Discovered = "discovered",
-  Imported = "imported"
+  Imported = "imported",
+  Issued = "issued"
 }
 
 export enum CertificateRestoreSource {

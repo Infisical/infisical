@@ -92,6 +92,7 @@ describe("CertificateV3Service", () => {
     | "findOne"
     | "findById"
     | "findByIdForUpdate"
+    | "findByIdForShare"
     | "updateById"
     | "transaction"
     | "create"
@@ -104,6 +105,7 @@ describe("CertificateV3Service", () => {
     findOne: vi.fn(),
     findById: vi.fn(),
     findByIdForUpdate: vi.fn(),
+    findByIdForShare: vi.fn(),
     findCertificatesMatchingSyncFilters: vi.fn().mockResolvedValue([]),
     findActiveCertificatesByIds: vi.fn().mockResolvedValue([]),
     updateById: vi.fn(),

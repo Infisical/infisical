@@ -309,23 +309,20 @@ describe("resolveCertificateDeletionEligibility", () => {
   const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  it("allows an expired certificate", () => {
-    expect(resolveCertificateDeletionEligibility({ status: CertStatus.ACTIVE, notAfter: past })).toBe(
+  it("reports an expired certificate", () => {
+    expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: past })).toBe(
       CertificateDeletionEligibility.Expired
     );
   });
 
-  it("allows a discovered certificate that has not expired", () => {
+  it("reports discovered and imported certificates by source, revoked or not", () => {
     expect(
       resolveCertificateDeletionEligibility({
-        status: CertStatus.ACTIVE,
+        status: CertStatus.REVOKED,
         notAfter: future,
         source: CertificateSource.Discovered
       })
     ).toBe(CertificateDeletionEligibility.Discovered);
-  });
-
-  it("allows an imported certificate that has not expired", () => {
     expect(
       resolveCertificateDeletionEligibility({
         status: CertStatus.ACTIVE,
@@ -335,45 +332,12 @@ describe("resolveCertificateDeletionEligibility", () => {
     ).toBe(CertificateDeletionEligibility.Imported);
   });
 
-  it("blocks an issued certificate that has not expired", () => {
-    expect(
-      resolveCertificateDeletionEligibility({
-        status: CertStatus.ACTIVE,
-        notAfter: future,
-        source: CertificateSource.Issued
-      })
-    ).toBeNull();
-  });
-
-  it("blocks a certificate with no source, because issuance never records one", () => {
-    expect(resolveCertificateDeletionEligibility({ status: CertStatus.ACTIVE, notAfter: future })).toBeNull();
-  });
-
-  it("blocks a revoked certificate until it expires, so its serial stays on the CRL", () => {
-    expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: future })).toBeNull();
-  });
-
-  it("blocks a revoked certificate even when its source would exempt it", () => {
-    expect(
-      resolveCertificateDeletionEligibility({
-        status: CertStatus.REVOKED,
-        notAfter: future,
-        source: CertificateSource.Imported
-      })
-    ).toBeNull();
-
-    expect(
-      resolveCertificateDeletionEligibility({
-        status: CertStatus.REVOKED,
-        notAfter: future,
-        source: CertificateSource.Discovered
-      })
-    ).toBeNull();
-  });
-
-  it("allows a revoked certificate once it has expired", () => {
-    expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: past })).toBe(
-      CertificateDeletionEligibility.Expired
+  it("always returns a reason, so the audit event keeps the field", () => {
+    expect(resolveCertificateDeletionEligibility({ status: CertStatus.ACTIVE, notAfter: future })).toBe(
+      CertificateDeletionEligibility.Issued
+    );
+    expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: future })).toBe(
+      CertificateDeletionEligibility.Issued
     );
   });
 });

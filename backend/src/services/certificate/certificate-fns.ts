@@ -546,16 +546,12 @@ export const resolveCertificateDeletionEligibility = (certificate: {
   status: string;
   notAfter: Date;
   source?: string | null;
-}): CertificateDeletionEligibility | null => {
-  const hasExpired = new Date(certificate.notAfter).getTime() <= Date.now();
-
-  if (!hasExpired && certificate.status === CertStatus.REVOKED) return null;
-
+}): CertificateDeletionEligibility => {
   if (certificate.source === CertificateSource.Discovered) return CertificateDeletionEligibility.Discovered;
   if (certificate.source === CertificateSource.Imported) return CertificateDeletionEligibility.Imported;
-  if (hasExpired) return CertificateDeletionEligibility.Expired;
+  if (new Date(certificate.notAfter).getTime() <= Date.now()) return CertificateDeletionEligibility.Expired;
 
-  return null;
+  return CertificateDeletionEligibility.Issued;
 };
 
 type TDeletableCertificate = {

@@ -33,7 +33,7 @@ export type TPkiSyncReconcileTarget = {
 };
 
 type TPkiSyncFilterReconcileDeps = {
-  certificateDAL: Pick<TCertificateDALFactory, "findCertificatesMatchingSyncFilters" | "find" | "findLiveIdsForShare">;
+  certificateDAL: Pick<TCertificateDALFactory, "findCertificatesMatchingSyncFilters" | "find">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "findCertificateIdsByPkiSyncId"
@@ -193,7 +193,7 @@ export const applyPkiSyncCertificateDiff = async (
   writeFilters?: (tx: Knex) => Promise<void>,
   removalOptions?: TPkiSyncRemovalOptions
 ): Promise<{ linked: TPkiSyncCertificateRef[]; unlinked: TPkiSyncCertificateRef[] }> => {
-  const { certificateDAL, certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL } = deps;
+  const { certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL } = deps;
   const { toUnlink } = diff;
   let { toLink } = diff;
 
@@ -211,20 +211,14 @@ export const applyPkiSyncCertificateDiff = async (
   await certificateSyncDAL.transaction(async (tx) => {
     if (writeFilters) await writeFilters(tx);
 
-    const liveIds = new Set(
-      await certificateDAL.findLiveIdsForShare(
-        toLink.map((certificate) => certificate.id),
-        tx
-      )
-    );
-    toLink = toLink.filter((certificate) => liveIds.has(certificate.id));
-
     if (toLink.length > 0) {
-      await certificateSyncDAL.addCertificates(
+      const linked = await certificateSyncDAL.addCertificates(
         pkiSync.id,
         toLink.map((certificate) => ({ certificateId: certificate.id })),
         tx
       );
+      const linkedIds = new Set(linked.map(({ certificateId }) => certificateId));
+      toLink = toLink.filter((certificate) => linkedIds.has(certificate.id));
     }
 
     if (idsOnlyLinked.length > 0) {

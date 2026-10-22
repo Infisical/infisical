@@ -721,7 +721,7 @@ interface DeleteCert {
     notAfter: string;
     source: string;
     statusAtDeletion?: CertStatus;
-    deletionAllowedReason?: string;
+    deletionAllowedReason: string;
     applicationId?: string | null;
     applicationName?: string | null;
   };

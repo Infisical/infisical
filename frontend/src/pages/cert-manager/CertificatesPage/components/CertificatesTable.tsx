@@ -181,6 +181,27 @@ const SortIcon = ({
   return <Icon className="ml-1 inline-block size-3" />;
 };
 
+const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
+  if (viewId === "system-pqc") {
+    return [
+      { id: "sv-pqc", field: "keyAlgorithm", operator: "in", value: [...PQC_KEY_ALGORITHMS] },
+      liveCertificateStatusFilter("sv-pqc-status")
+    ];
+  }
+  if (viewId === "system-non-pqc") {
+    return [
+      {
+        id: "sv-non-pqc",
+        field: "keyAlgorithm",
+        operator: "in",
+        value: [...NON_PQC_KEY_ALGORITHMS]
+      },
+      liveCertificateStatusFilter("sv-non-pqc-status")
+    ];
+  }
+  return [];
+};
+
 export const CertificatesTable = ({
   handlePopUpOpen,
   externalFilter,
@@ -222,27 +243,6 @@ export const CertificatesTable = ({
       PkiApplicationResourceSub.PkiSyncs
     )
   );
-
-  const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
-    if (viewId === "system-pqc") {
-      return [
-        { id: "sv-pqc", field: "keyAlgorithm", operator: "in", value: [...PQC_KEY_ALGORITHMS] },
-        liveCertificateStatusFilter("sv-pqc-status")
-      ];
-    }
-    if (viewId === "system-non-pqc") {
-      return [
-        {
-          id: "sv-non-pqc",
-          field: "keyAlgorithm",
-          operator: "in",
-          value: [...NON_PQC_KEY_ALGORITHMS]
-        },
-        liveCertificateStatusFilter("sv-non-pqc-status")
-      ];
-    }
-    return [];
-  };
 
   const [appliedFilters, setAppliedFilters] = useState<FilterRule[]>(() => {
     if (dashboardFilters?.length) return dashboardFilters;
@@ -543,24 +543,8 @@ export const CertificatesTable = ({
         setAppliedFilters([
           { id: "sv-status", field: "status", operator: "in", value: [CertStatus.DELETED] }
         ]);
-      } else if (viewId === "system-pqc") {
-        setAppliedFilters([
-          {
-            id: "sv-pqc",
-            field: "keyAlgorithm",
-            operator: "in",
-            value: [...PQC_KEY_ALGORITHMS]
-          }
-        ]);
-      } else if (viewId === "system-non-pqc") {
-        setAppliedFilters([
-          {
-            id: "sv-non-pqc",
-            field: "keyAlgorithm",
-            operator: "in",
-            value: [...NON_PQC_KEY_ALGORITHMS]
-          }
-        ]);
+      } else if (viewId === "system-pqc" || viewId === "system-non-pqc") {
+        setAppliedFilters(getFiltersForSystemViewId(viewId));
       } else {
         const customFilters = filters as TInventoryViewFilters;
         const rules: FilterRule[] = [];

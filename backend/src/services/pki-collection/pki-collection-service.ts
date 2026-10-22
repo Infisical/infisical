@@ -29,7 +29,7 @@ type TPkiCollectionServiceFactoryDep = {
     "findOne" | "create" | "deleteById" | "findPkiCollectionItems" | "countItemsInPkiCollection"
   >;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find" | "findOne">;
-  certificateDAL: Pick<TCertificateDALFactory, "find">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "findByIdForShare" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -265,9 +265,12 @@ export const pkiCollectionServiceFactory = ({
         if (!certificate) throw new NotFoundError({ message: `Certificate with ID '${itemId}' not found` });
         assertCertificateNotDeleted(certificate, "be added to a collection");
 
-        pkiCollectionItem = await pkiCollectionItemDAL.create({
-          pkiCollectionId: collectionId,
-          certId: itemId
+        pkiCollectionItem = await certificateDAL.transaction(async (tx) => {
+          const lockedCertificate = await certificateDAL.findByIdForShare(itemId, tx);
+          if (!lockedCertificate) throw new NotFoundError({ message: `Certificate with ID '${itemId}' not found` });
+          assertCertificateNotDeleted(lockedCertificate, "be added to a collection");
+
+          return pkiCollectionItemDAL.create({ pkiCollectionId: collectionId, certId: itemId }, tx);
         });
         break;
       }

@@ -126,7 +126,6 @@ type TPkiSyncServiceFactoryDep = {
     TCertificateDALFactory,
     | "find"
     | "findCertificatesMatchingSyncFilters"
-    | "findLiveIdsForShare"
     | "countCertificatesMatchingSyncFilters"
     | "findReadableCertificateIds"
     | "findLatestCertificatesByOrderIds"

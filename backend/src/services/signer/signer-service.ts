@@ -576,7 +576,11 @@ export const signerServiceFactory = ({
     const certificateId = preparedCertificate.insert
       ? await preparedCertificate.insert(tx)
       : preparedCertificate.existingCertificateId;
-    await certificateDAL.findByIdForUpdate(certificateId, tx);
+    const lockedCertificate = await certificateDAL.findByIdForUpdate(certificateId, tx);
+    if (!lockedCertificate) {
+      throw new NotFoundError({ message: `The certificate in DigiCert order ${imported.orderId} no longer exists.` });
+    }
+    assertCertificateNotDeleted(lockedCertificate, "be used by a signer");
     const signerUsingCertificate = await signerDAL.findOne({ certificateId }, tx);
     if (signerUsingCertificate && signerUsingCertificate.id !== signerId) {
       throw new ConflictError({

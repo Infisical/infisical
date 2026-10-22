@@ -3296,7 +3296,7 @@ interface DeleteCert {
     notAfter: string;
     source: CertificateSource;
     statusAtDeletion: CertStatus;
-    deletionAllowedReason?: CertificateDeletionEligibility;
+    deletionAllowedReason: CertificateDeletionEligibility;
     applicationId?: string | null;
     applicationName?: string | null;
   };

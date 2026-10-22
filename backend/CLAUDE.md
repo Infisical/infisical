@@ -958,6 +958,13 @@ pointing at something. Things that rely on that:
   saw when the row was hard deleted. The one background job that still reads deleted rows is the DigiCert
   revocation sync: it records an upstream revocation on a deleted certificate (without alerts) so the quota
   stops counting it.
+- **The foreign key no longer stops a write that references a deleted certificate.** A hard delete made any
+  later insert pointing at the row fail; the kept row accepts it. So every write that attaches something to a
+  certificate (sync link, collection item, signer, metadata, Application) locks the row `FOR SHARE` or
+  `FOR UPDATE` inside its own transaction and rechecks `deletedAt` on the locked copy; a check before the
+  transaction races the delete. `certificateSyncDAL.addCertificates` and `claimExternalIdentifier` do this
+  themselves and skip deleted ids, so every sync provider is covered. A new writer belongs in that DAL or
+  follows the same pattern.
 - **The licence quota still counts a deleted certificate Infisical issued until it expires or is revoked**,
   because deleting neither revokes it nor requires it to be expired, so excluding it would let an org free
   its cap while the certificate stays trusted. Deleted imported and discovered certificates stop counting, as
@@ -982,7 +989,7 @@ pointing at something. Things that rely on that:
   so the inventory can still show where a deleted certificate is deployed.
 - **Discovery matches deleted rows by fingerprint, and certificates issued before 2026-01-27 have none.** The
   delete computes and stores a missing fingerprint before it removes the body, so discovery can still find the
-  deleted row.
+  deleted row. If the body can't be read, the delete fails and nothing is removed.
 - **A deleted certificate can keep `keySource = hsm` after its HSM connector is deleted.** The key source CHECK
   allows a null `hsmConnectorId` on deleted rows, so deleting a connector only detaches them and the record
   still says the key lived in an HSM.

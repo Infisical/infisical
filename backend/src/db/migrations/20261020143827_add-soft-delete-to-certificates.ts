@@ -112,10 +112,7 @@ export async function down(knex: Knex): Promise<void> {
   });
 
   if (await knex.schema.hasColumn(TableName.Certificate, "deletedAt")) {
-    await knex(TableName.Certificate)
-      .where("keySource", "hsm")
-      .whereNull("hsmConnectorId")
-      .update({ keySource: "infisical", hsmKeyLabel: null, hsmKeyId: null, hsmPublicKeySpki: null });
+    await knex(TableName.Certificate).whereNotNull("deletedAt").delete();
     await replaceKeySourceCheck(knex, LIVE_HSM_KEY_SOURCE_CHECK);
   }
 

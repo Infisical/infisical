@@ -208,11 +208,7 @@ export const addRenewedCertificateToSyncs = async (
 type TReconcileCertificateAgainstSyncsDeps = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    | "findActiveCertificatesByIds"
-    | "findCertificatesMatchingSyncFilters"
-    | "find"
-    | "primaryNode"
-    | "findLiveIdsForShare"
+    "findActiveCertificatesByIds" | "findCertificatesMatchingSyncFilters" | "find" | "primaryNode"
   >;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
