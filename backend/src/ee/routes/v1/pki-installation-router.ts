@@ -2,11 +2,16 @@ import { z } from "zod";
 
 import { PkiCertificateInstallationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const SanitizedPkiInstallationSchema = PkiCertificateInstallationsSchema.omit({ encryptedCredentials: true }).extend({
+  hasKeystorePassword: z.boolean().describe("Whether a keystore password is saved for this installation")
+});
 
 export const registerPkiInstallationRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -32,7 +37,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       response: {
         200: z.object({
           installations: z.array(
-            PkiCertificateInstallationsSchema.extend({
+            SanitizedPkiInstallationSchema.extend({
               certificatesCount: z.number().optional(),
               primaryCertName: z.string().nullable().optional(),
               discoveryName: z.string().nullable().optional()
@@ -88,8 +93,9 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         installationId: z.string().uuid().describe("The ID of the installation")
       }),
       response: {
-        200: PkiCertificateInstallationsSchema.extend({
+        200: SanitizedPkiInstallationSchema.extend({
           discoveryName: z.string().nullable().optional(),
+          connection: z.object({ id: z.string().uuid(), name: z.string() }).nullable().optional(),
           certificates: z
             .array(
               z.object({
@@ -155,16 +161,26 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         installationId: z.string().uuid().describe("The ID of the installation")
       }),
       body: z.object({
-        name: z.string().max(255).optional().describe("Name of the installation")
+        name: z.string().max(255).optional().describe("Name of the installation"),
+        keystorePassword: z
+          .string()
+          .min(1)
+          .max(1024)
+          .nullable()
+          .optional()
+          .describe(
+            "Password of the keystore at this installation. It is never returned. Setting it rescans the file. Send null to clear it."
+          )
       }),
       response: {
-        200: PkiCertificateInstallationsSchema
+        200: SanitizedPkiInstallationSchema
       }
     },
     handler: async (req) => {
       const installation = await server.services.pkiInstallation.updateInstallation({
         installationId: req.params.installationId,
         name: req.body.name,
+        keystorePassword: req.body.keystorePassword,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -178,7 +194,11 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
           type: EventType.UPDATE_PKI_INSTALLATION,
           metadata: {
             installationId: installation.id,
-            name: installation.name ?? undefined
+            name: installation.name ?? undefined,
+            ...(req.body.keystorePassword !== undefined && {
+              keystorePasswordChange:
+                req.body.keystorePassword === null ? PkiKeystorePasswordChange.Cleared : PkiKeystorePasswordChange.Set
+            })
           }
         }
       });
@@ -203,7 +223,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         installationId: z.string().uuid().describe("The ID of the installation")
       }),
       response: {
-        200: PkiCertificateInstallationsSchema
+        200: SanitizedPkiInstallationSchema
       }
     },
     handler: async (req) => {
