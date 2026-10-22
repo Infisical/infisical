@@ -26,8 +26,8 @@ const ProxyConfigSchema = z.object({
 
 const RootCaSchema = z
   .object({
-    certificate: z.string(),
-    privateKey: z.string()
+    certificate: z.string().describe(AGENT_VAULT.PROXY.rootCaCertificatePem),
+    privateKey: z.string().describe(AGENT_VAULT.PROXY.rootCaPrivateKey)
   })
   .describe(AGENT_VAULT.PROXY.rootCa);
 

@@ -4625,6 +4625,8 @@ export const AGENT_VAULT = {
       "The token the proxy starts with, on as many machines as you need. Shown once, and works until it is rotated or the proxy's access is revoked.",
     rootCa:
       "The certificate authority Infisical keeps for this proxy: a PEM certificate and its PKCS#8 PEM private key.",
+    rootCaCertificatePem: "The certificate authority's certificate, in PEM form.",
+    rootCaPrivateKey: "The certificate authority's private key, in PKCS#8 PEM form.",
     servedCaCertificate:
       "The certificate authority the proxy serves, in PEM form, when it uses its own instead of Infisical's. Infisical records its fingerprint and returns no `rootCa`.",
     rootCaFingerprint:
