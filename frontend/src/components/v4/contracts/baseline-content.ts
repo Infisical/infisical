@@ -1686,7 +1686,7 @@ export const baselineContent = [
     ],
     referenceNames: ["EmptyState"],
     behavior: [
-      "EmptyState composes title, description, icon and action slots in default or compact form. The media is a tinted, bordered tile (48px with a 24px icon, 36px with a 20px icon at sm) or a bare muted icon; sm tightens padding and gaps for lists, menus and table bodies. The retained Empty parts support a custom arrangement."
+      "EmptyState composes an icon, a title, an optional description and an actions slot. Media is a tile by default, a tinted 48px square with a line border and a 24px icon, or bare, a muted 24px icon with no tile. sm shrinks the tile to 36px with a 20px icon (a bare icon to 20px) and tightens padding and gaps for list, table and menu bodies. The Empty parts compose the same result: EmptyMedia defaults to the tile at the size its Empty sets."
     ],
     accessibility: [
       "Use a meaningful heading and a named native action. The empty container does not automatically announce asynchronous changes."
@@ -1697,145 +1697,68 @@ export const baselineContent = [
     examples: [
       {
         id: "default",
-        title: "No connections and a creation entry point",
+        title: "Default: a tile, a title, a description and the primary action",
         module: "./examples/empty-state/default.tsx",
-        states: ["default", "controlled"]
-      },
-      {
-        id: "variants",
-        title: "Variants and data states",
-        module: "./examples/empty-state/variants.tsx",
         states: ["default"]
       },
       {
+        id: "secondary-action",
+        title: "With a secondary action: the faster alternative follows the primary action",
+        module: "./examples/empty-state/secondary-action.tsx",
+        states: ["default"]
+      },
+      {
+        id: "bare",
+        title: "Bare media: a muted icon without a tile for inline and compact regions",
+        module: "./examples/empty-state/bare.tsx",
+        states: ["default"]
+      },
+      {
+        id: "small",
+        title: "Small: the empty body of a list, table or menu",
+        module: "./examples/empty-state/small.tsx",
+        states: ["empty", "controlled"]
+      },
+      {
         id: "parts",
-        title: "Compose an empty connection collection",
+        title: "Composed from parts: the same result as Default",
         module: "./examples/empty-state/parts.tsx",
         states: ["default"]
       }
     ],
     coverage: [
       {
-        axis: "EmptyState.variant",
-        expected: ["default", "compact"],
-        shown: [
-          {
-            value: "default",
-            exampleId: "variants",
-            label: "default"
-          },
-          {
-            value: "compact",
-            exampleId: "variants",
-            label: "compact"
-          }
-        ]
-      },
-      {
         axis: "EmptyMedia.variant",
-        expected: ["default", "icon", "bare"],
+        expected: ["tile", "bare"],
         shown: [
-          {
-            value: "default",
-            exampleId: "parts",
-            label: "default"
-          },
-          {
-            value: "icon",
-            exampleId: "parts",
-            label: "icon"
-          },
-          {
-            value: "bare",
-            exampleId: "parts",
-            label: "bare"
-          }
+          { value: "tile", exampleId: "parts", label: "tile" },
+          { value: "bare", exampleId: "bare", label: "bare" }
         ]
       },
       {
         axis: "size",
         expected: ["default", "sm"],
         shown: [
-          {
-            value: "default",
-            exampleId: "parts",
-            label: "default"
-          },
-          {
-            value: "sm",
-            exampleId: "parts",
-            label: "sm"
-          }
+          { value: "default", exampleId: "default", label: "default" },
+          { value: "sm", exampleId: "small", label: "sm" }
         ]
       },
       {
         axis: "EmptyState.size",
+        slot: "empty",
         expected: ["default", "sm"],
         shown: [
-          {
-            value: "default",
-            exampleId: "variants",
-            label: "default"
-          },
-          {
-            value: "sm",
-            exampleId: "variants",
-            label: "sm"
-          }
-        ]
-      },
-      {
-        axis: "EmptyState.media",
-        expected: ["icon", "bare"],
-        shown: [
-          {
-            value: "icon",
-            exampleId: "variants",
-            label: "default"
-          },
-          {
-            value: "bare",
-            exampleId: "variants",
-            label: "bare"
-          }
+          { value: "default", exampleId: "default", label: "default" },
+          { value: "sm", exampleId: "small", label: "sm" }
         ]
       },
       {
         axis: "data state",
-        expected: ["first use", "no matches", "request failure", "result after clear"],
+        expected: ["first use", "no matches", "result after clear"],
         shown: [
-          {
-            value: "first use",
-            exampleId: "variants",
-            label: "No connections yet"
-          },
-          {
-            value: "no matches",
-            exampleId: "variants",
-            label: "No matching connections"
-          },
-          {
-            value: "request failure",
-            exampleId: "variants",
-            label: "Connections could not load"
-          },
-          {
-            value: "result after clear",
-            exampleId: "variants",
-            label: "1 connection"
-          }
-        ]
-      },
-      {
-        axis: "size support",
-        expected: ["no authored named size"],
-        shown: [],
-        omitted: [
-          {
-            value: "no authored named size",
-            reason:
-              "This family has no authored sm/md/lg size option. Its dimensions follow content or its container; examples preserve that API."
-          }
+          { value: "first use", exampleId: "default", label: "default" },
+          { value: "no matches", exampleId: "small", label: "sm" },
+          { value: "result after clear", exampleId: "small", label: "sm" }
         ]
       }
     ],

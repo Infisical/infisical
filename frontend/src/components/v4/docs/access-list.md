@@ -46,7 +46,7 @@ Source evidence:
 ## State guidance
 
 - revoked: Rows leave the list and the footer offers Undo.
-- empty: A compact empty state says nobody else has access yet.
+- empty: A small empty state with a bare icon says nobody else has access yet.
 
 ## Presentation rules
 

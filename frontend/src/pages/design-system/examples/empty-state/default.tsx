@@ -5,16 +5,12 @@ import { ExampleCell } from "../../example-presentation";
 
 export default function Example() {
   return (
-    <ExampleCell label="First use with action">
+    <ExampleCell align="stretch" label="default">
       <EmptyState
-        title="No connections yet"
-        description="Connections synchronize this environment."
-        icon="sync"
-        actions={
-          <Button asChild>
-            <a href="#combobox">Add connection</a>
-          </Button>
-        }
+        icon="key"
+        title="No secrets in staging yet"
+        description="Add one, or copy them from development in one step. Syncs pick them up on the next push."
+        actions={<Button icon="plus">Add secret</Button>}
       />
     </ExampleCell>
   );

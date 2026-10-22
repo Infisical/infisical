@@ -97,7 +97,7 @@ export const accessListDefinition = {
       },
       {
         state: "empty",
-        guidance: "A compact empty state says nobody else has access yet."
+        guidance: "A small empty state with a bare icon says nobody else has access yet."
       }
     ],
     antiSlop: [

@@ -8,6 +8,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 
+import { splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
 
@@ -97,13 +98,25 @@ const AlertDialogContent = React.forwardRef<
       (child) => React.isValidElement(child) && child.type === AlertDialogFooter
     );
     if (field) parts.splice(footerAt < 0 ? parts.length : footerAt, 0, field);
+    const sections = splitOverlaySections(
+      [
+        !hasMedia && (icon || tone === "danger") && (
+          <AlertDialogMedia key="auto-media" data-auto="">
+            <Icon name={icon ?? "trash"} size={20} />
+          </AlertDialogMedia>
+        ),
+        ...parts
+      ],
+      { header: AlertDialogHeader, footer: AlertDialogFooter }
+    );
     return (
       <AlertDialogPortal>
         <AlertDialogOverlay />
         <AlertDialogPrimitive.Content
           ref={escape.ref}
           data-slot="alert-dialog-content"
-          data-scroll-fade="y"
+          data-scroll-fade={sections ? undefined : "y"}
+          data-sections={sections ? "" : undefined}
           data-size={size}
           data-tone={tone}
           className={cn(
@@ -123,12 +136,25 @@ const AlertDialogContent = React.forwardRef<
             value={{ ready: confirmText === undefined || typed === confirmText }}
           >
             <ToneContext.Provider value={toneValue}>
-              {!hasMedia && (icon || tone === "danger") && (
-                <AlertDialogMedia data-auto="">
-                  <Icon name={icon ?? "trash"} size={20} />
-                </AlertDialogMedia>
+              {sections ? (
+                <>
+                  {sections.scroll.length > 0 && (
+                    <div data-slot="alert-dialog-scroll" data-scroll-fade="y">
+                      {sections.scroll}
+                    </div>
+                  )}
+                  {sections.footer}
+                </>
+              ) : (
+                <>
+                  {!hasMedia && (icon || tone === "danger") && (
+                    <AlertDialogMedia data-auto="">
+                      <Icon name={icon ?? "trash"} size={20} />
+                    </AlertDialogMedia>
+                  )}
+                  {parts}
+                </>
               )}
-              {parts}
             </ToneContext.Provider>
           </ConfirmContext.Provider>
         </AlertDialogPrimitive.Content>

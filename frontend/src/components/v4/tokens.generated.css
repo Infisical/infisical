@@ -53,6 +53,7 @@
   --v4-size-popover: 288px;
   --v4-size-dialog: 440px;
   --v4-size-dialog-wide: 560px;
+  --v4-size-overlay-margin: var(--v4-space-16);
   --v4-size-control-xs: var(--v4-size-nested-sm);
   --v4-size-control-border: 1px;
   --v4-size-focus-ring: 2px;

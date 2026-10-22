@@ -47,7 +47,7 @@ Exports: Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 
 ## Behavior
 
-- EmptyState composes title, description, icon and action slots in default or compact form. The media is a tinted, bordered tile (48px with a 24px icon, 36px with a 20px icon at sm) or a bare muted icon; sm tightens padding and gaps for lists, menus and table bodies. The retained Empty parts support a custom arrangement.
+- EmptyState composes an icon, a title, an optional description and an actions slot. Media is a tile by default, a tinted 48px square with a line border and a 24px icon, or bare, a muted 24px icon with no tile. sm shrinks the tile to 36px with a 20px icon (a bare icon to 20px) and tightens padding and gaps for list, table and menu bodies. The Empty parts compose the same result: EmptyMedia defaults to the tile at the size its Empty sets.
 
 ## Accessibility
 
@@ -69,49 +69,32 @@ Exports: Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 
 Source declarations and review criteria only. Generation checks references and completeness, not rendered behavior or API parity.
 
-### EmptyState.variant
-
-- default: example `variants`, visible label "default".
-- compact: example `variants`, visible label "compact".
-
 ### EmptyMedia.variant
 
-- default: example `parts`, visible label "default".
-- icon: example `parts`, visible label "icon".
-- bare: example `parts`, visible label "bare".
+- tile: example `parts`, visible label "tile".
+- bare: example `bare`, visible label "bare".
 
 ### size
 
-- default: example `parts`, visible label "default".
-- sm: example `parts`, visible label "sm".
+- default: example `default`, visible label "default".
+- sm: example `small`, visible label "sm".
 
 ### EmptyState.size
 
-- default: example `variants`, visible label "default".
-- sm: example `variants`, visible label "sm".
-
-### EmptyState.media
-
-- icon: example `variants`, visible label "default".
-- bare: example `variants`, visible label "bare".
+- default: example `default`, visible label "default".
+- sm: example `small`, visible label "sm".
 
 ### data state
 
-- first use: example `variants`, visible label "No connections yet".
-- no matches: example `variants`, visible label "No matching connections".
-- request failure: example `variants`, visible label "Connections could not load".
-- result after clear: example `variants`, visible label "1 connection".
-
-### size support
-
-
-- no authored named size: omitted. This family has no authored sm/md/lg size option. Its dimensions follow content or its container; examples preserve that API.
+- first use: example `default`, visible label "default".
+- no matches: example `small`, visible label "sm".
+- result after clear: example `small`, visible label "sm".
 
 ## Executable examples
 
-### No connections and a creation entry point
+### Default: a tile, a title, a description and the primary action
 
-Save this example at `src/pages/design-system/examples/empty-state/default.tsx`; its relative imports are generated for that exact path. States: default, controlled.
+Save this example at `src/pages/design-system/examples/empty-state/default.tsx`; its relative imports are generated for that exact path. States: default.
 
 Registry items used: @infisical/button, @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
 
@@ -119,56 +102,74 @@ Registry items used: @infisical/button, @infisical/empty. Additional packages: n
 import { Button } from "../../../../components/v4/ui/button";
 import { EmptyState } from "../../../../components/v4/ui/empty";
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <EmptyState title="No connections yet" description="Connections synchronize this environment." icon="sync" actions={<Button asChild>
-            <a href="#combobox">Add connection</a>
-          </Button>}/>
-    </div><figcaption className="text-muted-foreground text-xs">{"First use with action"}</figcaption></figure>);
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+      <EmptyState icon="key" title="No secrets in staging yet" description="Add one, or copy them from development in one step. Syncs pick them up on the next push." actions={<Button icon="plus">Add secret</Button>}/>
+    </div><figcaption className="text-muted-foreground text-xs">{"default"}</figcaption></figure>);
 }
 ```
 
-### Variants and data states
+### With a secondary action: the faster alternative follows the primary action
 
-Save this example at `src/pages/design-system/examples/empty-state/variants.tsx`; its relative imports are generated for that exact path. States: default.
+Save this example at `src/pages/design-system/examples/empty-state/secondary-action.tsx`; its relative imports are generated for that exact path. States: default.
 
 Registry items used: @infisical/button, @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Button } from "../../../../components/v4/ui/button";
+import { EmptyState } from "../../../../components/v4/ui/empty";
+export default function Example() {
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+      <EmptyState icon="key" title="No secrets in staging yet" description="Add one, or copy them from development in one step. Syncs pick them up on the next push." actions={<>
+            <Button icon="plus">Add secret</Button>
+            <Button variant="outline" icon="upload">
+              Import from .env
+            </Button>
+          </>}/>
+    </div><figcaption className="text-muted-foreground text-xs">{"Primary and secondary action"}</figcaption></figure>);
+}
+```
+
+### Bare media: a muted icon without a tile for inline and compact regions
+
+Save this example at `src/pages/design-system/examples/empty-state/bare.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { EmptyState } from "../../../../components/v4/ui/empty";
+export default function Example() {
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+      <EmptyState media="bare" icon="history" title="No versions yet" description="Each change to this secret saves a version here."/>
+    </div><figcaption className="text-muted-foreground text-xs">{"bare"}</figcaption></figure>);
+}
+```
+
+### Small: the empty body of a list, table or menu
+
+Save this example at `src/pages/design-system/examples/empty-state/small.tsx`; its relative imports are generated for that exact path. States: empty, controlled.
+
+Registry items used: @infisical/button, @infisical/empty, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
 import { Button } from "../../../../components/v4/ui/button";
 import { EmptyState } from "../../../../components/v4/ui/empty";
+import { List, ListRow } from "../../../../components/v4/ui/list";
+const secrets = ["DATABASE_URL", "REDIS_URL", "SESSION_KEY"];
 export default function Example() {
-    const [filtered, setFiltered] = useState(true);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <EmptyState title="No connections yet" description="Connections share versions with your services." actions={<Button asChild>
-              <a href="#select">Choose a provider</a>
-            </Button>}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"default"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        {filtered ? (<EmptyState variant="compact" title="No matching connections" actions={<Button variant="link" onClick={() => setFiltered(false)}>
-                Clear filters
-              </Button>}/>) : (<p role="status" className="text-sm">
-            1 connection, Staging service
-          </p>)}
-      </div><figcaption className="text-muted-foreground text-xs">{filtered ? "compact" : "Filtered result"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <EmptyState size="sm" title="No tokens yet" description="Tokens you create appear here." actions={<Button variant="outline">Create token</Button>}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <EmptyState media="bare" icon="search" title="No matching events" description="Try a shorter search or a wider time range."/>
-      </div><figcaption className="text-muted-foreground text-xs">{"bare"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <EmptyState size="sm" media="bare" icon="search" title="No matching events"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"sm, bare"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <EmptyState variant="compact" title="Connections could not load"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Request failed"}</figcaption></figure>
-    </div>);
+    const [query, setQuery] = useState("stripe_web");
+    const rows = secrets.filter((name) => name.toLowerCase().includes(query));
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+      <List label="Staging secrets" title="Staging secrets" empty={<EmptyState size="sm" icon="search" title={`No secrets match “${query}”`} actions={<Button variant="link" onClick={() => setQuery("")}>
+                Clear filter
+              </Button>}/>}>
+        {rows.map((name) => (<ListRow key={name} value={name} label={name} title={name}/>))}
+      </List>
+    </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>);
 }
 ```
 
-### Compose an empty connection collection
+### Composed from parts: the same result as Default
 
 Save this example at `src/pages/design-system/examples/empty-state/parts.tsx`; its relative imports are generated for that exact path. States: default.
 
@@ -179,36 +180,22 @@ import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/empty";
 import { Icon } from "../../../../components/v4/ui/icon";
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      {(["default", "icon", "bare"] as const).map((variant) => (<figure key={variant} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-          <UI.Empty>
-            <UI.EmptyMedia variant={variant}>
-              <Icon name="inbox"/>
-            </UI.EmptyMedia>
-            <UI.EmptyHeader>
-              <UI.EmptyTitle>No connections yet</UI.EmptyTitle>
-              <UI.EmptyDescription>
-                Add a connection to synchronize this environment.
-              </UI.EmptyDescription>
-            </UI.EmptyHeader>
-            <UI.EmptyContent>
-              <Button asChild>
-                <a href="#select">Choose a provider</a>
-              </Button>
-            </UI.EmptyContent>
-          </UI.Empty>
-        </div><figcaption className="text-muted-foreground text-xs">{variant}</figcaption></figure>))}
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <UI.Empty size="sm">
-          <UI.EmptyMedia variant="icon">
-            <Icon name="inbox"/>
-          </UI.EmptyMedia>
-          <UI.EmptyHeader>
-            <UI.EmptyTitle>No connections yet</UI.EmptyTitle>
-          </UI.EmptyHeader>
-        </UI.Empty>
-      </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>
-    </div>);
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+      <UI.Empty>
+        <UI.EmptyMedia variant="tile">
+          <Icon name="key"/>
+        </UI.EmptyMedia>
+        <UI.EmptyHeader>
+          <UI.EmptyTitle>No secrets in staging yet</UI.EmptyTitle>
+          <UI.EmptyDescription>
+            Add one, or copy them from development in one step. Syncs pick them up on the next push.
+          </UI.EmptyDescription>
+        </UI.EmptyHeader>
+        <UI.EmptyContent>
+          <Button icon="plus">Add secret</Button>
+        </UI.EmptyContent>
+      </UI.Empty>
+    </div><figcaption className="text-muted-foreground text-xs">{"tile"}</figcaption></figure>);
 }
 ```
 

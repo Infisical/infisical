@@ -60,11 +60,11 @@ Why: Repeated panels obscure which object and draft the person is editing.
 
 - src/components/v4/ui/sheet.tsx
 
-Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger. Source TypeScript defines the API.
+Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetSubheader, SheetTitle, SheetTrigger. Source TypeScript defines the API.
 
 ## Behavior
 
-- SheetBody owns the shared body inset and bounded scrolling between Header and Footer. It forwards a div ref and native props; Content continues to accept arbitrary children. Use one intentional scroll owner.
+- SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child, Content wraps the header and body in one scroll region with the edge fade, so the header scrolls away with the body; SheetFooter and the corner close stay outside it and remain visible. SheetSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.
 - Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action.
 
 ## Accessibility
@@ -213,6 +213,70 @@ export default function Example() {
       </UI.SheetContent>
     </UI.Sheet>
   );
+}
+```
+
+### Path preview subheader
+
+Save this example at `src/pages/design-system/examples/sheet/subheader.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/button, @infisical/code, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Button } from "../../../../components/v4/ui/button";
+import { Code } from "../../../../components/v4/ui/code";
+import * as UI from "../../../../components/v4/ui/sheet";
+const keys = [
+    "DATABASE_URL",
+    "DATABASE_POOL_SIZE",
+    "REDIS_URL",
+    "QUEUE_CONCURRENCY",
+    "PAYMENTS_WEBHOOK_URL",
+    "PAYMENTS_RETRY_LIMIT",
+    "LOG_LEVEL",
+    "LOG_FORMAT",
+    "FEATURE_REFUNDS",
+    "FEATURE_INVOICES",
+    "SESSION_TTL",
+    "CORS_ORIGINS",
+    "METRICS_ENDPOINT",
+    "TRACE_SAMPLE_RATE",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "CACHE_TTL",
+    "RATE_LIMIT_PER_MINUTE",
+    "REGION",
+    "RELEASE_CHANNEL"
+];
+export default function Example() {
+    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+      <UI.Sheet>
+        <UI.SheetTrigger asChild>
+          <Button variant="outline">Review import</Button>
+        </UI.SheetTrigger>
+        <UI.SheetContent>
+          <UI.SheetHeader>
+            <UI.SheetTitle>Import 20 secrets</UI.SheetTitle>
+            <UI.SheetDescription>Existing keys at this path are overwritten.</UI.SheetDescription>
+          </UI.SheetHeader>
+          <UI.SheetSubheader>
+            <Code>acme / payments-api / production</Code>
+          </UI.SheetSubheader>
+          <UI.SheetBody>
+            <ul>
+              {keys.map((key) => (<li key={key}>
+                  <Code>{key}</Code>
+                </li>))}
+            </ul>
+          </UI.SheetBody>
+          <UI.SheetFooter>
+            <UI.SheetClose asChild>
+              <Button>Import secrets</Button>
+            </UI.SheetClose>
+          </UI.SheetFooter>
+        </UI.SheetContent>
+      </UI.Sheet>
+    </div>);
 }
 ```
 

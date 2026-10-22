@@ -26,7 +26,8 @@ export const baselineOverlays = [
       "Controlled open/onOpenChange or defaultOpen owns visibility. Action and Cancel are Radix close controls; an async operation must explicitly control closing while it runs.",
       "AlertDialog renders at most one lead tile. tone danger shows a 40px bad-bg tile with the trash icon; icon swaps the glyph and AlertDialogMedia replaces the tile entirely, tinted by tone. With tone neutral or no tone there is no automatic tile; an icon or AlertDialogMedia there gets the neutral tint tile. The destructive action is the solid danger Button: bad fill, on-bad text, the neutral disabled control when disabled.",
       "confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.",
-      "One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer."
+      "One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.",
+      "When AlertDialogHeader or AlertDialogFooter is a direct child, the lead tile, header and body share one scroll region with the edge fade, and the footer stays pinned below it; the footer's own pad is the space above the actions."
     ],
     accessibility: [
       "Title and Description name the alert dialog. Focus starts on Cancel and returns to the trigger on close. The dialog stays inside the viewport, and Escape inside an open editor closes that editor first."
@@ -158,12 +159,15 @@ export const baselineOverlays = [
       "DialogHeader",
       "DialogOverlay",
       "DialogPortal",
+      "DialogSubheader",
       "DialogTitle",
       "DialogTrigger"
     ],
     referenceNames: ["Dialog"],
     behavior: [
-      "open/onOpenChange or defaultOpen controls the Radix dialog. Trigger and Close compose native controls; scoped Content portals into V4Scope and scrolls within the viewport."
+      "open/onOpenChange or defaultOpen controls the Radix dialog. Trigger and Close compose native controls; scoped Content portals into V4Scope and caps its height at the viewport minus size-overlay-margin on each side.",
+      "When DialogHeader, DialogSubheader or DialogFooter is a direct child, Content wraps the header and the other content in one scroll region with the edge fade, so the header scrolls away with the body. DialogFooter and the corner close stay outside that region and remain visible. DialogSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a step meter, a path preview or a filter row. Content without these slots renders unchanged.",
+      "Corner close suits read-only or informational dialogs; footer close suits a dialog that ends in actions."
     ],
     accessibility: [
       "Title and Description name the dialog. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog."
@@ -309,12 +313,13 @@ export const baselineOverlays = [
       "DrawerHeader",
       "DrawerOverlay",
       "DrawerPortal",
+      "DrawerSubheader",
       "DrawerTitle",
       "DrawerTrigger"
     ],
     referenceNames: ["Drawer"],
     behavior: [
-      "DrawerBody owns the shared body inset and bounded scrolling between Header and Footer. It forwards a div ref and native props; Content continues to accept arbitrary children. Use one intentional scroll owner.",
+      "DrawerBody owns the shared body inset. When DrawerHeader, DrawerSubheader, DrawerBody or DrawerFooter is a direct child, Content wraps the header and body in one scroll region with the edge fade; DrawerFooter stays pinned at the bottom and DrawerSubheader pins itself and the header above the scroll region. Content without these slots renders unchanged. Each slot forwards a div ref and native props.",
       "Drawer forwards Vaul's controlled open/onOpenChange, direction and drag behavior; its Content and Overlay portal into the current V4Scope."
     ],
     accessibility: [
@@ -768,12 +773,13 @@ export const baselineOverlays = [
       "SheetDescription",
       "SheetFooter",
       "SheetHeader",
+      "SheetSubheader",
       "SheetTitle",
       "SheetTrigger"
     ],
     referenceNames: ["Sheet"],
     behavior: [
-      "SheetBody owns the shared body inset and bounded scrolling between Header and Footer. It forwards a div ref and native props; Content continues to accept arbitrary children. Use one intentional scroll owner.",
+      "SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child, Content wraps the header and body in one scroll region with the edge fade, so the header scrolls away with the body; SheetFooter and the corner close stay outside it and remain visible. SheetSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.",
       "Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action."
     ],
     accessibility: [
@@ -800,6 +806,12 @@ export const baselineOverlays = [
         title: "Controlled long review",
         module: "./examples/sheet/behavior.tsx",
         states: ["controlled", "overflow"]
+      },
+      {
+        id: "subheader",
+        title: "Path preview subheader",
+        module: "./examples/sheet/subheader.tsx",
+        states: ["default"]
       }
     ],
     coverage: [

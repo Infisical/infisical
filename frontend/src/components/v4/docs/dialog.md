@@ -60,11 +60,13 @@ Why: A crowded modal makes orientation and recovery harder than a page would.
 
 - src/components/v4/ui/dialog.tsx
 
-Exports: Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger. Source TypeScript defines the API.
+Exports: Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogSubheader, DialogTitle, DialogTrigger. Source TypeScript defines the API.
 
 ## Behavior
 
-- open/onOpenChange or defaultOpen controls the Radix dialog. Trigger and Close compose native controls; scoped Content portals into V4Scope and scrolls within the viewport.
+- open/onOpenChange or defaultOpen controls the Radix dialog. Trigger and Close compose native controls; scoped Content portals into V4Scope and caps its height at the viewport minus size-overlay-margin on each side.
+- When DialogHeader, DialogSubheader or DialogFooter is a direct child, Content wraps the header and the other content in one scroll region with the edge fade, so the header scrolls away with the body. DialogFooter and the corner close stay outside that region and remain visible. DialogSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a step meter, a path preview or a filter row. Content without these slots renders unchanged.
+- Corner close suits read-only or informational dialogs; footer close suits a dialog that ends in actions.
 
 ## Accessibility
 
@@ -105,7 +107,7 @@ Save this example at `src/pages/design-system/examples/dialog/default.tsx`; its 
 Registry items used: @infisical/button, @infisical/dialog, @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dialog";
 import { Field } from "../../../../components/v4/ui/field";
@@ -113,6 +115,7 @@ import { Input } from "../../../../components/v4/ui/input";
 export default function Example() {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState("staging");
+    const formId = useId();
     return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
       <UI.Dialog open={open} onOpenChange={setOpen}>
         <UI.DialogTrigger asChild>
@@ -123,20 +126,22 @@ export default function Example() {
             <UI.DialogTitle>Edit environment</UI.DialogTitle>
             <UI.DialogDescription>Choose the name used in navigation.</UI.DialogDescription>
           </UI.DialogHeader>
-          <form className="flex flex-col gap-4" onSubmit={(event) => {
+          <form id={formId} onSubmit={(event) => {
             event.preventDefault();
             setOpen(false);
         }}>
             <Field label="Environment name">
               <Input required value={name} onChange={(event) => setName(event.target.value)}/>
             </Field>
-            <UI.DialogFooter>
-              <UI.DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </UI.DialogClose>
-              <Button type="submit">Save changes</Button>
-            </UI.DialogFooter>
           </form>
+          <UI.DialogFooter>
+            <UI.DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </UI.DialogClose>
+            <Button type="submit" form={formId}>
+              Save changes
+            </Button>
+          </UI.DialogFooter>
         </UI.DialogContent>
       </UI.Dialog>
     </div><figcaption className="text-muted-foreground text-xs">{"Editable form"}</figcaption></figure>);
@@ -154,23 +159,35 @@ import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dialog";
 export default function Example() {
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {[true, false].map((showCloseButton) => (<UI.Dialog key={String(showCloseButton)}>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
+        <UI.Dialog>
           <UI.DialogTrigger asChild>
-            <Button variant="outline">{showCloseButton ? "Corner close" : "Footer close"}</Button>
+            <Button variant="outline">Corner close</Button>
           </UI.DialogTrigger>
-          <UI.DialogContent showCloseButton={showCloseButton}>
+          <UI.DialogContent>
             <UI.DialogHeader>
               <UI.DialogTitle>Environment details</UI.DialogTitle>
               <UI.DialogDescription>Read-only details for Staging.</UI.DialogDescription>
             </UI.DialogHeader>
             <p>Region: eu-west-1. Access: Platform team.</p>
-            <UI.DialogFooter showCloseButton={!showCloseButton}>
-              {showCloseButton && (<UI.DialogClose asChild>
-                  <Button variant="outline">Done reviewing</Button>
-                </UI.DialogClose>)}
-            </UI.DialogFooter>
           </UI.DialogContent>
-        </UI.Dialog>))}
+        </UI.Dialog>
+      </div><figcaption className="text-muted-foreground text-xs">{"Corner close, for read-only or informational dialogs"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
+        <UI.Dialog>
+          <UI.DialogTrigger asChild>
+            <Button variant="outline">Footer close</Button>
+          </UI.DialogTrigger>
+          <UI.DialogContent showCloseButton={false}>
+            <UI.DialogHeader>
+              <UI.DialogTitle>Environment details</UI.DialogTitle>
+              <UI.DialogDescription>Read-only details for Staging.</UI.DialogDescription>
+            </UI.DialogHeader>
+            <p>Region: eu-west-1. Access: Platform team.</p>
+            <UI.DialogFooter showCloseButton/>
+          </UI.DialogContent>
+        </UI.Dialog>
+      </div><figcaption className="text-muted-foreground text-xs">{"Footer close, when the dialog ends in actions"}</figcaption></figure>
     </div>);
 }
 ```

@@ -43,11 +43,11 @@ Why: Stacked edge panels obscure origin, focus and the remaining task.
 
 - src/components/v4/ui/drawer.tsx
 
-Exports: Drawer, DrawerBody, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerOverlay, DrawerPortal, DrawerTitle, DrawerTrigger. Source TypeScript defines the API.
+Exports: Drawer, DrawerBody, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerOverlay, DrawerPortal, DrawerSubheader, DrawerTitle, DrawerTrigger. Source TypeScript defines the API.
 
 ## Behavior
 
-- DrawerBody owns the shared body inset and bounded scrolling between Header and Footer. It forwards a div ref and native props; Content continues to accept arbitrary children. Use one intentional scroll owner.
+- DrawerBody owns the shared body inset. When DrawerHeader, DrawerSubheader, DrawerBody or DrawerFooter is a direct child, Content wraps the header and body in one scroll region with the edge fade; DrawerFooter stays pinned at the bottom and DrawerSubheader pins itself and the header above the scroll region. Content without these slots renders unchanged. Each slot forwards a div ref and native props.
 - Drawer forwards Vaul's controlled open/onOpenChange, direction and drag behavior; its Content and Overlay portal into the current V4Scope.
 
 ## Accessibility

@@ -26,9 +26,14 @@
   display: grid;
   width: calc(100% - 2 * var(--v4-space-16));
   max-width: var(--v4-size-dialog);
-  max-height: calc(100dvh - 2 * var(--v4-space-16));
+  max-height: calc(100dvh - 2 * var(--v4-size-overlay-margin));
   overflow-y: auto;
   translate: -50% -50%;
+}
+.dialog[data-sections] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .dialog[data-state="open"] {
   animation: dialogIn var(--v4-duration-slow) var(--v4-ease-spring-soft) both;

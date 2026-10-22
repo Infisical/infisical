@@ -5,6 +5,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
+import { splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
 
@@ -60,13 +61,20 @@ const DrawerContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
 >(({ className, children, onEscapeKeyDown, ...props }, ref) => {
   const escape = useOwnedEscape(ref, onEscapeKeyDown);
+  const sections = splitOverlaySections(children, {
+    header: DrawerHeader,
+    subheader: DrawerSubheader,
+    body: DrawerBody,
+    footer: DrawerFooter
+  });
   return (
     <DrawerPortal data-slot="drawer-portal">
       <DrawerOverlay />
       <DrawerPrimitive.Content
         ref={escape.ref}
         data-slot="drawer-content"
-        data-scroll-fade="y"
+        data-scroll-fade={sections ? undefined : "y"}
+        data-sections={sections ? "" : undefined}
         className={cn(
           "group/drawer-content fixed z-50 flex h-auto flex-col data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=left]:inset-y-0 data-[vaul-drawer-direction=left]:left-0 data-[vaul-drawer-direction=left]:w-3/4 data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-3/4 data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=left]:sm:max-w-sm data-[vaul-drawer-direction=right]:sm:max-w-sm",
           overlay.pop,
@@ -77,7 +85,19 @@ const DrawerContent = React.forwardRef<
         onEscapeKeyDown={escape.onEscapeKeyDown}
       >
         <div aria-hidden className={overlay.handle} />
-        {children}
+        {sections ? (
+          <>
+            {sections.pinned}
+            {sections.scroll.length > 0 && (
+              <div data-slot="drawer-scroll" data-scroll-fade="y">
+                {sections.scroll}
+              </div>
+            )}
+            {sections.footer}
+          </>
+        ) : (
+          children
+        )}
       </DrawerPrimitive.Content>
     </DrawerPortal>
   );
@@ -102,15 +122,16 @@ const DrawerHeader = React.forwardRef<
 });
 DrawerHeader.displayName = "DrawerHeader";
 
+const DrawerSubheader = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} data-slot="drawer-subheader" className={cn(className)} {...props} />
+  )
+);
+DrawerSubheader.displayName = "DrawerSubheader";
+
 const DrawerBody = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
   ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      data-slot="drawer-body"
-      data-scroll-fade="y"
-      className={cn(className)}
-      {...props}
-    />
+    <div ref={ref} data-slot="drawer-body" className={cn(className)} {...props} />
   )
 );
 DrawerBody.displayName = "DrawerBody";
@@ -170,6 +191,7 @@ export {
   DrawerHeader,
   DrawerOverlay,
   DrawerPortal,
+  DrawerSubheader,
   DrawerTitle,
   DrawerTrigger
 };

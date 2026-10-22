@@ -34,12 +34,12 @@ const EmptyHeader = React.forwardRef<
 });
 EmptyHeader.displayName = "EmptyHeader";
 
-export type EmptyMediaVariant = "default" | "icon" | "bare";
+export type EmptyMediaVariant = "tile" | "bare";
 
 const EmptyMedia = React.forwardRef<
   React.ComponentRef<"div">,
   React.ComponentPropsWithoutRef<"div"> & { variant?: EmptyMediaVariant }
->(({ className, variant = "default", ...props }, ref) => {
+>(({ className, variant = "tile", ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -94,33 +94,24 @@ export const EmptyState = ({
   description,
   actions,
   icon = "inbox",
-  variant = "default",
-  media = "icon",
+  media = "tile",
   size = "default"
 }: {
   title: string;
   description?: string;
   actions?: React.ReactNode;
   icon?: IconName;
-  variant?: "default" | "compact";
-  media?: "icon" | "bare";
+  media?: EmptyMediaVariant;
   size?: EmptySize;
-}) =>
-  variant === "compact" ? (
-    <div role="status" data-slot="empty-state" data-variant="compact" className={styles.compact}>
+}) => (
+  <Empty size={size}>
+    <EmptyMedia variant={media}>
       <Icon name={icon} />
-      <span>{title}</span>
-      {actions}
-    </div>
-  ) : (
-    <Empty data-slot="empty-state" data-variant="default" size={size}>
-      <EmptyMedia variant={media}>
-        <Icon name={icon} />
-      </EmptyMedia>
-      <EmptyHeader>
-        <EmptyTitle>{title}</EmptyTitle>
-        {description && <EmptyDescription>{description}</EmptyDescription>}
-      </EmptyHeader>
-      {actions && <EmptyContent>{actions}</EmptyContent>}
-    </Empty>
-  );
+    </EmptyMedia>
+    <EmptyHeader>
+      <EmptyTitle>{title}</EmptyTitle>
+      {description && <EmptyDescription>{description}</EmptyDescription>}
+    </EmptyHeader>
+    {actions && <EmptyContent>{actions}</EmptyContent>}
+  </Empty>
+);

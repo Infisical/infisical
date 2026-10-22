@@ -17,7 +17,8 @@ export const multiStepDefinition = {
     "validate returns true or nothing to continue, false to stay and focus the first invalid field, or a message for the footer. A promise keeps Continue busy.",
     "onComplete runs after the last step validates. A rejection shows its message in the footer.",
     "Moving to a step focuses its first field, and Enter in a text field continues.",
-    "The page variant shows a vertical step list beside a card; under 640px the list becomes the step bar above the card."
+    "The page variant shows a vertical step list beside a card; under 640px the list becomes the step bar above the card.",
+    "In the dialog and sheet the step bar sits in the overlay subheader, full width under the title, and the footer stays pinned at the bottom with Step 2 of 3, or what failed, on the left as in the reference."
   ],
   accessibility: [
     "The horizontal indicator is a progressbar with Step 2 of 3 as its value text; the vertical list marks the current step with aria-current.",

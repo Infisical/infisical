@@ -71,11 +71,14 @@ Progress.displayName = "Progress";
 export const ProgressSteps = ({
   steps,
   current,
-  label
+  label,
+  showHeading = true
 }: {
   steps: readonly string[];
   current: number;
   label: string;
+  /** false drops the label and Step n of N row when the host already shows both, as MultiStep's overlay footer does. */
+  showHeading?: boolean;
 }) => {
   const step = Math.min(current + 1, steps.length);
   return (
@@ -85,12 +88,14 @@ export const ProgressSteps = ({
       aria-label={label}
       className={styles.progressGroup}
     >
-      <div className={styles.progressLabels}>
-        <span className={styles.progressLabel}>{label}</span>
-        <span className={styles.progressValue}>
-          Step {step} of {steps.length}
-        </span>
-      </div>
+      {showHeading && (
+        <div className={styles.progressLabels}>
+          <span className={styles.progressLabel}>{label}</span>
+          <span className={styles.progressValue}>
+            Step {step} of {steps.length}
+          </span>
+        </div>
+      )}
       <div
         role="progressbar"
         aria-label={label}

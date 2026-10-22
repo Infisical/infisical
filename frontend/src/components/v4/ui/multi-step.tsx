@@ -5,10 +5,29 @@ import { exit, snap, spring } from "../lib/motion";
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "./dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogSubheader,
+  DialogTitle,
+  DialogTrigger
+} from "./dialog";
 import { Icon } from "./icon";
 import { ProgressSteps } from "./progress";
-import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "./sheet";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetSubheader,
+  SheetTitle,
+  SheetTrigger
+} from "./sheet";
 
 import styles from "./multi-step.module.css";
 
@@ -28,6 +47,7 @@ export type StepsProps = {
   steps: readonly Pick<MultiStepStep, "title" | "summary">[];
   current: number;
   label?: string;
+  showHeading?: boolean;
 } & (
   | { orientation?: "horizontal"; onStepClick?: never }
   | { orientation: "vertical"; onStepClick?: (index: number) => void }
@@ -38,11 +58,17 @@ export const Steps = ({
   current,
   orientation = "horizontal",
   onStepClick,
-  label = "Steps"
+  label = "Steps",
+  showHeading
 }: StepsProps) => {
   if (orientation === "horizontal")
     return (
-      <ProgressSteps steps={steps.map((entry) => entry.title)} current={current} label={label} />
+      <ProgressSteps
+        steps={steps.map((entry) => entry.title)}
+        current={current}
+        label={label}
+        showHeading={showHeading}
+      />
     );
   return (
     <ol data-slot="steps" aria-label={label} className={styles.steps}>
@@ -140,6 +166,7 @@ export const MultiStep = ({
     viewport.current?.querySelector<HTMLElement>(`[data-step="${current}"]`) ?? null;
   const moved = React.useRef(false);
   const reduced = useReducedMotion();
+  const formId = React.useId();
   const entry = steps[current];
   const last = current === steps.length - 1;
   React.useEffect(() => {
@@ -216,8 +243,11 @@ export const MultiStep = ({
       {entry.description && <p className={styles.lede}>{entry.description}</p>}
     </div>
   );
-  const flow = (
+  const fields = (
     <form
+      id={formId}
+      data-slot={variant === "page" ? undefined : "multi-step"}
+      data-variant={variant === "page" ? undefined : variant}
       noValidate
       className={styles.form}
       onSubmit={(event) => {
@@ -251,46 +281,42 @@ export const MultiStep = ({
           </AnimatePresence>
         </motion.div>
       </fieldset>
-      <div className={styles.footer}>
-        <p className={cn(styles.status, error && styles.error)} role="status">
-          {error ?? (variant === "page" ? null : `Step ${current + 1} of ${steps.length}`)}
-        </p>
-        <div className={styles.buttons}>
-          {current === 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => changeOpen(false)}
-              disabled={busy}
-            >
-              Cancel
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => move(current - 1)}
-              disabled={busy}
-            >
-              Back
-            </Button>
-          )}
-          <Button type="submit" variant="primary" size="sm" loading={busy}>
-            {last ? completeLabel : (entry.nextLabel ?? "Continue")}
-          </Button>
-        </div>
-      </div>
     </form>
   );
-  const indicator = (
-    <Steps
-      steps={steps}
-      current={current}
-      label={typeof title === "string" ? `${title} steps` : "Steps"}
-    />
+  const footer = (
+    <>
+      <p className={cn(styles.status, error && styles.error)} role="status">
+        {error ?? (variant === "page" ? null : `Step ${current + 1} of ${steps.length}`)}
+      </p>
+      <div className={styles.buttons}>
+        {current === 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => changeOpen(false)}
+            disabled={busy}
+          >
+            Cancel
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => move(current - 1)}
+            disabled={busy}
+          >
+            Back
+          </Button>
+        )}
+        <Button type="submit" form={formId} variant="primary" size="sm" loading={busy}>
+          {last ? completeLabel : (entry.nextLabel ?? "Continue")}
+        </Button>
+      </div>
+    </>
   );
+  const label = typeof title === "string" ? `${title} steps` : "Steps";
   if (variant === "page")
     return (
       <div data-slot="multi-step" data-variant="page" className={cn(styles.page, className)}>
@@ -303,41 +329,44 @@ export const MultiStep = ({
               onStepClick={busy ? undefined : move}
             />
           </div>
-          <div className={styles.bar}>{indicator}</div>
-          <div className={styles.card}>{flow}</div>
+          <div className={styles.bar}>
+            <Steps steps={steps} current={current} label={label} />
+          </div>
+          <div className={styles.card}>
+            {fields}
+            <div className={styles.footer}>{footer}</div>
+          </div>
         </div>
       </div>
     );
-  const content = (
-    <div data-slot="multi-step" data-variant={variant} className={cn(styles.panel, className)}>
-      <div className={styles.header}>
-        {variant === "dialog" ? (
-          <DialogTitle className={styles.title}>{title}</DialogTitle>
-        ) : (
-          <SheetTitle className={styles.title}>{title}</SheetTitle>
-        )}
-        {description &&
-          (variant === "dialog" ? (
-            <DialogDescription className={styles.lede}>{description}</DialogDescription>
-          ) : (
-            <SheetDescription className={styles.lede}>{description}</SheetDescription>
-          ))}
-        {indicator}
-      </div>
-      {flow}
-    </div>
-  );
+  const meter = <Steps steps={steps} current={current} label={label} showHeading={false} />;
   if (variant === "sheet")
     return (
       <Sheet open={isOpen} onOpenChange={changeOpen}>
         {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-        <SheetContent className={styles.sheet}>{content}</SheetContent>
+        <SheetContent className={className}>
+          <SheetHeader>
+            <SheetTitle>{title}</SheetTitle>
+            {description && <SheetDescription>{description}</SheetDescription>}
+          </SheetHeader>
+          <SheetSubheader>{meter}</SheetSubheader>
+          <SheetBody>{fields}</SheetBody>
+          <SheetFooter className={styles.footer}>{footer}</SheetFooter>
+        </SheetContent>
       </Sheet>
     );
   return (
     <Dialog open={isOpen} onOpenChange={changeOpen}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className={styles.dialog}>{content}</DialogContent>
+      <DialogContent className={className}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
+        </DialogHeader>
+        <DialogSubheader>{meter}</DialogSubheader>
+        {fields}
+        <DialogFooter className={styles.footer}>{footer}</DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 };

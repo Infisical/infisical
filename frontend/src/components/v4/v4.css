@@ -414,14 +414,48 @@
 .v4 :is([data-slot="dialog-header"], [data-slot="alert-dialog-header"]) {
   gap: var(--v4-space-6);
 }
-.v4
-  :is(
-    [data-slot="dialog-header"]:has(~ [data-slot="dialog-close"]),
-    [data-slot="sheet-header"]:has(~ [data-slot="sheet-close"])
-  ) {
+.v4 [data-slot="dialog-content"]:has(> [data-slot="dialog-close"]) [data-slot="dialog-header"],
+.v4 [data-slot="sheet-content"]:has(> [data-slot="sheet-close"]) [data-slot="sheet-header"] {
   padding-inline-end: calc(
     var(--v4-dialog-pad, var(--v4-space-overlay-inset)) + var(--v4-size-nested-md)
   );
+}
+/* Overlay scroll model: when Content holds the section slots it lays out as a column with no gap.
+   Header and body share one scroller that carries the edge fade; a subheader pins itself and the
+   header above the scroller; the footer and the corner close stay outside it, always visible. */
+.v4 :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"])[data-sections] {
+  padding: 0;
+  gap: 0;
+}
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
+.v4 :is([data-slot="dialog-scroll"], [data-slot="alert-dialog-scroll"]) {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--v4-dialog-pad);
+  gap: var(--v4-space-content-group);
+}
+.v4 [data-slot="alert-dialog-scroll"]:has(+ [data-slot="alert-dialog-footer"]) {
+  padding-bottom: 0;
+}
+.v4 [data-slot="dialog-head"] {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  padding: var(--v4-dialog-pad);
+  gap: var(--v4-space-content-group);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
+.v4
+  :is(
+    [data-slot="dialog-subheader"],
+    [data-slot="sheet-subheader"],
+    [data-slot="drawer-subheader"]
+  ) {
+  min-width: 0;
 }
 /* Dialog spacing model: one pad (--v4-dialog-pad) on all four sides; header, body and footer
    stack with the content gap and carry no margins of their own. The Dialog footer is a paper
@@ -435,8 +469,16 @@
   border-radius: 0 0 calc(var(--v4-radius-panel) * var(--corners))
     calc(var(--v4-radius-panel) * var(--corners));
 }
+.v4 [data-sections] > [data-slot="dialog-footer"] {
+  flex: none;
+  margin: 0;
+}
 .v4 [data-slot="alert-dialog-footer"] {
   gap: var(--v4-space-12);
+}
+.v4 [data-sections] > [data-slot="alert-dialog-footer"] {
+  flex: none;
+  padding: var(--v4-dialog-pad);
 }
 .v4 [data-slot="alert-dialog-media"] {
   background: var(--v4-tint);
@@ -528,46 +570,52 @@
     calc(var(--v4-radius-panel) * var(--corners));
 }
 
-/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
-.v4 :is([data-slot="sheet-body"], [data-slot="drawer-body"]) {
-  overflow-y: auto;
-}
 /* v4-check-ignore overlay-section-padding -- the body's block space comes from the padded header and footer around it */
 .v4 :is([data-slot="sheet-body"], [data-slot="drawer-body"]) {
   min-width: 0;
-  min-height: 0;
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   padding: 0 var(--v4-space-overlay-inset);
+}
+/* v4-check-ignore overlay-section-padding -- its block-start space comes from the padded header above it */
+.v4 :is([data-slot="sheet-subheader"], [data-slot="drawer-subheader"]) {
+  padding: 0 var(--v4-space-overlay-inset) var(--v4-space-overlay-inset);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .v4
   :is(
     [data-slot="sheet-header"],
+    [data-slot="sheet-subheader"],
     [data-slot="sheet-footer"],
     [data-slot="drawer-header"],
+    [data-slot="drawer-subheader"],
     [data-slot="drawer-footer"]
   ) {
   flex-shrink: 0;
 }
 
-.v4
-  :is(
-    [data-slot="sheet-content"]:has(> [data-slot="sheet-body"]),
-    [data-slot="drawer-content"]:has(> [data-slot="drawer-body"])
-  ) {
+.v4 :is([data-slot="sheet-content"], [data-slot="drawer-content"])[data-sections] {
   overflow: hidden;
   gap: 0;
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
+.v4 :is([data-slot="sheet-scroll"], [data-slot="drawer-scroll"]) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .v4
-  :is([data-slot="sheet-body"], [data-slot="drawer-body"]):not(
-    :has(
-      ~ :is(
-          [data-slot="sheet-body"],
-          [data-slot="drawer-body"],
-          [data-slot="sheet-footer"],
-          [data-slot="drawer-footer"]
-        )
-    )
-  ) {
+  :is([data-slot="sheet-subheader"], [data-slot="drawer-subheader"])
+  + :is([data-slot="sheet-scroll"], [data-slot="drawer-scroll"]) {
+  padding-top: var(--v4-space-overlay-inset);
+}
+.v4
+  :is([data-slot="sheet-scroll"], [data-slot="drawer-scroll"]):not(
+    :has(+ :is([data-slot="sheet-footer"], [data-slot="drawer-footer"]))
+  )
+  > :is([data-slot="sheet-body"], [data-slot="drawer-body"]):last-child {
   padding-bottom: var(--v4-space-overlay-inset);
 }
 

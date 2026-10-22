@@ -96,7 +96,9 @@ export const AccessList = ({
           selection="multiple"
           selectedIds={selected}
           onSelectionChange={setPicked}
-          empty={<EmptyState variant="compact" icon="user" title="Nobody else has access yet" />}
+          empty={
+            <EmptyState size="sm" media="bare" icon="user" title="Nobody else has access yet" />
+          }
           footer={
             <span
               ref={status}

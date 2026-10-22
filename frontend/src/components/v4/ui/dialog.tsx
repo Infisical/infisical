@@ -5,6 +5,7 @@ import { useV4PortalContainer } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 
+import { splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
 
@@ -62,18 +63,36 @@ const DialogContent = React.forwardRef<
   }
 >(({ className, children, showCloseButton = true, onEscapeKeyDown, ...props }, ref) => {
   const escape = useOwnedEscape(ref, onEscapeKeyDown);
+  const sections = splitOverlaySections(children, {
+    header: DialogHeader,
+    subheader: DialogSubheader,
+    footer: DialogFooter
+  });
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={escape.ref}
         data-slot="dialog-content"
-        data-scroll-fade="y"
+        data-scroll-fade={sections ? undefined : "y"}
+        data-sections={sections ? "" : undefined}
         className={cn("z-50", overlay.pop, overlay.dialog, className)}
         {...props}
         onEscapeKeyDown={escape.onEscapeKeyDown}
       >
-        {children}
+        {sections ? (
+          <>
+            {sections.pinned.length > 0 && <div data-slot="dialog-head">{sections.pinned}</div>}
+            {sections.scroll.length > 0 && (
+              <div data-slot="dialog-scroll" data-scroll-fade="y">
+                {sections.scroll}
+              </div>
+            )}
+            {sections.footer}
+          </>
+        ) : (
+          children
+        )}
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button variant="ghost" className={overlay.close} size="icon-sm">
@@ -102,6 +121,14 @@ const DialogHeader = React.forwardRef<
   );
 });
 DialogHeader.displayName = "DialogHeader";
+
+const DialogSubheader = React.forwardRef<
+  React.ComponentRef<"div">,
+  React.ComponentPropsWithoutRef<"div">
+>(({ className, ...props }, ref) => {
+  return <div ref={ref} data-slot="dialog-subheader" className={cn(className)} {...props} />;
+});
+DialogSubheader.displayName = "DialogSubheader";
 
 const DialogFooter = React.forwardRef<
   React.ComponentRef<"div">,
@@ -169,6 +196,7 @@ export {
   DialogHeader,
   DialogOverlay,
   DialogPortal,
+  DialogSubheader,
   DialogTitle,
   DialogTrigger
 };

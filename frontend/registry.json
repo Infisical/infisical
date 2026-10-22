@@ -461,6 +461,11 @@
           "target": "src/components/v4/lib/motion.ts"
         },
         {
+          "path": "src/components/v4/lib/overlay-sections.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/overlay-sections.tsx"
+        },
+        {
           "path": "src/components/v4/lib/scroll-edges.ts",
           "type": "registry:file",
           "target": "src/components/v4/lib/scroll-edges.ts"

@@ -70,6 +70,7 @@ Exports: MultiStep, Steps. Source TypeScript defines the API.
 - onComplete runs after the last step validates. A rejection shows its message in the footer.
 - Moving to a step focuses its first field, and Enter in a text field continues.
 - The page variant shows a vertical step list beside a card; under 640px the list becomes the step bar above the card.
+- In the dialog and sheet the step bar sits in the overlay subheader, full width under the title, and the footer stays pinned at the bottom with Step 2 of 3, or what failed, on the left as in the reference.
 
 ## Accessibility
 
