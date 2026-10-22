@@ -17,7 +17,7 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
@@ -95,7 +95,11 @@ export const CaSection = () => {
   const caPendingDelete = caPendingDeleteData as TInternalCertificateAuthority | undefined;
   const pendingDeleteHsmKeyLabel =
     caPendingDelete?.configuration?.keySource === CertKeySource.Hsm
-      ? caPendingDelete?.configuration?.hsmKeyLabel
+      ? caPendingDelete?.configuration?.externalKeyId
+      : undefined;
+  const pendingDeleteAwsKmsKeyArn =
+    caPendingDelete?.configuration?.keySource === CertKeySource.AwsKms
+      ? caPendingDelete?.configuration?.externalKeyId
       : undefined;
 
   const onRemoveCaSubmit = async (id: string) => {
@@ -156,7 +160,7 @@ export const CaSection = () => {
       {upgradeGate}
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
@@ -165,12 +169,16 @@ export const CaSection = () => {
           pendingDeleteHsmKeyLabel
             ? ` This CA's key on the HSM (label: ${pendingDeleteHsmKeyLabel}) is not removed automatically and will remain as an orphaned key.`
             : ""
+        }${
+          pendingDeleteAwsKmsKeyArn
+            ? ` Deleting this CA also schedules its signing key (${pendingDeleteAwsKmsKeyArn}) for deletion in AWS KMS. You can cancel that deletion in AWS KMS within 30 days.`
+            : ""
         }`}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         confirmKey="confirm"
         onConfirm={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.caStatus.isOpen}
         title={`Are you sure you want to ${
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE

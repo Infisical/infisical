@@ -1,5 +1,5 @@
 import * as React from "react";
-import { forwardRef } from "react";
+import { forwardRef, type JSX } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
@@ -40,7 +40,8 @@ const iconButtonVariants = cva(
         danger:
           "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30",
         pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35",
-        av: "border-product-av/30 bg-product-av/25 text-foreground hover:bg-product-av/30 hover:border-product-av/35 data-[state=open]:bg-product-av/30 data-[state=open]:border-product-av/35"
+        av: "border-product-av/30 bg-product-av/25 text-foreground hover:bg-product-av/30 hover:border-product-av/35 data-[state=open]:bg-product-av/30 data-[state=open]:border-product-av/35",
+        ss: "border-product-ss/30 bg-product-ss/25 text-foreground hover:bg-product-ss/30 hover:border-product-ss/35 data-[state=open]:bg-product-ss/30 data-[state=open]:border-product-ss/35"
       },
       size: {
         "2xs": "h-6 w-6 [&>svg]:size-3 rounded-sm [&>svg]:stroke-[1.75]",

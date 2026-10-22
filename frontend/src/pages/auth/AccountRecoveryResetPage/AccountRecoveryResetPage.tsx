@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { createNotification } from "@app/components/notifications";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { usePopUp } from "@app/hooks";
 import { useEnableEmailAuthAccountRecovery } from "@app/hooks/api";
@@ -91,7 +91,7 @@ export const AccountRecoveryResetPage = () => {
           onBack={() => setStep(Steps.SelectRecoveryMethod)}
         />
       )}
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.confirmEnableEmailAuth.isOpen}
         confirmKey="enable"
         title="Enable Email Authentication"

@@ -11,7 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -127,7 +127,7 @@ export const CertificateProfilesTab = () => {
             mode="clone"
           />
 
-          <DeleteConfirmDialog
+          <ConfirmationAlertDialog
             isOpen={isDeleteModalOpen}
             onOpenChange={(isOpen) => {
               setIsDeleteModalOpen(isOpen);

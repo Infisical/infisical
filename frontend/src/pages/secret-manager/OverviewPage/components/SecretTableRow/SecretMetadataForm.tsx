@@ -99,7 +99,7 @@ export const SecretMetadataForm = ({
   // array reference when nested field values change (typing in key/value inputs).
   const watchedMetadata = watch("metadata");
   const serializedMetadata = JSON.stringify(watchedMetadata);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};

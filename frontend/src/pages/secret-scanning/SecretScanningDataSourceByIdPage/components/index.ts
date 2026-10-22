@@ -1,3 +1,3 @@
-export * from "./SecretScanningDataSourceSection";
-export * from "./SecretScanningResourceSection";
-export * from "./SecretScanningScanSection";
+export * from "./SecretScanningDataSourceSettings";
+export * from "./SecretScanningResourceTable";
+export * from "./SecretScanningScanTable";

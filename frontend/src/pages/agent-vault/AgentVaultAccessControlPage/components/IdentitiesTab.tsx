@@ -19,7 +19,7 @@ import {
   Button,
   Card,
   CardContent,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -298,7 +298,7 @@ export const IdentitiesTab = () => {
         subject={toEdit?.name ?? ""}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(toRemove)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setToRemove(null);

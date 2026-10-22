@@ -31,6 +31,7 @@ export type SubscriptionPlan = {
   id: string;
   memberLimit: number;
   identityLimit: number;
+  enforceIdentityLimit?: boolean;
   auditLogs: boolean;
   dynamicSecret: boolean;
   auditLogsRetentionDays: number | null;
@@ -83,6 +84,7 @@ export type SubscriptionPlan = {
   pkiPqc: boolean;
   caCrl: boolean;
   pkiOcsp: boolean;
+  pkiAwsKmsSigning: boolean;
   pkiEnterpriseCaIntegrations: boolean;
   pkiExternalIntermediateCa: boolean;
   pkiDiscovery: boolean;

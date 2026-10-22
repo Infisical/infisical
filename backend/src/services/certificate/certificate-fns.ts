@@ -376,7 +376,7 @@ const RSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
   "SHA-512": CertSignatureAlgorithm.RSA_SHA512
 };
 
-const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+export const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
   "SHA-256": CertSignatureAlgorithm.ECDSA_SHA256,
   "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
   "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
