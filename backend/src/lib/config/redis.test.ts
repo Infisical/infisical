@@ -21,18 +21,18 @@ describe("createThrottledRedisErrorLogger", () => {
     vi.useRealTimers();
   });
 
-  test("logs one line per error key per window and counts the repeats it held back", () => {
-    const { log } = createThrottledRedisErrorLogger("queue-worker:audit-log", "Queue worker error");
-    log(refused());
-    log(refused());
-    log(refused());
+  test("callers sharing a logger share one limit per error key, and their fields are logged", () => {
+    const { log } = createThrottledRedisErrorLogger("queue-workers", "Queue worker error");
+    log(refused(), undefined, { queue: "audit-log" });
+    log(refused(), undefined, { queue: "secret-sync" });
+    log(refused(), undefined, { queue: "audit-log" });
     expect(logger.error).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(10_000);
-    log(refused());
+    log(refused(), undefined, { queue: "secret-sync" });
     expect(logger.error).toHaveBeenCalledTimes(2);
     expect(loggedLine(1)).toBe(
-      "Queue worker error [client=queue-worker:audit-log] [error=ECONNREFUSED] [suppressedCount=2] [message=connect ECONNREFUSED 10.0.0.1:6379]"
+      "Queue worker error [client=queue-workers] [error=ECONNREFUSED] [suppressedCount=2] [queue=secret-sync] [message=connect ECONNREFUSED 10.0.0.1:6379]"
     );
   });
 

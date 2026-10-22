@@ -36,12 +36,13 @@ const getRedisErrorKey = (err: Error) => {
 
 /**
  * Logs at most one line per error key (and node) every REDIS_ERROR_LOG_THROTTLE_MS, with a count of the
- * repeats it held back. `reset` clears the window, for a client that has just reconnected.
+ * repeats it held back. `fields` are logged but not throttled on, so callers sharing one logger share
+ * one limit. `reset` clears the window, for a client that has just reconnected.
  */
 export const createThrottledRedisErrorLogger = (name: string, label = "Redis connection error") => {
   const throttleByErrorKey = new Map<string, { lastLoggedAt: number; suppressedCount: number }>();
 
-  const log = (err: Error, nodeAddress?: string) => {
+  const log = (err: Error, nodeAddress?: string, fields: Record<string, string> = {}) => {
     const errorKey = getRedisErrorKey(err);
     // Nodes are bucketed separately so one failing node can't absorb another's line. Still bounded,
     // unlike keying on err.message, since a cluster has a fixed node count.
@@ -56,9 +57,12 @@ export const createThrottledRedisErrorLogger = (name: string, label = "Redis con
 
     const suppressedCount = throttle?.suppressedCount ?? 0;
     throttleByErrorKey.set(throttleKey, { lastLoggedAt: now, suppressedCount: 0 });
+    const fieldTags = Object.entries(fields)
+      .map(([key, value]) => ` [${key}=${value}]`)
+      .join("");
     logger.error(
-      { err, redisClient: name, redisErrorKey: errorKey, redisNode: nodeAddress, suppressedCount },
-      `${label} [client=${name}] [error=${errorKey}]${nodeAddress ? ` [node=${nodeAddress}]` : ""} [suppressedCount=${suppressedCount}] [message=${err.message}]`
+      { err, redisClient: name, redisErrorKey: errorKey, redisNode: nodeAddress, suppressedCount, ...fields },
+      `${label} [client=${name}] [error=${errorKey}]${nodeAddress ? ` [node=${nodeAddress}]` : ""} [suppressedCount=${suppressedCount}]${fieldTags} [message=${err.message}]`
     );
   };
 
