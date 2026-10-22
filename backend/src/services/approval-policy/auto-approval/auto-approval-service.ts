@@ -333,7 +333,12 @@ export const autoApprovalServiceFactory = ({
     stored: TStoredAutoApproval;
     parsedInputs: TParsedAutoApprovalInput[];
     // Whether an earlier approved request on the policy already linked this record
-    isRecordUsed: (record: { connectionId: string; subject: string; stableId: string }) => Promise<boolean>;
+    isRecordUsed: (record: {
+      connectionId: string;
+      subject: string;
+      stableId: string;
+      recordId: string;
+    }) => Promise<boolean>;
     orgId: string;
     projectId: string;
     ctx: TAutoApprovalContext;
@@ -436,9 +441,15 @@ export const autoApprovalServiceFactory = ({
 
           const stableId = parsedInput ? (definition.getStableId?.(facts) ?? parsedInput.id) : null;
           const previouslyUsed = Boolean(
-            stableId &&
+            parsedInput &&
+              stableId &&
               target.constraintIds.has(AUTO_APPROVAL_UNUSED_CONSTRAINT) &&
-              (await isRecordUsed({ connectionId: target.connectionId, subject: target.subject, stableId }))
+              (await isRecordUsed({
+                connectionId: target.connectionId,
+                subject: target.subject,
+                stableId,
+                recordId: parsedInput.id
+              }))
           );
           return [
             key,

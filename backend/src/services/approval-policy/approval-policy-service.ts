@@ -1139,7 +1139,13 @@ export const approvalPolicyServiceFactory = ({
     const used = await Promise.all(
       claimed.map(async (input) =>
         (await approvalRequestDAL.hasApprovedRequestLinkingRecord(
-          { policyId, connectionId: input.connectionId, subject: input.subject, stableId: input.stableId },
+          {
+            policyId,
+            connectionId: input.connectionId,
+            subject: input.subject,
+            stableId: input.stableId,
+            recordId: input.id
+          },
           tx
         ))
           ? input

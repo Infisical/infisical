@@ -84,16 +84,23 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
       policyId,
       connectionId,
       subject,
-      stableId
-    }: { policyId: string; connectionId: string; subject: string; stableId: string },
+      stableId,
+      recordId
+    }: { policyId: string; connectionId: string; subject: string; stableId: string; recordId: string },
     tx?: Knex
   ) => {
     try {
       const row = await (tx || db.replicaNode())(TableName.ApprovalRequests)
         .where({ policyId, status: ApprovalRequestStatus.Approved })
-        .whereRaw(`"autoApprovalEvidence" -> 'inputs' @> ?::jsonb`, [
-          JSON.stringify([{ connectionId, subject, stableId }])
-        ])
+        .where((qb) => {
+          void qb
+            .whereRaw(`"autoApprovalEvidence" -> 'inputs' @> ?::jsonb`, [
+              JSON.stringify([{ connectionId, subject, stableId }])
+            ])
+            .orWhereRaw(`"autoApprovalEvidence" -> 'inputs' @> ?::jsonb`, [
+              JSON.stringify([{ connectionId, subject, id: recordId }])
+            ]);
+        })
         .first("id");
       return Boolean(row);
     } catch (error) {
