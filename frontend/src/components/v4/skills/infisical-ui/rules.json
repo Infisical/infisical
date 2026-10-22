@@ -846,6 +846,19 @@
       "exceptions": "A static illustration explicitly presented as non-status content."
     },
     {
+      "id": "overlay-section-padding",
+      "title": "Pad overlay sections evenly",
+      "category": "Visual",
+      "instruction": "Dialog, AlertDialog, Sheet and Drawer headers, bodies and footers pad all four sides by the one overlay pad (space-16 for dialogs, the overlay inset for sheets). Sections stack with the content gap and carry no margins.",
+      "good": "A dialog footer padded 16px on every side, the same as the header and body.",
+      "avoid": "A footer padded 12px 16px, or a header with extra end padding beyond the close button slot.",
+      "detect": {
+        "by": "lint",
+        "check": "overlay-section-padding"
+      },
+      "exceptions": "The header's end padding that reserves the close button slot."
+    },
+    {
       "id": "menu-spacing-model",
       "title": "Space menus from one panel padding",
       "category": "Visual",

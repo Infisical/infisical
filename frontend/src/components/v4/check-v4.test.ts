@@ -115,6 +115,10 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [ui, 'import { XIcon } from "lucide-react";']
     ]
   },
+  "overlay-section-padding": {
+    bad: [["src/components/v4/v4.css", '.v4 [data-slot="dialog-footer"] { padding: 12px 16px; }']],
+    good: [["src/components/v4/v4.css", '.v4 [data-slot="dialog-footer"] { padding: 16px; }']]
+  },
   "menu-row-margin": {
     bad: [["src/components/v4/ui/menu.module.css", ".separator { margin: 4px 0; }"]],
     good: [

@@ -1,5 +1,3 @@
-import { Archive } from "lucide-react";
-
 import * as UI from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 
@@ -16,11 +14,8 @@ export default function Example() {
                 {size === "sm" ? "Small confirmation" : "Default confirmation"}
               </Button>
             </UI.AlertDialogTrigger>
-            <UI.AlertDialogContent size={size}>
+            <UI.AlertDialogContent size={size} tone="neutral" icon="folder">
               <UI.AlertDialogHeader>
-                <UI.AlertDialogMedia>
-                  <Archive aria-hidden="true" />
-                </UI.AlertDialogMedia>
                 <UI.AlertDialogTitle>Archive request details?</UI.AlertDialogTitle>
                 <UI.AlertDialogDescription>
                   Archived requests remain available in the audit log. Cancel to keep this request

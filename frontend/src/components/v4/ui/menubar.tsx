@@ -59,7 +59,7 @@ MenubarRadioGroup.displayName = "MenubarRadioGroup";
 const MenubarTrigger = React.forwardRef<
   React.ElementRef<typeof MenubarPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof MenubarPrimitive.Trigger>
->(({ className, children, ...props }, ref) => {
+>(({ className, ...props }, ref) => {
   return (
     <MenubarPrimitive.Trigger
       ref={ref}

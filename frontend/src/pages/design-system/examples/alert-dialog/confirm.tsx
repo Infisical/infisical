@@ -17,7 +17,7 @@ export default function Example() {
           <UI.AlertDialogTrigger asChild>
             <Button variant="outline">Delete project</Button>
           </UI.AlertDialogTrigger>
-          <UI.AlertDialogContent confirmText="payments-api">
+          <UI.AlertDialogContent tone="danger" confirmText="payments-api">
             <UI.AlertDialogHeader>
               <UI.AlertDialogTitle>Delete payments-api?</UI.AlertDialogTitle>
               <UI.AlertDialogDescription>

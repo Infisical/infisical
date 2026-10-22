@@ -48,7 +48,7 @@ Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 ## Behavior
 
 - Controlled open/onOpenChange or defaultOpen owns visibility. Action and Cancel are Radix close controls; an async operation must explicitly control closing while it runs.
-- tone danger (the default) shows a 40px bad-bg tile with the trash icon above the title; icon changes the glyph and tone neutral removes the tile. The destructive action is the solid danger Button: bad fill, on-bad text, the neutral disabled control when disabled.
+- AlertDialog renders at most one lead tile. tone danger shows a 40px bad-bg tile with the trash icon; icon swaps the glyph and AlertDialogMedia replaces the tile entirely, tinted by tone. With tone neutral or no tone there is no automatic tile; an icon or AlertDialogMedia there gets the neutral tint tile. The destructive action is the solid danger Button: bad fill, on-bad text, the neutral disabled control when disabled.
 - confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.
 - One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.
 
@@ -103,7 +103,7 @@ export default function Example() {
             <UI.AlertDialogTrigger asChild>
               <Button variant="outline">Revoke access</Button>
             </UI.AlertDialogTrigger>
-            <UI.AlertDialogContent>
+            <UI.AlertDialogContent tone="danger">
               <UI.AlertDialogHeader>
                 <UI.AlertDialogTitle>Revoke client access?</UI.AlertDialogTitle>
                 <UI.AlertDialogDescription>
@@ -132,10 +132,9 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/alert-dialog/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { Archive } from "lucide-react";
 import * as UI from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
 export default function Example() {
@@ -147,11 +146,8 @@ export default function Example() {
                 {size === "sm" ? "Small confirmation" : "Default confirmation"}
               </Button>
             </UI.AlertDialogTrigger>
-            <UI.AlertDialogContent size={size}>
+            <UI.AlertDialogContent size={size} tone="neutral" icon="folder">
               <UI.AlertDialogHeader>
-                <UI.AlertDialogMedia>
-                  <Archive aria-hidden="true"/>
-                </UI.AlertDialogMedia>
                 <UI.AlertDialogTitle>Archive request details?</UI.AlertDialogTitle>
                 <UI.AlertDialogDescription>
                   Archived requests remain available in the audit log. Cancel to keep this request
@@ -224,7 +220,7 @@ export default function Example() {
           <UI.AlertDialogTrigger asChild>
             <Button variant="outline">Delete project</Button>
           </UI.AlertDialogTrigger>
-          <UI.AlertDialogContent confirmText="payments-api">
+          <UI.AlertDialogContent tone="danger" confirmText="payments-api">
             <UI.AlertDialogHeader>
               <UI.AlertDialogTitle>Delete payments-api?</UI.AlertDialogTitle>
               <UI.AlertDialogDescription>

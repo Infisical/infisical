@@ -14,6 +14,10 @@ import { cn } from "../lib/utils";
 import overlay from "./overlay.module.css";
 
 const ConfirmContext = React.createContext<{ ready: boolean }>({ ready: true });
+const ToneContext = React.createContext<{
+  tone?: "danger" | "neutral";
+  claimMedia: (claimed: boolean) => void;
+}>({ claimMedia: () => {} });
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
@@ -56,7 +60,7 @@ const AlertDialogContent = React.forwardRef<
   React.ComponentRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> & {
     size?: "default" | "sm";
-    /** danger (the default) shows a bad-tone icon tile at the top; neutral shows none. */
+    /** danger shows a bad-tone lead tile (trash unless icon or AlertDialogMedia is given); neutral and unset show no automatic tile. */
     tone?: "danger" | "neutral";
     icon?: IconName;
     /** The exact text the person types before the action enables. */
@@ -64,20 +68,13 @@ const AlertDialogContent = React.forwardRef<
   }
 >(
   (
-    {
-      className,
-      size = "default",
-      tone = "danger",
-      icon = "trash",
-      confirmText,
-      onEscapeKeyDown,
-      children,
-      ...props
-    },
+    { className, size = "default", tone, icon, confirmText, onEscapeKeyDown, children, ...props },
     ref
   ) => {
     const escape = useOwnedEscape(ref, onEscapeKeyDown);
     const [typed, setTyped] = React.useState("");
+    const [hasMedia, setHasMedia] = React.useState(false);
+    const toneValue = React.useMemo(() => ({ tone, claimMedia: setHasMedia }), [tone]);
     const fieldId = React.useId();
     const field = confirmText !== undefined && (
       <div data-slot="alert-dialog-confirm" className="flex flex-col gap-1.5">
@@ -124,16 +121,14 @@ const AlertDialogContent = React.forwardRef<
           <ConfirmContext.Provider
             value={{ ready: confirmText === undefined || typed === confirmText }}
           >
-            {tone === "danger" && (
-              <div
-                data-slot="alert-dialog-media"
-                data-tone="danger"
-                className="inline-flex size-10 items-center justify-center"
-              >
-                <Icon name={icon} size={20} />
-              </div>
-            )}
-            {parts}
+            <ToneContext.Provider value={toneValue}>
+              {!hasMedia && (icon || tone === "danger") && (
+                <AlertDialogMedia data-auto="">
+                  <Icon name={icon ?? "trash"} size={20} />
+                </AlertDialogMedia>
+              )}
+              {parts}
+            </ToneContext.Provider>
           </ConfirmContext.Provider>
         </AlertDialogPrimitive.Content>
       </AlertDialogPortal>
@@ -179,12 +174,20 @@ const AlertDialogMedia = React.forwardRef<
   React.ComponentRef<"div">,
   React.ComponentPropsWithoutRef<"div">
 >(({ className, ...props }, ref) => {
+  const { tone, claimMedia } = React.useContext(ToneContext);
+  const auto = (props as { "data-auto"?: string })["data-auto"] !== undefined;
+  React.useLayoutEffect(() => {
+    if (auto) return undefined;
+    claimMedia(true);
+    return () => claimMedia(false);
+  }, [auto, claimMedia]);
   return (
     <div
       ref={ref}
       data-slot="alert-dialog-media"
+      data-tone={tone ?? "neutral"}
       className={cn(
-        "mb-2 inline-flex size-10 items-center justify-center rounded-md bg-muted sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-6",
+        "inline-flex size-10 shrink-0 items-center justify-center *:[svg:not([class*='size-'])]:size-5",
         className
       )}
       {...props}

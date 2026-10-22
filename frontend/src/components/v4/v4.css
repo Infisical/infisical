@@ -426,7 +426,7 @@
    band that bleeds to the panel edge, as in the reference; the AlertDialog footer has no band. */
 .v4 [data-slot="dialog-footer"] {
   margin: 0 calc(-1 * var(--v4-dialog-pad)) calc(-1 * var(--v4-dialog-pad));
-  padding: var(--v4-space-12) var(--v4-dialog-pad);
+  padding: var(--v4-dialog-pad);
   gap: var(--v4-space-12);
   border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
   background: var(--v4-paper);
@@ -436,10 +436,14 @@
 .v4 [data-slot="alert-dialog-footer"] {
   gap: var(--v4-space-12);
 }
+.v4 [data-slot="alert-dialog-media"] {
+  background: var(--v4-tint);
+  color: var(--v4-text2);
+  border-radius: calc(var(--v4-radius-pop) * var(--corners));
+}
 .v4 [data-slot="alert-dialog-media"][data-tone="danger"] {
   background: var(--v4-bad-bg);
   color: var(--v4-bad);
-  border-radius: calc(var(--v4-radius-pop) * var(--corners));
 }
 .v4 :is([data-slot="sheet-content"], [data-slot="drawer-content"]) {
   font-family: var(--v4-type-body-font-family);
@@ -521,6 +525,7 @@
     calc(var(--v4-radius-panel) * var(--corners));
 }
 
+/* v4-check-ignore overlay-section-padding -- the body's block space comes from the padded header and footer around it */
 .v4 :is([data-slot="sheet-body"], [data-slot="drawer-body"]) {
   min-width: 0;
   min-height: 0;

@@ -19,7 +19,7 @@ export default function Example() {
             <UI.AlertDialogTrigger asChild>
               <Button variant="outline">Revoke access</Button>
             </UI.AlertDialogTrigger>
-            <UI.AlertDialogContent>
+            <UI.AlertDialogContent tone="danger">
               <UI.AlertDialogHeader>
                 <UI.AlertDialogTitle>Revoke client access?</UI.AlertDialogTitle>
                 <UI.AlertDialogDescription>
