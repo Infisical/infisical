@@ -290,7 +290,7 @@ const WithNestedPickersRender = () => {
       <PopoverTrigger asChild>
         <Button variant="outline">
           <FilterIcon />
-          Add filter
+          Add Filter
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80" align="start">
@@ -302,8 +302,8 @@ const WithNestedPickersRender = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper">
-                <SelectItem value="is">is</SelectItem>
-                <SelectItem value="is-not">is not</SelectItem>
+                <SelectItem value="is">Is</SelectItem>
+                <SelectItem value="is-not">Is Not</SelectItem>
               </SelectContent>
             </Select>
           </Field>
