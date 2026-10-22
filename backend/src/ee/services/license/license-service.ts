@@ -29,6 +29,7 @@ import {
   TOrgPlanDTO,
   TOrgSeatUsage
 } from "./license-types";
+import { withSelfHostedLicenseBase } from "./self-hosted-license-base";
 
 type TLicenseServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "LICENSE_SERVER_V2_SERVICE_KEY" | "isCloud">;
@@ -80,7 +81,7 @@ export const licenseServiceFactory = ({
       if (!entitlements) {
         throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
       }
-      const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+      const currentPlan = projectV2ToFeatureSet(withSelfHostedLicenseBase(getDefaultOnPremFeatures()), entitlements);
 
       onPremFeatures = currentPlan;
       logger.info("Successfully synced self-hosted license features from License Server v2");
@@ -134,8 +135,11 @@ export const licenseServiceFactory = ({
           // instance, withdrawing features the license paid for.
           const features =
             contents.license.version === 2 && contents.license.entitlements
-              ? projectV2ToFeatureSet(getDefaultOnPremFeatures(), contents.license.entitlements)
-              : { ...getDefaultOnPremFeatures(), ...contents.license.features };
+              ? projectV2ToFeatureSet(
+                  withSelfHostedLicenseBase(getDefaultOnPremFeatures()),
+                  contents.license.entitlements
+                )
+              : { ...withSelfHostedLicenseBase(getDefaultOnPremFeatures()), ...contents.license.features };
 
           // Keys issued before PAM alerts moved to the alert module grant them through the old Slack flag.
           if ((contents.license.features as { pamSlackNotifications?: boolean } | undefined)?.pamSlackNotifications) {

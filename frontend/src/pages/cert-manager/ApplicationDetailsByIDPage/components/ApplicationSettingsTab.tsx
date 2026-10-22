@@ -5,7 +5,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
-import { MoreHorizontalIcon, PencilIcon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  Settings2Icon,
+  Trash2Icon
+} from "lucide-react";
 
 import {
   CertificateApprovalPoliciesUpgradeIntent,
@@ -55,7 +63,7 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
@@ -103,6 +111,59 @@ const methodBadges = (p: TPkiApplicationProfile) => {
 const getPolicyProfileNames = (policy: TApprovalPolicy): string[] => {
   const conditions = policy.conditions.conditions as CertRequestPolicyConditions;
   return conditions.flatMap((c: { profileNames: string[] }) => c.profileNames);
+};
+
+type ApplicationPolicyActionsMenuProps = {
+  policy: TApprovalPolicy;
+  onEdit: (policy: TApprovalPolicy) => void;
+  onDelete: (policy: TApprovalPolicy) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+};
+
+const ApplicationPolicyActionsMenu = ({
+  policy,
+  onEdit,
+  onDelete,
+  canEdit,
+  canDelete
+}: ApplicationPolicyActionsMenuProps) => {
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(policy.id);
+      setIsIdCopied.on();
+      createNotification({ type: "info", text: "Approval policy ID copied to clipboard" });
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    } catch {
+      createNotification({ type: "error", text: "Could not copy to clipboard" });
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton variant="ghost" size="xs" aria-label="Policy actions">
+          <MoreHorizontalIcon />
+        </IconButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+        <DropdownMenuItem onClick={handleCopyId}>
+          {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+          Copy ID
+        </DropdownMenuItem>
+        <DropdownMenuItem isDisabled={!canEdit} onClick={() => onEdit(policy)}>
+          <PencilIcon />
+          Edit Policy
+        </DropdownMenuItem>
+        <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={() => onDelete(policy)}>
+          <Trash2Icon />
+          Delete Policy
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 };
 
 type ApplicationPoliciesTableProps = {
@@ -205,27 +266,13 @@ const ApplicationPoliciesTable = ({
                   {formatDistance(new Date(policy.createdAt), new Date(), { addSuffix: true })}
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton variant="ghost" size="xs" aria-label="Policy actions">
-                        <MoreHorizontalIcon />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
-                      <DropdownMenuItem isDisabled={!canEdit} onClick={() => onEdit(policy)}>
-                        <PencilIcon />
-                        Edit Policy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="danger"
-                        isDisabled={!canDelete}
-                        onClick={() => onDelete(policy)}
-                      >
-                        <Trash2Icon />
-                        Delete Policy
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <ApplicationPolicyActionsMenu
+                    policy={policy}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                  />
                 </TableCell>
               </TableRow>
             );

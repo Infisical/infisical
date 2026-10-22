@@ -9,13 +9,15 @@ type Props = {
   isFiltered: boolean;
   hasSearch: boolean;
   onSearchAllFolders: () => void;
+  onClearSearch: () => void;
 };
 
 export const TableFilteredEmptyRow = ({
   colSpan,
   isFiltered,
   hasSearch,
-  onSearchAllFolders
+  onSearchAllFolders,
+  onClearSearch
 }: Props) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentStyle, setContentStyle] = useState<CSSProperties>();
@@ -46,6 +48,7 @@ export const TableFilteredEmptyRow = ({
             isFiltered={isFiltered}
             hasSearch={hasSearch}
             onSearchAllFolders={onSearchAllFolders}
+            onClearSearch={onClearSearch}
           />
         </div>
       </TableCell>

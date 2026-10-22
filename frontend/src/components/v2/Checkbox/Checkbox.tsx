@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { type JSX, ReactNode } from "react";
 import { faCheck, faMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";

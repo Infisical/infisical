@@ -71,7 +71,6 @@ import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { envConfig } from "@app/config/env";
 import {
-  OrgPermissionBillingActions,
   OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
@@ -91,6 +90,7 @@ import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
+  NavbarBlock,
   NavbarSwitcher,
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
@@ -103,8 +103,8 @@ import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
+import { NavbarPageBreadcrumbs } from "./NavbarPageBreadcrumbs";
 import { NotificationDropdown } from "./NotificationDropdown";
-import { OrganizationProductPlans } from "./OrganizationProductPlans";
 import { VersionBadge } from "./VersionBadge";
 
 const getFormattedSupportEmailLink = (variables: {
@@ -407,14 +407,14 @@ export const Navbar = () => {
           </div>
         ) : (
           <>
-            <div
+            <NavbarBlock
               className={twMerge(
-                "flex h-full min-w-0 items-center overflow-hidden border-border-soft pr-2 pl-4 transition-all duration-300 ease-in-out",
-                isProjectScope ? "mr-2 max-w-52 border-r" : "mr-4 max-w-96"
+                "overflow-hidden transition-all duration-300 ease-in-out",
+                isProjectScope ? "max-w-52" : "max-w-96"
               )}
             >
               <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
-                <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-foreground transition-all duration-100">
+                <div className="group flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-foreground transition-all duration-100">
                   <button
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
                     type="button"
@@ -618,21 +618,7 @@ export const Navbar = () => {
                   </Command>
                 </NavbarSwitcherContent>
               </NavbarSwitcher>
-            </div>
-            {!isProjectScope && (
-              <OrgPermissionCan
-                I={OrgPermissionBillingActions.Read}
-                a={OrgPermissionSubjects.Billing}
-              >
-                {(isAllowed) => (
-                  <OrganizationProductPlans
-                    plans={subscription.productPlans}
-                    isSubOrganization={isSubOrganization}
-                    billingOrgId={isAllowed ? (currentOrg.rootOrgId ?? currentOrg.id) : undefined}
-                  />
-                )}
-              </OrgPermissionCan>
-            )}
+            </NavbarBlock>
             {isProjectScope && (
               <>
                 <TypeSelect />
@@ -640,6 +626,7 @@ export const Navbar = () => {
                 <ApplicationSelect />
               </>
             )}
+            <NavbarPageBreadcrumbs />
           </>
         )}
       </div>
