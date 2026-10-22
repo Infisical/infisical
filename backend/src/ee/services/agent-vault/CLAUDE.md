@@ -119,7 +119,8 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   create and on every rotation, and fills one in at bootstrap for a proxy enrolled before that, with
   `storeRootCaIfMissing` deciding races. A proxy serving its own CA (`--ca-cert`) reports it at bootstrap and is
   sent none; the stored CA is kept for processes that don't bring one, and the row shows whichever CA the latest
-  start reported.
+  start reported. Create and rotate leave `rootCaFingerprint` empty, and that write is tied to the token version
+  bootstrap checked, so the column only ever names a CA something served with a live token.
 - Agents still fetch the CA from the proxy's own unauthenticated `/_agent-vault/ca`, so the agent's trust path
   has no dependency on Infisical. There is deliberately no admin download endpoint for the CA.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
