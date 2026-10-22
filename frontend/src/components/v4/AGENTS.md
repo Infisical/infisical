@@ -6,7 +6,7 @@ For the contribution workflow, read [Infisical UI](skills/infisical-ui/SKILL.md)
 
 - Primitives are the shadcn Radix set (`radix-nova`), restyled by `v4.css`. Do not add a second primitive library.
 - Colors, type, radius and motion timing (`--v4-duration-*`, `--v4-ease-*`) come from `tokens.json`. Square corners are canonical (`--corners: 0`). The soft scale is an available mode: `V4Scope corners="soft"` sets `data-corners="soft"`, which turns the multiplier to 1. Always multiply a radius token by `var(--corners)`. Do not hard-code hex, raw Tailwind palette classes, a fixed radius, or a literal duration or easing.
-- The workbench uses a sidebar brand header, a wide Human preview article, readable Agent measure and responsive comparison cards, with floating Human/Agent and theme controls. Brand tokens define its type, color and radius.
+- The workbench uses a sidebar brand header, a wide preview article and responsive comparison cards, with floating corner, accent and theme controls. Brand tokens define its type, color and radius.
 - Brand neon lime is `--v4-accent`, paired with `--v4-on-accent`. The shadcn `bg-accent` role is neutral selection/hover, not brand lime. Primary (and default, its alias) Buttons are the ink fill for the one main action; only accent Buttons use the shared lime material, for approval and grant moments. Keep the global primary role ink and selection neutral. Follow rule/button-material in the canonical rules; do not repaint Buttons in examples.
 - Use `V4Scope` for the docs boundary and portal container. Workbench theme changes stay local and never update the user's saved theme or analytics.
 - Orgs have no avatar.
@@ -15,7 +15,7 @@ For the contribution workflow, read [Infisical UI](skills/infisical-ui/SKILL.md)
 - Primitives import `cn` from the `cn` package. That is the registry's helper. Do not rewrite those imports.
 - These unrelated upstream items remain outside this React 18 foundation: attachment, bubble, direction, marker, message, message-scroller, questionnaire, trace.
 
-Read the generated component guides in [docs/README.md](docs/README.md) or run `npm run ui:info -- <name>` from frontend. `npm run ui:generate` refreshes tokens, the catalog, documentation and standard registry payloads; `npm run ui:check` detects stale output and missing contracts. Start `npm run ui:dev` for the backend-free workbench. Verification recipes in metadata are not passing evidence.
+Read the generated component guides in [docs/README.md](docs/README.md) or run `npm run ui:info -- <name>` from frontend. `npm run ui:generate` refreshes tokens, the catalog, documentation and standard registry payloads; `npm run ui:check` detects stale output and missing contracts. Start `npm run dev` and open `/design-system` in the app. Verification recipes in metadata are not passing evidence.
 
 ## Human examples
 
@@ -44,4 +44,4 @@ The Infisical 2.0 line set (52 glyphs from #8691, ui/icon-data.ts) is the primar
 
 ## Workbench navigation and search
 
-The workbench itself runs in a real AppShell: the v4 Sidebar (one eyebrow section per workbench group, each with an icon so the rail shows one flyout row per group, no account button and a Workbench footer row), AppInset, and a TopBar whose breadcrumb reads Design system, section, page. Mod+K, the sidebar search tool and the TopBar Search button open the command palette (`pages/design-system/workbench-palette.tsx`, built on CommandMenu). Its index is derived from `navigation.ts` and the generated catalog, so every page, alias and example section is searchable without a hand-kept list. An example result sets the hash to `#<page>/<example>` and the page scrolls to that section. Recent picks show on an empty query, and the Commands group toggles theme and corners, opens the accent picker and switches the Human or Agent view.
+The workbench itself runs in a real AppShell: the v4 Sidebar (one eyebrow section per workbench group, each with an icon so the rail shows one flyout row per group, no account button and a Workbench footer row), AppInset, and a TopBar whose breadcrumb reads Design system, section, page. Mod+K, the sidebar search tool and the TopBar Search button open the command palette (`pages/design-system/workbench-palette.tsx`, built on CommandMenu). Its index is derived from `navigation.ts` and the generated catalog, so every page, alias and example section is searchable without a hand-kept list. An example result sets the hash to `#<page>/<example>` and the page scrolls to that section. Recent picks show on an empty query, and the Commands group toggles theme and corners, and opens the accent picker.

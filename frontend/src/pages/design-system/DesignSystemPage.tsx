@@ -7,11 +7,9 @@ import tokens from "@app/components/v4/tokens.json";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { Sidebar } from "@app/components/v4/ui/sidebar";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
 import { AppInset, AppShell, scrollInsetTo, TopBar } from "@app/components/v4/ui/top-bar";
 
 import { AccentPanelButton, AccentPanelProvider, useAccentPanel } from "./accent-panel";
-import { AgentPage } from "./AgentPage";
 import { ComparisonPageView } from "./ComparisonPages";
 import { ComponentPreviewPage } from "./ComponentPreviewPage";
 import { ColorPage, OverviewPage, SpacingShapePage, TypographyPage } from "./FoundationPages";
@@ -135,7 +133,6 @@ const DockAccentButton = () => {
 };
 
 export const DesignSystemPage = () => {
-  const [view, setView] = useState<"human" | "agent">("human");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState<number>();
@@ -254,7 +251,7 @@ export const DesignSystemPage = () => {
               <div
                 key={currentPage}
                 id={currentPage}
-                data-document-view={view}
+                data-document-view="human"
                 tabIndex={-1}
                 className="min-w-0 flex-1 px-4 pt-5 outline-none lg:px-10 lg:pt-8"
                 style={{
@@ -262,13 +259,7 @@ export const DesignSystemPage = () => {
                 }}
               >
                 <article className="mx-auto max-w-[56rem] pb-8">
-                  {view === "human" ? (
-                    <PageContent page={currentPage} />
-                  ) : (
-                    <div className="max-w-[40rem]">
-                      <AgentPage key={currentPage} page={currentPage} />
-                    </div>
-                  )}
+                  <PageContent page={currentPage} />
                 </article>
               </div>
             </Suspense>
@@ -287,7 +278,6 @@ export const DesignSystemPage = () => {
             }
             setCorners(nextCorners);
           }}
-          setView={setView}
         />
         <div
           data-documentation-dock
@@ -295,20 +285,6 @@ export const DesignSystemPage = () => {
           style={{ bottom: `calc(${dockInset})` }}
         >
           <div ref={dock} className={dockStyles.dock}>
-            <ToggleGroup
-              type="single"
-              value={view}
-              size="sm"
-              bare
-              aria-label="Documentation view"
-              onValueChange={(mode) => {
-                if (mode === "human" || mode === "agent") setView(mode);
-              }}
-            >
-              <ToggleGroupItem value="human">Human</ToggleGroupItem>
-              <ToggleGroupItem value="agent">Agent</ToggleGroupItem>
-            </ToggleGroup>
-            <span aria-hidden="true" className={dockStyles.divider} />
             <Button
               type="button"
               variant="ghost"

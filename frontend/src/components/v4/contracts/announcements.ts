@@ -107,7 +107,7 @@ export const announcementsDefinition = {
     {
       kind: "browser",
       command:
-        "npm run ui:dev; open /design-system#announcements and exercise the documented interaction."
+        "npm run dev; open /design-system#announcements and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

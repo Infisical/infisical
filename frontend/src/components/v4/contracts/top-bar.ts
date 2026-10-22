@@ -132,8 +132,7 @@ export const topBarDefinition = {
     },
     {
       kind: "browser",
-      command:
-        "npm run ui:dev; open /design-system#top-bar and exercise the documented interaction."
+      command: "npm run dev; open /design-system#top-bar and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

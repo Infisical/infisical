@@ -140,7 +140,7 @@ export const baselineOverlays = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#alert-dialog and verify the documented interaction."
+          "npm run dev; open /design-system#alert-dialog and verify the documented interaction."
       }
     ]
   },
@@ -293,7 +293,7 @@ export const baselineOverlays = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#dialog and verify the documented interaction."
+        command: "npm run dev; open /design-system#dialog and verify the documented interaction."
       }
     ]
   },
@@ -451,7 +451,7 @@ export const baselineOverlays = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#drawer and verify the documented interaction."
+        command: "npm run dev; open /design-system#drawer and verify the documented interaction."
       }
     ]
   },
@@ -589,7 +589,7 @@ export const baselineOverlays = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#hover-card and verify the documented interaction."
+          "npm run dev; open /design-system#hover-card and verify the documented interaction."
       }
     ]
   },
@@ -754,8 +754,7 @@ export const baselineOverlays = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#popover and verify the documented interaction."
+        command: "npm run dev; open /design-system#popover and verify the documented interaction."
       }
     ]
   },
@@ -923,7 +922,7 @@ export const baselineOverlays = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#sheet and verify the documented interaction."
+        command: "npm run dev; open /design-system#sheet and verify the documented interaction."
       }
     ]
   },
@@ -1081,8 +1080,7 @@ export const baselineOverlays = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#tooltip and verify the documented interaction."
+        command: "npm run dev; open /design-system#tooltip and verify the documented interaction."
       }
     ]
   }

@@ -119,7 +119,7 @@ export const settingsCardDefinition = {
     {
       kind: "browser",
       command:
-        "npm run ui:dev; open /design-system#settings-card and exercise the documented interaction."
+        "npm run dev; open /design-system#settings-card and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

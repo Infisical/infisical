@@ -116,7 +116,7 @@ export const animatedCollapseDefinition = {
     {
       kind: "browser",
       command:
-        "npm run ui:dev; open /design-system#animated-collapse and exercise the documented interaction."
+        "npm run dev; open /design-system#animated-collapse and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

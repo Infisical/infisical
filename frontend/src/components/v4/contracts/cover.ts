@@ -79,7 +79,7 @@ export const coverDefinition = {
     },
     {
       kind: "browser",
-      command: "npm run ui:dev; open /design-system#cover and exercise the documented interaction."
+      command: "npm run dev; open /design-system#cover and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

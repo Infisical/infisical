@@ -18,7 +18,6 @@ export type PaletteControls = {
   onOpenChange: (open: boolean) => void;
   toggleTheme: () => void;
   toggleCorners: () => void;
-  setView: (view: "human" | "agent") => void;
   groups: readonly {
     title: string;
     icon: IconName;
@@ -45,7 +44,6 @@ export const WorkbenchPalette = ({
   onOpenChange,
   toggleTheme,
   toggleCorners,
-  setView,
   groups
 }: PaletteControls) => {
   const accent = useAccentPanel();
@@ -128,20 +126,6 @@ export const WorkbenchPalette = ({
       icon: Palette,
       kind: "action",
       onSelect: () => accent?.open()
-    },
-    {
-      id: "action:human",
-      label: "Switch to the Human view",
-      icon: "user",
-      kind: "action",
-      onSelect: () => setView("human")
-    },
-    {
-      id: "action:agent",
-      label: "Switch to the Agent view",
-      icon: "agent",
-      kind: "action",
-      onSelect: () => setView("agent")
     }
   ];
   const everything = [...index.pageGroups.flatMap((group) => group.items), ...index.examples];

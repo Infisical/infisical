@@ -152,4 +152,4 @@ export default function Example() {
 These commands are recipes, not evidence that this component passed.
 
 - static: npm run type:check
-- browser: npm run ui:dev; open /design-system#progress and verify the documented interaction.
+- browser: npm run dev; open /design-system#progress and verify the documented interaction.

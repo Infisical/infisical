@@ -118,7 +118,7 @@ export const approvalQueueDefinition = {
     {
       kind: "browser",
       command:
-        "npm run ui:dev; open /design-system#approval-queue and exercise the documented interaction."
+        "npm run dev; open /design-system#approval-queue and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

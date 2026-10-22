@@ -45,7 +45,7 @@ The stylesheet and runtime regressions cover specific utility, ref, state, progr
 
 When adding a primitive, use the existing `components.json` and registry workflow. Do not run `shadcn init`. Check its React compatibility, required packages, support files and installation in a clean consumer before claiming it is installable. A registry JSON build alone is insufficient.
 
-Start `npm run ui:dev` for a backend-free workbench. Human view renders real component examples. Agent view shows the exact generated per-family Markdown, including the compiled example source. Use `npm run ui:generate` after changing tokens, contracts or source dependencies, then `npm run ui:check`. Keep generated coverage separate from executed runtime, browser and clean-consumer evidence.
+Start `npm run dev` and open `/design-system` in the app for real component examples. Read generated per-family Markdown, including compiled example source, in `src/components/v4/docs/`. Use `npm run ui:generate` after changing tokens, contracts or source dependencies, then `npm run ui:check`. Keep generated coverage separate from executed runtime, browser and clean-consumer evidence.
 
 ## Author guidance from evidence
 

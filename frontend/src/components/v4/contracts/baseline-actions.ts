@@ -250,7 +250,7 @@ export const baselineActions = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#button and verify the documented interaction."
+        command: "npm run dev; open /design-system#button and verify the documented interaction."
       }
     ]
   },
@@ -383,7 +383,7 @@ export const baselineActions = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#button-group and verify the documented interaction."
+          "npm run dev; open /design-system#button-group and verify the documented interaction."
       }
     ]
   },
@@ -526,7 +526,7 @@ export const baselineActions = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#toggle and verify the documented interaction."
+        command: "npm run dev; open /design-system#toggle and verify the documented interaction."
       }
     ]
   },
@@ -688,7 +688,7 @@ export const baselineActions = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#toggle-group and verify the documented interaction."
+          "npm run dev; open /design-system#toggle-group and verify the documented interaction."
       }
     ]
   }

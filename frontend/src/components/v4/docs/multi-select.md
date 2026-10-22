@@ -254,4 +254,4 @@ These commands are recipes, not evidence that this component passed.
 
 - static: npm run type:check
 - runtime: npm test -- src/components/v4/ui/foundation-controls.test.tsx src/components/v4/ui/selection-disclosure.test.tsx
-- browser: npm run ui:dev; open /design-system#multi-select and exercise the documented interaction.
+- browser: npm run dev; open /design-system#multi-select and exercise the documented interaction.

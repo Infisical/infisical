@@ -154,8 +154,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#checkbox and verify the documented interaction."
+        command: "npm run dev; open /design-system#checkbox and verify the documented interaction."
       }
     ]
   },
@@ -380,7 +379,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#field and verify the documented interaction."
+        command: "npm run dev; open /design-system#field and verify the documented interaction."
       }
     ]
   },
@@ -573,7 +572,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#input and verify the documented interaction."
+        command: "npm run dev; open /design-system#input and verify the documented interaction."
       }
     ]
   },
@@ -815,7 +814,7 @@ export const baselineForms = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#input-group and verify the documented interaction."
+          "npm run dev; open /design-system#input-group and verify the documented interaction."
       }
     ]
   },
@@ -969,8 +968,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#input-otp and verify the documented interaction."
+        command: "npm run dev; open /design-system#input-otp and verify the documented interaction."
       }
     ]
   },
@@ -1090,7 +1088,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#label and verify the documented interaction."
+        command: "npm run dev; open /design-system#label and verify the documented interaction."
       }
     ]
   },
@@ -1261,7 +1259,7 @@ export const baselineForms = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#radio-group and verify the documented interaction."
+          "npm run dev; open /design-system#radio-group and verify the documented interaction."
       }
     ]
   },
@@ -1530,7 +1528,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#select and verify the documented interaction."
+        command: "npm run dev; open /design-system#select and verify the documented interaction."
       }
     ]
   },
@@ -1660,7 +1658,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#slider and verify the documented interaction."
+        command: "npm run dev; open /design-system#slider and verify the documented interaction."
       }
     ]
   },
@@ -1857,7 +1855,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#switch and verify the documented interaction."
+        command: "npm run dev; open /design-system#switch and verify the documented interaction."
       }
     ]
   },
@@ -2000,8 +1998,7 @@ export const baselineForms = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#textarea and verify the documented interaction."
+        command: "npm run dev; open /design-system#textarea and verify the documented interaction."
       }
     ]
   }

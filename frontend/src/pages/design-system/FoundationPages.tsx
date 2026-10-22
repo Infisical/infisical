@@ -109,7 +109,8 @@ export const OverviewPage = () => (
             <a href="#data-grid" className="underline">
               inspect the editable grid
             </a>
-            . These examples use local data. Agent view provides their implementation contracts.
+            . These examples use local data. Implementation contracts live in the component Markdown
+            guides.
           </dd>
         </div>
         <div className="py-4">

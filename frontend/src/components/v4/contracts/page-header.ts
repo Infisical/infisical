@@ -99,7 +99,7 @@ export const pageHeaderDefinition = {
     {
       kind: "browser",
       command:
-        "npm run ui:dev; open /design-system#page-header and exercise the documented interaction."
+        "npm run dev; open /design-system#page-header and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

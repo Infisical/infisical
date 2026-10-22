@@ -161,7 +161,7 @@ export const baselineNavigation = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#breadcrumb and verify the documented interaction."
+          "npm run dev; open /design-system#breadcrumb and verify the documented interaction."
       }
     ]
   },
@@ -295,7 +295,7 @@ export const baselineNavigation = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#navigation-menu and verify the documented interaction."
+          "npm run dev; open /design-system#navigation-menu and verify the documented interaction."
       }
     ]
   },
@@ -452,7 +452,7 @@ export const baselineNavigation = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#tabs and verify the documented interaction."
+        command: "npm run dev; open /design-system#tabs and verify the documented interaction."
       }
     ]
   },
@@ -634,7 +634,7 @@ export const baselineNavigation = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#context-menu and verify the documented interaction."
+          "npm run dev; open /design-system#context-menu and verify the documented interaction."
       }
     ]
   },
@@ -874,7 +874,7 @@ export const baselineNavigation = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#dropdown-menu and verify the documented interaction."
+          "npm run dev; open /design-system#dropdown-menu and verify the documented interaction."
       }
     ]
   },
@@ -1105,8 +1105,7 @@ export const baselineNavigation = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#menubar and verify the documented interaction."
+        command: "npm run dev; open /design-system#menubar and verify the documented interaction."
       }
     ]
   },
@@ -1327,7 +1326,7 @@ export const baselineNavigation = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#command-menu and verify the documented interaction."
+          "npm run dev; open /design-system#command-menu and verify the documented interaction."
       }
     ]
   }

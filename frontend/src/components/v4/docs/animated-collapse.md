@@ -117,4 +117,4 @@ These commands are recipes, not evidence that this component passed.
 
 - static: npm run type:check
 - runtime: npm test -- src/components/v4/ui/selection-disclosure.test.tsx
-- browser: npm run ui:dev; open /design-system#animated-collapse and exercise the documented interaction.
+- browser: npm run dev; open /design-system#animated-collapse and exercise the documented interaction.

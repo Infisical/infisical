@@ -122,7 +122,7 @@ export const multiStepDefinition = {
     {
       kind: "browser",
       command:
-        "npm run ui:dev; open /design-system#multi-step and exercise the documented interaction."
+        "npm run dev; open /design-system#multi-step and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

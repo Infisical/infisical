@@ -224,7 +224,7 @@ export const codeDefinition = {
     },
     {
       kind: "browser",
-      command: "npm run ui:dev; open /design-system#code and exercise the documented interaction."
+      command: "npm run dev; open /design-system#code and exercise the documented interaction."
     }
   ]
 } satisfies ComponentDefinition;

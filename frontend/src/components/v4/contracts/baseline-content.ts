@@ -151,8 +151,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#accordion and verify the documented interaction."
+        command: "npm run dev; open /design-system#accordion and verify the documented interaction."
       }
     ]
   },
@@ -336,7 +335,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#alert and verify the documented interaction."
+        command: "npm run dev; open /design-system#alert and verify the documented interaction."
       }
     ]
   },
@@ -448,7 +447,7 @@ export const baselineContent = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#aspect-ratio and verify the documented interaction."
+          "npm run dev; open /design-system#aspect-ratio and verify the documented interaction."
       }
     ]
   },
@@ -615,7 +614,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#avatar and verify the documented interaction."
+        command: "npm run dev; open /design-system#avatar and verify the documented interaction."
       }
     ]
   },
@@ -791,7 +790,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#badge and verify the documented interaction."
+        command: "npm run dev; open /design-system#badge and verify the documented interaction."
       }
     ]
   },
@@ -941,8 +940,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#calendar and verify the documented interaction."
+        command: "npm run dev; open /design-system#calendar and verify the documented interaction."
       }
     ]
   },
@@ -1096,7 +1094,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#card and verify the documented interaction."
+        command: "npm run dev; open /design-system#card and verify the documented interaction."
       }
     ]
   },
@@ -1288,8 +1286,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#carousel and verify the documented interaction."
+        command: "npm run dev; open /design-system#carousel and verify the documented interaction."
       }
     ]
   },
@@ -1536,7 +1533,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#chart and verify the documented interaction."
+        command: "npm run dev; open /design-system#chart and verify the documented interaction."
       }
     ]
   },
@@ -1666,7 +1663,7 @@ export const baselineContent = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#collapsible and verify the documented interaction."
+          "npm run dev; open /design-system#collapsible and verify the documented interaction."
       }
     ]
   },
@@ -1819,7 +1816,7 @@ export const baselineContent = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#empty-state and verify the documented interaction."
+          "npm run dev; open /design-system#empty-state and verify the documented interaction."
       }
     ]
   },
@@ -2097,7 +2094,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#item and verify the documented interaction."
+        command: "npm run dev; open /design-system#item and verify the documented interaction."
       }
     ]
   },
@@ -2301,8 +2298,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#progress and verify the documented interaction."
+        command: "npm run dev; open /design-system#progress and verify the documented interaction."
       }
     ]
   },
@@ -2422,8 +2418,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#resizable and verify the documented interaction."
+        command: "npm run dev; open /design-system#resizable and verify the documented interaction."
       }
     ]
   },
@@ -2572,7 +2567,7 @@ export const baselineContent = [
       {
         kind: "browser",
         command:
-          "npm run ui:dev; open /design-system#scroll-area and verify the documented interaction."
+          "npm run dev; open /design-system#scroll-area and verify the documented interaction."
       }
     ]
   },
@@ -2725,8 +2720,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#separator and verify the documented interaction."
+        command: "npm run dev; open /design-system#separator and verify the documented interaction."
       }
     ]
   },
@@ -2866,8 +2860,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#skeleton and verify the documented interaction."
+        command: "npm run dev; open /design-system#skeleton and verify the documented interaction."
       }
     ]
   },
@@ -3029,7 +3022,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command: "npm run ui:dev; open /design-system#toast and verify the documented interaction."
+        command: "npm run dev; open /design-system#toast and verify the documented interaction."
       }
     ]
   },
@@ -3160,8 +3153,7 @@ export const baselineContent = [
       },
       {
         kind: "browser",
-        command:
-          "npm run ui:dev; open /design-system#spinner and verify the documented interaction."
+        command: "npm run dev; open /design-system#spinner and verify the documented interaction."
       }
     ]
   }
