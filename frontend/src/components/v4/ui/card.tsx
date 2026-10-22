@@ -126,6 +126,7 @@ const CardHeader = React.forwardRef<
     <div
       ref={ref}
       data-slot="card-header"
+      data-framed={framed || undefined}
       className={cn(controlStyles.cardHeader, framed && frameStyles.frameHead, className)}
       {...props}
     />

@@ -25,14 +25,17 @@
 }
 .frameHead {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--v4-space-12);
+  align-content: center;
+  justify-content: space-between;
+  gap: var(--v4-space-4) var(--v4-space-12);
   min-height: var(--v4-space-40);
   padding: var(--v4-space-4) var(--v4-space-12);
   min-width: 0;
 }
 .frameTitle {
-  flex: 1;
+  flex: 1 1 var(--v4-size-cell-min);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -47,7 +50,7 @@
 }
 .frameAction {
   flex: none;
-  margin-inline-start: auto;
+  margin-inline-start: 0;
   display: flex;
   align-items: center;
   gap: var(--v4-space-8);

@@ -32,6 +32,26 @@ export default function Example() {
           Read access to staging, scoped to the payments project.
         </Card>
       </ExampleCell>
+      {(
+        [
+          ["w-60", "narrow, 240px"],
+          ["w-80", "narrow, 320px"],
+          ["w-96", "narrow, 384px"]
+        ] as const
+      ).map(([width, label]) => (
+        <ExampleCell key={width} label={label}>
+          <div className={`${width} max-w-full min-w-0`} data-narrow-card>
+            <Card
+              title="Posture"
+              description="Rotation and drift for the payments project"
+              action={<a href="#card">View report</a>}
+              footer="Updated today"
+            >
+              412 secrets across 3 environments.
+            </Card>
+          </div>
+        </ExampleCell>
+      ))}
       <ExampleCell align="stretch" label="plain">
         <Card variant="plain">
           <CardHeader>
