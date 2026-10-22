@@ -403,8 +403,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return accounts.map((a, idx) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval, requireReason, allowBreakGlass } = resolveAccessControls(a.templatePolicies);
-      if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
+      const { requiresApproval, requireReason, allowBreakGlass, allowAutoApproval } = resolveAccessControls(
+        a.templatePolicies
+      );
+      if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
       const statusEntry = accessStatusMap.get(a.id);
@@ -1323,11 +1325,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval, requireReason, requireMfa, allowBreakGlass } = resolveAccessControls(
-          a.templatePolicies
-        );
+        const { requiresApproval, requireReason, requireMfa, allowBreakGlass, allowAutoApproval } =
+          resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
-        const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
+        const hasPolicyConfigured = a.folderId
+          ? foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)
+          : false;
         let disabledReason: string | null = null;
         if (requiresApproval && !hasPolicyConfigured) {
           disabledReason =

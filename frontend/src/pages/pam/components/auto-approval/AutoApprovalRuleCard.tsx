@@ -26,6 +26,7 @@ import {
 
 import {
   ASSIGNED_TO_REQUESTER_CONSTRAINT,
+  AUTO_APPROVAL_LIMITS,
   findSubject,
   getConditionError,
   getRuleError,
@@ -228,6 +229,8 @@ export const AutoApprovalRuleCard = ({
   let addConditionBlocker: string | undefined;
   if (choices.length === 0) {
     addConditionBlocker = "Add a field under Request Form Fields first.";
+  } else if (rule.conditions.length >= AUTO_APPROVAL_LIMITS.conditions) {
+    addConditionBlocker = `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions.`;
   } else if (menuGroups.length === 0) {
     addConditionBlocker = "Every available check is already in this rule.";
   }

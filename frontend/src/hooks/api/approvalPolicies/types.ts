@@ -114,6 +114,7 @@ export type TAutoApprovalOption = { value: string; label: string };
 // A field the request form shows for one of the policy's inputs
 export type TAutoApprovalInputDetails = {
   connectionId: string;
+  connectionName: string;
   subject: string;
   label: string;
   placeholder: string;

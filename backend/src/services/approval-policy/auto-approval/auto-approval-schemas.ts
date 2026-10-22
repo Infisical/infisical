@@ -101,6 +101,7 @@ export const AutoApprovalOutcomeSchema = z
 
 export const AutoApprovalInputDetailsSchema = z.object({
   connectionId: z.string().uuid(),
+  connectionName: z.string(),
   subject: z.string(),
   label: z.string(),
   placeholder: z.string()

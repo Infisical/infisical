@@ -1,4 +1,13 @@
+import { AxiosError, AxiosResponse } from "axios";
+
 import { BadRequestError } from "@app/lib/errors";
+import {
+  getJiraIssue,
+  listJiraIssueApprovals,
+  TJiraApproval,
+  TJiraIssue,
+  TJiraUser
+} from "@app/services/app-connection/jira";
 
 import { TAutoApprovalContext } from "../auto-approval-types";
 import {
@@ -8,6 +17,13 @@ import {
   parseJiraTicket,
   TJiraTicketFacts
 } from "./jira-auto-approval-provider";
+
+vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
+vi.mock("@app/services/app-connection/jira", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/services/app-connection/jira")>()),
+  getJiraIssue: vi.fn(),
+  listJiraIssueApprovals: vi.fn()
+}));
 
 const conn = { credentials: { instanceUrl: "https://acme.atlassian.net" } } as Parameters<typeof parseJiraTicket>[1];
 
@@ -103,5 +119,101 @@ describe("Jira ticket checks", () => {
       ).reason
     ).toBe("PAY-123 isn't assigned to the requester");
     expect(check(JiraTicketConstraint.Approved, facts({ approval: { approved: true, reason: null } })).pass).toBe(true);
+  });
+});
+
+describe("resolving a Jira ticket", () => {
+  const { resolve } = JIRA_AUTO_APPROVAL_PROVIDER.subjects[JIRA_SUBMITTED_TICKET_SUBJECT];
+
+  const issue = (assignee: TJiraUser | null = null): TJiraIssue => ({
+    id: "10001",
+    key: "PAY-123",
+    fields: { status: { id: "1", name: "Approved" }, project: { id: "1", key: "PAY", name: "Payments" }, assignee }
+  });
+  const approval = (finalDecision: TJiraApproval["finalDecision"], epochMillis: number): TJiraApproval => ({
+    id: String(epochMillis),
+    finalDecision,
+    createdDate: { epochMillis }
+  });
+  const jiraError = (status: number) =>
+    new AxiosError("Request failed", "ERR_BAD_REQUEST", undefined, undefined, { status } as AxiosResponse);
+
+  const resolveTicket = (constraintIds: string[]) =>
+    resolve(
+      conn as Parameters<typeof resolve>[0],
+      "PAY-123",
+      ctx,
+      constraintIds,
+      {} as Parameters<typeof resolve>[4]
+    ) as Promise<TJiraTicketFacts>;
+
+  beforeEach(() => {
+    vi.mocked(getJiraIssue).mockReset().mockResolvedValue(issue());
+    vi.mocked(listJiraIssueApprovals).mockReset();
+  });
+
+  test("uses Jira's newest approval decision, whatever order it arrives in", async () => {
+    vi.mocked(listJiraIssueApprovals).mockResolvedValue([approval("declined", 2), approval("approved", 1)]);
+    expect((await resolveTicket([JiraTicketConstraint.Approved])).approval).toEqual({
+      approved: false,
+      reason: "PAY-123 isn't approved in Jira"
+    });
+
+    vi.mocked(listJiraIssueApprovals).mockResolvedValue([approval("approved", 2), approval("pending", 1)]);
+    expect((await resolveTicket([JiraTicketConstraint.Approved])).approval).toEqual({ approved: true, reason: null });
+  });
+
+  test("explains tickets that have no approvals to read", async () => {
+    vi.mocked(listJiraIssueApprovals).mockResolvedValue([]);
+    expect((await resolveTicket([JiraTicketConstraint.Approved])).approval?.reason).toBe(
+      "PAY-123 has no approvals in Jira yet"
+    );
+
+    vi.mocked(listJiraIssueApprovals).mockRejectedValue(jiraError(404));
+    expect((await resolveTicket([JiraTicketConstraint.Approved])).approval?.reason).toBe(
+      "PAY-123 isn't a Jira Service Management request, or the Jira connection can't see its approvals"
+    );
+  });
+
+  test("fails closed on failed reads without repeating Jira's error", async () => {
+    vi.mocked(listJiraIssueApprovals).mockRejectedValue(new Error("upstream detail"));
+    expect((await resolveTicket([JiraTicketConstraint.Approved])).approval).toEqual({
+      approved: false,
+      reason: "Couldn't read Jira approvals on PAY-123"
+    });
+
+    vi.mocked(getJiraIssue).mockRejectedValue(jiraError(500));
+    await expect(resolveTicket([])).rejects.toThrow(
+      new BadRequestError({ message: "Couldn't read Jira ticket PAY-123" })
+    );
+
+    vi.mocked(getJiraIssue).mockRejectedValue(jiraError(404));
+    await expect(resolveTicket([])).rejects.toThrow(
+      "Jira ticket PAY-123 doesn't exist, or the Jira connection can't see it"
+    );
+  });
+
+  test("matches the assignee only by a visible email address", async () => {
+    const assigneeOf = async (assignee: TJiraUser | null) => {
+      vi.mocked(getJiraIssue).mockResolvedValue(issue(assignee));
+      return (await resolveTicket([JiraTicketConstraint.AssignedToRequester])).assignee;
+    };
+
+    expect(await assigneeOf({ emailAddress: "DEV@acme.com" })).toEqual({ matchesRequester: true, reason: null });
+    expect((await assigneeOf({ emailAddress: "" }))?.reason).toBe(
+      "Jira doesn't share the email address of PAY-123's assignee"
+    );
+    expect((await assigneeOf({ emailAddress: "ops@acme.com" }))?.reason).toBe(
+      "PAY-123 isn't assigned to the requester"
+    );
+    expect((await assigneeOf(null))?.reason).toBe("PAY-123 isn't assigned to anyone");
+  });
+
+  test("only reads approvals when a rule checks them", async () => {
+    const ticket = await resolveTicket([JiraTicketConstraint.Status]);
+
+    expect(listJiraIssueApprovals).not.toHaveBeenCalled();
+    expect(ticket.approval).toBeNull();
+    expect(ticket.status).toBe("Approved");
   });
 });

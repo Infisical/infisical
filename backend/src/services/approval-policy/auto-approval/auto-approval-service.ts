@@ -242,15 +242,18 @@ export const autoApprovalServiceFactory = ({
     if (!stored?.inputs.length) return [];
 
     const connections = await appConnectionDAL.find({ $in: { id: stored.inputs.map((input) => input.connectionId) } });
-    const appById = new Map(connections.map((connection) => [connection.id, connection.app]));
+    const connectionById = new Map(connections.map((connection) => [connection.id, connection]));
 
     return stored.inputs.flatMap((input) => {
-      const app = appById.get(input.connectionId);
-      const definition = app ? getAutoApprovalProvider(app)?.subjects[input.subject]?.input : undefined;
-      if (!definition) return [];
+      const connection = connectionById.get(input.connectionId);
+      const definition = connection
+        ? getAutoApprovalProvider(connection.app)?.subjects[input.subject]?.input
+        : undefined;
+      if (!connection || !definition) return [];
       return [
         {
           connectionId: input.connectionId,
+          connectionName: connection.name,
           subject: input.subject,
           label: definition.label,
           placeholder: definition.placeholder

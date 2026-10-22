@@ -30,6 +30,7 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 
 import {
+  AUTO_APPROVAL_LIMITS,
   findSubject,
   getDefaultRuleConditions,
   newKey,
@@ -63,9 +64,13 @@ export const AutoApprovalCard = ({
   showErrors,
   hasApprovers
 }: Props) => {
-  const { data: catalog = [], isPending } = useQuery(
-    approvalPolicyQuery.autoApprovalCatalog({ policyType, scope, scopeId })
-  );
+  const {
+    data: catalog = [],
+    isPending,
+    isError,
+    isFetching,
+    refetch
+  } = useQuery(approvalPolicyQuery.autoApprovalCatalog({ policyType, scope, scopeId }));
 
   const availableInputs = catalog.flatMap((connection) =>
     connection.subjects
@@ -106,9 +111,16 @@ export const AutoApprovalCard = ({
       ]
     });
 
+  const addRuleBlocker =
+    draft.rules.length >= AUTO_APPROVAL_LIMITS.rules
+      ? `A folder can have at most ${AUTO_APPROVAL_LIMITS.rules} rules.`
+      : undefined;
+
   let addInputBlocker: string | undefined;
   if (catalog.length === 0) {
     addInputBlocker = "Add an app connection that supports auto-approval.";
+  } else if (draft.inputs.length >= AUTO_APPROVAL_LIMITS.inputs) {
+    addInputBlocker = `A folder can have at most ${AUTO_APPROVAL_LIMITS.inputs} request form fields.`;
   } else if (availableInputs.length === 0) {
     addInputBlocker = "Every available field is already added.";
   }
@@ -123,9 +135,22 @@ export const AutoApprovalCard = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {isPending ? (
-          <Skeleton className="h-24 w-full" />
-        ) : (
+        {isPending && <Skeleton className="h-24 w-full" />}
+        {isError && (
+          <div className="flex flex-col items-center gap-3 rounded-md border border-border p-8 text-center text-sm text-muted">
+            Couldn&apos;t load the app connections auto-approval can use.
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              isPending={isFetching}
+              onClick={() => refetch()}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+        {!isPending && !isError && (
           <>
             <section className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-4">
@@ -220,10 +245,18 @@ export const AutoApprovalCard = ({
             <section className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-4">
                 <FieldTitle>Rules</FieldTitle>
-                <Button type="button" variant="outline" size="sm" onClick={addRule}>
-                  <Plus />
-                  Add Rule
-                </Button>
+                <DisabledReason reason={addRuleBlocker}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    isDisabled={Boolean(addRuleBlocker)}
+                    onClick={addRule}
+                  >
+                    <Plus />
+                    Add Rule
+                  </Button>
+                </DisabledReason>
               </div>
 
               {!hasApprovers && draft.rules.length > 0 && (

@@ -375,11 +375,12 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
   // Of the given scopes, those whose policy can grant a request: it has an approver or an auto-approval rule.
   // A policy row with neither does not count as "configured".
-  const findRequestableScopeIds = async (args: {
+  // Scopes whose policy has an approver or an auto-approval rule, and whether it has an approver
+  const findRequestableScopes = async (args: {
     type: string;
     scopeType: string;
     scopeIds: string[];
-  }): Promise<string[]> => {
+  }): Promise<{ scopeId: string; hasApprovers: boolean }[]> => {
     try {
       if (!args.scopeIds.length) return [];
       const dbInstance = db.replicaNode();
@@ -418,14 +419,29 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
                 ]);
             });
         })
-        .distinct(`${TableName.ApprovalPolicies}.scopeId`)
-        .select<{ scopeId: string | null }[]>(`${TableName.ApprovalPolicies}.scopeId`)) as {
-        scopeId: string | null;
-      }[];
+        .select(`${TableName.ApprovalPolicies}.scopeId`)
+        .select(
+          dbInstance.raw(
+            `bool_or(exists (select 1 from ?? inner join ?? on ??.?? = ??.?? where ??.?? = ??.??)) as "hasApprovers"`,
+            [
+              TableName.ApprovalPolicySteps,
+              TableName.ApprovalPolicyStepApprovers,
+              TableName.ApprovalPolicyStepApprovers,
+              "policyStepId",
+              TableName.ApprovalPolicySteps,
+              "id",
+              TableName.ApprovalPolicySteps,
+              "policyId",
+              TableName.ApprovalPolicies,
+              "id"
+            ]
+          )
+        )
+        .groupBy(`${TableName.ApprovalPolicies}.scopeId`)) as { scopeId: string | null; hasApprovers: boolean }[];
 
-      return rows.map((r) => r.scopeId).filter((id): id is string => Boolean(id));
+      return rows.flatMap((r) => (r.scopeId ? [{ scopeId: r.scopeId, hasApprovers: Boolean(r.hasApprovers) }] : []));
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find requestable scope ids" });
+      throw new DatabaseError({ error, name: "Find requestable scopes" });
     }
   };
 
@@ -581,7 +597,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     findSecretAccessPolicyByEnvIdAndSecretPath,
     findPoliciesWhereSubjectIsApprover,
     isProjectApprover,
-    findRequestableScopeIds,
+    findRequestableScopes,
     deleteStepApproversBySubject,
     deleteBypassersBySubject,
     deleteUserStepApproversInProjects

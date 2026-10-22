@@ -29,10 +29,14 @@ export const AutoApprovalRequestInputs = ({ inputs, values, onChange }: Props) =
   <>
     {inputs.map((input) => {
       const key = getInputKey(input);
+      // Connections can ask for the same kind of record, and only the connection tells them apart
+      const isAmbiguous = inputs.filter((other) => other.label === input.label).length > 1;
       return (
         <Field key={key}>
           <FieldLabel htmlFor={`auto-approval-${key}`}>
-            {input.label} <span className="font-normal text-muted">(optional)</span>
+            {input.label}
+            {isAmbiguous && ` from ${input.connectionName}`}{" "}
+            <span className="font-normal text-muted">(optional)</span>
           </FieldLabel>
           <FieldContent>
             <Input

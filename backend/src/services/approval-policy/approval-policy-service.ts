@@ -920,6 +920,7 @@ export const approvalPolicyServiceFactory = ({
       : undefined;
 
     const updatedPolicy = await approvalPolicyDAL.transaction(async (tx) => {
+      await approvalPolicyDAL.findByIdForUpdate(policyId, tx);
       const updateDoc: Partial<TApprovalPolicies> = {};
 
       if (name !== undefined) {
@@ -2392,14 +2393,10 @@ export const approvalPolicyServiceFactory = ({
     });
   };
 
-  const getRequestableScopeIds = (
-    policyType: ApprovalPolicyType,
-    scopeType: ApprovalPolicyScope,
-    scopeIds: string[]
-  ) =>
+  const getRequestableScopes = (policyType: ApprovalPolicyType, scopeType: ApprovalPolicyScope, scopeIds: string[]) =>
     scopeIds.length === 0
-      ? Promise.resolve([] as string[])
-      : approvalPolicyDAL.findRequestableScopeIds({ type: policyType, scopeType, scopeIds });
+      ? Promise.resolve([] as { scopeId: string; hasApprovers: boolean }[])
+      : approvalPolicyDAL.findRequestableScopes({ type: policyType, scopeType, scopeIds });
 
   const getBypassableScopeIds = async (
     policyType: ApprovalPolicyType,
@@ -2799,7 +2796,7 @@ export const approvalPolicyServiceFactory = ({
       $resource(policyType).matchPolicy(projectId, inputs),
     getActiveGrant,
     getAccessStatuses,
-    getRequestableScopeIds,
+    getRequestableScopes,
     getBypassableScopeIds,
     reapScope,
     reapSubject,

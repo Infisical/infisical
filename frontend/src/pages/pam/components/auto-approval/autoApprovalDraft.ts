@@ -23,6 +23,15 @@ export type TAutoApprovalDraft = {
   rules: TDraftRule[];
 };
 
+// The API's limits, checked here so an over-limit config is flagged beside its control instead of failing on save
+export const AUTO_APPROVAL_LIMITS = {
+  inputs: 10,
+  rules: 20,
+  conditions: 20,
+  values: 50,
+  valueLength: 255
+};
+
 // Mirrors the Jira provider's constraint; other providers name theirs the same way
 export const ASSIGNED_TO_REQUESTER_CONSTRAINT = "assigned-to-requester";
 
@@ -86,6 +95,12 @@ export const getConditionError = (
 ): string | null => {
   if (!condition.connectionId || !condition.subject) return "Choose what to check";
   if (!condition.constraint) return "Choose a check";
+  if (condition.values.length > AUTO_APPROVAL_LIMITS.values) {
+    return `Choose at most ${AUTO_APPROVAL_LIMITS.values} values`;
+  }
+  if (condition.values.some((value) => value.length > AUTO_APPROVAL_LIMITS.valueLength)) {
+    return `Values can be at most ${AUTO_APPROVAL_LIMITS.valueLength} characters`;
+  }
 
   const constraint = findSubject(
     catalog,
@@ -105,6 +120,9 @@ export const getConditionError = (
 export const getRuleError = (rule: TDraftRule): string | null => {
   if (!rule.name.trim()) return "Name this rule";
   if (rule.conditions.length === 0) return "Add at least one condition";
+  if (rule.conditions.length > AUTO_APPROVAL_LIMITS.conditions) {
+    return `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions`;
+  }
   return null;
 };
 

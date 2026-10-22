@@ -85,7 +85,6 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
 
   // Replaces a policy's inputs and rules, the way policy steps are replaced
   const replaceForPolicy = async (policyId: string, config: TAutoApprovalConfig, tx: Knex) => {
-    await tx(TableName.ApprovalPolicies).where({ id: policyId }).forUpdate().first();
     await rulesOrm.delete({ policyId }, tx);
     await inputsOrm.delete({ policyId }, tx);
 
