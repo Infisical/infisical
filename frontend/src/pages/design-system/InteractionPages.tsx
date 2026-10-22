@@ -50,7 +50,7 @@ export const MotionPage = () => {
               <ToggleGroupItem value="failing">Failing</ToggleGroupItem>
             </ToggleGroup>
           </ExampleCell>
-          <ExampleCell label="Press: 1px dent">
+          <ExampleCell label="Press: the label shrinks, the box stays put">
             <Button type="button">Hold me</Button>
           </ExampleCell>
           <ExampleCell label="Menu: opens fast, closes faster">

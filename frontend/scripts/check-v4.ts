@@ -236,6 +236,20 @@ export const v4Checks: readonly V4Check[] = [
     }
   },
   {
+    id: "press-transform",
+    rule: "press-keeps-box",
+    message:
+      "Pressing never moves or resizes a control box. Put press feedback on the [data-press] label, not a transform, translate or scale on the control.",
+    appliesTo: (file) => isUi(file) && isCss(file),
+    cssBlock: (selector, body) => {
+      if (!/:active|\[aria-pressed|\[data-state="on"\]|\[data-pressed/.test(selector)) return [];
+      if (/\[data-press\]\s*$/.test(selector.split(",").pop() ?? "")) return [];
+      return [...body.matchAll(/(?:^|;|\n)\s*((?:transform|translate|scale)\s*:\s*[^;]+)/g)]
+        .map((match) => match[1].trim())
+        .filter((declaration) => !/:\s*none\s*$/.test(declaration));
+    }
+  },
+  {
     id: "dot-separator",
     rule: "no-dot-separators",
     message: "Separate details with words or layout, not a middle dot or bullet.",

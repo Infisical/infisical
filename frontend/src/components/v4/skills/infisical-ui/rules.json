@@ -859,6 +859,19 @@
       "exceptions": "The header's end padding that reserves the close button slot."
     },
     {
+      "id": "press-keeps-box",
+      "title": "Pressing never moves the control box",
+      "category": "Motion",
+      "instruction": "A pressed button, toggle or segment keeps its border, fill, size and position. The press shows on the label: the text and icons inside [data-press] scale to 0.97 on duration-fast with ease-press and spring back on release, and the pressed fill stays on the box. With reduced motion only the fill changes.",
+      "good": "An icon-only button whose glyph shrinks slightly while its square stays put.",
+      "avoid": "translate: 0 1px or scale(0.98) on the button on :active.",
+      "detect": {
+        "by": "lint",
+        "check": "press-transform"
+      },
+      "exceptions": "Drag handles and sliders that move by design."
+    },
+    {
       "id": "menu-spacing-model",
       "title": "Space menus from one panel padding",
       "category": "Visual",

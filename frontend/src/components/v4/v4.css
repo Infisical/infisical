@@ -616,3 +616,24 @@
   height: var(--v4-size-icon);
   stroke-width: var(--v4-stroke-icon);
 }
+
+/* Press: the control box never moves or resizes. Its label (text and icons) shrinks slightly on
+   press and springs back; the pressed fill stays on the box. Reduced motion keeps the fill only. */
+.v4 [data-press] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  min-width: 0;
+  max-width: 100%;
+  transform-origin: center;
+  transition: scale var(--v4-duration-fast) var(--v4-ease-press);
+}
+.v4 :active:not(:disabled, [aria-disabled="true"]) > [data-press] {
+  scale: 0.97;
+}
+@media (prefers-reduced-motion: reduce) {
+  .v4 :active > [data-press] {
+    scale: none;
+  }
+}

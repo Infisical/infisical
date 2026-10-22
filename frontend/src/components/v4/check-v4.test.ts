@@ -119,6 +119,10 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
     bad: [["src/components/v4/v4.css", '.v4 [data-slot="dialog-footer"] { padding: 12px 16px; }']],
     good: [["src/components/v4/v4.css", '.v4 [data-slot="dialog-footer"] { padding: 16px; }']]
   },
+  "press-transform": {
+    bad: [["src/components/v4/ui/button-material.module.css", ".ink:active { translate: 0 1px; }"]],
+    good: [["src/components/v4/v4.css", ".v4 :active > [data-press] { scale: 0.97; }"]]
+  },
   "menu-row-margin": {
     bad: [["src/components/v4/ui/menu.module.css", ".separator { margin: 4px 0; }"]],
     good: [

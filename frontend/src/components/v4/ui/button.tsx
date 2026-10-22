@@ -1,9 +1,8 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { animate, motion, useMotionValue } from "motion/react";
+import { motion } from "motion/react";
 import { Slot } from "radix-ui";
 
-import { spring } from "../lib/motion";
 import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icon";
 import { Spinner } from "./spinner";
@@ -110,18 +109,6 @@ const Button = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? MotionSlot : MotionButton;
-    const scaleX = useMotionValue(1);
-    const scaleY = useMotionValue(1);
-    const press = (event: React.PointerEvent<HTMLElement>) => {
-      if (variant === "link" || event.button !== 0) return;
-      const { width, height } = event.currentTarget.getBoundingClientRect();
-      animate(scaleX, (width - 2) / width, spring.fast);
-      animate(scaleY, (height - 2) / height, spring.fast);
-    };
-    const release = () => {
-      animate(scaleX, 1, spring.moderate);
-      animate(scaleY, 1, spring.moderate);
-    };
     const loading = loadingProp ?? false;
     const inactive =
       loading ||
@@ -182,22 +169,24 @@ const Button = React.forwardRef<
         onClickCapture?: React.MouseEventHandler<HTMLElement>;
         onPointerDownCapture?: React.PointerEventHandler<HTMLElement>;
         onKeyDownCapture?: React.KeyboardEventHandler<HTMLElement>;
-      }>(children)
-        ? React.cloneElement(
-            children,
-            inactive
-              ? {
-                  onClickCapture: preventActivation,
-                  onPointerDownCapture: preventActivation,
-                  onKeyDownCapture: (event: React.KeyboardEvent<HTMLElement>) => {
-                    if (activationKey(event.key)) preventActivation(event);
-                    else children.props.onKeyDownCapture?.(event);
-                  }
+      }>(children) ? (
+        React.cloneElement(
+          children,
+          inactive
+            ? {
+                onClickCapture: preventActivation,
+                onPointerDownCapture: preventActivation,
+                onKeyDownCapture: (event: React.KeyboardEvent<HTMLElement>) => {
+                  if (activationKey(event.key)) preventActivation(event);
+                  else children.props.onKeyDownCapture?.(event);
                 }
-              : undefined,
-            content(children.props.children)
-          )
-        : content(children);
+              }
+            : undefined,
+          <span data-press="">{content(children.props.children)}</span>
+        )
+      ) : (
+        <span data-press="">{content(children)}</span>
+      );
 
     return (
       <Comp
@@ -219,23 +208,11 @@ const Button = React.forwardRef<
           loading && styles.pending,
           className
         )}
-        style={{ ...style, scaleX, scaleY }}
-        onPointerDown={(event) => {
-          if (!inactive) press(event);
-          onPointerDown?.(event);
-        }}
-        onPointerUp={(event) => {
-          release();
-          onPointerUp?.(event);
-        }}
-        onPointerLeave={(event) => {
-          release();
-          onPointerLeave?.(event);
-        }}
-        onPointerCancel={(event) => {
-          release();
-          onPointerCancel?.(event);
-        }}
+        style={style}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        onPointerCancel={onPointerCancel}
         onPointerDownCapture={(event) => {
           if (inactive) preventActivation(event);
           else onPointerDownCapture?.(event);

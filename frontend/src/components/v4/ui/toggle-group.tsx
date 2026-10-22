@@ -112,7 +112,7 @@ const ToggleGroupItem = React.forwardRef<
       )}
       {...props}
     >
-      {children}
+      <span data-press="">{children}</span>
     </ToggleGroupPrimitive.Item>
   );
 });
