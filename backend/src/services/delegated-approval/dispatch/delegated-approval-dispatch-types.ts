@@ -6,6 +6,8 @@ import {
   TDelegatedApprovalReadDecisionInput
 } from "@app/services/delegated-approval-decision/delegated-approval-decision-types";
 
+import { TDelegatedApprovalProviderDetails } from "../delegated-approval-types";
+
 export type TSecretAccessDispatchDetails = {
   policyType: ApprovalPolicyType.SecretAccess;
   environment: string;
@@ -34,6 +36,7 @@ export type TDelegatedApprovalDispatchInput = {
 
 export type TDelegatedApprovalDispatchResult = {
   providerRequestId: string;
+  providerDetails?: TDelegatedApprovalProviderDetails;
 };
 
 export type TDelegatedApprovalProvider = {

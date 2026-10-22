@@ -76,6 +76,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
             policyId: context.approvalRequest.policyId ?? "",
             delegatedApprovalType: context.delegatedApprovalType,
             providerRequestId: context.providerRequestId,
+            ...(context.providerRecordNumber ? { providerRecordNumber: context.providerRecordNumber } : {}),
             outcome: metadata.outcome,
             ...(metadata.decided
               ? {
@@ -99,9 +100,13 @@ export const delegatedApprovalDecisionServiceFactory = ({
 
   const $keepWaiting = async (delegatedRequestId: string, reason: string) => {
     try {
-      await delegatedApprovalRequestDAL.update(
+      await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.WaitingApproval },
-        { statusReason: toDelegatedApprovalStatusReason(`${reason} ${DELEGATED_APPROVAL_DECISION_RETRY_HINT}`) }
+        {
+          details: {
+            statusReason: toDelegatedApprovalStatusReason(`${reason} ${DELEGATED_APPROVAL_DECISION_RETRY_HINT}`)
+          }
+        }
       );
     } catch (error) {
       logger.error(
@@ -156,11 +161,11 @@ export const delegatedApprovalDecisionServiceFactory = ({
       }
 
       const isApproved = decided.decision === DelegatedApprovalDecision.Approved;
-      const [finalized] = await delegatedApprovalRequestDAL.update(
+      const [finalized] = await delegatedApprovalRequestDAL.updateWithDetails(
         { id: context.delegatedRequestId, status: DelegatedApprovalRequestStatus.WaitingApproval },
         {
           status: isApproved ? DelegatedApprovalRequestStatus.Approved : DelegatedApprovalRequestStatus.Rejected,
-          statusReason: null
+          details: { statusReason: null }
         },
         tx
       );
@@ -216,7 +221,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
     }
     const { delegatedRequest, approvalRequest, delegatedPolicy } = delegatedApprovalContext;
 
-    if (DELEGATED_APPROVAL_FINAL_STATE.has(delegatedRequest.status as DelegatedApprovalRequestStatus)) {
+    if (DELEGATED_APPROVAL_FINAL_STATE.has(delegatedRequest.status)) {
       logger.info(
         `Delegated approval request was already finalized, skipping decision [delegatedRequestId=${delegatedRequestId}] [status=${delegatedRequest.status}]`
       );
@@ -251,6 +256,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
     const context: TDelegatedApprovalDecisionContext = {
       delegatedRequestId,
       providerRequestId: delegatedRequest.providerRequestId,
+      providerRecordNumber: delegatedRequest.details.provider?.recordNumber,
       approvalRequest,
       delegatedApprovalType: delegatedApprovalName ?? "the delegated approval system"
     };

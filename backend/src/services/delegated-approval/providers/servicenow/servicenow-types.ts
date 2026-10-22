@@ -7,6 +7,7 @@ export type TServiceNowAccessRequestPayload = z.infer<typeof ServiceNowAccessReq
 
 export type TServiceNowAccessRequestOutcome = {
   sysId: string;
+  recordNumber: string | null;
   duplicate: boolean;
 };
 

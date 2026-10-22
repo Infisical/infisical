@@ -7,7 +7,12 @@ import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./d
 import { DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT } from "./delegated-approval-events";
 import { delegatedApprovalServiceFactory } from "./delegated-approval-service";
 
-const failedRequest = { id: "delegated-1", requestId: "req-1", status: DelegatedApprovalRequestStatus.FailedDispatch };
+const failedRequest = {
+  id: "delegated-1",
+  requestId: "req-1",
+  status: DelegatedApprovalRequestStatus.FailedDispatch,
+  details: { statusReason: "ServiceNow could not be reached." }
+};
 const serviceNowPolicy = {
   id: "delegated-policy-1",
   policyId: "policy-1",
@@ -29,7 +34,7 @@ const createService = ({
   delegatedPolicy = serviceNowPolicy as unknown
 } = {}) => {
   const emit = vi.fn().mockResolvedValue(undefined);
-  const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string }) => ({
+  const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string; details: object }) => ({
     id: "delegated-1",
     ...row
   }));
@@ -54,7 +59,7 @@ describe("delegatedApprovalService.createRequest", () => {
 
     expect(request).toMatchObject({ id: "delegated-1", status: DelegatedApprovalRequestStatus.PendingDispatch });
     expect(create).toHaveBeenCalledWith(
-      { requestId: "req-1", status: DelegatedApprovalRequestStatus.PendingDispatch },
+      { requestId: "req-1", status: DelegatedApprovalRequestStatus.PendingDispatch, details: {} },
       TX
     );
     expect(emit).toHaveBeenCalledTimes(1);

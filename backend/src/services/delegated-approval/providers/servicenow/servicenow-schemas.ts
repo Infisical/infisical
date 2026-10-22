@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { DELEGATED_APPROVAL_PROVIDER_RECORD_NUMBER_MAX_CHARS } from "../../dispatch/delegated-approval-dispatch-constants";
 import { SERVICENOW_PERMISSIONS_MAX_CHARS } from "./servicenow-constants";
 import { ServiceNowRequestType } from "./servicenow-enums";
 
@@ -35,8 +36,10 @@ export const ServiceNowAccessRequestPayloadSchema = z.object({
   justification: z.string().optional()
 });
 
+// `request_number` is display only, so a bad value must never fail the parse that `sys_id` depends on.
 export const ServiceNowAccessRequestResponseSchema = z.object({
-  sys_id: z.string().min(1)
+  sys_id: z.string().min(1),
+  request_number: z.string().max(DELEGATED_APPROVAL_PROVIDER_RECORD_NUMBER_MAX_CHARS).nullish().catch(undefined)
 });
 
 export const ServiceNowErrorResponseSchema = z.object({

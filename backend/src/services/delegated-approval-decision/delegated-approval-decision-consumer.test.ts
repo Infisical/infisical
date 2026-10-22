@@ -7,6 +7,7 @@ import {
   DelegatedApprovalPolicyType,
   DelegatedApprovalRequestStatus
 } from "@app/services/delegated-approval/delegated-approval-enums";
+import { TDelegatedApprovalRequestDetails } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
 import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
@@ -51,11 +52,12 @@ const ORG_ID = "22222222-2222-2222-2222-222222222222";
 const EXTERNAL_ID = "snow-1";
 const TX = { tx: true } as never;
 const PRIMARY = { primary: true } as never;
+const SERVICENOW_RECORD = { type: DelegatedApprovalPolicyType.ServiceNow, recordNumber: "INFAR1000000" };
 const waitingDelegatedRequest = {
   id: DELEGATED_REQUEST_ID,
   requestId: APPROVAL_REQUEST_ID,
   status: DelegatedApprovalRequestStatus.WaitingApproval,
-  statusReason: null as string | null,
+  details: { statusReason: null, provider: SERVICENOW_RECORD } as TDelegatedApprovalRequestDetails,
   providerRequestId: EXTERNAL_ID as string | null
 };
 
@@ -103,14 +105,20 @@ const buildConsumer = ({
   let row: TDelegatedRow | null = delegatedRequest ? { ...delegatedRequest } : null;
   let approval: TApprovalRow | null = approvalRequest ? { ...approvalRequest } : null;
 
-  const update = vi.fn(async (filter: Partial<TDelegatedRow>, patch: Partial<TDelegatedRow>) => {
-    const current = row;
-    if (!current) return [];
-    const matches = Object.entries(filter).every(([key, value]) => current[key as keyof TDelegatedRow] === value);
-    if (!matches) return [];
-    row = { ...current, ...patch };
-    return [row];
-  });
+  // Merges details the way the DAL's jsonb concatenation does.
+  const updateWithDetails = vi.fn(
+    async (
+      filter: Partial<TDelegatedRow>,
+      { details, ...columns }: Partial<TDelegatedRow> & { details?: Partial<TDelegatedRow["details"]> }
+    ) => {
+      const current = row;
+      if (!current) return [];
+      const matches = Object.entries(filter).every(([key, value]) => current[key as keyof TDelegatedRow] === value);
+      if (!matches) return [];
+      row = { ...current, ...columns, details: { ...current.details, ...details } };
+      return [row];
+    }
+  );
 
   const updateById = vi.fn(async (_id: string, patch: Partial<TApprovalRow>) => {
     approval = approval ? { ...approval, ...patch } : approval;
@@ -124,7 +132,7 @@ const buildConsumer = ({
     delegatedApprovalRequestDAL: {
       findById: vi.fn(async () => row),
       primaryNode: () => PRIMARY,
-      update
+      updateWithDetails
     },
     delegatedApprovalPolicyDAL: { findOne: vi.fn().mockResolvedValue(policy) },
     approvalRequestDAL: {
@@ -192,14 +200,19 @@ describe("delegatedApprovalDecisionConsumer", () => {
       approvalRequestId: APPROVAL_REQUEST_ID,
       providerRequestId: EXTERNAL_ID
     });
-    expect(row()).toMatchObject({ status: DelegatedApprovalRequestStatus.Approved, statusReason: null });
+    expect(row()).toEqual({
+      ...waitingDelegatedRequest,
+      status: DelegatedApprovalRequestStatus.Approved,
+      details: { statusReason: null, provider: SERVICENOW_RECORD }
+    });
     expect(approval()?.status).toBe(ApprovalRequestStatus.Approved);
     expect(postApprovalTxRoutine).toHaveBeenCalledWith(expect.objectContaining({ id: APPROVAL_REQUEST_ID }), TX);
     auditedWith(createAuditLog, {
       outcome: DelegatedApprovalDecisionOutcome.Applied,
       decision: DelegatedApprovalDecision.Approved,
       decidedBy: "Grace Hopper",
-      decidedAt: "2026-10-20 10:15:00"
+      decidedAt: "2026-10-20 10:15:00",
+      providerRecordNumber: "INFAR1000000"
     });
     expect(notify).toHaveBeenCalledWith({
       approvalRequestId: APPROVAL_REQUEST_ID,
@@ -245,7 +258,10 @@ describe("delegatedApprovalDecisionConsumer", () => {
     expect(result.error).toContain("approved different permissions");
     expect(result.error).toContain("Requested: secret-folders: edit; secrets: create, read");
     expect(result.error).toContain("Approved in ServiceNow: secret-folders: edit; secrets: create, delete, read");
-    expect(row()).toMatchObject({ status: DelegatedApprovalRequestStatus.Failed, statusReason: result.error });
+    expect(row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.Failed,
+      details: { statusReason: result.error, provider: SERVICENOW_RECORD }
+    });
     expect(approval()?.status).toBe(ApprovalRequestStatus.Cancelled);
     expect(postApprovalTxRoutine).not.toHaveBeenCalled();
     expect(notify).not.toHaveBeenCalled();
@@ -274,7 +290,10 @@ describe("delegatedApprovalDecisionConsumer", () => {
     ]);
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.WaitingApproval,
-      statusReason: `ServiceNow has not recorded a decision yet. ${DELEGATED_APPROVAL_DECISION_RETRY_HINT}`
+      details: {
+        statusReason: `ServiceNow has not recorded a decision yet. ${DELEGATED_APPROVAL_DECISION_RETRY_HINT}`,
+        provider: SERVICENOW_RECORD
+      }
     });
     expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
     expect(createAuditLog).not.toHaveBeenCalled();
@@ -288,7 +307,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     expect(result).toEqual({ id: "1", status: EventResultStatus.Retry, error: "ServiceNow could not be reached." });
     expect(row()).toMatchObject({ status: DelegatedApprovalRequestStatus.WaitingApproval });
-    expect(row()?.statusReason).toContain(DELEGATED_APPROVAL_DECISION_RETRY_HINT);
+    expect(row()?.details.statusReason).toContain(DELEGATED_APPROVAL_DECISION_RETRY_HINT);
     expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
   });
 
@@ -305,7 +324,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     });
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.Failed,
-      statusReason: "ServiceNow rejected the credentials."
+      details: { statusReason: "ServiceNow rejected the credentials." }
     });
     expect(approval()?.status).toBe(ApprovalRequestStatus.Cancelled);
   });
@@ -320,7 +339,10 @@ describe("delegatedApprovalDecisionConsumer", () => {
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toBe("The delegated approval system 'jira' is not supported. Create the request again.");
     expect(fetchDecision).not.toHaveBeenCalled();
-    expect(row()).toMatchObject({ status: DelegatedApprovalRequestStatus.Failed, statusReason: result.error });
+    expect(row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.Failed,
+      details: { statusReason: result.error }
+    });
     expect(approval()?.status).toBe(ApprovalRequestStatus.Cancelled);
     auditedWith(createAuditLog, {
       outcome: DelegatedApprovalDecisionOutcome.Failed,
@@ -354,7 +376,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Failed);
-    expect(row()?.statusReason).toContain("after the request was cancelled");
+    expect(row()?.details.statusReason).toContain("after the request was cancelled");
     expect(approval()?.status).toBe(ApprovalRequestStatus.Cancelled);
     expect(postApprovalTxRoutine).not.toHaveBeenCalled();
     auditedWith(createAuditLog, { outcome: DelegatedApprovalDecisionOutcome.Failed });
@@ -369,7 +391,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     await consumer.handle([makeEvent()]);
 
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Failed);
-    expect(row()?.statusReason).toContain("expired");
+    expect(row()?.details.statusReason).toContain("expired");
     expect(approval()?.status).toBe(ApprovalRequestStatus.Expired);
     expect(postApprovalTxRoutine).not.toHaveBeenCalled();
   });
@@ -387,6 +409,19 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
     expect(fetchDecision).not.toHaveBeenCalled();
+  });
+
+  test("audits without a record number when the provider never reported one", async () => {
+    fetchDecision.mockResolvedValueOnce(decided(DelegatedApprovalDecision.Approved));
+    const { consumer, createAuditLog } = buildConsumer({
+      delegatedRequest: { ...waitingDelegatedRequest, details: { statusReason: null } }
+    });
+
+    await consumer.handle([makeEvent()]);
+
+    expect(createAuditLog).toHaveBeenCalledTimes(1);
+    const [entry] = createAuditLog.mock.calls[0] as unknown as [{ event: { metadata: Record<string, unknown> } }];
+    expect(entry.event.metadata).not.toHaveProperty("providerRecordNumber");
   });
 
   test("fails the event, not the request, when the callback names another record", async () => {

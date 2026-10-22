@@ -9,7 +9,13 @@ import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-en
 export type TDelegatedApprovalCallbackServiceFactoryDep = {
   delegatedApprovalRequestDAL: Pick<
     TDelegatedApprovalRequestDALFactory,
-    "claimDecisionRead" | "findById" | "findByProviderRequestId" | "primaryNode" | "transaction" | "update"
+    | "claimDecisionRead"
+    | "findById"
+    | "findByProviderRequestId"
+    | "primaryNode"
+    | "transaction"
+    | "update"
+    | "updateWithDetails"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "transaction" | "findByIdForUpdate" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;

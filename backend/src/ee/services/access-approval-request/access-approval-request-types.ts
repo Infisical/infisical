@@ -3,6 +3,7 @@ import {
   DelegatedApprovalPolicyType,
   DelegatedApprovalRequestStatus
 } from "@app/services/delegated-approval/delegated-approval-enums";
+import { TDelegatedApprovalProviderDetails } from "@app/services/delegated-approval/delegated-approval-types";
 
 export enum ApprovalStatus {
   PENDING = "pending",
@@ -132,7 +133,11 @@ export interface TAccessApprovalRequestServiceFactory {
         requestExpirationTime?: string | null;
         delegatedApproval?: { type: DelegatedApprovalPolicyType } | null;
       };
-      delegatedApproval?: { status: DelegatedApprovalRequestStatus; statusReason: string | null } | null;
+      delegatedApproval?: {
+        status: DelegatedApprovalRequestStatus;
+        statusReason: string | null;
+        provider: TDelegatedApprovalProviderDetails | null;
+      } | null;
       projectId: string;
       environment: string;
       environmentName: string;

@@ -46,7 +46,10 @@ export type TDelegatedApprovalDecisionAuditMetadata = {
 };
 
 export type TDelegatedApprovalDecisionServiceFactoryDep = {
-  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "primaryNode" | "update">;
+  delegatedApprovalRequestDAL: Pick<
+    TDelegatedApprovalRequestDALFactory,
+    "findById" | "primaryNode" | "updateWithDetails"
+  >;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "findByIdForUpdate" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -59,6 +62,7 @@ export type TDelegatedApprovalDecisionServiceFactoryDep = {
 export type TDelegatedApprovalDecisionContext = {
   delegatedRequestId: string;
   providerRequestId: string;
+  providerRecordNumber?: string;
   approvalRequest: { id: string; organizationId: string; projectId: string; policyId?: string | null };
   delegatedApprovalType: string;
 };
@@ -74,7 +78,4 @@ export type TApplyDelegatedApprovalDecisionResult = {
 };
 
 export type TDelegatedApprovalFinalizeOutcome = // this feels weird to me honestly
-  | { kind: "applied" }
-  | { kind: "late"; reason: string }
-  | { kind: "gone" }
-  | { kind: "raced" };
+  { kind: "applied" } | { kind: "late"; reason: string } | { kind: "gone" } | { kind: "raced" };

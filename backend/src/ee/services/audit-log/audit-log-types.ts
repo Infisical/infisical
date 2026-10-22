@@ -7193,6 +7193,7 @@ interface AccessApprovalRequestDelegatedDecisionEvent {
     policyId: string;
     delegatedApprovalType: string;
     providerRequestId: string;
+    providerRecordNumber?: string;
     outcome: string;
     decision?: string;
     decidedBy?: string;

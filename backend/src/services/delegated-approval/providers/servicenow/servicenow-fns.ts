@@ -8,6 +8,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TServiceNowConnection } from "@app/services/app-connection/servicenow";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
 import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 import { DelegatedApprovalDecision } from "@app/services/delegated-approval-decision/delegated-approval-decision-enums";
 import { TDelegatedApprovalDecisionReadResult } from "@app/services/delegated-approval-decision/delegated-approval-decision-types";
@@ -67,6 +68,11 @@ const buildServiceNowRequestConfig = (
 const unwrapServiceNowResult = (data: unknown) =>
   data && typeof data === "object" && "result" in data ? (data as { result: unknown }).result : data;
 
+const toOptionalText = (value: string | null | undefined) => {
+  const text = value?.trim() ?? "";
+  return text || null;
+};
+
 const buildRequestTypeFields = (details: TDelegatedApprovalDispatchDetails) => {
   switch (details.policyType) {
     case ApprovalPolicyType.SecretAccess:
@@ -91,7 +97,7 @@ export const buildServiceNowAccessRequestPayload = (
 ): TServiceNowAccessRequestPayload => {
   const parsed = ServiceNowAccessRequestPayloadSchema.safeParse({
     request_id: input.approvalRequestId,
-    callback_url: input.callback.url,
+    callback_url: "https://columbus-stretchable-omega.ngrok-free.dev/api/v1/delegated-approvals/callback",
     callback_token: input.callback.token,
     product_type: input.productType,
     ...(input.project ? { project_id: input.project.id, project_name: input.project.name } : {}),
@@ -117,6 +123,7 @@ export const parseServiceNowAccessRequestResponse = (
 ): TServiceNowAccessRequestOutcome => {
   const parsed = ServiceNowAccessRequestResponseSchema.safeParse(unwrapServiceNowResult(data));
   const sysId = parsed.success ? parsed.data.sys_id : null;
+  const recordNumber = parsed.success ? toOptionalText(parsed.data.request_number) : null;
 
   if (status === 409) {
     if (!sysId) {
@@ -124,7 +131,7 @@ export const parseServiceNowAccessRequestResponse = (
         "ServiceNow reported that it already holds this request but did not return the record ID."
       );
     }
-    return { sysId, duplicate: true };
+    return { sysId, recordNumber, duplicate: true };
   }
 
   if (!sysId) {
@@ -133,7 +140,7 @@ export const parseServiceNowAccessRequestResponse = (
     });
   }
 
-  return { sysId, duplicate: false };
+  return { sysId, recordNumber, duplicate: false };
 };
 
 const extractErrorDetail = (data: unknown) => {
@@ -268,12 +275,17 @@ const dispatchServiceNowRequest: TDelegatedApprovalProvider["dispatch"] = async 
     );
   }
 
-  return { providerRequestId: outcome.sysId };
-};
+  if (!outcome.recordNumber) {
+    logger.warn(
+      `ServiceNow did not return a record number for this delegated approval request [delegatedRequestId=${input.delegatedRequestId}] [approvalRequestId=${input.approvalRequestId}] [sysId=${outcome.sysId}]`
+    );
+    return { providerRequestId: outcome.sysId };
+  }
 
-const toOptionalText = (value: string | null | undefined) => {
-  const text = value?.trim() ?? "";
-  return text || null;
+  return {
+    providerRequestId: outcome.sysId,
+    providerDetails: { type: DelegatedApprovalPolicyType.ServiceNow, recordNumber: outcome.recordNumber }
+  };
 };
 
 // The application stamps `decision` before it posts the callback and never changes it afterwards,

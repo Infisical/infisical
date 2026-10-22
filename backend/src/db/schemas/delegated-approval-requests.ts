@@ -14,7 +14,7 @@ export const DelegatedApprovalRequestsSchema = z.object({
   requestId: z.string().uuid(),
   status: z.string(),
   encryptedCallbackToken: zodBuffer.nullable().optional(),
-  statusReason: z.string().nullable().optional(),
+  details: z.unknown(),
   providerRequestId: z.string().nullable().optional(),
   decisionReadRequestedAt: z.date().nullable().optional(),
   createdAt: z.date(),

@@ -11,6 +11,7 @@ import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approv
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
 import { TDelegatedApprovalPolicyDALFactory } from "./delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "./delegated-approval-request-dal";
+import { TDelegatedApprovalProviderDetails, TDelegatedApprovalRequestDetails } from "./delegated-approval-schemas";
 
 export type TDelegatedApprovalListItem = {
   name: string;
@@ -22,8 +23,11 @@ export type TDelegatedApprovalPolicy = Omit<TDelegatedApprovalPolicies, "type"> 
   type: DelegatedApprovalPolicyType;
 };
 
-export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "status"> & {
+export type { TDelegatedApprovalProviderDetails, TDelegatedApprovalRequestDetails };
+
+export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "status" | "details"> & {
   status: DelegatedApprovalRequestStatus;
+  details: TDelegatedApprovalRequestDetails;
 };
 
 export type TValidateDelegatedApprovalConnectionDTO = {
@@ -55,12 +59,6 @@ export type TRetryDelegatedApprovalRequestDispatchDTO = {
   approvalRequest: Pick<TApprovalRequests, "id" | "policyId" | "status" | "expiresAt">;
 };
 
-export type TUpdateDelegatedApprovalRequestDTO = {
-  requestId: string;
-  status?: DelegatedApprovalRequestStatus;
-  statusReason?: string | null;
-};
-
 export type TApprovalRequestExpiry = { expiresAt?: Date | string | null };
 
 export type TLoadDelegatedApprovalContextDeps = {
@@ -77,7 +75,7 @@ export type TRequireDelegatedApprovalConnectionDTO<T extends Pick<TAppConnection
 
 export type TFailDelegatedApprovalRequestDeps = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "transaction" | "findByIdForUpdate" | "updateById">;
-  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "update">;
+  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "updateWithDetails">;
 };
 
 export type TFailDelegatedApprovalRequestDTO = {

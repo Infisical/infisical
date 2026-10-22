@@ -147,26 +147,53 @@ describe("buildServiceNowAccessRequestPayload", () => {
 });
 
 describe("parseServiceNowAccessRequestResponse", () => {
-  test("reads the record ID from a bare or enveloped 201", () => {
+  test("reads the record ID and number from a bare or enveloped 201", () => {
     expect(
       parseServiceNowAccessRequestResponse(201, { success: true, request_number: "INFAR0001", sys_id: "abc" })
     ).toEqual({
       sysId: "abc",
+      recordNumber: "INFAR0001",
       duplicate: false
     });
     expect(parseServiceNowAccessRequestResponse(201, { result: { success: true, sys_id: "abc" } })).toEqual({
       sysId: "abc",
+      recordNumber: null,
       duplicate: false
     });
   });
 
   test("treats a 409 as the record ServiceNow already holds", () => {
-    expect(parseServiceNowAccessRequestResponse(409, { success: false, error: "duplicate", sys_id: "abc" })).toEqual({
+    expect(
+      parseServiceNowAccessRequestResponse(409, {
+        success: false,
+        error: "duplicate",
+        request_number: "INFAR0001",
+        sys_id: "abc"
+      })
+    ).toEqual({
       sysId: "abc",
+      recordNumber: "INFAR0001",
       duplicate: true
     });
     expect(parseServiceNowAccessRequestResponse(409, { result: { success: false, sys_id: "abc" } })).toEqual({
       sysId: "abc",
+      recordNumber: null,
+      duplicate: true
+    });
+  });
+
+  test("never lets a bad record number hide the record ID", () => {
+    expect(parseServiceNowAccessRequestResponse(201, { success: true, request_number: "  ", sys_id: "abc" })).toEqual({
+      sysId: "abc",
+      recordNumber: null,
+      duplicate: false
+    });
+    expect(
+      parseServiceNowAccessRequestResponse(201, { success: true, request_number: "X".repeat(65), sys_id: "abc" })
+    ).toEqual({ sysId: "abc", recordNumber: null, duplicate: false });
+    expect(parseServiceNowAccessRequestResponse(409, { success: false, request_number: 42, sys_id: "abc" })).toEqual({
+      sysId: "abc",
+      recordNumber: null,
       duplicate: true
     });
   });

@@ -56,7 +56,7 @@ const BLOCKER_MESSAGES: Record<DelegatedApprovalRequestBlocker, string> = {
 type TDelegatedApprovalDispatchConsumerDep = {
   delegatedApprovalRequestDAL: Pick<
     TDelegatedApprovalRequestDALFactory,
-    "findById" | "primaryNode" | "update" | "updateById"
+    "findById" | "primaryNode" | "updateWithDetails"
   >;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
   delegatedApprovalCallbackService: Pick<
@@ -82,11 +82,11 @@ export const delegatedApprovalDispatchConsumerFactory = ({
 }: TDelegatedApprovalDispatchConsumerDep): IEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
   const $markDispatchFailed = async (delegatedRequestId: string, statusReason: string) => {
     try {
-      await delegatedApprovalRequestDAL.update(
+      await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
         {
           status: DelegatedApprovalRequestStatus.FailedDispatch,
-          statusReason: toDelegatedApprovalStatusReason(statusReason)
+          details: { statusReason: toDelegatedApprovalStatusReason(statusReason) }
         }
       );
     } catch (error) {
@@ -131,9 +131,9 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     }
 
     if (delegatedRequest.status === DelegatedApprovalRequestStatus.FailedDispatch) {
-      await delegatedApprovalRequestDAL.update(
+      await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.FailedDispatch },
-        { status: DelegatedApprovalRequestStatus.PendingDispatch, statusReason: null }
+        { status: DelegatedApprovalRequestStatus.PendingDispatch, details: { statusReason: null } }
       );
     }
 
@@ -194,21 +194,29 @@ export const delegatedApprovalDispatchConsumerFactory = ({
         details
       };
 
-      const { providerRequestId } = await provider.dispatch(input, connection);
+      const { providerRequestId, providerDetails } = await provider.dispatch(input, connection);
+      const providerPatch = providerDetails ? { provider: providerDetails } : {};
 
-      const [waitingRequest] = await delegatedApprovalRequestDAL.update(
+      const [waitingRequest] = await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
-        { status: DelegatedApprovalRequestStatus.WaitingApproval, statusReason: null, providerRequestId }
+        {
+          status: DelegatedApprovalRequestStatus.WaitingApproval,
+          providerRequestId,
+          details: { statusReason: null, ...providerPatch }
+        }
       );
       if (!waitingRequest) {
-        await delegatedApprovalRequestDAL.updateById(delegatedRequestId, { providerRequestId });
+        await delegatedApprovalRequestDAL.updateWithDetails(
+          { id: delegatedRequestId },
+          { providerRequestId, details: providerPatch }
+        );
         logger.warn(
           `Delegated approval request left pending dispatch while it was being delivered [delegatedRequestId=${delegatedRequestId}] [providerRequestId=${providerRequestId}]`
         );
       }
 
       logger.info(
-        `Delegated approval request delivered [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}] [provider=${delegatedPolicy.type}] [providerRequestId=${providerRequestId}]`
+        `Delegated approval request delivered [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}] [provider=${delegatedPolicy.type}] [providerRequestId=${providerRequestId}] [recordNumber=${providerDetails?.recordNumber ?? "none"}]`
       );
       return { status: EventResultStatus.Delivered };
     } catch (error) {

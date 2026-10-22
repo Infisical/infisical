@@ -1,10 +1,15 @@
 import { UnrecoverableError } from "bullmq";
 import { Knex } from "knex";
 
+import { TDelegatedApprovalRequests } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
 import { DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
+import { DelegatedApprovalRequestDetailsSchema } from "./delegated-approval-schemas";
 import {
+  TDelegatedApprovalRequest,
+  TDelegatedApprovalRequestDetails,
   TFailDelegatedApprovalRequestDeps,
   TFailDelegatedApprovalRequestDTO,
   TLoadDelegatedApprovalContextDeps
@@ -13,6 +18,27 @@ import { DELEGATED_APPROVAL_STATUS_REASON_MAX_CHARS } from "./dispatch/delegated
 
 export const toDelegatedApprovalStatusReason = (reason: string) =>
   reason.slice(0, DELEGATED_APPROVAL_STATUS_REASON_MAX_CHARS);
+
+// A row whose details cannot be read is served as if it had none, so one bad row cannot take the
+// request list down with it.
+export const parseDelegatedApprovalRequestDetails = (
+  row: Pick<TDelegatedApprovalRequests, "id" | "details">
+): TDelegatedApprovalRequestDetails => {
+  const parsed = DelegatedApprovalRequestDetailsSchema.safeParse(row.details ?? {});
+  if (parsed.success) return parsed.data;
+
+  logger.warn(
+    { issues: parsed.error.issues },
+    `Delegated approval request has unreadable details, treating them as empty [delegatedRequestId=${row.id}]`
+  );
+  return {};
+};
+
+export const toDelegatedApprovalRequest = (row: TDelegatedApprovalRequests): TDelegatedApprovalRequest => ({
+  ...row,
+  status: row.status as DelegatedApprovalRequestStatus,
+  details: parseDelegatedApprovalRequestDetails(row)
+});
 
 // A delegated approval worker tells its failures apart by class: bullmq's UnrecoverableError means a
 // retry cannot help, anything else is tried again by the outbox.
@@ -35,9 +61,12 @@ export const failDelegatedApprovalRequest = (
 ) => {
   const run = async (trx: Knex) => {
     const approvalRequest = await approvalRequestDAL.findByIdForUpdate(requestId, trx);
-    const [failed] = await delegatedApprovalRequestDAL.update(
+    const [failed] = await delegatedApprovalRequestDAL.updateWithDetails(
       { id, status: DelegatedApprovalRequestStatus.WaitingApproval },
-      { status: DelegatedApprovalRequestStatus.Failed, statusReason: toDelegatedApprovalStatusReason(reason) },
+      {
+        status: DelegatedApprovalRequestStatus.Failed,
+        details: { statusReason: toDelegatedApprovalStatusReason(reason) }
+      },
       trx
     );
     if (failed && approvalRequest?.status === ApprovalRequestStatus.Pending) {
@@ -57,9 +86,10 @@ export const loadDelegatedApprovalContext = async (
 ) => {
   const primary = delegatedApprovalRequestDAL.primaryNode();
 
-  const delegatedRequest = await delegatedApprovalRequestDAL.findById(delegatedRequestId, primary);
-  if (!delegatedRequest) return null;
+  const row = await delegatedApprovalRequestDAL.findById(delegatedRequestId, primary);
+  if (!row) return null;
 
+  const delegatedRequest = toDelegatedApprovalRequest(row);
   const approvalRequest = await approvalRequestDAL.findById(delegatedRequest.requestId, primary);
   const delegatedPolicy = approvalRequest?.policyId
     ? await delegatedApprovalPolicyDAL.findOne({ policyId: approvalRequest.policyId }, primary)

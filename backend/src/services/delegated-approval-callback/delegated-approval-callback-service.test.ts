@@ -43,6 +43,9 @@ const makeService = ({
 }: { stored?: boolean; currentRow?: { encryptedCallbackToken: Buffer | null } | null } = {}) => {
   const delegatedApprovalRequestDAL = {
     update: vi.fn(async (_filter: unknown, patch: object) => (stored ? [{ id: "delegated-1", ...patch }] : [])),
+    updateWithDetails: vi.fn(async (_filter: unknown, patch: object) =>
+      stored ? [{ id: "delegated-1", ...patch }] : []
+    ),
     transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(TX)),
     primaryNode: vi.fn(() => PRIMARY),
     findById: vi.fn(async (): Promise<unknown> => currentRow),
@@ -235,14 +238,14 @@ describe("handleCallback", () => {
       { status: ApprovalRequestStatus.Cancelled },
       TX
     );
-    const [filter, patch, tx] = delegatedApprovalRequestDAL.update.mock.lastCall as unknown as [
+    const [filter, patch, tx] = delegatedApprovalRequestDAL.updateWithDetails.mock.lastCall as unknown as [
       unknown,
-      { status: string; statusReason: string },
+      { status: string; details: { statusReason: string } },
       unknown
     ];
     expect(filter).toEqual({ id: "delegated-1", status: DelegatedApprovalRequestStatus.WaitingApproval });
     expect(patch.status).toBe(DelegatedApprovalRequestStatus.Failed);
-    expect(patch.statusReason).toContain(`more than ${DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS} times`);
+    expect(patch.details.statusReason).toContain(`more than ${DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS} times`);
     expect(tx).toBe(TX);
     expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
     expect(eventEmitter.emit).not.toHaveBeenCalled();
@@ -257,7 +260,10 @@ describe("handleCallback", () => {
     await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(ForbiddenRequestError);
 
     expect(approvalRequestDAL.updateById).not.toHaveBeenCalled();
-    const [, patch] = delegatedApprovalRequestDAL.update.mock.lastCall as unknown as [unknown, { status: string }];
+    const [, patch] = delegatedApprovalRequestDAL.updateWithDetails.mock.lastCall as unknown as [
+      unknown,
+      { status: string }
+    ];
     expect(patch.status).toBe(DelegatedApprovalRequestStatus.Failed);
   });
 
