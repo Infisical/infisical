@@ -1515,7 +1515,9 @@ export const registerRoutes = async (
     membershipGroupDAL,
     usageMeteringService,
     alertChannelRecipientDAL,
-    auditLogService
+    auditLogService,
+    orgDAL,
+    eventEmitter: eventOutboxService
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1779,7 +1781,10 @@ export const registerRoutes = async (
     usageMeteringService,
     alertChannelRecipientDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    userGroupMembershipDAL,
+    projectAccessRevokeService,
+    eventEmitter: eventOutboxService
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({

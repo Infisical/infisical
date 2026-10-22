@@ -889,7 +889,8 @@ itself whether the actor still reaches the org.
 - **Every removal of an org path emits a fact event in the same tx.** Four of them,
   `com.infisical.organization.<entity>.removed.v1`:
   - `group-membership`: `groupId`, `orgIds`, the `members` who left. From the removal helpers in
-    `group-fns.ts` (manual route plus SCIM, LDAP, OIDC and SAML sync).
+    `group-fns.ts` (manual route plus SCIM, LDAP, OIDC and SAML sync) and GitHub org sync, which removes team
+    members itself at login and on a manual sync.
   - `group-link`: `orgId`, `groupId`, the group's `members`. From `membershipGroupService.detachGroupFromOrg`.
   - `group`: `groupId`, `orgIds`, all `members`. From owned and SCIM group deletes, read with
     `groupDAL.findGroupActorsAndOrgs` before the cascade.
@@ -910,7 +911,7 @@ itself whether the actor still reaches the org.
   It runs in the caller's tx and hands back the PAM cancellation sender for after commit. Don't add another
   copy of that list.
 - **Removing a user from an org tears down synchronously; for an identity it depends on the path.** `deleteOrgMembershipsFn`
-  (org member removal, bulk removal, SCIM deprovision) drops the user's org rows in the sub-orgs, their
+  (org member removal, bulk removal, SCIM deprovision, the instance admin panel) drops the user's org rows in the sub-orgs, their
   groups there and calls `revokeActorsInOrgs` for the org plus its sub-orgs in the same tx; its event only
   lets the consumer confirm nothing's left. `membershipIdentityService.deleteMembership` just writes the
   revocation marker and emits, so the consumer does all the project cleanup there. `identityService.deleteIdentity`
@@ -936,8 +937,8 @@ itself whether the actor still reaches the org.
 - **`orgDAL.lockActorsForOrgAccess`** (advisory xact locks, one statement over the sorted ids so callers
   can't deadlock) serializes everything that grants against the consumer, so access granted between its
   check and its deletes doesn't get reaped or outlive it. Two kinds of caller take it:
-  - The add-to-group helpers in `group-fns.ts` (the SSO and SCIM services only pass it through). Take it in
-    any new path that grants an org path outside them.
+  - The add-to-group helpers in `group-fns.ts` (the SSO and SCIM services only pass it through) and GitHub org
+    sync, which adds team members itself. Take it in any new path that grants an org path outside them.
   - Every path that writes a project or resource membership for a user or identity, through
     `lockAndAssertActiveOrgAccess` (`services/org/org-access-fns.ts`), which locks and rechecks
     `findActorsWithActiveOrgAccess` inside the write's own transaction: the generic user and identity

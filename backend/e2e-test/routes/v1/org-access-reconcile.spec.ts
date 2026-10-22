@@ -320,6 +320,41 @@ describe("Org access reconcile", () => {
     expect(await projectRows(agentVaultProjectId, { actorUserId: userId })).toHaveLength(1);
   });
 
+  test("removing a member from the instance admin panel tears down their access like org member removal", async () => {
+    const groupId = await createLinkedGroup("reconcile-admin-panel");
+    const { userId } = await createRootUserWithProjects("reconcile-admin-panel-user", [groupId]);
+    await addUserMembership({ userId, orgId: subOrgId, role: OrgMembershipRole.Member });
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "reconcile-admin-panel-priv",
+      actorUserId: userId,
+      projectId: subOrgProjectId,
+      permissions: JSON.stringify([])
+    });
+    const orgMembership = (await testDb(TableName.Membership)
+      .where({ scope: AccessScope.Organization, scopeOrgId: rootOrgId, actorUserId: userId })
+      .first("id")) as { id: string };
+
+    // The seed user is the instance admin.
+    const res = await testServer.inject({
+      method: "DELETE",
+      url: `/api/v1/admin/organization-management/organizations/${rootOrgId}/memberships/${orgMembership.id}`,
+      headers: { authorization: `Bearer ${jwtAuthToken}` }
+    });
+    expect(res.statusCode).toBe(200);
+
+    // Read from the DB because the API can't list a removed member's leftover rows: the teardown is synchronous,
+    // so nothing may survive in either org, and the group no longer gives them a way back in.
+    expect(await testDb(TableName.Membership).where({ actorUserId: userId })).toHaveLength(0);
+    expect(await testDb(TableName.UserGroupMembership).where({ userId })).toHaveLength(0);
+    expect(await testDb(TableName.AdditionalPrivilege).where({ actorUserId: userId })).toHaveLength(0);
+    expect(
+      await testDb(TableName.EventOutbox)
+        .where({ consumer: ORG_ACCESS_RECONCILE_CONSUMER })
+        .whereRaw(`payload->>'actorId' = ?`, [userId])
+        .whereRaw(`payload->>'orgId' = ?`, [rootOrgId])
+    ).toHaveLength(1);
+  });
+
   // The sweep query, against real rows: a project or resource row with no path into the org is an orphan,
   // any path clears it. Resource-only rows (like a group-derived PAM admin's folder row) count too.
   test("the sweep query finds an actor with a project or resource row and no path into the org, and nothing else", async () => {
