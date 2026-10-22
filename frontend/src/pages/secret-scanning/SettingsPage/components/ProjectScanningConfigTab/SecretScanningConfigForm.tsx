@@ -100,7 +100,7 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
             )}
           </ProjectPermissionCan>
         </CardContent>
-        <CardFooter className="justify-end border-t">
+        <CardFooter className="justify-end">
           <ProjectPermissionCan
             I={ProjectPermissionSecretScanningConfigActions.Update}
             a={ProjectPermissionSub.SecretScanningConfigs}
