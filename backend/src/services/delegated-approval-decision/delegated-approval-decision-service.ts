@@ -130,6 +130,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
         error,
         `Failed to record delegated approval decision failure [delegatedRequestId=${context.delegatedRequestId}]`
       );
+      throw error;
     }
     await $audit(context, { outcome: DelegatedApprovalDecisionOutcome.Failed, reason });
     logger.error(
@@ -144,16 +145,21 @@ export const delegatedApprovalDecisionServiceFactory = ({
     postApprovalTxRoutine: TApprovalResource["postApprovalTxRoutine"]
   ): Promise<TDelegatedApprovalFinalizeOutcome> => {
     const outcome = await approvalRequestDAL.transaction(async (tx): Promise<TDelegatedApprovalFinalizeOutcome> => {
-      const locked = await approvalRequestDAL.findByIdForUpdate(context.approvalRequest.id, tx);
-      if (!locked) return { kind: "gone" };
+      const approvalRequestLocked = await approvalRequestDAL.findByIdForUpdate(context.approvalRequest.id, tx);
+      if (!approvalRequestLocked) return { kind: "gone" };
 
-      const isExpired = isApprovalRequestExpired(locked);
-      if (locked.status !== ApprovalRequestStatus.Pending || isExpired) {
+      const isExpired = isApprovalRequestExpired(approvalRequestLocked);
+      if (approvalRequestLocked.status !== ApprovalRequestStatus.Pending || isExpired) {
         const reason = isExpired
           ? `The decision from ${context.delegatedApprovalType} arrived after the request expired in Infisical. Create the request again.`
-          : `The decision from ${context.delegatedApprovalType} arrived after the request was ${locked.status} in Infisical.`;
+          : `The decision from ${context.delegatedApprovalType} arrived after the request was ${approvalRequestLocked.status} in Infisical.`;
         const failed = await failDelegatedApprovalRequest(
-          { id: context.delegatedRequestId, requestId: locked.id, reason, closeAs: ApprovalRequestStatus.Expired },
+          {
+            id: context.delegatedRequestId,
+            requestId: approvalRequestLocked.id,
+            reason,
+            closeAs: ApprovalRequestStatus.Expired
+          },
           { approvalRequestDAL, delegatedApprovalRequestDAL },
           tx
         );
@@ -172,11 +178,11 @@ export const delegatedApprovalDecisionServiceFactory = ({
       if (!finalized) return { kind: "raced" };
 
       await approvalRequestDAL.updateById(
-        locked.id,
+        approvalRequestLocked.id,
         { status: isApproved ? ApprovalRequestStatus.Approved : ApprovalRequestStatus.Rejected },
         tx
       );
-      if (isApproved) await postApprovalTxRoutine?.(locked as TApprovalRequest, tx);
+      if (isApproved) await postApprovalTxRoutine?.(approvalRequestLocked as TApprovalRequest, tx);
       return { kind: "applied" };
     });
 
