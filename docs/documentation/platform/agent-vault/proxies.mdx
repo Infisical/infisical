@@ -280,7 +280,7 @@ INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
 infisical agent-vault proxy --ca-cert ./ca.crt --ca-key ./ca.key
 ```
 
-The **Proxies** page shows the fingerprint of the CA that the proxy reported the last time it started.
+The **Proxies** page shows the fingerprint of the CA that the proxy reported the last time it started. Pass the same CA to every machine that runs this proxy, for example in a [high availability](#high-availability) setup.
 
 Your own CA stays the same when you rotate the proxy's token. To use the CA Infisical generates again, leave out these flags.
 
