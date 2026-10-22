@@ -9,7 +9,7 @@ export const middleTruncateDefinition = {
   exports: ["MiddleTruncate"],
   referenceNames: ["MiddleTruncate"],
   behavior: [
-    "Measures available width and recalculates on resize and font readiness.",
+    "Measures available width and recalculates on resize and font readiness. Both the host and the candidate text are measured in layout pixels, so a scaled ancestor (a transform such as the comparison stage) cannot make clipped text look like it fits.",
     "Copy retains the complete original string."
   ],
   accessibility: [

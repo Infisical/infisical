@@ -33,7 +33,7 @@ export const MiddleTruncate = React.forwardRef<
       }
       const fits = (candidate: string) => {
         ruler.textContent = candidate;
-        return ruler.getBoundingClientRect().width <= width;
+        return ruler.offsetWidth <= width;
       };
       if (fits(value)) {
         setVisible(value);

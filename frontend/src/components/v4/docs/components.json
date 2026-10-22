@@ -1355,7 +1355,8 @@
         "Identity"
       ],
       "behavior": [
-        "Avatar supports person, machine, agent and fallback identities, numeric size and optional status. Every kind shares one paint, a tint square with ink initials or icon and radius-control corners (square by default, 4px in soft mode); the initials or icon tell the kinds apart. Initials are 10, 12 and 14px at 24, 32 and 40px. The status dot is an 8px square outside the bottom corner with a 2px surface ring. AvatarGroup overlaps by 4px and exposes overflow, and Identity pairs a lead with text."
+        "Avatar supports person, machine, agent and fallback identities, numeric size and optional status. Every kind shares one paint, a tint square with ink initials or icon and radius-control corners (square by default, 4px in soft mode); the initials or icon tell the kinds apart. Initials are 10, 12 and 14px at 24, 32 and 40px. The status dot is an 8px square outside the bottom corner with a 2px surface ring. AvatarGroup overlaps by 4px and exposes overflow, and Identity pairs a lead with text.",
+        "Identity's text column fills the width left beside the lead, so a MiddleTruncate title measures a definite width and recovers its full text after a re-layout instead of staying collapsed."
       ],
       "accessibility": [
         "Provide an identity name or accessible label. Organizations use text or a neutral icon, never an invented avatar."
@@ -12959,7 +12960,7 @@
         "MiddleTruncate"
       ],
       "behavior": [
-        "Measures available width and recalculates on resize and font readiness.",
+        "Measures available width and recalculates on resize and font readiness. Both the host and the candidate text are measured in layout pixels, so a scaled ancestor (a transform such as the comparison stage) cannot make clipped text look like it fits.",
         "Copy retains the complete original string."
       ],
       "accessibility": [
@@ -14688,18 +14689,21 @@
         "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
         "Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.",
         "Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.",
-        "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization."
+        "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.",
+        "With a fixed height, load-more floats over the frame's last rows: the rows fade into the raised surface under an outline button, an end spacer lets the last loaded row scroll clear of it, and the button morphs to its loading state in place."
       ],
       "accessibility": [
         "Native table/header/cell semantics, labelled selection and aria-sort buttons.",
         "With virtual rows, screen readers still hear the total row count and each row's real position.",
-        "Focus remains on native controls; loading and selected totals announced politely."
+        "Focus remains on native controls; loading and selected totals announced politely.",
+        "After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived."
       ],
       "limitations": [
         "The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.",
         "Virtual tables use one uniform effective row height. rowHeight defaults to a requested 48px minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.",
         "Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.",
-        "Use text(row) for full hover text when render returns truncated complex content."
+        "Use text(row) for full hover text when render returns truncated complex content.",
+        "The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive and leave loadMore undefined once every row is loaded."
       ],
       "related": [
         "data-grid",
@@ -14754,6 +14758,16 @@
             "controlled",
             "keyboard",
             "overflow"
+          ]
+        },
+        {
+          "id": "load-more",
+          "title": "Virtual rows, load more",
+          "module": "./examples/table/load-more.tsx",
+          "states": [
+            "default",
+            "loading",
+            "keyboard"
           ]
         }
       ],
@@ -14814,7 +14828,8 @@
             "native",
             "empty",
             "protected-selection",
-            "virtual"
+            "virtual",
+            "load-more"
           ],
           "shown": [
             {
@@ -14836,6 +14851,11 @@
               "value": "virtual",
               "exampleId": "data-table",
               "label": "Example resource table"
+            },
+            {
+              "value": "load-more",
+              "exampleId": "load-more",
+              "label": "Example event log"
             }
           ]
         },

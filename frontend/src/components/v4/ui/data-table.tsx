@@ -70,6 +70,10 @@ export function DataTable<Row>({
   const [ownSelected, setOwnSelected] = React.useState<readonly string[]>(defaultSelectedIds);
   const [top, setTop] = React.useState(0);
   const scroll = React.useRef<HTMLDivElement>(null);
+  const [landing, setLanding] = React.useState<number | null>(null);
+  const [focusRow, setFocusRow] = React.useState<number | null>(null);
+  const focusPending = React.useRef(false);
+  const floating = Boolean(loadMore && height);
   const [measuredRow, setMeasuredRow] = React.useState({ requested: rowHeight, height: rowHeight });
   const effectiveRowHeight = measuredRow.requested === rowHeight ? measuredRow.height : rowHeight;
   const selected = selectedIds ?? ownSelected;
@@ -103,6 +107,24 @@ export function DataTable<Row>({
     visibleRows.forEach((row) => observer.observe(row));
     return () => observer.disconnect();
   }, [rowHeight, effectiveRowHeight, height, virtual, start, end, rows, columns]);
+  React.useLayoutEffect(() => {
+    const container = scroll.current;
+    if (landing === null || !container || loadMore?.loading || rows.length <= landing) return;
+    container.scrollTop = Math.max(0, (landing - 1) * effectiveRowHeight);
+    setTop(container.scrollTop);
+    focusPending.current = true;
+    setFocusRow(landing);
+    setLanding(null);
+  }, [landing, loadMore?.loading, rows.length, effectiveRowHeight]);
+  React.useLayoutEffect(() => {
+    if (!focusPending.current || focusRow === null) return;
+    const row = scroll.current?.querySelector<HTMLElement>(
+      `tbody tr[aria-rowindex="${focusRow + 2}"]`
+    );
+    if (!row) return;
+    focusPending.current = false;
+    row.focus({ preventScroll: true });
+  }, [focusRow, start]);
   const span = columns.length + (selectable ? 1 : 0);
   const hasGrowingColumn = columns.some((column) => column.grow && column.width === undefined);
   const columnStyle = (column: DataTableColumn<Row>): React.CSSProperties => ({
@@ -115,173 +137,190 @@ export function DataTable<Row>({
     maxHeight: height,
     "--v4-table-row-height": `${effectiveRowHeight}px`
   };
-  return (
-    <div className={styles.tableShell} data-slot="data-table" data-variant={variant}>
-      <div
-        ref={scroll}
-        data-scroll-fade="x"
-        className={cn(frame.frame, styles.tableScroll)}
-        data-virtual={Boolean(height && virtual) || undefined}
-        style={tableStyle}
-        onScroll={(event) => setTop(event.currentTarget.scrollTop)}
-      >
-        <Table aria-label={label} aria-rowcount={rows.length + 1} data-variant={variant}>
-          <TableHeader>
-            <TableRow>
+  const more = loadMore && (
+    <Button
+      type="button"
+      variant="outline"
+      loading={Boolean(loadMore.loading)}
+      onClick={() => {
+        setLanding(rows.length);
+        loadMore.onClick();
+      }}
+    >
+      {loadMore.label}
+    </Button>
+  );
+  const scrollFrame = (
+    <div
+      ref={scroll}
+      data-scroll-fade="x"
+      className={cn(frame.frame, styles.tableScroll)}
+      data-virtual={Boolean(height && virtual) || undefined}
+      style={tableStyle}
+      onScroll={(event) => setTop(event.currentTarget.scrollTop)}
+    >
+      <Table aria-label={label} aria-rowcount={rows.length + 1} data-variant={variant}>
+        <TableHeader>
+          <TableRow>
+            {selectable && (
+              <TableHead className={styles.tableCheck}>
+                <Checkbox
+                  aria-label={`Select all available rows in ${label}`}
+                  disabled={!eligible.length}
+                  checked={
+                    checked > 0 && checked < eligible.length
+                      ? "indeterminate"
+                      : eligible.length > 0 && checked === eligible.length
+                  }
+                  onCheckedChange={() =>
+                    update(
+                      checked === eligible.length
+                        ? selected.filter((id) => !eligible.includes(id))
+                        : [...new Set([...selected, ...eligible])]
+                    )
+                  }
+                />
+              </TableHead>
+            )}
+            {columns.map((column) => (
+              <TableHead
+                key={column.id}
+                scope="col"
+                style={columnStyle(column)}
+                data-actions={column.actions || undefined}
+                data-pin={column.pin ?? column.actions}
+                aria-sort={
+                  sort?.columnId === column.id
+                    ? sort.direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : undefined
+                }
+              >
+                {column.sortable && onSortChange ? (
+                  <button
+                    type="button"
+                    className={styles.tableSort}
+                    data-active={sort?.columnId === column.id || undefined}
+                    onClick={() =>
+                      onSortChange({
+                        columnId: column.id,
+                        direction:
+                          sort?.columnId === column.id && sort.direction === "asc" ? "desc" : "asc"
+                      })
+                    }
+                  >
+                    {column.header}
+                    <Icon
+                      name={
+                        sort?.columnId === column.id && sort.direction === "desc"
+                          ? "arrow-down"
+                          : "arrow-up"
+                      }
+                    />
+                  </button>
+                ) : (
+                  <span className={column.hideHeader || column.actions ? styles.sr : undefined}>
+                    {column.header}
+                  </span>
+                )}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {start > 0 && (
+            <TableRow aria-hidden data-spacer>
+              <TableCell
+                colSpan={span}
+                style={{ height: start * effectiveRowHeight, padding: 0 }}
+              />
+            </TableRow>
+          )}
+          {rows.slice(start, end).map((row, i) => (
+            <TableRow
+              key={getRowId(row)}
+              aria-rowindex={start + i + 2}
+              tabIndex={start + i === focusRow ? -1 : undefined}
+              onBlur={start + i === focusRow ? () => setFocusRow(null) : undefined}
+              data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
+              style={{ height: effectiveRowHeight }}
+            >
               {selectable && (
-                <TableHead className={styles.tableCheck}>
-                  <Checkbox
-                    aria-label={`Select all available rows in ${label}`}
-                    disabled={!eligible.length}
-                    checked={
-                      checked > 0 && checked < eligible.length
-                        ? "indeterminate"
-                        : eligible.length > 0 && checked === eligible.length
-                    }
-                    onCheckedChange={() =>
-                      update(
-                        checked === eligible.length
-                          ? selected.filter((id) => !eligible.includes(id))
-                          : [...new Set([...selected, ...eligible])]
-                      )
-                    }
-                  />
-                </TableHead>
+                <TableCell className={styles.tableCheck}>
+                  <div className={styles.tableSelection}>
+                    <Checkbox
+                      aria-label={`Select ${rowLabel(row)}`}
+                      checked={selected.includes(getRowId(row))}
+                      disabled={!isSelectable(row)}
+                      onCheckedChange={() =>
+                        update(
+                          selected.includes(getRowId(row))
+                            ? selected.filter((id) => id !== getRowId(row))
+                            : [...selected, getRowId(row)]
+                        )
+                      }
+                    />
+                  </div>
+                </TableCell>
               )}
               {columns.map((column) => (
-                <TableHead
+                <TableCell
                   key={column.id}
-                  scope="col"
                   style={columnStyle(column)}
                   data-actions={column.actions || undefined}
                   data-pin={column.pin ?? column.actions}
-                  aria-sort={
-                    sort?.columnId === column.id
-                      ? sort.direction === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : undefined
-                  }
                 >
-                  {column.sortable && onSortChange ? (
-                    <button
-                      type="button"
-                      className={styles.tableSort}
-                      data-active={sort?.columnId === column.id || undefined}
-                      onClick={() =>
-                        onSortChange({
-                          columnId: column.id,
-                          direction:
-                            sort?.columnId === column.id && sort.direction === "asc"
-                              ? "desc"
-                              : "asc"
-                        })
-                      }
-                    >
-                      {column.header}
-                      <Icon
-                        name={
-                          sort?.columnId === column.id && sort.direction === "desc"
-                            ? "arrow-down"
-                            : "arrow-up"
-                        }
-                      />
-                    </button>
-                  ) : (
-                    <span className={column.hideHeader || column.actions ? styles.sr : undefined}>
-                      {column.header}
-                    </span>
-                  )}
-                </TableHead>
+                  <div
+                    className={
+                      column.actions
+                        ? styles.tableActions
+                        : column.primary
+                          ? styles.tablePrimary
+                          : styles.tableValue
+                    }
+                    style={{ maxWidth: column.maxWidth }}
+                    title={column.actions ? undefined : column.text?.(row)}
+                  >
+                    {column.render(row, start + i)}
+                  </div>
+                </TableCell>
               ))}
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {start > 0 && (
-              <TableRow aria-hidden data-spacer>
-                <TableCell
-                  colSpan={span}
-                  style={{ height: start * effectiveRowHeight, padding: 0 }}
-                />
-              </TableRow>
-            )}
-            {rows.slice(start, end).map((row, i) => (
-              <TableRow
-                key={getRowId(row)}
-                aria-rowindex={start + i + 2}
-                data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
-                style={{ height: effectiveRowHeight }}
-              >
-                {selectable && (
-                  <TableCell className={styles.tableCheck}>
-                    <div className={styles.tableSelection}>
-                      <Checkbox
-                        aria-label={`Select ${rowLabel(row)}`}
-                        checked={selected.includes(getRowId(row))}
-                        disabled={!isSelectable(row)}
-                        onCheckedChange={() =>
-                          update(
-                            selected.includes(getRowId(row))
-                              ? selected.filter((id) => id !== getRowId(row))
-                              : [...selected, getRowId(row)]
-                          )
-                        }
-                      />
-                    </div>
-                  </TableCell>
-                )}
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    style={columnStyle(column)}
-                    data-actions={column.actions || undefined}
-                    data-pin={column.pin ?? column.actions}
-                  >
-                    <div
-                      className={
-                        column.actions
-                          ? styles.tableActions
-                          : column.primary
-                            ? styles.tablePrimary
-                            : styles.tableValue
-                      }
-                      style={{ maxWidth: column.maxWidth }}
-                      title={column.actions ? undefined : column.text?.(row)}
-                    >
-                      {column.render(row, start + i)}
-                    </div>
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-            {end < rows.length && (
-              <TableRow aria-hidden data-spacer>
-                <TableCell
-                  colSpan={span}
-                  style={{ height: (rows.length - end) * effectiveRowHeight, padding: 0 }}
-                />
-              </TableRow>
-            )}
-            {!rows.length && (
-              <TableRow>
-                <TableCell colSpan={span}>{empty}</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      {loadMore && (
-        <div className={styles.actions}>
-          <Button
-            type="button"
-            variant="outline"
-            loading={Boolean(loadMore.loading)}
-            onClick={loadMore.onClick}
-          >
-            {loadMore.label}
-          </Button>
+          ))}
+          {end < rows.length && (
+            <TableRow aria-hidden data-spacer>
+              <TableCell
+                colSpan={span}
+                style={{ height: (rows.length - end) * effectiveRowHeight, padding: 0 }}
+              />
+            </TableRow>
+          )}
+          {floating && rows.length > 0 && (
+            <TableRow aria-hidden data-spacer>
+              <TableCell colSpan={span} className={styles.tableMoreSpace} />
+            </TableRow>
+          )}
+          {!rows.length && (
+            <TableRow>
+              <TableCell colSpan={span}>{empty}</TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+  return (
+    <div className={styles.tableShell} data-slot="data-table" data-variant={variant}>
+      {floating ? (
+        <div className={styles.tableStage}>
+          {scrollFrame}
+          <div className={styles.tableMore}>{more}</div>
         </div>
+      ) : (
+        scrollFrame
       )}
+      {!floating && more && <div className={styles.actions}>{more}</div>}
       {footer && <div className={styles.status}>{footer}</div>}
       <span className={styles.sr} role="status">
         {selectable ? `${selected.length} selected. ` : ""}

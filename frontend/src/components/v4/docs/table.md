@@ -92,12 +92,14 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.
 - Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
+- With a fixed height, load-more floats over the frame's last rows: the rows fade into the raised surface under an outline button, an end spacer lets the last loaded row scroll clear of it, and the button morphs to its loading state in place.
 
 ## Accessibility
 
 - Native table/header/cell semantics, labelled selection and aria-sort buttons.
 - With virtual rows, screen readers still hear the total row count and each row's real position.
 - Focus remains on native controls; loading and selected totals announced politely.
+- After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.
 
 ## Use cases
 
@@ -109,6 +111,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Virtual tables use one uniform effective row height. rowHeight defaults to a requested 48px minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
 - Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.
 - Use text(row) for full hover text when render returns truncated complex content.
+- The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive and leave loadMore undefined once every row is loaded.
 
 ## Declared example coverage
 
@@ -132,6 +135,7 @@ Source declarations and review criteria only. Generation checks references and c
 - empty: example `states`, visible label "Empty".
 - protected-selection: example `states`, visible label "Protected selection".
 - virtual: example `data-table`, visible label "Example resource table".
+- load-more: example `load-more`, visible label "Example event log".
 
 ### column layout
 
@@ -403,6 +407,56 @@ export default function Example() {
         <DataTable label="Example resource table" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} selectable selectedIds={selected} onSelectionChange={setSelected} sort={sort} height={320} virtual onSortChange={setSort} footer={`${rows.length} resources. ${selected.length} selected.`}/>
       </div>
     </div><figcaption className="text-muted-foreground text-xs">{"Selection, sorting and virtual scrolling"}</figcaption></figure>);
+}
+```
+
+### Virtual rows, load more
+
+Save this example at `src/pages/design-system/examples/table/load-more.tsx`; its relative imports are generated for that exact path. States: default, loading, keyboard.
+
+Registry items used: @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useEffect, useState } from "react";
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+type Row = {
+    id: string;
+    name: string;
+    time: string;
+};
+const total = 200;
+const page = 40;
+const makeRows = (from: number, count: number): Row[] => Array.from({ length: Math.min(count, total - from) }, (_, offset) => {
+    const minutes = 23 * 60 + 59 - (from + offset) * 7;
+    return {
+        id: `event-${from + offset}`,
+        name: `example_event_${from + offset}`,
+        time: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+    };
+});
+const columns: DataTableColumn<Row>[] = [
+    { id: "time", header: "Time", width: 120, render: (row) => row.time },
+    { id: "name", header: "Event", primary: true, grow: true, render: (row) => row.name }
+];
+export default function Example() {
+    const [rows, setRows] = useState(() => makeRows(0, page));
+    const [loading, setLoading] = useState(false);
+    useEffect(() => {
+        if (!loading)
+            return undefined;
+        const timer = window.setTimeout(() => {
+            setRows((current) => [...current, ...makeRows(current.length, page)]);
+            setLoading(false);
+        }, 600);
+        return () => window.clearTimeout(timer);
+    }, [loading]);
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+      <div className="relative min-w-0 w-full overflow-auto max-h-[400px]">
+        <DataTable label="Example event log" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} height={320} rowHeight={48} virtual loadMore={rows.length < total
+            ? { label: `Load ${page} more`, loading, onClick: () => setLoading(true) }
+            : undefined} footer={`Showing ${rows.length} of ${total} events`}/>
+      </div>
+    </div><figcaption className="text-muted-foreground text-xs">{"Floating load more, focus lands on the first new row"}</figcaption></figure>);
 }
 ```
 

@@ -7,7 +7,7 @@
     "layout",
     "text"
   ],
-  "examples": 168,
+  "examples": 169,
   "missingCapabilities": [],
   "unmappedExports": [],
   "assessment": "Inventory and recipe coverage only. Behavior parity, browser checks and installation require executed evidence.",

@@ -31,18 +31,21 @@ export const tableDefinition = {
     "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
     "Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.",
     "Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.",
-    "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization."
+    "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.",
+    "With a fixed height, load-more floats over the frame's last rows: the rows fade into the raised surface under an outline button, an end spacer lets the last loaded row scroll clear of it, and the button morphs to its loading state in place."
   ],
   accessibility: [
     "Native table/header/cell semantics, labelled selection and aria-sort buttons.",
     "With virtual rows, screen readers still hear the total row count and each row's real position.",
-    "Focus remains on native controls; loading and selected totals announced politely."
+    "Focus remains on native controls; loading and selected totals announced politely.",
+    "After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived."
   ],
   limitations: [
     "The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.",
     "Virtual tables use one uniform effective row height. rowHeight defaults to a requested 48px minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.",
     "Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.",
-    "Use text(row) for full hover text when render returns truncated complex content."
+    "Use text(row) for full hover text when render returns truncated complex content.",
+    "The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive and leave loadMore undefined once every row is loaded."
   ],
   related: ["data-grid", "pagination"],
   examples: [
@@ -75,6 +78,12 @@ export const tableDefinition = {
       title: "Virtual rows and sorting",
       module: "./examples/table/data-table.tsx",
       states: ["default", "controlled", "keyboard", "overflow"]
+    },
+    {
+      id: "load-more",
+      title: "Virtual rows, load more",
+      module: "./examples/table/load-more.tsx",
+      states: ["default", "loading", "keyboard"]
     }
   ],
   coverage: [
@@ -122,7 +131,7 @@ export const tableDefinition = {
     },
     {
       axis: "collection",
-      expected: ["native", "empty", "protected-selection", "virtual"],
+      expected: ["native", "empty", "protected-selection", "virtual", "load-more"],
       shown: [
         {
           value: "native",
@@ -143,6 +152,11 @@ export const tableDefinition = {
           value: "virtual",
           exampleId: "data-table",
           label: "Example resource table"
+        },
+        {
+          value: "load-more",
+          exampleId: "load-more",
+          label: "Example event log"
         }
       ]
     },

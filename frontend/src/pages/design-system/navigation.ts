@@ -79,6 +79,13 @@ export const comparisonPages = [
     title: "Machine identities",
     description:
       "6 machine identities with their auth methods; open one for its details, auth methods and projects."
+  },
+  {
+    id: "compare-audit-logs",
+    screen: "audit-logs",
+    title: "Audit logs",
+    description:
+      "12,408 organization events from the last 30 days in a virtual DataTable that loads 500 rows at a time."
   }
 ] as const;
 export type ComparisonPage = (typeof comparisonPages)[number]["id"];
