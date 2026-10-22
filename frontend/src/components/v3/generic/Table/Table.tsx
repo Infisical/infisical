@@ -3,6 +3,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { cn } from "@app/components/v3/utils";
 
+import { Skeleton } from "../Skeleton";
+
 const Table = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"table"> & { containerClassName?: string; hasAttachedFooter?: boolean }
@@ -243,10 +245,12 @@ function TableHeadLabel({
 function TableCell({
   className,
   isTruncatable,
+  isWrappable,
   variant = "default",
   ...props
 }: React.ComponentProps<"td"> & {
   isTruncatable?: boolean;
+  isWrappable?: boolean;
   variant?: TableColumnVariant;
 }) {
   return (
@@ -256,11 +260,28 @@ function TableCell({
       className={cn(
         "h-10 border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
+        isWrappable && "max-w-md wrap-anywhere whitespace-normal",
         variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
       {...props}
     />
+  );
+}
+
+function TableSkeletonRows({ columns, rows = 3 }: { columns: number; rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }, (_, row) => (
+        <TableRow key={row} data-slot="table-skeleton-row">
+          {Array.from({ length: columns }, (__, column) => (
+            <TableCell key={column}>
+              <Skeleton className="h-4 w-full" />
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </>
   );
 }
 
@@ -289,6 +310,7 @@ export {
   TableHeader,
   TableHeadLabel,
   TableRow,
+  TableSkeletonRows,
   type TableSortDirection,
   TableVirtualBody,
   type TableVirtualRowProps

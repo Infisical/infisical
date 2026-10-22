@@ -55,7 +55,6 @@ export * from "./projectIdentity";
 export * from "./projectIdentityMembership";
 export * from "./projects";
 export * from "./projectUserAdditionalPrivilege";
-export * from "./rateLimit";
 export * from "./relays";
 export * from "./roles";
 export * from "./scim";

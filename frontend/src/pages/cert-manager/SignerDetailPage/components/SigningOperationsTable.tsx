@@ -45,7 +45,6 @@ import { ConnectToSignerDrawer } from "./ConnectToSignerDrawer";
 type Props = {
   signer: TSigner;
   signerId: string;
-  projectId: string;
 };
 
 const getActorDisplayName = (actorType: SigningActorType, actorName?: string | null) => {
@@ -61,7 +60,7 @@ const getActorDisplayName = (actorType: SigningActorType, actorName?: string | n
   }
 };
 
-export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) => {
+export const SigningOperationsTable = ({ signer, signerId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(SIGNER_TABLE_PAGE_SIZE);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
@@ -87,10 +86,9 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
         return;
       }
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/members/$membershipId",
+        to: "/organizations/$orgId/cert-manager/members/$membershipId",
         params: {
           orgId: currentOrg.id,
-          projectId,
           membershipId: op.actorId
         }
       });
@@ -103,10 +101,9 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
         return;
       }
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/identities/$identityId",
+        to: "/organizations/$orgId/cert-manager/identities/$identityId",
         params: {
           orgId: currentOrg.id,
-          projectId,
           identityId: op.actorId
         }
       });
@@ -163,10 +160,9 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
                       className="cursor-pointer transition-colors hover:bg-surface-hover [&>td]:py-3"
                       onClick={() =>
                         navigate({
-                          to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId/operations/$operationId",
+                          to: "/organizations/$orgId/cert-manager/code-signing/$signerId/operations/$operationId",
                           params: {
                             orgId: currentOrg.id,
-                            projectId,
                             signerId,
                             operationId: op.id
                           }

@@ -41,8 +41,9 @@ export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props
             Project Templates
           </CardTitle>
           <CardDescription>
-            Create and configure templates with predefined roles and environments to streamline
-            project setup.
+            Create and configure templates with predefined roles
+            {projectType === ProjectType.SecretManager && " and environments"} to streamline project
+            setup.
           </CardDescription>
           <CardAction>
             <OrgPermissionCan

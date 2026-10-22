@@ -36,7 +36,11 @@ const denial = (overrides: Partial<TRecordPermissionDeniedDTO> = {}): TRecordPer
   ...overrides
 });
 
-const createHarness = ({ windowAcquired = true, storedCount = "0", retentionDays = 30 } = {}) => {
+const createHarness = ({
+  windowAcquired = true,
+  storedCount = "0",
+  retentionDays = 30 as number | null
+}: { windowAcquired?: boolean; storedCount?: string; retentionDays?: number | null } = {}) => {
   const startHandlers = new Map<string, (job: { data: unknown }) => Promise<void>>();
   const queueService = {
     start: vi.fn((name: string, fn: (job: { data: unknown }) => Promise<void>) => {
@@ -192,6 +196,17 @@ describe("recordPermissionDenied", () => {
     expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
     expect(queueService.queue).not.toHaveBeenCalled();
     expect(auditLogQueue.pushToLog).not.toHaveBeenCalled();
+  });
+
+  test("an unlimited (null) retention records the denial and schedules the flush job", async () => {
+    const { service, queueService, auditLogQueue } = createHarness({ retentionDays: null });
+
+    await service.recordPermissionDenied(denial());
+
+    expect(auditLogQueue.pushToLog).toHaveBeenCalledTimes(1);
+    expect(auditLogQueue.pushToLog.mock.calls[0][0]).toMatchObject({ event: { type: EventType.PERMISSION_DENIED } });
+    expect(queueService.queue).toHaveBeenCalledTimes(1);
+    expect(queueService.queue.mock.calls[0][0]).toBe(QueueName.AuditLogCollapsedFlush);
   });
 
   test("a keystore failure is swallowed", async () => {

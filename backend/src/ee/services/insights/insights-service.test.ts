@@ -1,16 +1,27 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { IdentityAuthMethod } from "@app/db/schemas";
 import { TFeatureSet } from "@app/ee/services/license/license-types";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { OrgServiceActor } from "@app/lib/types";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { insightsServiceFactory, PROJECT_WARNINGS_CHUNK_SIZE, TInsightsServiceFactoryDep } from "./insights-service";
 import { TSecretsProjectWarning } from "./insights-types";
+
+type TClickHouseAuditLogDAL = NonNullable<TInsightsServiceFactoryDep["clickhouseAuditLogDAL"]>;
+
+const appConfig = { CLICKHOUSE_AUDIT_LOG_ENABLED: false };
+
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => appConfig
+}));
 
 const ORG_ID = "org-insights-chunk";
 const CATALOG_SIZE = 1500;
@@ -204,5 +215,139 @@ describe("getSecretsProjects chunk pagination", () => {
     expect(result.offset).toBe(offset);
     expect(result.limit).toBe(limit);
     expect(result.projects).toEqual(catalog.slice(offset, offset + limit));
+  });
+});
+
+describe("project access insights audit log store", () => {
+  const PROJECT_ID = "project-insights-store";
+  const today = new Date().toISOString().slice(0, 10);
+
+  const projectActor = {
+    type: ActorType.USER,
+    id: "user-1",
+    authMethod: AuthMethod.EMAIL,
+    orgId: ORG_ID,
+    rootOrgId: ORG_ID,
+    parentOrgId: ORG_ID
+  } as OrgServiceActor;
+
+  const buildProjectService = ({ withClickHouse }: { withClickHouse: boolean }) => {
+    const postgres = {
+      countByDateAndActor: vi.fn(async () => []),
+      countByAuthMethod: vi.fn(async () => [])
+    };
+    const volumeRows: Awaited<ReturnType<TClickHouseAuditLogDAL["countByDateAndActorForProject"]>> = [
+      { date: today, actor: ActorType.USER, actorMetadata: { userId: "user-1", email: "ada@example.com" }, count: 2 },
+      { date: today, actor: ActorType.IDENTITY, actorMetadata: { identityId: "identity-1", name: "ci-bot" }, count: 4 }
+    ];
+    const authMethodRows: Awaited<ReturnType<TClickHouseAuditLogDAL["countByAuthMethodForProject"]>> = [
+      { actor: ActorType.IDENTITY, actorMetadata: { authMethod: IdentityAuthMethod.UNIVERSAL_AUTH }, count: 4 },
+      { actor: ActorType.USER, actorMetadata: { authMethod: AuthMethod.EMAIL }, count: 2 }
+    ];
+    const clickhouse = {
+      countByDateForOrg: unreachable("clickhouseAuditLogDAL.countByDateForOrg"),
+      countByIdentityAuthMethodForOrg: unreachable("clickhouseAuditLogDAL.countByIdentityAuthMethodForOrg"),
+      countByDateAndActorForProject: vi.fn(async () => volumeRows),
+      countByAuthMethodForProject: vi.fn(async () => authMethodRows)
+    };
+
+    const service = insightsServiceFactory({
+      ...projectScopedDepStubs,
+      auditLogDAL: postgres,
+      clickhouseAuditLogDAL: withClickHouse ? clickhouse : undefined,
+      userDAL: {
+        find: async () => [{ id: "user-1", firstName: "Ada", lastName: "Lovelace" }]
+      } as unknown as TInsightsServiceFactoryDep["userDAL"],
+      permissionService: {
+        getProjectPermission: async () => ({
+          permission: createMongoAbility([
+            { action: ProjectPermissionInsightsActions.Read, subject: ProjectPermissionSub.Insights }
+          ])
+        }),
+        getOrgPermission: unreachable("permissionService.getOrgPermission")
+      } as unknown as TInsightsServiceFactoryDep["permissionService"],
+      licenseService: {
+        getPlan: async () => ({ secretAccessInsights: true }) as unknown as TFeatureSet
+      } as TInsightsServiceFactoryDep["licenseService"],
+      keyStore: {
+        getItem: async () => null,
+        setItemWithExpiry: async () => "OK",
+        ttl: async () => -2
+      },
+      orgDAL: {
+        countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers"),
+        findById: unreachable("orgDAL.findById")
+      },
+      identityOrgMembershipDAL: {
+        countSecretManagerProjectIdentities: unreachable("identityOrgMembershipDAL.countSecretManagerProjectIdentities")
+      },
+      dynamicSecretLeaseDAL: {
+        countLeasesForOrg: unreachable("dynamicSecretLeaseDAL.countLeasesForOrg")
+      },
+      insightsDAL: {
+        findSecretCreationsByWeekForOrg: unreachable("insightsDAL.findSecretCreationsByWeekForOrg"),
+        countSecretCreationsForOrg: unreachable("insightsDAL.countSecretCreationsForOrg"),
+        findProjectWarningsForOrg: unreachable("insightsDAL.findProjectWarningsForOrg")
+      }
+    });
+
+    return { service, postgres, clickhouse };
+  };
+
+  beforeEach(() => {
+    appConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = false;
+  });
+
+  test("reads Postgres when ClickHouse audit logging is off", async () => {
+    const { service, postgres, clickhouse } = buildProjectService({ withClickHouse: true });
+
+    await service.getAccessVolume({ projectId: PROJECT_ID }, projectActor);
+    await service.getAuthMethodDistribution({ projectId: PROJECT_ID, days: 30 }, projectActor);
+
+    expect(postgres.countByDateAndActor).toHaveBeenCalledOnce();
+    expect(postgres.countByAuthMethod).toHaveBeenCalledOnce();
+    expect(clickhouse.countByDateAndActorForProject).not.toHaveBeenCalled();
+    expect(clickhouse.countByAuthMethodForProject).not.toHaveBeenCalled();
+  });
+
+  test("reads Postgres when ClickHouse audit logging is on but no ClickHouse is configured", async () => {
+    appConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = true;
+    const { service, postgres } = buildProjectService({ withClickHouse: false });
+
+    await service.getAccessVolume({ projectId: PROJECT_ID }, projectActor);
+    await service.getAuthMethodDistribution({ projectId: PROJECT_ID, days: 30 }, projectActor);
+
+    expect(postgres.countByDateAndActor).toHaveBeenCalledOnce();
+    expect(postgres.countByAuthMethod).toHaveBeenCalledOnce();
+  });
+
+  test("reads ClickHouse when it holds the audit logs, and labels actors and auth methods as for Postgres", async () => {
+    appConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = true;
+    const { service, postgres, clickhouse } = buildProjectService({ withClickHouse: true });
+
+    const volume = await service.getAccessVolume({ projectId: PROJECT_ID }, projectActor);
+    const { methods } = await service.getAuthMethodDistribution({ projectId: PROJECT_ID, days: 30 }, projectActor);
+
+    expect(postgres.countByDateAndActor).not.toHaveBeenCalled();
+    expect(postgres.countByAuthMethod).not.toHaveBeenCalled();
+    expect(clickhouse.countByDateAndActorForProject).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: ORG_ID, projectId: PROJECT_ID })
+    );
+    expect(clickhouse.countByAuthMethodForProject).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: ORG_ID, projectId: PROJECT_ID })
+    );
+
+    expect(volume.days.find((day) => day.date === today)).toEqual({
+      date: today,
+      total: 6,
+      actors: [
+        { name: "ci-bot", type: ActorType.IDENTITY, count: 4 },
+        { name: "Ada Lovelace", type: ActorType.USER, count: 2 }
+      ]
+    });
+    expect(methods).toEqual([
+      { method: "Universal Auth", count: 4 },
+      { method: "Email", count: 2 }
+    ]);
   });
 });

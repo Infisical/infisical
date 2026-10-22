@@ -1738,6 +1738,7 @@ export type TPkiDiscoveryScanCompletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
+    discoveryType: string;
     status: string;
     certificatesFound: number;
     installationsFound: number;
@@ -2480,15 +2481,13 @@ export type TAgentVaultServiceDeletedEvent = {
 
 export type TAgentVaultVariableCreatedEvent = {
   event: PostHogEventTypes.AgentVaultVariableCreated;
-  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string; isSecret: boolean };
+  properties: TAgentVaultEventBase & { variableId: string };
 };
 
 export type TAgentVaultVariableUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultVariableUpdated;
   properties: TAgentVaultEventBase & {
-    accessBundleId: string;
     variableId: string;
-    isSecret: boolean;
     keyChanged: boolean;
     valueReplaced: boolean;
     usedByServiceCount: number;
@@ -2497,7 +2496,7 @@ export type TAgentVaultVariableUpdatedEvent = {
 
 export type TAgentVaultVariableDeletedEvent = {
   event: PostHogEventTypes.AgentVaultVariableDeleted;
-  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string };
+  properties: TAgentVaultEventBase & { variableId: string };
 };
 
 export type TAgentVaultAccessBundleMemberAddedEvent = {

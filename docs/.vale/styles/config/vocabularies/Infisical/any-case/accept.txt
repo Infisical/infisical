@@ -86,6 +86,7 @@ I
 (?i)async
 (?i)auditability
 (?i)auditable
+(?i)authorizer
 (?i)autoscale
 (?i)autoscaled
 (?i)autoscaler
@@ -358,6 +359,9 @@ I
 
 # PAM is both the product and a lowercase CLI subcommand.
 (?i)PAM
+# The CLI's Secrets Management command, which also appears on its own in anchors
+# such as `sm-run`. Lowercase only, so a stray "SM" in prose is still reported.
+sm
 # Case-insensitive because a canonical entry makes the converter capitalize the
 # verb "go" and rewrite the `git-changes` subcommand.
 (?i)Git\b

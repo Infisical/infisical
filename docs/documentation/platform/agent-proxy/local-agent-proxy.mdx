@@ -7,7 +7,7 @@ description: "Run an agent on your own computer, sandboxed, with a proxy that st
 A local proxy runs an agent on your own computer. `agent-proxy run` starts a proxy alongside your agent and stops it when the agent exits. It all happens on the one machine, with the agent sandboxed away from your credentials:
 
 ```bash
-infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+infisical sm agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 ```
 
 This page is the reference for that setup: what the sandbox allows and denies, how certificates work, how permissions are decided, and every flag `run` takes.
@@ -97,24 +97,24 @@ See [Platform support](#platform-support) for what happens where the sandbox is 
 
 ## Running an agent
 
-Every option resolves the same way: **the flag → an environment variable → `.infisical.json` → the default.** Run it from a directory that has an `.infisical.json` (created by `infisical init`) and the project, environment, and path come from there, so most of the flags fall away:
+Every option resolves the same way: **the flag → an environment variable → `.infisical.yaml` → the default.** Run it from a directory that has an `.infisical.yaml` (created by `infisical init`) and the project, environment, and path come from there, so most of the flags fall away:
 
-| Option | Flag | Environment variable | `.infisical.json` |
+| Option | Flag | Environment variable | `.infisical.yaml` |
 | --- | --- | --- | --- |
-| Project | `--projectId` | `INFISICAL_PROJECT_ID` | `workspaceId` |
-| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `defaultEnvironment` |
-| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `defaultSecretPath` |
-| Instance | `--domain` | `INFISICAL_DOMAIN` | `domain` |
+| Project | `--projectId` | `INFISICAL_PROJECT_ID` | `secrets-management.project-id` |
+| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `secrets-management.default-environment` |
+| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `secrets-management.default-secret-path` |
+| Instance | `--domain` | `INFISICAL_DOMAIN` | `general.domain` |
 | Sandbox | `--sandbox` / `--no-sandbox` | `INFISICAL_AGENT_PROXY_SANDBOX` | — |
 
 Everything after `--` is your agent's own command, run as-is. From a project directory:
 
 ```bash
-infisical secrets agent-proxy run -e dev -- claude
-infisical secrets agent-proxy run -e dev -- codex
+infisical sm agent-proxy run -e dev -- claude
+infisical sm agent-proxy run -e dev -- codex
 
 # any command works: this one sends only the placeholder, and GitHub still answers as you
-infisical secrets agent-proxy run -e dev -- \
+infisical sm agent-proxy run -e dev -- \
   sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
 ```
 
@@ -230,7 +230,7 @@ Credential paths deny **writes** as well as reads. That matters when you launch 
 If your agent genuinely needs a denied path, re-open exactly that path instead of disabling the sandbox:
 
 ```bash
-infisical secrets agent-proxy run -e dev --allow-read ~/.aws/config -- claude
+infisical sm agent-proxy run -e dev --allow-read ~/.aws/config -- claude
 ```
 
 That is precise: `~/.aws/config` becomes readable, read-only, while everything else under `~/.aws` (`credentials`, `sso/`) stays denied. `run` prints what it re-opened. `--allow-write <path>` adds a writable path, and both flags can be repeated.
@@ -296,7 +296,7 @@ That is deliberate. You're running an agent as yourself, on your own machine, ag
 Nothing is logged unless you ask for it. Pass `--log-file` and the proxy writes a record per request to that path, which you can follow in another terminal:
 
 ```bash
-infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
+infisical sm agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
 
 # in another terminal
 tail -f /tmp/broker.log
@@ -327,7 +327,7 @@ Without `--log-file` you still see problems: warnings and errors print to your t
     Point the tool at a throwaway config location so it never touches the denied path and picks up the placeholder from the environment instead:
 
     ```bash
-    infisical secrets agent-proxy run -e dev --set-env GH_CONFIG_DIR=/tmp/gh-cfg -- claude
+    infisical sm agent-proxy run -e dev --set-env GH_CONFIG_DIR=/tmp/gh-cfg -- claude
     ```
 
     The same pattern applies to any tool with a config-directory override.
@@ -356,17 +356,17 @@ Without `--log-file` you still see problems: warnings and errors print to your t
 ## Turning the sandbox off
 
 ```bash
-infisical secrets agent-proxy run -e dev --no-sandbox -- claude
+infisical sm agent-proxy run -e dev --no-sandbox -- claude
 ```
 
 Brokering still works and the environment is still scrubbed, but the agent is uncontained: it can read your keyring and credential files and reach the network directly, bypassing the proxy. `run` prints a warning saying so. This is a debugging tool, and the only option on Windows.
 
-`INFISICAL_AGENT_PROXY_SANDBOX=0` does the same thing. Neither can be set from `.infisical.json`, deliberately, so a committed file can't quietly disable the boundary for everyone who runs the agent.
+`INFISICAL_AGENT_PROXY_SANDBOX=0` does the same thing. Neither can be set from `.infisical.yaml`, deliberately, so a committed file can't quietly disable the boundary for everyone who runs the agent.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/reference#secrets-agent-proxy-run">
+  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/reference#sm-agent-proxy-run">
     Every flag for `run`, `start`, and `connect`, with examples.
   </Card>
   <Card title="Proxied Services" icon="arrow-right-left" href="/documentation/platform/agent-proxy/proxied-services">

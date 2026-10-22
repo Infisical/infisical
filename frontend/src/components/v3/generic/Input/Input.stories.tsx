@@ -18,6 +18,11 @@ import { Input } from "./Input";
  *
  * The component fills its parent's width by design — let the parent (`Field`,
  * `FieldGroup`, or a custom container) decide how wide the input should be.
+ *
+ * Input sets `data-1p-ignore` so 1Password does not offer to fill product fields.
+ * Fields whose `autoComplete` names an email, password or username (for example
+ * `username`, `current-password`, `new-password`) are left fillable. Pass
+ * `data-1p-ignore` or `data-1p-ignore={false}` to override the default.
  */
 const meta = {
   title: "Generic/Input",

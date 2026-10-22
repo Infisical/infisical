@@ -52,7 +52,7 @@ type Props = {
 };
 
 export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { projectId, orgId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
   const navigate = useNavigate();
   const editing = (popUp?.application?.data as TPkiApplication | undefined) ?? null;
   const create = useCreatePkiApplication();
@@ -112,10 +112,9 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
         // Land on Settings rather than the empty inventory: attaching a profile is the next step
         // before the application can issue anything.
         navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+          to: "/organizations/$orgId/cert-manager/applications/$applicationName",
           params: {
             orgId: orgId ?? "",
-            projectId: projectId ?? "",
             applicationName: created.name
           },
           search: { selectedTab: ApplicationTab.Settings }

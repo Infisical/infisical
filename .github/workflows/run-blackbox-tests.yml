@@ -83,7 +83,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=infisical-blackbox-backend
 
       - name: Run suites
-        run: make test-all
+        run: make test-suites
         working-directory: tests
         env:
           INFISICAL_TEST_IMAGE: infisical-test:ci

@@ -958,6 +958,7 @@ export const secretSyncServiceFactory = ({
           destination,
           {
             destinationConfig: params.destinationConfig as Record<string, unknown> | undefined,
+            existingDestinationConfig: secretSync.destinationConfig as Record<string, unknown>,
             connectionId: connectionIdForEnrich
           },
           preSaveTransformDeps

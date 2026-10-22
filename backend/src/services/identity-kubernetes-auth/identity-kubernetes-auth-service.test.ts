@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
+import { ConflictError } from "@app/lib/errors";
 
 import { identityKubernetesAuthServiceFactory } from "./identity-kubernetes-auth-service";
 import { IdentityKubernetesAuthTokenReviewMode } from "./identity-kubernetes-auth-types";
@@ -63,7 +64,13 @@ const createService = ({
     authMethod: "kubernetes",
     // the fake cipher pair below round-trips plaintext, so the "encrypted" blob is the JSON
     templateFields: Buffer.from(JSON.stringify(templateBlobFields)),
+    updatedAt: new Date("2026-10-01T00:00:00Z"),
     ...templateGatewayColumns
+  };
+
+  const identityAuthTemplateDAL = {
+    findByIdAndOrgId: vi.fn().mockResolvedValue(templateRow),
+    findByIdForShare: vi.fn().mockResolvedValue(templateRow)
   };
 
   const storedAuthRow = {
@@ -99,7 +106,7 @@ const createService = ({
     identityDAL: { findById: vi.fn() },
     identityKubernetesAuthDAL,
     identityAccessTokenDAL: { delete: vi.fn() },
-    identityAuthTemplateDAL: { findByIdAndOrgId: vi.fn().mockResolvedValue(templateRow) },
+    identityAuthTemplateDAL,
     membershipIdentityDAL: {
       findOne: vi.fn(),
       update: vi.fn(),
@@ -147,7 +154,7 @@ const createService = ({
     eventEmitter: { emit: vi.fn() }
   } as unknown as Parameters<typeof identityKubernetesAuthServiceFactory>[0]);
 
-  return { service, identityKubernetesAuthDAL };
+  return { service, identityKubernetesAuthDAL, identityAuthTemplateDAL, templateRow };
 };
 
 const baseActor = {
@@ -244,5 +251,64 @@ describe("identityKubernetesAuthServiceFactory template attach validation", () =
 
     await expect(updateWithTemplate(service)).rejects.toThrow("Cannot use auth template 'auth-template'");
     expect(identityKubernetesAuthDAL.updateById).not.toHaveBeenCalled();
+  });
+});
+
+describe("identityKubernetesAuthServiceFactory template lock", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("holds the template row before inserting the link", async () => {
+    const { service, identityKubernetesAuthDAL, identityAuthTemplateDAL, templateRow } = createService();
+    const order: string[] = [];
+    identityAuthTemplateDAL.findByIdForShare.mockImplementation(async () => {
+      order.push("lock");
+      return templateRow;
+    });
+    identityKubernetesAuthDAL.create.mockImplementation(async (data: Record<string, unknown>) => {
+      order.push("create");
+      return { id: "k8s-auth-id", ...data };
+    });
+
+    await attachWithTemplate(service);
+
+    expect(order).toEqual(["lock", "create"]);
+  });
+
+  it("rejects an attach when the template was edited after it was validated", async () => {
+    const { service, identityKubernetesAuthDAL, identityAuthTemplateDAL, templateRow } = createService();
+    identityAuthTemplateDAL.findByIdForShare.mockResolvedValue({
+      ...templateRow,
+      updatedAt: new Date("2026-10-01T00:00:01Z")
+    });
+
+    await expect(attachWithTemplate(service)).rejects.toBeInstanceOf(ConflictError);
+    expect(identityKubernetesAuthDAL.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a link change on update when the template was edited after it was validated", async () => {
+    const { service, identityKubernetesAuthDAL, identityAuthTemplateDAL, templateRow } = createService({
+      identityAuthMethods: [IdentityAuthMethod.KUBERNETES_AUTH]
+    });
+    identityAuthTemplateDAL.findByIdForShare.mockResolvedValue({
+      ...templateRow,
+      updatedAt: new Date("2026-10-01T00:00:01Z")
+    });
+
+    await expect(updateWithTemplate(service)).rejects.toBeInstanceOf(ConflictError);
+    expect(identityKubernetesAuthDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  it("takes no template lock on an update that does not link a template", async () => {
+    const { service, identityAuthTemplateDAL } = createService({
+      identityAuthMethods: [IdentityAuthMethod.KUBERNETES_AUTH]
+    });
+
+    await service.updateKubernetesAuth({
+      ...baseActor,
+      identityId: IDENTITY_ID,
+      accessTokenTTL: 3600
+    } as unknown as Parameters<typeof service.updateKubernetesAuth>[0]);
+
+    expect(identityAuthTemplateDAL.findByIdForShare).not.toHaveBeenCalled();
   });
 });

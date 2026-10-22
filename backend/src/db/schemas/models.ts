@@ -72,7 +72,6 @@ export enum TableName {
   UserSecretActivation = "user_secret_activation",
   SignupOnboardingResponse = "signup_onboarding_responses",
   SuperAdmin = "super_admin",
-  RateLimit = "rate_limit",
   // dropped with the SSH product; member kept for historical migrations
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
@@ -285,6 +284,7 @@ export enum TableName {
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
   AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  // Dropped; kept only for the migrations that create and drop it.
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
   ExternalMigrationConfig = "external_migration_configs",
@@ -361,7 +361,8 @@ export enum TableName {
   DeprecatedSecretRotationV1 = "secret_rotations",
   DeprecatedSecretRotationOutput = "secret_rotation_outputs",
   DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2",
-  DeprecatedApiKey = "api_keys"
+  DeprecatedApiKey = "api_keys",
+  DeprecatedRateLimit = "rate_limit"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

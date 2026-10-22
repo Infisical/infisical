@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,10 +6,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Modal, ModalClose, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Field,
   FieldError,
   FieldLabel,
@@ -47,11 +53,15 @@ type Props = {
   cmek: TCmek;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, "cmek"> & {
+  cmekVerifyMac: ReturnType<typeof useCmekVerifyMac>;
+};
 
-const VerifyMacForm = ({ cmek }: FormProps) => {
-  const cmekVerifyMac = useCmekVerifyMac();
+const VerifyMacForm = ({ cmek, cmekVerifyMac }: FormProps) => {
   const fieldId = useId();
+  const { reset: resetMacResult } = cmekVerifyMac;
+
+  useEffect(() => resetMacResult, [resetMacResult]);
 
   const {
     handleSubmit,
@@ -175,11 +185,15 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
           />
         </>
       )}
-      <div className="flex flex-wrap items-center gap-4">
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant={macValid === undefined ? "ghost" : "project"}>
+            {macValid !== undefined ? "Close" : "Cancel"}
+          </Button>
+        </DialogClose>
         {macValid === undefined && (
           <Button
             className="w-44"
-            size="sm"
             variant="project"
             type="submit"
             isPending={isSubmitting}
@@ -189,30 +203,26 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
             Verify MAC
           </Button>
         )}
-        <ModalClose asChild>
-          <Button variant={macValid === undefined ? "ghost" : "project"}>
-            {macValid !== undefined ? "Close" : "Cancel"}
-          </Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
 
 export const CmekVerifyMacModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+  const cmekVerifyMac = useCmekVerifyMac();
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Verify MAC"
-        subTitle={
-          <>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent isPending={cmekVerifyMac.isPending}>
+        <DialogHeader>
+          <DialogTitle>Verify MAC</DialogTitle>
+          <DialogDescription>
             Verify a message authentication code using{" "}
             <span className="font-bold">{cmek?.name}</span>.
-          </>
-        }
-      >
-        <VerifyMacForm cmek={cmek} />
-      </ModalContent>
-    </Modal>
+          </DialogDescription>
+        </DialogHeader>
+        <VerifyMacForm cmek={cmek} cmekVerifyMac={cmekVerifyMac} />
+      </DialogContent>
+    </Dialog>
   );
 };

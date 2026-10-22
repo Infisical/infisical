@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Accordion,
   AccordionContent,
@@ -12,7 +11,8 @@ import {
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  Spinner
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {

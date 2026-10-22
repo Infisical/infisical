@@ -77,6 +77,7 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSecretsManagementInsightsActions
 } from "@app/context/OrgPermissionContext/types";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
   getProjectHomePage,
   getProjectLucideIcon,
@@ -84,6 +85,7 @@ import {
   PROJECT_TILE_STYLE,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -106,6 +108,7 @@ import {
   ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import {
@@ -247,15 +250,39 @@ export const ProjectTypePage = () => {
   useEffect(() => {
     if (projectType === ProjectType.CertificateManager) {
       if (certManagerInstance?.activeProjectId) {
+        setCertManagerActiveProjectCookie(orgId, certManagerInstance.activeProjectId);
         navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-          params: { orgId, projectId: certManagerInstance.activeProjectId }
+          to: "/organizations/$orgId/cert-manager/overview",
+          params: { orgId }
         });
       } else if (certManagerInstance && !certManagerInstance.activeProjectId) {
         setIsCertManagerSetupOpen(true);
       }
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
+
+  // Resolving also creates the project for older orgs that never opened Secret Scanning. Non-members land
+  // on the product's access page, which offers joining or requesting access.
+  const { data: secretScanningProjectId, isError: isSecretScanningProjectError } =
+    useGetSecretScanningProjectId(orgId, {
+      enabled: projectType === ProjectType.SecretScanning
+    });
+
+  useEffect(() => {
+    if (projectType !== ProjectType.SecretScanning) return;
+
+    if (secretScanningProjectId) {
+      setSecretScanningActiveProjectCookie(orgId, secretScanningProjectId);
+      navigate({
+        to: "/organizations/$orgId/secret-scanning/data-sources",
+        params: { orgId }
+      });
+    } else if (isSecretScanningProjectError) {
+      // Failed queries are not reported globally, so without this the page would stay blank.
+      createNotification({ type: "error", text: "Couldn't open Secret Scanning. Try again." });
+      navigate({ to: "/organizations/$orgId/projects", params: { orgId } });
+    }
+  }, [projectType, secretScanningProjectId, isSecretScanningProjectError, orgId, navigate]);
 
   useEffect(() => {
     if (projectType === ProjectType.PAM) {
@@ -294,7 +321,11 @@ export const ProjectTypePage = () => {
     );
   }
 
-  if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
+  if (
+    projectType === ProjectType.PAM ||
+    projectType === ProjectType.AgentVault ||
+    projectType === ProjectType.SecretScanning
+  ) {
     return null;
   }
 
@@ -1307,31 +1338,6 @@ const EmptyState = ({
   isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
-  const { permission } = useOrgPermission();
-
-  if (projectType === ProjectType.SecretScanning) {
-    const canRequestAccess = permission.can(
-      OrgPermissionProjectActions.RequestAccess,
-      OrgPermissionSubjects.Project
-    );
-
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <ProductIcon />
-          </EmptyMedia>
-          <EmptyTitle>You don&apos;t have access to Secret Scanning</EmptyTitle>
-          <EmptyDescription>
-            {canRequestAccess
-              ? "Switch to All Projects to request access to the Secret Scanning project."
-              : "Ask an organization admin to add you to the Secret Scanning project."}
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
   return (
     <Empty className="border">
       <EmptyHeader>

@@ -2,8 +2,17 @@ import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
 
-import { Modal, ModalContent } from "@app/components/v2";
-import { IconButton, Spinner, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  IconButton,
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionCmekActions,
   ProjectPermissionSub,
@@ -178,8 +187,13 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
 
 export const CmekExportKeyModal = ({ isOpen, onOpenChange, cmek }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Export Key">{cmek && <ExportKeyForm cmek={cmek} />}</ModalContent>
-    </Modal>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Export Key</DialogTitle>
+        </DialogHeader>
+        {cmek && <ExportKeyForm cmek={cmek} />}
+      </DialogContent>
+    </Dialog>
   );
 };

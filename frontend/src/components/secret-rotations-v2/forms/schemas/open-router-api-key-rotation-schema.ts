@@ -19,6 +19,7 @@ export const OpenRouterApiKeyRotationSchema = z
           OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH,
           `Key name must be ${OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH} characters or fewer`
         ),
+      workspaceId: z.string().trim().optional(),
       limit: z.number().positive().optional().nullable(),
       limitReset: z.nativeEnum(OpenRouterLimitReset).optional().nullable(),
       includeByokInLimit: z.boolean().optional().nullable()

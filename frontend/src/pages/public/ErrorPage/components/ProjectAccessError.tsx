@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { HouseIcon, SendIcon, UserPlusIcon, UserXIcon } from "lucide-react";
 
@@ -8,9 +9,16 @@ import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionProjectActions
 } from "@app/context/OrgPermissionContext/types";
+import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
+import { resolveSecretScanningProjectId } from "@app/helpers/secretScanningActiveProject";
 import { usePopUp } from "@app/hooks";
-import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
+import { useGetUserProjects, useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
+import {
+  certManagerInstanceKeys,
+  fetchCertManagerInstanceState
+} from "@app/hooks/api/certManagerInstance";
 import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
+import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 
 import { ErrorPageFrame, useErrorPageTimestamp } from "./ErrorPageFrame";
 
@@ -26,16 +34,19 @@ const getPamOrgIdFromPath = () =>
 const getAgentVaultOrgIdFromPath = () =>
   window.location.pathname.match(/\/organizations\/([^/]+)\/agent-vault(\/|$)/)?.[1];
 
+const getCertManagerOrgIdFromPath = () =>
+  window.location.pathname.match(/\/organizations\/([^/]+)\/cert-manager(\/|$)/)?.[1];
+
+const getSecretScanningOrgIdFromPath = () =>
+  window.location.pathname.match(/\/organizations\/([^/]+)\/secret-scanning(\/|$)/)?.[1];
+
 // Products users experience as a single app rather than something they pick a project for
-// (ProjectSelect hides itself for both), so the copy names the product instead of "this project".
-// Cert Manager still carries a $projectId in its route for legacy multi-instance orgs.
+// (ProjectSelect hides itself for them), so the copy names the product instead of "this project".
 const PRODUCTS = [
   { pattern: /\/organizations\/[^/]+\/pam(\/|$)/, name: "Privileged Access Manager" },
   { pattern: /\/organizations\/[^/]+\/agent-vault(\/|$)/, name: "Agent Vault" },
-  {
-    pattern: /\/organizations\/[^/]+\/projects\/cert-manager(\/|$)/,
-    name: "Certificate Manager"
-  }
+  { pattern: /\/organizations\/[^/]+\/cert-manager(\/|$)/, name: "Certificate Manager" },
+  { pattern: /\/organizations\/[^/]+\/secret-scanning(\/|$)/, name: "Secret Scanning" }
 ];
 
 const getProductNameFromPath = () =>
@@ -68,8 +79,47 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     }
   );
 
+  // Certificate Manager resolves its project the same way its layout does, which is what failed.
+  const certManagerOrgId = needsPamFallback ? getCertManagerOrgIdFromPath() : undefined;
+  const { data: certManagerInstance, isPending: isCertManagerInstancePending } = useQuery({
+    queryKey: certManagerInstanceKeys.state(certManagerOrgId ?? ""),
+    queryFn: fetchCertManagerInstanceState,
+    enabled: Boolean(certManagerOrgId)
+  });
+  // Secret Scanning likewise resolves the project its layout would have opened.
+  const secretScanningOrgId = needsPamFallback ? getSecretScanningOrgIdFromPath() : undefined;
+  const { data: secretScanningInstance, isPending: isSecretScanningInstancePending } =
+    useGetSecretScanningInstanceState(secretScanningOrgId ?? "", {
+      enabled: Boolean(secretScanningOrgId)
+    });
+  const { data: memberProjects = [], isPending: isMemberProjectsPending } = useGetUserProjects({
+    options: { enabled: Boolean(certManagerOrgId) || Boolean(secretScanningOrgId) }
+  });
+  const certManagerProjectId =
+    certManagerOrgId && certManagerInstance
+      ? resolveCertManagerProjectId({
+          orgId: certManagerOrgId,
+          activeProjectId: certManagerInstance.activeProjectId,
+          memberProjectIds: memberProjects.map((p) => p.id)
+        })
+      : null;
+  const secretScanningProjectId =
+    secretScanningOrgId && secretScanningInstance
+      ? resolveSecretScanningProjectId({
+          orgId: secretScanningOrgId,
+          activeProjectId: secretScanningInstance.activeProjectId,
+          memberProjectIds: memberProjects.map((p) => p.id)
+        })
+      : null;
+
   const orgScopedProjectId = agentVaultOrgId ? pamOrg?.agentVaultProjectId : pamOrg?.pamProjectId;
-  const projectId = projectIdProp ?? routeProjectId ?? orgScopedProjectId ?? undefined;
+  const projectId =
+    projectIdProp ??
+    routeProjectId ??
+    orgScopedProjectId ??
+    certManagerProjectId ??
+    secretScanningProjectId ??
+    undefined;
 
   const { data, isPending: isProjectSearchPending } = useSearchProjects({
     projectIds: projectId ? [projectId] : [],
@@ -81,7 +131,10 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
   const [project] = data?.projects ?? [];
 
   // A disabled query reports isPending forever, so only an enabled query counts as in-flight
-  const isResolvingProjectId = Boolean(orgScopedOrgId) && isPamOrgPending;
+  const isResolvingProjectId =
+    (Boolean(orgScopedOrgId) && isPamOrgPending) ||
+    (Boolean(certManagerOrgId) && (isCertManagerInstancePending || isMemberProjectsPending)) ||
+    (Boolean(secretScanningOrgId) && (isSecretScanningInstancePending || isMemberProjectsPending));
   const isProjectResolving = isResolvingProjectId || (Boolean(projectId) && isProjectSearchPending);
   // Nothing in flight and still no project: the search errored or returned nothing, or no id
   // could be resolved. The request flow needs the resolved project (the modal renders nothing

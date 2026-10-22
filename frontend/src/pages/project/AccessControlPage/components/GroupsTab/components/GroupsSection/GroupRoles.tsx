@@ -38,7 +38,7 @@ import {
   useSubscription
 } from "@app/context";
 import { formatProjectRoleName, isCustomProjectRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
@@ -231,6 +231,7 @@ type FormProps = {
 };
 
 const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) => {
+  const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const {
@@ -375,7 +376,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
           size="xs"
           type="submit"
           isFullWidth
-          variant="project"
+          variant={scopeVariant}
           form="role-update-form"
           isDisabled={!isDirty || isSubmitting}
           isPending={isSubmitting}

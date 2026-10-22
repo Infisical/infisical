@@ -73,7 +73,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { useSubscription } from "@app/context/SubscriptionContext";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
@@ -90,6 +90,7 @@ import { PoolDetailSheet } from "./components/PoolDetailSheet";
 
 export const GatewayTab = withPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const navigate = useNavigate();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
@@ -194,7 +195,7 @@ export const GatewayTab = withPermission(
                 >
                   {(isAllowed: boolean) => (
                     <Button
-                      variant="org"
+                      variant={scopeVariant}
                       onClick={() => handlePopUpOpen("deployGateway")}
                       isDisabled={!isAllowed}
                     >
@@ -210,7 +211,7 @@ export const GatewayTab = withPermission(
                 >
                   {(isAllowed: boolean) => (
                     <Button
-                      variant="org"
+                      variant={scopeVariant}
                       onClick={() => {
                         if (!subscription?.gatewayPool) {
                           handlePopUpOpen("upgradePlan");

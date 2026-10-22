@@ -92,8 +92,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     schema: {
       hide: true,
       operationId: "getAgentVaultSessionLogHealth",
-      description:
-        "Gets whether session logs have reached their storage limit, and whether Infisical can use the AWS connection",
+      description: "Gets whether Infisical can use the AWS connection for session logs",
       tags: [ApiDocsTags.AgentVaultSettings],
       response: { 200: AgentVaultSessionLogHealthResponseSchema }
     },

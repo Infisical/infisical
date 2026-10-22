@@ -4,8 +4,16 @@ import { useCallback, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle } from "@app/components/v2";
-import { Loader } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  FieldSeparator,
+  Loader
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -166,21 +174,20 @@ export const SelectIntegrationAuthPage = () => {
       <Helmet>
         <title>Select Connection</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Select an existing connection below or create a new one for your integration."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img src={logo} height={30} width={30} alt="Integration logo" />
-            </div>
-            <span className="ml-2.5">Select Connection</span>
-          </div>
-        </CardTitle>
-        <div className="mb-7 flex flex-col items-center">
-          {!isLoadingIntegrationAuths && integrationAuths?.length
-            ? integrationAuths.map((integrationAuth) => {
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <img src={logo} height={30} width={30} alt="Integration logo" />
+            Select Connection
+          </CardTitle>
+          <CardDescription>
+            Select an existing connection below or create a new one for your integration.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {!isLoadingIntegrationAuths && integrationAuths?.length ? (
+            <div className="flex flex-col gap-2">
+              {integrationAuths.map((integrationAuth) => {
                 let connectionName = "";
 
                 if (integrationAuth.integration === "github") {
@@ -189,34 +196,24 @@ export const SelectIntegrationAuthPage = () => {
 
                 return (
                   <Button
-                    colorSchema="secondary"
-                    className="mt-3 w-3/4"
+                    isFullWidth
                     isDisabled={isIntegrationAuthSelectLoading}
                     key={integrationAuth.id}
-                    size="sm"
                     type="submit"
                     onClick={() => handleConnectionSelect(integrationAuth)}
+                    variant="outline"
                   >
                     {connectionName}
                   </Button>
                 );
-              })
-            : undefined}
-          <div className="mt-6 flex w-full flex-row items-center justify-center">
-            <div className="w-1/5 border-t border-border-emphasis" />
-            <p className="mx-4 text-xs text-muted-cool">OR</p>
-            <div className="w-1/5 border-t border-border-emphasis" />
-          </div>
-          <Button
-            colorSchema="primary"
-            className="mt-6 w-3/4"
-            size="sm"
-            type="submit"
-            onClick={handleNewConnection}
-          >
+              })}
+            </div>
+          ) : undefined}
+          <FieldSeparator>OR</FieldSeparator>
+          <Button isFullWidth type="submit" onClick={handleNewConnection} variant="project">
             Create New Connection
           </Button>
-        </div>
+        </CardContent>
       </Card>
     </div>
   );

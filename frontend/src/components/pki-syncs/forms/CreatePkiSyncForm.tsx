@@ -20,6 +20,7 @@ import {
   FieldContent,
   FieldDescription,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
@@ -27,11 +28,14 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
+  isPaloAltoNetworksPkiSync,
+  PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE,
   PKI_SYNC_MAP,
   PRESERVE_ARN_DESTINATIONS,
   PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS
 } from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { usePaloAltoNetworksConnectionListTemplates } from "@app/hooks/api/appConnections/palo-alto-networks";
 import {
   PkiSync,
   PkiSyncExportFormat,
@@ -43,6 +47,10 @@ import {
 } from "@app/hooks/api/pkiSyncs";
 
 import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "./schemas/kemp-loadmaster-pki-sync-destination-schema";
+import {
+  isPaloAltoNetworksTemplateMissing,
+  PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
+} from "./schemas/palo-alto-networks-pki-sync-destination-schema";
 import {
   getKeystoreFieldIssues,
   PkiSyncFormSchema,
@@ -283,6 +291,10 @@ export const CreatePkiSyncForm = ({
 
   const { handleSubmit, trigger, control, getValues, setError, watch } = formMethods;
   const canRemoveCertificates = watch("syncOptions.canRemoveCertificates");
+  const { data: paloAltoNetworksDevice, isLoading: isDetectingPaloAltoNetworksDevice } =
+    usePaloAltoNetworksConnectionListTemplates(watch("connection.id"), {
+      enabled: isPaloAltoNetworksPkiSync(destination)
+    });
 
   const isStepValid = async (index: number) => {
     const isValid = await trigger(FORM_TABS[index].fields);
@@ -299,6 +311,21 @@ export const CreatePkiSyncForm = ({
         });
         return false;
       }
+    }
+
+    if (
+      FORM_TABS[index].key === "destination" &&
+      isPaloAltoNetworksPkiSync(destination) &&
+      isPaloAltoNetworksTemplateMissing(
+        paloAltoNetworksDevice?.isPanorama,
+        getValues("destinationConfig")
+      )
+    ) {
+      setError("destinationConfig.template" as FieldPath<TPkiSyncForm>, {
+        type: "manual",
+        message: PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
+      });
+      return false;
     }
 
     if (FORM_TABS[index].key === "options") {
@@ -323,6 +350,7 @@ export const CreatePkiSyncForm = ({
   };
 
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
+  const isNextBusy = (isFinalStep && createPkiSync.isPending) || isDetectingPaloAltoNetworksDevice;
 
   const handleNext = async () => {
     if (isFinalStep) {
@@ -351,6 +379,10 @@ export const CreatePkiSyncForm = ({
   const currentKey = FORM_TABS[selectedTabIndex].key;
   const currentName = FORM_TABS[selectedTabIndex].name;
   const currentDetail = STEP_META[currentKey];
+  const rightDescription =
+    currentKey === "certificates" && isPaloAltoNetworksPkiSync(destination)
+      ? `${currentDetail.rightDescription}\n\n${PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE}`
+      : currentDetail.rightDescription;
 
   return (
     <form
@@ -450,7 +482,7 @@ export const CreatePkiSyncForm = ({
                 />
               </div>
               <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-              {currentDetail.rightDescription.split("\n\n").map((paragraph) => (
+              {rightDescription.split("\n\n").map((paragraph) => (
                 <p key={paragraph} className="mt-2 text-sm leading-relaxed text-muted">
                   {paragraph}
                 </p>
@@ -460,7 +492,7 @@ export const CreatePkiSyncForm = ({
         </div>
       </FormProvider>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+      <SheetFooter className="shrink-0 items-center justify-between border-t">
         <span className="text-xs text-muted">
           Step {selectedTabIndex + 1} of {FORM_TABS.length}
         </span>
@@ -473,12 +505,12 @@ export const CreatePkiSyncForm = ({
             variant="project"
             onClick={handleNext}
             isPending={isFinalStep && createPkiSync.isPending}
-            isDisabled={isFinalStep && createPkiSync.isPending}
+            isDisabled={isNextBusy}
           >
             {isFinalStep ? "Create Sync" : "Continue"}
           </Button>
         </div>
-      </div>
+      </SheetFooter>
 
       <AlertDialog
         open={showConfirmation}

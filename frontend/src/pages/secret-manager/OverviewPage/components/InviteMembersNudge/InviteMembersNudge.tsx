@@ -6,38 +6,33 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
   Card,
   CardDescription,
   CardTitle,
+  EmailInput,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  IconButton,
-  Input
+  IconButton
 } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission } from "@app/context";
-import { emailListSchema, parseEmailList } from "@app/helpers/email";
+import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
 import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { SecretsActivationProperties } from "@app/lib/analytics/events";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
 import { useFloatingBarClearance } from "./useFloatingBarClearance";
 
-const ACTIVATION_EVENTS = {
-  Viewed: "Secrets Activation Modal Viewed",
-  Invited: "Secrets Activation Modal Members Invited",
-  Dismissed: "Secrets Activation Modal Dismissed"
-} as const;
-
 const SUCCESS_AUTO_DISMISS_MS = 3000;
 
 const inviteMembersNudgeFormSchema = z.object({
-  emails: emailListSchema
+  emails: emailListSchema({ max: MAX_INVITE_EMAILS, isRequired: true })
 });
 
 export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false }: Props) => {
@@ -78,14 +73,12 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
     formState: { isSubmitting }
   } = useForm<TInviteMembersNudgeForm>({
     resolver: zodResolver(inviteMembersNudgeFormSchema),
-    defaultValues: { emails: "" }
+    defaultValues: { emails: [] }
   });
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
-  const telemetry = new Telemetry().getInstance();
-  const baseEventProps = {
-    orgId,
+  const baseEventProps: SecretsActivationProperties = {
     projectId,
     projectType: currentProject?.type,
     presentation: "card",
@@ -96,7 +89,11 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
   useEffect(() => {
     if (isOpen && !hasViewedRef.current) {
       hasViewedRef.current = true;
-      telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
+      analytics.captureForOrganization(
+        AnalyticsEvent.SecretsActivationModalViewed,
+        orgId,
+        baseEventProps
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -119,7 +116,11 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
 
   const onDismiss = () => {
     if (isSubmitting) return;
-    telemetry.capture(ACTIVATION_EVENTS.Dismissed, baseEventProps);
+    analytics.captureForOrganization(
+      AnalyticsEvent.SecretsActivationModalDismissed,
+      orgId,
+      baseEventProps
+    );
     close();
   };
 
@@ -136,10 +137,9 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
       return;
     }
 
-    const usernames = parseEmailList(emails);
-    if (usernames.length) {
+    if (emails.length) {
       await addUserToProject({
-        usernames,
+        usernames: emails,
         orgId: currentOrg.id,
         projectId: currentProject.id,
         projectType: currentProject.type,
@@ -147,9 +147,9 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
       });
     }
 
-    telemetry.capture(ACTIVATION_EVENTS.Invited, {
+    analytics.captureForOrganization(AnalyticsEvent.SecretsActivationModalMembersInvited, orgId, {
       ...baseEventProps,
-      invitedCount: usernames.length
+      invitedCount: emails.length
     });
 
     createNotification({
@@ -241,17 +241,17 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
                 <Controller
                   control={control}
                   name="emails"
-                  render={({ field, fieldState: { error } }) => (
+                  render={({ field: { value, onChange, ref }, fieldState: { error } }) => (
                     <Field>
                       <FieldLabel htmlFor="invite-members-nudge-emails">Emails</FieldLabel>
-                      <Input
+                      <EmailInput
+                        ref={ref}
                         id="invite-members-nudge-emails"
-                        type="text"
-                        autoComplete="off"
+                        value={value}
+                        onValueChange={onChange}
                         isError={Boolean(error)}
-                        disabled={!canSubmit}
+                        isDisabled={!canSubmit}
                         placeholder="email@example.com, email2@example.com"
-                        {...field}
                       />
                       <FieldDescription>{roleDescription}</FieldDescription>
                       <FieldError>{error?.message}</FieldError>

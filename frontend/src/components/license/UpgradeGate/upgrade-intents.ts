@@ -11,6 +11,7 @@ export const BillingPlan = {
 } as const;
 
 export const UpgradeFeature = {
+  SecretsManagement: "secrets-management",
   DynamicSecrets: "dynamic-secrets",
   SecretRotations: "secret-rotations",
   HoneyTokens: "honey-tokens",
@@ -39,7 +40,7 @@ export const UpgradeFeature = {
   CertificateIssuanceLimits: "certificate-issuance-limits",
   Pam: "pam",
   PamAccountLimit: "pam-account-limit",
-  PamSlackNotifications: "pam-slack-notifications",
+  PamEnterpriseAlerting: "pam-enterprise-alerting",
   EnterprisePamAccounts: "enterprise-pam-accounts"
 } as const;
 
@@ -53,6 +54,16 @@ export type UpgradeIntent = {
   quotaNotice?: string;
   quota?: { used: number; limit: number };
 };
+
+export const SecretsManagementUpgradeIntent = {
+  featureKey: UpgradeFeature.SecretsManagement,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Pro,
+  upgradeLabel: "Unlock Secrets Management",
+  title: "Open Secrets Management",
+  description:
+    "Secrets Management is included with the Pro plan. Review the plans or start a free trial to continue."
+} satisfies UpgradeIntent;
 
 export const DynamicSecretsUpgradeIntent = {
   featureKey: UpgradeFeature.DynamicSecrets,
@@ -330,14 +341,14 @@ export const PamAccountLimitUpgradeIntent = {
   description: "Compare PAM plans to increase your organization-wide account allowance."
 } satisfies UpgradeIntent;
 
-export const PamSlackNotificationsUpgradeIntent = {
-  featureKey: UpgradeFeature.PamSlackNotifications,
+export const PamEnterpriseAlertingUpgradeIntent = {
+  featureKey: UpgradeFeature.PamEnterpriseAlerting,
   productKey: BillingProduct.Pam,
   planKey: BillingPlan.Enterprise,
-  upgradeLabel: "Unlock Slack Notifications",
-  title: "Configure Slack Notifications",
+  upgradeLabel: "Unlock Enterprise Alert Channels",
+  title: "Add Enterprise Alert Channel",
   description:
-    "PAM Slack notifications are included with the Enterprise plan. Review the plan to continue."
+    "Webhook, Slack, and PagerDuty PAM alert channels are included with the Enterprise plan. Review the plan to continue."
 } satisfies UpgradeIntent;
 
 export const EnterprisePamAccountsUpgradeIntent = {

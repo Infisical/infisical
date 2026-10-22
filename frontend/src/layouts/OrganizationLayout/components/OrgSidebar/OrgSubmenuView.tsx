@@ -3,7 +3,6 @@ import {
   ChevronLeft,
   Cog,
   KeyRound,
-  LayoutTemplate,
   Lock,
   Network,
   ShieldUser,
@@ -64,12 +63,6 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
       icon: KeyRound,
       pathSuffix: "settings",
       search: { selectedTab: "tab-org-encryption" }
-    },
-    {
-      label: "Project Templates",
-      icon: LayoutTemplate,
-      pathSuffix: "settings",
-      search: { selectedTab: "project-templates" }
     },
     {
       label: "Product Settings",

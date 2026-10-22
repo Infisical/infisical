@@ -608,6 +608,14 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "Palo Alto Networks",
+    slug: "palo-alto-networks",
+    path: "/integrations/app-connections/palo-alto-networks",
+    description:
+      "Learn how to connect Palo Alto Networks firewalls and Panorama to deploy certificates with Infisical.",
+    category: "Networking & DNS",
+  },
+  {
     name: "GoDaddy",
     slug: "godaddy",
     path: "/integrations/app-connections/godaddy",
@@ -621,6 +629,14 @@ export const appConnections = [
     path: "/integrations/app-connections/rundeck",
     description:
       "Learn how to connect Rundeck to pull secrets from Infisical.",
+    category: "DevOps Tools",
+  },
+  {
+    name: "Portainer",
+    slug: "portainer",
+    path: "/integrations/app-connections/portainer",
+    description:
+      "Learn how to connect Portainer to pull secrets from Infisical.",
     category: "DevOps Tools",
   },
   {

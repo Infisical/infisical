@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   CheckCircle2Icon,
   CircleHelpIcon,
+  ClockIcon,
   EllipsisIcon,
   HistoryIcon,
   PencilIcon,
@@ -71,8 +72,8 @@ const getSyncStatusVariant = (status?: CertificateSyncStatus | null) => {
 const getSyncStatusIcon = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Succeeded) return <CheckCircle2Icon />;
   if (status === CertificateSyncStatus.Failed) return <TriangleAlertIcon />;
-  if (status === CertificateSyncStatus.Running || status === CertificateSyncStatus.Pending)
-    return <RotateCwIcon />;
+  if (status === CertificateSyncStatus.Running) return <RotateCwIcon />;
+  if (status === CertificateSyncStatus.Pending) return <ClockIcon />;
   return <CircleHelpIcon />;
 };
 
@@ -80,7 +81,7 @@ const getSyncStatusText = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Succeeded) return "Synced";
   if (status === CertificateSyncStatus.Failed) return "Failed";
   if (status === CertificateSyncStatus.Running) return "Syncing";
-  if (status === CertificateSyncStatus.Pending) return "Pending";
+  if (status === CertificateSyncStatus.Pending) return "Not Synced";
   return "Unknown";
 };
 

@@ -14,7 +14,9 @@ import {
 import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
+  getPaloAltoNetworksProfileLabel,
   getUnusedExportOptionKeys,
+  isPaloAltoNetworksPkiSync,
   KEY_VALUE_SYNC_OPTION_FIELDS,
   PKI_SYNC_MAP,
   VALUE_SYNC_OPTION_FIELDS
@@ -26,7 +28,10 @@ import {
   usePkiSyncOption,
   usePkiSyncPreviewCertificates
 } from "@app/hooks/api/pkiSyncs";
-import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
+import {
+  TPaloAltoNetworksSslTlsProfilePkiSync,
+  TPkiSyncFilters
+} from "@app/hooks/api/pkiSyncs/types";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { buildOrderNameMap, getPkiSyncCertificateCap, hasAnyFilter } from "./pki-sync-filter-fns";
@@ -43,6 +48,40 @@ const ReviewFieldLabel = ({ label, children }: { label: string; children?: React
       <div className="text-sm text-muted/50 italic">None</div>
     )}
   </div>
+);
+
+type TPaloAltoNetworksReviewConfig = Partial<
+  TPaloAltoNetworksSslTlsProfilePkiSync["destinationConfig"]
+>;
+
+const PaloAltoNetworksReviewFields = ({
+  destinationConfig
+}: {
+  destinationConfig: TPaloAltoNetworksReviewConfig;
+}) => (
+  <>
+    <ReviewFieldLabel label="Device Type">
+      {destinationConfig.template ? "Panorama" : "Firewall"}
+    </ReviewFieldLabel>
+    {destinationConfig.template && (
+      <>
+        <ReviewFieldLabel label="Template">{destinationConfig.template}</ReviewFieldLabel>
+        <ReviewFieldLabel label="Push to Devices">
+          <Badge variant={destinationConfig.pushToDevices === false ? "danger" : "success"}>
+            {destinationConfig.pushToDevices === false ? "Disabled" : "Enabled"}
+          </Badge>
+        </ReviewFieldLabel>
+      </>
+    )}
+    {destinationConfig.sslTlsServiceProfileName && (
+      <ReviewFieldLabel label="SSL/TLS Service Profile">
+        {getPaloAltoNetworksProfileLabel({
+          name: destinationConfig.sslTlsServiceProfileName,
+          vsys: destinationConfig.sslTlsServiceProfileVsys
+        })}
+      </ReviewFieldLabel>
+    )}
+  </>
 );
 
 type Props = {
@@ -188,6 +227,11 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
             destinationConfig.sslEnabled && (
               <ReviewFieldLabel label="WinRM Transport">HTTPS</ReviewFieldLabel>
             )}
+          {isPaloAltoNetworksPkiSync(destination) && destinationConfig && (
+            <PaloAltoNetworksReviewFields
+              destinationConfig={destinationConfig as TPaloAltoNetworksReviewConfig}
+            />
+          )}
         </div>
       </div>
       <div className="flex flex-col gap-3">

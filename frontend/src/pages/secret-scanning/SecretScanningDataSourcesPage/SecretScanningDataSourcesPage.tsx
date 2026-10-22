@@ -29,7 +29,7 @@ export const SecretScanningDataSourcesPage = () => {
               <PageHeader
                 scope={ProjectType.SecretScanning}
                 title="Data Sources"
-                description="Manage your Secret Scanning data sources."
+                description="Connected systems Secret Scanning reads from."
               />
               <SecretScanningDataSourcesSection />
             </div>

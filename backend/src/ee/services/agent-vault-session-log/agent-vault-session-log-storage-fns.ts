@@ -1,8 +1,8 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 
 import { ProjectType } from "@app/db/schemas";
-import { createS3Bucket } from "@app/lib/aws/s3";
-import { BadRequestError } from "@app/lib/errors";
+import { AWS_REQUEST_TIMEOUTS, createS3Bucket } from "@app/lib/aws/s3";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -11,8 +11,11 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS } from "./agent-vault-session-log-constants";
-import { withKeyPrefix } from "./agent-vault-session-log-fns";
+import {
+  AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS,
+  AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
+} from "./agent-vault-session-log-constants";
+import { isTemporaryAwsError, withKeyPrefix } from "./agent-vault-session-log-fns";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
 
 type TStorageDeps = {
@@ -50,10 +53,16 @@ export const buildSessionLogStorage = async (
     // Session logs only accept org connections or Agent Vault's own, and both assume the role with the org ID.
     ({ credentials } = await getAwsConnectionConfig(
       { ...connection, projectType: ProjectType.AgentVault } as unknown as TAwsConnectionConfig,
-      config.region
+      config.region,
+      { stsRequestHandler: AWS_REQUEST_TIMEOUTS }
     ));
   } catch (err) {
     logger.warn({ err }, `Agent Vault session logs could not use their AWS connection [appConnectionId=${raw.id}]`);
+    if (isTemporaryAwsError(err)) {
+      throw new InternalServerError({
+        message: `Couldn't reach AWS to use the connection '${raw.name}' for session logs. Try again in a bit.`
+      });
+    }
     const reason =
       err instanceof STSServiceException || err instanceof BadRequestError
         ? err.message
@@ -78,7 +87,7 @@ export const buildSessionLogStorage = async (
     s3.presignCreateOnlyPut({
       key: objectKey,
       contentLength: ciphertextBytes,
-      // Stored unpadded; S3 wants the padded form
+      // The proxy sends it unpadded; S3 wants the padded form
       sha256Base64: `${ciphertextSha256}=`,
       expiresInSeconds: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
     });
@@ -86,7 +95,12 @@ export const buildSessionLogStorage = async (
   const presignGet = async (objectKey: string) =>
     s3.presignGet(objectKey, AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS);
 
+  const listChunks = async ({ folder, startAfter }: { folder: string; startAfter?: string }) =>
+    s3.listPage({ prefix: folder, startAfter, maxKeys: AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS });
+
   const mintCorsProbeUrl = async () => presignGet(withKeyPrefix(keyPrefix, ".cors-probe"));
+
+  const unreachableMessage = `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it`;
 
   const validate = async () => {
     const testKey = withKeyPrefix(keyPrefix, ".test/write-check");
@@ -100,10 +114,19 @@ export const buildSessionLogStorage = async (
     throw new BadRequestError({
       message:
         access.failure === "unreachable"
-          ? `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials can access it`
+          ? unreachableMessage
           : `Bucket '${bucket}' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix`
     });
   };
 
-  return { presignPut, presignGet, mintCorsProbeUrl, validate };
+  // Read-only, so it is safe to call often: it can't tell whether writes still work.
+  const assertReachable = async () => {
+    const reachable = await s3.checkReachable();
+    if (reachable.ok) return;
+
+    logger.warn({ err: reachable.error, bucket }, `Agent Vault session logs bucket is unreachable [bucket=${bucket}]`);
+    throw new BadRequestError({ message: unreachableMessage });
+  };
+
+  return { presignPut, presignGet, listChunks, mintCorsProbeUrl, validate, assertReachable };
 };

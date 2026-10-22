@@ -559,6 +559,7 @@ const envSchema = z
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
     ),
@@ -1239,7 +1240,7 @@ export const formatSmtpConfig = () => {
     secure: envCfg.SMTP_PORT === 465,
     from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
     ignoreTLS: envCfg.SMTP_IGNORE_TLS,
-    requireTLS: envCfg.SMTP_REQUIRE_TLS,
+    requireTLS: envCfg.SMTP_REQUIRE_TLS && !envCfg.SMTP_IGNORE_TLS,
     tls: tlsOptions
   };
 };

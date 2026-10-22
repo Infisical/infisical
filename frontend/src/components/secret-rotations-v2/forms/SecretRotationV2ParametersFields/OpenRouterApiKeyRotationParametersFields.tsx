@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
@@ -7,6 +8,7 @@ import {
   FieldContent,
   FieldError,
   FieldFeedback,
+  FilterableSelect,
   Input,
   Label,
   Select,
@@ -16,6 +18,10 @@ import {
   SelectValue,
   Toggle
 } from "@app/components/v3";
+import {
+  TOpenRouterWorkspace,
+  useListOpenRouterConnectionWorkspaces
+} from "@app/hooks/api/appConnections/open-router";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { OpenRouterLimitReset } from "@app/hooks/api/secretRotationsV2/types/open-router-api-key-rotation";
 
@@ -39,9 +45,56 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
   >();
 
   const limit = watch("parameters.limit");
+  const connectionId = watch("connection.id");
+  const isUpdate = Boolean(watch("id"));
+
+  const { data: workspaces, isPending: isWorkspacesPending } =
+    useListOpenRouterConnectionWorkspaces(connectionId, {
+      enabled: Boolean(connectionId)
+    });
 
   return (
     <>
+      <Controller
+        name="parameters.workspaceId"
+        control={control}
+        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip
+              htmlFor="openrouter-workspace"
+              tooltip="The OpenRouter workspace to create API keys in. Leave blank to use your OpenRouter Default workspace. This cannot be changed after the rotation is created."
+            >
+              Workspace <span className="font-normal text-muted">(optional)</span>
+            </FieldLabelWithTooltip>
+            <FilterableSelect
+              inputId="openrouter-workspace"
+              isClearable
+              isLoading={isWorkspacesPending && Boolean(connectionId)}
+              isDisabled={!connectionId || isUpdate}
+              value={
+                workspaces?.find((workspace) => workspace.id === value) ??
+                (value ? { id: value, name: value, slug: value } : null)
+              }
+              onBlur={onBlur}
+              onChange={(option) => {
+                onChange((option as SingleValue<TOpenRouterWorkspace>)?.id || undefined);
+              }}
+              options={workspaces}
+              placeholder="Select a workspace..."
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.id}
+              isError={Boolean(error)}
+            />
+            {(isUpdate || error?.message) && (
+              <FieldFeedback
+                id="openrouter-workspace-feedback"
+                description={isUpdate ? "Cannot be updated." : undefined}
+                error={error?.message}
+              />
+            )}
+          </Field>
+        )}
+      />
       <Controller
         name="parameters.name"
         control={control}

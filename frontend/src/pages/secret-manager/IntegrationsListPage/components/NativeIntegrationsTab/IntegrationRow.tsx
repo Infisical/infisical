@@ -14,8 +14,16 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
-import { Badge, ProviderIcon } from "@app/components/v3";
+import {
+  Badge,
+  IconButton,
+  ProviderIcon,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -63,7 +71,7 @@ export const IntegrationRow = ({
   }, [isSynced, syncMessage]);
 
   return (
-    <Tr
+    <TableRow
       onClick={() =>
         navigate({
           to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId",
@@ -74,13 +82,10 @@ export const IntegrationRow = ({
           }
         })
       }
-      className={twMerge(
-        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover",
-        isSynced === false && "bg-danger/5 hover:bg-danger/10"
-      )}
+      className={twMerge(isSynced === false && "bg-danger/5 hover:bg-danger/10")}
       key={`integration-${id}`}
     >
-      <Td>
+      <TableCell>
         <div className="flex items-center gap-2">
           <ProviderIcon
             alt={`${cloudIntegration?.name} integration`}
@@ -89,36 +94,51 @@ export const IntegrationRow = ({
           />
           <span className="hidden lg:inline">{cloudIntegration?.name}</span>
         </div>
-      </Td>
-      <Td className="max-w-0 min-w-32!">
-        <Tooltip side="top" className="max-w-2xl break-words" content={secretPath}>
-          <p className="truncate">{secretPath}</p>
-        </Tooltip>{" "}
-      </Td>
-      <Td>{environment?.name ?? "-"}</Td>
-      <Td className="max-w-0 min-w-20!">
+      </TableCell>
+      <TableCell isTruncatable className="min-w-32">
+        {secretPath && (
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <p className="truncate">{secretPath}</p>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-2xl break-words">
+              {secretPath}
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </TableCell>
+      <TableCell>{environment?.name ?? "-"}</TableCell>
+      <TableCell isTruncatable className="min-w-20">
         <div className="flex items-center gap-2">
           <p className="truncate">{getIntegrationDestination(integration)}</p>
-          <Tooltip
-            position="left"
-            className="max-w-lg min-w-[20rem]"
-            content={<IntegrationDetails integration={integration} />}
-          >
-            <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-lg min-w-[20rem]">
+              <IntegrationDetails integration={integration} />
+            </TooltipContent>
           </Tooltip>
         </div>
-      </Td>
-      <Td>
-        {" "}
+      </TableCell>
+      <TableCell>
         {typeof integration.isSynced !== "boolean" ? (
           <Badge variant="info" key={integration.id}>
             Pending Sync
           </Badge>
         ) : (
-          <Tooltip
-            position="left"
-            className="max-w-sm"
-            content={
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <div className="w-min whitespace-nowrap">
+                <Badge variant={integration.isSynced ? "success" : "danger"} key={integration.id}>
+                  <div className="flex items-center space-x-1">
+                    <FontAwesomeIcon icon={integration.isSynced ? faCheck : faWarning} />
+                    <div>{integration.isSynced ? "Synced" : "Not Synced"}</div>
+                  </div>
+                </Badge>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-sm">
               <div className="flex flex-col gap-2 py-1">
                 {integration.lastUsed && (
                   <div>
@@ -146,57 +166,54 @@ export const IntegrationRow = ({
                   </div>
                 )}
               </div>
-            }
-          >
-            <div className="w-min whitespace-nowrap">
-              <Badge variant={integration.isSynced ? "success" : "danger"} key={integration.id}>
-                <div className="flex items-center space-x-1">
-                  <FontAwesomeIcon icon={integration.isSynced ? faCheck : faWarning} />
-                  <div>{integration.isSynced ? "Synced" : "Not Synced"}</div>
-                </div>
-              </Badge>
-            </div>
+            </TooltipContent>
           </Tooltip>
         )}
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
         <div className="flex gap-2 whitespace-nowrap">
-          <Tooltip className="max-w-sm text-center" content="Manually Sync">
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                onManualSyncIntegration();
-              }}
-              ariaLabel="sync"
-              colorSchema="secondary"
-              variant="plain"
-            >
-              <FontAwesomeIcon icon={faRefresh} />
-            </IconButton>
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onManualSyncIntegration();
+                }}
+                aria-label="sync"
+                variant="ghost"
+              >
+                <FontAwesomeIcon icon={faRefresh} />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm text-center">Manually Sync</TooltipContent>
           </Tooltip>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
             a={ProjectPermissionSub.Integrations}
           >
             {(isAllowed: boolean) => (
-              <Tooltip content="Remove Integration">
-                <IconButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveIntegration();
-                  }}
-                  ariaLabel="delete"
-                  isDisabled={!isAllowed}
-                  colorSchema="danger"
-                  variant="plain"
-                >
-                  <FontAwesomeIcon icon={faTrash} className="px-1" />
-                </IconButton>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <span>
+                    <IconButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveIntegration();
+                      }}
+                      aria-label="delete"
+                      isDisabled={!isAllowed}
+                      variant="danger"
+                    >
+                      <FontAwesomeIcon icon={faTrash} className="px-1" />
+                    </IconButton>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Remove Integration</TooltipContent>
               </Tooltip>
             )}
           </ProjectPermissionCan>
         </div>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

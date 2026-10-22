@@ -20,7 +20,7 @@ export const InventoryPage = () => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const searchParams = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/inventory"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/inventory"
   });
 
   const dashboardFilters = useMemo<FilterRule[]>(() => {

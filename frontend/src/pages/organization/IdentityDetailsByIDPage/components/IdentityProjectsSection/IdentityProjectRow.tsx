@@ -14,7 +14,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, pinProjectForNavigation } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserProjects } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
@@ -58,6 +58,7 @@ export const IdentityProjectRow = ({
       key={`identity-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {
+          pinProjectForNavigation(currentOrg?.id || "", { id: project.id, type: project.type });
           navigate({
             to: `${getProjectBaseURL(project.type)}/access-management` as const,
             params: {
@@ -94,6 +95,10 @@ export const IdentityProjectRow = ({
               isDisabled={!isAccessible}
               onClick={(e) => {
                 e.stopPropagation();
+                pinProjectForNavigation(currentOrg?.id || "", {
+                  id: project.id,
+                  type: project.type
+                });
                 navigate({
                   to: `${getProjectBaseURL(project.type)}/access-management` as const,
                   params: {

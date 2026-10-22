@@ -14,6 +14,7 @@ export const PROVIDER_ICON_VARIANTS: Record<string, ProviderIconVariants> = {
   "GitHub.png": { onLight: "GitHub.on-light.png" },
   "Gradle.png": { onLight: "Gradle.on-light.png" },
   "Infisical.png": { onLight: "Infisical.on-light.png" },
+  "Kafka.png": { onLight: "Kafka.on-light.png" },
   "Next.js.png": { onLight: "Next.js.on-light.png" },
   "Nutanix.png": { onLight: "Nutanix.on-light.png" },
   "OpenAI.png": { onDark: "OpenAIWhite.png" },

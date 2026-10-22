@@ -23,6 +23,7 @@ export const dynamicSecrets = [
   {"name": "Redis", "slug": "redis", "path": "/documentation/platform/dynamic-secrets/redis", "description": "Learn how to generate dynamic Redis credentials on-demand.", "category": "Caches"},
   {"name": "ElasticSearch", "slug": "elasticsearch", "path": "/documentation/platform/dynamic-secrets/elastic-search", "description": "Learn how to generate dynamic ElasticSearch credentials on-demand.", "category": "Databases"},
   {"name": "RabbitMQ", "slug": "rabbitmq", "path": "/documentation/platform/dynamic-secrets/rabbit-mq", "description": "Learn how to generate dynamic RabbitMQ credentials on-demand.", "category": "Message Queues"},
+  {"name": "Kafka", "slug": "kafka", "path": "/documentation/platform/dynamic-secrets/kafka", "description": "Learn how to generate dynamic Kafka credentials on-demand.", "category": "Message Queues"},
   {"name": "LDAP", "slug": "ldap", "path": "/documentation/platform/dynamic-secrets/ldap", "description": "Learn how to generate dynamic LDAP credentials on-demand.", "category": "Directory Services"},
   {"name": "GitHub", "slug": "github", "path": "/documentation/platform/dynamic-secrets/github", "description": "Learn how to generate dynamic GitHub credentials on-demand.", "category": "CI/CD"},
   {"name": "IBM API Connect", "slug": "ibm-api-connect", "path": "/documentation/platform/dynamic-secrets/ibm-api-connect", "description": "Learn how to generate dynamic IBM API Connect application credentials on-demand.", "category": "Cloud Providers"},

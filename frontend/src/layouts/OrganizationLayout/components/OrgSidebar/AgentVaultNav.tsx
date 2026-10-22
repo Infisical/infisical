@@ -1,4 +1,4 @@
-import { FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
+import { Braces, FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
 import {
@@ -31,22 +31,22 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
-    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" }
+    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
+    { label: "Variables", icon: Braces, pathSuffix: "variables", hidden: !isAdmin }
   ];
 
   const infrastructureItems: NavItem[] = [
     { label: "Proxies", icon: Server, pathSuffix: "proxies" }
   ];
 
-  let settingsDot: NavItem["dotVariant"];
-  if (
+  let settingsAlert: NavItem["alertVariant"];
+  if (sessionLogHealth?.connectionError) settingsAlert = "danger";
+  else if (
     sessionLogSettings?.bucket &&
     (!areAgentVaultSessionLogsOn(sessionLogSettings) ||
       isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription))
   )
-    settingsDot = "warning";
-  else if (sessionLogHealth?.isStorageFull || sessionLogHealth?.connectionError)
-    settingsDot = "danger";
+    settingsAlert = "warning";
 
   const administrationItems: NavItem[] = isAdmin
     ? [
@@ -57,7 +57,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
           activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
         },
         { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-        { label: "Settings", icon: Settings, pathSuffix: "settings", dotVariant: settingsDot }
+        { label: "Settings", icon: Settings, pathSuffix: "settings", alertVariant: settingsAlert }
       ]
     : [];
 

@@ -24,7 +24,8 @@ const projectNotices = (rawNotices: unknown[]): TPlanNotice[] =>
 
 // Builds a plan-shaped TFeatureSet from the License Server entitlement set so getPlan can serve it
 // without changing its callers. Starts from the passed base (free-tier defaults) and overlays each
-// mapped feature; a key v2 omits or returns null for keeps the base value. Base is passed in (not
+// mapped feature; a key v2 omits keeps the base value, while a null is written through because that is
+// how v2 says "no limit" (eg unlimited audit log retention). Base is passed in (not
 // imported from license-fns) to avoid a license-service <-> license-fns import cycle.
 export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlementsResponse): TFeatureSet => {
   const plan = JSON.parse(JSON.stringify(base)) as Record<string, unknown> & { rateLimits: Record<string, unknown> };
@@ -42,16 +43,17 @@ export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlem
     if (mapping.v1Field === null) {
       return;
     }
-    const raw = entitlements.features[mapping.v2Key];
-    if (!raw || raw.value === undefined) {
+    const isLegacyGranted = mapping.legacyV2Keys?.some((key) => entitlements.features[key]?.value === true);
+    const value = isLegacyGranted ? true : entitlements.features[mapping.v2Key]?.value;
+    if (value === undefined) {
       return;
     }
 
     if (mapping.v1Field.includes(".")) {
       const [parent, child] = mapping.v1Field.split(".");
-      (plan[parent] as Record<string, unknown>)[child] = raw.value;
+      (plan[parent] as Record<string, unknown>)[child] = value;
     } else {
-      plan[mapping.v1Field] = raw.value;
+      plan[mapping.v1Field] = value;
     }
   });
 

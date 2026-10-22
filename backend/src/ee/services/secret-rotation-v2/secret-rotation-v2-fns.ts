@@ -28,7 +28,7 @@ import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials"
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
-import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION } from "./open-router-api-key";
+import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION, TOpenRouterApiKeyRotation } from "./open-router-api-key";
 import { OPENAI_SERVICE_ACCOUNT_ROTATION_LIST_OPTION, TOpenAIServiceAccountRotation } from "./openai-service-account";
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
@@ -427,6 +427,20 @@ export const throwOnImmutableParameterUpdate = (
         )
       ) {
         throw new BadRequestError({ message: "Cannot update project ID" });
+      }
+      break;
+    case SecretRotation.OpenRouterApiKey:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TOpenRouterApiKeyRotation["parameters"],
+          secretRotation.parameters as TOpenRouterApiKeyRotation["parameters"],
+          ["workspaceId"]
+        )
+      ) {
+        throw new BadRequestError({
+          message:
+            "Cannot update the OpenRouter workspace of an existing rotation. Create a new rotation to use a different workspace."
+        });
       }
       break;
     case SecretRotation.SnowflakeUserKeyPair:

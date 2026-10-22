@@ -141,7 +141,10 @@ const buildDeps = (overrides?: {
   };
 };
 
-const stubSend = (channelType: "slack" | "email", impl: (ctx: TAlertChannelSendContext) => Promise<TChannelResult>) => {
+const stubSend = (
+  channelType: "slack" | "email" | "webhook",
+  impl: (ctx: TAlertChannelSendContext) => Promise<TChannelResult>
+) => {
   const definition = ALERT_CHANNEL_REGISTRY[channelType];
   const original = definition.send;
   definition.send = impl;
@@ -358,6 +361,49 @@ describe("alertChannelTestService", () => {
 
       expect(result.success).toBe(true);
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/stored" });
+    } finally {
+      restore();
+    }
+  });
+
+  test("does not send saved webhook credentials to a different URL", async () => {
+    const sent: TAlertChannelSendContext[] = [];
+    const restore = stubSend("webhook", async (ctx) => {
+      sent.push(ctx);
+      return { success: true };
+    });
+
+    try {
+      const { deps } = buildDeps({
+        channel: {
+          id: "channel-1",
+          orgId: ORG_ID,
+          projectId: null,
+          channelType: "webhook",
+          encryptedConfig: Buffer.from(
+            JSON.stringify({
+              url: "https://example.com/hook",
+              authType: "bearer",
+              authCredentials: "abc"
+            })
+          )
+        }
+      });
+      const service = alertChannelTestServiceFactory(deps);
+
+      await expect(
+        service.testChannel({
+          ...actor,
+          resourceType: RESOURCE_TYPE,
+          channelId: "channel-1",
+          channelType: "webhook" as never,
+          config: {
+            url: "https://attacker.example.net/hook",
+            authType: "bearer"
+          }
+        })
+      ).rejects.toThrow("Enter the authentication credentials again because the webhook URL changed");
+      expect(sent).toHaveLength(0);
     } finally {
       restore();
     }

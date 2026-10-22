@@ -20,6 +20,7 @@ import {
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
+import { useScopeVariant } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -147,6 +148,7 @@ export const renderConditionalComponents = (
 };
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentProject, projectId } = useProject();
 
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
@@ -200,7 +202,10 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
       permissions: formRolePermission2API(permissionsForm)
     });
     reset({ ...updatedRole, permissions: rolePermission2Form(updatedRole.permissions) });
-    createNotification({ type: "success", text: `Project role "${updatedRole.name}" updated` });
+    createNotification({
+      type: "success",
+      text: `${currentProject.type === ProjectType.CertificateManager ? "Role" : "Project role"} "${updatedRole.name}" updated`
+    });
   };
 
   // Expand accordion items that have validation errors
@@ -257,7 +262,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     </Button>
                   )}
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     type="submit"
                     isDisabled={isDisabled || isSubmitting || !isDirty}
                     isPending={isSubmitting}

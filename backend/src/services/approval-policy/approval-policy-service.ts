@@ -27,6 +27,7 @@ import {
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -109,6 +110,7 @@ type TApprovalPolicyServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
+  eventEmitter: TEventEmitter;
   resources: TApprovalResourceRegistry;
 };
 
@@ -136,6 +138,7 @@ export const approvalPolicyServiceFactory = ({
   smtpService,
   userDAL,
   groupDAL,
+  eventEmitter,
   resources
 }: TApprovalPolicyServiceFactoryDep) => {
   const $resource = (policyType: ApprovalPolicyType) => {
@@ -167,6 +170,11 @@ export const approvalPolicyServiceFactory = ({
       { ...args, approvers: args.approvers ?? [], resource: $resource(args.request.type as ApprovalPolicyType) },
       $notificationDeps
     );
+
+  const $emitEvent = async (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }, tx: Knex) => {
+    const event = resources[args.request.type as ApprovalPolicyType]?.buildEvent?.(args);
+    if (event) await eventEmitter.emit(event, tx);
+  };
 
   const $buildDecorationContext = (actor: TApprovalActor): TDecorationContext => {
     let cached: Promise<Set<string>> | null = null;
@@ -484,6 +492,7 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: `Bypassing approval is not supported for ${policyType} requests` });
       }
 
+      await $emitEvent({ event: ApprovalNotificationEvent.Bypassed, request: approvedRequest }, tx);
       return result;
     });
 
@@ -1017,7 +1026,10 @@ export const approvalPolicyServiceFactory = ({
         approvalRequestStepsDAL,
         approvalRequestStepEligibleApproversDAL
       },
-      tx
+      tx,
+      skipApproverNotification
+        ? undefined
+        : (request, trx) => $emitEvent({ event: ApprovalNotificationEvent.Requested, request }, trx)
     );
 
     if (!skipApproverNotification) {
@@ -1432,6 +1444,7 @@ export const approvalPolicyServiceFactory = ({
           );
 
           await resource.postApprovalTxRoutine?.(completedReq as TApprovalRequest, tx);
+          await $emitEvent({ event: ApprovalNotificationEvent.Approved, request: completedReq }, tx);
 
           return { updatedRequest: completedReq, nextStepToNotify: null };
         }
@@ -1554,13 +1567,14 @@ export const approvalPolicyServiceFactory = ({
         tx
       );
 
-      await approvalRequestDAL.updateById(
+      const rejected = await approvalRequestDAL.updateById(
         requestId,
         {
           status: ApprovalRequestStatus.Rejected
         },
         tx
       );
+      await $emitEvent({ event: ApprovalNotificationEvent.Rejected, request: rejected }, tx);
     });
 
     const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);

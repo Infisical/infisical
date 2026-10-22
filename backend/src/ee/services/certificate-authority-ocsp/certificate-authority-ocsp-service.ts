@@ -11,11 +11,11 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { getCaSigner } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
-import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -57,7 +57,7 @@ type TCertificateAuthorityOcspServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   keyStore: Pick<TKeyStoreFactory, "getItemPrimary" | "setItemWithExpiry">;
 };
 
@@ -100,7 +100,7 @@ export const certificateAuthorityOcspServiceFactory = ({
   certificateDAL,
   projectDAL,
   kmsService,
-  hsmConnectorService,
+  caKeySourceService,
   keyStore
 }: TCertificateAuthorityOcspServiceFactoryDep): TCertificateAuthorityOcspServiceFactory => {
   const $getActiveCaCertificate = async (caId: string, projectId: string, activeCaCertId: string) => {
@@ -274,7 +274,7 @@ export const certificateAuthorityOcspServiceFactory = ({
           certificateAuthoritySecretDAL,
           projectDAL,
           kmsService,
-          hsmConnectorService,
+          caKeySourceService,
           prefetched: { kmsKeyId: activeCaCert.kmsKeyId }
         });
 

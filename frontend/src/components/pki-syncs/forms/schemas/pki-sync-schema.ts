@@ -58,6 +58,10 @@ import {
   UpdateNutanixPrismCentralPkiSyncDestinationSchema
 } from "./nutanix-prism-central-pki-sync-destination-schema";
 import {
+  PaloAltoNetworksDestinationSchemas,
+  PaloAltoNetworksSslTlsProfileDestinationSchemas
+} from "./palo-alto-networks-pki-sync-destination-schema";
+import {
   UpdateWindowsServerPkiSyncDestinationSchema,
   WindowsServerPkiSyncDestinationSchema
 } from "./windows-server-pki-sync-destination-schema";
@@ -71,6 +75,8 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   CloudflareCustomCertificatePkiSyncDestinationSchema,
   GcpCertificateManagerPkiSyncDestinationSchema,
   NetScalerPkiSyncDestinationSchema,
+  PaloAltoNetworksDestinationSchemas.createSchema,
+  PaloAltoNetworksSslTlsProfileDestinationSchemas.createSchema,
   F5BigIpPkiSyncDestinationSchema,
   KempLoadMasterPkiSyncDestinationSchema,
   LinuxServerPkiSyncDestinationSchema,
@@ -87,6 +93,8 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
   UpdateGcpCertificateManagerPkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema,
+  PaloAltoNetworksDestinationSchemas.updateSchema,
+  PaloAltoNetworksSslTlsProfileDestinationSchemas.updateSchema,
   UpdateF5BigIpPkiSyncDestinationSchema,
   UpdateKempLoadMasterPkiSyncDestinationSchema,
   UpdateLinuxServerPkiSyncDestinationSchema,

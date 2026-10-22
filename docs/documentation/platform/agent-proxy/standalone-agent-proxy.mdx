@@ -43,10 +43,10 @@ The Agent Proxy's security boundary is machine **identity**: what an agent can r
 
 ```bash
 # On the proxy host
-infisical secrets agent-proxy start
+infisical sm agent-proxy start
 
 # On each agent host; everything after -- is the agent's own command
-infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+infisical sm agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 ```
 
 Each authenticates as its own [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth), and the proxy's is always separate from the agents'. The proxy needs read access to the secrets its services reference; an agent needs only **Proxy** on the services it uses. [Permissions](#permissions) covers both in full.
@@ -62,22 +62,22 @@ Each authenticates as its own [machine identity](/documentation/platform/identit
 
 ## Configuration
 
-Every option resolves from the same sources, in order: **the flag → an environment variable → `.infisical.json` → the built-in default.** An explicitly-passed flag always wins. Where the environment variables are already set on the host, the flags fall away and only your agent command remains: `infisical secrets agent-proxy connect -- claude`.
+Every option resolves from the same sources, in order: **the flag → an environment variable → `.infisical.yaml` → the built-in default.** An explicitly-passed flag always wins. Where the environment variables are already set on the host, the flags fall away and only your agent command remains: `infisical sm agent-proxy connect -- claude`.
 
-| Option | Flag | Environment variable | `.infisical.json` |
+| Option | Flag | Environment variable | `.infisical.yaml` |
 | --- | --- | --- | --- |
 | Auth | `--client-id` / `--client-secret` | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `_SECRET` | — |
-| Instance | `--domain` | `INFISICAL_DOMAIN` | `domain` |
-| Project | `--projectId` | `INFISICAL_PROJECT_ID` | `workspaceId` |
-| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `defaultEnvironment` |
-| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `defaultSecretPath` |
+| Instance | `--domain` | `INFISICAL_DOMAIN` | `general.domain` |
+| Project | `--projectId` | `INFISICAL_PROJECT_ID` | `secrets-management.project-id` |
+| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `secrets-management.default-environment` |
+| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `secrets-management.default-secret-path` |
 | Proxy address | `--proxy` | `INFISICAL_AGENT_PROXY_ADDRESS` | — |
 
 <Note>
-  The proxy address is the one setting that can't come from `.infisical.json`. That file is usually committed to your repository, so a wrong or malicious value would silently route every agent's traffic through the wrong host. Pass it with `--proxy` or `INFISICAL_AGENT_PROXY_ADDRESS` instead.
+  The proxy address is the one setting that can't come from `.infisical.yaml`. That file is usually committed to your repository, so a wrong or malicious value would silently route every agent's traffic through the wrong host. Pass it with `--proxy` or `INFISICAL_AGENT_PROXY_ADDRESS` instead.
 </Note>
 
-See the [CLI reference](/cli/reference#secrets-agent-proxy) for every flag on both subcommands.
+See the [CLI reference](/cli/reference#sm-agent-proxy) for every flag on both subcommands.
 
 ## Deployment
 
@@ -92,7 +92,7 @@ Starting the proxy in a shell is fine while you're trying it out, but it dies wi
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
     # export INFISICAL_DOMAIN=https://eu.infisical.com   # EU Cloud or self-hosted
 
-    infisical secrets agent-proxy start
+    infisical sm agent-proxy start
     ```
   </Tab>
   <Tab title="Docker">
@@ -102,7 +102,7 @@ Starting the proxy in a shell is fine while you're trying it out, but it dies wi
     docker run -p 17322:17322 \
       -e INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id> \
       -e INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret> \
-      infisical/cli:latest secrets agent-proxy start
+      infisical/cli:latest sm agent-proxy start
     ```
 
     Add `-e INFISICAL_DOMAIN=https://eu.infisical.com` for EU Cloud or a self-hosted instance.
@@ -111,7 +111,7 @@ Starting the proxy in a shell is fine while you're trying it out, but it dies wi
     Deploy the `infisical/cli` image as a service:
 
     - **Image:** `infisical/cli:latest`
-    - **Start command:** `secrets agent-proxy start`
+    - **Start command:** `sm agent-proxy start`
     - **Environment:** `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`, `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`, and `INFISICAL_DOMAIN` if not on US Cloud
     - **Port:** `17322`, exposed on a private network your agents can reach, not the public internet
 
@@ -234,7 +234,7 @@ Records go to **stderr**, so whatever supervises the proxy collects them, and `-
   <Card title="Proxied Services" icon="arrow-right-left" href="/documentation/platform/agent-proxy/proxied-services">
     Host patterns, header rewrites, and secret substitution in depth.
   </Card>
-  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/reference#secrets-agent-proxy">
+  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/reference#sm-agent-proxy">
     Every flag for `start` and `connect`, with examples.
   </Card>
 </CardGroup>

@@ -67,7 +67,7 @@ export const certManagerApplicationAlertProviderFactory = ({
 }: TCertManagerApplicationAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
   IEventAlertProvider<TAlertCertificate> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> => {
-    const base = `${getConfig().SITE_URL}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}`;
+    const base = `${getConfig().SITE_URL}/organizations/${alert.orgId}/cert-manager`;
     const application = alert.resourceId
       ? await certManagerCertificateAlertDAL.findApplicationById(alert.resourceId)
       : undefined;

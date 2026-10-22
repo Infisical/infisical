@@ -32,6 +32,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
   type TableSortDirection,
   TableVirtualBody
 } from "./Table";
@@ -94,6 +95,14 @@ const identities: Identity[] = [
  *   with a height-constrained container (`containerClassName="max-h-40"`).
  * - **`isTruncatable`** on `TableHead` / `TableCell` clips long content with
  *   ellipsis instead of letting the column blow out the row width.
+ * - **`isWrappable`** on `TableCell` wraps long text (descriptions, paths,
+ *   error messages) onto more lines within a bounded column width
+ *   (`max-w-md`, overridable through `className`). Set it on every cell of
+ *   the column.
+ *
+ * While rows load, render `TableSkeletonRows` inside `TableBody` with the
+ * table's column count (and an optional `rows` count, default 3) instead of
+ * hand-rolling skeleton cells.
  * - **`data-state="selected"`** on a `TableRow` paints the selected highlight
  *   for row-checkbox patterns.
  * - **`onSortChange`** on `TableHead` renders an accessible, full-cell sort button.
@@ -540,6 +549,83 @@ export const TruncatedCells: Story = {
             <TableCell>{id.role}</TableCell>
           </TableRow>
         ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+export const WrappedCells: Story = {
+  name: "Example: Wrapped Cells",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Pass `isWrappable` to every `TableCell` of a column whose full text must stay readable, such as descriptions, paths, or error messages. The text wraps within a bounded width (`max-w-md`, overridable through `className`) and long unbroken values break where they need to. Other columns keep the default single-line layout."
+      }
+    }
+  },
+  render: () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Scan</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Error</TableHead>
+          <TableHead>Started</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {[
+          {
+            id: "scan-1",
+            status: "Failed",
+            error:
+              "Could not clone repository: the GitHub App installation lacks read access to the contents of this repository.",
+            started: "Oct 12, 2026 09:14"
+          },
+          {
+            id: "scan-2",
+            status: "Failed",
+            error:
+              "File too large to scan: /services/payments/fixtures/generated/large-transaction-export-2026-10-01.json",
+            started: "Oct 11, 2026 22:40"
+          },
+          { id: "scan-3", status: "Completed", error: "None", started: "Oct 11, 2026 08:02" }
+        ].map((scan) => (
+          <TableRow key={scan.id}>
+            <TableCell className="font-medium">{scan.id}</TableCell>
+            <TableCell>{scan.status}</TableCell>
+            <TableCell isWrappable>{scan.error}</TableCell>
+            <TableCell>{scan.started}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+export const LoadingRows: Story = {
+  name: "Example: Loading Rows",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "While the first page of data loads, render `TableSkeletonRows` inside `TableBody` with the number of columns in the header. `rows` defaults to 3."
+      }
+    }
+  },
+  render: () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Managed By</TableHead>
+          <TableHead variant="action" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableSkeletonRows columns={4} />
       </TableBody>
     </Table>
   )

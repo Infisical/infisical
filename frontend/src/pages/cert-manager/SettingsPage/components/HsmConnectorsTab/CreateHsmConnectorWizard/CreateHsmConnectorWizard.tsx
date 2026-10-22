@@ -8,13 +8,14 @@ import {
   Button,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useCreateHsmConnector } from "@app/hooks/api/hsmConnectors";
+import { THsmConnector, useCreateHsmConnector } from "@app/hooks/api/hsmConnectors";
 
 import { AccessStep } from "./AccessStep";
 import { BasicsStep } from "./BasicsStep";
@@ -32,9 +33,10 @@ import { INITIAL_WIZARD_STATE, STEPS, WizardState } from "./types";
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: (connector: THsmConnector) => void;
 };
 
-export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
+export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange, onCreated }: Props) => {
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(INITIAL_WIZARD_STATE);
   const [submitting, setSubmitting] = useState(false);
@@ -76,7 +78,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
     setSubmitting(true);
     try {
       const [kind, id] = finalState.reachedFrom.split(":");
-      await createMutation.mutateAsync({
+      const connector = await createMutation.mutateAsync({
         name: finalState.name,
         description: finalState.description.trim() || undefined,
         gatewayId: kind === "gateway" ? id : undefined,
@@ -92,11 +94,9 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
         text: `HSM Connector "${finalState.name}" created and verified.`
       });
       handleClose(false);
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to create HSM Connector"
-      });
+      onCreated?.(connector);
+      // eslint-disable-next-line no-empty
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -226,7 +226,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-muted">{dirty ? "Unsaved changes" : ""}</span>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
@@ -241,7 +241,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
                 {ctaLabel}
               </Button>
             </div>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>

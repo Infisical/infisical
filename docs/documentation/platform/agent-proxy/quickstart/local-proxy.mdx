@@ -74,13 +74,13 @@ infisical login
 Everything after `--` is your agent's own command. Run it from the directory you want the agent to work in:
 
 ```bash
-infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+infisical sm agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 ```
 
 This one command starts the proxy and your agent together, and shuts the proxy down when the agent exits. The agent behaves exactly as if you had launched it directly. In its environment it finds `GITHUB_TOKEN`, set to the fake `ghp_…` placeholder, and uses it like a normal token. Calls to `api.github.com` get the real token swapped in as they pass through; everything else goes out untouched. Meanwhile the agent is sandboxed: it can't read your keyring, your `~/.aws` or `~/.ssh`, or your Infisical token.
 
 <Note>
-  In a directory with an `.infisical.json` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
+  In a directory with an `.infisical.yaml` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
 </Note>
 
 <Note>
@@ -103,7 +103,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
     Not driving an interactive agent? Run the check in place of the agent command:
 
     ```bash
-    infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- gh api user
+    infisical sm agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- gh api user
     ```
 
     `gh` reads `GITHUB_TOKEN` automatically, so there is nothing else to pass.
@@ -112,7 +112,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
     No `gh`? Any HTTP client works the same way. `curl` sends the placeholder in the header and the proxy swaps it:
 
     ```bash
-    infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- \
+    infisical sm agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- \
       sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
     ```
   </Tab>

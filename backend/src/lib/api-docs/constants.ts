@@ -104,6 +104,7 @@ export enum ApiDocsTags {
   PamDiscovery = "PAM Discovery",
   AgentVault = "Agent Vault",
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultVariables = "Agent Vault Variables",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
@@ -2343,6 +2344,13 @@ export const CERTIFICATES = {
     serialNumberRes: "The serial number of the certificate.",
     privateKey: "The private key of the certificate."
   },
+  EXPORT_PKCS12: {
+    password:
+      "Password to protect the PKCS#12 keystore with. Must be 14 to 100 characters, contain a letter, a number and a special character, have no more than 3 repeated consecutive characters, and contain no escape characters (newline, tab, carriage return or backslash).",
+    alias: "Friendly name for the certificate inside the keystore.",
+    keystore:
+      "The PKCS#12 keystore (.p12) as binary data, containing the certificate, its chain and its private key, encrypted with the given password."
+  },
   IMPORT: {
     projectSlug: "Slug of the project to import the certificate into.",
     certificatePem: "The PEM-encoded leaf certificate.",
@@ -2849,11 +2857,19 @@ export const CertificateAuthorities = {
       keyAlgorithm:
         "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
       keySource:
-        "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector.",
+        "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.",
       hsmConnectorId:
         "The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.",
       hsmKeyLabel:
-        "The label of the CA's signing key on the HSM. Not user-supplied: it is the HSM Connector's configured key name prefix followed by a per-CA label built from the CA name and a random 5-character suffix (ca-<name>-<slug>).",
+        "Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.",
+      appConnectionId:
+        "The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.",
+      appConnectionName: "The name of the AWS connection the CA's signing key is reached through. Not user-supplied.",
+      hsmConnectorName: "The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.",
+      region:
+        "The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.",
+      externalKeyId:
+        "The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.",
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
@@ -2918,6 +2934,14 @@ export const AppConnections = {
     }
   },
   CREDENTIALS: {
+    PALO_ALTO_NETWORKS: {
+      hostname: "The IP address or hostname of the management interface of the firewall or Panorama.",
+      port: "The HTTPS port of the management interface. Defaults to 443.",
+      username: "The username of the PAN-OS administrator to connect with.",
+      password: "The password of the PAN-OS administrator.",
+      sslRejectUnauthorized: "Whether to reject the management interface's TLS certificate if it isn't trusted.",
+      sslCertificate: "The PEM-encoded CA certificate to trust for the management interface's TLS certificate."
+    },
     AUTH0_CONNECTION: {
       domain: "The domain of the Auth0 instance to connect to.",
       clientId: "Your Auth0 application's Client ID.",
@@ -3085,7 +3109,9 @@ export const AppConnections = {
       serverUrl: "The URL of the Chef server to connect to.",
       orgName: "The short name of the Chef organization to connect to.",
       userName: "The username used to access Chef.",
-      privateKey: "The private key used to access Chef."
+      privateKey: "The private key used to access Chef.",
+      dataBagSecret:
+        "The shared secret (the contents of your encrypted_data_bag_secret file) used to encrypt and decrypt Chef encrypted data bag items. Required by secret syncs that encrypt secrets or read a data bag item that's already encrypted."
     },
     OCTOPUS_DEPLOY: {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
@@ -3094,6 +3120,10 @@ export const AppConnections = {
     RUNDECK: {
       instanceUrl: "The Rundeck instance URL to connect to.",
       apiToken: "The API token used to authenticate with Rundeck."
+    },
+    PORTAINER: {
+      instanceUrl: "The Portainer instance URL to connect to.",
+      apiToken: "The API token used to authenticate with Portainer."
     },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
@@ -3196,7 +3226,19 @@ export const AppConnections = {
       apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
       apiKeyId: "The API Key ID used to authenticate with Spacelift.",
       apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
+    },
+    S3_COMPATIBLE: {
+      endpoint:
+        "The S3 API endpoint of the storage provider, without a bucket name: 'https://s3.<region>.amazonaws.com' (AWS S3), 'https://<account-id>.r2.cloudflarestorage.com' (Cloudflare R2), 'https://storage.googleapis.com' (Google Cloud Storage), 'https://<namespace>.compat.objectstorage.<region>.oraclecloud.com' (OCI Object Storage), or a hostname allowed in the Server Console.",
+      accessKeyId: "The Access Key ID used to authenticate with the storage provider.",
+      secretAccessKey: "The Secret Access Key used to authenticate with the storage provider.",
+      region:
+        "The region to sign requests for when the endpoint is a hostname allowed in the Server Console. Defaults to 'us-east-1'. The built-in providers take the region from the endpoint."
     }
+  },
+  PALO_ALTO_NETWORKS_LOOKUPS: {
+    connectionId: "The ID of the Palo Alto Networks Connection to read from.",
+    template: "The Panorama template to read from. Leave it out when the connection points to a firewall."
   }
 };
 
@@ -3526,7 +3568,9 @@ export const SecretSyncs = {
     },
     CHEF: {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
-      dataBagItemName: "The name of the Chef data bag item to sync secrets to."
+      dataBagItemName: "The name of the Chef data bag item to sync secrets to.",
+      shouldEncryptSecrets:
+        "Whether to write the data bag item as a Chef encrypted data bag item (version 3), using the data bag secret on the Chef connection."
     },
     CLOUD66: {
       stackId: "The unique identifier (uid) of the Cloud 66 stack to sync secrets to.",
@@ -3567,6 +3611,10 @@ export const SecretSyncs = {
         "The file path for the mounted file relative to /mnt/workspace/. Required when configType is 'file-mount'. When fileMountFormat is 'secret-per-file', this is the directory path. Example: 'secrets.env' or 'secrets/'.",
       fileMountFormat:
         "The format for file mount config elements. Either 'dot-env' (default) to store all secrets in a single .env file, or 'secret-per-file' to create a separate file mount per secret under the mount path directory."
+    },
+    PORTAINER: {
+      environmentId: "The ID of the Portainer environment (endpoint) that hosts the stack.",
+      stackId: "The ID of the Portainer stack to sync secrets to."
     }
   }
 };
@@ -3717,6 +3765,8 @@ export const SecretRotations = {
     },
     OPEN_ROUTER_API_KEY: {
       name: "The name for the generated OpenRouter API key.",
+      workspaceId:
+        "The optional ID of the OpenRouter workspace to create API keys in. If omitted, OpenRouter creates keys in the account's Default workspace.",
       limit: "The optional spending limit in USD for the generated API key.",
       limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
       includeByokInLimit:
@@ -3917,7 +3967,10 @@ export const SecretScanningDataSources = {
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
-      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
+      isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created, and for ${autoScanDescription.noun} added to its configuration later. Defaults to true.`,
+      isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
+      isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Defaults to true, except for GitLab project scope, which does not support it.`,
       config: `The configuration parameters to use for this Data Source.`
     };
   },
@@ -3929,7 +3982,10 @@ export const SecretScanningDataSources = {
       dataSourceId: `The ID of the ${typeName} Data Source to be updated.`,
       name: `The updated name of the ${typeName} Data Source. Must be slug-friendly.`,
       description: `The updated description of the ${typeName} Data Source.`,
-      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
+      isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} added to this Data Source's configuration.`,
+      isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Not supported for GitLab project scope.`,
       config: `The updated configuration parameters to use for this Data Source.`
     };
   },
@@ -3941,33 +3997,50 @@ export const SecretScanningDataSources = {
     resourceId: `The ID of the individual Data Source resource to trigger a scan for.`
   }),
   LIST_RESOURCES: (type: SecretScanningDataSource) => ({
-    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`,
+    search: "Only return resources whose name contains this text, ignoring case.",
+    orderBy:
+      "The field to order resources by: name, status, or lastScanned. Status orders by what needs attention first in ascending order: failed scans, unresolved findings (most first), running scans, queued scans, never scanned, then clean.",
+    orderDirection: "The direction to order resources in. Either 'asc' or 'desc'.",
+    offset: "The number of resources to skip.",
+    limit: "The number of resources to return."
   }),
   LIST_SCANS: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list scans for.`
   }),
+  ADD_RESOURCE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to add resources to.`,
+    resourceName: `The full name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} resource to scan, as the App Connection lists it. A resource already added is ignored.`
+  }),
+  REMOVE_RESOURCE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to remove the resource from.`,
+    resourceId: "The ID of the resource to remove. Its scans and findings are deleted with it."
+  }),
   CONFIG: {
-    GITHUB: {
-      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
-    },
     GITLAB: {
-      includeProjects: 'The projects to include when scanning. Defaults to all projects (["*"]).',
-      scope: "The GitLab scope scanning should occur at (project or group level).",
+      scope:
+        "Where projects are added from: account (projects the connection can read, added one at a time), group, or project (deprecated, kept for existing Data Sources).",
       projectId: "The ID of the project to scan.",
       projectName: "The name of the project to scan.",
       groupId: "The ID of the group to scan projects from.",
       groupName: "The name of the group to scan projects from."
     },
     BITBUCKET: {
-      workspaceSlug: "The workspace to scan.",
-      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+      workspaceSlug: "The workspace to scan."
     }
   }
 };
 
 export const SecretScanningFindings = {
   LIST: {
-    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`
+    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`,
+    status: "Only return findings with this status.",
+    dataSourceId: "Only return findings detected in this Data Source.",
+    resourceId: "Only return findings detected in this resource, such as a repository or project.",
+    orderBy: "The field to sort findings by.",
+    orderDirection: "The direction to sort findings in.",
+    offset: "The number of findings to skip, for pagination.",
+    limit: "The maximum number of findings to return, from 1 to 100."
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
@@ -4075,6 +4148,12 @@ export const SamlSso = {
     cert: "The certificate to use for SAML authentication.",
     enableGroupSync:
       "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
+  },
+  ACS: {
+    samlConfigId: "The ID of the SAML configuration the response is for.",
+    SAMLResponse: "The base64-encoded SAML response the identity provider posted through the browser.",
+    RelayState:
+      "The RelayState Infisical sent with the authentication request, returned unchanged by the identity provider."
   }
 };
 
@@ -4389,7 +4468,7 @@ export const ENCRYPTION_KEY_ROTATION = {
   }
 };
 
-const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to the access bundle's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
+const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to Agent Vault's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
 
 export const AGENT_VAULT = {
   ACCESS_BUNDLE: {
@@ -4456,13 +4535,22 @@ export const AGENT_VAULT = {
     key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
-    isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
-    listedValue:
-      "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
     revealedValue: "The variable's value.",
-    serviceIds:
-      "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
-    createdAt: "When the variable was added to the access bundle.",
+    orderBy: "What to sort variables by: key, or serviceCount for how many services use each one.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match variables whose key contains this text.",
+    keys: "Return only the variables with these exact keys, comma-separated. Every one that exists is returned unless limit is set.",
+    limit: "The maximum number of variables to return. Defaults to 20, or to the number of keys when keys is given.",
+    offset: "How many variables to skip.",
+    totalCount: "How many variables match the search, across every page.",
+    usedByServices:
+      "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. A variable in use can't be deleted.",
+    usedByServiceId: "The ID of a service that uses this variable.",
+    usedByServiceName: "The name of the service.",
+    usedByServiceHostPattern: "The host pattern of the service.",
+    usedByServiceAccessBundleId: "The ID of the access bundle the service belongs to.",
+    usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
+    createdAt: "When the variable was added.",
     updatedAt: "When the variable was last changed."
   },
   MEMBER: {
@@ -4505,6 +4593,8 @@ export const AGENT_VAULT = {
     identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
     addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
     revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    updateSkipped:
+      "The requested members who did not have access to Agent Vault or already had the role, so nothing was changed.",
     actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
@@ -4548,44 +4638,28 @@ export const AGENT_VAULT = {
   SESSION_LOGS: {
     chunkId: "The ID of the chunk.",
     proxyId: "The ID of the proxy that uploaded the chunk.",
-    proxyName: "The name of the proxy that uploaded the chunk. If the proxy was deleted, the name it had at the time.",
-    startedAt: "The time of the first record in the chunk.",
     endedAt: "The time of the last record in the chunk.",
-    firstSeq: "The sequence number of the first record in the chunk. Each proxy numbers its own records.",
-    lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
-    recordCount: "The number of records in the chunk.",
-    droppedCount:
-      "The number of requests the proxy couldn't record, for example because too many requests came in at once or session logs were off. They're reported on the next chunk the proxy sends, so they happened before this chunk, but not necessarily right before its first record.",
-    ciphertextBytes: "The size of the encrypted chunk, in bytes.",
-    iv: "The AES-GCM initialization vector for the chunk, as base64.",
+    ciphertextBytes: "The size of the encrypted chunk in bytes.",
     ciphertextSha256:
-      "The SHA-256 digest of the encrypted chunk, as base64 without padding. If the downloaded chunk has a different digest, the chunk was changed after it was uploaded.",
+      "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
+    legacyIv:
+      "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
       "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
-    presignedGetUrl:
-      "The URL to download the chunk from. Null if the chunk is in a bucket session logs no longer use, or if `sessionLogs.storageUnavailable` is set.",
+    presignedGetUrl: "The URL to download the chunk from.",
     expiresInSeconds: "The number of seconds before the URL expires.",
-    chunkCreatedAt:
-      "When the proxy registered the chunk with Infisical. Its upload to the bucket finishes shortly after, so a download in between returns 404.",
     isRecordable: "False if this session's requests can't be recorded.",
-    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
-    storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
-    storageUnavailableReason:
-      "`no-connection` if no AWS connection is set for session logs, or `connection-unusable` if Infisical can't use the AWS connection.",
-    storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
+    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if the response has no chunks.",
     sessionLogs:
-      "Whether session logs are on, the key that decrypts the chunks, and why they can't be downloaded, if they can't.",
+      "Whether session logs are on, whether this session can be recorded, and the key that decrypts the chunks.",
     historyCursor: "The `nextCursor` from the previous response. Leave it out to start from the newest logs.",
-    historyNextCursor: "Pass this as `cursor` to get older logs. Null when there's nothing older.",
-    liveCursor:
-      "Pass this to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) to get new logs as they arrive.",
+    historyNextCursor:
+      "Pass this as `cursor` to get older logs. Null when there's nothing older. A page can have no chunks and still have a `nextCursor`.",
     tailCursor:
-      "The `liveCursor` from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), or the `nextCursor` from your last call. Leave it out to start from now.",
-    tailNextCursor: "Pass this as `cursor` on your next call.",
-    tailHasMore: "Whether more logs are ready now. If false, wait a few seconds before calling again.",
-    limit: "How many records to return. Only whole chunks are returned, so a response can have slightly more.",
-    from: "Return only chunks with records at or after this time.",
-    to: "Return only chunks with records at or before this time.",
+      "The `nextCursor` from your last call. Leave it out on the first call to start from the most recent chunks.",
+    tailNextCursor: "Pass this as `cursor` on your next call, a few seconds later.",
+    from: "Return only chunks with records at or after this time. A chunk can also hold earlier records, so filter records by `ts`.",
+    to: "Return only chunks with records at or before this time. A chunk can also hold later records, so filter records by `ts`.",
     enabled: "Whether session logs are on.",
     configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
@@ -4597,7 +4671,6 @@ export const AGENT_VAULT = {
     corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
     connectionError:
       "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
-    isStorageFull: "Whether your organization has reached its session log storage limit.",
     hasSessionLogKey: "Whether the proxy already has this session's log key. If true, the key isn't returned again.",
     proxySessionKey:
       "The session's log key, as base64, sent once. Null when session logs are off or the proxy already has it."
@@ -4609,10 +4682,6 @@ export const AGENT_VAULT = {
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
-    recentSessionLogCounts:
-      "How many of the session's requests were recorded in its session log, and how many the proxy couldn't record, over the 24 hours before its most recent recorded request.",
-    recentRecordedCount: "The number of requests recorded in the session log.",
-    recentDroppedCount: "The number of requests the proxy couldn't record in the session log.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
@@ -4629,6 +4698,18 @@ export const AGENT_VAULT = {
     identityName:
       "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
   }
+};
+
+export const PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG = {
+  template:
+    "The Panorama template to store certificates in. Required when the connection points to a Panorama, and not allowed for a firewall.",
+  pushToDevices:
+    "Whether to push every template stack that contains the template to its firewalls after a commit. Applies to Panorama only.",
+  sslTlsServiceProfileName: "The name of the SSL/TLS service profile to point at the synced certificate.",
+  sslTlsServiceProfileVsys:
+    "The virtual system the SSL/TLS service profile belongs to. Leave it out for a shared profile.",
+  replacementCertificateName:
+    "The certificate on the device that the SSL/TLS service profile switches to before the synced certificate is deleted. Required when the removal would leave the profile without a certificate."
 };
 
 export const PKI_SYNC_FILTERS = {

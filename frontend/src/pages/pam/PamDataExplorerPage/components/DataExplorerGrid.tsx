@@ -3,12 +3,12 @@ import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-tabl
 import { EyeIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { ContentLoader } from "@app/components/v2";
 import { Alert, AlertDescription } from "@app/components/v3/generic/Alert";
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageLoader } from "@app/components/v3/platform/PageLoader";
 
 import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
 import { getColumnIndicator } from "../data-explorer-utils";
@@ -768,7 +768,7 @@ export const DataExplorerGrid = ({
 
       {/* Dice UI DataGrid */}
       <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-background">
-        {isDataLoading && !hasLoaded && <ContentLoader className="h-full" />}
+        {isDataLoading && !hasLoaded && <PageLoader />}
         <DataGrid
           {...gridProps}
           className={`min-h-0 flex-1 ${isDataLoading && !hasLoaded ? "hidden" : ""}`}
@@ -776,7 +776,7 @@ export const DataExplorerGrid = ({
         />
         {isDataLoading && hasLoaded && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60">
-            <ContentLoader className="h-auto" lottieClassName="h-24 w-24" />
+            <PageLoader />
           </div>
         )}
       </div>

@@ -40,7 +40,12 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
-import { extractPrincipalArn, extractPrincipalArnEntity } from "./identity-aws-auth-fns";
+import {
+  AWS_TRUST_BINDING_REQUIRED_MESSAGE,
+  extractPrincipalArn,
+  extractPrincipalArnEntity,
+  hasAwsTrustBinding
+} from "./identity-aws-auth-fns";
 import {
   TAttachAwsAuthDTO,
   TAwsGetCallerIdentityHeaders,
@@ -149,6 +154,10 @@ export const identityAwsAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
+      if (!hasAwsTrustBinding(identityAwsAuth)) {
+        logger.warn(`AWS Auth Login: identity has no trust binding, allowing [identity-id=${identity.id}]`);
+      }
+
       const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
       const body: string = Buffer.from(iamRequestBody, "base64").toString();
 
@@ -211,7 +220,7 @@ export const identityAwsAuthServiceFactory = ({
           });
 
         if (!isArnAllowed) {
-          logger.error(
+          logger.warn(
             `AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [identity-id=${identity.id}]`
           );
 
@@ -382,33 +391,8 @@ export const identityAwsAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
+    if (!hasAwsTrustBinding({ allowedAccountIds, allowedPrincipalArns })) {
+      throw new BadRequestError({ message: AWS_TRUST_BINDING_REQUIRED_MESSAGE });
     }
 
     await assertIdentityAuthAccessAllowed(
@@ -513,39 +497,19 @@ export const identityAwsAuthServiceFactory = ({
     const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
 
     if (
+      !hasAwsTrustBinding({
+        allowedAccountIds: allowedAccountIds ?? identityAwsAuth.allowedAccountIds,
+        allowedPrincipalArns: allowedPrincipalArns ?? identityAwsAuth.allowedPrincipalArns
+      })
+    ) {
+      throw new BadRequestError({ message: AWS_TRUST_BINDING_REQUIRED_MESSAGE });
+    }
+
+    if (
       (accessTokenMaxTTL || identityAwsAuth.accessTokenMaxTTL) > 0 &&
       (accessTokenTTL || identityAwsAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityAwsAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
-    }
-
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
     }
 
     await assertIdentityAuthAccessAllowed(
@@ -690,32 +654,6 @@ export const identityAwsAuthServiceFactory = ({
         message: "The identity does not have aws auth"
       });
     }
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {

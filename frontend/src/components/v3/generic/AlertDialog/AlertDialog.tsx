@@ -2,6 +2,7 @@ import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { cn } from "../../utils";
+import { OverlayLayerContext, useOverlayLayer } from "../../utils/overlay-layer";
 import { Button } from "../Button";
 import { DIALOG_CONTENT_WIDTH_CLASSNAME } from "../Dialog";
 import { Field, FieldLabel } from "../Field";
@@ -91,11 +92,17 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  children,
   onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
 }) {
+  const { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn } =
+    useOverlayLayer(false);
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -108,7 +115,7 @@ function AlertDialogContent({
           className
         )}
         onOpenAutoFocus={(event) => {
-          onOpenAutoFocus?.(event);
+          captureFocusReturn(event, onOpenAutoFocus);
           if (event.defaultPrevented) return;
 
           const inputs = (
@@ -122,8 +129,12 @@ function AlertDialogContent({
 
           if (focusedInput) event.preventDefault();
         }}
+        onCloseAutoFocus={(event) => restoreFocusReturn(event, onCloseAutoFocus)}
+        onEscapeKeyDown={(event) => guardDismiss(event, onEscapeKeyDown)}
         {...props}
-      />
+      >
+        <OverlayLayerContext.Provider value={contextValue}>{children}</OverlayLayerContext.Provider>
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }
@@ -316,7 +327,6 @@ function AlertDialogConfirmationField({
           />
           <Input
             autoComplete="off"
-            autoFocus
             placeholder={confirmationValue}
             {...inputProps}
             id={inputProps?.id ?? inputId}

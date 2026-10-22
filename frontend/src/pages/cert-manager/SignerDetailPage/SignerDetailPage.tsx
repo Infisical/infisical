@@ -50,7 +50,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   SignerPermissionActions,
   SignerPermissionSub,
@@ -83,7 +83,6 @@ type Tab = "activity" | "approvals" | "members";
 export const SignerDetailPage = () => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const navigate = useNavigate();
 
   const { signerId } = useParams({
@@ -148,7 +147,7 @@ export const SignerDetailPage = () => {
               backLink={
                 <Link
                   to={ROUTE_PATHS.CertManager.CodeSigningPage.path}
-                  params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+                  params={{ orgId: currentOrg.id }}
                 >
                   <ChevronLeftIcon size={16} />
                   Back to Signers
@@ -278,7 +277,7 @@ export const SignerDetailPage = () => {
                 onValueChange={(v) =>
                   navigate({
                     to: ROUTE_PATHS.CertManager.SignerDetailByIDPage.path,
-                    params: { orgId: currentOrg.id, projectId: currentProject.id, signerId },
+                    params: { orgId: currentOrg.id, signerId },
                     search: { selectedTab: v as Tab }
                   })
                 }
@@ -290,11 +289,7 @@ export const SignerDetailPage = () => {
                 </TabsList>
 
                 <TabsContent value="activity" className="pt-2">
-                  <SigningOperationsTable
-                    signer={signer}
-                    signerId={signerId}
-                    projectId={currentProject.id}
-                  />
+                  <SigningOperationsTable signer={signer} signerId={signerId} />
                 </TabsContent>
                 <TabsContent value="approvals" className="pt-2">
                   <SignerApprovalsSection
@@ -356,7 +351,7 @@ export const SignerDetailPage = () => {
                 });
                 navigate({
                   to: ROUTE_PATHS.CertManager.CodeSigningPage.path,
-                  params: { orgId: currentOrg.id, projectId: currentProject.id }
+                  params: { orgId: currentOrg.id }
                 });
               }}
             >

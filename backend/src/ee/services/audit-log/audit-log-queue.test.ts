@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { QueueName } from "@app/queue";
 
 import { auditLogQueueServiceFactory } from "./audit-log-queue";
+import { MAX_AUDIT_LOG_EXPIRES_AT } from "./audit-log-retention-fns";
 
 // Mutable config the mocked getConfig() returns. CLICKHOUSE_AUDIT_LOG_ENABLED is read once at
 // factory construction; AUDIT_LOG_STREAMS_ENABLED is read per consumer run.
@@ -91,7 +92,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
   };
   const licenseService = {
-    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number }>>(async () => ({
+    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number | null }>>(async () => ({
       auditLogsRetentionDays: 30
     }))
   };
@@ -228,6 +229,27 @@ describe("audit-log-queue pushToLog", () => {
     await service.pushToLog(dto({ orgId: "org-zero" }) as never);
 
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("keeps logs until the expiry cap when the plan's retention is unlimited (null)", async () => {
+    const { service, keyStore, licenseService } = await createHarness();
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: null });
+
+    await service.pushToLog(dto({ orgId: "org-unlimited" }) as never);
+
+    expect(pushedEntry(keyStore).expiresAt).toBe(MAX_AUDIT_LOG_EXPIRES_AT.toISOString());
+  });
+
+  test("applies the project-level retention under an unlimited plan", async () => {
+    const { service, keyStore, projectDAL, licenseService } = await createHarness();
+    projectDAL.findById.mockResolvedValueOnce({ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: 5 });
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: null });
+
+    await service.pushToLog(dto({ orgId: undefined, projectId: "p1" }) as never);
+
+    const parsed = pushedEntry(keyStore);
+    const ttl = new Date(parsed.expiresAt as string).getTime() - new Date(parsed.createdAt as string).getTime();
+    expect(ttl).toBe(5 * MS_IN_DAY);
   });
 
   test("never throws when streamAdd fails", async () => {

@@ -69,7 +69,7 @@ export const certManagerSignerAlertProviderFactory = ({
   };
 
   const buildViewUrl = async (alert: TAlertContext): Promise<string> =>
-    `${getConfig().SITE_URL}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}/code-signing`;
+    `${getConfig().SITE_URL}/organizations/${alert.orgId}/cert-manager/code-signing`;
 
   const buildPayload = (alert: TAlertContext, targets: TSignerAlertCertificate[], viewUrl: string): TAlertPayload => {
     const { alertBefore } = alert.condition as { alertBefore: string };

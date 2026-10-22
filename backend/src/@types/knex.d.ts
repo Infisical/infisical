@@ -41,9 +41,6 @@ import {
   TAgentVaultSessionAccessBundles,
   TAgentVaultSessionAccessBundlesInsert,
   TAgentVaultSessionAccessBundlesUpdate,
-  TAgentVaultSessionLogChunks,
-  TAgentVaultSessionLogChunksInsert,
-  TAgentVaultSessionLogChunksUpdate,
   TAgentVaultSessionLogConfigs,
   TAgentVaultSessionLogConfigsInsert,
   TAgentVaultSessionLogConfigsUpdate,
@@ -533,9 +530,6 @@ import {
   TProxiedServices,
   TProxiedServicesInsert,
   TProxiedServicesUpdate,
-  TRateLimit,
-  TRateLimitInsert,
-  TRateLimitUpdate,
   TRelays,
   TRelaysInsert,
   TRelaysUpdate,
@@ -1170,7 +1164,6 @@ declare module "knex/types/tables" {
       TSecretSharingInsert,
       TSecretSharingUpdate
     >;
-    [TableName.RateLimit]: KnexOriginal.CompositeTableType<TRateLimit, TRateLimitInsert, TRateLimitUpdate>;
     [TableName.SecretTag]: KnexOriginal.CompositeTableType<TSecretTags, TSecretTagsInsert, TSecretTagsUpdate>;
     [TableName.SecretImport]: KnexOriginal.CompositeTableType<
       TSecretImports,
@@ -1861,11 +1854,6 @@ declare module "knex/types/tables" {
       TAgentVaultSessionLogConfigs,
       TAgentVaultSessionLogConfigsInsert,
       TAgentVaultSessionLogConfigsUpdate
-    >;
-    [TableName.AgentVaultSessionLogChunk]: KnexOriginal.CompositeTableType<
-      TAgentVaultSessionLogChunks,
-      TAgentVaultSessionLogChunksInsert,
-      TAgentVaultSessionLogChunksUpdate
     >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,

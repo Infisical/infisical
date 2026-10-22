@@ -26,18 +26,18 @@ import { DiscoveryJobsTab, InstallationsTab } from "./components";
 export const DiscoveryPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { orgId, projectId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
   const { currentProject } = useProject();
   const { selectedTab } = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/"
   });
 
   const activeTab = selectedTab || "jobs";
 
   const onTabChange = (value: string) => {
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery",
-      params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+      to: "/organizations/$orgId/cert-manager/discovery",
+      params: { orgId: orgId ?? "" },
       search: { selectedTab: value }
     });
   };

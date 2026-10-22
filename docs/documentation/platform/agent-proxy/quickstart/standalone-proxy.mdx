@@ -69,7 +69,7 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
 # export INFISICAL_DOMAIN=https://eu.infisical.com   # EU Cloud, or your self-hosted URL
 
-infisical secrets agent-proxy start
+infisical sm agent-proxy start
 ```
 
 Leave it running and note this host's address; the next step points the agent at it.
@@ -92,7 +92,7 @@ export INFISICAL_ENVIRONMENT=dev
 export INFISICAL_SECRET_PATH=/coding-agent
 export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
 
-infisical secrets agent-proxy connect -- claude
+infisical sm agent-proxy connect -- claude
 ```
 
 Everything after `--` is the agent's own command. It starts as if you had launched it directly, finds `GITHUB_TOKEN` set to the fake `ghp_…` placeholder, and uses it like a normal token; the proxy swaps in the real value on calls to `api.github.com`.
@@ -113,7 +113,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
     Not driving an interactive agent? Run the check directly, in the shell where you set the variables above:
 
     ```bash
-    infisical secrets agent-proxy connect -- gh api user
+    infisical sm agent-proxy connect -- gh api user
     ```
 
     The proxy logs the request as `brokered`.
@@ -122,7 +122,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
     No `gh`? Any HTTP client works the same way:
 
     ```bash
-    infisical secrets agent-proxy connect -- \
+    infisical sm agent-proxy connect -- \
       sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
     ```
   </Tab>

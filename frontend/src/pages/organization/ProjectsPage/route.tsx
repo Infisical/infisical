@@ -8,7 +8,7 @@ export const Route = createFileRoute(
   context: () => ({
     breadcrumbs: [
       {
-        label: "Projects"
+        label: "Home"
       }
     ]
   }),

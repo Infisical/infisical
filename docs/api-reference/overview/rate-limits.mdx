@@ -36,6 +36,20 @@ Each API request is counted against one of the following categories:
     - **Identity creation**: 30 per minute
     - **Project creation**: 30 per minute
   </Tab>
+  <Tab title="Advanced">
+    - **Read**: 600 per minute
+    - **Write**: 300 per minute
+    - **Secret**: 500 per minute
+    - **Identity creation**: 30 per minute
+    - **Project creation**: 30 per minute
+  </Tab>
+  <Tab title="Enterprise">
+    - **Read**: 600 per minute
+    - **Write**: 300 per minute
+    - **Secret**: 500 per minute
+    - **Identity creation**: 30 per minute
+    - **Project creation**: 30 per minute
+  </Tab>
 </Tabs>
 
 <Note>
@@ -45,7 +59,7 @@ Each API request is counted against one of the following categories:
 
 ## Limits on self-hosted instances
 
-If you self-host Infisical, no rate limits are enforced on the API by default. If you need throttling on your API surface, you'll need to configure an external rate limiter.
+If you self-host Infisical, your instance doesn't enforce rate limits on the API. If you need rate limits, configure an external rate limiter in front of your instance.
 
 ## Exceeding rate limits (429 response)
 

@@ -53,6 +53,33 @@ type TClickHouseAuthMethodRow = {
 
 type TClickHouseAuthMethodRawRow = Omit<TClickHouseAuthMethodRow, "count"> & { count: string };
 
+type TClickHouseCountForProjectArg = TClickHouseCountByDateArg & { projectId: string };
+
+// actorMetadata is stored as the JSON text the client sent, so its key order is not stable and
+// grouping on the whole string would split one actor across rows. Only the keys insights reads
+// are extracted and grouped on.
+type TClickHouseProjectActorVolumeRawRow = {
+  date: string;
+  actor: string;
+  userId: string;
+  email: string;
+  username: string;
+  identityId: string;
+  name: string;
+  count: string;
+};
+
+type TClickHouseProjectAuthMethodRawRow = {
+  actor: string;
+  authMethod: string;
+  count: string;
+};
+
+// JSONExtractString returns "" for a missing key. Dropping those gives callers the same shape a
+// Postgres actorMetadata has, so their `||` fallbacks behave the same for both stores.
+const compactActorMetadata = (metadata: Record<string, string>) =>
+  Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== ""));
+
 // Shape of a row returned from ClickHouse's JSONEachRow format
 // actorMetadata and eventMetadata are String columns — they come back as raw JSON strings
 type TClickHouseAuditLogRow = {
@@ -258,6 +285,8 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
   };
 
+  // createdAt is stored without a timezone, so the bounds and toDate() are pinned to UTC. Otherwise
+  // they follow the server's timezone and disagree with the UTC day buckets insights builds.
   const countByDateForOrg = async ({
     orgId,
     eventTypes,
@@ -266,12 +295,12 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
   }: TClickHouseCountByDateArg): Promise<TClickHouseDateVolumeRow[]> => {
     const query = `
       SELECT
-        toDate(createdAt) AS date,
+        toDate(createdAt, 'UTC') AS date,
         count() AS count
       FROM ${tableName}
       WHERE orgId = {orgId:UUID}
-        AND createdAt >= {startDate:DateTime64(6)}
-        AND createdAt < {endDate:DateTime64(6)}
+        AND createdAt >= {startDate:DateTime64(6, 'UTC')}
+        AND createdAt < {endDate:DateTime64(6, 'UTC')}
         AND eventType IN ({eventTypes:Array(String)})
       GROUP BY date
     `;
@@ -313,8 +342,8 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         count() AS count
       FROM ${tableName}
       WHERE orgId = {orgId:UUID}
-        AND createdAt >= {startDate:DateTime64(6)}
-        AND createdAt < {endDate:DateTime64(6)}
+        AND createdAt >= {startDate:DateTime64(6, 'UTC')}
+        AND createdAt < {endDate:DateTime64(6, 'UTC')}
         AND eventType IN ({eventTypes:Array(String)})
         AND actor = {actorType:String}
       GROUP BY authMethod
@@ -348,5 +377,131 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
   };
 
-  return { find, countByDateForOrg, countByIdentityAuthMethodForOrg };
+  // FINAL collapses rows a retried batch inserted twice (same id), which ReplacingMergeTree otherwise
+  // removes only at some later merge. The primary key confines it to this project's time range.
+  const countByDateAndActorForProject = async ({
+    orgId,
+    projectId,
+    eventTypes,
+    startDate,
+    endDate
+  }: TClickHouseCountForProjectArg): Promise<
+    { date: string; actor: string; actorMetadata: Record<string, string>; count: number }[]
+  > => {
+    const query = `
+      SELECT
+        toDate(createdAt, 'UTC') AS date,
+        actor,
+        JSONExtractString(actorMetadata, 'userId') AS userId,
+        JSONExtractString(actorMetadata, 'email') AS email,
+        JSONExtractString(actorMetadata, 'username') AS username,
+        JSONExtractString(actorMetadata, 'identityId') AS identityId,
+        JSONExtractString(actorMetadata, 'name') AS name,
+        count() AS count
+      FROM ${tableName} FINAL
+      WHERE orgId = {orgId:UUID}
+        AND projectId = {projectId:String}
+        AND createdAt >= {startDate:DateTime64(6, 'UTC')}
+        AND createdAt < {endDate:DateTime64(6, 'UTC')}
+        AND eventType IN ({eventTypes:Array(String)})
+      GROUP BY date, actor, userId, email, username, identityId, name
+    `;
+
+    try {
+      const result = await clickhouseClient.query({
+        query,
+        query_params: {
+          orgId,
+          projectId,
+          // ClickHouse's DateTime64 parser rejects the trailing 'Z'
+          startDate: startDate.replace("Z", ""),
+          endDate: endDate.replace("Z", ""),
+          eventTypes
+        },
+        clickhouse_settings: {
+          max_execution_time: 10
+        },
+        format: "JSONEachRow"
+      });
+
+      const rows = await result.json<TClickHouseProjectActorVolumeRawRow>();
+
+      return rows.map(({ date, actor, count, ...actorMetadata }) => ({
+        date,
+        actor,
+        actorMetadata: compactActorMetadata(actorMetadata),
+        count: Number(count)
+      }));
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to aggregate audit logs by date and actor from ClickHouse [orgId=${orgId}] [projectId=${projectId}]`
+      );
+      throw new DatabaseError({ error });
+    }
+  };
+
+  const countByAuthMethodForProject = async ({
+    orgId,
+    projectId,
+    eventTypes,
+    startDate,
+    endDate
+  }: TClickHouseCountForProjectArg): Promise<
+    { actor: string; actorMetadata: Record<string, string>; count: number }[]
+  > => {
+    const query = `
+      SELECT
+        actor,
+        JSONExtractString(actorMetadata, 'authMethod') AS authMethod,
+        count() AS count
+      FROM ${tableName} FINAL
+      WHERE orgId = {orgId:UUID}
+        AND projectId = {projectId:String}
+        AND createdAt >= {startDate:DateTime64(6, 'UTC')}
+        AND createdAt < {endDate:DateTime64(6, 'UTC')}
+        AND eventType IN ({eventTypes:Array(String)})
+      GROUP BY actor, authMethod
+    `;
+
+    try {
+      const result = await clickhouseClient.query({
+        query,
+        query_params: {
+          orgId,
+          projectId,
+          // ClickHouse's DateTime64 parser rejects the trailing 'Z'
+          startDate: startDate.replace("Z", ""),
+          endDate: endDate.replace("Z", ""),
+          eventTypes
+        },
+        clickhouse_settings: {
+          max_execution_time: 10
+        },
+        format: "JSONEachRow"
+      });
+
+      const rows = await result.json<TClickHouseProjectAuthMethodRawRow>();
+
+      return rows.map(({ actor, authMethod, count }) => ({
+        actor,
+        actorMetadata: compactActorMetadata({ authMethod }),
+        count: Number(count)
+      }));
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to aggregate audit logs by auth method from ClickHouse [orgId=${orgId}] [projectId=${projectId}]`
+      );
+      throw new DatabaseError({ error });
+    }
+  };
+
+  return {
+    find,
+    countByDateForOrg,
+    countByIdentityAuthMethodForOrg,
+    countByDateAndActorForProject,
+    countByAuthMethodForProject
+  };
 };

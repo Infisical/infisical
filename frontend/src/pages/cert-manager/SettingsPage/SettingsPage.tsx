@@ -16,7 +16,7 @@ import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
 import { HsmConnectorsTab } from "./components/HsmConnectorsTab";
 
 export const SettingsPage = () => {
-  const { orgId, projectId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
   const activeTab = search.selectedTab ?? "app-connections";
@@ -37,8 +37,8 @@ export const SettingsPage = () => {
           value={activeTab}
           onValueChange={(v) =>
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
-              params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+              to: "/organizations/$orgId/cert-manager/settings",
+              params: { orgId: orgId ?? "" },
               search: { selectedTab: v }
             })
           }

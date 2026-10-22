@@ -1,13 +1,20 @@
+import { useEffect } from "react";
 import { Outlet, useParams, useRouterState } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import {
+  clearSignupTrialIntent,
+  getSignupTrialBillingSearch,
+  getSignupTrialIntent
+} from "@app/components/auth/signupTrialIntent";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
 import { PageBannerStack } from "@app/components/page-frames/PageBannerStack";
 import { SidebarInset, SidebarProvider } from "@app/components/v3";
-import { useServerConfig, useSubscription } from "@app/context";
+import { useOrganization, useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { useImplicitProduct } from "@app/hooks/useImplicitProduct";
 import { CertManagerInstanceBanner } from "@app/layouts/PkiManagerLayout/components/CertManagerInstanceBanner";
 import { AssumePrivilegeModeBanner } from "@app/layouts/ProjectLayout/components/AssumePrivilegeModeBanner";
@@ -28,14 +35,19 @@ export const OrganizationLayout = () => {
     strict: false,
     select: (el) => el?.projectId
   });
-  const isInsideProject = Boolean(projectId);
   const implicitProduct = useImplicitProduct();
+  // Certificate Manager and Secret Scanning bring their own scroll container, so they keep the project
+  // page chrome.
+  const isInsideProject =
+    Boolean(projectId) ||
+    implicitProduct === ProjectType.CertificateManager ||
+    implicitProduct === ProjectType.SecretScanning;
   const isCertManagerOverview = useRouterState({
     select: (state) =>
       state.matches.some(
         (match) =>
           match.routeId ===
-          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/overview"
+          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/overview"
       )
   });
 
@@ -44,7 +56,7 @@ export const OrganizationLayout = () => {
       state.matches.some(
         (match) =>
           match.routeId ===
-          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout"
+          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout"
       )
   });
 
@@ -54,6 +66,22 @@ export const OrganizationLayout = () => {
 
   const { data: serverDetails, isLoading } = useFetchServerStatus();
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const billingOrgId = currentOrg.rootOrgId ?? currentOrg.id;
+
+  useEffect(() => {
+    const trialIntent = getSignupTrialIntent();
+    if (!trialIntent?.orgId) return;
+    clearSignupTrialIntent();
+    if (trialIntent.orgId !== billingOrgId) return;
+    const search = new URLSearchParams(
+      getSignupTrialBillingSearch(
+        trialIntent,
+        `${window.location.pathname}${window.location.search}${window.location.hash}`
+      )
+    );
+    window.location.assign(`/organizations/${billingOrgId}/billing?${search.toString()}`);
+  }, [billingOrgId]);
 
   return (
     <>
