@@ -41,7 +41,7 @@ Every sidecar runs the same proxy from one proxy token, so you set up the proxy 
   - A sandbox can only allow a hostname for HTTPS on port 443, and the proxy listens for plain HTTP on port 17323, so you'd have to allow the proxy by a fixed IPv4 address
   - If the proxy is reachable from the internet, anyone who gets a session token can use it from anywhere until the session ends
 
-  A sidecar is only reachable from its own sandbox, so a session token that leaks from the sandbox doesn't work anywhere else.
+  A sidecar is only reachable from its own sandbox, so nothing outside the sandbox can send requests through it.
 </Accordion>
 
 ## Prerequisites
@@ -195,7 +195,7 @@ func buildImage(ctx context.Context, mc *modal.Client) (*modal.App, *modal.Image
 
 ## Step 4: Run an agent in a sandbox
 
-This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` at the top with your access bundle's name:
+This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` at the top with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with the URL of your instance:
 
 <CodeGroup>
 
@@ -301,10 +301,11 @@ def run_agent(prompt: str) -> str:
         agent.stdin.write_eof()
         agent.stdin.drain()
         output = agent.stdout.read()
-        agent.wait()
+        if agent.wait() != 0:
+            raise RuntimeError(f"The agent failed:\n{agent.stderr.read()}")
         return output
     finally:
-        # Revoke first, so the token stops working even if terminating fails.
+        # Revoke first, so the session ends even if terminating fails.
         try:
             requests.post(
                 f"{INFISICAL_URL}/api/v1/agent-vault/sessions/{session['id']}/revoke",
@@ -412,10 +413,12 @@ export async function runAgent(prompt: string): Promise<string> {
     await agent.stdin.writeText(`${session.token}\n${prompt}`);
     await agent.stdin.close();
     const output = await agent.stdout.readText();
-    await agent.wait();
+    if ((await agent.wait()) !== 0) {
+      throw new Error(`The agent failed:\n${await agent.stderr.readText()}`);
+    }
     return output;
   } finally {
-    // Revoke first, so the token stops working even if terminating fails.
+    // Revoke first, so the session ends even if terminating fails.
     try {
       await infisical(`/api/v1/agent-vault/sessions/${session.id}/revoke`, { token: accessToken });
     } finally {
@@ -539,7 +542,7 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 
 	var sandbox *modal.Sandbox
 	// Deferred calls run last-in, first-out, so the session is revoked first
-	// and the token stops working even if terminating fails.
+	// and ends even if terminating fails.
 	defer func() {
 		if sandbox != nil {
 			_, terminateErr := sandbox.Terminate(context.Background(), nil)
@@ -606,8 +609,13 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 	if err != nil {
 		return "", err
 	}
-	if _, err := agent.Wait(ctx, nil); err != nil {
+	code, err := agent.Wait(ctx, nil)
+	if err != nil {
 		return "", err
+	}
+	if code != 0 {
+		stderr, _ := io.ReadAll(agent.Stderr)
+		return "", fmt.Errorf("the agent failed with exit code %d:\n%s", code, stderr)
 	}
 	return string(stdout), nil
 }
@@ -645,7 +653,7 @@ console.log(await runAgent("Reply with the word OK."));
 modal.close();
 ```
 
-```go Go
+```go Go expandable
 // main.go
 package main
 
@@ -682,7 +690,7 @@ func main() {
 Claude Code replies, even though its sandbox has no Anthropic API key and can't reach the internet.
 
 <Check>
-  Each run now gets its own sandbox, proxy, and session. The only credential in the agent's container is a session token that only works from inside that sandbox, and the token stops working when the run ends.
+  Each run now gets its own sandbox, proxy, and session. The only credential in the agent's container is a session token, and your code revokes the session when the run ends.
 </Check>
 
 To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
