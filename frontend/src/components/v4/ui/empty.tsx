@@ -1,26 +1,27 @@
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icon";
 
 import controlStyles from "./controls.module.css";
+import styles from "./empty.module.css";
 
-const Empty = React.forwardRef<React.ComponentRef<"div">, React.ComponentPropsWithoutRef<"div">>(
-  ({ className, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        data-slot="empty"
-        className={cn(
-          "flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance",
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
+type EmptySize = "default" | "sm";
+
+const Empty = React.forwardRef<
+  React.ComponentRef<"div">,
+  React.ComponentPropsWithoutRef<"div"> & { size?: EmptySize }
+>(({ className, size = "default", ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      data-slot="empty"
+      data-size={size}
+      className={cn(styles.root, className)}
+      {...props}
+    />
+  );
+});
 Empty.displayName = "Empty";
 
 const EmptyHeader = React.forwardRef<
@@ -28,41 +29,23 @@ const EmptyHeader = React.forwardRef<
   React.ComponentPropsWithoutRef<"div">
 >(({ className, ...props }, ref) => {
   return (
-    <div
-      ref={ref}
-      data-slot="empty-header"
-      className={cn("flex max-w-sm flex-col items-center gap-2", className)}
-      {...props}
-    />
+    <div ref={ref} data-slot="empty-header" className={cn(styles.header, className)} {...props} />
   );
 });
 EmptyHeader.displayName = "EmptyHeader";
 
-const emptyMediaVariants = cva(
-  "mb-2 flex shrink-0 items-center justify-center [&_svg]:pointer-events-none [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "bg-transparent",
-        icon: "flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-4"
-      }
-    },
-    defaultVariants: {
-      variant: "default"
-    }
-  }
-);
+export type EmptyMediaVariant = "default" | "icon" | "bare";
 
 const EmptyMedia = React.forwardRef<
   React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & VariantProps<typeof emptyMediaVariants>
+  React.ComponentPropsWithoutRef<"div"> & { variant?: EmptyMediaVariant }
 >(({ className, variant = "default", ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-slot="empty-media"
       data-variant={variant}
-      className={cn(emptyMediaVariants({ variant, className }))}
+      className={cn(styles.media, className)}
       {...props}
     />
   );
@@ -77,7 +60,7 @@ const EmptyTitle = React.forwardRef<
     <div
       ref={ref}
       data-slot="empty-title"
-      className={cn(controlStyles.sectionTitle, className)}
+      className={cn(controlStyles.sectionTitle, styles.title, className)}
       {...props}
     />
   );
@@ -88,11 +71,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
   return (
     <div
       data-slot="empty-description"
-      className={cn(
-        controlStyles.supporting,
-        "text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
-        className
-      )}
+      className={cn(controlStyles.supporting, styles.description, className)}
       {...props}
     />
   );
@@ -103,15 +82,7 @@ const EmptyContent = React.forwardRef<
   React.ComponentPropsWithoutRef<"div">
 >(({ className, ...props }, ref) => {
   return (
-    <div
-      ref={ref}
-      data-slot="empty-content"
-      className={cn(
-        "flex w-full max-w-sm min-w-0 flex-col items-center gap-2.5 text-sm text-balance",
-        className
-      )}
-      {...props}
-    />
+    <div ref={ref} data-slot="empty-content" className={cn(styles.content, className)} {...props} />
   );
 });
 EmptyContent.displayName = "EmptyContent";
@@ -123,31 +94,30 @@ export const EmptyState = ({
   description,
   actions,
   icon = "inbox",
-  variant = "default"
+  variant = "default",
+  media = "icon",
+  size = "default"
 }: {
   title: string;
   description?: string;
   actions?: React.ReactNode;
   icon?: IconName;
   variant?: "default" | "compact";
+  media?: "icon" | "bare";
+  size?: EmptySize;
 }) =>
   variant === "compact" ? (
-    <div
-      role="status"
-      data-slot="empty-state"
-      data-variant="compact"
-      className="flex flex-wrap items-center gap-2"
-    >
+    <div role="status" data-slot="empty-state" data-variant="compact" className={styles.compact}>
       <Icon name={icon} />
       <span>{title}</span>
       {actions}
     </div>
   ) : (
-    <Empty data-slot="empty-state" data-variant="default">
+    <Empty data-slot="empty-state" data-variant="default" size={size}>
+      <EmptyMedia variant={media}>
+        <Icon name={icon} />
+      </EmptyMedia>
       <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Icon name={icon} />
-        </EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
         {description && <EmptyDescription>{description}</EmptyDescription>}
       </EmptyHeader>

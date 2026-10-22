@@ -6,14 +6,14 @@ import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
 export default function Example() {
   return (
-    <ExampleGrid width="wide">
-      {(["default", "icon"] as const).map((variant) => (
+    <ExampleGrid width="full">
+      {(["default", "icon", "bare"] as const).map((variant) => (
         <ExampleCell key={variant} label={variant}>
-          <UI.Empty className="flex-none">
+          <UI.Empty>
+            <UI.EmptyMedia variant={variant}>
+              <Icon name="inbox" />
+            </UI.EmptyMedia>
             <UI.EmptyHeader>
-              <UI.EmptyMedia variant={variant}>
-                <Icon name="inbox" />
-              </UI.EmptyMedia>
               <UI.EmptyTitle>No connections yet</UI.EmptyTitle>
               <UI.EmptyDescription>
                 Add a connection to synchronize this environment.
@@ -27,6 +27,16 @@ export default function Example() {
           </UI.Empty>
         </ExampleCell>
       ))}
+      <ExampleCell label="sm">
+        <UI.Empty size="sm">
+          <UI.EmptyMedia variant="icon">
+            <Icon name="inbox" />
+          </UI.EmptyMedia>
+          <UI.EmptyHeader>
+            <UI.EmptyTitle>No connections yet</UI.EmptyTitle>
+          </UI.EmptyHeader>
+        </UI.Empty>
+      </ExampleCell>
     </ExampleGrid>
   );
 }

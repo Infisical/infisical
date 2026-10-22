@@ -37,6 +37,25 @@ export default function Example() {
           </p>
         )}
       </ExampleCell>
+      <ExampleCell label="sm">
+        <EmptyState
+          size="sm"
+          title="No tokens yet"
+          description="Tokens you create appear here."
+          actions={<Button variant="outline">Create token</Button>}
+        />
+      </ExampleCell>
+      <ExampleCell label="bare">
+        <EmptyState
+          media="bare"
+          icon="search"
+          title="No matching events"
+          description="Try a shorter search or a wider time range."
+        />
+      </ExampleCell>
+      <ExampleCell label="sm, bare">
+        <EmptyState size="sm" media="bare" icon="search" title="No matching events" />
+      </ExampleCell>
       <ExampleCell label="Request failed">
         <EmptyState variant="compact" title="Connections could not load" />
       </ExampleCell>

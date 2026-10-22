@@ -1686,7 +1686,7 @@ export const baselineContent = [
     ],
     referenceNames: ["EmptyState"],
     behavior: [
-      "EmptyState composes title, description, icon and action slots in default or compact form; the retained Empty parts support a custom arrangement."
+      "EmptyState composes title, description, icon and action slots in default or compact form. The media is a tinted, bordered tile (48px with a 24px icon, 36px with a 20px icon at sm) or a bare muted icon; sm tightens padding and gaps for lists, menus and table bodies. The retained Empty parts support a custom arrangement."
     ],
     accessibility: [
       "Use a meaningful heading and a named native action. The empty container does not automatically announce asynchronous changes."
@@ -1733,7 +1733,7 @@ export const baselineContent = [
       },
       {
         axis: "EmptyMedia.variant",
-        expected: ["default", "icon"],
+        expected: ["default", "icon", "bare"],
         shown: [
           {
             value: "default",
@@ -1744,6 +1744,59 @@ export const baselineContent = [
             value: "icon",
             exampleId: "parts",
             label: "icon"
+          },
+          {
+            value: "bare",
+            exampleId: "parts",
+            label: "bare"
+          }
+        ]
+      },
+      {
+        axis: "size",
+        expected: ["default", "sm"],
+        shown: [
+          {
+            value: "default",
+            exampleId: "parts",
+            label: "default"
+          },
+          {
+            value: "sm",
+            exampleId: "parts",
+            label: "sm"
+          }
+        ]
+      },
+      {
+        axis: "EmptyState.size",
+        expected: ["default", "sm"],
+        shown: [
+          {
+            value: "default",
+            exampleId: "variants",
+            label: "default"
+          },
+          {
+            value: "sm",
+            exampleId: "variants",
+            label: "sm"
+          }
+        ]
+      },
+      {
+        axis: "EmptyState.media",
+        expected: ["icon", "bare"],
+        shown: [
+          {
+            value: "icon",
+            exampleId: "variants",
+            label: "default"
+          },
+          {
+            value: "bare",
+            exampleId: "variants",
+            label: "bare"
           }
         ]
       },

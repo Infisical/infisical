@@ -47,7 +47,7 @@ Exports: Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 
 ## Behavior
 
-- EmptyState composes title, description, icon and action slots in default or compact form; the retained Empty parts support a custom arrangement.
+- EmptyState composes title, description, icon and action slots in default or compact form. The media is a tinted, bordered tile (48px with a 24px icon, 36px with a 20px icon at sm) or a bare muted icon; sm tightens padding and gaps for lists, menus and table bodies. The retained Empty parts support a custom arrangement.
 
 ## Accessibility
 
@@ -78,6 +78,22 @@ Source declarations and review criteria only. Generation checks references and c
 
 - default: example `parts`, visible label "default".
 - icon: example `parts`, visible label "icon".
+- bare: example `parts`, visible label "bare".
+
+### size
+
+- default: example `parts`, visible label "default".
+- sm: example `parts`, visible label "sm".
+
+### EmptyState.size
+
+- default: example `variants`, visible label "default".
+- sm: example `variants`, visible label "sm".
+
+### EmptyState.media
+
+- icon: example `variants`, visible label "default".
+- bare: example `variants`, visible label "bare".
 
 ### data state
 
@@ -137,6 +153,15 @@ export default function Example() {
           </p>)}
       </div><figcaption className="text-muted-foreground text-xs">{filtered ? "compact" : "Filtered result"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+        <EmptyState size="sm" title="No tokens yet" description="Tokens you create appear here." actions={<Button variant="outline">Create token</Button>}/>
+      </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+        <EmptyState media="bare" icon="search" title="No matching events" description="Try a shorter search or a wider time range."/>
+      </div><figcaption className="text-muted-foreground text-xs">{"bare"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+        <EmptyState size="sm" media="bare" icon="search" title="No matching events"/>
+      </div><figcaption className="text-muted-foreground text-xs">{"sm, bare"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
         <EmptyState variant="compact" title="Connections could not load"/>
       </div><figcaption className="text-muted-foreground text-xs">{"Request failed"}</figcaption></figure>
     </div>);
@@ -154,13 +179,13 @@ import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/empty";
 import { Icon } from "../../../../components/v4/ui/icon";
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      {(["default", "icon"] as const).map((variant) => (<figure key={variant} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-          <UI.Empty className="flex-none">
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
+      {(["default", "icon", "bare"] as const).map((variant) => (<figure key={variant} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+          <UI.Empty>
+            <UI.EmptyMedia variant={variant}>
+              <Icon name="inbox"/>
+            </UI.EmptyMedia>
             <UI.EmptyHeader>
-              <UI.EmptyMedia variant={variant}>
-                <Icon name="inbox"/>
-              </UI.EmptyMedia>
               <UI.EmptyTitle>No connections yet</UI.EmptyTitle>
               <UI.EmptyDescription>
                 Add a connection to synchronize this environment.
@@ -173,6 +198,16 @@ export default function Example() {
             </UI.EmptyContent>
           </UI.Empty>
         </div><figcaption className="text-muted-foreground text-xs">{variant}</figcaption></figure>))}
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+        <UI.Empty size="sm">
+          <UI.EmptyMedia variant="icon">
+            <Icon name="inbox"/>
+          </UI.EmptyMedia>
+          <UI.EmptyHeader>
+            <UI.EmptyTitle>No connections yet</UI.EmptyTitle>
+          </UI.EmptyHeader>
+        </UI.Empty>
+      </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>
     </div>);
 }
 ```

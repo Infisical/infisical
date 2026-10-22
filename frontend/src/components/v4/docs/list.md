@@ -128,10 +128,11 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/list/default.tsx`; its relative imports are generated for that exact path. States: default, empty.
 
-Registry items used: @infisical/button, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/empty, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
+import { EmptyState } from "../../../../components/v4/ui/empty";
 import { DataList, List, ListRow } from "../../../../components/v4/ui/list";
 export default function Example() {
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
@@ -143,7 +144,7 @@ export default function Example() {
         </List>
       </div><figcaption className="text-muted-foreground text-xs">{"framed"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Empty connections" empty="No connections yet"/>
+        <List label="Empty connections" empty={<EmptyState size="sm" media="bare" title="No connections yet"/>}/>
       </div><figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <DataList variant="stat" items={[

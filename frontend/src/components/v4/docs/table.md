@@ -205,11 +205,12 @@ export default function Variants() {
 
 Save this example at `src/pages/design-system/examples/table/states.tsx`; its relative imports are generated for that exact path. States: empty, controlled, disabled, keyboard, loading.
 
-Registry items used: @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/data-table, @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
 import { DataTable } from "../../../../components/v4/ui/data-table";
+import { EmptyState } from "../../../../components/v4/ui/empty";
 const initial = [
     { id: "owner", name: "Production owner", locked: true },
     { id: "worker", name: "Rotation worker", locked: false },
@@ -227,7 +228,7 @@ export default function States() {
     const [selected, setSelected] = React.useState<string[]>(["worker"]);
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataTable label="Empty identities" rows={[]} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} empty="No identities in this environment"/>
+        <DataTable label="Empty identities" rows={[]} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} empty={<EmptyState size="sm" media="bare" icon="user" title="No identities in this environment"/>}/>
       </div><figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <DataTable label="Protected identities" rows={initial} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} selectable isSelectable={(row) => !row.locked} selectedIds={selected} onSelectionChange={setSelected} footer={`${selected.length} eligible loaded identities selected`}/>

@@ -1,4 +1,5 @@
 import { Button } from "@app/components/v4/ui/button";
+import { EmptyState } from "@app/components/v4/ui/empty";
 import { DataList, List, ListRow } from "@app/components/v4/ui/list";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
@@ -31,7 +32,10 @@ export default function Example() {
         </List>
       </ExampleCell>
       <ExampleCell align="stretch" label="Empty">
-        <List label="Empty connections" empty="No connections yet" />
+        <List
+          label="Empty connections"
+          empty={<EmptyState size="sm" media="bare" title="No connections yet" />}
+        />
       </ExampleCell>
       <ExampleCell align="stretch" label="stat">
         <DataList

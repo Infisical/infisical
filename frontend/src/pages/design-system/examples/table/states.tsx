@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { DataTable } from "@app/components/v4/ui/data-table";
+import { EmptyState } from "@app/components/v4/ui/empty";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
@@ -28,7 +29,14 @@ export default function States() {
           columns={columns}
           getRowId={(row) => row.id}
           rowLabel={(row) => row.name}
-          empty="No identities in this environment"
+          empty={
+            <EmptyState
+              size="sm"
+              media="bare"
+              icon="user"
+              title="No identities in this environment"
+            />
+          }
         />
       </ExampleCell>
       <ExampleCell align="stretch" label="Protected selection">

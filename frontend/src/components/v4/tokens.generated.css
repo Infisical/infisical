@@ -59,6 +59,10 @@
   --v4-size-icon-sm: 14px;
   --v4-size-icon: 16px;
   --v4-size-icon-xs: 12px;
+  --v4-size-icon-lg: 20px;
+  --v4-size-icon-xl: 24px;
+  --v4-size-empty-media: 48px;
+  --v4-size-empty-media-sm: var(--v4-size-control-md);
   --v4-size-measure-page: 1160px;
   --v4-size-measure-form: 640px;
   --v4-size-measure-field: 400px;
