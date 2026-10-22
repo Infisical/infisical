@@ -249,6 +249,41 @@ describe("buildServiceSchema with OAuth", () => {
     ]);
   });
 
+  it("ignores leftover client values once the service switches to a bearer token", () => {
+    const result = buildServiceSchema(storedOAuthService()).safeParse(
+      mcpForm({
+        credentialType: AgentVaultCredentialType.Bearer,
+        secret: "token",
+        oauthClientId: "{{GITHUB_CLIENT_ID}}",
+        oauthClientSecret: "\u201csecret\u201d"
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("refuses to save an existing service whose new authorization expired, until it is reauthorized or kept", () => {
+    const schema = buildServiceSchema(storedOAuthService());
+    const expired = schema.safeParse(
+      mcpForm({
+        oauthAuthorizationRejection: "This authorization expired before the service was saved."
+      })
+    );
+    expect(expired.error?.issues.map(({ path, message }) => [path.join("."), message])).toEqual([
+      ["oauthAuthorizationId", "This authorization expired before the service was saved."]
+    ]);
+
+    expect(schema.safeParse(mcpForm({ oauthAuthorizationRejection: "" })).success).toBe(true);
+    expect(
+      schema.safeParse(
+        mcpForm({
+          oauthAuthorizationRejection: "This authorization expired before the service was saved.",
+          oauthAuthorizationId: "auth-2",
+          oauthAuthorizedUrl: SERVER_URL
+        })
+      ).success
+    ).toBe(true);
+  });
+
   it("ignores the bearer header fields and reserves Authorization for the token", () => {
     const authorized = { oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL };
     expect(

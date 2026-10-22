@@ -283,8 +283,12 @@ export const buildServiceSchema = (
       // The server URL the authorization was made for, so editing the URL afterwards asks for a new one.
       oauthAuthorizedUrl: z.string(),
       oauthScopes: z.array(z.string()),
-      oauthClientId: oauthClientIdSchema.optional(),
-      oauthClientSecret: oauthClientSecretSchema.optional(),
+      // Why a new authorization was dropped (expired, or refused on save). While set, the stored login doesn't
+      // count, so the save can't quietly keep the old one.
+      oauthAuthorizationRejection: z.string().optional(),
+      // Checked in the refine below, only while OAuth is selected: switching to Bearer keeps these values.
+      oauthClientId: z.string().optional(),
+      oauthClientSecret: z.string().optional(),
       methods: z.array(z.nativeEnum(AgentVaultHttpMethod)),
       pathPrefixes: z
         .array(z.string())
@@ -327,11 +331,34 @@ export const buildServiceSchema = (
             message: "An MCP server takes OAuth or a bearer token."
           });
         }
-        if (isOAuthAuthorizationMissing(data, service)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["oauthAuthorizationId"],
-            message: "Authorize the server to continue."
+        if (data.credentialType === AgentVaultCredentialType.OAuth) {
+          if (data.oauthAuthorizationRejection && !data.oauthAuthorizationId) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["oauthAuthorizationId"],
+              message: data.oauthAuthorizationRejection
+            });
+          } else if (isOAuthAuthorizationMissing(data, service)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["oauthAuthorizationId"],
+              message: "Authorize the server to continue."
+            });
+          }
+          (
+            [
+              ["oauthClientId", oauthClientIdSchema, data.oauthClientId],
+              ["oauthClientSecret", oauthClientSecretSchema, data.oauthClientSecret]
+            ] as const
+          ).forEach(([field, fieldSchema, value]) => {
+            const result = fieldSchema.safeParse(value ?? "");
+            if (!result.success) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: [field],
+                message: result.error.issues[0].message
+              });
+            }
           });
         }
       }

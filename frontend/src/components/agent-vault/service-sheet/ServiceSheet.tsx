@@ -102,6 +102,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   oauthAuthorizationId: "",
   oauthAuthorizedUrl: "",
   oauthScopes: [],
+  oauthAuthorizationRejection: "",
   oauthClientId: "",
   oauthClientSecret: "",
   methods: [...HTTP_METHODS],
@@ -510,10 +511,12 @@ export const ServiceSheet = ({
   // The template step is skipped for a prefilled sheet, so this is where a wrong guess of the type is corrected.
   const switchPrefillType = (serviceType: AgentVaultServiceType) => {
     if (!prefillHost) return;
-    const { template: picked, form } = prefillFor(serviceType, prefillHost, prefillPath);
-    setTemplate(picked);
-    setOpenItem(serviceType === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
-    reset(form);
+    requestDiscardAction(() => {
+      const { template: picked, form } = prefillFor(serviceType, prefillHost, prefillPath);
+      setTemplate(picked);
+      setOpenItem(serviceType === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
+      reset(form);
+    });
   };
 
   const handleTemplatePicked = (
@@ -585,6 +588,7 @@ export const ServiceSheet = ({
           : null;
       if (rejectedAuthorization) {
         setValue("oauthAuthorizationId", "");
+        setValue("oauthAuthorizationRejection", rejectedAuthorization);
         setError("oauthAuthorizationId", { type: "server", message: rejectedAuthorization });
         setStep(stepKeys.indexOf(ServiceStep.Credential));
         return;
@@ -704,6 +708,7 @@ export const ServiceSheet = ({
       if (getValues("oauthAuthorizationId") !== oauthAuthorizationId) return;
       setValue("oauthAuthorizationId", "");
       if (getValues("credentialType") === AgentVaultCredentialType.OAuth) {
+        setValue("oauthAuthorizationRejection", OAUTH_AUTHORIZATION_EXPIRED_MESSAGE);
         setError("oauthAuthorizationId", {
           type: "server",
           message: OAUTH_AUTHORIZATION_EXPIRED_MESSAGE

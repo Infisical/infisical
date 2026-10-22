@@ -145,18 +145,26 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
     clearErrors,
     formState: { errors }
   } = useFormContext<TServiceForm>();
-  const [serverUrl, authorizationId, authorizedUrl, scopes, clientId = "", clientSecret = ""] =
-    useWatch({
-      control,
-      name: [
-        "serverUrl",
-        "oauthAuthorizationId",
-        "oauthAuthorizedUrl",
-        "oauthScopes",
-        "oauthClientId",
-        "oauthClientSecret"
-      ]
-    });
+  const [
+    serverUrl,
+    authorizationId,
+    authorizedUrl,
+    scopes,
+    clientId = "",
+    clientSecret = "",
+    rejection = ""
+  ] = useWatch({
+    control,
+    name: [
+      "serverUrl",
+      "oauthAuthorizationId",
+      "oauthAuthorizedUrl",
+      "oauthScopes",
+      "oauthClientId",
+      "oauthClientSecret",
+      "oauthAuthorizationRejection"
+    ]
+  });
   const clientIdInputId = useId();
   const clientSecretInputId = useId();
   const redirectUriInputId = useId();
@@ -176,6 +184,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
   const { state, isClientRequired, isOAuthAdvertised, redirectUri, authorize, cancel } =
     useOAuthAuthorize({
       onAuthorized: (authorization) => {
+        setValue("oauthAuthorizationRejection", "");
         setValue("oauthAuthorizedUrl", trimmedUrl, { shouldDirty: true });
         setValue("oauthScopes", authorization.scopes, { shouldDirty: true });
         setValue("oauthAuthorizationId", authorization.id, {
@@ -465,6 +474,22 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
           )}
         </div>
         <FieldError>{errors.oauthAuthorizationId?.message}</FieldError>
+        {rejection && stored && !isWaiting && (
+          <div>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="text-muted hover:text-foreground"
+              onClick={() => {
+                setValue("oauthAuthorizationRejection", "");
+                clearErrors("oauthAuthorizationId");
+              }}
+            >
+              Keep Current Login
+            </Button>
+          </div>
+        )}
       </FieldContent>
     </Field>
   );
