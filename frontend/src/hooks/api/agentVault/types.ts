@@ -2,6 +2,7 @@ import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
+  AgentVaultProxyMode,
   AgentVaultSessionLogDecision,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
@@ -234,6 +235,7 @@ export type TAgentVaultProxy = {
   isHealthy: boolean;
   rootCaFingerprint: string | null;
   rootCaExpiresAt: string | null;
+  mode: AgentVaultProxyMode;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -244,6 +246,15 @@ export type TAgentVaultEnrollment = {
   token: string;
   expiresAt: string;
 };
+
+export type TAgentVaultProxyToken = {
+  proxyToken: string;
+  rootCaFingerprint: string;
+};
+
+export type TCreateAgentVaultProxyResponse =
+  | ({ proxy: TAgentVaultProxy } & TAgentVaultEnrollment)
+  | ({ proxy: TAgentVaultProxy } & TAgentVaultProxyToken);
 
 export type TListAgentVaultSessionsDTO = {
   scope?: AgentVaultSessionScope;
@@ -301,6 +312,10 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TCreateAgentVaultProxyDTO = TAgentVaultProxySettingsDTO & {
+  mode?: AgentVaultProxyMode;
 };
 
 export type TAgentVaultSessionLogSettings = {

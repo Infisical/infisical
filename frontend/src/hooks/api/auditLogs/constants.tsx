@@ -492,7 +492,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_SESSION_MINT]: "Create session",
   [EventType.AGENT_VAULT_SESSION_REVOKE]: "Revoke session",
   [EventType.AGENT_VAULT_PROXY_REGISTER]: "Create proxy",
-  [EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE]: "Generate proxy enrollment token",
+  [EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE]: "Generate proxy token",
   [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",

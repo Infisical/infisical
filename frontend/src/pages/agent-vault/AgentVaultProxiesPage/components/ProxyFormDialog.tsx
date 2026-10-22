@@ -34,11 +34,16 @@ import {
 } from "@app/components/v3";
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import {
+  AgentVaultProxyMode,
   AgentVaultTrafficPolicy,
   useCreateAgentVaultProxy,
   useUpdateAgentVaultProxy
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultEnrollment,
+  TAgentVaultProxy,
+  TAgentVaultProxyToken
+} from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const TRAFFIC_POLICY_CHOICES = [
@@ -54,9 +59,23 @@ const TRAFFIC_POLICY_CHOICES = [
   }
 ];
 
+const MODE_CHOICES = [
+  {
+    value: AgentVaultProxyMode.Standard,
+    title: "Standard",
+    description: "One machine"
+  },
+  {
+    value: AgentVaultProxyMode.Ha,
+    title: "HA",
+    description: "Many copies: HA, sidecars, containers"
+  }
+];
+
 const schema = z
   .object({
     name: slugSchema({ max: 64, field: "Name" }),
+    mode: z.nativeEnum(AgentVaultProxyMode),
     trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy),
     allowedHosts: z.string().trim().max(1024).optional(),
     // Guarded before coercion: z.coerce turns "" into 0, which would report the range error instead.
@@ -121,9 +140,10 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   proxy?: TAgentVaultProxy;
   onCreated?: (enrollment: TAgentVaultEnrollment) => void;
+  onCreatedHa?: (proxyToken: TAgentVaultProxyToken) => void;
 };
 
-export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Props) => {
+export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated, onCreatedHa }: Props) => {
   const createProxy = useCreateAgentVaultProxy();
   const updateProxy = useUpdateAgentVaultProxy();
 
@@ -155,6 +175,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
 
     reset({
       name: proxy?.name ?? "",
+      mode: proxy?.mode ?? AgentVaultProxyMode.Standard,
       trafficPolicy: proxy?.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
       allowedHosts: proxy?.allowedHosts ?? "",
       pollInterval: proxy?.pollInterval ?? 60
@@ -176,9 +197,16 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
         await updateProxy.mutateAsync({ proxyId: proxy.id, ...payload });
         createNotification({ text: `Proxy "${data.name}" updated`, type: "success" });
       } else {
-        const result = await createProxy.mutateAsync(payload);
+        const result = await createProxy.mutateAsync({ ...payload, mode: data.mode });
         createNotification({ text: `Proxy "${data.name}" created`, type: "success" });
-        onCreated?.({ token: result.token, expiresAt: result.expiresAt });
+        if ("proxyToken" in result) {
+          onCreatedHa?.({
+            proxyToken: result.proxyToken,
+            rootCaFingerprint: result.rootCaFingerprint
+          });
+        } else {
+          onCreated?.({ token: result.token, expiresAt: result.expiresAt });
+        }
       }
 
       onOpenChange(false);
@@ -189,6 +217,37 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
 
   const settingsFields = (
     <>
+      <Controller
+        control={control}
+        name="mode"
+        render={({ field }) => (
+          <Field>
+            <FieldLabel>Mode</FieldLabel>
+            <FieldContent>
+              <RadioGroup value={field.value} onValueChange={field.onChange} disabled={isUpdate}>
+                {MODE_CHOICES.map((choice) => {
+                  const id = `proxy-mode-${choice.value}`;
+
+                  return (
+                    <FieldLabel key={choice.value} htmlFor={id} variant="av">
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>{choice.title}</FieldTitle>
+                          <FieldDescription>{choice.description}</FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem id={id} value={choice.value} />
+                      </Field>
+                    </FieldLabel>
+                  );
+                })}
+              </RadioGroup>
+              {isUpdate && (
+                <FieldDescription>Can&apos;t be changed after creation.</FieldDescription>
+              )}
+            </FieldContent>
+          </Field>
+        )}
+      />
       <Controller
         control={control}
         name="trafficPolicy"
