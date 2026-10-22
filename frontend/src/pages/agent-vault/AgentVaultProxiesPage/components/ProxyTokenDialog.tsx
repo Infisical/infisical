@@ -23,6 +23,22 @@ const cliCommand = (token: string, siteUrl: string) =>
 infisical agent-vault proxy \\
   --domain ${siteUrl}`;
 
+const systemdEnvFile = (token: string) => `INFISICAL_AGENT_VAULT_PROXY_TOKEN=${token}`;
+
+const systemdUnit = (siteUrl: string) =>
+  `[Unit]
+Description=Infisical Agent Vault proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/infisical/agent-vault-proxy.env
+ExecStart=/usr/local/bin/infisical agent-vault proxy --domain ${siteUrl}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target`;
+
 const dockerCommand = (token: string, siteUrl: string) =>
   `docker run -d --name agent-vault-proxy \\
   -p 17323:17323 \\
@@ -97,11 +113,22 @@ export const ProxyTokenDialog = ({ proxyToken, onOpenChange }: Props) => {
           <Tabs defaultValue="cli">
             <TabsList variant="av" aria-label="Deployment target">
               <TabsTrigger value="cli">CLI</TabsTrigger>
+              <TabsTrigger value="systemd">systemd</TabsTrigger>
               <TabsTrigger value="docker">Docker</TabsTrigger>
               <TabsTrigger value="kubernetes">Kubernetes</TabsTrigger>
             </TabsList>
             <TabsContent value="cli">
               <CodeBlock value={cliCommand(token, siteUrl)} label="Command" />
+            </TabsContent>
+            <TabsContent value="systemd" className="flex flex-col gap-4">
+              <CodeBlock
+                value={systemdEnvFile(token)}
+                label="/etc/infisical/agent-vault-proxy.env (chmod 600)"
+              />
+              <CodeBlock
+                value={systemdUnit(siteUrl)}
+                label="/etc/systemd/system/agent-vault-proxy.service"
+              />
             </TabsContent>
             <TabsContent value="docker">
               <CodeBlock value={dockerCommand(token, siteUrl)} label="Command" />

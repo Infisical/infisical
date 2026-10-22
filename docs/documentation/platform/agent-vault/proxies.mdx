@@ -38,7 +38,7 @@ If an API offers both, configure the agent to use its plain HTTPS requests. Many
     </Frame>
   </Step>
   <Step>
-    Select **Create**. The **Proxy Token** dialog shows the proxy token, and commands for the CLI, Docker, and Kubernetes with your token and instance filled in.
+    Select **Create**. The **Proxy Token** dialog shows the proxy token, and commands for the CLI, systemd, Docker, and Kubernetes with your token and instance filled in.
   </Step>
   <Step>
     Run one of the commands on each machine where the proxy will run.
@@ -119,7 +119,7 @@ The commands look like this:
     The manifest in the dialog has no Service. Add the Service from the end of this example so that agents in the cluster can reach the proxy at `agent-vault-proxy:17323`.
   </Tab>
   <Tab title="systemd">
-    The dialog doesn't show a systemd unit. Save the token in `/etc/infisical/agent-vault-proxy.env`:
+    Save the token in `/etc/infisical/agent-vault-proxy.env`:
 
     ```bash
     INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token>
