@@ -24,6 +24,7 @@ type Thumb = {
   visible: boolean;
   placed: boolean;
   jump: boolean;
+  first: boolean;
 };
 const hidden: Thumb = {
   x: 0,
@@ -35,7 +36,8 @@ const hidden: Thumb = {
   target: -1,
   visible: false,
   placed: false,
-  jump: true
+  jump: true,
+  first: true
 };
 
 const blocked = (element: HTMLElement) =>
@@ -78,6 +80,9 @@ export function ListHighlight() {
     if (!list) return undefined;
     list.setAttribute("data-list-highlight", "");
     if (getComputedStyle(list).position === "static") list.style.position = "relative";
+    const zone =
+      (list.closest("[data-radix-popper-content-wrapper]")
+        ?.firstElementChild as HTMLElement | null) ?? list;
     let hovered: HTMLElement | null = null;
     let keyboard = false;
     let inside = false;
@@ -109,7 +114,8 @@ export function ListHighlight() {
         target: all.indexOf(target),
         visible: true,
         placed: true,
-        jump: !current.placed || !current.visible
+        jump: !current.placed || !current.visible,
+        first: !current.placed
       }));
     };
     const measure = () => {
@@ -158,8 +164,8 @@ export function ListHighlight() {
       keyboard = false;
       schedule();
     };
-    list.addEventListener("pointerover", over);
-    list.addEventListener("pointerleave", leave);
+    zone.addEventListener("pointerover", over);
+    zone.addEventListener("pointerleave", leave);
     list.addEventListener("focusout", focusOut);
     list.addEventListener("animationend", schedule);
     list.addEventListener("transitionend", schedule);
@@ -194,8 +200,8 @@ export function ListHighlight() {
     measure();
     return () => {
       cancelAnimationFrame(frame);
-      list.removeEventListener("pointerover", over);
-      list.removeEventListener("pointerleave", leave);
+      zone.removeEventListener("pointerover", over);
+      zone.removeEventListener("pointerleave", leave);
       list.removeEventListener("focusout", focusOut);
       list.removeEventListener("animationend", schedule);
       list.removeEventListener("transitionend", schedule);
@@ -225,7 +231,7 @@ export function ListHighlight() {
       }}
       transition={{
         default: state.jump || reduced ? snap : spring.moderate,
-        opacity: reduced || !state.placed ? snap : fade.enter
+        opacity: reduced || state.first ? snap : fade.enter
       }}
     />
   );
