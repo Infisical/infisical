@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
 import { PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -8,9 +7,9 @@ import { z } from "zod";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
   Button,
+  Combobox,
   Field,
   FieldError,
-  FilterableSelect,
   IconButton,
   Input,
   Select,
@@ -24,8 +23,6 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import {
-  TCloudflarePermissionGroup,
-  TCloudflareZone,
   useCloudflareConnectionListPermissionGroups,
   useCloudflareConnectionListZones
 } from "@app/hooks/api/appConnections/cloudflare";
@@ -246,8 +243,8 @@ export const CloudflareApiTokenRotationParametersFields = () => {
                         render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
                           <Field className="mt-3" data-invalid={Boolean(error)}>
                             <FieldLabelWithTooltip>Zones</FieldLabelWithTooltip>
-                            <FilterableSelect
-                              isMulti
+                            <Combobox
+                              multiple
                               isLoading={isZonesPending && Boolean(connectionId)}
                               isDisabled={!connectionId}
                               options={zones}
@@ -256,11 +253,7 @@ export const CloudflareApiTokenRotationParametersFields = () => {
                               getOptionValue={(option) => option.id}
                               value={zones?.filter((zone) => (value ?? []).includes(zone.id)) ?? []}
                               onBlur={onBlur}
-                              onChange={(option) =>
-                                onChange(
-                                  (option as MultiValue<TCloudflareZone>).map((zone) => zone.id)
-                                )
-                              }
+                              onValueChange={(option) => onChange(option.map((zone) => zone.id))}
                               isError={Boolean(error)}
                             />
                             <FieldError>{error?.message}</FieldError>
@@ -277,7 +270,7 @@ export const CloudflareApiTokenRotationParametersFields = () => {
                           data-invalid={Boolean(error)}
                         >
                           <FieldLabelWithTooltip>Permission group</FieldLabelWithTooltip>
-                          <FilterableSelect
+                          <Combobox
                             isLoading={isPermissionGroupsPending && Boolean(connectionId)}
                             isDisabled={!connectionId}
                             options={permissionGroupOptions}
@@ -288,11 +281,8 @@ export const CloudflareApiTokenRotationParametersFields = () => {
                               permissionGroupOptions.find((group) => group.id === value) ?? null
                             }
                             onBlur={onBlur}
-                            onChange={(option) =>
-                              onChange(
-                                (option as SingleValue<TCloudflarePermissionGroup>)?.id ?? ""
-                              )
-                            }
+                            onValueChange={(option) => onChange(option.id)}
+                            isClearable={false}
                             isError={Boolean(error)}
                           />
                           <FieldError>{error?.message}</FieldError>
