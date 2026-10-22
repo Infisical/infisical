@@ -2,6 +2,7 @@
   min-width: 0;
   max-width: 100%;
   position: relative;
+  isolation: isolate;
 }
 .tabsTrack[data-variant="segmented"] {
   background: var(--v4-tint);

@@ -44,6 +44,9 @@
   border: 0;
   border-radius: 0;
 }
+.inset > :not(.topBar) {
+  isolation: isolate;
+}
 .inset:has(> .topBar) {
   scroll-padding-top: calc(var(--v4-size-shell-bar) + var(--v4-space-16));
 }

@@ -35,3 +35,15 @@ describe("shell-hosted Sidebar edge", () => {
     );
   });
 });
+
+describe("TopBar layering", () => {
+  it("isolates page content under the island so no component z-index paints over the TopBar", () => {
+    const content = rules(css("top-bar.module.css")).find(({ selector }) =>
+      selector.startsWith(".inset > :not(.topBar)")
+    );
+    expect(content?.body).toMatch(/isolation:\s*isolate/);
+    const bar = rules(css("top-bar.module.css")).find(({ selector }) => selector === ".topBar");
+    expect(bar?.body).toMatch(/position:\s*sticky/);
+    expect(bar?.body).toMatch(/z-index:\s*[1-9]/);
+  });
+});
