@@ -25,6 +25,7 @@ const getOriginalEvent = (event: Event) =>
 const useOverlayLayer = (isPending: boolean, isModal = true) => {
   const parentLayer = React.useContext(OverlayLayerContext);
   const isModalLayer = isModal || Boolean(parentLayer?.isModal);
+  const isContextPending = isPending || (!isModal && Boolean(parentLayer?.isPending));
   const parentRegisterPopup = parentLayer?.registerPopup;
   const parentMarkPopupDismissEvent = parentLayer?.markPopupDismissEvent;
   const openPopups = React.useRef(new Map<string, ((event: KeyboardEvent) => void) | undefined>());
@@ -60,8 +61,13 @@ const useOverlayLayer = (isPending: boolean, isModal = true) => {
   );
 
   const contextValue = React.useMemo(
-    () => ({ isModal: isModalLayer, isPending, registerPopup, markPopupDismissEvent }),
-    [isModalLayer, isPending, registerPopup, markPopupDismissEvent]
+    () => ({
+      isModal: isModalLayer,
+      isPending: isContextPending,
+      registerPopup,
+      markPopupDismissEvent
+    }),
+    [isModalLayer, isContextPending, registerPopup, markPopupDismissEvent]
   );
 
   const guardDismiss = <TEvent extends Event>(event: TEvent, handler?: (event: TEvent) => void) => {
