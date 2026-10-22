@@ -36,7 +36,6 @@ import {
 import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
-  AgentVaultServiceType,
   AgentVaultSessionLogDecision,
   getSessionLogStorageError,
   sessionLogRecordKey,
@@ -56,9 +55,7 @@ import {
   chunkIdTime,
   groupSessionLogGaps,
   matchesSessionLogSearch,
-  matchesSessionLogType,
-  sessionLogSearchTerm,
-  SessionLogTypeFilter
+  sessionLogSearchTerm
 } from "./SessionLogsPanel.utils";
 import { useNewRequestsCounter } from "./useNewRequestsCounter";
 import { useSessionLogsLiveTail } from "./useSessionLogsLiveTail";
@@ -113,12 +110,12 @@ export const SessionLogsPanel = ({ session }: Props) => {
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
   const [serviceHost, setServiceHost] = useState<string | null>(null);
+  const [servicePath, setServicePath] = useState<string | undefined>();
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [addedHosts, setAddedHosts] = useState<Set<string>>(() => new Set());
 
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
-  const [typeFilter, setTypeFilter] = useState<SessionLogTypeFilter>("all");
   const { range, applyRange, isActive, canTail, isLive, isPausedForBudget, pauseForBudget } =
     useSessionLogsLiveTail(session);
   const { history, live, arrived, isLiveGapUnfilled } = useGetAgentVaultSessionLogs(session.id, {
@@ -193,14 +190,12 @@ export const SessionLogsPanel = ({ session }: Props) => {
     () =>
       records.filter((record) => {
         if (decisionFilter !== "all" && record.decision !== decisionFilter) return false;
-        if (!matchesSessionLogType(record, typeFilter)) return false;
         return matchesSessionLogSearch(record, search);
       }),
-    [records, search, decisionFilter, typeFilter]
+    [records, search, decisionFilter]
   );
 
-  const hasBrowserFilter =
-    Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all" || typeFilter !== "all";
+  const hasBrowserFilter = Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all";
   const isFiltered = hasBrowserFilter || Boolean(range);
 
   // Counted once opened: a chunk's request count isn't known until it is decrypted.
@@ -230,7 +225,6 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const filterKey = [
     sessionLogSearchTerm(search),
     decisionFilter,
-    typeFilter,
     range?.startDate.getTime(),
     range?.endDate.getTime()
   ].join("|");
@@ -519,19 +513,6 @@ export const SessionLogsPanel = ({ session }: Props) => {
           </InputGroup>
         </div>
         <Select
-          value={typeFilter}
-          onValueChange={(value) => setTypeFilter(value as SessionLogTypeFilter)}
-        >
-          <SelectTrigger aria-label="Filter by type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value={AgentVaultServiceType.Http}>HTTP APIs</SelectItem>
-            <SelectItem value={AgentVaultServiceType.Mcp}>MCP Servers</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
           value={decisionFilter}
           onValueChange={(value) => setDecisionFilter(value as DecisionFilter)}
         >
@@ -715,6 +696,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                     isAddable
                       ? () => {
                           setServiceHost(hostPatternFor(record));
+                          setServicePath(record.path);
                           setIsServiceSheetOpen(true);
                         }
                       : undefined
@@ -783,6 +765,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           onOpenChange={setIsServiceSheetOpen}
           accessBundleId={accessBundle.id}
           prefillHost={serviceHost ?? undefined}
+          prefillPath={servicePath}
           onSaved={() => {
             if (serviceHost) setAddedHosts((prev) => new Set(prev).add(serviceHost));
           }}

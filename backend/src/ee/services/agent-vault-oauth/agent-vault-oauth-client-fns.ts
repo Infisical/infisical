@@ -73,23 +73,27 @@ const parseRegistration = (body: string): TOauthClient | null => {
 
 // RFC 7591. Servers must ignore metadata fields they don't understand, so the only one a strict server can refuse
 // is `application_type` (an OIDC registration value); a refusal is retried once without it. `grant_types` stays,
-// or a strict server registers authorization_code only and every refresh fails with unauthorized_client.
+// or a strict server registers authorization_code only and every refresh fails with unauthorized_client. It drops
+// refresh_token only when the server's metadata lists its grants without it, since a strict one refuses the request.
 export const registerOauthClient = async ({
   http,
   serverUrl,
   registrationEndpoint,
-  redirectUri
+  redirectUri,
+  grantTypesSupported
 }: {
   http: TOauthHttpClient;
   serverUrl: string;
   registrationEndpoint: string;
   redirectUri: string;
+  grantTypesSupported: string[] | null;
 }): Promise<{ client: TOauthClient; compatibility: AgentVaultOauthCompatibility[] }> => {
+  const refreshSupported = !grantTypesSupported || grantTypesSupported.includes("refresh_token");
   const minimal = {
     client_name: AGENT_VAULT_OAUTH_CLIENT_NAME,
     redirect_uris: [redirectUri],
     token_endpoint_auth_method: AgentVaultOauthClientAuthMethod.None,
-    grant_types: [AGENT_VAULT_OAUTH_GRANT_TYPE, "refresh_token"],
+    grant_types: refreshSupported ? [AGENT_VAULT_OAUTH_GRANT_TYPE, "refresh_token"] : [AGENT_VAULT_OAUTH_GRANT_TYPE],
     response_types: ["code"]
   };
   const full = { ...minimal, application_type: "web" };

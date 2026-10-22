@@ -52,13 +52,12 @@ import {
   normalizeProviderText,
   refreshAccessToken,
   TOKEN_REQUEST_BUDGET_MS,
+  toResolvedOauthCredential,
   validateCallbackIssuer,
   withTokenCompatibility
 } from "./agent-vault-oauth-token-fns";
 import {
   AGENT_VAULT_OAUTH_GRANT_TYPE,
-  AGENT_VAULT_OAUTH_HEADER_NAME,
-  AGENT_VAULT_OAUTH_HEADER_PREFIX,
   AgentVaultOauthRegistration,
   TAgentVaultOauthAuthorization,
   TAgentVaultOauthAuthorizationView,
@@ -146,23 +145,26 @@ const AGENT_VAULT_REAUTHORIZED_DURING_SAVE_MESSAGE =
 // Run under the bundle lock against the row read there, since a save that landed after the first read may have
 // moved the service or reauthorized it. A newer reauthorization wins over a stale one, so an older authorization
 // can't swap the account the service acts as back. A refresh doesn't count: it keeps `authorizedAt`, and its
-// rotated tokens are what this save replaces anyway. Returns the required scopes still to carry over.
+// rotated tokens are what this save replaces anyway. Returns the required scopes still to carry over, which are none
+// when the new authorization is from another issuer: the sign-in didn't ask for them either.
 export const checkOauthClaimUnderLock = ({
   authorizedServerUrl,
+  authorizedIssuer,
   lockedServerUrl,
   readOauth,
   lockedOauth
 }: {
   authorizedServerUrl: string;
+  authorizedIssuer: string;
   lockedServerUrl: string | null;
   readOauth: Pick<TAgentVaultOauthConfig, "authorizedAt"> | undefined;
-  lockedOauth: Pick<TAgentVaultOauthConfig, "authorizedAt" | "requiredScopes"> | undefined;
+  lockedOauth: Pick<TAgentVaultOauthConfig, "authorizedAt" | "issuer" | "requiredScopes"> | undefined;
 }) => {
   assertAuthorizationServerUrl(authorizedServerUrl, lockedServerUrl);
   if ((readOauth?.authorizedAt ?? null) !== (lockedOauth?.authorizedAt ?? null)) {
     throw new ConflictError({ message: AGENT_VAULT_REAUTHORIZED_DURING_SAVE_MESSAGE });
   }
-  return lockedOauth?.requiredScopes ?? [];
+  return lockedOauth?.issuer === authorizedIssuer ? lockedOauth.requiredScopes : [];
 };
 
 // For an edit that keeps the service's tokens, under the bundle lock: the server URL the save writes must still be
@@ -347,7 +349,8 @@ export const agentVaultOauthServiceFactory = ({
           http,
           serverUrl,
           registrationEndpoint: discovery.registrationEndpoint,
-          redirectUri: callbackUri
+          redirectUri: callbackUri,
+          grantTypesSupported: discovery.grantTypesSupported
         });
         client = registered.client;
         compatibility.push(...registered.compatibility);
@@ -519,7 +522,6 @@ export const agentVaultOauthServiceFactory = ({
         // Outside any transaction: this is a network call to the provider.
         const result = await exchangeAuthorizationCode({
           http,
-          serverUrl: record.serverUrl,
           issuer: record.issuer,
           tokenEndpoint: record.tokenEndpoint,
           clientId: record.clientId,
@@ -627,13 +629,7 @@ export const agentVaultOauthServiceFactory = ({
   // both are the project cipher over the same JSON shape, so nothing is opened to move it.
   const buildCredentialFromAuthorization = (
     record: TAgentVaultOauthAuthorization,
-    {
-      authorizedBy,
-      previousRequiredScopes = []
-    }: {
-      authorizedBy: { userId: string; username: string } | null;
-      previousRequiredScopes?: string[];
-    }
+    { previousRequiredScopes = [] }: { previousRequiredScopes?: string[] } = {}
   ): { config: TAgentVaultOauthConfig; encryptedCredential: Buffer } => {
     const now = new Date().toISOString();
     // A provider may grant less than was asked, so a scope the upstream demanded stays missing until it's granted.
@@ -659,7 +655,6 @@ export const agentVaultOauthServiceFactory = ({
         status: requiredScopes.length ? AgentVaultOauthStatus.NeedsAdditionalScopes : AgentVaultOauthStatus.Connected,
         expiresAt: record.expiresAt,
         accessTokenHash: record.accessTokenHash ?? "",
-        authorizedBy,
         authorizedAt: now,
         lastRefreshedAt: null,
         lastError: null
@@ -667,15 +662,6 @@ export const agentVaultOauthServiceFactory = ({
       encryptedCredential: Buffer.from(record.sealedCredential!, "base64")
     };
   };
-
-  const toResolvedCredential = (config: TAgentVaultOauthConfig, accessToken: string): TResolvedOauthCredential => ({
-    type: AgentVaultCredentialType.Bearer,
-    headerName: AGENT_VAULT_OAUTH_HEADER_NAME,
-    headerPrefix: AGENT_VAULT_OAUTH_HEADER_PREFIX,
-    value: accessToken,
-    source: AgentVaultCredentialType.OAuth,
-    expiresAt: config.expiresAt
-  });
 
   // An unchanged blob holds the same tokens, so a re-read only opens the blob when it changed.
   const loadOauthService = async (
@@ -757,7 +743,7 @@ export const agentVaultOauthServiceFactory = ({
     const answer = () => {
       assertSameDestination(current);
       return {
-        credential: toResolvedCredential(current.config, current.secret.accessToken),
+        credential: toResolvedOauthCredential(current.config, current.secret.accessToken),
         status: current.config.status
       };
     };
@@ -830,7 +816,6 @@ export const agentVaultOauthServiceFactory = ({
       const { config, secret } = current;
       const result = await refreshAccessToken({
         http,
-        serverUrl: config.resource ?? config.issuer,
         issuer: config.issuer,
         tokenEndpoint: config.tokenEndpoint,
         clientId: config.clientId,
@@ -846,7 +831,7 @@ export const agentVaultOauthServiceFactory = ({
       if (!result.ok) {
         if (isDeadLoginError(result.errorCode)) {
           await markNeedsReauthorization(
-            `The MCP server no longer accepts this service's login (${result.message}). Reauthorize this service.`
+            `This service's login is no longer accepted (${result.message}). Reauthorize this service.`
           );
         } else {
           await applyStatus({ lastError: result.message });

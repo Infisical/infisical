@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import slugify from "@sindresorhus/slugify";
@@ -9,6 +9,14 @@ import {
   Button,
   DiscardChangesAlertDialog,
   DocumentationLinkBadge,
+  Field,
+  FieldContent,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -25,7 +33,10 @@ import {
   AgentVaultHttpTemplate,
   AgentVaultMcpTemplate,
   AgentVaultTemplate,
-  findTemplateForHostPattern
+  findMcpTemplateForHostPattern,
+  findTemplateForHostPattern,
+  guessServiceTypeForRequest,
+  lastPathSegment
 } from "@app/helpers/agentVaultTemplates";
 import { findVariableReferences, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 import { useDebounce, useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
@@ -34,6 +45,7 @@ import {
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
+  SERVICE_SAVE_HANDLED_ERROR_CODES,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultService,
   useUpdateAgentVaultService
@@ -61,6 +73,7 @@ import {
   isOAuthAuthorizationMissing,
   MCP_SERVICE_STEP_FIELDS,
   SERVICE_STEP_FIELDS,
+  SERVICE_TYPE_LABELS,
   ServiceStep,
   TServiceForm,
   UNCHANGED_SECRET
@@ -142,14 +155,73 @@ const formFromTemplate = (picked: AgentVaultHttpTemplate | null, hosts: string[]
   };
 };
 
+const prefillName = (hostPattern: string) =>
+  slugify(hostPattern.replace(/:\d+$/, ""), { lowercase: true }).slice(0, 64).replace(/-+$/, "");
+
+// A service added from a session log row starts from the request the proxy saw.
+const prefillFor = (
+  serviceType: AgentVaultServiceType,
+  hostPattern: string,
+  path = ""
+): { template: AgentVaultTemplate | null; form: TServiceForm } => {
+  if (serviceType === AgentVaultServiceType.Mcp) {
+    const picked = findMcpTemplateForHostPattern(hostPattern) ?? null;
+    if (picked) return { template: picked, form: mcpFormFromTemplate(picked) };
+    return {
+      template: null,
+      form: {
+        ...BLANK_MCP_SERVICE_FORM,
+        name: prefillName(hostPattern),
+        serverUrl: `https://${hostPattern}${path.split("?")[0]}`,
+        transport:
+          lastPathSegment(path) === "sse"
+            ? AgentVaultMcpTransport.Sse
+            : AgentVaultMcpTransport.StreamableHttp
+      }
+    };
+  }
+  const picked = findTemplateForHostPattern(hostPattern) ?? null;
+  const form = formFromTemplate(picked, [hostPattern]);
+  return { template: picked, form: picked ? form : { ...form, name: prefillName(hostPattern) } };
+};
+
+const PrefillTypeField = ({
+  value,
+  onChange
+}: {
+  value: AgentVaultServiceType;
+  onChange: (serviceType: AgentVaultServiceType) => void;
+}) => {
+  const labelId = useId();
+  return (
+    <Field>
+      <FieldLabel id={labelId}>Service Type</FieldLabel>
+      <FieldContent>
+        <Select value={value} onValueChange={(next) => onChange(next as AgentVaultServiceType)}>
+          <SelectTrigger aria-labelledby={labelId} className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {Object.values(AgentVaultServiceType).map((type) => (
+              <SelectItem key={type} value={type}>
+                {SERVICE_TYPE_LABELS[type]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FieldContent>
+    </Field>
+  );
+};
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   accessBundleId: string;
   service?: TAgentVaultService | null;
   prefillHost?: string;
-  // Only for an existing service, whose steps start at Details.
-  initialStep?: ServiceStep;
+  // The path of the logged request, which helps tell an MCP server from an HTTP API.
+  prefillPath?: string;
   onSaved?: () => void;
 };
 
@@ -192,13 +264,33 @@ const storedVariableKeys = (service?: TAgentVaultService | null) => {
 // until after it mounts and takes its height.
 const SECTION_OPEN_MS = 250;
 
+// The server keeps a completed authorization for 10 minutes. Expiring it here a little early covers the poll
+// that delivered it, so the sheet never shows one the server has already dropped.
+const OAUTH_AUTHORIZATION_LIFETIME_MS = (10 * 60 - 30) * 1000;
+const OAUTH_AUTHORIZATION_EXPIRED_MESSAGE =
+  "This authorization expired before the service was saved. Authorize again.";
+
+// A successful save consumes the authorization and a failed one restores it, so these refusals mean it expired,
+// another save used it, or it can't be used for this service. Only authorizing again gets past any of them.
+const rejectedAuthorizationMessage = (error: unknown) => {
+  if (!axios.isAxiosError<{ message?: unknown }>(error)) return null;
+  const status = error.response?.status;
+  const message = error.response?.data?.message;
+  if (typeof message !== "string") return null;
+  const isRejected =
+    (status === 400 && /authoriz/i.test(message)) ||
+    (status === 404 && message.startsWith("Authorization with ID")) ||
+    (status === 409 && message.includes("already used by another save"));
+  return isRejected ? message : null;
+};
+
 export const ServiceSheet = ({
   isOpen,
   onOpenChange,
   accessBundleId,
   service,
   prefillHost,
-  initialStep,
+  prefillPath,
   onSaved
 }: Props) => {
   const isUpdate = Boolean(service);
@@ -240,6 +332,7 @@ export const ServiceSheet = ({
     control,
     handleSubmit,
     reset,
+    getValues,
     setError,
     trigger,
     watch,
@@ -299,6 +392,7 @@ export const ServiceSheet = ({
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   // The stand-in for formState.submitCount, which only counts handleSubmit and so never moves for a
   // wizard that gates its steps with trigger. Without it a second Continue reveals nothing, because
   // the errors it finds are the ones already there.
@@ -340,16 +434,7 @@ export const ServiceSheet = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    setStep(
-      service && initialStep
-        ? Math.max(
-            SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template).findIndex(
-              (meta) => meta.step === initialStep
-            ),
-            0
-          )
-        : 0
-    );
+    setStep(0);
     setTemplate(null);
     setOpenItem(service?.type === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
 
@@ -407,23 +492,27 @@ export const ServiceSheet = ({
         }))
       });
     } else if (prefillHost) {
-      const picked = findTemplateForHostPattern(prefillHost) ?? null;
-      const form = formFromTemplate(picked, [prefillHost]);
-      setTemplate(picked);
-      reset(
-        picked
-          ? form
-          : {
-              ...form,
-              name: slugify(prefillHost.replace(/:\d+$/, ""), { lowercase: true })
-                .slice(0, 64)
-                .replace(/-+$/, "")
-            }
+      const { template: picked, form } = prefillFor(
+        guessServiceTypeForRequest(prefillHost, prefillPath),
+        prefillHost,
+        prefillPath
       );
+      setTemplate(picked);
+      setOpenItem(form.serviceType === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
+      reset(form);
     } else {
       reset(BLANK_SERVICE_FORM);
     }
-  }, [isOpen, service, isUpdate, prefillHost, initialStep, reset, setStep]);
+  }, [isOpen, service, isUpdate, prefillHost, prefillPath, reset, setStep]);
+
+  // The template step is skipped for a prefilled sheet, so this is where a wrong guess of the type is corrected.
+  const switchPrefillType = (serviceType: AgentVaultServiceType) => {
+    if (!prefillHost) return;
+    const { template: picked, form } = prefillFor(serviceType, prefillHost, prefillPath);
+    setTemplate(picked);
+    setOpenItem(serviceType === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
+    reset(form);
+  };
 
   const handleTemplatePicked = (
     picked: AgentVaultTemplate | null,
@@ -488,14 +577,13 @@ export const ServiceSheet = ({
         return;
       }
 
-      // An authorization is consumed by the first save that uses it, and is tied to one server URL.
-      if (
-        serverResponse?.error === ApiErrorTypes.BadRequestError &&
-        data.credentialType === AgentVaultCredentialType.OAuth &&
-        /authoriz/i.test(serverResponse.message)
-      ) {
+      const rejectedAuthorization =
+        data.credentialType === AgentVaultCredentialType.OAuth
+          ? rejectedAuthorizationMessage(error)
+          : null;
+      if (rejectedAuthorization) {
         setValue("oauthAuthorizationId", "");
-        setError("oauthAuthorizationId", { type: "server", message: serverResponse.message });
+        setError("oauthAuthorizationId", { type: "server", message: rejectedAuthorization });
         setStep(stepKeys.indexOf(ServiceStep.Credential));
         return;
       }
@@ -560,12 +648,14 @@ export const ServiceSheet = ({
         return;
       }
 
-      if (serverResponse?.error === ApiErrorTypes.BadRequestError) onRequestError(error);
+      if (serverResponse && SERVICE_SAVE_HANDLED_ERROR_CODES.includes(serverResponse.error)) {
+        onRequestError(error);
+      }
     }
   };
 
   const handleStepChange = async (target: number) => {
-    if (target === step) return;
+    if (target === step || isSigningIn) return;
     if (target < step) {
       if (stepKeys[target] === ServiceStep.Template) returnToTemplates();
       else setStep(target);
@@ -574,6 +664,8 @@ export const ServiceSheet = ({
     for (let i = step; i < target; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       if (!(await trigger(stepFields[stepKeys[i]] as (keyof TServiceForm)[]))) {
+        // Show the step that failed, or its error sits on a step nobody can see.
+        setStep(i);
         return;
       }
     }
@@ -603,6 +695,22 @@ export const ServiceSheet = ({
     "oauthAuthorizationId",
     "oauthAuthorizedUrl"
   ]);
+
+  useEffect(() => {
+    if (!oauthAuthorizationId) return undefined;
+    const timeout = window.setTimeout(() => {
+      if (getValues("oauthAuthorizationId") !== oauthAuthorizationId) return;
+      setValue("oauthAuthorizationId", "");
+      if (getValues("credentialType") === AgentVaultCredentialType.OAuth) {
+        setError("oauthAuthorizationId", {
+          type: "server",
+          message: OAUTH_AUTHORIZATION_EXPIRED_MESSAGE
+        });
+      }
+    }, OAUTH_AUTHORIZATION_LIFETIME_MS);
+    return () => window.clearTimeout(timeout);
+  }, [oauthAuthorizationId, getValues, setValue, setError]);
+
   const isAwaitingAuthorization =
     current.step === ServiceStep.Credential &&
     isOAuthAuthorizationMissing(
@@ -633,7 +741,7 @@ export const ServiceSheet = ({
         <SheetHeader>
           {isTemplateStep ? (
             <>
-              <SheetTitle>Choose a Template</SheetTitle>
+              <SheetTitle>Choose a template</SheetTitle>
               <SheetDescription>
                 Start from a template, or configure the service yourself.
               </SheetDescription>
@@ -664,7 +772,7 @@ export const ServiceSheet = ({
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
                   <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                    Setup Steps
+                    Setup steps
                   </p>
                   <Stepper
                     activeStep={step}
@@ -694,8 +802,17 @@ export const ServiceSheet = ({
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
                   </div>
 
-                  {current.step === ServiceStep.Details &&
-                    (isMcp ? <McpDetailsFields /> : <DetailsFields />)}
+                  {current.step === ServiceStep.Details && (
+                    <div className="flex flex-col gap-5">
+                      {prefillHost && !isUpdate && (
+                        <PrefillTypeField
+                          value={isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http}
+                          onChange={switchPrefillType}
+                        />
+                      )}
+                      {isMcp ? <McpDetailsFields /> : <DetailsFields />}
+                    </div>
+                  )}
                   {current.step === ServiceStep.Credential && isMcp && (
                     <ServiceVariablesContext.Provider value={serviceVariables}>
                       <McpCredentialFields
@@ -703,6 +820,7 @@ export const ServiceSheet = ({
                         service={service}
                         openItem={openItem}
                         onOpenChange={setOpenItem}
+                        onSignInChange={setIsSigningIn}
                       />
                     </ServiceVariablesContext.Provider>
                   )}
@@ -726,7 +844,7 @@ export const ServiceSheet = ({
                     </p>
                     <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
                   </div>
-                  <h3 className="text-sm font-normal text-foreground">What This Step Does</h3>
+                  <p className="text-sm font-semibold text-foreground">What this step does</p>
                   <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
                   {current.rightTip && (
                     <p className="text-sm leading-relaxed text-muted">{current.rightTip}</p>
@@ -735,7 +853,10 @@ export const ServiceSheet = ({
               </div>
 
               <SheetFooter className="items-center justify-between border-t">
-                <span className="text-xs text-muted">{isDirty ? "Unsaved changes" : ""}</span>
+                <span className="text-xs text-muted">
+                  {isSigningIn && "Finish or cancel signing in first."}
+                  {!isSigningIn && isDirty && "Unsaved changes"}
+                </span>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-muted">
                     Step {step + 1} of {steps.length}
@@ -744,6 +865,7 @@ export const ServiceSheet = ({
                     <Button
                       type="button"
                       variant="outline"
+                      isDisabled={isSigningIn}
                       onClick={
                         stepKeys[step - 1] === ServiceStep.Template ? returnToTemplates : goBack
                       }
@@ -755,7 +877,7 @@ export const ServiceSheet = ({
                     type="button"
                     variant="av"
                     onClick={handleNext}
-                    isDisabled={isAwaitingAuthorization}
+                    isDisabled={isAwaitingAuthorization || isSigningIn}
                     isPending={isLastStep && isSubmitting}
                   >
                     {isLastStep ? saveLabel : "Continue"}

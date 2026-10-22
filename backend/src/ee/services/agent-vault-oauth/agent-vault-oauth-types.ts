@@ -57,7 +57,6 @@ export type TAgentVaultOauthConfig = {
   status: AgentVaultOauthStatus;
   expiresAt: string | null;
   accessTokenHash: string;
-  authorizedBy: { userId: string; username: string } | null;
   authorizedAt: string | null;
   lastRefreshedAt: string | null;
   lastError: string | null;

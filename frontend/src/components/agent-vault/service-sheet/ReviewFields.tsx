@@ -92,11 +92,11 @@ export const ReviewFields = ({ isUpdate, service }: Props) => {
           <div className="flex flex-wrap gap-x-8 gap-y-4">
             <Detail>
               <DetailLabel>Name</DetailLabel>
-              <DetailValue className="font-mono">{form.name}</DetailValue>
+              <DetailValue>{form.name}</DetailValue>
             </Detail>
             <Detail>
               <DetailLabel>Server URL</DetailLabel>
-              <DetailValue className="font-mono break-all">{form.serverUrl.trim()}</DetailValue>
+              <DetailValue className="break-all">{form.serverUrl.trim()}</DetailValue>
             </Detail>
             <Detail>
               <DetailLabel>Transport</DetailLabel>
@@ -132,12 +132,6 @@ export const ReviewFields = ({ isUpdate, service }: Props) => {
       <DetailGroup>
         <DetailGroupHeader className="border-b border-border pb-2">Credential</DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-4">
-          {isMcp && (
-            <Detail>
-              <DetailLabel>Owner</DetailLabel>
-              <DetailValue>Shared</DetailValue>
-            </Detail>
-          )}
           <Detail>
             <DetailLabel>Type</DetailLabel>
             <DetailValue>

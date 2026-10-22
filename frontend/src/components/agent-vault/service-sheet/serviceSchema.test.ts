@@ -12,6 +12,7 @@ import {
   buildServiceSchema,
   isOAuthAuthorizationMissing,
   newOAuthAuthorizationId,
+  OAUTH_CLIENT_VARIABLES_MESSAGE,
   oauthStatusLabel,
   serverUrlError,
   storedOAuthCredential,
@@ -61,7 +62,6 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
       grantedScopes: ["read"],
       requiredScopes: [],
       expiresAt: null,
-      authorizedBy: null,
       authorizedAt: null,
       lastError: null
     },
@@ -74,6 +74,7 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
 describe("serverUrlError", () => {
   it("rejects a query string", () => {
     expect(serverUrlError("https://mcp.example.com/mcp?token=abc")).toMatch(/query string/);
+    expect(serverUrlError("https://*.example.com/mcp")).toMatch(/not a wildcard/);
   });
 
   it("accepts a plain server URL", () => {
@@ -189,6 +190,15 @@ describe("oauthStatusLabel", () => {
     expect(oauthStatusLabel(mcpForm(), storedOAuthService())).toBe("Needs Reauthorization");
     expect(oauthStatusLabel(mcpForm())).toBe("Not authorized");
   });
+
+  it("calls a working stored authorization Authorized, the word the card uses", () => {
+    const service = storedOAuthService();
+    const working = {
+      ...service,
+      credential: { ...service.credential, status: AgentVaultOauthStatus.Connected }
+    } as TAgentVaultService;
+    expect(oauthStatusLabel(mcpForm(), working)).toBe("Authorized");
+  });
 });
 
 describe("buildServiceSchema with OAuth", () => {
@@ -209,6 +219,29 @@ describe("buildServiceSchema with OAuth", () => {
   it("validates manual client credentials in the service form", () => {
     const result = buildServiceSchema(storedOAuthService()).safeParse(
       mcpForm({ oauthClientId: "x".repeat(2049), oauthClientSecret: "x".repeat(4097) })
+    );
+    expect(result.error?.issues.map((issue) => issue.path.join("."))).toEqual([
+      "oauthClientId",
+      "oauthClientSecret"
+    ]);
+  });
+
+  it("refuses a variable reference in the client ID or secret, which are sent as typed", () => {
+    const result = buildServiceSchema(storedOAuthService()).safeParse(
+      mcpForm({
+        oauthClientId: "{{GITHUB_CLIENT_ID}}",
+        oauthClientSecret: "{{GITHUB_CLIENT_SECRET}}"
+      })
+    );
+    expect(result.error?.issues.map(({ path, message }) => [path.join("."), message])).toEqual([
+      ["oauthClientId", OAUTH_CLIENT_VARIABLES_MESSAGE],
+      ["oauthClientSecret", OAUTH_CLIENT_VARIABLES_MESSAGE]
+    ]);
+  });
+
+  it("refuses a client ID or secret the API would refuse, such as one with a pasted smart quote", () => {
+    const result = buildServiceSchema(storedOAuthService()).safeParse(
+      mcpForm({ oauthClientId: "\u201cclient-1\u201d", oauthClientSecret: "line\nbreak" })
     );
     expect(result.error?.issues.map((issue) => issue.path.join("."))).toEqual([
       "oauthClientId",

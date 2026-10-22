@@ -44,7 +44,7 @@ export const HTTP_CREDENTIAL_TYPES = [
 ];
 
 export const OAUTH_STATUS_LABELS: Record<AgentVaultOauthStatus, string> = {
-  [AgentVaultOauthStatus.Connected]: "Connected",
+  [AgentVaultOauthStatus.Connected]: "Authorized",
   [AgentVaultOauthStatus.NeedsReauthorization]: "Needs Reauthorization",
   [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Needs Additional Scopes"
 };
@@ -101,6 +101,9 @@ export const serverUrlError = (value: string): string | null => {
   if (trimmed.includes("?")) {
     return "Server URLs can't include a query string, since it is stored and shown in plaintext. Put a token in the Bearer token or a custom header instead.";
   }
+  // The URL parser percent-encodes the *, so the hostname carries %2A.
+  if (/\*|%2a/i.test(url.hostname))
+    return "The server URL must name a specific host, not a wildcard.";
   return null;
 };
 
@@ -120,6 +123,27 @@ const CONTROL_CHARS_MESSAGE =
   "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
 // Double braces wrap a variable reference, and neither a prefix nor a placeholder takes one.
+// The client ID and secret go to the provider as typed, unlike the credential fields that take `{{KEY}}`.
+export const OAUTH_CLIENT_VARIABLES_MESSAGE = "Variables aren't supported here. Paste the value.";
+
+// RFC 6749's VSCHAR, which the API requires, so a pasted smart quote is caught here rather than as a 422.
+const OAUTH_CLIENT_CHARS_RE = /^[\x20-\x7e]*$/;
+const OAUTH_CLIENT_CHARS_MESSAGE = "Use printable ASCII characters without line breaks or accents.";
+
+// Shared with the Authorize card, which checks them before it opens the sign-in window.
+export const oauthClientIdSchema = z
+  .string()
+  .trim()
+  .max(2048, "A client ID can be at most 2048 characters.")
+  .regex(OAUTH_CLIENT_CHARS_RE, OAUTH_CLIENT_CHARS_MESSAGE)
+  .refine((value) => !value.includes("{{"), OAUTH_CLIENT_VARIABLES_MESSAGE);
+
+export const oauthClientSecretSchema = z
+  .string()
+  .max(4096, "A client secret can be at most 4096 characters.")
+  .regex(OAUTH_CLIENT_CHARS_RE, OAUTH_CLIENT_CHARS_MESSAGE)
+  .refine((value) => !value.includes("{{"), OAUTH_CLIENT_VARIABLES_MESSAGE);
+
 const hasDoubleBraces = (text: string) => text.includes("{{") || text.includes("}}");
 
 const PREFIX_BRACES_MESSAGE =
@@ -259,15 +283,8 @@ export const buildServiceSchema = (
       // The server URL the authorization was made for, so editing the URL afterwards asks for a new one.
       oauthAuthorizedUrl: z.string(),
       oauthScopes: z.array(z.string()),
-      oauthClientId: z
-        .string()
-        .trim()
-        .max(2048, "A client ID can be at most 2048 characters.")
-        .optional(),
-      oauthClientSecret: z
-        .string()
-        .max(4096, "A client secret can be at most 4096 characters.")
-        .optional(),
+      oauthClientId: oauthClientIdSchema.optional(),
+      oauthClientSecret: oauthClientSecretSchema.optional(),
       methods: z.array(z.nativeEnum(AgentVaultHttpMethod)),
       pathPrefixes: z
         .array(z.string())

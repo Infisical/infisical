@@ -1,19 +1,13 @@
 import { ReactNode, useMemo, useState } from "react";
 import { GlobeIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
-  Badge,
   Button,
   CardTitle,
   InputGroup,
   InputGroupAddon,
-  InputGroupInput,
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemHeader,
-  ItemMedia,
-  ItemTitle
+  InputGroupInput
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import {
@@ -32,7 +26,7 @@ enum TypeFilter {
 }
 
 const MCP_SECTION_DESCRIPTION =
-  "Remote MCP servers. The proxy attaches the credential and logs each tool call.";
+  "Remote MCP servers. The proxy attaches the credential to requests for them.";
 const HTTP_SECTION_DESCRIPTION =
   "Web APIs your agent calls directly. The proxy attaches the credential to requests for their hosts.";
 
@@ -55,26 +49,37 @@ const SelectableCard = ({
   tag,
   name,
   description,
+  isCustom,
   onSelect
 }: {
   media: ReactNode;
   tag?: string;
   name: string;
   description: string;
+  isCustom?: boolean;
   onSelect: () => void;
 }) => (
-  <Item asChild variant="outline" className="cursor-pointer hover:bg-container-hover">
-    <button type="button" onClick={onSelect}>
-      <ItemHeader>
-        <ItemMedia variant="image">{media}</ItemMedia>
-        {tag && <Badge variant="outline">{tag}</Badge>}
-      </ItemHeader>
-      <ItemContent>
-        <ItemTitle>{name}</ItemTitle>
-        <ItemDescription>{description}</ItemDescription>
-      </ItemContent>
-    </button>
-  </Item>
+  <button
+    type="button"
+    onClick={onSelect}
+    className={twMerge(
+      "group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover/50",
+      isCustom && "border-dashed border-border-strong hover:border-border-emphasis"
+    )}
+  >
+    <div className="flex items-start justify-between gap-2">
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
+        {media}
+      </div>
+      {tag && (
+        <span className="text-[10px] font-medium tracking-wider text-muted uppercase">{tag}</span>
+      )}
+    </div>
+    <div className="flex flex-col gap-1">
+      <p className="text-sm font-semibold text-foreground">{name}</p>
+      <p className="text-xs leading-relaxed text-muted">{description}</p>
+    </div>
+  </button>
 );
 
 const TemplateCard = ({
@@ -90,11 +95,12 @@ const TemplateCard = ({
     <SelectableCard
       media={
         hasImageError ? (
-          <GlobeIcon />
+          <GlobeIcon className="h-5 w-5 text-label-secondary" />
         ) : (
           <ProviderIcon
             icon={template.image}
             alt={`${template.name} logo`}
+            className="h-6 w-6 object-contain"
             onError={() => setHasImageError(true)}
           />
         )
@@ -116,7 +122,13 @@ const CustomCard = ({
   description: string;
   onSelect: () => void;
 }) => (
-  <SelectableCard media={<PlusIcon />} name={name} description={description} onSelect={onSelect} />
+  <SelectableCard
+    media={<PlusIcon className="h-5 w-5 text-label-secondary" />}
+    name={name}
+    description={description}
+    isCustom
+    onSelect={onSelect}
+  />
 );
 
 const Grid = ({ children }: { children: ReactNode }) => (
@@ -127,21 +139,10 @@ const SectionLabel = ({ children }: { children: ReactNode }) => (
   <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">{children}</p>
 );
 
-const SectionHeader = ({
-  title,
-  description,
-  action
-}: {
-  title: string;
-  description: string;
-  action?: ReactNode;
-}) => (
-  <div className="mb-4 flex items-end justify-between gap-4">
-    <div>
-      <CardTitle className="text-sm leading-snug">{title}</CardTitle>
-      <p className="mt-0.5 text-xs text-muted">{description}</p>
-    </div>
-    {action}
+const SectionHeader = ({ title, description }: { title: string; description: string }) => (
+  <div className="mb-4">
+    <CardTitle className="text-sm leading-snug">{title}</CardTitle>
+    <p className="mt-0.5 text-xs text-muted">{description}</p>
   </div>
 );
 
@@ -207,17 +208,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
       )}
       {showsHttp && (
         <div>
-          <SectionHeader
-            title="HTTP APIs"
-            description={HTTP_SECTION_DESCRIPTION}
-            action={
-              typeFilter === TypeFilter.All && (
-                <Button variant="ghost" size="xs" onClick={() => setTypeFilter(TypeFilter.Http)}>
-                  View All
-                </Button>
-              )
-            }
-          />
+          <SectionHeader title="HTTP APIs" description={HTTP_SECTION_DESCRIPTION} />
           <SectionLabel>Popular</SectionLabel>
           <Grid>
             {customHttpCard}
@@ -227,7 +218,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
           </Grid>
         </div>
       )}
-      {typeFilter === TypeFilter.Http &&
+      {showsHttp &&
         Object.values(AgentVaultTemplateCategory).map((category) => {
           const templates = AGENT_VAULT_TEMPLATES.filter(
             (template) => template.category === category

@@ -1,4 +1,4 @@
-import { Fragment, ReactNode, useId, useState } from "react";
+import { Fragment, ReactNode, useEffect, useId, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { format } from "date-fns";
 import { CheckIcon, CircleAlertIcon, CircleXIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
@@ -31,6 +31,8 @@ import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import {
   newOAuthAuthorizationId,
   OAUTH_STATUS_LABELS,
+  oauthClientIdSchema,
+  oauthClientSecretSchema,
   storedOAuthCredential,
   TServiceForm
 } from "./serviceSchema";
@@ -131,13 +133,16 @@ const Scopes = ({ granted, requested }: { granted: string[]; requested: string[]
 type Props = {
   accessBundleId: string;
   service?: TAgentVaultService | null;
+  onSignInChange?: (isSigningIn: boolean) => void;
 };
 
-export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
+export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: Props) => {
   const {
     control,
     register,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors }
   } = useFormContext<TServiceForm>();
   const [serverUrl, authorizationId, authorizedUrl, scopes, clientId = "", clientSecret = ""] =
@@ -168,26 +173,26 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
   );
   const stored = storedOAuthCredential(service, serverUrl);
 
-  const {
-    state,
-    isClientRequired,
-    isOAuthAdvertised,
-    redirectUri,
-    registrationError,
-    authorize,
-    cancel
-  } = useOAuthAuthorize({
-    onAuthorized: (authorization) => {
-      setValue("oauthAuthorizedUrl", trimmedUrl, { shouldDirty: true });
-      setValue("oauthScopes", authorization.scopes, { shouldDirty: true });
-      setValue("oauthAuthorizationId", authorization.id, {
-        shouldDirty: true,
-        shouldValidate: true
-      });
-    }
-  });
+  const { state, isClientRequired, isOAuthAdvertised, redirectUri, authorize, cancel } =
+    useOAuthAuthorize({
+      onAuthorized: (authorization) => {
+        setValue("oauthAuthorizedUrl", trimmedUrl, { shouldDirty: true });
+        setValue("oauthScopes", authorization.scopes, { shouldDirty: true });
+        setValue("oauthAuthorizationId", authorization.id, {
+          shouldDirty: true,
+          shouldValidate: true
+        });
+      }
+    });
 
   const isWaiting = state.status === "starting" || state.status === "pending";
+
+  // Leaving the step unmounts this card, which stops the poll and drops a sign-in still in progress, so the sheet
+  // holds navigation until it finishes or is cancelled.
+  useEffect(() => {
+    onSignInChange?.(isWaiting);
+  }, [isWaiting, onSignInChange]);
+  useEffect(() => () => onSignInChange?.(false), [onSignInChange]);
   const wantsOwnApp = isClientRequired || isUsingOwnApp;
   const isOwnApp = wantsOwnApp && !isNewlyAuthorized;
   const hasAuthorization = isNewlyAuthorized || Boolean(stored);
@@ -198,13 +203,33 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
     setValue("oauthClientSecret", "");
   };
 
-  const handleAuthorize = () =>
+  // Checked here rather than left to the form: the form validates on save, and the popup has to open
+  // synchronously in this click.
+  const handleAuthorize = () => {
+    if (wantsOwnApp) {
+      const problems = (
+        [
+          ["oauthClientId", oauthClientIdSchema.safeParse(clientId)],
+          ["oauthClientSecret", oauthClientSecretSchema.safeParse(clientSecret)]
+        ] as const
+      ).flatMap(([name, result]) =>
+        result.success ? [] : [[name, result.error.issues[0].message] as const]
+      );
+      clearErrors(["oauthClientId", "oauthClientSecret"]);
+      if (problems.length) {
+        problems.forEach(([name, message]) => setError(name, { message }));
+        return;
+      }
+    }
+    // A failed or cancelled replacement must not leave the previous sign-in in the form to be saved.
+    setValue("oauthAuthorizationId", "");
     authorize({
       accessBundleId,
       serverUrl: trimmedUrl,
       ...(stored && service ? { serviceId: service.id } : {}),
       ...(wantsOwnApp ? { clientId: clientId.trim(), clientSecret: clientSecret || undefined } : {})
     });
+  };
 
   const requested = stored
     ? stored.requiredScopes.filter((scope) => !stored.grantedScopes.includes(scope))
@@ -370,13 +395,6 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
                   </AlertDescription>
                 </Alert>
               )}
-              {isClientRequired && isOAuthAdvertised && (
-                <p className="text-xs text-muted">
-                  {registrationError
-                    ? `${host} didn't accept automatic setup, so use your own OAuth app.`
-                    : `${host} needs your own OAuth app.`}
-                </p>
-              )}
               <Field>
                 <FieldLabel htmlFor={redirectUriInputId}>Redirect URI</FieldLabel>
                 <FieldContent>
@@ -394,8 +412,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
                     </InputGroupAddon>
                   </InputGroup>
                   <FieldDescription>
-                    Add this as a redirect URI in your OAuth app on {host}, then enter the
-                    app&apos;s client ID and secret.
+                    Add this as a redirect URI in your OAuth app on {host}.
                   </FieldDescription>
                 </FieldContent>
               </Field>

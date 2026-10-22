@@ -46,7 +46,8 @@ describe("client registration", () => {
   const args = {
     serverUrl: "https://mcp.example.com/mcp",
     registrationEndpoint: "https://mcp.example.com/register",
-    redirectUri: "https://app.infisical.com/agent-vault/oauth/callback"
+    redirectUri: "https://app.infisical.com/agent-vault/oauth/callback",
+    grantTypesSupported: null
   };
 
   test("sends the full metadata and keeps the method the server assigned", async () => {
@@ -69,6 +70,12 @@ describe("client registration", () => {
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"]
     });
+  });
+
+  test("asks for refresh_token only when the server doesn't list grants without it", async () => {
+    const { http, calls } = stubPosts([json(201, { client_id: "c-1" })]);
+    await registerOauthClient({ http, ...args, grantTypesSupported: ["authorization_code"] });
+    expect(calls[0].json).toMatchObject({ grant_types: ["authorization_code"] });
   });
 
   test("a rejected registration is retried once without application_type, keeping the grant types", async () => {

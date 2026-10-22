@@ -4487,15 +4487,15 @@ export const AGENT_VAULT = {
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
-    type: "The kind of service. `http` brokers an HTTP API matched by host pattern. `mcp` brokers a remote MCP server, matched by the host of its server URL. Can't be changed after the service is created.",
+    type: "The service type: `http` for an HTTP API, or `mcp` for a remote MCP server. Can't be changed after the service is created.",
     serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
     transportRead:
       "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for an `http` service.",
     serverUrl:
-      "The MCP server's full URL, as in `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment. The service covers this URL's host, plus its port when that is not 443, which is returned as `hostPattern`.",
+      "The MCP server's URL, such as `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment.",
     transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
     mcpCredential:
-      "The credential the proxy attaches to requests to the MCP server. An MCP service takes a bearer token, or `oauth` with the `authorizationId` of a completed OAuth authorization. An OAuth token is always sent as `Authorization: Bearer <token>`.",
+      "The credential the proxy attaches to requests to the MCP server, a bearer token. To use OAuth instead, connect the service in the Infisical UI.",
     authorizationId:
       "The ID of a completed OAuth authorization for this service's server URL, started by the same user. Each authorization can be used once.",
     updateAuthorizationId:
@@ -4505,11 +4505,7 @@ export const AGENT_VAULT = {
     oauthIssuer: "The OAuth authorization server that issued the tokens.",
     oauthGrantedScopes: "The scopes the authorization server granted.",
     oauthRequiredScopes: "Scopes the MCP server asked for that the connection lacks. Reauthorize to request them.",
-    oauthExpiresAt:
-      "When the current access token expires, or null if the server didn't say. Infisical refreshes it before then.",
-    oauthAuthorizedBy: "The user who authorized the connection.",
-    oauthAuthorizedByUserId: "The ID of the user who authorized the connection.",
-    oauthAuthorizedByUsername: "The username of the user who authorized the connection.",
+    oauthExpiresAt: "When the current access token expires, or null if the server didn't say.",
     oauthAuthorizedAt: "When the connection was last authorized.",
     oauthLastError: "The last refresh failure, if any. Never contains a token.",
     hostPattern:

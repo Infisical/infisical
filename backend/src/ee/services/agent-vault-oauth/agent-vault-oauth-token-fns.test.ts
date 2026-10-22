@@ -2,13 +2,18 @@ import crypto from "node:crypto";
 
 import { describe, expect, test, vi } from "vitest";
 
-import { AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
+
+import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
 import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-fns";
 import {
   buildAuthorizeUrl,
   decideRefresh,
   exchangeAuthorizationCode,
   expiresAtFrom,
+  formUrlEncode,
   generatePkce,
   generateState,
   hashAccessToken,
@@ -19,6 +24,7 @@ import {
   parseGrantedScopes,
   parseTokenResponse,
   requestToken,
+  toResolvedOauthCredential,
   validateCallbackIssuer,
   withTokenCompatibility
 } from "./agent-vault-oauth-token-fns";
@@ -62,9 +68,8 @@ const json = (status: number, body: unknown): TOauthHttpResponse => ({
 });
 
 const tokenArgs = {
-  serverUrl: "https://mcp.example.com/mcp",
-  issuer: "https://mcp.example.com",
-  tokenEndpoint: "https://mcp.example.com/token",
+  issuer: "https://auth.example.com",
+  tokenEndpoint: "https://auth.example.com/token",
   params: { grant_type: "refresh_token", refresh_token: "rt-1" },
   clientId: "client-1",
   tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None,
@@ -213,7 +218,7 @@ describe("token requests", () => {
     expect(result).toMatchObject({
       ok: false,
       errorCode: "invalid_grant",
-      message: "'mcp.example.com' refused the token request: invalid_grant"
+      message: "The login server 'auth.example.com' refused the token request: invalid_grant"
     });
   });
 
@@ -222,7 +227,7 @@ describe("token requests", () => {
     expect(await requestToken({ http, ...tokenArgs })).toMatchObject({
       ok: false,
       errorCode: null,
-      message: "'mcp.example.com' refused the token request: HTTP 400"
+      message: "The login server 'auth.example.com' refused the token request: HTTP 400"
     });
   });
 
@@ -241,9 +246,10 @@ describe("token requests", () => {
   });
 
   test("provider refusals cannot expose request secrets or their Basic authorization header", async () => {
-    const clientSecret = "client +/secret";
+    const clientSecret = "client +/secret-with_.*";
     const encoded = new URLSearchParams({ value: clientSecret }).toString().slice("value=".length);
-    const basic = Buffer.from(`${tokenArgs.clientId}:${encoded}`).toString("base64");
+    // oauth4webapi escapes - _ . * in the Basic header, which URLSearchParams leaves alone.
+    const basic = Buffer.from("client%2D1:client+%2B%2Fsecret%2Dwith%5F%2E%2A").toString("base64");
     const { http } = stubPosts([
       json(400, {
         error: "invalid_grant",
@@ -278,13 +284,14 @@ describe("token requests", () => {
     await requestToken({
       http,
       ...tokenArgs,
-      clientId: "id:1",
-      clientSecret: "s&2",
+      clientId: "id:1-a",
+      clientSecret: "s&2_b.c*",
       tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic
     });
     expect(new Headers(calls[0].headers).get("authorization")).toBe(
-      `Basic ${Buffer.from("id%3A1:s%262").toString("base64")}`
+      `Basic ${Buffer.from(`${formUrlEncode("id:1-a")}:${formUrlEncode("s&2_b.c*")}`).toString("base64")}`
     );
+    expect(formUrlEncode("id:1-a s&2_b.c*!~'()")).toBe("id%3A1%2Da+s%262%5Fb%2Ec%2A%21%7E%27%28%29");
     expect(calls[0].form!.has("client_secret")).toBe(false);
   });
 
@@ -353,7 +360,8 @@ describe("token requests", () => {
     expect(await requestToken({ http, ...tokenArgs })).toEqual({
       ok: false,
       errorCode: "bad_verification_code",
-      message: "'mcp.example.com' refused the token request: The code passed is incorrect or expired.",
+      message:
+        "The login server 'auth.example.com' refused the token request: The code passed is incorrect or expired.",
       resourceDropped: false
     });
   });
@@ -379,9 +387,39 @@ describe("token requests", () => {
       }
     };
     const result = await requestToken({ http, ...tokenArgs });
+    expect(!result.ok && result.message).toBe("Couldn't reach the login server 'auth.example.com'.");
+  });
+
+  test("a private login server is named as the reason, since retrying can't help", async () => {
+    const http: TOauthHttpClient = {
+      ...stubPosts([]).http,
+      postForm: async () => {
+        throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
+      }
+    };
+    const result = await requestToken({ http, ...tokenArgs });
     expect(!result.ok && result.message).toBe(
-      "Couldn't reach the token endpoint of 'mcp.example.com'. Try again in a moment."
+      "Infisical can't reach the login server 'auth.example.com' because it's on a private network. Use a bearer token for this service instead."
     );
+  });
+
+  test("the reason a request never got an answer is logged, without the URL path or request secrets", async () => {
+    const http: TOauthHttpClient = {
+      ...stubPosts([]).http,
+      postForm: async () => {
+        throw new Error("certificate has expired while sending rt-1");
+      }
+    };
+    vi.mocked(logger.info).mockClear();
+    await requestToken({ http, ...tokenArgs, tokenEndpoint: "https://auth.example.com/tenant-secret/token" });
+    const line = vi
+      .mocked(logger.info)
+      .mock.calls.map(([message]) => String(message))
+      .join("\n");
+    expect(line).toContain("certificate has expired");
+    expect(line).toContain("https://auth.example.com");
+    expect(line).not.toContain("tenant-secret");
+    expect(line).not.toContain("rt-1");
   });
 
   test("a server that never answers fails inside the budget, and each request gets only what is left of it", async () => {
@@ -396,9 +434,7 @@ describe("token requests", () => {
     const startedAt = Date.now();
     const result = await requestToken({ http, ...tokenArgs, budgetMs: 50 });
     expect(Date.now() - startedAt).toBeLessThan(1000);
-    expect(!result.ok && result.message).toBe(
-      "Couldn't reach the token endpoint of 'mcp.example.com'. Try again in a moment."
-    );
+    expect(!result.ok && result.message).toBe("Couldn't reach the login server 'auth.example.com'.");
     expect(timeouts).toHaveLength(1);
     expect(timeouts[0]).toBeLessThanOrEqual(50);
   });
@@ -547,6 +583,25 @@ describe("granted scopes", () => {
     ).toEqual([AgentVaultOauthCompatibility.ResourceRejected, AgentVaultOauthCompatibility.ScopeCommaSeparated]);
     const unchanged: AgentVaultOauthCompatibility[] = [];
     expect(withTokenCompatibility(unchanged, { resourceDropped: false })).toBe(unchanged);
+  });
+});
+
+describe("the resolved credential", () => {
+  test("is a bearer credential a proxy without OAuth support injects as is", () => {
+    expect(toResolvedOauthCredential({ expiresAt: "2026-10-21T00:00:00.000Z" }, "access-token")).toEqual({
+      type: AgentVaultCredentialType.Bearer,
+      headerName: "Authorization",
+      headerPrefix: "Bearer",
+      value: "access-token",
+      source: AgentVaultCredentialType.OAuth,
+      expiresAt: "2026-10-21T00:00:00.000Z"
+    });
+  });
+
+  test("reports no expiry when the stored config has none", () => {
+    expect(
+      toResolvedOauthCredential({} as Parameters<typeof toResolvedOauthCredential>[0], "access-token").expiresAt
+    ).toBeNull();
   });
 });
 

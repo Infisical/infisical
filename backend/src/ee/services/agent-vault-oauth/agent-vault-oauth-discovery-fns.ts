@@ -26,6 +26,7 @@ export type TOauthDiscovery = {
   scopes: string[];
   issParameterSupported: boolean;
   tokenEndpointAuthMethodsSupported: string[] | null;
+  grantTypesSupported: string[] | null;
   compatibility: AgentVaultOauthCompatibility[];
   // False when the server answered but sent no Bearer challenge and serves no OAuth metadata, which usually
   // means the URL is wrong. Old servers can still work with an admin-entered client, so it only warns.
@@ -121,6 +122,18 @@ const fetchJson = async (http: TOauthHttpClient, url: string): Promise<TFetchedJ
     logger.info(`agentVaultOauth: metadata fetch failed [url=${sanitizeUrlForLog(url)}]`);
     return { answered: false, json: null };
   }
+};
+
+// The requests are already running together; this takes the first usable answer in priority order as soon as every
+// URL ahead of it has answered, so a slow URL lower down never holds up a preferred one that already did.
+const firstUsableInOrder = async <T>(pending: Promise<T>[], usable: (value: T) => boolean): Promise<T | null> => {
+  // eslint-disable-next-line no-restricted-syntax
+  for (const promise of pending) {
+    // eslint-disable-next-line no-await-in-loop
+    const value = await promise;
+    if (usable(value)) return value;
+  }
+  return null;
 };
 
 // RFC 9728 section 3.1: the well-known segment goes between the host and the path.
@@ -223,37 +236,42 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
   const compatibility = new Set<AgentVaultOauthCompatibility>();
   let answered = false;
 
-  // The probe and the well-known locations are asked at once; the challenge only says where to look first.
-  const wellKnownUrls = protectedResourceMetadataUrls(serverUrl);
-  const [challenge, wellKnown] = await Promise.all([
-    http.probe(serverUrl).then(
-      (response) => {
-        answered = true;
-        return parseBearerChallenge(response.wwwAuthenticate);
-      },
-      () => {
-        logger.info(`agentVaultOauth: MCP server probe failed [server=${describeServer(serverUrl)}]`);
-        return null;
-      }
-    ),
-    Promise.all(wellKnownUrls.map(async (url) => [url, await fetchJson(http, url)] as const))
-  ]);
-  const fetched = new Map<string, TFetchedJson>(wellKnown);
+  // The probe and the well-known locations are asked at once; the challenge only says where to look first, and its
+  // URL is asked as soon as the probe answers rather than after the well-known ones.
+  const fetches = new Map<string, Promise<TFetchedJson>>(
+    protectedResourceMetadataUrls(serverUrl).map((url) => [url, fetchJson(http, url)])
+  );
+  const challenge = await http.probe(serverUrl).then(
+    (response) => {
+      answered = true;
+      return parseBearerChallenge(response.wwwAuthenticate);
+    },
+    () => {
+      logger.info(`agentVaultOauth: MCP server probe failed [server=${describeServer(serverUrl)}]`);
+      return null;
+    }
+  );
   const orderedUrls = protectedResourceMetadataUrls(serverUrl, challenge?.resource_metadata);
-  const challengeUrl = orderedUrls.find((url) => !fetched.has(url));
-  if (challengeUrl) fetched.set(challengeUrl, await fetchJson(http, challengeUrl));
-  if ([...fetched.values()].some((result) => result.answered)) answered = true;
+  orderedUrls.forEach((url) => {
+    if (!fetches.has(url)) fetches.set(url, fetchJson(http, url));
+  });
+
+  const protectedResource =
+    (
+      await firstUsableInOrder(
+        orderedUrls.map((url) => fetches.get(url)!),
+        (result) => Boolean(result.json && Array.isArray(result.json.authorization_servers))
+      )
+    )?.json ?? null;
+  // Waits on every URL only when none had usable metadata, and by then they have all settled anyway.
+  if (protectedResource) answered = true;
+  else if (!answered) answered = (await Promise.all(fetches.values())).some((result) => result.answered);
 
   if (!answered) {
     throw new BadRequestError({
       message: `Couldn't reach '${describeServer(serverUrl)}'. Check the server URL and that the server is online.`
     });
   }
-
-  const protectedResource =
-    orderedUrls
-      .map((url) => fetched.get(url)?.json)
-      .find((candidate) => candidate && Array.isArray(candidate.authorization_servers)) ?? null;
 
   let resource = serverUrl;
   let issuer = new URL(serverUrl).origin;
@@ -272,8 +290,13 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
     compatibility.add(AgentVaultOauthCompatibility.NoProtectedResourceMetadata);
   }
 
-  const metadataResults = await Promise.all(authorizationServerMetadataUrls(issuer).map((url) => fetchJson(http, url)));
-  const metadata = metadataResults.map((result) => result.json).find(Boolean) ?? null;
+  const metadata =
+    (
+      await firstUsableInOrder(
+        authorizationServerMetadataUrls(issuer).map((url) => fetchJson(http, url)),
+        (result) => Boolean(result.json)
+      )
+    )?.json ?? null;
 
   const scopes = selectScopes({
     challengeScope: challenge?.scope,
@@ -302,6 +325,7 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
       scopes,
       issParameterSupported: false,
       tokenEndpointAuthMethodsSupported: null,
+      grantTypesSupported: null,
       compatibility: [...compatibility],
       oauthAdvertised
     };
@@ -333,6 +357,7 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
   }
 
   const authMethods = metadata.token_endpoint_auth_methods_supported;
+  const grantTypes = metadata.grant_types_supported;
   return {
     issuer,
     authorizationEndpoint,
@@ -344,6 +369,9 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
     issParameterSupported: metadata.authorization_response_iss_parameter_supported === true,
     tokenEndpointAuthMethodsSupported: Array.isArray(authMethods)
       ? authMethods.filter((method): method is string => typeof method === "string")
+      : null,
+    grantTypesSupported: Array.isArray(grantTypes)
+      ? grantTypes.filter((grantType): grantType is string => typeof grantType === "string")
       : null,
     compatibility: [...compatibility],
     oauthAdvertised

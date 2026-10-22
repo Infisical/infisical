@@ -2,13 +2,10 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   ChevronDownIcon,
-  GlobeIcon,
-  KeyRoundIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
-  ServerIcon,
   TrashIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -21,7 +18,6 @@ import {
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   Card,
   CardAction,
@@ -43,11 +39,6 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
@@ -75,10 +66,6 @@ enum SortColumn {
   Created = "created"
 }
 
-const ALL_TYPES = "all";
-
-const serviceTypeOf = (service: TAgentVaultService) => service.type ?? AgentVaultServiceType.Http;
-
 const targetOf = (service: TAgentVaultService) =>
   service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
 
@@ -87,8 +74,9 @@ const SORT_COMPARATORS: Record<
   (a: TAgentVaultService, b: TAgentVaultService) => number
 > = {
   [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Type]: (a, b) => serviceTypeOf(a).localeCompare(serviceTypeOf(b)),
-  [SortColumn.Target]: (a, b) => targetOf(a).localeCompare(targetOf(b)),
+  [SortColumn.Type]: (a, b) => a.type.localeCompare(b.type),
+  // The host, not the shown URL, so MCP servers sort among the HTTP hosts instead of together under "https".
+  [SortColumn.Target]: (a, b) => a.hostPattern.localeCompare(b.hostPattern),
   [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 };
 
@@ -98,7 +86,6 @@ type Props = {
   canManage: boolean;
   onAdd: () => void;
   onEdit: (service: TAgentVaultService) => void;
-  onReauthorize: (service: TAgentVaultService) => void;
 };
 
 // Two hosts is what the column fits comfortably; the rest go behind the count so the table keeps its
@@ -122,32 +109,17 @@ const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
   );
 };
 
-const TypeBadge = ({ type }: { type: AgentVaultServiceType }) => (
-  <Badge variant="outline">
-    {type === AgentVaultServiceType.Mcp ? <ServerIcon /> : <GlobeIcon />}
-    {SERVICE_TYPE_LABELS[type]}
-  </Badge>
-);
-
 const TargetCell = ({ service }: { service: TAgentVaultService }) =>
   service.type === AgentVaultServiceType.Mcp ? (
-    <span className="block max-w-72 truncate font-mono text-sm" title={service.serverUrl}>
+    <span className="block max-w-72 truncate text-sm" title={service.serverUrl}>
       {service.serverUrl}
     </span>
   ) : (
     <HostsCell hostPattern={service.hostPattern} />
   );
 
-export const ServicesCard = ({
-  accessBundleId,
-  services,
-  canManage,
-  onAdd,
-  onEdit,
-  onReauthorize
-}: Props) => {
+export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdit }: Props) => {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<AgentVaultServiceType | typeof ALL_TYPES>(ALL_TYPES);
   const [serviceToDelete, setServiceToDelete] = useState<TAgentVaultService | null>(null);
   const deleteService = useDeleteAgentVaultService();
 
@@ -156,17 +128,20 @@ export const ServicesCard = ({
 
   const displayed = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = services.filter(
-      (service) =>
-        (typeFilter === ALL_TYPES || serviceTypeOf(service) === typeFilter) &&
-        (service.name.toLowerCase().includes(term) ||
-          service.hostPattern.toLowerCase().includes(term) ||
-          targetOf(service).toLowerCase().includes(term))
+    // A bundle holds few services, so the type is matched by search ("mcp", "http") rather than a filter.
+    const filtered = services.filter((service) =>
+      [
+        service.name,
+        service.hostPattern,
+        targetOf(service),
+        service.type,
+        SERVICE_TYPE_LABELS[service.type]
+      ].some((text) => text.toLowerCase().includes(term))
     );
 
     const ordered = [...filtered].sort(SORT_COMPARATORS[sortColumn]);
     return sortDirection === "ascending" ? ordered : ordered.reverse();
-  }, [services, search, typeFilter, sortColumn, sortDirection]);
+  }, [services, search, sortColumn, sortDirection]);
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
     if (direction === "none") {
@@ -222,35 +197,23 @@ export const ServicesCard = ({
             </Button>
           </CardAction>
         )}
-        {services.length > 0 && (
-          <div className="flex items-center gap-3 @xs:col-span-2">
-            <InputGroup className="flex-1">
-              <InputGroupAddon>
-                <SearchIcon />
-              </InputGroupAddon>
-              <InputGroupInput
-                aria-label="Search services"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search services..."
-              />
-            </InputGroup>
-            <Select
-              value={typeFilter}
-              onValueChange={(value) => setTypeFilter(value as typeof typeFilter)}
-            >
-              <SelectTrigger className="w-44" aria-label="Filter by type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" align="end">
-                <SelectItem value={ALL_TYPES}>All Types</SelectItem>
-                <SelectItem value={AgentVaultServiceType.Http}>HTTP APIs</SelectItem>
-                <SelectItem value={AgentVaultServiceType.Mcp}>MCP Servers</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
       </CardHeader>
+
+      {services.length > 0 && (
+        <CardContent>
+          <InputGroup>
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label="Search services"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search services..."
+            />
+          </InputGroup>
+        </CardContent>
+      )}
 
       {displayed.length === 0 ? (
         <CardContent>
@@ -262,7 +225,7 @@ export const ServicesCard = ({
               <EmptyDescription>
                 {services.length === 0
                   ? "Add services to give this bundle access to external hosts."
-                  : "Try a different search term or type."}
+                  : "Try a different search term."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -316,7 +279,7 @@ export const ServicesCard = ({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <TypeBadge type={serviceTypeOf(service)} />
+                  <span className="text-sm">{SERVICE_TYPE_LABELS[service.type]}</span>
                 </TableCell>
                 <TableCell>
                   <TargetCell service={service} />
@@ -346,12 +309,6 @@ export const ServicesCard = ({
                           <PencilIcon />
                           Edit
                         </DropdownMenuItem>
-                        {service.credential.type === AgentVaultCredentialType.OAuth && (
-                          <DropdownMenuItem onClick={() => onReauthorize(service)}>
-                            <KeyRoundIcon />
-                            Reauthorize
-                          </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem
                           variant="danger"
                           onClick={() => setServiceToDelete(service)}

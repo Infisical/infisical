@@ -128,6 +128,14 @@ export const agentVaultKeys = {
     [...agentVaultKeys.sessions(orgId), sessionId, "logs-live", range ?? {}] as const
 };
 
+// A dropped connection, a deploy, a 5xx or a rate limit can clear on the next poll; any other client error,
+// such as the 404 of an expired authorization, never will.
+export const isTerminalOauthAuthorizationError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return true;
+  const status = error.response?.status;
+  return status !== undefined && status >= 400 && status < 500 && status !== 408 && status !== 429;
+};
+
 export const useGetAgentVaultOauthAuthorization = (authorizationId: string) => {
   const { currentOrg } = useOrganization();
 
@@ -138,11 +146,12 @@ export const useGetAgentVaultOauthAuthorization = (authorizationId: string) => {
     staleTime: 0,
     gcTime: 0,
     retry: false,
-    refetchInterval: (query) =>
-      query.state.error ||
-      (query.state.data && query.state.data.status !== AgentVaultOauthAuthorizationStatus.Pending)
-        ? false
-        : 2000,
+    refetchInterval: (query) => {
+      const { data, error } = query.state;
+      if (error && isTerminalOauthAuthorizationError(error)) return false;
+      if (data && data.status !== AgentVaultOauthAuthorizationStatus.Pending) return false;
+      return error ? 5000 : 2000;
+    },
     // The provider popup can leave the Infisical tab in the background until authorization finishes.
     refetchIntervalInBackground: true
   });

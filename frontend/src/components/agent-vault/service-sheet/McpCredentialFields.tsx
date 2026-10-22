@@ -36,9 +36,16 @@ type Props = {
   service?: TAgentVaultService | null;
   openItem: string;
   onOpenChange: (item: string) => void;
+  onSignInChange?: (isSigningIn: boolean) => void;
 };
 
-export const McpCredentialFields = ({ accessBundleId, service, openItem, onOpenChange }: Props) => {
+export const McpCredentialFields = ({
+  accessBundleId,
+  service,
+  openItem,
+  onOpenChange,
+  onSignInChange
+}: Props) => {
   const { control, watch, setValue, clearErrors } = useFormContext<TServiceForm>();
   const { storedKeys } = useServiceVariables();
   const secret = watch("secret");
@@ -70,7 +77,7 @@ export const McpCredentialFields = ({ accessBundleId, service, openItem, onOpenC
   return (
     <div className="flex flex-col gap-5">
       <Field>
-        <FieldLabel id={authMethodLabelId}>Auth Method</FieldLabel>
+        <FieldLabel id={authMethodLabelId}>Credential Type</FieldLabel>
         <FieldContent>
           <Select
             value={isOAuth ? AgentVaultCredentialType.OAuth : AgentVaultCredentialType.Bearer}
@@ -91,7 +98,11 @@ export const McpCredentialFields = ({ accessBundleId, service, openItem, onOpenC
       </Field>
 
       {isOAuth ? (
-        <OAuthAuthorizeCard accessBundleId={accessBundleId} service={service} />
+        <OAuthAuthorizeCard
+          accessBundleId={accessBundleId}
+          service={service}
+          onSignInChange={onSignInChange}
+        />
       ) : (
         <Controller
           control={control}

@@ -2,14 +2,17 @@ import { useId } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import {
-  Button,
-  ButtonGroup,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  Input
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@app/components/v3";
 import { AgentVaultMcpTransport } from "@app/hooks/api/agentVault";
 
@@ -21,6 +24,7 @@ export const McpDetailsFields = () => {
   const { control } = useFormContext<TServiceForm>();
   const nameInputId = useId();
   const serverUrlInputId = useId();
+  const transportLabelId = useId();
 
   return (
     <div className="flex flex-col gap-5">
@@ -49,25 +53,20 @@ export const McpDetailsFields = () => {
         name="transport"
         render={({ field }) => (
           <Field>
-            <FieldLabel>Transport</FieldLabel>
+            <FieldLabel id={transportLabelId}>Transport</FieldLabel>
             <FieldContent>
-              <ButtonGroup aria-label="Transport">
-                {TRANSPORTS.map((transport) => {
-                  const isSelected = field.value === transport;
-                  return (
-                    <Button
-                      key={transport}
-                      type="button"
-                      size="sm"
-                      variant={isSelected ? "av" : "outline"}
-                      aria-pressed={isSelected}
-                      onClick={() => field.onChange(transport)}
-                    >
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger aria-labelledby={transportLabelId} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {TRANSPORTS.map((transport) => (
+                    <SelectItem key={transport} value={transport}>
                       {TRANSPORT_LABELS[transport]}
-                    </Button>
-                  );
-                })}
-              </ButtonGroup>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FieldDescription>
                 Most servers use Streamable HTTP. Pick SSE only for a server on the older HTTP+SSE
                 transport.
@@ -92,9 +91,6 @@ export const McpDetailsFields = () => {
                 spellCheck={false}
                 isError={Boolean(fieldState.error)}
               />
-              <FieldDescription>
-                The URL your agent connects to. The credential is only sent to this host.
-              </FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
           </Field>

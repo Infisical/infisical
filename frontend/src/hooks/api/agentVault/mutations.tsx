@@ -93,13 +93,19 @@ export const useDeleteAgentVaultAccessBundle = () => {
   });
 };
 
+// The service sheet renders these inline when it recognizes them (a host-pattern conflict, an authorization that
+// expired or was already used) and hands the rest back to onRequestError, so the global toast must not also fire.
+export const SERVICE_SAVE_HANDLED_ERROR_CODES: string[] = [
+  ApiErrorTypes.BadRequestError,
+  ApiErrorTypes.ConflictError,
+  "NotFound"
+];
+
 export const useCreateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
-    // so the global toast must not also fire for it.
-    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
     mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultServiceDTO) => {
       const { data } = await apiRequest.post<{ service: TAgentVaultService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`,
@@ -121,9 +127,7 @@ export const useUpdateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
-    // so the global toast must not also fire for it.
-    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
     mutationFn: async ({ accessBundleId, serviceId, ...params }: TUpdateAgentVaultServiceDTO) => {
       const { data } = await apiRequest.patch<{ service: TAgentVaultService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}`,
@@ -461,9 +465,8 @@ export const useRevealAgentVaultVariableValue = () =>
 
 export const useCreateAgentVaultOauthAuthorization = () =>
   useMutation({
-    // Discovery and registration failures name the server and what failed, and the Authorize card
-    // shows them in place.
-    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    // The Authorize card shows every failure in place, discovery and registration ones naming the server.
+    meta: { skipErrorToast: true },
     mutationFn: async (params: TCreateAgentVaultOauthAuthorizationDTO) => {
       const { data } = await apiRequest.post<TCreateAgentVaultOauthAuthorizationResponse>(
         "/api/v1/agent-vault/oauth/authorizations",

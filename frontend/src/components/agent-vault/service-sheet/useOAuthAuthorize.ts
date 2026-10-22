@@ -3,6 +3,7 @@ import axios from "axios";
 
 import {
   AgentVaultOauthAuthorizationStatus,
+  isTerminalOauthAuthorizationError,
   useCreateAgentVaultOauthAuthorization,
   useGetAgentVaultOauthAuthorization
 } from "@app/hooks/api/agentVault";
@@ -15,11 +16,11 @@ const POLL_TIMEOUT_MS = 5 * 60 * 1000;
 const POPUP_NAME = "infisical-agent-vault-oauth";
 const POPUP_FEATURES = "popup,width=600,height=720";
 
-export type TOAuthAuthorizeState =
+type TOAuthAuthorizeState =
   | { status: "idle" }
   | { status: "starting" }
   | { status: "pending" }
-  | { status: "authorized"; authorization: TAgentVaultOauthAuthorization }
+  | { status: "authorized" }
   | { status: "failed"; message: string };
 
 const serverMessage = (error: unknown) => {
@@ -37,7 +38,6 @@ export const useOAuthAuthorize = ({
   const [state, setState] = useState<TOAuthAuthorizeState>({ status: "idle" });
   const [isClientRequired, setIsClientRequired] = useState(false);
   const [redirectUri, setRedirectUri] = useState<string | null>(null);
-  const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [isOAuthAdvertised, setIsOAuthAdvertised] = useState(true);
   const [pendingAuthorization, setPendingAuthorization] = useState<{
     id: string;
@@ -56,7 +56,9 @@ export const useOAuthAuthorize = ({
   const stop = useCallback(() => {
     attemptRef.current += 1;
     setPendingAuthorization(null);
-    if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+    // Best effort: once the popup reaches a provider, Cross-Origin-Opener-Policy can sever this handle, which then
+    // reads as closed and ignores close(). Checking `closed` first would skip the close every time.
+    popupRef.current?.close();
     popupRef.current = null;
   }, []);
 
@@ -72,14 +74,15 @@ export const useOAuthAuthorize = ({
 
   useEffect(() => {
     if (!pendingAuthorization || attemptRef.current !== pendingAuthorization.attempt) return;
-    if (authorizationError) {
+    // The poll keeps going through a transient error, and the sign-in timeout still bounds it.
+    if (authorizationError && isTerminalOauthAuthorizationError(authorizationError)) {
       fail(serverMessage(authorizationError) ?? "Couldn't check the authorization status.");
       return;
     }
     if (!authorization) return;
     if (authorization.status === AgentVaultOauthAuthorizationStatus.Authorized) {
       stop();
-      setState({ status: "authorized", authorization });
+      setState({ status: "authorized" });
       onAuthorizedRef.current(authorization);
       return;
     }
@@ -125,7 +128,6 @@ export const useOAuthAuthorize = ({
             registrationRequired,
             oauthAdvertised,
             redirectUri: uri,
-            registrationError: reason,
             authorization: createdAuthorization
           }) => {
             if (attemptRef.current !== attempt) return;
@@ -133,7 +135,6 @@ export const useOAuthAuthorize = ({
               stop();
               setIsClientRequired(true);
               setRedirectUri(uri);
-              setRegistrationError(reason);
               setIsOAuthAdvertised(oauthAdvertised);
               setState({ status: "idle" });
               return;
@@ -161,7 +162,6 @@ export const useOAuthAuthorize = ({
     isClientRequired,
     isOAuthAdvertised,
     redirectUri,
-    registrationError,
     authorize,
     cancel
   };

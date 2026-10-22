@@ -25,6 +25,11 @@ const AuthorizationViewSchema = z.object({
 const printable = (max: number) =>
   z.string().max(max).regex(OAUTH_VSCHAR_PATTERN, "Use printable ASCII characters without line breaks or accents");
 
+// Sent to the provider as typed, unlike the credential fields that take `{{KEY}}`, so a reference would only come
+// back as an invalid_client nobody can explain.
+const noVariableReference = (value: string) => !value.includes("{{");
+const VARIABLES_NOT_SUPPORTED_MESSAGE = "Variables aren't supported here. Paste the value.";
+
 // JWT only: an authorization ends in a browser redirect, so only a signed-in user can start or finish one.
 export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -46,12 +51,14 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
           .trim()
           .min(1)
           .pipe(printable(MAX_CLIENT_ID_LENGTH))
+          .refine(noVariableReference, VARIABLES_NOT_SUPPORTED_MESSAGE)
           .optional()
           .describe(AGENT_VAULT.OAUTH.clientId),
         clientSecret: z
           .string()
           .min(1)
           .pipe(printable(MAX_CLIENT_SECRET_LENGTH))
+          .refine(noVariableReference, VARIABLES_NOT_SUPPORTED_MESSAGE)
           .optional()
           .describe(AGENT_VAULT.OAUTH.clientSecret)
       }),

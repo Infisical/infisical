@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
@@ -98,7 +98,10 @@ const LINEAR_JSON: Record<string, unknown> = {
   }
 };
 
-const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> } = {}) => {
+const setup = ({
+  metadata = LINEAR_JSON,
+  canEditBundles = true
+}: { metadata?: Record<string, unknown>; canEditBundles?: boolean } = {}) => {
   const store = new Map<string, string>();
   const ttls = new Map<string, number>();
   const rows = new Map<string, TRow>();
@@ -106,6 +109,7 @@ const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> 
   const registrations: unknown[] = [];
   let registerHandler: () => TOauthHttpResponse = () => json(201, { client_id: "registered-client" });
   let lockHandler: (settings: unknown) => Promise<void> = async () => {};
+  let lockTail = Promise.resolve();
   let tokenHandler: (form: URLSearchParams) => TOauthHttpResponse = () =>
     json(200, { access_token: "at-1", token_type: "Bearer", refresh_token: "rt-1", expires_in: 3600, scope: "read" });
 
@@ -155,9 +159,21 @@ const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> 
       },
       deleteItem: async (key: string) => (store.delete(key) ? 1 : 0),
       ttl: async (key: string) => (store.has(key) ? (ttls.get(key) ?? -1) : -2),
+      // A real mutex, so a second caller waits until the first one releases.
       acquireLock: async (_keys: string[], _duration: number, settings?: unknown) => {
         await lockHandler(settings);
-        return { release: async () => ({}) as never };
+        const previous = lockTail;
+        let unlock = () => {};
+        lockTail = new Promise((resolve) => {
+          unlock = resolve;
+        });
+        await previous;
+        return {
+          release: async () => {
+            unlock();
+            return {} as never;
+          }
+        };
       }
     },
     kmsService: kms as never,
@@ -248,12 +264,16 @@ const setup = ({ metadata = LINEAR_JSON }: { metadata?: Record<string, unknown> 
     permissionService: {
       getProjectPermission: async () =>
         ({
-          permission: createMongoAbility([
-            {
-              action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
-              subject: ProjectPermissionSub.AgentVaultAccessBundles
-            }
-          ]),
+          permission: createMongoAbility(
+            canEditBundles
+              ? [
+                  {
+                    action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+                    subject: ProjectPermissionSub.AgentVaultAccessBundles
+                  }
+                ]
+              : []
+          ),
           hasRole: () => true,
           memberships: []
         }) as never
@@ -323,7 +343,6 @@ const oauthConfig = (overrides: Partial<TAgentVaultOauthConfig> = {}): TAgentVau
   status: AgentVaultOauthStatus.Connected,
   expiresAt: new Date(Date.now() + 3600_000).toISOString(),
   accessTokenHash: hashAccessToken("old-access"),
-  authorizedBy: { userId: USER_ID, username: "me@example.com" },
   authorizedAt: new Date().toISOString(),
   lastRefreshedAt: null,
   lastError: null,
@@ -482,6 +501,42 @@ describe("starting an authorization", () => {
 
   test("a client secret without a client ID is refused", async () => {
     await expect(createAuthorization(setup(), { clientSecret: "shh" })).rejects.toThrow(/client ID/);
+  });
+
+  test("a caller who can't edit access bundles is refused before any request to the server", async () => {
+    const env = setup({ canEditBundles: false });
+    await expect(createAuthorization(env)).rejects.toThrow(ForbiddenError);
+    expect(env.registrations).toHaveLength(0);
+  });
+
+  test("a machine identity is refused, since signing in to the provider needs a browser", async () => {
+    const env = setup();
+    await expect(
+      env.service.createAuthorization({
+        projectId: PROJECT_ID,
+        ctx: { ...ctxOf(USER_ID), actor: ActorType.IDENTITY },
+        accessBundleId: BUNDLE_ID,
+        serverUrl: SERVER_URL
+      })
+    ).rejects.toThrow("Only a user can authorize an OAuth connection");
+  });
+
+  test("an HTTP service can't be authorized, since only MCP services use OAuth", async () => {
+    const env = setup();
+    env.rows.set(SERVICE_ID, {
+      id: SERVICE_ID,
+      name: "stripe",
+      type: AgentVaultServiceType.Http,
+      accessBundleId: BUNDLE_ID,
+      credentialType: AgentVaultCredentialType.Bearer,
+      credentialConfig: {},
+      encryptedCredential: null,
+      hostPattern: "api.stripe.com",
+      config: null
+    });
+    await expect(createAuthorization(env, { serviceId: SERVICE_ID })).rejects.toThrow(
+      "The service 'stripe' is an HTTP service. Only MCP services use OAuth."
+    );
   });
 
   test("an unknown bundle is a 404", async () => {
@@ -694,7 +749,7 @@ describe("completing an authorization", () => {
     });
     expect(refusedView.authorization).toMatchObject({
       status: AgentVaultOauthAuthorizationStatus.Failed,
-      error: "'mcp.linear.app' refused the token request: Code expired"
+      error: "The login server 'mcp.linear.app' refused the token request: Code expired"
     });
   });
 
@@ -710,7 +765,7 @@ describe("completing an authorization", () => {
       code: "test-authorization-code",
       iss: "https://mcp.linear.app"
     });
-    expect(view.authorization.error).toBe("'mcp.linear.app' refused the token request: bad code");
+    expect(view.authorization.error).toBe("The login server 'mcp.linear.app' refused the token request: bad code");
   });
 
   test("comma-joined scopes from the exchange are granted as the scopes asked for, and recorded", async () => {
@@ -770,9 +825,7 @@ describe("using an authorization", () => {
       env.service.claimAuthorization({ ...claimArgs, authorizationId: id, ctx: ctxOf(OTHER_USER_ID) })
     ).rejects.toThrow(NotFoundError);
     const { record } = await env.service.claimAuthorization({ ...claimArgs, authorizationId: id });
-    const { config, encryptedCredential } = env.service.buildCredentialFromAuthorization(record, {
-      authorizedBy: { userId: USER_ID, username: "me@example.com" }
-    });
+    const { config, encryptedCredential } = env.service.buildCredentialFromAuthorization(record);
 
     expect(openBytes<TAgentVaultOauthSecret>(encryptedCredential)).toEqual({
       accessToken: "at-1",
@@ -959,6 +1012,20 @@ describe("refreshing a service's token", () => {
     expect(openBytes<TAgentVaultOauthSecret>(row().encryptedCredential!).accessToken).toBe("reauthorized-access");
   });
 
+  test("two refreshes of the same rejected token reach the provider once, and both get the new token", async () => {
+    env.onToken(() => json(200, { access_token: "new-access", token_type: "Bearer", expires_in: 600 }));
+    const refresh = () =>
+      env.service.refreshServiceToken({
+        serviceId: SERVICE_ID,
+        projectId: PROJECT_ID,
+        destination: DESTINATION,
+        rejectedTokenHash: hashAccessToken("old-access")
+      });
+    const results = await Promise.all([refresh(), refresh()]);
+    expect(env.tokenRequests).toHaveLength(1);
+    expect(results.map((result) => result.credential.value)).toEqual(["new-access", "new-access"]);
+  });
+
   test("invalid_grant marks the service as needing reauthorization", async () => {
     env.onToken(() => json(400, { error: "invalid_grant" }));
     const result = await env.service.refreshServiceToken({
@@ -990,7 +1057,7 @@ describe("refreshing a service's token", () => {
     });
     expect(result.status).toBe(AgentVaultOauthStatus.NeedsReauthorization);
     expect(config().lastError).toBe(
-      `The MCP server no longer accepts this service's login ('mcp.linear.app' refused the token request: ${error}). Reauthorize this service.`
+      `This service's login is no longer accepted (The login server 'mcp.linear.app' refused the token request: ${error}). Reauthorize this service.`
     );
 
     // A dead login isn't retried on the next poll.
@@ -1061,7 +1128,9 @@ describe("refreshing a service's token", () => {
       rejectedTokenHash: hashAccessToken("old-access")
     });
     expect(result.status).toBe(AgentVaultOauthStatus.Connected);
-    expect(config().lastError).toBe("'mcp.linear.app' refused the token request: temporarily_unavailable");
+    expect(config().lastError).toBe(
+      "The login server 'mcp.linear.app' refused the token request: temporarily_unavailable"
+    );
     expect(config().lastError).not.toContain("old-");
   });
 
@@ -1073,7 +1142,7 @@ describe("refreshing a service's token", () => {
       destination: DESTINATION,
       rejectedTokenHash: hashAccessToken("old-access")
     });
-    expect(config().lastError).toBe("'mcp.linear.app' refused the token request: server _error");
+    expect(config().lastError).toBe("The login server 'mcp.linear.app' refused the token request: server _error");
   });
 
   test("an expires_in too large for a date is stored as no expiry instead of throwing", async () => {
@@ -1372,10 +1441,7 @@ describe("building a credential from an authorization", () => {
       sealedCredential: sealBytes({ accessToken: "at-1" }).toString("base64")
     }) as unknown as TAgentVaultOauthAuthorization;
   const build = (grantedScopes: string[], previousRequiredScopes?: string[]) =>
-    setup().service.buildCredentialFromAuthorization(record(grantedScopes), {
-      authorizedBy: null,
-      previousRequiredScopes
-    }).config;
+    setup().service.buildCredentialFromAuthorization(record(grantedScopes), { previousRequiredScopes }).config;
 
   test("a required scope the provider didn't grant keeps the service needing it", () => {
     expect(build(["read", "write"], ["admin", "write"])).toMatchObject({
@@ -1385,10 +1451,10 @@ describe("building a credential from an authorization", () => {
   });
 
   test("records the server URL the tokens were authorized for", () => {
-    const { config } = setup().service.buildCredentialFromAuthorization(
-      { ...record(["read"]), serverUrl: SERVER_URL } as TAgentVaultOauthAuthorization,
-      { authorizedBy: null }
-    );
+    const { config } = setup().service.buildCredentialFromAuthorization({
+      ...record(["read"]),
+      serverUrl: SERVER_URL
+    } as TAgentVaultOauthAuthorization);
     expect(config.serverUrl).toBe(SERVER_URL);
   });
 
@@ -1403,14 +1469,16 @@ describe("building a credential from an authorization", () => {
 
 describe("a reauthorization checked under the bundle lock", () => {
   const authorizedAt = "2026-10-15T10:00:00.000Z";
+  const ISSUER = "https://mcp.linear.app";
 
   test("a service moved to another server since the claim refuses the save, naming hosts only", () => {
     const check = () =>
       checkOauthClaimUnderLock({
         authorizedServerUrl: "https://mcp.linear.app/mcp?k=secret",
+        authorizedIssuer: ISSUER,
         lockedServerUrl: "https://mcp.other.example/path/key",
         readOauth: { authorizedAt },
-        lockedOauth: { authorizedAt, requiredScopes: [] }
+        lockedOauth: { authorizedAt, issuer: ISSUER, requiredScopes: [] }
       });
     expect(check).toThrow(BadRequestError);
     expect(check).toThrow(
@@ -1422,9 +1490,10 @@ describe("a reauthorization checked under the bundle lock", () => {
     expect(() =>
       checkOauthClaimUnderLock({
         authorizedServerUrl: SERVER_URL,
+        authorizedIssuer: ISSUER,
         lockedServerUrl: SERVER_URL,
         readOauth: { authorizedAt },
-        lockedOauth: { authorizedAt: "2026-10-15T10:05:00.000Z", requiredScopes: [] }
+        lockedOauth: { authorizedAt: "2026-10-15T10:05:00.000Z", issuer: ISSUER, requiredScopes: [] }
       })
     ).toThrow(ConflictError);
   });
@@ -1433,17 +1502,31 @@ describe("a reauthorization checked under the bundle lock", () => {
     expect(
       checkOauthClaimUnderLock({
         authorizedServerUrl: SERVER_URL,
+        authorizedIssuer: ISSUER,
         lockedServerUrl: SERVER_URL,
         readOauth: { authorizedAt },
-        lockedOauth: { authorizedAt, requiredScopes: ["admin"] }
+        lockedOauth: { authorizedAt, issuer: ISSUER, requiredScopes: ["admin"] }
       })
     ).toEqual(["admin"]);
     expect(
       checkOauthClaimUnderLock({
         authorizedServerUrl: SERVER_URL,
+        authorizedIssuer: ISSUER,
         lockedServerUrl: SERVER_URL,
         readOauth: undefined,
         lockedOauth: undefined
+      })
+    ).toEqual([]);
+  });
+
+  test("scopes reported against another issuer are not carried over", () => {
+    expect(
+      checkOauthClaimUnderLock({
+        authorizedServerUrl: SERVER_URL,
+        authorizedIssuer: "https://auth.other.example",
+        lockedServerUrl: SERVER_URL,
+        readOauth: { authorizedAt },
+        lockedOauth: { authorizedAt, issuer: ISSUER, requiredScopes: ["admin"] }
       })
     ).toEqual([]);
   });

@@ -18,11 +18,20 @@ type StepMeta = {
 const VARIABLE_TIP =
   "To use a variable, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place.";
 
+const TEMPLATE_STEP: StepMeta = { step: ServiceStep.Template, name: "Template" };
+
+const REVIEW_STEP: StepMeta = {
+  step: ServiceStep.Review,
+  name: "Review",
+  shortDescription: "Confirm and add",
+  title: "Review",
+  subtitle: "Check everything before you save. You can change it later.",
+  rightLabel: "REVIEW",
+  rightDescription: "Review your settings before saving."
+};
+
 export const SERVICE_STEPS: StepMeta[] = [
-  {
-    step: ServiceStep.Template,
-    name: "Template"
-  },
+  TEMPLATE_STEP,
   {
     step: ServiceStep.Details,
     name: "Details",
@@ -44,22 +53,11 @@ export const SERVICE_STEPS: StepMeta[] = [
       "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value.",
     rightTip: VARIABLE_TIP
   },
-  {
-    step: ServiceStep.Review,
-    name: "Review",
-    shortDescription: "Confirm and add",
-    title: "Review",
-    subtitle: "Check everything before you save. You can change it later.",
-    rightLabel: "REVIEW",
-    rightDescription: "Review your settings before saving."
-  }
+  REVIEW_STEP
 ];
 
 export const MCP_SERVICE_STEPS: StepMeta[] = [
-  {
-    step: ServiceStep.Template,
-    name: "Template"
-  },
+  TEMPLATE_STEP,
   {
     step: ServiceStep.Details,
     name: "Details",
@@ -68,7 +66,7 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     subtitle: "What this service is called and the MCP server it connects to.",
     rightLabel: "DETAILS",
     rightDescription:
-      "The agent connects to this server through the proxy, which adds the credential. Tools come later: most servers only list them to an authenticated session."
+      "The agent connects to this server through the proxy, which adds the credential."
   },
   {
     step: ServiceStep.Credential,
@@ -78,16 +76,8 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     subtitle: "How the proxy authenticates to this MCP server.",
     rightLabel: "CREDENTIAL",
     rightDescription:
-      "The proxy authenticates to the MCP server for the agent. Infisical refreshes OAuth tokens automatically, and the agent never sees them. The agent can call any tool the server exposes to this credential.",
+      "The proxy authenticates to the MCP server for the agent. The agent can call any tool the server exposes to this credential.",
     rightTip: VARIABLE_TIP
   },
-  {
-    step: ServiceStep.Review,
-    name: "Review",
-    shortDescription: "Confirm and add",
-    title: "Review",
-    subtitle: "Check everything before you save. You can change it later.",
-    rightLabel: "REVIEW",
-    rightDescription: "Review your settings before saving."
-  }
+  REVIEW_STEP
 ];

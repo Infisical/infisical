@@ -62,40 +62,45 @@ const basicHalvesAreNotBothEmpty = (
   });
 };
 
-export const AgentVaultCredentialInputSchema = z
-  .discriminatedUnion("type", [
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Bearer),
-        headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-        headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
-        value: acceptsVariableReferences(
-          z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        ).describe(AGENT_VAULT.SERVICE.value)
-      })
-      .describe(JSON.stringify({ title: "Bearer" })),
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Basic),
-        username: acceptsVariableReferences(
-          z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        ).describe(AGENT_VAULT.SERVICE.username),
-        password: acceptsVariableReferences(
-          z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        ).describe(AGENT_VAULT.SERVICE.password)
-      })
-      .describe(JSON.stringify({ title: "Basic Auth" })),
-    z
-      .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-      .describe(JSON.stringify({ title: "Pass-through" })),
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.OAuth),
-        authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.authorizationId)
-      })
-      .describe(JSON.stringify({ title: "OAuth" }))
-  ])
-  .superRefine(basicHalvesAreNotBothEmpty);
+const bearerCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.Bearer),
+  headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
+  headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
+  value: acceptsVariableReferences(
+    z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  ).describe(AGENT_VAULT.SERVICE.value)
+});
+const basicCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.Basic),
+  username: acceptsVariableReferences(
+    z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  ).describe(AGENT_VAULT.SERVICE.username),
+  password: acceptsVariableReferences(
+    z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  ).describe(AGENT_VAULT.SERVICE.password)
+});
+const passthroughCredentialInput = z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) });
+const oauthCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.OAuth),
+  authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.authorizationId)
+});
+
+const docsTitle = (title: string, hidden = false) => JSON.stringify({ title, ...(hidden ? { "x-hidden": true } : {}) });
+
+// Only a user in the UI can complete an authorization, so the API docs never offer OAuth. The MCP schema also
+// hides the types an MCP service can't use, but still accepts them so the service refuses them by name.
+const credentialInputSchema = ({ mcp }: { mcp: boolean }) =>
+  z
+    .discriminatedUnion("type", [
+      bearerCredentialInput.describe(docsTitle("Bearer")),
+      basicCredentialInput.describe(docsTitle("Basic Auth", mcp)),
+      passthroughCredentialInput.describe(docsTitle("Pass-through", mcp)),
+      oauthCredentialInput.describe(docsTitle("OAuth", true))
+    ])
+    .superRefine(basicHalvesAreNotBothEmpty);
+
+export const AgentVaultCredentialInputSchema = credentialInputSchema({ mcp: false });
+export const AgentVaultMcpCredentialInputSchema = credentialInputSchema({ mcp: true });
 
 // Not derived from the create schema: its `.default()`s would turn an omitted field into a reset on a PATCH.
 export const AgentVaultCredentialUpdateSchema = z
@@ -135,7 +140,8 @@ export const AgentVaultCredentialUpdateSchema = z
         type: z.literal(AgentVaultCredentialType.OAuth),
         authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
       })
-      .describe(JSON.stringify({ title: "OAuth" }))
+      // Only a user in the UI can complete an authorization, so the API docs don't offer it.
+      .describe(JSON.stringify({ title: "OAuth", "x-hidden": true }))
   ])
   .superRefine(basicHalvesAreNotBothEmpty);
 
@@ -159,13 +165,6 @@ export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
       grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
       requiredScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthRequiredScopes),
       expiresAt: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthExpiresAt),
-      authorizedBy: z
-        .object({
-          userId: z.string().uuid().describe(AGENT_VAULT.SERVICE.oauthAuthorizedByUserId),
-          username: z.string().describe(AGENT_VAULT.SERVICE.oauthAuthorizedByUsername)
-        })
-        .nullable()
-        .describe(AGENT_VAULT.SERVICE.oauthAuthorizedBy),
       authorizedAt: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthAuthorizedAt),
       lastError: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthLastError)
     })
@@ -233,7 +232,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
       serverUrl: AgentVaultServerUrlSchema,
       transport: AgentVaultMcpTransportSchema,
-      credential: AgentVaultCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
+      credential: AgentVaultMcpCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),

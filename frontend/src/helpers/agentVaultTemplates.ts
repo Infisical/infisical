@@ -505,15 +505,38 @@ export const findTemplateForHostPattern = (
   );
 };
 
+export const findMcpTemplateForHostPattern = (
+  hostPattern: string
+): AgentVaultMcpTemplate | undefined => {
+  const hosts = hostsOfPattern(hostPattern);
+  return AGENT_VAULT_MCP_TEMPLATES.find((template) =>
+    templateHosts(template).some((templateHost) => hosts.includes(templateHost))
+  );
+};
+
 /** For icons: an MCP service's host pattern is derived from its server URL, so the MCP templates match it too. */
 export const findAnyTemplateForHostPattern = (
   hostPattern: string
-): AgentVaultTemplate | undefined => {
-  const hosts = hostsOfPattern(hostPattern);
-  return (
-    findTemplateForHostPattern(hostPattern) ??
-    AGENT_VAULT_MCP_TEMPLATES.find((template) =>
-      templateHosts(template).some((templateHost) => hosts.includes(templateHost))
-    )
-  );
+): AgentVaultTemplate | undefined =>
+  findTemplateForHostPattern(hostPattern) ?? findMcpTemplateForHostPattern(hostPattern);
+
+const MCP_PATH_SEGMENTS = new Set(["mcp", "sse"]);
+
+export const lastPathSegment = (path: string) =>
+  path.split("?")[0].split("/").filter(Boolean).at(-1)?.toLowerCase() ?? "";
+
+/**
+ * Which kind of service a request from a session log most likely went to, for prefilling the service sheet: a known
+ * MCP server, else a host whose first label is `mcp` or a path ending in `/mcp` or `/sse`, else an HTTP API.
+ */
+export const guessServiceTypeForRequest = (
+  hostPattern: string,
+  path = ""
+): AgentVaultServiceType => {
+  const [firstLabel] = stripPort(hostPattern).split(".");
+  const isMcp =
+    Boolean(findMcpTemplateForHostPattern(hostPattern)) ||
+    firstLabel.toLowerCase() === "mcp" ||
+    MCP_PATH_SEGMENTS.has(lastPathSegment(path));
+  return isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http;
 };

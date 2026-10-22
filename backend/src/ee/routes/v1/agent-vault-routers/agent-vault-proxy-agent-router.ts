@@ -245,7 +245,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       hide: true,
       operationId: "refreshAgentVaultServiceCredential",
       description:
-        "After the upstream rejected an OAuth token, return a fresh one. If the rejected token is no longer the current one, the current one is returned without calling the provider. A 409 means the service's host pattern no longer matches `hostPattern`, and no token is returned.",
+        "Get a new access token after the MCP server rejected the current one. Returns 409 if the service now points at a different server.",
       tags: [ApiDocsTags.AgentVaultProxies],
       headers: SessionHeaderSchema,
       params: z.object({ serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId) }),

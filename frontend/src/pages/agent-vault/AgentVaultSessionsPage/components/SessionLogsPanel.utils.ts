@@ -123,14 +123,6 @@ export const matchesSessionLogSearch = (record: TAgentVaultSessionLogRecord, sea
   ].some((field) => field.includes(term));
 };
 
-export type SessionLogTypeFilter = "all" | AgentVaultServiceType;
-
-// Passthrough and blocked requests matched no service, so they have no type to filter on.
-export const matchesSessionLogType = (
-  record: TAgentVaultSessionLogRecord,
-  filter: SessionLogTypeFilter
-) => filter === "all" || record.serviceType === filter;
-
 export const sessionLogMcpCalls = (
   record: TAgentVaultSessionLogRecord
 ): TAgentVaultSessionLogMcpCall[] => {

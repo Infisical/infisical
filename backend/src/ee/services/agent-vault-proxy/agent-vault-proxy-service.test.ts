@@ -45,7 +45,11 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   ...overrides
 });
 
-const setup = (refresh: (dto: TRefreshServiceTokenDTO) => Promise<unknown>, rows = [serviceRow()]) => {
+const setup = (
+  refresh: (dto: TRefreshServiceTokenDTO) => Promise<unknown>,
+  rows = [serviceRow()],
+  variables: { id: string; encryptedValue: Buffer }[] = []
+) => {
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
   const service = agentVaultProxyServiceFactory({
@@ -55,7 +59,7 @@ const setup = (refresh: (dto: TRefreshServiceTokenDTO) => Promise<unknown>, rows
     agentVaultResolveDAL: { findResolvableServices: async () => rows },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
     agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
-    agentVaultVariableDAL: { findValuesForResolve: async () => [] },
+    agentVaultVariableDAL: { findValuesForResolve: async () => variables },
     agentVaultSessionDAL: {
       findByTokenHash: async () =>
         ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null }) as never
@@ -189,6 +193,68 @@ describe("resolve's lazy refresh", () => {
       hostPattern: "mcp.linear.app",
       credential: { type: "bearer", value: "snapshot-access", source: "oauth" }
     });
+  });
+
+  test("waits at most 4 seconds for a refresh, then sends the stored token", async () => {
+    vi.useFakeTimers();
+    try {
+      const { service } = setup(() => new Promise(() => {}));
+      let settled = false;
+      const result = resolve(service).finally(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(3_999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      const { services } = await result;
+      expect(services[0].credential).toMatchObject({ value: "snapshot-access" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("a service that needs reauthorization isn't refreshed, even when its token is about to expire", async () => {
+    const { service, refreshServiceToken } = setup(
+      async () => refreshed,
+      [
+        serviceRow({
+          credentialConfig: {
+            status: AgentVaultOauthStatus.NeedsReauthorization,
+            expiresAt: new Date(Date.now() + 10_000).toISOString()
+          }
+        })
+      ]
+    );
+    const { services } = await resolve(service);
+    expect(refreshServiceToken).not.toHaveBeenCalled();
+    expect(services[0].credential).toMatchObject({ value: "snapshot-access" });
+  });
+
+  test("a variable reference inside an OAuth token is sent as is, while a Bearer token's is expanded", async () => {
+    const variableId = "44444444-4444-4444-8444-444444444444";
+    const reference = `{{${variableId}}}`;
+    const { service } = setup(
+      async () => refreshed,
+      [
+        serviceRow({
+          credentialConfig: { status: AgentVaultOauthStatus.Connected, expiresAt: null },
+          encryptedCredential: Buffer.from(JSON.stringify({ accessToken: `oauth-${reference}` }))
+        }),
+        serviceRow({
+          id: "55555555-5555-4555-8555-555555555555",
+          type: AgentVaultServiceType.Http,
+          hostPattern: "api.example.com",
+          config: null,
+          credentialType: AgentVaultCredentialType.Bearer,
+          credentialConfig: { headerName: "Authorization", headerPrefix: "Bearer" },
+          encryptedCredential: Buffer.from(JSON.stringify({ value: `bearer-${reference}` }))
+        })
+      ],
+      [{ id: variableId, encryptedValue: Buffer.from(JSON.stringify({ value: "expanded" })) }]
+    );
+    const { services } = await resolve(service);
+    expect(services[0].credential).toMatchObject({ value: `oauth-${reference}` });
+    expect(services[1].credential).toMatchObject({ value: "bearer-expanded" });
   });
 
   test("an OAuth token is always sent as Authorization: Bearer, whatever its config holds", async () => {

@@ -412,7 +412,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           grantedScopes: oauth.grantedScopes ?? [],
           requiredScopes: oauth.requiredScopes ?? [],
           expiresAt: oauth.expiresAt ?? null,
-          authorizedBy: oauth.authorizedBy ?? null,
           authorizedAt: oauth.authorizedAt ?? null,
           lastError: oauth.lastError ?? null
         };
@@ -668,6 +667,16 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
+  // An authorization only comes from a browser sign-in in the UI, so a machine identity could never hold one.
+  const assertOauthConnectedByUser = (
+    ctx: TGetAccessBundleDTO["ctx"],
+    credential?: TAgentVaultCredentialInput | TAgentVaultCredentialUpdate
+  ) => {
+    if (credential?.type === AgentVaultCredentialType.OAuth && ctx.actor !== ActorType.USER) {
+      throw new BadRequestError({ message: "OAuth services can only be connected by a user in the Infisical UI." });
+    }
+  };
+
   // The tokens come from an authorization the same user completed. Claiming it deletes it right before the write,
   // and a save that then fails puts it back, so it can be retried without authorizing again.
   const claimOauthCredential = async ({
@@ -687,7 +696,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     authorizationId: string;
     previousRequiredScopes?: string[];
   }) => {
-    const [user] = ctx.actor === ActorType.USER ? await userDAL.find({ id: ctx.actorId }) : [];
     const claim = await agentVaultOauthService.claimAuthorization({
       authorizationId,
       projectId,
@@ -697,10 +705,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       serverUrl
     });
     const build = (requiredScopes?: string[]) =>
-      agentVaultOauthService.buildCredentialFromAuthorization(claim.record, {
-        authorizedBy: user ? { userId: user.id, username: user.username } : null,
-        previousRequiredScopes: requiredScopes
-      });
+      agentVaultOauthService.buildCredentialFromAuthorization(claim.record, { previousRequiredScopes: requiredScopes });
     try {
       return { claim, ...build(previousRequiredScopes), rebuild: build };
     } catch (err) {
@@ -905,6 +910,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    assertOauthConnectedByUser(rest.ctx, credential);
 
     const serviceType = getAgentVaultServiceType(type);
     assertServiceFieldsSupported(serviceType, {
@@ -1097,6 +1103,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    assertOauthConnectedByUser(rest.ctx, credential);
 
     const service = await agentVaultServiceDAL.findByIdInAccessBundle({ id: serviceId, accessBundleId: bundle.id });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
@@ -1312,6 +1319,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           // The claim checked the server URL of the first read; these tokens must never reach another host.
           const requiredScopes = checkOauthClaimUnderLock({
             authorizedServerUrl: oauth.claim.record.serverUrl,
+            authorizedIssuer: oauth.claim.record.issuer,
             lockedServerUrl: getServiceServerUrl(lockedServiceConfig ?? locked.config),
             readOauth: storedOauth,
             lockedOauth
@@ -1343,7 +1351,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         );
         if (!lockedBundle) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
-        const locked = await agentVaultServiceDAL.findByIdInAccessBundle(
+        const locked = await agentVaultServiceDAL.lockByIdInAccessBundle(
           { id: service.id, accessBundleId: bundle.id },
           tx
         );

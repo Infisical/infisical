@@ -27,7 +27,7 @@ You add the MCP server to your agent with its real URL and no credentials. When 
     On the **Details** step, enter a **Name**, and check the [**Transport** and **Server URL**](#server-url-and-transport). A template fills in the transport and server URL for you. Select **Continue**.
   </Step>
   <Step>
-    On the **Credential** step, pick an **Auth Method** and set up the [credential](#credential-types). Select **Continue**.
+    On the **Credential** step, pick a **Credential Type** and set up the [credential](#credential-types). Select **Continue**.
   </Step>
   <Step>
     On the **Review** step, select **Add Service**. The service appears in the bundle's list with the type **MCP Server**.
@@ -51,7 +51,7 @@ With OAuth, you sign in to the provider once from Infisical. Infisical stores th
 
 <Steps>
   <Step>
-    Under **Auth Method**, select **OAuth**, then select the button that names your server, such as **Authorize with mcp.linear.app**.
+    Under **Credential Type**, select **OAuth**, then select the button that names your server, such as **Authorize with mcp.linear.app**.
 
     <Note>
       Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, the card asks for an OAuth app of your own instead. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** the card shows. Then enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty for a public client), and authorize again.
@@ -147,6 +147,7 @@ Infisical won't save a custom header with the same name as the credential's head
 ## Limitations
 
 - **Remote servers only:** An MCP service covers MCP servers that the agent reaches over HTTPS. A local MCP server that the agent starts as a process isn't an MCP service, but you can add [HTTP services](/documentation/platform/agent-vault/http-apis) for the APIs that the local server calls
+- **No OAuth on private networks:** Infisical connects to the MCP server and to the provider to set up OAuth and refresh the access token, so if either one is on a private network, use a [Bearer token](#bearer-token) instead, or set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true` if you self-host Infisical on that network
 - **No tool filtering:** The agent can call every tool the server offers to the credential, so limit what the agent can do through the credential's own permissions
 - **No connectors that run in a vendor's cloud:** Custom connectors in claude.ai or ChatGPT connect from the vendor's servers, so their traffic never reaches your proxy
 - **No WebSocket transports:** The proxy doesn't support [WebSocket connections](/documentation/platform/agent-vault/proxies#supported-connections)
@@ -161,7 +162,9 @@ Infisical won't save a custom header with the same name as the credential's head
     {"error":"upstream_auth_failed","message":"The MCP server rejected the credential Infisical provided. Reauthorize this service in Infisical Agent Vault."}
     ```
 
-    In the access bundle's **Services** table, the service shows **Needs Reauthorization** or **Needs Additional Scopes**. Open the service's menu, select **Reauthorize**, and sign in to the provider again. Then try the tool call again.
+    In the access bundle's **Services** table, the service shows **Needs Additional Scopes** if the server asked for scopes the authorization lacks, and **Needs Reauthorization** if the provider no longer accepts the service's login. If the server rejected the fresh token, the service shows no warning.
+
+    In each case, reauthorize the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**. Then try the tool call again.
   </Accordion>
   <Accordion title="Authorize fails on a self-hosted instance">
     The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:

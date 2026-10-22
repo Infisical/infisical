@@ -7,7 +7,10 @@ import { pollUntil } from "e2e-test/testUtils/poll";
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
+import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { MAX_OAUTH_SCOPES } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import {
   AGENT_VAULT_MAX_PROXIES_PER_ORG,
@@ -244,6 +247,26 @@ const createAccessBundle = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/access-bundles", { name });
   expect(res.statusCode).toBe(200);
   return (JSON.parse(res.payload) as { accessBundle: { id: string; name: string } }).accessBundle;
+};
+
+// Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
+const createProxyCaPem = async () => {
+  const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+  const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+  const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+    name: "CN=Agent Vault Proxy Test CA",
+    serialNumber: "01",
+    notBefore: new Date(Date.now() - 60_000),
+    notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    signingAlgorithm: algorithm,
+    keys,
+    extensions: [
+      new x509.BasicConstraintsExtension(true, undefined, true),
+      // eslint-disable-next-line no-bitwise
+      new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
+    ]
+  });
+  return certificate.toString("pem");
 };
 
 describe("Agent Vault V1 Router", async () => {
@@ -796,6 +819,303 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("MCP services", async () => {
+    const servicesUrl = (bundleId: string) => `/api/v1/agent-vault/access-bundles/${bundleId}/services`;
+
+    const createMcpService = async (bundleId: string, name: string, serverUrl: string) => {
+      const res = await inject("POST", servicesUrl(bundleId), {
+        type: "mcp",
+        name,
+        serverUrl,
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "mcp-token" }
+      });
+      expect(res.statusCode).toBe(200);
+      return (JSON.parse(res.payload) as { service: { id: string; hostPattern: string } }).service;
+    };
+
+    const messageOf = (res: { payload: string }) => (JSON.parse(res.payload) as { message: string }).message;
+
+    test("an MCP service takes its host from the server URL, and moves with it", async () => {
+      const bundle = await createAccessBundle("mcp-host-pattern");
+
+      const res = await inject("POST", servicesUrl(bundle.id), {
+        type: "mcp",
+        name: "linear",
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "sse",
+        credential: { type: "bearer", value: "lin_api_secret" }
+      });
+      expect(res.statusCode).toBe(200);
+      const { service } = JSON.parse(res.payload) as {
+        service: { id: string; type: string; hostPattern: string; serverUrl: string; transport: string };
+      };
+      expect(service).toMatchObject({
+        type: "mcp",
+        hostPattern: "mcp.linear.app",
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "sse"
+      });
+      expect(res.payload).not.toContain("lin_api_secret");
+
+      const withPort = await createMcpService(bundle.id, "internal", "https://mcp.example.com:8443/mcp");
+      expect(withPort.hostPattern).toBe("mcp.example.com:8443");
+
+      const moved = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        serverUrl: "https://mcp.linear.dev/mcp"
+      });
+      expect(moved.statusCode).toBe(200);
+      expect(JSON.parse(moved.payload).service.hostPattern).toBe("mcp.linear.dev");
+    });
+
+    test("a field that belongs to the other type is refused by name, on create and update", async () => {
+      const bundle = await createAccessBundle("mcp-wrong-fields");
+      const mcp = {
+        type: "mcp",
+        name: "linear",
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "token" }
+      };
+
+      const withHttpFields = await inject("POST", servicesUrl(bundle.id), {
+        ...mcp,
+        hostPattern: "mcp.linear.app",
+        allowedMethods: ["GET"]
+      });
+      expect(withHttpFields.statusCode).toBe(400);
+      expect(messageOf(withHttpFields)).toContain("An MCP service doesn't take 'hostPattern' or 'allowedMethods'.");
+
+      const withBasic = await inject("POST", servicesUrl(bundle.id), {
+        ...mcp,
+        credential: { type: "basic", username: "user", password: "pass" }
+      });
+      expect(withBasic.statusCode).toBe(400);
+      expect(messageOf(withBasic)).toContain("An MCP service can't use basic auth as its credential.");
+
+      const httpWithServerUrl = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
+        name: "github",
+        hostPattern: "api.github.com",
+        serverUrl: "https://api.github.com/mcp",
+        credential: { type: "bearer", value: "token" }
+      });
+      expect(httpWithServerUrl.statusCode).toBe(400);
+      expect(messageOf(httpWithServerUrl)).toContain("An HTTP service doesn't take 'serverUrl'.");
+
+      const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+      const patchedHostPattern = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        hostPattern: "other.example.com"
+      });
+      expect(patchedHostPattern.statusCode).toBe(400);
+      expect(messageOf(patchedHostPattern)).toContain("An MCP service doesn't take 'hostPattern'.");
+    });
+
+    test("a service's type can't be changed", async () => {
+      const bundle = await createAccessBundle("mcp-type-change");
+      const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+
+      const res = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, { type: "http" });
+      expect(res.statusCode).toBe(400);
+      expect(messageOf(res)).toContain("A service's type can't be changed.");
+
+      const stored = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+      expect(stored.payload).toContain('"type":"mcp"');
+    });
+
+    describe("credential refresh", async () => {
+      // A real enrolled proxy on the real route, so the session and proxy checks run as they do in production.
+      const proxyFor = async (bundle: { name: string }, proxyName: string) => {
+        const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+        expect(mint.statusCode).toBe(200);
+        const { session } = JSON.parse(mint.payload) as { session: { token: string } };
+
+        const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: proxyName });
+        expect(created.statusCode).toBe(200);
+        const { token } = JSON.parse(created.payload) as { token: string };
+        const login = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/proxy/login",
+          body: { method: ResourceAuthMethodType.Token, token, rootCaCertificate: await createProxyCaPem() }
+        });
+        expect(login.statusCode).toBe(200);
+        const { accessToken } = JSON.parse(login.payload) as { accessToken: string };
+
+        return (serviceId: string, hostPattern: string) =>
+          testServer.inject({
+            method: "POST",
+            url: `/api/v1/agent-vault/proxy/services/${serviceId}/credential-refresh`,
+            headers: { authorization: `Bearer ${accessToken}`, "x-infisical-agent-session": session.token },
+            body: { hostPattern, rejectedTokenHash: "a".repeat(64) }
+          });
+      };
+
+      test("a service outside the session is a 404, and one without OAuth is a 400", async () => {
+        const bundle = await createAccessBundle("refresh-not-found");
+        const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+        const otherBundle = await createAccessBundle("refresh-other-bundle");
+        const outside = await createMcpService(otherBundle.id, "linear", "https://mcp.linear.app/mcp");
+        const refresh = await proxyFor(bundle, "refresh-not-found");
+
+        const unknown = await refresh(crypto.randomUUID(), "mcp.linear.app");
+        expect(unknown.statusCode).toBe(404);
+        const otherSession = await refresh(outside.id, "mcp.linear.app");
+        expect(otherSession.statusCode).toBe(404);
+
+        const bearer = await refresh(service.id, "mcp.linear.app");
+        expect(bearer.statusCode).toBe(400);
+        expect(messageOf(bearer)).toBe(
+          "The service 'linear' doesn't use OAuth, so Infisical can't refresh its credential."
+        );
+      });
+
+      test("a host pattern the service no longer has is a 409, so no token goes to the old host", async () => {
+        const bundle = await createAccessBundle("refresh-moved");
+        const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+        // Connecting OAuth needs a browser sign-in, so the row is switched to OAuth directly.
+        await testDb("agent_vault_services")
+          .where({ id: service.id })
+          .update({
+            credentialType: "oauth",
+            credentialConfig: { status: "connected", accessTokenHash: "a".repeat(64) }
+          });
+        const refresh = await proxyFor(bundle, "refresh-moved");
+
+        const res = await refresh(service.id, "mcp.old-linear.app");
+        expect(res.statusCode).toBe(409);
+        expect(messageOf(res)).toBe(AGENT_VAULT_SERVICE_MOVED_MESSAGE);
+      });
+    });
+  });
+
+  // The unit tests run these against a JS copy of the SQL. Only Postgres can show the compare, the jsonb merge and
+  // the union happen in one UPDATE, against the row being written.
+  describe("OAuth credential writes (postgres)", async () => {
+    const serviceDAL = agentVaultServiceDALFactory(testDb as never);
+    const SEALED = Buffer.from("sealed-credential-1");
+    const TOKEN_HASH = "b".repeat(64);
+
+    const oauthService = async (name: string, config: Record<string, unknown> = {}) => {
+      const bundle = await createAccessBundle(name);
+      const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "mcp",
+        name,
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "token" }
+      });
+      expect(res.statusCode).toBe(200);
+      const { service } = JSON.parse(res.payload) as { service: { id: string } };
+      // Connecting OAuth needs a browser sign-in, so the row is switched to OAuth directly.
+      await testDb("agent_vault_services")
+        .where({ id: service.id })
+        .update({
+          credentialType: "oauth",
+          encryptedCredential: SEALED,
+          credentialConfig: {
+            status: "connected",
+            accessTokenHash: TOKEN_HASH,
+            grantedScopes: ["read"],
+            requiredScopes: [],
+            ...config
+          }
+        });
+      return service.id;
+    };
+
+    const storedConfig = async (id: string) =>
+      (await testDb("agent_vault_services").where({ id }).first()).credentialConfig as Record<string, unknown>;
+
+    test("compareAndSwapCredential writes only over the sealed credential it read, and merges just its keys", async () => {
+      const id = await oauthService("cas-write");
+      const swapped = await serviceDAL.compareAndSwapCredential({
+        id,
+        expectedEncryptedCredential: SEALED,
+        encryptedCredential: Buffer.from("sealed-credential-2"),
+        credentialConfigPatch: { accessTokenHash: "c".repeat(64), lastError: null }
+      });
+      expect(swapped?.credentialConfig).toMatchObject({ accessTokenHash: "c".repeat(64), grantedScopes: ["read"] });
+
+      const stale = await serviceDAL.compareAndSwapCredential({
+        id,
+        expectedEncryptedCredential: SEALED,
+        encryptedCredential: Buffer.from("sealed-credential-3"),
+        credentialConfigPatch: { accessTokenHash: "d".repeat(64) }
+      });
+      expect(stale).toBeUndefined();
+      const row = await testDb("agent_vault_services").where({ id }).first();
+      expect(row.encryptedCredential.toString()).toBe("sealed-credential-2");
+      expect(row.credentialConfig.accessTokenHash).toBe("c".repeat(64));
+    });
+
+    test("compareAndSwapCredential keeps needs-additional-scopes only when asked, judged on the stored row", async () => {
+      const patch = { status: "connected", lastError: null };
+      const kept = await oauthService("cas-keep-scopes", { status: "needs-additional-scopes", lastError: "old" });
+      await serviceDAL.compareAndSwapCredential({
+        id: kept,
+        expectedEncryptedCredential: SEALED,
+        credentialConfigPatch: patch,
+        keepAdditionalScopesStatus: true
+      });
+      expect(await storedConfig(kept)).toMatchObject({ status: "needs-additional-scopes", lastError: null });
+
+      const replaced = await oauthService("cas-replace-scopes", { status: "needs-additional-scopes" });
+      await serviceDAL.compareAndSwapCredential({
+        id: replaced,
+        expectedEncryptedCredential: SEALED,
+        credentialConfigPatch: patch
+      });
+      expect((await storedConfig(replaced)).status).toBe("connected");
+    });
+
+    test("addRequiredScopes unions in the UPDATE, so two reports at once both land", async () => {
+      const id = await oauthService("scopes-concurrent");
+      const report = (requiredScopes: string[]) =>
+        serviceDAL.addRequiredScopes({
+          id,
+          expectedEncryptedCredential: SEALED,
+          rejectedTokenHash: TOKEN_HASH,
+          requiredScopes
+        });
+
+      await Promise.all([report(["admin"]), report(["write", "admin"])]);
+      const config = await storedConfig(id);
+      expect(config.status).toBe("needs-additional-scopes");
+      expect([...(config.requiredScopes as string[])].sort()).toEqual(["admin", "write"]);
+    });
+
+    test("addRequiredScopes writes nothing for granted scopes, a replaced token, or a dead login", async () => {
+      const id = await oauthService("scopes-refused");
+      const report = (requiredScopes: string[], rejectedTokenHash = TOKEN_HASH) =>
+        serviceDAL.addRequiredScopes({ id, expectedEncryptedCredential: SEALED, rejectedTokenHash, requiredScopes });
+
+      expect(await report(["read"])).toBeUndefined();
+      expect(await report(["admin"], "e".repeat(64))).toBeUndefined();
+
+      const dead = await oauthService("scopes-dead-login", { status: "needs-reauthorization" });
+      expect(
+        await serviceDAL.addRequiredScopes({
+          id: dead,
+          expectedEncryptedCredential: SEALED,
+          rejectedTokenHash: TOKEN_HASH,
+          requiredScopes: ["admin"]
+        })
+      ).toBeUndefined();
+      expect(await storedConfig(id)).toMatchObject({ status: "connected", requiredScopes: [] });
+    });
+
+    test("addRequiredScopes stops growing the list at the scope limit", async () => {
+      const id = await oauthService("scopes-cap");
+      await serviceDAL.addRequiredScopes({
+        id,
+        expectedEncryptedCredential: SEALED,
+        rejectedTokenHash: TOKEN_HASH,
+        requiredScopes: Array.from({ length: MAX_OAUTH_SCOPES + 5 }, (_, index) => `scope-${index}`)
+      });
+      expect((await storedConfig(id)).requiredScopes).toHaveLength(MAX_OAUTH_SCOPES);
+    });
+  });
+
   describe("variables", async () => {
     const variablesUrl = "/api/v1/agent-vault/variables";
     const servicesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`;
@@ -828,26 +1148,6 @@ describe("Agent Vault V1 Router", async () => {
 
     const referencesByField = (references: TReference[]) =>
       references.map((reference) => `${reference.field}:${reference.key}`).sort();
-
-    // Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
-    const createProxyCaPem = async () => {
-      const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
-      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
-      const certificate = await x509.X509CertificateGenerator.createSelfSigned({
-        name: "CN=Agent Vault Variables Test CA",
-        serialNumber: "01",
-        notBefore: new Date(Date.now() - 60_000),
-        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        signingAlgorithm: algorithm,
-        keys,
-        extensions: [
-          new x509.BasicConstraintsExtension(true, undefined, true),
-          // eslint-disable-next-line no-bitwise
-          new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
-        ]
-      });
-      return certificate.toString("pem");
-    };
 
     type TResolved = {
       services: {

@@ -35,6 +35,19 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
+  // A scope report or token refresh is a single UPDATE that only checks the sealed credential, so a save that read
+  // the row without this lock could write over one that committed in between.
+  const lockByIdInAccessBundle = async (
+    { id, accessBundleId }: { id: string; accessBundleId: string },
+    tx: Knex
+  ): Promise<TAgentVaultServices | undefined> => {
+    try {
+      return await tx(TableName.AgentVaultService).where({ id, accessBundleId }).forUpdate().first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault service" });
+    }
+  };
+
   const findByIdPrimary = async (id: string, tx?: Knex): Promise<TAgentVaultServices | undefined> => {
     try {
       return await (tx || db)(TableName.AgentVaultService).where({ id }).first();
@@ -126,6 +139,7 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     ...orm,
     findByAccessBundleId,
     findByIdInAccessBundle,
+    lockByIdInAccessBundle,
     findByIdPrimary,
     compareAndSwapCredential,
     addRequiredScopes

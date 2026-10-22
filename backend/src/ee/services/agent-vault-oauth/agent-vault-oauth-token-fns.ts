@@ -3,9 +3,11 @@ import crypto from "node:crypto";
 import * as oauth from "oauth4webapi";
 import RE2 from "re2";
 
-import { sanitizeUrlForLog } from "@app/lib/logger";
+import { BadRequestError } from "@app/lib/errors";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 
-import { AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
+import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
 import {
   describeServer,
   OFFLINE_ACCESS_SCOPE,
@@ -15,8 +17,12 @@ import {
 import { TOauthHttpClient } from "./agent-vault-oauth-http-fns";
 import {
   AGENT_VAULT_OAUTH_GRANT_TYPE,
+  AGENT_VAULT_OAUTH_HEADER_NAME,
+  AGENT_VAULT_OAUTH_HEADER_PREFIX,
   AgentVaultOauthClientAuthMethod,
-  AgentVaultOauthCompatibility
+  AgentVaultOauthCompatibility,
+  TAgentVaultOauthConfig,
+  TResolvedOauthCredential
 } from "./agent-vault-oauth-types";
 
 const base64Url = (buffer: Buffer) => buffer.toString("base64url");
@@ -194,6 +200,14 @@ const PROVIDER_WHITESPACE_RE = new RE2(/[\s\p{Z}\ufeff\x00-\x1f\x7f]+/gu);
 const PROVIDER_FORMATTING_RE = new RE2(/[\p{Cc}\p{Cf}\p{Co}]/gu);
 const REPEATED_SPACES_RE = new RE2(/ {2,}/g);
 const PROVIDER_URL_RE = new RE2(/https?:\/\/[^\s\v\p{Z}\ufeff<>"']+/giu);
+const FORM_URL_ESCAPED_RE = new RE2(/[-_.!~*'()]|%20/g);
+
+// The encoding oauth4webapi applies to the client ID and secret in a client_secret_basic header, which escapes
+// more characters than URLSearchParams does.
+export const formUrlEncode = (value: string) =>
+  encodeURIComponent(value).replace(FORM_URL_ESCAPED_RE, (match) =>
+    match === "%20" ? "+" : `%${match.charCodeAt(0).toString(16).toUpperCase()}`
+  );
 
 // Anything a provider sends that can end up in a message, a log line, `lastError` or an authorization's `error`
 // goes through here: line breaks and tabs become spaces, other control and formatting characters (NUL, lone
@@ -206,13 +220,15 @@ export const normalizeProviderText = (
 ) => {
   if (typeof text !== "string" || !text) return "";
   // Providers can echo request credentials in their descriptions. Redact literal and form-encoded values before
-  // truncating, so a partial secret is never left at the cut.
+  // truncating, so a partial secret is never left at the cut. The request body is encoded by URLSearchParams and
+  // the Basic header by `formUrlEncode`, so both forms are redacted.
   let redacted = text;
   sensitiveValues
     .filter((value): value is string => Boolean(value))
     .forEach((value) => {
-      const encoded = new URLSearchParams({ value }).toString().slice("value=".length);
-      [...new Set([value, encoded, encoded.replaceAll("+", "%20")])].forEach((secret) => {
+      const encodings = [new URLSearchParams({ value }).toString().slice("value=".length), formUrlEncode(value)];
+      const secrets = new Set([value, ...encodings.flatMap((encoded) => [encoded, encoded.replaceAll("+", "%20")])]);
+      secrets.forEach((secret) => {
         redacted = redacted.split(secret).join("[redacted]");
       });
     });
@@ -250,7 +266,6 @@ const withTimeout = <T>(promise: Promise<T>, ms: number) => {
 
 export const requestToken = async ({
   http,
-  serverUrl,
   issuer,
   tokenEndpoint,
   params,
@@ -263,7 +278,6 @@ export const requestToken = async ({
   budgetMs = TOKEN_REQUEST_BUDGET_MS
 }: {
   http: TOauthHttpClient;
-  serverUrl: string;
   issuer: string;
   tokenEndpoint: string;
   params: Record<string, string>;
@@ -276,7 +290,9 @@ export const requestToken = async ({
   sensitiveValues?: string[];
   budgetMs?: number;
 }): Promise<TTokenRequestResult> => {
-  const host = describeServer(serverUrl);
+  // The login server can live elsewhere than the MCP server (Supabase, Stripe, GitHub), so name the host the admin
+  // needs to check.
+  const host = describeServer(tokenEndpoint);
   const deadline = Date.now() + budgetMs;
   const authorizationServer = { issuer, token_endpoint: tokenEndpoint };
   const client = { client_id: clientId };
@@ -287,15 +303,15 @@ export const requestToken = async ({
   if (clientSecret && tokenEndpointAuthMethod === AgentVaultOauthClientAuthMethod.ClientSecretPost) {
     clientAuthentication = oauth.ClientSecretPost(clientSecret);
   }
-  const encodedClientId = new URLSearchParams({ value: clientId }).toString().slice("value=".length);
-  const encodedClientSecret = new URLSearchParams({ value: clientSecret ?? "" }).toString().slice("value=".length);
   const requestSecrets = [
     ...sensitiveValues,
     clientSecret,
     params.code,
     params.code_verifier,
     params.refresh_token,
-    ...(clientSecret ? [Buffer.from(`${encodedClientId}:${encodedClientSecret}`).toString("base64")] : [])
+    ...(clientSecret
+      ? [Buffer.from(`${formUrlEncode(clientId)}:${formUrlEncode(clientSecret)}`).toString("base64")]
+      : [])
   ];
 
   const send = async (withResource: boolean): Promise<TTokenRequestResult> => {
@@ -320,11 +336,23 @@ export const requestToken = async ({
         }),
         remainingMs
       );
-    } catch {
+    } catch (err) {
+      // Only the message: the error itself carries the request config, client secret and Basic header included.
+      const reason = normalizeProviderText(
+        err instanceof Error ? err.message : String(err),
+        MAX_ERROR_DESCRIPTION_LENGTH,
+        requestSecrets
+      );
+      logger.info(
+        `agentVaultOauth: token request failed [tokenEndpoint=${sanitizeUrlForLog(tokenEndpoint)}] [reason=${reason}]`
+      );
+      const isPrivateAddress = err instanceof BadRequestError && err.message === PRIVATE_ADDRESS_REFUSED_MESSAGE;
       return {
         ok: false,
         errorCode: null,
-        message: `Couldn't reach the token endpoint of '${host}'. Try again in a moment.`,
+        message: isPrivateAddress
+          ? `Infisical can't reach the login server '${host}' because it's on a private network. Use a bearer token for this service instead.`
+          : `Couldn't reach the login server '${host}'.`,
         resourceDropped: !withResource
       };
     }
@@ -337,7 +365,7 @@ export const requestToken = async ({
       return {
         ok: false,
         errorCode: null,
-        message: `'${host}' returned a token Infisical can't use (it must be printable text that works as a bearer token).`,
+        message: `The login server '${host}' returned a token Infisical can't use (it must be printable text that works as a bearer token).`,
         resourceDropped: !withResource
       };
     }
@@ -351,7 +379,7 @@ export const requestToken = async ({
     return {
       ok: false,
       errorCode,
-      message: `'${host}' refused the token request: ${detail}`,
+      message: `The login server '${host}' refused the token request: ${detail}`,
       resourceDropped: !withResource
     };
   };
@@ -406,6 +434,20 @@ export const withTokenCompatibility = (
   ].filter((entry) => !compatibility.includes(entry));
   return used.length ? [...compatibility, ...used] : compatibility;
 };
+
+// Sent in the bearer shape so a proxy that predates OAuth injects it unchanged; `source` is what tells a newer one
+// it may ask for a refresh. Both the session poll and the refresh endpoint build it here, so the two can't drift.
+export const toResolvedOauthCredential = (
+  config: Pick<TAgentVaultOauthConfig, "expiresAt">,
+  accessToken: string
+): TResolvedOauthCredential => ({
+  type: AgentVaultCredentialType.Bearer,
+  headerName: AGENT_VAULT_OAUTH_HEADER_NAME,
+  headerPrefix: AGENT_VAULT_OAUTH_HEADER_PREFIX,
+  value: accessToken,
+  source: AgentVaultCredentialType.OAuth,
+  expiresAt: config.expiresAt ?? null
+});
 
 // Never throws: `parseExpiresIn` bounds what a provider sends, and anything that still isn't a date is no expiry.
 export const expiresAtFrom = (expiresIn: number | undefined, now: Date) => {

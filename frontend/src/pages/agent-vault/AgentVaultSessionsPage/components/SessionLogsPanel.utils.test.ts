@@ -13,7 +13,6 @@ import {
   groupRepeatedMcpCalls,
   groupSessionLogGaps,
   matchesSessionLogSearch,
-  matchesSessionLogType,
   mcpCallLabel,
   mcpMoreCallsLabel,
   sessionLogMcpCalls,
@@ -135,34 +134,6 @@ describe("matchesSessionLogSearch", () => {
     assert.equal(matchesSessionLogSearch(mcpRequest, "tools/call"), true);
     assert.equal(matchesSessionLogSearch(mcpRequest, "tools/list"), true);
     assert.equal(matchesSessionLogSearch(mcpRequest, "resources/list"), false);
-  });
-});
-
-describe("matchesSessionLogType", () => {
-  const http = { ...record(1), serviceType: AgentVaultServiceType.Http };
-  const mcp = { ...record(2), serviceType: AgentVaultServiceType.Mcp };
-  const untyped = { ...record(3), serviceType: null };
-  const legacy = record(4);
-
-  it("keeps every record for all types", () => {
-    [http, mcp, untyped, legacy].forEach((entry) =>
-      assert.equal(matchesSessionLogType(entry, "all"), true)
-    );
-  });
-
-  it("keeps only records of the chosen type", () => {
-    assert.deepEqual(
-      [http, mcp, untyped, legacy].map((entry) =>
-        matchesSessionLogType(entry, AgentVaultServiceType.Http)
-      ),
-      [true, false, false, false]
-    );
-    assert.deepEqual(
-      [http, mcp, untyped, legacy].map((entry) =>
-        matchesSessionLogType(entry, AgentVaultServiceType.Mcp)
-      ),
-      [false, true, false, false]
-    );
   });
 });
 

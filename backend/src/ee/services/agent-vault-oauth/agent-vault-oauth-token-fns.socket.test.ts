@@ -119,7 +119,6 @@ describe("OAuth token requests over HTTPS", () => {
   const args = () => ({
     http: agentVaultOauthHttpClient,
     issuer,
-    serverUrl: `${issuer}/mcp`,
     tokenEndpoint: `${issuer}/token`,
     clientId: "id: one",
     resource: `${issuer}/mcp`,
@@ -186,6 +185,7 @@ describe("OAuth token requests over HTTPS", () => {
     transportTrust.allowInternalIps = false;
     const result = await refreshAccessToken({ ...args(), refreshToken: "rt-one" });
     expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toContain("because it's on a private network");
     expect(requests).toHaveLength(0);
   });
 

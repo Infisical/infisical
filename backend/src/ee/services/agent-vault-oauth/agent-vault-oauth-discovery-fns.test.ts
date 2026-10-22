@@ -27,10 +27,18 @@ type TStubServer = {
   getThrows?: boolean;
   // Requests that never answer, as a hung server's would.
   hang?: boolean;
+  hangUrls?: string[];
   json: Record<string, unknown>;
 };
 
-const stubHttp = ({ challenge = null, probeThrows = false, getThrows = false, hang = false, json }: TStubServer) => {
+const stubHttp = ({
+  challenge = null,
+  probeThrows = false,
+  getThrows = false,
+  hang = false,
+  hangUrls = [],
+  json
+}: TStubServer) => {
   const fetched: string[] = [];
   const never = () =>
     new Promise<never>(() => {
@@ -44,7 +52,7 @@ const stubHttp = ({ challenge = null, probeThrows = false, getThrows = false, ha
     },
     get: async (url) => {
       fetched.push(url);
-      if (hang) return never();
+      if (hang || hangUrls.includes(url)) return never();
       if (getThrows) throw new Error("getaddrinfo ENOTFOUND");
       return url in json
         ? { status: 200, contentType: "application/json", body: JSON.stringify(json[url]) }
@@ -67,6 +75,7 @@ const LINEAR_AS = {
   registration_endpoint: "https://mcp.linear.app/register",
   scopes_supported: ["read", "write", "openid", "email"],
   token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],
+  grant_types_supported: ["authorization_code", "refresh_token"],
   code_challenge_methods_supported: ["S256"],
   authorization_response_iss_parameter_supported: true
 };
@@ -270,6 +279,7 @@ describe("discovering an MCP server's authorization server", () => {
       scopes: ["read", "write"],
       issParameterSupported: true,
       tokenEndpointAuthMethodsSupported: ["client_secret_basic", "client_secret_post", "none"],
+      grantTypesSupported: ["authorization_code", "refresh_token"],
       compatibility: [],
       oauthAdvertised: true
     });
@@ -280,6 +290,26 @@ describe("discovering an MCP server's authorization server", () => {
       "https://mcp.linear.app/.well-known/oauth-authorization-server",
       "https://mcp.linear.app/.well-known/openid-configuration"
     ]);
+  });
+
+  test("lower-priority URLs that never answer don't hold up the preferred ones", async () => {
+    const { http } = stubHttp({
+      challenge: 'Bearer resource_metadata="https://mcp.linear.app/.well-known/oauth-protected-resource/mcp"',
+      hangUrls: [
+        "https://mcp.linear.app/.well-known/oauth-protected-resource",
+        "https://mcp.linear.app/.well-known/openid-configuration"
+      ],
+      json: {
+        "https://mcp.linear.app/.well-known/oauth-protected-resource/mcp": {
+          resource: "https://mcp.linear.app/mcp",
+          authorization_servers: ["https://mcp.linear.app"]
+        },
+        "https://mcp.linear.app/.well-known/oauth-authorization-server": LINEAR_AS
+      }
+    });
+    await expect(discoverOauthServer(http, "https://mcp.linear.app/mcp", 1000)).resolves.toMatchObject({
+      tokenEndpoint: "https://mcp.linear.app/token"
+    });
   });
 
   test("an issuer with a path and no registration endpoint (GitHub)", async () => {

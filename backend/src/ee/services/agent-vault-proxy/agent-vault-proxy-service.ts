@@ -39,11 +39,8 @@ import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
   TAgentVaultOauthServiceFactory
 } from "../agent-vault-oauth/agent-vault-oauth-service";
-import {
-  AGENT_VAULT_OAUTH_HEADER_NAME,
-  AGENT_VAULT_OAUTH_HEADER_PREFIX,
-  TAgentVaultOauthConfig
-} from "../agent-vault-oauth/agent-vault-oauth-types";
+import { toResolvedOauthCredential } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import { TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
@@ -359,18 +356,8 @@ export const agentVaultProxyServiceFactory = ({
         value: secret.value
       };
     }
-    // Sent in the bearer shape so a proxy that predates OAuth injects it unchanged; `source` is what tells a
-    // newer one it may ask for a refresh.
     if (row.credentialType === AgentVaultCredentialType.OAuth) {
-      const oauth = row.credentialConfig as TAgentVaultOauthConfig;
-      return {
-        type: AgentVaultCredentialType.Bearer,
-        headerName: AGENT_VAULT_OAUTH_HEADER_NAME,
-        headerPrefix: AGENT_VAULT_OAUTH_HEADER_PREFIX,
-        value: secret.accessToken,
-        source: AgentVaultCredentialType.OAuth,
-        expiresAt: oauth.expiresAt ?? null
-      };
+      return toResolvedOauthCredential(row.credentialConfig as TAgentVaultOauthConfig, secret.accessToken);
     }
     return { type: AgentVaultCredentialType.Basic, username: secret.username ?? "", password: secret.password ?? "" };
   };

@@ -21,7 +21,6 @@ export type TAgentVaultOauthCredentialSummary = {
   grantedScopes: string[];
   requiredScopes: string[];
   expiresAt: string | null;
-  authorizedBy: { userId: string; username: string } | null;
   authorizedAt: string | null;
   lastError: string | null;
 };

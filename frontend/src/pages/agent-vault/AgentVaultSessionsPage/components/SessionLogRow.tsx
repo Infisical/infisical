@@ -111,14 +111,19 @@ const PathDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => (
   </span>
 );
 
-const McpCallText = ({ call }: { call: TAgentVaultSessionLogMcpCall }) =>
+// The proxy records a tool only for tools/call, so the method beside it would say nothing new.
+const McpCallText = ({ call, path }: { call: TAgentVaultSessionLogMcpCall; path: string }) =>
   call.tool ? (
-    <>
-      <span className="truncate font-mono text-foreground">{call.tool}</span>
-      <span className="shrink-0 font-mono text-xs text-muted">{call.method}</span>
-    </>
+    <Tooltip>
+      <TooltipTrigger className="min-w-0 truncate text-left font-mono text-foreground">
+        {call.tool}
+      </TooltipTrigger>
+      <TooltipContent className="max-w-sm font-mono text-xs break-all">{call.tool}</TooltipContent>
+    </Tooltip>
   ) : (
-    <span className="truncate font-mono text-xs text-muted">{call.method}</span>
+    <span className="min-w-0 truncate font-mono text-xs text-muted" title={path}>
+      {call.method}
+    </span>
   );
 
 const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
@@ -132,9 +137,7 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
         MCP
       </Badge>
       {first ? (
-        <span className="flex min-w-0 items-baseline gap-1.5" title={record.path}>
-          <McpCallText call={first} />
-        </span>
+        <McpCallText call={first} path={record.path} />
       ) : (
         <span className="min-w-0 truncate text-muted" title={record.path}>
           {record.path}
@@ -159,7 +162,7 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
             )}
             {truncated && (
               <p className={twMerge("text-xs text-muted", rest.length > 0 && "mt-1.5")}>
-                More calls in this batch weren&apos;t recorded.
+                More calls in this request weren&apos;t recorded.
               </p>
             )}
           </TooltipContent>
