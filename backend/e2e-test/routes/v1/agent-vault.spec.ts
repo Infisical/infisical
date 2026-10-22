@@ -3323,13 +3323,19 @@ describe("Agent Vault V1 Router", async () => {
       return `SHA256:${digest.match(/.{2}/g)!.join(":")}`;
     };
 
-    const caPem = async ({ isCa = true }: { isCa?: boolean } = {}) => {
-      const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+    const caPem = async ({
+      isCa = true,
+      rsa = false,
+      notBefore = new Date(Date.now() - 60_000)
+    }: { isCa?: boolean; rsa?: boolean; notBefore?: Date } = {}) => {
+      const algorithm = rsa
+        ? { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }
+        : { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
       const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
       const certificate = await x509.X509CertificateGenerator.createSelfSigned({
         name: "CN=Agent Vault Test CA",
         serialNumber: "01",
-        notBefore: new Date(Date.now() - 60_000),
+        notBefore,
         notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
         signingAlgorithm: algorithm,
         keys,
@@ -3353,27 +3359,32 @@ describe("Agent Vault V1 Router", async () => {
     const createProxy = async (name: string) => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name });
       expect(created.statusCode).toBe(200);
-      return JSON.parse(created.payload) as { proxy: { id: string; rootCaFingerprint: string }; proxyToken: string };
+      return JSON.parse(created.payload) as {
+        proxy: { id: string; rootCaFingerprint: string | null };
+        proxyToken: string;
+      };
     };
 
     const rotate = async (proxyId: string) => {
       const rotated = await inject("POST", `/api/v1/agent-vault/proxies/${proxyId}/token-auth/proxy-token`);
       expect(rotated.statusCode).toBe(200);
-      return JSON.parse(rotated.payload) as { proxy: { rootCaFingerprint: string }; proxyToken: string };
+      return JSON.parse(rotated.payload) as { proxy: { rootCaFingerprint: string | null }; proxyToken: string };
     };
 
-    test("create returns a proxy token, and bootstrap returns the CA the proxy row shows", async () => {
+    test("create returns a proxy token, and the first bootstrap records the CA it returns", async () => {
       const created = await createProxy("token-create");
       expect(created.proxyToken).toBeTruthy();
-      expect(created.proxy.rootCaFingerprint).toMatch(/^SHA256:/);
+      // Nothing has served a CA yet, and a proxy started with its own CA would never serve Infisical's.
+      expect(created.proxy.rootCaFingerprint).toBeNull();
 
       const boot = await asProxy(created.proxyToken, "bootstrap", {});
       expect(boot.statusCode).toBe(200);
       const body = JSON.parse(boot.payload) as { proxyId: string; rootCa: TRootCa; config: { pollInterval: number } };
       expect(body.proxyId).toBe(created.proxy.id);
       expect(body.config.pollInterval).toBe(60);
-      expect(fingerprintOf(body.rootCa.certificate)).toBe(created.proxy.rootCaFingerprint);
       expect(body.rootCa.privateKey).toContain("BEGIN PRIVATE KEY");
+      const row = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
+      expect(row.rootCaFingerprint).toBe(fingerprintOf(body.rootCa.certificate));
 
       const again = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as { rootCa: TRootCa };
       expect(again.rootCa.certificate).toBe(body.rootCa.certificate);
@@ -3399,14 +3410,17 @@ describe("Agent Vault V1 Router", async () => {
       ).toBe(200);
     });
 
-    test("rotating stops the old token and replaces the CA", async () => {
+    test("rotating stops the old token, replaces the CA, and clears the fingerprint until a start", async () => {
       const created = await createProxy("token-rotate");
+      const first = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as { rootCa: TRootCa };
       const next = await rotate(created.proxy.id);
-      expect(next.proxy.rootCaFingerprint).not.toBe(created.proxy.rootCaFingerprint);
+      expect(next.proxy.rootCaFingerprint).toBeNull();
 
       expect((await asProxy(created.proxyToken, "heartbeat")).statusCode).toBe(401);
       const boot = JSON.parse((await asProxy(next.proxyToken, "bootstrap", {})).payload) as { rootCa: TRootCa };
-      expect(fingerprintOf(boot.rootCa.certificate)).toBe(next.proxy.rootCaFingerprint);
+      expect(boot.rootCa.certificate).not.toBe(first.rootCa.certificate);
+      const row = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
+      expect(row.rootCaFingerprint).toBe(fingerprintOf(boot.rootCa.certificate));
     });
 
     test("two rotations at once each return a token and CA that belong together, and the last one wins", async () => {
@@ -3422,11 +3436,11 @@ describe("Agent Vault V1 Router", async () => {
       const live = results.filter(({ boot }) => boot.statusCode === 200);
       expect(live).toHaveLength(1);
       const { rootCa } = JSON.parse(live[0].boot.payload) as { rootCa: TRootCa };
-      expect(fingerprintOf(rootCa.certificate)).toBe(live[0].r.proxy.rootCaFingerprint);
 
       const row = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
       expect(row.tokenVersion).toBe(3);
-      expect(row.rootCaFingerprint).toBe(live[0].r.proxy.rootCaFingerprint);
+      expect(row.rootCaCertificate).toBe(rootCa.certificate);
+      expect(row.rootCaFingerprint).toBe(fingerprintOf(rootCa.certificate));
     });
 
     test("revoking access stops the token, and rotating brings the proxy back", async () => {
@@ -3478,9 +3492,23 @@ describe("Agent Vault V1 Router", async () => {
       expect(leaf.statusCode).toBe(400);
       const garbage = await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: "not a certificate" });
       expect(garbage.statusCode).toBe(400);
+      const rsa = await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: await caPem({ rsa: true }) });
+      expect(rsa.statusCode).toBe(400);
+      expect((JSON.parse(rsa.payload) as { message: string }).message).toContain("P-256");
+      const future = await asProxy(created.proxyToken, "bootstrap", {
+        servedCaCertificate: await caPem({ notBefore: new Date(Date.now() + 60 * 60 * 1000) })
+      });
+      expect(future.statusCode).toBe(400);
+      expect((JSON.parse(future.payload) as { message: string }).message).toContain("valid from");
 
       const after = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
       expect(after.rootCaFingerprint).toBe(before.rootCaFingerprint);
+    });
+
+    test("a CA that starts a little in the future is accepted, for a CLI whose clock is ahead", async () => {
+      const created = await createProxy("token-clock-ahead");
+      const own = await caPem({ notBefore: new Date(Date.now() + 2 * 60 * 1000) });
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: own })).statusCode).toBe(200);
     });
 
     test("a proxy enrolled before tokens had no stored CA gets one at bootstrap, the same for every start", async () => {

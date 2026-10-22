@@ -21,6 +21,8 @@ export type TGeneratedRootCa = TParsedRootCa & {
 };
 
 const MAX_ROOT_CA_PEM_LENGTH = 16384;
+// A CA made moments before the proxy started can read as not yet valid when this server's clock is behind.
+const NOT_BEFORE_CLOCK_TOLERANCE_MS = 5 * 60 * 1000;
 const GENERATED_ROOT_CA_VALIDITY_YEARS = 10;
 export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
   if (pem.length > MAX_ROOT_CA_PEM_LENGTH) {
@@ -43,9 +45,17 @@ export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
     });
   }
 
-  const now = new Date();
-  if (certificate.notAfter <= now || certificate.notBefore > now) {
-    throw new BadRequestError({ message: "The proxy's certificate authority isn't valid yet or has expired." });
+  // The same rule the CLI applies before it serves a CA.
+  const { name: keyAlgorithm, namedCurve } = certificate.publicKey.algorithm as { name?: string; namedCurve?: string };
+  if (keyAlgorithm !== "ECDSA" || namedCurve !== "P-256") {
+    throw new BadRequestError({ message: "The proxy's certificate authority must use a P-256 ECDSA key." });
+  }
+
+  const now = Date.now();
+  if (certificate.notAfter.getTime() <= now || certificate.notBefore.getTime() > now + NOT_BEFORE_CLOCK_TOLERANCE_MS) {
+    throw new BadRequestError({
+      message: `The proxy's certificate authority isn't valid yet or has expired (valid from ${certificate.notBefore.toISOString()} to ${certificate.notAfter.toISOString()}).`
+    });
   }
 
   const digest = crypto.nativeCrypto

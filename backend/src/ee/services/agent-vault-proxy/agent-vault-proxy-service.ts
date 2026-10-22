@@ -172,14 +172,17 @@ export const agentVaultProxyServiceFactory = ({
     };
   };
 
-  // Key generation is CPU-bound and the KMS may be remote, so a CA is always made before any write.
+  // Key generation is CPU-bound and the KMS may be remote, so a CA is always made before any write. The
+  // fingerprint columns show the CA a start actually served, so create and rotate store only the CA itself.
   const $newRootCa = async (projectId: string) => {
     const generated = await generateProxyRootCa();
     return {
       privateKey: generated.privateKey,
-      row: {
+      stored: {
         rootCaCertificate: generated.certificate,
-        encryptedRootCaPrivateKey: await $sealRootCaKey(projectId, generated.privateKey),
+        encryptedRootCaPrivateKey: await $sealRootCaKey(projectId, generated.privateKey)
+      },
+      reported: {
         rootCaFingerprint: generated.fingerprint,
         rootCaExpiresAt: generated.expiresAt
       }
@@ -189,13 +192,19 @@ export const agentVaultProxyServiceFactory = ({
   // Every proxy created or rotated gets a CA. Only proxies enrolled before that reach the fill-in path, and
   // several of their starts can race: storeRootCaIfMissing lets one win and the rest read its CA back. A
   // rotation can also land while the CA is being made, and its CA must never reach the old token.
-  const $getOrCreateRootCa = async (proxy: TAgentVaultProxies): Promise<TProxyRootCa> => {
+  // recorded: this call already wrote the fingerprint, so the caller has nothing left to record.
+  const $getOrCreateRootCa = async (
+    proxy: TAgentVaultProxies
+  ): Promise<{ rootCa: TProxyRootCa; recorded: boolean }> => {
     const existing = await $openRootCa(proxy);
-    if (existing) return existing;
+    if (existing) return { rootCa: existing, recorded: false };
 
-    const { row, privateKey } = await $newRootCa(proxy.projectId);
-    const stored = await agentVaultProxyDAL.storeRootCaIfMissing(proxy.id, proxy.tokenVersion, row);
-    if (stored) return { certificate: row.rootCaCertificate, privateKey };
+    const { stored, reported, privateKey } = await $newRootCa(proxy.projectId);
+    const filled = await agentVaultProxyDAL.storeRootCaIfMissing(proxy.id, proxy.tokenVersion, {
+      ...stored,
+      ...reported
+    });
+    if (filled) return { rootCa: { certificate: stored.rootCaCertificate, privateKey }, recorded: true };
 
     // Read on the primary, inside a transaction: the replica may not have the winner's CA yet.
     const winner = await agentVaultProxyDAL.transaction((tx) => agentVaultProxyDAL.findById(proxy.id, tx));
@@ -205,7 +214,7 @@ export const agentVaultProxyServiceFactory = ({
     }
     const opened = await $openRootCa(winner);
     if (!opened) throw new InternalServerError({ message: "Failed to load this proxy's certificate authority" });
-    return opened;
+    return { rootCa: opened, recorded: false };
   };
 
   const listProxies = async ({ search, orderBy, orderDirection, limit, offset, ...dto }: TListProxiesDTO) => {
@@ -239,7 +248,7 @@ export const agentVaultProxyServiceFactory = ({
     const existing = await agentVaultProxyDAL.findOne({ projectId, name });
     if (existing) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
 
-    const { row: rootCa } = await $newRootCa(projectId);
+    const { stored: rootCa } = await $newRootCa(projectId);
 
     const create = () =>
       agentVaultProxyDAL.transaction(async (tx) => {
@@ -293,12 +302,19 @@ export const agentVaultProxyServiceFactory = ({
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.IssueToken);
     const proxy = await $findProxyOr404({ projectId, proxyId });
 
-    const { row: rootCa } = await $newRootCa(proxy.projectId);
+    const { stored: rootCa } = await $newRootCa(proxy.projectId);
 
     const rotated = await agentVaultProxyDAL.transaction(async (tx) => {
       const updated = await agentVaultProxyDAL.updateById(
         proxy.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null, ...rootCa },
+        {
+          $incr: { tokenVersion: 1 },
+          heartbeat: null,
+          heartbeatTTL: null,
+          ...rootCa,
+          rootCaFingerprint: null,
+          rootCaExpiresAt: null
+        },
         tx
       );
       if (!updated) throw new NotFoundError({ message: `Proxy with ID '${proxyId}' not found` });
@@ -359,17 +375,24 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     const servedCa = servedCaCertificate ? parseRootCaCertificate(servedCaCertificate) : null;
-    const rootCa = servedCa ? null : await $getOrCreateRootCa(proxy);
-    const reported = servedCa ?? parseRootCaCertificate((rootCa as TProxyRootCa).certificate);
+    const infisicalCa = servedCa ? null : await $getOrCreateRootCa(proxy);
+    const reported = servedCa ?? parseRootCaCertificate((infisicalCa as { rootCa: TProxyRootCa }).rootCa.certificate);
 
-    if (proxy.rootCaFingerprint !== reported.fingerprint) {
-      await agentVaultProxyDAL.updateById(proxy.id, {
-        rootCaFingerprint: reported.fingerprint,
-        rootCaExpiresAt: reported.expiresAt
-      });
+    // Tied to the checked version, so a start whose token was rotated in between can't overwrite the rotation.
+    if (!infisicalCa?.recorded && proxy.rootCaFingerprint !== reported.fingerprint) {
+      const [recorded] = await agentVaultProxyDAL.update(
+        { id: proxy.id, tokenVersion },
+        { rootCaFingerprint: reported.fingerprint, rootCaExpiresAt: reported.expiresAt }
+      );
+      if (!recorded) {
+        throw new UnauthorizedError({
+          name: "ProxyTokenRejected",
+          message: "Agent Vault proxy token has been revoked"
+        });
+      }
     }
 
-    return { proxyId: proxy.id, name: proxy.name, config: toConfig(proxy), rootCa: rootCa ?? undefined };
+    return { proxyId: proxy.id, name: proxy.name, config: toConfig(proxy), rootCa: infisicalCa?.rootCa };
   };
 
   const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
