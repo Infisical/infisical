@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { ListHighlight } from "../lib/list-highlight";
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
 import { Avatar, Identity } from "./avatar";
@@ -593,6 +594,7 @@ export const Sidebar = ({
           }}
         >
           <div ref={navRef} key={view} data-enter={enter} className={styles.nav}>
+            <ListHighlight />
             {scope && (
               <div
                 className={styles.section}

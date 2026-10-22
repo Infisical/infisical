@@ -3,6 +3,7 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
+import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Icon } from "./icon";
@@ -53,21 +54,29 @@ DropdownMenuTrigger.displayName = "DropdownMenuTrigger";
 const DropdownMenuContent = React.forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, collisionPadding = 8, align = "start", sideOffset = 4, ...props }, ref) => {
-  return (
-    <DropdownMenuPrimitive.Portal container={useV4PortalContainer()}>
-      <DropdownMenuPrimitive.Content
-        ref={ref}
-        data-slot="dropdown-menu-content"
-        collisionPadding={collisionPadding}
-        sideOffset={sideOffset}
-        align={align}
-        className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
-        {...props}
-      />
-    </DropdownMenuPrimitive.Portal>
-  );
-});
+>(
+  (
+    { className, children, collisionPadding = 8, align = "start", sideOffset = 4, ...props },
+    ref
+  ) => {
+    return (
+      <DropdownMenuPrimitive.Portal container={useV4PortalContainer()}>
+        <DropdownMenuPrimitive.Content
+          ref={ref}
+          data-slot="dropdown-menu-content"
+          collisionPadding={collisionPadding}
+          sideOffset={sideOffset}
+          align={align}
+          className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
+          {...props}
+        >
+          <ListHighlight />
+          {children}
+        </DropdownMenuPrimitive.Content>
+      </DropdownMenuPrimitive.Portal>
+    );
+  }
+);
 DropdownMenuContent.displayName = "DropdownMenuContent";
 
 const DropdownMenuGroup = React.forwardRef<
@@ -251,7 +260,7 @@ DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
 const DropdownMenuSubContent = React.forwardRef<
   React.ComponentRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, collisionPadding = 8, ...props }, ref) => {
+>(({ className, children, collisionPadding = 8, ...props }, ref) => {
   return (
     <DropdownMenuPrimitive.SubContent
       ref={ref}
@@ -259,7 +268,10 @@ const DropdownMenuSubContent = React.forwardRef<
       collisionPadding={collisionPadding}
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
       {...props}
-    />
+    >
+      <ListHighlight />
+      {children}
+    </DropdownMenuPrimitive.SubContent>
   );
 });
 DropdownMenuSubContent.displayName = "DropdownMenuSubContent";

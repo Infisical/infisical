@@ -3,6 +3,7 @@ import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
+import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 import { menuRowContent, menuShortcutContent } from "./menu-content";
@@ -79,7 +80,7 @@ ContextMenuRadioGroup.displayName = "ContextMenuRadioGroup";
 const ContextMenuContent = React.forwardRef<
   React.ComponentRef<typeof ContextMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
->(({ className, collisionPadding = 8, ...props }, ref) => {
+>(({ className, children, collisionPadding = 8, ...props }, ref) => {
   return (
     <ContextMenuPrimitive.Portal container={useV4PortalContainer()}>
       <ContextMenuPrimitive.Content
@@ -88,7 +89,10 @@ const ContextMenuContent = React.forwardRef<
         collisionPadding={collisionPadding}
         className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
         {...props}
-      />
+      >
+        <ListHighlight />
+        {children}
+      </ContextMenuPrimitive.Content>
     </ContextMenuPrimitive.Portal>
   );
 });
@@ -140,7 +144,7 @@ ContextMenuSubTrigger.displayName = "ContextMenuSubTrigger";
 const ContextMenuSubContent = React.forwardRef<
   React.ComponentRef<typeof ContextMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.SubContent>
->(({ className, collisionPadding = 8, ...props }, ref) => {
+>(({ className, children, collisionPadding = 8, ...props }, ref) => {
   return (
     <ContextMenuPrimitive.SubContent
       ref={ref}
@@ -148,7 +152,10 @@ const ContextMenuSubContent = React.forwardRef<
       collisionPadding={collisionPadding}
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
       {...props}
-    />
+    >
+      <ListHighlight />
+      {children}
+    </ContextMenuPrimitive.SubContent>
   );
 });
 ContextMenuSubContent.displayName = "ContextMenuSubContent";

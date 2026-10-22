@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { useFieldControlAttributes } from "../lib/field-context";
+import { ListHighlight } from "../lib/list-highlight";
 import { useControllableState } from "../lib/use-controllable-state";
 import { type OptionCreateHandler, useOptionCreation } from "../lib/use-option-creation";
 import { cn } from "../lib/utils";
@@ -395,6 +396,7 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
           aria-activedescendant={currentActive ? optionId(currentActive.value) : undefined}
           className={cn(menu.list, menu.inset)}
         >
+          <ListHighlight />
           {groups.map((group) => (
             <div key={group} role="group" aria-label={group || undefined}>
               {group && <div className={menu.label}>{group}</div>}

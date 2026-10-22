@@ -3,6 +3,7 @@ import { Menubar as MenubarPrimitive } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
+import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 import { menuRowContent, menuShortcutContent } from "./menu-content";
@@ -58,7 +59,7 @@ MenubarRadioGroup.displayName = "MenubarRadioGroup";
 const MenubarTrigger = React.forwardRef<
   React.ElementRef<typeof MenubarPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof MenubarPrimitive.Trigger>
->(({ className, ...props }, ref) => {
+>(({ className, children, ...props }, ref) => {
   return (
     <MenubarPrimitive.Trigger
       ref={ref}
@@ -81,6 +82,7 @@ const MenubarContent = React.forwardRef<
   (
     {
       className,
+      children,
       collisionPadding = 8,
       align = "start",
       alignOffset = -4,
@@ -100,7 +102,10 @@ const MenubarContent = React.forwardRef<
           sideOffset={sideOffset}
           className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
           {...props}
-        />
+        >
+          <ListHighlight />
+          {children}
+        </MenubarPrimitive.Content>
       </MenubarPortal>
     );
   }
@@ -270,7 +275,7 @@ MenubarSubTrigger.displayName = "MenubarSubTrigger";
 const MenubarSubContent = React.forwardRef<
   React.ComponentRef<typeof MenubarPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof MenubarPrimitive.SubContent>
->(({ className, collisionPadding = 8, ...props }, ref) => {
+>(({ className, children, collisionPadding = 8, ...props }, ref) => {
   return (
     <MenubarPrimitive.SubContent
       ref={ref}
@@ -278,7 +283,10 @@ const MenubarSubContent = React.forwardRef<
       collisionPadding={collisionPadding}
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
       {...props}
-    />
+    >
+      <ListHighlight />
+      {children}
+    </MenubarPrimitive.SubContent>
   );
 });
 MenubarSubContent.displayName = "MenubarSubContent";

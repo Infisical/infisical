@@ -10,6 +10,7 @@ import {
 } from "@app/components/v4/ui/dialog";
 import { Icon } from "@app/components/v4/ui/icon";
 
+import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
 import { menuShortcutContent } from "./menu-content";
 
@@ -101,14 +102,17 @@ CommandInput.displayName = "CommandInput";
 const CommandList = React.forwardRef<
   React.ComponentRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => {
+>(({ className, children, ...props }, ref) => {
   return (
     <CommandPrimitive.List
       ref={ref}
       data-slot="command-list"
       className={cn(menu.list, menu.inset, className)}
       {...props}
-    />
+    >
+      <ListHighlight />
+      {children}
+    </CommandPrimitive.List>
   );
 });
 CommandList.displayName = "CommandList";

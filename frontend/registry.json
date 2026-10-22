@@ -451,6 +451,11 @@
           "target": "src/components/v4/lib/field-context.ts"
         },
         {
+          "path": "src/components/v4/lib/list-highlight.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/list-highlight.tsx"
+        },
+        {
           "path": "src/components/v4/lib/motion.ts",
           "type": "registry:file",
           "target": "src/components/v4/lib/motion.ts"

@@ -329,12 +329,41 @@
   --v4-menu-icon-slot: 0px;
 }
 .v4 [data-v4-switcher] [cmdk-item][data-current][data-current] {
-  background-color: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
   font-weight: 600;
 }
-.v4[data-theme="dark"] [data-v4-switcher] [cmdk-item][data-current][data-current],
-.v4 [data-theme="dark"] [data-v4-switcher] [cmdk-item][data-current][data-current] {
+/* Shared highlight: one translucent block per list marks the hovered, keyboard-active or current
+   row and glides between them (lib/list-highlight.tsx). Rows inside such a list draw no tint. */
+.v4 [data-slot="list-highlight"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
+}
+.v4[data-theme="dark"] [data-slot="list-highlight"],
+.v4 [data-theme="dark"] [data-slot="list-highlight"] {
   background-color: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover-dark), transparent);
+}
+.v4 [data-slot="list-highlight"][data-danger][data-danger] {
+  background-color: var(--v4-action-danger-surface);
+}
+.v4 [data-slot="sidebar"] [data-slot="list-highlight"][data-slot] {
+  background-color: var(--v4-sidebar-current);
+}
+.v4
+  [data-list-highlight][data-list-highlight]
+  :is(
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="option"],
+    [cmdk-item],
+    [data-sidebar-target]
+  ) {
+  position: relative;
+  z-index: 1;
+  background: transparent;
 }
 .v4 [data-v4-switcher] [cmdk-item]:not(:has([data-switcher-meta])) > span.inline-flex:last-child {
   margin-inline-start: auto;

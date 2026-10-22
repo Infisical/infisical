@@ -4,6 +4,7 @@ import { Select as SelectPrimitive } from "radix-ui";
 import { useV4PortalContainer } from "@app/components/v4/scope";
 
 import { useFieldControlAttributes } from "../lib/field-context";
+import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 
@@ -171,7 +172,10 @@ const SelectContent = React.forwardRef<
           {...props}
         >
           <SelectScrollUpButton />
-          <SelectPrimitive.Viewport className={menu.inset}>{children}</SelectPrimitive.Viewport>
+          <SelectPrimitive.Viewport className={menu.inset}>
+            <ListHighlight />
+            {children}
+          </SelectPrimitive.Viewport>
           <SelectScrollDownButton />
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>
