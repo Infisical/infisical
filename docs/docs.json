@@ -4577,7 +4577,7 @@
                       "api-reference/endpoints/agent-vault-proxies/create",
                       "api-reference/endpoints/agent-vault-proxies/update",
                       "api-reference/endpoints/agent-vault-proxies/delete",
-                      "api-reference/endpoints/agent-vault-proxies/enrollment-token",
+                      "api-reference/endpoints/agent-vault-proxies/rotate-token",
                       "api-reference/endpoints/agent-vault-proxies/revoke"
                     ]
                   },
@@ -4917,6 +4917,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/api-reference/endpoints/agent-vault-proxies/enrollment-token",
+      "destination": "/api-reference/endpoints/agent-vault-proxies/rotate-token"
+    },
     {
       "source": "/documentation/platform/secret-scanning/usage",
       "destination": "/documentation/platform/secret-scanning/scan-repositories"
