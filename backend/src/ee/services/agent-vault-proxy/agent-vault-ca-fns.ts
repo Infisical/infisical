@@ -39,21 +39,13 @@ export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
   const basicConstraints = certificate.getExtension(x509.BasicConstraintsExtension);
   if (!basicConstraints?.ca) {
     throw new BadRequestError({
-      message:
-        "The certificate is not a certificate authority. A proxy enrolls with its own CA, not a leaf certificate."
+      message: "The certificate is not a certificate authority. A proxy serves a CA, not a leaf certificate."
     });
   }
 
-  if (certificate.notAfter <= new Date()) {
-    throw new BadRequestError({
-      message: `The certificate authority expired on ${certificate.notAfter.toISOString()}. Generate a new one and enroll again.`
-    });
-  }
-
-  if (certificate.notBefore > new Date()) {
-    throw new BadRequestError({
-      message: `The certificate authority is not valid until ${certificate.notBefore.toISOString()}. Nothing will accept the certificates it signs before then.`
-    });
+  const now = new Date();
+  if (certificate.notAfter <= now || certificate.notBefore > now) {
+    throw new BadRequestError({ message: "The proxy's certificate authority isn't valid yet or has expired." });
   }
 
   const digest = crypto.nativeCrypto

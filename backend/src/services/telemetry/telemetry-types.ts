@@ -2,7 +2,6 @@ import { IdentityAuthMethod, ProjectType, SecretFolderRole } from "@app/db/schem
 import {
   AgentVaultCredentialType,
   AgentVaultMemberType,
-  AgentVaultProxyMode,
   AgentVaultTrafficPolicy
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
@@ -332,8 +331,7 @@ export enum PostHogEventTypes {
   AgentVaultProxyUpdated = "Agent Vault Proxy Updated",
   AgentVaultProxyDeleted = "Agent Vault Proxy Deleted",
   AgentVaultProxyAccessRevoked = "Agent Vault Proxy Access Revoked",
-  AgentVaultProxyEnrollmentTokenReissued = "Agent Vault Proxy Enrollment Token Reissued",
-  AgentVaultProxyEnrolled = "Agent Vault Proxy Enrolled",
+  AgentVaultProxyTokenRotated = "Agent Vault Proxy Token Rotated",
   AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
   AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
   AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed",
@@ -2535,7 +2533,6 @@ export type TAgentVaultProxyRegisteredEvent = {
   event: PostHogEventTypes.AgentVaultProxyRegistered;
   properties: TAgentVaultEventBase & {
     proxyId: string;
-    mode: AgentVaultProxyMode;
     trafficPolicy: AgentVaultTrafficPolicy;
     allowedHostCount: number;
   };
@@ -2560,24 +2557,9 @@ export type TAgentVaultProxyAccessRevokedEvent = {
   properties: TAgentVaultEventBase & { proxyId: string };
 };
 
-export type TAgentVaultProxyEnrollmentTokenReissuedEvent = {
-  event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued;
-  properties: TAgentVaultEventBase & {
-    proxyId: string;
-    mode: AgentVaultProxyMode;
-    kind: "enrollment-token" | "proxy-token";
-  };
-};
-
-export type TAgentVaultProxyEnrolledEvent = {
-  event: PostHogEventTypes.AgentVaultProxyEnrolled;
-  properties: {
-    orgId: string;
-    channel: string;
-    proxyId: string;
-    mode: AgentVaultProxyMode;
-    replacedExistingCa: boolean;
-  };
+export type TAgentVaultProxyTokenRotatedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyTokenRotated;
+  properties: TAgentVaultEventBase & { proxyId: string };
 };
 
 export type TAgentVaultProductMemberAddedEvent = {
@@ -2614,13 +2596,12 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultProxyUpdatedEvent
   | TAgentVaultProxyDeletedEvent
   | TAgentVaultProxyAccessRevokedEvent
-  | TAgentVaultProxyEnrollmentTokenReissuedEvent
-  | TAgentVaultProxyEnrolledEvent
+  | TAgentVaultProxyTokenRotatedEvent
   | TAgentVaultProductMemberAddedEvent
   | TAgentVaultProductMemberUpdatedEvent
   | TAgentVaultProductMemberRemovedEvent;
 
-export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultProxyEnrolledEvent>;
+export type TAgentVaultActorPostHogEvent = TAgentVaultPostHogEvent;
 
 // A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
 // (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at

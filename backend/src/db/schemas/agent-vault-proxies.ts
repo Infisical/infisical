@@ -23,7 +23,6 @@ export const AgentVaultProxiesSchema = z.object({
   pollInterval: z.number().default(60),
   createdAt: z.date(),
   updatedAt: z.date(),
-  mode: z.string().default("standard"),
   rootCaCertificate: z.string().nullable().optional(),
   encryptedRootCaPrivateKey: zodBuffer.nullable().optional()
 });

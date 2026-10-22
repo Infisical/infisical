@@ -13,7 +13,7 @@ never in anything the agent holds.
 | **Access bundle** | A named set of services. The unit you grant |
 | **Service** | One host pattern set plus its credential |
 | **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
-| **Proxy** | One egress node and its CA. A Standard proxy is one box; an HA proxy is any number of copies sharing one row |
+| **Proxy** | One egress identity and its CA. Any number of processes can run it from its proxy token |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
@@ -22,7 +22,7 @@ agent-vault-variable/        product-wide variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
-agent-vault-proxy/           login (enrollment), heartbeat, resolve
+agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve
 agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
 
@@ -110,28 +110,25 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Proxies
 
-- A proxy's `mode` is fixed at creation. **Standard** enrolls one box with a one-time enrollment token. **HA**
-  never gets an enrollment token: its copies all start from one proxy token (the same non-expiring access JWT a
-  login returns) and load their settings and CA from `POST /proxy/bootstrap`, saving nothing to disk. An HA
-  proxy must never be enrolled, since enrolling bumps `tokenVersion` and would stop every copy, so
-  `reissueEnrollmentToken` refuses it.
-- Infisical generates and keeps the CA (cert in plain text, key sealed with the project data key) when a
-  Standard proxy enrolls without sending a certificate, when an HA proxy is created, and on every HA token
-  rotation. Every enroll and every rotation makes a new CA. A proxy that brings its own CA (an older CLI, or
-  `--ca-cert`) is recorded by fingerprint and expiry only, and Infisical drops any CA it held for that proxy.
-  An HA copy serving its own CA reports it at bootstrap; the row shows whichever CA the latest copy reported.
+- There is no enrollment. Create and rotate return a proxy token (the non-expiring access JWT) and every proxy
+  process starts from it, loading its settings and CA from `POST /proxy/bootstrap`. Create and rotate each write
+  `tokenVersion` and the new CA in one statement, so no response ever pairs a token with the wrong CA. Proxies
+  enrolled before enrollment was removed keep running from their saved state on disk; the CLI's read-only
+  support for that is due to be removed after 2026-12-21.
+- Infisical generates and keeps each proxy's CA (cert in plain text, key sealed with the project data key) at
+  create and on every rotation, and fills one in at bootstrap for a proxy enrolled before that, with
+  `storeRootCaIfMissing` deciding races. A proxy serving its own CA (`--ca-cert`) reports it at bootstrap and is
+  sent none; the stored CA is kept for processes that don't bring one, and the row shows whichever CA the latest
+  start reported.
 - Agents still fetch the CA from the proxy's own unauthenticated `/_agent-vault/ca`, so the agent's trust path
   has no dependency on Infisical. There is deliberately no admin download endpoint for the CA.
-- The login route is unauthenticated (the enrollment token is the credential), so its audit event names the
-  proxy as actor explicitly, as gateway, relay and KMIP enrollment do. Otherwise it logs as `unknownUser`.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
   the row's current `pollInterval`. A proxy learns a new interval on its next poll, so comparing against the
   saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
-- The proxy's access token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks
-  on every proxy request. Revoke Access goes through the shared resource-auth revoke so a pending enrollment
-  token is burned too.
+- The proxy token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks on every
+  proxy request. Revoke Access goes through the shared resource-auth revoke; rotating brings a revoked proxy back.
 - Resolve is not audited: once per poll per session would swamp the audit table. Bootstrap is not audited
-  either, since an HA proxy running as sidecars starts a copy per agent run.
+  either, since a proxy run as a sidecar starts once per agent run.
 
 ## Host and path grammar
 

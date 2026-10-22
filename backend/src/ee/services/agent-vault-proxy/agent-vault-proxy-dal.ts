@@ -98,6 +98,27 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Only fills an empty CA, so two starts racing to create one can't overwrite each other.
+  const storeRootCaIfMissing = async (
+    id: string,
+    ca: Pick<
+      TAgentVaultProxies,
+      "rootCaCertificate" | "encryptedRootCaPrivateKey" | "rootCaFingerprint" | "rootCaExpiresAt"
+    >,
+    tx?: Knex
+  ): Promise<TAgentVaultProxies | undefined> => {
+    try {
+      const [updated] = (await (tx || db)(TableName.AgentVaultProxy)
+        .where({ id })
+        .whereNull("rootCaCertificate")
+        .update(ca)
+        .returning("*")) as TAgentVaultProxies[];
+      return updated;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Store agent vault proxy root CA" });
+    }
+  };
+
   const countByProjectId = async (projectId: string, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.AgentVaultProxy).where({ projectId }).count("id").first();
@@ -107,5 +128,13 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithOrg, findByIdInProject, findForList, recordHeartbeat, countByProjectId };
+  return {
+    ...orm,
+    findByIdWithOrg,
+    findByIdInProject,
+    findForList,
+    recordHeartbeat,
+    storeRootCaIfMissing,
+    countByProjectId
+  };
 };

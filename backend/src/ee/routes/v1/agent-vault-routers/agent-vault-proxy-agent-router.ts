@@ -1,16 +1,13 @@
 import { z } from "zod";
 
-import { AgentVaultProxyMode, AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import {
   AgentVaultSessionLogChunkCreateResponseSchema,
   AgentVaultSessionLogChunkCreateSchema
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
-import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
-import { logger } from "@app/lib/logger";
 import {
   agentVaultHeartbeatLimit,
   agentVaultResolveLimit,
@@ -18,8 +15,7 @@ import {
   writeLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 const ProxyConfigSchema = z.object({
   trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
@@ -37,98 +33,7 @@ const RootCaSchema = z
 const SESSION_HEADER = "x-infisical-agent-session";
 
 export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvider) => {
-  server.route({
-    method: "POST",
-    url: "/login",
-    config: { rateLimit: writeLimit },
-    schema: {
-      hide: true,
-      operationId: "loginAgentVaultProxy",
-      description:
-        "Proxy login. Body discriminates on `method`; token exchanges a one-time enrollment token for the proxy's access token.",
-      tags: [ApiDocsTags.AgentVaultProxies],
-      body: z.discriminatedUnion("method", [
-        z.object({
-          method: z.literal(ResourceAuthMethodType.Token),
-          token: z.string().trim().min(1).max(256).describe(AGENT_VAULT.PROXY.enrollmentToken),
-          rootCaCertificate: z
-            .string()
-            .trim()
-            .min(1)
-            .max(16384)
-            .optional()
-            .describe(AGENT_VAULT.PROXY.rootCaCertificate)
-        })
-      ]),
-      response: {
-        200: z.object({
-          proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
-          name: z.string().describe(AGENT_VAULT.PROXY.name),
-          accessToken: z.string(),
-          config: ProxyConfigSchema,
-          rootCa: RootCaSchema.optional()
-        })
-      }
-    },
-    handler: async (req) => {
-      const result = await server.services.agentVaultProxy.enroll({
-        enrollmentToken: req.body.token,
-        rootCaCertificate: req.body.rootCaCertificate
-      });
-
-      // The enrollment token is already consumed and this response is the only copy of the access token,
-      // so an audit failure must not fail the request.
-      try {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          actor: { type: ActorType.AGENT_VAULT_PROXY, metadata: { agentVaultProxyId: result.proxyId } },
-          orgId: result.orgId,
-          projectId: result.projectId,
-          event: {
-            type: EventType.AGENT_VAULT_PROXY_ENROLL,
-            metadata: {
-              proxyId: result.proxyId,
-              name: result.name,
-              rootCaFingerprint: result.rootCaFingerprint,
-              caSource: result.caSource,
-              replacedExistingCa: result.replacedExistingCa
-            }
-          }
-        });
-      } catch (error) {
-        logger.error(
-          error,
-          `agentVaultProxyEnroll: failed to write the enrollment audit log [proxyId=${result.proxyId}]`
-        );
-      }
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.AgentVaultProxyEnrolled,
-          distinctId: `agent-vault-proxy-${result.proxyId}`,
-          organizationId: result.orgId,
-          anonymous: true,
-          properties: {
-            orgId: result.orgId,
-            channel: req.auditLogInfo.userAgentType ?? UserAgentType.OTHER,
-            proxyId: result.proxyId,
-            mode: AgentVaultProxyMode.Standard,
-            replacedExistingCa: result.replacedExistingCa
-          }
-        })
-        .catch(() => {});
-
-      return {
-        proxyId: result.proxyId,
-        name: result.name,
-        accessToken: result.accessToken,
-        config: result.config,
-        rootCa: result.rootCa
-      };
-    }
-  });
-
-  // POST, not GET: a copy using its own certificate authority reports it here, and that is recorded.
+  // POST, not GET: a proxy serving its own certificate authority reports it here, and that is recorded.
   server.route({
     method: "POST",
     url: "/bootstrap",
@@ -137,7 +42,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       hide: true,
       operationId: "bootstrapAgentVaultProxy",
       description:
-        "Start a copy of an HA proxy: returns its identity, settings and, unless it serves its own, the certificate authority",
+        "Start a proxy: returns its identity, settings and, unless it serves its own, the certificate authority",
       tags: [ApiDocsTags.AgentVaultProxies],
       body: z.object({
         servedCaCertificate: z

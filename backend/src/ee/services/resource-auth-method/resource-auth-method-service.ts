@@ -69,7 +69,6 @@ import {
   TEncryptedKubernetesSecrets,
   TGcpAuthMethodConfig,
   TGetAuthMethodDTO,
-  TIssueAccessTokenDTO,
   TKubernetesAuthMethodConfig,
   TLoginWithAwsDTO,
   TLoginWithGcpDTO,
@@ -1107,28 +1106,6 @@ export const resourceAuthMethodServiceFactory = ({
     };
   };
 
-  // Hands out an access token with no enrollment step, for resources whose copies all start from one token.
-  // Bumping tokenVersion first retires every token issued before, the same kill switch a login uses.
-  const issueAccessToken = async ({ resource, actor, intent = "issue" }: TIssueAccessTokenDTO) => {
-    await $checkPermission(actor, intent, resource.type, resource.id);
-
-    const resourceLabel = RESOURCE_LABEL[resource.type];
-    const loaded = await $loadResource(resource);
-    if (!loaded || loaded.orgId !== actor.orgId) {
-      throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
-    }
-
-    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
-    if (!registry || registry.method !== ResourceAuthMethodType.Token) {
-      throw new BadRequestError({
-        message: `${resourceLabel} is not configured for token authentication (current method: ${registry?.method ?? "none"})`
-      });
-    }
-
-    const tokenVersion = await $bumpTokenVersion(resource);
-    return { accessToken: $mintJwt(resource, loaded.orgId, tokenVersion) };
-  };
-
   const revokeAccess = async ({ resource, actor }: TRevokeTokenDTO) => {
     await $checkPermission(actor, "revoke", resource.type, resource.id);
 
@@ -1480,7 +1457,6 @@ export const resourceAuthMethodServiceFactory = ({
     initAtCreate,
     setMethod,
     mintToken,
-    issueAccessToken,
     revokeAccess,
     loginWithAws,
     loginWithGcp,
