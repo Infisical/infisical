@@ -285,7 +285,7 @@ infisical agent-vault proxy --ca-cert ./ca.crt --ca-key ./ca.key
 
 The **Proxies** page shows the fingerprint of the CA that the proxy reported the last time it started.
 
-Rotating the proxy's token doesn't change a CA you pass yourself. To go back to the CA that Infisical generates, start the proxy without these flags.
+Your own CA stays the same when you rotate the proxy's token. To use the CA Infisical generates again, leave out these flags.
 
 ### APIs with a private certificate authority
 
