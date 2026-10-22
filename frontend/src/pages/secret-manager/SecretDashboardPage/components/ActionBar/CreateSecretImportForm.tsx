@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,7 +20,6 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Item,
   ItemContent,
   ItemDescription,
@@ -202,18 +202,17 @@ export const CreateSecretImportForm = ({
           const selectedItem = environments.find((e) => e.slug === field.value?.slug);
           return (
             <Field>
-              <FieldLabel>Environment</FieldLabel>
+              <FieldLabel htmlFor="secret-import-environment">Environment</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  id="secret-import-environment"
+                  isClearable={false}
                   options={environments}
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.slug}
                   placeholder="Select environment..."
                   value={selectedItem || null}
-                  onChange={(newValue) => {
-                    const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                    field.onChange(single || null);
-                  }}
+                  onValueChange={field.onChange}
                 />
               </FieldContent>
               <FieldError>{errors.environment?.message}</FieldError>
@@ -293,9 +292,11 @@ export const CreateSecretImportForm = ({
     return (
       <div className="space-y-4">
         <Field>
-          <FieldLabel>Project</FieldLabel>
+          <FieldLabel htmlFor="secret-import-source-project">Project</FieldLabel>
           <FieldContent>
-            <FilterableSelect
+            <Combobox
+              id="secret-import-source-project"
+              isClearable={false}
               options={sourceProjectOptions}
               getOptionLabel={(o) => o.label}
               getOptionValue={(o) => o.value}
@@ -305,9 +306,8 @@ export const CreateSecretImportForm = ({
                   ? (sourceProjectOptions.find((o) => o.value === selectedSourceProjectId) ?? null)
                   : null
               }
-              onChange={(newValue) => {
-                const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                setSelectedSourceProjectId(single && "value" in single ? single.value : null);
+              onValueChange={(option) => {
+                setSelectedSourceProjectId(option.value);
                 setSelectedEnvironmentSlug(null);
                 setSelectedSecretPath(null);
               }}
@@ -316,9 +316,11 @@ export const CreateSecretImportForm = ({
         </Field>
 
         <Field>
-          <FieldLabel>Environment</FieldLabel>
+          <FieldLabel htmlFor="secret-import-source-environment">Environment</FieldLabel>
           <FieldContent>
-            <FilterableSelect
+            <Combobox
+              id="secret-import-source-environment"
+              isClearable={false}
               options={environmentOptions}
               getOptionLabel={(o) => o.label}
               getOptionValue={(o) => o.value}
@@ -329,9 +331,8 @@ export const CreateSecretImportForm = ({
                   ? (environmentOptions.find((o) => o.value === selectedEnvironmentSlug) ?? null)
                   : null
               }
-              onChange={(newValue) => {
-                const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                setSelectedEnvironmentSlug(single && "value" in single ? single.value : null);
+              onValueChange={(option) => {
+                setSelectedEnvironmentSlug(option.value);
                 setSelectedSecretPath(null);
               }}
             />
@@ -339,9 +340,11 @@ export const CreateSecretImportForm = ({
         </Field>
 
         <Field>
-          <FieldLabel>Folder path</FieldLabel>
+          <FieldLabel htmlFor="secret-import-source-folder">Folder path</FieldLabel>
           <FieldContent>
-            <FilterableSelect
+            <Combobox
+              id="secret-import-source-folder"
+              isClearable={false}
               options={folderOptions}
               getOptionLabel={(o) => o.label}
               getOptionValue={(o) => o.value}
@@ -352,10 +355,7 @@ export const CreateSecretImportForm = ({
                   ? (folderOptions.find((o) => o.value === selectedSecretPath) ?? null)
                   : null
               }
-              onChange={(newValue) => {
-                const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                setSelectedSecretPath(single && "value" in single ? single.value : null);
-              }}
+              onValueChange={(option) => setSelectedSecretPath(option.value)}
             />
           </FieldContent>
         </Field>

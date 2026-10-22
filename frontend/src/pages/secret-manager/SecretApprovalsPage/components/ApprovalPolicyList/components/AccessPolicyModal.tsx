@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { FormatOptionLabelMeta, MultiValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import slugify from "@sindresorhus/slugify";
 import axios from "axios";
@@ -23,7 +22,6 @@ import {
   Badge,
   Button,
   Combobox,
-  CreatableSelect,
   DiscardChangesAlertDialog,
   Field,
   FieldContent,
@@ -85,22 +83,21 @@ const getApproverOptionValue = (option: ApproverOptionData) =>
 const getApproverOptionLabel = (option: ApproverOptionData) =>
   option.name ?? option.username ?? option.id ?? "Unknown approver";
 
-const formatApproverOptionLabel = (
-  option: ApproverOptionData,
-  { context }: FormatOptionLabelMeta<ApproverOptionData>
-) =>
-  context === "menu" ? (
-    <ApproverOption option={option} label={getApproverOptionLabel(option)} />
-  ) : (
-    getApproverOptionLabel(option)
+const renderApproverOption = (option: ApproverOptionData) => (
+  <ApproverOption option={option} label={getApproverOptionLabel(option)} />
+);
+
+const getApproverOptionKeywords = (option: ApproverOptionData) =>
+  [option.name, option.memberEmail, option.username, option.id].filter((value): value is string =>
+    Boolean(value)
   );
 
-const filterApproverOption = ({ data }: { data: ApproverOptionData }, input: string) => {
-  const search = input.trim().toLowerCase();
-  return [data.name, data.memberEmail, data.username, data.id].some((value) =>
-    value?.toLowerCase().includes(search)
-  );
-};
+const MEMBER_EMAIL_HINT = "Enter an exact project member email address.";
+
+const formatMemberEmailCreateLabel = (input: string) =>
+  isValidMemberEmail(input.trim().toLowerCase())
+    ? `Use member email “${input.trim()}”`
+    : MEMBER_EMAIL_HINT;
 
 const getManualMemberOption = (
   email: string,
@@ -589,36 +586,32 @@ const Form = ({
     };
 
     return (
-      <CreatableSelect<ApproverOptionData>
-        isMulti
+      <Combobox
+        multiple
         aria-label={`Approvers for step ${index + 1}`}
         placeholder="Select approvers or enter a member email..."
         options={approverOptions}
         getOptionValue={getApproverOptionValue}
         getOptionLabel={getApproverOptionLabel}
-        filterOption={filterApproverOption}
-        formatOptionLabel={formatApproverOptionLabel}
-        formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
-        isValidNewOption={(input, value) =>
-          canAddMemberEmail(input, [
-            ...(value as MultiValue<ApproverOptionData>),
-            ...approverOptions
-          ])
-        }
+        getOptionKeywords={getApproverOptionKeywords}
+        renderOption={renderApproverOption}
         isOptionDisabled={(option) =>
           option.type === ApproverType.User && option.isOrgMembershipActive === false
         }
         value={selectedOptions}
-        onChange={(newValue) =>
-          updateSelectedOptions([...(newValue as MultiValue<ApproverOptionData>)])
-        }
-        onCreateOption={(input) =>
-          updateSelectedOptions([
-            ...selectedOptions,
-            getManualMemberOption(input, ApproverType.User)
-          ])
-        }
-        noOptionsMessage={() => "Enter an exact project member email address."}
+        onValueChange={updateSelectedOptions}
+        creation={{
+          isValid: (input, { options, selectedOptions: selected }) =>
+            canAddMemberEmail(input, [...selected, ...options]),
+          isDuplicate: () => false,
+          formatLabel: formatMemberEmailCreateLabel,
+          emptyLabel: MEMBER_EMAIL_HINT,
+          onCreate: (input) =>
+            updateSelectedOptions([
+              ...selectedOptions,
+              getManualMemberOption(input, ApproverType.User)
+            ])
+        }}
         isError={Boolean(
           errors.sequenceApprovers?.[index]?.user || errors.sequenceApprovers?.[index]?.group
         )}
@@ -997,36 +990,32 @@ const Form = ({
           <Field>
             <FieldLabel>Approvers</FieldLabel>
             <FieldContent>
-              <CreatableSelect<ApproverOptionData>
-                isMulti
+              <Combobox
+                multiple
                 aria-label="Approvers"
                 placeholder="Select approvers or enter a member email..."
                 options={approverOptions}
                 getOptionValue={getApproverOptionValue}
                 getOptionLabel={getApproverOptionLabel}
-                filterOption={filterApproverOption}
-                formatOptionLabel={formatApproverOptionLabel}
-                formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
-                isValidNewOption={(input, value) =>
-                  canAddMemberEmail(input, [
-                    ...(value as MultiValue<ApproverOptionData>),
-                    ...approverOptions
-                  ])
-                }
+                getOptionKeywords={getApproverOptionKeywords}
+                renderOption={renderApproverOption}
                 isOptionDisabled={(option) =>
                   option.type === ApproverType.User && option.isOrgMembershipActive === false
                 }
                 value={selectedPolicyApprovers}
-                onChange={(newValue) =>
-                  updatePolicyApprovers([...(newValue as MultiValue<ApproverOptionData>)])
-                }
-                onCreateOption={(input) =>
-                  updatePolicyApprovers([
-                    ...selectedPolicyApprovers,
-                    getManualMemberOption(input, ApproverType.User)
-                  ])
-                }
-                noOptionsMessage={() => "Enter an exact project member email address."}
+                onValueChange={updatePolicyApprovers}
+                creation={{
+                  isValid: (input, { options, selectedOptions }) =>
+                    canAddMemberEmail(input, [...selectedOptions, ...options]),
+                  isDuplicate: () => false,
+                  formatLabel: formatMemberEmailCreateLabel,
+                  emptyLabel: MEMBER_EMAIL_HINT,
+                  onCreate: (input) =>
+                    updatePolicyApprovers([
+                      ...selectedPolicyApprovers,
+                      getManualMemberOption(input, ApproverType.User)
+                    ])
+                }}
                 isError={Boolean(errors.userApprovers || errors.groupApprovers)}
               />
               <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
@@ -1103,36 +1092,32 @@ const Form = ({
             <Field>
               <FieldLabel>Bypassers</FieldLabel>
               <FieldContent>
-                <CreatableSelect<ApproverOptionData>
-                  isMulti
+                <Combobox
+                  multiple
                   aria-label="Bypassers"
                   placeholder="Select bypassers or enter a member email..."
                   options={bypasserOptions}
                   getOptionValue={getApproverOptionValue}
                   getOptionLabel={getApproverOptionLabel}
-                  filterOption={filterApproverOption}
-                  formatOptionLabel={formatApproverOptionLabel}
-                  formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
-                  isValidNewOption={(input, value) =>
-                    canAddMemberEmail(input, [
-                      ...(value as MultiValue<ApproverOptionData>),
-                      ...bypasserOptions
-                    ])
-                  }
+                  getOptionKeywords={getApproverOptionKeywords}
+                  renderOption={renderApproverOption}
                   isOptionDisabled={(option) =>
                     option.type === BypasserType.User && option.isOrgMembershipActive === false
                   }
                   value={selectedPolicyBypassers}
-                  onChange={(newValue) =>
-                    updatePolicyBypassers([...(newValue as MultiValue<ApproverOptionData>)])
-                  }
-                  onCreateOption={(input) =>
-                    updatePolicyBypassers([
-                      ...selectedPolicyBypassers,
-                      getManualMemberOption(input, BypasserType.User)
-                    ])
-                  }
-                  noOptionsMessage={() => "Enter an exact project member email address."}
+                  onValueChange={updatePolicyBypassers}
+                  creation={{
+                    isValid: (input, { options, selectedOptions }) =>
+                      canAddMemberEmail(input, [...selectedOptions, ...options]),
+                    isDuplicate: () => false,
+                    formatLabel: formatMemberEmailCreateLabel,
+                    emptyLabel: MEMBER_EMAIL_HINT,
+                    onCreate: (input) =>
+                      updatePolicyBypassers([
+                        ...selectedPolicyBypassers,
+                        getManualMemberOption(input, BypasserType.User)
+                      ])
+                  }}
                   isError={Boolean(errors.userBypassers || errors.groupBypassers)}
                 />
                 <FieldError errors={[errors.userBypassers, errors.groupBypassers]} />
