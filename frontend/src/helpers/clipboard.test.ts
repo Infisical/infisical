@@ -41,12 +41,26 @@ describe("copyToClipboard", () => {
   });
 
   it("throws when neither copy mechanism succeeds", async () => {
+    const textArea = {
+      value: "",
+      setAttribute: vi.fn(),
+      select: vi.fn(),
+      remove: vi.fn(),
+      style: { position: "", opacity: "" }
+    };
+    const execCommand = vi.fn().mockReturnValue(false);
     vi.stubGlobal("navigator", {});
-    vi.stubGlobal("document", { execCommand: vi.fn().mockReturnValue(false) });
+    vi.stubGlobal("document", {
+      createElement: vi.fn().mockReturnValue(textArea),
+      body: { appendChild: vi.fn() },
+      execCommand
+    });
 
     await expect(copyToClipboard("invitation-link")).rejects.toThrow(
       "Clipboard access is unavailable"
     );
+    expect(execCommand).toHaveBeenCalledWith("copy");
+    expect(textArea.remove).toHaveBeenCalled();
   });
 
   it("removes the fallback element when the copy command throws", async () => {

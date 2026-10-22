@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -20,13 +21,16 @@ type Props = {
 
 export const OrgInviteLink = ({ invite }: Props) => {
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
+  const isCopying = useRef(false);
 
   const copyLinkToClipboard = async () => {
-    if (isInviteLinkCopied) return;
+    if (isInviteLinkCopied || isCopying.current) return;
+    isCopying.current = true;
 
     try {
       await copyToClipboard(invite.link);
-      setInviteLinkCopied.timedToggle();
+      setInviteLinkCopied.on();
+      setTimeout(setInviteLinkCopied.off, 2000);
 
       createNotification({
         type: "info",
@@ -37,6 +41,8 @@ export const OrgInviteLink = ({ invite }: Props) => {
         type: "error",
         text: "Could not copy the invitation link. Please copy it manually."
       });
+    } finally {
+      isCopying.current = false;
     }
   };
 
