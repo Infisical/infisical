@@ -396,7 +396,6 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
           aria-activedescendant={currentActive ? optionId(currentActive.value) : undefined}
           className={cn(menu.list, menu.inset)}
         >
-          <ListHighlight />
           {groups.map((group) => (
             <div key={group} role="group" aria-label={group || undefined}>
               {group && <div className={menu.label}>{group}</div>}
@@ -442,6 +441,7 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
                 ))}
             </div>
           ))}
+          <ListHighlight />
         </div>
         {!filtered.length && <p className={menu.empty}>No options found</p>}
         {canCreate && (

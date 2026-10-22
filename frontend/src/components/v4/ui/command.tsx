@@ -110,8 +110,8 @@ const CommandList = React.forwardRef<
       className={cn(menu.list, menu.inset, className)}
       {...props}
     >
-      <ListHighlight />
       {children}
+      <ListHighlight />
     </CommandPrimitive.List>
   );
 });

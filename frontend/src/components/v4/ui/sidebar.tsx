@@ -594,7 +594,6 @@ export const Sidebar = ({
           }}
         >
           <div ref={navRef} key={view} data-enter={enter} className={styles.nav}>
-            <ListHighlight />
             {scope && (
               <div
                 className={styles.section}
@@ -636,6 +635,7 @@ export const Sidebar = ({
                 />
               </div>
             ))}
+            <ListHighlight />
           </div>
           {footerItems && footerItems.length > 0 && (
             <div className={styles.footer}>

@@ -103,8 +103,8 @@ const MenubarContent = React.forwardRef<
           className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
           {...props}
         >
-          <ListHighlight />
           {children}
+          <ListHighlight />
         </MenubarPrimitive.Content>
       </MenubarPortal>
     );
@@ -284,8 +284,8 @@ const MenubarSubContent = React.forwardRef<
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
       {...props}
     >
-      <ListHighlight />
       {children}
+      <ListHighlight />
     </MenubarPrimitive.SubContent>
   );
 });

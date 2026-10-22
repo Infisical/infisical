@@ -70,8 +70,8 @@ const DropdownMenuContent = React.forwardRef<
           className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
           {...props}
         >
-          <ListHighlight />
           {children}
+          <ListHighlight />
         </DropdownMenuPrimitive.Content>
       </DropdownMenuPrimitive.Portal>
     );
@@ -269,8 +269,8 @@ const DropdownMenuSubContent = React.forwardRef<
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
       {...props}
     >
-      <ListHighlight />
       {children}
+      <ListHighlight />
     </DropdownMenuPrimitive.SubContent>
   );
 });
