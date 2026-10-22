@@ -3124,8 +3124,7 @@ export const baselineContent = [
             "src/pages/design-system/examples/spinner/default.tsx"
           ],
           detect: {
-            by: "test",
-            test: "src/components/v4/ui/brand-runtime.test.tsx",
+            by: "review",
             how: "The delayed spinner shows nothing before its delay, then its label, and leaves no timer after unmount."
           }
         }

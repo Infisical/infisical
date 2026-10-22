@@ -38,7 +38,7 @@ Avoid: Continue the animation after failure or imply a percentage the request do
 
 Why: Activity indicates outstanding work, not completion or success.
 
-Checked by: src/components/v4/ui/brand-runtime.test.tsx. The delayed spinner shows nothing before its delay, then its label, and leaves no timer after unmount.
+Checked by: review only. Look for: The delayed spinner shows nothing before its delay, then its label, and leaves no timer after unmount.
 
 Source evidence:
 - src/components/v4/ui/spinner.tsx
