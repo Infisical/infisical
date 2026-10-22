@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronRightIcon,
   FolderIcon,
@@ -10,6 +11,10 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   DocumentationLinkBadge,
   Empty,
   EmptyDescription,
@@ -28,7 +33,22 @@ import {
   SheetTitle,
   Skeleton
 } from "@app/components/v3";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { useDebounce } from "@app/hooks";
+import {
+  projectIdentityMembershipQuery,
+  useAddUserToWsNonE2EE,
+  useCreateProjectIdentityMembership,
+  useGetOrgUsers,
+  useGetWorkspaceUsers
+} from "@app/hooks/api";
 import {
   SecretFolderRole,
   TFolderGrantType,
@@ -41,12 +61,16 @@ import {
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
 import {
   byAdminThenName,
+  byName,
   TFolderAccessActor,
   toIdentityActor,
+  toOrgIdentityActor,
+  toOrgUserActor,
   toUserActor
 } from "./folder-access.utils";
 import {
@@ -60,6 +84,9 @@ import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints that share this page
 const PER_PAGE = 20;
+// organization members outside the project are not paged, so each kind is capped and search narrows it
+const ORG_PREVIEW_LIMIT = 10;
+const NO_ACCESS_SECTION = "no-access";
 
 const SectionLabel = ({ title, count }: { title: string; count: number }) => (
   <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
@@ -90,7 +117,24 @@ export const FolderAccessSheet = ({
   const [page, setPage] = useState(1);
   const [removalActor, setRemovalActor] = useState<TFolderAccessActor | null>(null);
   const [filter, setFilter] = useState<TFolderAccessFilter>(EMPTY_FOLDER_ACCESS_FILTER);
+  const [noAccessSection, setNoAccessSection] = useState("");
   const isFiltering = Boolean(filter.types.length || filter.kinds.length);
+
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+  const { permission: projectPermission } = useProjectPermission();
+  // members without access have no access kind, so an access filter hides the whole section
+  const showsNoAccess = !filter.kinds.length;
+  const wantsType = (type: TFolderAccessActor["type"]) =>
+    !filter.types.length || filter.types.includes(type);
+  const canAddUsers =
+    projectPermission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
+    wantsType("user");
+  const canAddIdentities =
+    projectPermission.can(ProjectPermissionIdentityActions.Create, ProjectPermissionSub.Identity) &&
+    wantsType("identity");
+  const showsOrgMembers = showsNoAccess && (canAddUsers || canAddIdentities);
 
   const listArgs = {
     projectId,
@@ -111,6 +155,22 @@ export const FolderAccessSheet = ({
     isFetching: isIdentitiesFetching
   } = useListFolderAccessIdentities(listArgs);
 
+  const { data: orgUsers } = useGetOrgUsers(currentOrg.id, {
+    enabled: isOpen && showsNoAccess && canAddUsers
+  });
+  const { data: projectUsers } = useGetWorkspaceUsers(projectId, undefined, undefined, {
+    enabled: isOpen && showsNoAccess && canAddUsers
+  });
+  const { data: orgIdentities } = useQuery({
+    ...projectIdentityMembershipQuery.listAvailable({
+      projectId,
+      projectType: currentProject.type
+    }),
+    enabled: isOpen && showsNoAccess && canAddIdentities
+  });
+
+  const addUserToProject = useAddUserToWsNonE2EE();
+  const addIdentityToProject = useCreateProjectIdentityMembership();
   const createUserAccess = useCreateUserFolderAccess();
   const updateUserAccess = useUpdateUserFolderAccess();
   const deleteUserAccess = useDeleteUserFolderAccess();
@@ -131,11 +191,10 @@ export const FolderAccessSheet = ({
 
   const isSearching = Boolean(debouncedSearch.trim());
 
-  // the same responses carry the members without access, so searching doubles as the grant flow;
-  // members without access have no access kind, so an access filter hides them
+  // the same paged responses carry the project members without access on this folder
   const candidates = useMemo(
     () =>
-      isSearching && !filter.kinds.length
+      showsNoAccess
         ? [
             ...(users?.usersWithoutAccess ?? []).map(toUserActor),
             ...(identities?.identitiesWithoutAccess ?? []).map(toIdentityActor)
@@ -143,13 +202,59 @@ export const FolderAccessSheet = ({
             .filter((actor) => !filter.types.length || filter.types.includes(actor.type))
             .sort(byAdminThenName)
         : [],
-    [isSearching, users, identities, filter]
+    [showsNoAccess, users, identities, filter]
   );
+
+  const orgCandidates = useMemo(() => {
+    if (!showsOrgMembers)
+      return { actors: [], usernames: new Map<string, string>(), hasMore: false };
+    const query = debouncedSearch.trim().toLowerCase();
+    const matchesQuery = (values: (string | undefined)[]) =>
+      !query || values.some((value) => value?.toLowerCase().includes(query));
+    const projectUserIds = new Set((projectUsers ?? []).map(({ user }) => user.id));
+    const matchingUsers = canAddUsers
+      ? (orgUsers ?? []).filter(
+          (orgUser) =>
+            orgUser.isActive &&
+            !projectUserIds.has(orgUser.user.id) &&
+            matchesQuery([
+              orgUser.user.firstName,
+              orgUser.user.lastName,
+              orgUser.user.email,
+              orgUser.inviteEmail
+            ])
+        )
+      : [];
+    // this endpoint ignores its name filter and returns every available identity, so it is matched here
+    const matchingIdentities = canAddIdentities
+      ? (orgIdentities ?? []).filter((identity) => matchesQuery([identity.name]))
+      : [];
+
+    return {
+      actors: [
+        ...matchingUsers.slice(0, ORG_PREVIEW_LIMIT).map(toOrgUserActor),
+        ...matchingIdentities.slice(0, ORG_PREVIEW_LIMIT).map(toOrgIdentityActor)
+      ].sort(byName),
+      usernames: new Map(matchingUsers.map(({ user }) => [user.id, user.username])),
+      hasMore:
+        matchingUsers.length > ORG_PREVIEW_LIMIT || matchingIdentities.length > ORG_PREVIEW_LIMIT
+    };
+  }, [
+    showsOrgMembers,
+    canAddUsers,
+    canAddIdentities,
+    debouncedSearch,
+    orgUsers,
+    projectUsers,
+    orgIdentities
+  ]);
 
   const isLoading = isUsersPending || isIdentitiesPending;
   // a granted candidate stays in this list until the refetch lands, and a second pick would send a
   // duplicate create that the server rejects
   const isGrantLocked =
+    addUserToProject.isPending ||
+    addIdentityToProject.isPending ||
     createUserAccess.isPending ||
     createIdentityAccess.isPending ||
     isUsersFetching ||
@@ -160,6 +265,7 @@ export const FolderAccessSheet = ({
   const pageStart = (page - 1) * PER_PAGE + 1;
   const pageEnd = Math.min(page * PER_PAGE, rosterCount);
 
+  // shown only outside a search, whose results and misses both land in the No Access section
   const emptyState = (() => {
     if (isFiltering && rosterCount > 0) {
       return {
@@ -169,23 +275,22 @@ export const FolderAccessSheet = ({
       };
     }
     if (rosterCount === 0) {
-      return isSearching
-        ? {
-            title: "No members found",
-            description:
-              "No one in this project matches your search. Invite them to the project first, then grant folder access here."
-          }
-        : {
-            title: "No project members",
-            description: "This project has no users or machine identities to grant access to."
-          };
+      return {
+        title: "No project members",
+        description: "This project has no users or machine identities yet."
+      };
     }
     return {
       title: "No access on this page",
-      description: isSearching
-        ? "None of the members matching your search on this page have access to this folder. Check another page, or refine your search."
-        : `None of project members ${pageStart}–${pageEnd} have access to this folder. Check another page, or search for someone by name.`
+      description: `None of project members ${pageStart}–${pageEnd} have access to this folder. Grant access from the No Access section, or check another page.`
     };
+  })();
+
+  const inProjectEmptyText = (() => {
+    if (isSearching) return "No project member without access matches your search.";
+    return rosterCount > PER_PAGE
+      ? "Everyone on this page of project members has access to this folder."
+      : "Everyone in this project has access to this folder.";
   })();
 
   // failures are already surfaced by the global MutationCache.onError toast, which carries the
@@ -225,6 +330,34 @@ export const FolderAccessSheet = ({
     if (actor.type === "user")
       updateUserAccess.mutate({ ...target, userId: actor.id, type }, { onSuccess });
     else updateIdentityAccess.mutate({ ...target, identityId: actor.id, type }, { onSuccess });
+  };
+
+  // folder access only applies to project members, so an organization member joins the project with
+  // the No Access role first and reaches nothing beyond the folders granted to them
+  const addToProjectAndGrant = async (actor: TFolderAccessActor, tier: SecretFolderRole) => {
+    try {
+      if (actor.type === "user") {
+        await addUserToProject.mutateAsync({
+          orgId: currentOrg.id,
+          projectId,
+          projectType: currentProject.type,
+          usernames: [orgCandidates.usernames.get(actor.id) ?? ""],
+          roleSlugs: [ProjectMembershipRole.NoAccess]
+        });
+      } else {
+        await addIdentityToProject.mutateAsync({
+          identityId: actor.id,
+          projectId,
+          projectType: currentProject.type,
+          role: ProjectMembershipRole.NoAccess
+        });
+        queryClient.invalidateQueries({ queryKey: projectIdentityMembershipQuery.allKey() });
+      }
+    } catch {
+      // the global MutationCache.onError toast already reports the failure
+      return;
+    }
+    setTier(actor, tier);
   };
 
   const removeAccess = (actor: TFolderAccessActor) => {
@@ -268,6 +401,7 @@ export const FolderAccessSheet = ({
                   onChange={(e) => {
                     setSearch(e.target.value);
                     setPage(1);
+                    if (e.target.value.trim()) setNoAccessSection(NO_ACCESS_SECTION);
                   }}
                   placeholder="Search users and machine identities..."
                 />
@@ -296,7 +430,7 @@ export const FolderAccessSheet = ({
               </div>
             )}
 
-            {!isLoading && !actors.length && !candidates.length && (
+            {!isLoading && !actors.length && !isSearching && (
               <Empty className="border">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -308,16 +442,8 @@ export const FolderAccessSheet = ({
               </Empty>
             )}
 
-            {!isLoading && Boolean(actors.length || candidates.length) && (
+            {!isLoading && Boolean(actors.length) && (
               <section className="flex flex-col">
-                <SectionLabel title="Has Access" count={actors.length} />
-                {!actors.length && (
-                  <p className="py-2.5 text-xs text-muted">
-                    {rosterCount > PER_PAGE
-                      ? "No one matching your search on this page has access to this folder. Check another page, or refine your search."
-                      : "No one matching your search has access to this folder yet."}
-                  </p>
-                )}
                 {actors.map((actor) => (
                   <FolderAccessRow
                     key={`${actor.type}-${actor.id}`}
@@ -338,18 +464,70 @@ export const FolderAccessSheet = ({
               </section>
             )}
 
-            {!isLoading && Boolean(candidates.length) && (
-              <section className="flex flex-col">
-                <SectionLabel title="Other Project Members" count={candidates.length} />
-                {candidates.map((actor) => (
-                  <FolderAccessGrantRow
-                    key={`${actor.type}-${actor.id}`}
-                    actor={actor}
-                    isDisabled={isGrantLocked}
-                    onSetTier={(tier) => setTier(actor, tier)}
-                  />
-                ))}
-              </section>
+            {!isLoading && showsNoAccess && (
+              <Accordion
+                type="single"
+                collapsible
+                variant="ghost"
+                value={noAccessSection}
+                onValueChange={setNoAccessSection}
+              >
+                <AccordionItem value={NO_ACCESS_SECTION}>
+                  <AccordionTrigger>
+                    No Access
+                    <span className="font-normal text-muted tabular-nums">
+                      {candidates.length + orgCandidates.actors.length}
+                      {orgCandidates.hasMore && "+"}
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <section className="flex flex-col">
+                      <SectionLabel title="In Project" count={candidates.length} />
+                      {!candidates.length && (
+                        <p className="py-2.5 text-xs text-muted">{inProjectEmptyText}</p>
+                      )}
+                      {candidates.map((actor) => (
+                        <FolderAccessGrantRow
+                          key={`${actor.type}-${actor.id}`}
+                          actor={actor}
+                          isDisabled={isGrantLocked}
+                          onSetTier={(tier) => setTier(actor, tier)}
+                        />
+                      ))}
+                    </section>
+                    {showsOrgMembers && (
+                      <section className="flex flex-col">
+                        <SectionLabel
+                          title="In Organization, Not in Project"
+                          count={orgCandidates.actors.length}
+                        />
+                        {!orgCandidates.actors.length && (
+                          <p className="py-2.5 text-xs text-muted">
+                            {isSearching
+                              ? "No one outside this project matches your search."
+                              : "Everyone in your organization is already in this project."}
+                          </p>
+                        )}
+                        {orgCandidates.actors.map((actor) => (
+                          <FolderAccessGrantRow
+                            key={`${actor.type}-${actor.id}`}
+                            actor={actor}
+                            isDisabled={isGrantLocked}
+                            footerNote={`Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`}
+                            onSetTier={(tier) => addToProjectAndGrant(actor, tier)}
+                          />
+                        ))}
+                        {orgCandidates.hasMore && (
+                          <p className="py-2.5 text-xs text-muted">
+                            Showing the first {ORG_PREVIEW_LIMIT} of each. Search to find someone
+                            else.
+                          </p>
+                        )}
+                      </section>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
 
             {!isLoading && rosterCount > PER_PAGE && (

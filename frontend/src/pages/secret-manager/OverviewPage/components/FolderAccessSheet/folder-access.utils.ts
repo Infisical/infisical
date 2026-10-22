@@ -6,6 +6,7 @@ import {
   TFolderAccessRole,
   TFolderAccessUser
 } from "@app/hooks/api/folderAccess";
+import { OrgUser } from "@app/hooks/api/users/types";
 import { ms } from "@app/lib/fn/time";
 
 export type TFolderAccessActor = {
@@ -58,6 +59,42 @@ export const toIdentityActor = (identity: TFolderAccessIdentity): TFolderAccessA
   isProjectAdmin: identity.membership.isProjectAdmin,
   roles: sortRoles(identity.membership.roles),
   access: identity.folderRBACAccess
+});
+
+// organization members outside the project have no membership, roles, or grant here yet
+export const toOrgUserActor = ({ user, inviteEmail, status }: OrgUser): TFolderAccessActor => {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  const email = user.email || inviteEmail || user.username;
+  const name = fullName || email;
+  return {
+    type: "user",
+    id: user.id,
+    membershipId: null,
+    name,
+    subtitle: status === "invited" ? "Invite pending" : email,
+    initials: initialsOf(name),
+    isProjectAdmin: false,
+    roles: [],
+    access: null
+  };
+};
+
+export const toOrgIdentityActor = ({
+  id,
+  name
+}: {
+  id: string;
+  name: string;
+}): TFolderAccessActor => ({
+  type: "identity",
+  id,
+  membershipId: null,
+  name,
+  subtitle: "Machine identity",
+  initials: initialsOf(name),
+  isProjectAdmin: false,
+  roles: [],
+  access: null
 });
 
 export const byName = (a: TFolderAccessActor, b: TFolderAccessActor) =>

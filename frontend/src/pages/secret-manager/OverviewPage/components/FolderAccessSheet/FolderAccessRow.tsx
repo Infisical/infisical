@@ -57,8 +57,9 @@ type Props = {
 export const FolderAccessGrantRow = ({
   actor,
   isDisabled,
+  footerNote,
   onSetTier
-}: Pick<Props, "actor" | "isDisabled" | "onSetTier">) => (
+}: Pick<Props, "actor" | "isDisabled" | "onSetTier"> & { footerNote?: string }) => (
   <div className={ROW_CLASS_NAME}>
     <ActorIdentity actor={actor} />
     <DropdownMenu>
@@ -68,7 +69,7 @@ export const FolderAccessGrantRow = ({
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
-      <TierDropdown onSelectTier={onSetTier} />
+      <TierDropdown footerNote={footerNote} onSelectTier={onSetTier} />
     </DropdownMenu>
   </div>
 );
@@ -157,7 +158,7 @@ export const FolderAccessRow = ({
                 isDisabled={isDisabled}
               >
                 <span className="truncate">{roleNames || "Role"}</span>
-                <span className="-ml-1.5 shrink-0 text-muted">(Project)</span>
+                <Badge variant="project">Project</Badge>
                 <ChevronDownIcon />
               </Button>
             </DropdownMenuTrigger>
