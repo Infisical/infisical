@@ -192,7 +192,8 @@ const DELEGATED_STATUS_MESSAGES: Record<
   [DelegatedApprovalRequestStatus.FailedDispatch]: (name) => `This request did not reach ${name}.`,
   [DelegatedApprovalRequestStatus.Approved]: (name) => `Approved in ${name}.`,
   [DelegatedApprovalRequestStatus.Rejected]: (name) => `Rejected in ${name}.`,
-  [DelegatedApprovalRequestStatus.Failed]: (name) => `This request could not be completed in ${name}.`
+  [DelegatedApprovalRequestStatus.Failed]: (name) =>
+    `This request could not be completed in ${name}.`
 };
 
 const getRetryingDelegatedStatusMessage = (name: string) => `Retrying the submission to ${name}.`;
