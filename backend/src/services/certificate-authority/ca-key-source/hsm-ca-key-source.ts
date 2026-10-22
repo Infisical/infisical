@@ -50,6 +50,7 @@ export const hsmCaKeySourceFactory = ({
       return {
         hsmConnectorId,
         externalKeyId: generated.keyLabel,
+        hsmKeyId: generated.keyId,
         publicKeySpki: generated.publicKeySpkiDer
       };
     },
@@ -67,7 +68,7 @@ export const hsmCaKeySourceFactory = ({
     },
 
     buildSigner: async ({ projectId, keyAlgorithm, reference, signatureAlgorithm }) => {
-      const { hsmConnectorId, externalKeyId: keyLabel, publicKeySpki } = reference;
+      const { hsmConnectorId, externalKeyId: keyLabel, hsmKeyId, publicKeySpki } = reference;
       if (!hsmConnectorId || !keyLabel || !publicKeySpki) {
         throw new BadRequestError({
           message: "HSM-backed CA secret is missing its connector, key label, or public key"
@@ -91,6 +92,8 @@ export const hsmCaKeySourceFactory = ({
             connectorId: hsmConnectorId,
             projectId,
             keyLabel,
+            keyId: hsmKeyId,
+            publicKeySpki,
             mechanism,
             data,
             isDigest
