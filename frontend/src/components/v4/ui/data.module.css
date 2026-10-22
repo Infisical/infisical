@@ -40,13 +40,12 @@
 .gridRow[data-last] {
   border-bottom-color: transparent;
 }
-/* With a footer the grid is a framed shell: the frame-line frame and tint band hold the inset
+/* With a footer the grid is a framed shell: the borderless tint frame holds the inset
    grid on top and the footer below, so there is exactly one edge at the bottom. */
 .gridShell[data-footer] {
   --v4-frame-pad: var(--v4-space-3);
   padding: var(--v4-frame-pad) var(--v4-frame-pad) 0;
   background: var(--v4-tint);
-  border: var(--v4-size-control-border) solid var(--v4-frame-line);
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
 }
 .gridShell[data-footer] > .gridScroll {

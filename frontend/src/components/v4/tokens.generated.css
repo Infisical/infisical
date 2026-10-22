@@ -108,7 +108,6 @@
   --v4-select: #eeede6;
   --v4-line-soft: #e6e5e0;
   --v4-line: #d8d8d4;
-  --v4-frame-line: #d6d5cf;
   --v4-control: #b0b0a9;
   --v4-faint: #8e9291;
   --v4-muted: #565654;
@@ -192,7 +191,7 @@
   --v4-segment-hover: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
   --v4-avatar-blend: darken;
   --v4-tab-label: color-mix(in oklab, var(--v4-ink) 60%, transparent);
-  --v4-selected-surface: color-mix(in oklab, var(--v4-ink) 9%, var(--v4-surface));
+  --v4-selected-surface: color-mix(in oklab, #c9c6b8 45%, transparent);
   --v4-selected-border: var(--v4-control);
   --v4-selected-ink: var(--v4-ink);
   --v4-font-sans: Archivo, "Helvetica Neue", Helvetica, sans-serif;
@@ -285,7 +284,6 @@
   --v4-select: #262626;
   --v4-line-soft: #1e2022;
   --v4-line: #2f3234;
-  --v4-frame-line: #2e2f31;
   --v4-control: #37393c;
   --v4-faint: #8e9291;
   --v4-muted: #b0b0a9;
@@ -369,7 +367,7 @@
   --v4-segment-hover: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover-dark), transparent);
   --v4-avatar-blend: lighten;
   --v4-tab-label: var(--v4-muted);
-  --v4-selected-surface: color-mix(in oklab, var(--v4-ink) 22%, var(--v4-surface));
-  --v4-selected-border: color-mix(in oklab, var(--v4-ink) 55%, var(--v4-surface));
+  --v4-selected-surface: color-mix(in oklab, #3a372c 55%, transparent);
+  --v4-selected-border: #4b4739;
   --v4-selected-ink: var(--v4-ink);
 }

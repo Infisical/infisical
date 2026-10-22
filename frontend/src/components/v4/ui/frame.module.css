@@ -4,7 +4,7 @@
   min-width: 0;
   padding: var(--v4-frame-pad);
   background: var(--v4-tint);
-  border: var(--v4-size-control-border) solid var(--v4-frame-line);
+  border: 0;
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
 }
 .frame:has(> .frameHead) {
