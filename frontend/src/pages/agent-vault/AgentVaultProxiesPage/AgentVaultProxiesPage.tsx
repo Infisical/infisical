@@ -463,7 +463,7 @@ export const AgentVaultProxiesPage = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              variant="av"
+              variant="danger"
               isPending={rotateProxyToken.isPending}
               onClick={async (event) => {
                 event.preventDefault();

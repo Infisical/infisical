@@ -92,7 +92,7 @@ export const ProxyTokenDialog = ({ proxyToken, onOpenChange }: Props) => {
             </AlertDescription>
           </Alert>
 
-          <CodeBlock value={token} label="Proxy token" className="break-all whitespace-pre-wrap" />
+          <CodeBlock value={token} label="Proxy token" />
 
           <Tabs defaultValue="cli">
             <TabsList variant="av" aria-label="Deployment target">
