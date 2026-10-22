@@ -1499,6 +1499,10 @@ const MultipleCombobox = <TOption,>({
           items={primitiveItems}
           value={selectedItems}
           onValueChange={(nextValue, eventDetails) => {
+            if (eventDetails.reason === "escape-key") {
+              eventDetails.cancel();
+              return;
+            }
             const createItem = nextValue.find((item) => item.type === "create");
             if (createItem) {
               eventDetails.cancel();
