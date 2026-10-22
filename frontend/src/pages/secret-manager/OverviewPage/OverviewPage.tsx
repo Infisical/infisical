@@ -1234,10 +1234,17 @@ const OverviewPageContent = () => {
 
   const [recentQuickAddKeys, setRecentQuickAddKeys] = useState<string[]>([]);
   const hadPendingBatchChangesRef = useRef(hasPendingBatchChanges);
+  const isRecentQuickAddClearPendingRef = useRef(false);
   useEffect(() => {
-    if (hadPendingBatchChangesRef.current && !hasPendingBatchChanges) setRecentQuickAddKeys([]);
+    if (hadPendingBatchChangesRef.current && !hasPendingBatchChanges)
+      isRecentQuickAddClearPendingRef.current = true;
+    if (hasPendingBatchChanges) isRecentQuickAddClearPendingRef.current = false;
     hadPendingBatchChangesRef.current = hasPendingBatchChanges;
-  }, [hasPendingBatchChanges]);
+    if (isRecentQuickAddClearPendingRef.current && activeTableRows.size === 0) {
+      isRecentQuickAddClearPendingRef.current = false;
+      setRecentQuickAddKeys([]);
+    }
+  }, [hasPendingBatchChanges, activeTableRows]);
   useEffect(() => {
     setRecentQuickAddKeys([]);
   }, [secretPath, singleVisibleEnv?.slug]);
