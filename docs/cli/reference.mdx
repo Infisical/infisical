@@ -184,22 +184,24 @@ Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI a
   command="agent-vault proxy"
   usage="[flags]"
   flags={[
-    { name: "--data-dir", value: "<string>", type: "string", description: "The directory that holds the proxy's certificate authority, access token, and last settings. It must persist across restarts. Defaults to `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root. Can also be set with `INFISICAL_AGENT_VAULT_DATA_DIR`." },
-    { name: "--enrollment-token", value: "<string>", type: "string", description: "The one-time token shown when the proxy was created in Infisical. Needed on the first run and to re-enroll. Can also be set with `INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN`, which keeps it off the command line." },
+    { name: "--ca-cert", value: "<string>", type: "string", description: "Your own certificate authority to serve instead of the one Infisical generates, as PEM text, PEM encoded as base64, or the path to a PEM file. Pass it with `--ca-key`. Can also be set with `INFISICAL_AGENT_VAULT_CA_CERT`." },
+    { name: "--ca-key", value: "<string>", type: "string", description: "The ECDSA P-256 private key for `--ca-cert`, in the same formats. Can also be set with `INFISICAL_AGENT_VAULT_CA_KEY`, which keeps the key off the command line." },
+    { name: "--data-dir", value: "<string>", type: "string", description: "The directory where the proxy keeps a cache of its settings and certificate authority, if the directory is writable. The proxy starts from the cache if it can't reach Infisical. Defaults to `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root. Can also be set with `INFISICAL_AGENT_VAULT_DATA_DIR`." },
     { name: "--log-file", value: "<string>", type: "string", description: "A file to also write logs to, as JSON lines. The file is appended to." },
     { name: "--log-format", value: "<string>", type: "string", default: "console", description: "The format of the logs written to stderr: `console` or `json`." },
-    { name: "--port", value: "<int>", type: "int", default: "17323", description: "The port to listen on, on all interfaces. `0` picks any free port, which the startup line reports." },
+    { name: "--port", value: "<int>", type: "int", default: "17323", description: "The port to listen on, on all interfaces. `0` picks any free port, which the startup line reports. Can also be set with `INFISICAL_AGENT_VAULT_PORT`." },
+    { name: "--proxy-token", value: "<string>", type: "string", description: "The proxy token, which Infisical shows once when you create the proxy or rotate its token. Can also be set with `INFISICAL_AGENT_VAULT_PROXY_TOKEN`, which keeps it off the command line." },
   ]}
   examples={[
-    { title: "Enroll a new proxy", code: "infisical agent-vault proxy --enrollment-token=<enrollment-token>" },
-    { title: "Start an enrolled proxy", code: "infisical agent-vault proxy" },
-    { title: "Log JSON to a file on a custom port", code: "infisical agent-vault proxy --port=18000 --log-format=json --log-file=/var/log/infisical/agent-vault.log" },
+    { title: "Start a proxy", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy" },
+    { title: "Serve your own certificate authority", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy --ca-cert=./ca.crt --ca-key=./ca.key" },
+    { title: "Log JSON to a file on a custom port", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy --port=18000 --log-format=json --log-file=/var/log/infisical/agent-vault.log" },
   ]}
 >
 
 Run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in the foreground. For each request, the proxy decides whether the agent's session allows the host and attaches the real credential on the way out, so the agent never holds a secret.
 
-Enroll once with `--enrollment-token`. The proxy saves its certificate authority and access token to `--data-dir`, so later starts need no token. Passing the same token again resumes the existing enrollment. A different token enrolls the proxy again and replaces its certificate authority, so agents that trusted the old one stop trusting the proxy.
+Start the proxy with its proxy token. You can run the proxy on as many machines as you need with the same token. Each time the proxy starts, it loads its settings and certificate authority from Infisical. If it can't reach Infisical, it retries for 60 seconds, then starts from the cache in `--data-dir` if there is one, or exits.
 
 You set the proxy's traffic policy, exceptions, and poll interval in Infisical, not with flags.
 
