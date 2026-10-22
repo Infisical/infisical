@@ -677,7 +677,7 @@ To use a different organization for a single command, pass `--org` to that comma
   command="pam"
 >
 
-Connect to databases, servers, Kubernetes clusters, and cloud accounts managed by [Infisical PAM](/documentation/platform/pam/overview) (privileged access management) from your terminal. A gateway supplies each account's credential, so you never see it, and every session is recorded. Open one account for yourself with [infisical pam access](/cli/reference#pam-access), or give an AI agent brokered access with [infisical pam agentic access](/cli/reference#pam-agentic-access).
+Connect to databases, servers, Kubernetes clusters, and cloud accounts managed by [Infisical Privileged Access Management (PAM)](/documentation/platform/pam/overview) from your terminal. A gateway supplies each account's credential, so you never see it, and every session is recorded. Open one account for yourself with [infisical pam access](/cli/reference#pam-access), or give an AI agent brokered access with [infisical pam agentic access](/cli/reference#pam-agentic-access).
 
 </CLICommand>
 
@@ -1573,7 +1573,7 @@ Print an environment's secrets in a file format such as `.env` or JSON, for tool
 List, inspect, and create Secrets Management [projects](/documentation/platform/project). Use these commands to find the project ID that [infisical init](/cli/reference#init) and the `--projectId` flag take, or to create a project without opening Infisical. `project` is an alias, so `infisical sm project list` also works.
 
 <Note>
-The commands work only with Secrets Management projects. Projects of other products, such as Certificate Manager or KMS, don't appear in the list.
+The commands work only with Secrets Management projects. Projects of other products, such as Certificate Management or KMS, don't appear in the list.
 </Note>
 
 </CLICommand>
