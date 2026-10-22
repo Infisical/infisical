@@ -203,8 +203,6 @@ Run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in the f
 
 Start the proxy with its proxy token. You can start the proxy on as many machines as you need from the same token. Each time the proxy starts, it loads its settings and certificate authority from Infisical. If it can't reach Infisical, it retries for 60 seconds, then starts from the cache in `--data-dir` if there is one, or exits.
 
-A proxy set up with an enrollment token keeps starting from its saved state in `--data-dir` until December 21, 2026. After that date, it needs a [proxy token](/documentation/platform/agent-vault/proxies#proxies-set-up-with-an-enrollment-token).
-
 You set the proxy's traffic policy, exceptions, and poll interval in Infisical, not with flags.
 
 </CLICommand>

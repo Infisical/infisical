@@ -338,18 +338,3 @@ To keep the proxy available when one machine goes down, run it on several machin
 Point agents at the load balancer's address instead of a single machine.
 
 On Infisical Cloud, every machine running a proxy shares that proxy's rate limits.
-
-## Proxies set up with an enrollment token
-
-Before proxy tokens, a proxy started from a one-time enrollment token and saved its state in its data directory. If you set up a proxy that way, it keeps starting from that saved state until December 21, 2026. After that date, the proxy needs a proxy token:
-
-<Steps>
-  <Step>
-    [Rotate the proxy's token](#rotate-a-proxys-token) to get a proxy token.
-  </Step>
-  <Step>
-    Start the proxy with the proxy token, as in [Create a proxy and start it](#create-a-proxy-and-start-it).
-  </Step>
-</Steps>
-
-Rotating gives the proxy a new certificate authority, so update your agents as described in [Rotate a proxy's token](#rotate-a-proxys-token).
