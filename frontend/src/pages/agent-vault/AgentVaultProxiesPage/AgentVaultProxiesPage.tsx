@@ -453,7 +453,7 @@ export const AgentVaultProxiesPage = () => {
             <AlertDialogMedia>
               <TriangleAlertIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Rotate proxy token</AlertDialogTitle>
+            <AlertDialogTitle>Rotate Proxy Token</AlertDialogTitle>
             <AlertDialogDescription>
               The current token will stop working, and the proxy gets a new certificate authority.
               Restart the proxy with the new token. Agents that pin the proxy&apos;s fingerprint
