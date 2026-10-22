@@ -75,7 +75,7 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.AllowAutoApproval]: {
     label: "Allow Auto-Approval",
     description:
-      "Requests are approved instantly when they pass one of the folder's auto-approval rules, such as a linked Jira ticket that is approved. Set the rules under the folder's Approvals tab.",
+      "Requests are approved instantly when they pass one of the folder's auto-approval rules. Set the rules under the folder's Approvals tab.",
     appliesTo: "all",
     schema: z.boolean()
   },
