@@ -159,21 +159,6 @@ Each time the proxy starts, it loads its settings and certificate authority from
   For the proxy's other flags, such as the port and the data directory, check out the [`agent-vault proxy` CLI reference](/cli/reference#agent-vault-proxy).
 </Info>
 
-### Run the proxy behind a load balancer
-
-To keep the proxy available when one machine goes down, run it on several machines with the same proxy token and put a load balancer in front of them. Every machine serves the same certificate authority, so agents can reach any of them.
-
-- **Load balancer type:** use a TCP (layer 4) load balancer, because agents send `CONNECT` requests that most HTTP load balancers don't forward. You don't need sticky sessions
-- **Health checks:** send an HTTP `GET` to `/_agent-vault/ca` on each machine, which returns `200` while the proxy is serving
-- **Monitoring:** watch each machine through the load balancer's health checks, because the **Proxies** page shows one status for the whole proxy
-- **Your own certificate authority:** if you [use your own](#use-your-own-certificate-authority), pass the same `--ca-cert` and `--ca-key` to every machine, or agents see different certificate authorities depending on which machine they reach
-
-Point agents at the load balancer's address instead of a single machine.
-
-<Note>
-  On Infisical Cloud, all machines running one proxy share its rate limits. Run at most about 30 machines per proxy at the default poll interval of 60 seconds, and fewer if you lower it.
-</Note>
-
 ## Settings
 
 To change a setting, select **Edit Settings** on the proxy's menu. If the proxy is running, it applies the change within one [poll interval](#poll-interval) (60 seconds by default).
@@ -341,6 +326,21 @@ Both actions are on the proxy's menu:
 | **Delete** | Infisical removes the proxy, and the proxy will stop adding credentials to requests. You can't undo this |
 
 Revoke access if you think a machine running the proxy is compromised.
+
+## High availability
+
+To keep the proxy available when one machine goes down, run it on several machines with the same proxy token and put a load balancer in front of them. Every machine serves the same certificate authority, so agents can reach any of them.
+
+- **Load balancer type:** use a TCP (layer 4) load balancer, because agents send `CONNECT` requests that most HTTP load balancers don't forward. You don't need sticky sessions
+- **Health checks:** send an HTTP `GET` to `/_agent-vault/ca` on each machine, which returns `200` while the proxy is serving
+- **Monitoring:** watch each machine through the load balancer's health checks, because the **Proxies** page shows one status for the whole proxy
+- **Your own certificate authority:** if you [use your own](#use-your-own-certificate-authority), pass the same `--ca-cert` and `--ca-key` to every machine, or agents see different certificate authorities depending on which machine they reach
+
+Point agents at the load balancer's address instead of a single machine.
+
+<Note>
+  On Infisical Cloud, all machines running one proxy share its rate limits. Run at most about 30 machines per proxy at the default poll interval of 60 seconds, and fewer if you lower it.
+</Note>
 
 ## Proxies set up with an enrollment token
 
