@@ -110,7 +110,7 @@ export const FolderAccessRow = ({
       <div className={ROW_CLASS_NAME}>
         <ActorIdentity actor={actor} />
         <Button variant="ghost" size="sm" className="shrink-0" isDisabled>
-          Full access on all folders
+          Full Access on All Folders
           <Badge variant="neutral" iconPosition="left">
             <ShieldIcon />
             Admin
