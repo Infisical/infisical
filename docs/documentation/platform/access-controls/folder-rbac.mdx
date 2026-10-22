@@ -58,26 +58,31 @@ There are five different folder access roles, listed here from least to most pri
 
   </Step>
   <Step title="Review and set access for current members" titleSize="h3">
-    The **Manage Permissions** sheet lists everyone who can already reach this folder through their project roles. Anyone whose access comes from a project role rather than a grant shows an **Access from project role** selector, and hovering over it names their roles.
+    The **Manage Permissions** sheet lists everyone who can already reach this folder. If someone's access comes from a project role rather than a folder grant, their row shows their role names with a **Project** badge.
 
     ![Manage Permissions sheet](/images/platform/access-controls/folder-rbac/manage-permissions-sheet.png)
 
-    Use the dropdown on any row to set their folder role. The same menu lets you add temporary access or remove access. Project admins appear as having full access on all folders and cannot be given a folder grant.
+    Use the dropdown on any row to set their folder role. The same menu lets you add temporary access or remove access. Project admins show **Full Access on All Folders** and can't be given a folder grant.
 
     ![Folder role dropdown](/images/platform/access-controls/folder-rbac/folder-role-dropdown.png)
 
   </Step>
-  <Step title="Add access" titleSize="h3">
-    Select **Add Access** and pick the user or machine identity you want to assign a role to. This list includes project identities who have no access to this folder at all. Choose a role, optionally set a duration under **Temporary access**, then select **Add Access** to save.
+  <Step title="Grant access to someone without access" titleSize="h3">
+    Expand the **No Access** section below the list. It also opens when you type in the search box. The section has two groups:
 
-    ![Add Access sheet](/images/platform/access-controls/folder-rbac/add-folder-access-sheet.png)
+    - **In Project** lists project members and machine identities that have no access to this folder.
+    - **In Organization, Not in Project** lists organization users and machine identities that aren't in the project yet. This group appears only if you can add members or machine identities to the project. It shows the first 10 of each, so search to find anyone else.
+
+    Select **Grant Access** on a row and choose a role. Changes save automatically.
+
+    If you grant access to someone from **In Organization, Not in Project**, Infisical first adds them to the project with the **No Access** project role, then creates the folder grant. They can reach only the folders you grant them.
 
   </Step>
   <Step title="Check the result" titleSize="h3">
 
-    If a user/identity's usual project permissions would change after being granted the folder access role, that user/identity is marked with **Overrides project role**:
+    If a user/identity's usual project permissions would change after being granted the folder access role, that user/identity is marked with an **Override** badge:
 
-    ![Overrides project role badge](/images/platform/access-controls/folder-rbac/overrides-project-role-badge.png)
+    ![Override badge](/images/platform/access-controls/folder-rbac/overrides-project-role-badge.png)
 
     Each row now shows their role in a dropdown, which you can use to change or remove it later.
 
@@ -88,7 +93,7 @@ There are five different folder access roles, listed here from least to most pri
 
 ## Setting temporary access
 
-Access can be time-bound so you can choose a duration when you add it, or open the role dropdown on an existing row and set one there. The row then shows how long is left, and once the window elapses the access stops applying immediately and the user or identity falls back to their project roles.
+Access can be time-bound. To set a duration, open the role dropdown on a row that has a folder grant and select **Add Temporary Access**. The row then shows how long is left, and once the window elapses the access stops applying immediately and the user or identity falls back to their project roles.
 
 ![Remaining time on a temporary grant](/images/platform/access-controls/folder-rbac/temporary-access-remaining-time.png)
 
