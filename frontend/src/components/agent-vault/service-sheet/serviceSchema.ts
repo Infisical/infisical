@@ -46,7 +46,7 @@ export const HTTP_CREDENTIAL_TYPES = [
 export const OAUTH_STATUS_LABELS: Record<AgentVaultOauthStatus, string> = {
   [AgentVaultOauthStatus.Connected]: "Authorized",
   [AgentVaultOauthStatus.NeedsReauthorization]: "Needs Reauthorization",
-  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Needs Additional Scopes"
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Missing Scopes"
 };
 
 export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {

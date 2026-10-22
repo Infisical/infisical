@@ -1,6 +1,5 @@
 import { Fragment, ReactNode, useEffect, useId, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-import { format } from "date-fns";
 import { CheckIcon, CircleAlertIcon, CircleXIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -61,7 +60,7 @@ export const OAuthStatusBadge = ({ status }: { status: AgentVaultOauthStatus }) 
   </Badge>
 );
 
-const TONE_CLASS = { danger: "text-danger", warning: "text-warning" } as const;
+const TONE_CLASS = { danger: "[&>svg]:text-danger", warning: "[&>svg]:text-warning" } as const;
 
 const Status = ({
   icon,
@@ -77,8 +76,8 @@ const Status = ({
   <div className="flex min-w-0 flex-col gap-0.5">
     <span
       className={twMerge(
-        "flex items-center gap-1.5 text-sm [&>svg]:size-3.5 [&>svg]:shrink-0",
-        tone ? TONE_CLASS[tone] : "text-foreground"
+        "flex items-center gap-1.5 text-sm text-foreground [&>svg]:size-3.5 [&>svg]:shrink-0",
+        tone && TONE_CLASS[tone]
       )}
     >
       {icon}
@@ -298,8 +297,6 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
 
     if (!stored) return null;
 
-    const authorizedAt = stored.authorizedAt ? new Date(stored.authorizedAt) : null;
-
     let head: ReactNode;
     if (stored.status === AgentVaultOauthStatus.NeedsReauthorization) {
       head = (
@@ -318,27 +315,12 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
           tone="warning"
           title={OAUTH_STATUS_LABELS[AgentVaultOauthStatus.NeedsAdditionalScopes]}
         >
-          An agent needed scopes this authorization doesn&apos;t have.
+          An agent requested scopes that aren&apos;t granted yet. Reauthorize to add them.
         </Status>
       );
     } else {
       head = (
-        <Status
-          icon={<CheckIcon />}
-          title={
-            authorizedAt ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-                  <span tabIndex={0}>Authorized on {format(authorizedAt, "MMM d, yyyy")}</span>
-                </TooltipTrigger>
-                <TooltipContent>{format(authorizedAt, "MMM d, yyyy h:mm a")}</TooltipContent>
-              </Tooltip>
-            ) : (
-              "Authorized"
-            )
-          }
-        />
+        <Status icon={<CheckIcon />} title={OAUTH_STATUS_LABELS[AgentVaultOauthStatus.Connected]} />
       );
     }
 

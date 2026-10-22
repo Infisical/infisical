@@ -162,7 +162,7 @@ Infisical won't save a custom header with the same name as the credential's head
     {"error":"upstream_auth_failed","message":"The MCP server rejected the credential Infisical provided. Reauthorize this service in Infisical Agent Vault."}
     ```
 
-    In the access bundle's **Services** table, the service shows **Needs Additional Scopes** if the server asked for scopes the authorization lacks, and **Needs Reauthorization** if the provider no longer accepts the service's login. If the server rejected the fresh token, the service shows no warning.
+    In the access bundle's **Services** table, the service shows **Missing Scopes** if the server asked for scopes the authorization lacks, and **Needs Reauthorization** if the provider no longer accepts the service's login. If the server rejected the fresh token, the service shows no warning.
 
     In each case, reauthorize the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**. Then try the tool call again.
   </Accordion>
