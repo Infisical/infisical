@@ -43,6 +43,6 @@ Invalidate a certificate when it's compromised, misconfigured, or no longer need
 
 ## Retirement
 
-Remove a certificate from the inventory once it has expired. Discovered and imported certificates can be removed at any time. Certificate Cleanup can automate the removal of expired certificates to keep your inventory clean.
+Deleting a certificate removes it and its private key, and it stays in the inventory as **Deleted**. A deleted certificate can't be renewed, and deleting doesn't revoke it. To restore it, import the same certificate into its original Application and certificate profile. Certificate Cleanup permanently removes expired certificates.
 
 [Learn more about Certificate Cleanup →](/documentation/platform/pki/settings/certificate-cleanup)

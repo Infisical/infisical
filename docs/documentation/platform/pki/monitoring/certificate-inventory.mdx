@@ -39,7 +39,7 @@ To filter the inventory:
 
 | Filter | What it matches |
 | --- | --- |
-| **Status** | Active, Renewed, Expired, or Revoked |
+| **Status** | Active, Renewed, Expired, Revoked, or Deleted |
 | **Expiration Date** | Certificates that expire before or after a date |
 | **Issued Date** | Certificates whose validity starts before or after a date |
 | **Enrollment Method** | The [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) used to request the certificate: ACME, API, EST, or SCEP |
@@ -69,12 +69,13 @@ Infisical reopens the last view you used in this browser.
 
 | View | Shows |
 | --- | --- |
-| **All Certificates** | Every certificate |
+| **All Certificates** | Every certificate, including deleted certificates |
 | **Expiring in 7 days** | Active certificates that expire in the next 7 days |
 | **Expiring in 30 days** | Active certificates that expire in the next 30 days |
 | **Renewed** | Certificates that a [renewal](/documentation/platform/pki/applications/certificate-renewal) replaced with a new certificate |
 | **Expired** | Certificates past their expiration date |
 | **Revoked** | Certificates that were revoked |
+| **Deleted** | Certificates that were [deleted](/documentation/platform/pki/concepts/certificate-lifecycle#retirement) |
 | **Post-Quantum (PQC)** | Certificates with an ML-DSA key |
 | **Classical (Non-PQC)** | Certificates with an RSA or ECDSA key |
 

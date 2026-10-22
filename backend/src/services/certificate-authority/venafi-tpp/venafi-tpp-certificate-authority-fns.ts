@@ -26,6 +26,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import {
   extractExternallyIssuedCertificateFields,
   linkRenewedCertificate,
+  lockRenewalOriginalCertificate,
   splitPemChain
 } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -348,7 +349,10 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "findByIdForUpdate" | "transaction" | "updateById"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
@@ -848,6 +852,11 @@ export const VenafiTppCertificateAuthorityFns = ({
       const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
       await certificateDAL.transaction(async (tx) => {
+        const lockedOriginalCertificate =
+          isRenewal && originalCertificateId
+            ? await lockRenewalOriginalCertificate(certificateDAL, originalCertificateId, tx, parsedFields.serialNumber)
+            : undefined;
+
         const cert = await certificateDAL.create(
           {
             ...parsedFields,
@@ -869,8 +878,8 @@ export const VenafiTppCertificateAuthorityFns = ({
 
         certificateId = cert.id;
 
-        if (isRenewal && originalCertificateId) {
-          await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
+        if (lockedOriginalCertificate) {
+          await linkRenewedCertificate(certificateDAL, lockedOriginalCertificate, cert.id, tx);
         }
 
         await certificateBodyDAL.create(

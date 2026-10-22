@@ -100,7 +100,13 @@ const STEP_FIELDS: Record<DiscoveryJobStep, FieldPath<TDiscoveryJobForm>[]> = {
   [DiscoveryJobStep.Hosts]: ["connections"],
   [DiscoveryJobStep.Folders]: ["searchFolderPaths", "skipFolderPaths"],
   [DiscoveryJobStep.Options]: ["maxFolderDepth", "importStandaloneCaCertificates"],
-  [DiscoveryJobStep.Details]: ["name", "description", "isAutoScanEnabled", "scanIntervalDays"],
+  [DiscoveryJobStep.Details]: [
+    "name",
+    "description",
+    "isAutoScanEnabled",
+    "scanIntervalDays",
+    "restoreDeletedCertificates"
+  ],
   [DiscoveryJobStep.Review]: []
 };
 
@@ -183,7 +189,8 @@ export const DiscoveryJobForm = ({
     const payload = {
       name: form.name,
       targetConfig: buildTargetConfig(form),
-      isAutoScanEnabled: form.isAutoScanEnabled
+      isAutoScanEnabled: form.isAutoScanEnabled,
+      restoreDeletedCertificates: form.restoreDeletedCertificates
     };
 
     if (discovery) {

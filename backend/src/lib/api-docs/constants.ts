@@ -1121,9 +1121,10 @@ export const PROJECTS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
     limit: "The number of certificates to return.",
     forPkiSync: "Retrieve only certificates available for PKI sync.",
+    includeDeleted: "Also return deleted certificates when no status filter is set.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
     status:
-      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked.",
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired, revoked and deleted. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked. Deleted certificates match only deleted.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -2300,11 +2301,19 @@ export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
+    includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
     externalMetadata:
       "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
-      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
+      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked and deleted certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked or deleted. Use this to follow renewals without walking the chain one certificate at a time.",
+    deletedAt:
+      "When this certificate was deleted, or null if it has not been. A deleted certificate keeps its record, metadata and renewal history, but its certificate and private key are no longer available.",
+    deletedByActorType: "The type of actor that deleted this certificate: 'user' or 'identity'.",
+    deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
+    deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists.",
+    deletedVia:
+      "The client the certificate was deleted from, such as 'web' for the Infisical UI or 'terraform' for the Terraform provider."
   },
   RENEW: {
     id: "The ID of the certificate to renew.",

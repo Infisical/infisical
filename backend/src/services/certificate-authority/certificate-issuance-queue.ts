@@ -13,6 +13,7 @@ import {
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
 import {
   CertExtendedKeyUsage,
   CertKeyUsage,
@@ -443,6 +444,11 @@ export const certificateIssuanceQueueFactory = ({
         throw new NotFoundError({
           message: `Certificate authority ID is required for external CA certificate issuance`
         });
+      }
+
+      if (isRenewal && originalCertificateId) {
+        const originalCertificate = await certificateDAL.findById(originalCertificateId);
+        if (originalCertificate) assertCertificateNotDeleted(originalCertificate);
       }
 
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);

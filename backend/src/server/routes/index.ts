@@ -3820,7 +3820,10 @@ export const registerRoutes = async (
     licenseService,
     usageMeteringService,
     caKeySourceService,
-    internalCertificateAuthorityDAL
+    internalCertificateAuthorityDAL,
+    signerDAL,
+    userDAL,
+    identityDAL
   });
 
   const godaddyCaFns = GoDaddyCertificateAuthorityFns({
@@ -4166,6 +4169,7 @@ export const registerRoutes = async (
   });
 
   const digicertCaQueue = digicertCertificateAuthorityQueueServiceFactory({
+    certificateDAL,
     cronJob,
     certificateRequestDAL,
     certificateRequestService,
@@ -4192,6 +4196,7 @@ export const registerRoutes = async (
   });
 
   const godaddyCaQueue = godaddyCertificateAuthorityQueueServiceFactory({
+    certificateDAL,
     cronJob,
     certificateRequestDAL,
     certificateRequestService,
@@ -4266,6 +4271,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
+    certificateDAL,
     certificatePolicyDAL,
     acmeAccountDAL,
     acmeOrderDAL,
@@ -4341,7 +4347,8 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayPoolService,
     telemetryService,
-    keyStore
+    keyStore,
+    auditLogService
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({

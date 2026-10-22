@@ -325,6 +325,7 @@ export const isSignerCertIssuedByCa = async ({
 
 export enum ScepRenewalDenyReason {
   InvalidSigner = "invalid-signer",
+  SignerDeleted = "signer-deleted",
   WrongProfile = "wrong-profile",
   WrongApplication = "wrong-application",
   SubjectMismatch = "subject-mismatch",
@@ -422,7 +423,7 @@ export const evaluateScepRenewalAuthorization = ({
   signerCertSubjectAltNames
 }: {
   isValidSigner: boolean;
-  storedSignerCert?: { profileId?: string | null; applicationId?: string | null } | null;
+  storedSignerCert?: { profileId?: string | null; applicationId?: string | null; deletedAt?: Date | null } | null;
   profileId: string;
   applicationId?: string | null;
   csrForwardedToCa: boolean;
@@ -434,6 +435,10 @@ export const evaluateScepRenewalAuthorization = ({
 }): TScepRenewalAuthResult => {
   if (!isValidSigner) {
     return { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
+  }
+
+  if (storedSignerCert?.deletedAt) {
+    return { authorized: false, reason: ScepRenewalDenyReason.SignerDeleted };
   }
 
   if (!storedSignerCert || storedSignerCert.profileId !== profileId) {

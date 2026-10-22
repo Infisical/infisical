@@ -14,6 +14,23 @@ type CertificateSyncFindFilter = Parameters<typeof buildFindFilter<TCertificateS
 export const certificateSyncDALFactory = (db: TDbClient) => {
   const certificateSyncOrm = ormify(db, TableName.CertificateSync);
 
+  const $withLiveCertificateIds = async <T>(
+    certificateIds: string[],
+    tx: Knex | undefined,
+    write: (liveIds: Set<string>, trx: Knex) => Promise<T>
+  ): Promise<T> => {
+    const run = async (trx: Knex) => {
+      const rows = (await trx(TableName.Certificate)
+        .whereIn("id", certificateIds)
+        .whereNull("deletedAt")
+        .orderBy("id")
+        .forShare()
+        .select("id")) as Array<{ id: string }>;
+      return write(new Set(rows.map(({ id }) => id)), trx);
+    };
+    return tx ? run(tx) : db.transaction(run);
+  };
+
   const findByPkiSyncId = async (pkiSyncId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.CertificateSync)
@@ -97,16 +114,19 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<void> => {
     try {
-      await (tx || db)(TableName.CertificateSync)
-        .insert({ pkiSyncId, certificateId, syncStatus: CertificateSyncStatus.Pending, externalIdentifier })
-        .onConflict(["pkiSyncId", "certificateId"])
-        .ignore();
-      await (tx || db)(TableName.CertificateSync)
-        .where({ pkiSyncId, certificateId })
-        .where((qb) => {
-          void qb.whereNull("externalIdentifier").orWhereNot("externalIdentifier", externalIdentifier);
-        })
-        .update({ externalIdentifier });
+      await $withLiveCertificateIds([certificateId], tx, async (liveIds, trx) => {
+        if (!liveIds.has(certificateId)) return;
+        await trx(TableName.CertificateSync)
+          .insert({ pkiSyncId, certificateId, syncStatus: CertificateSyncStatus.Pending, externalIdentifier })
+          .onConflict(["pkiSyncId", "certificateId"])
+          .ignore();
+        await trx(TableName.CertificateSync)
+          .where({ pkiSyncId, certificateId })
+          .where((qb) => {
+            void qb.whereNull("externalIdentifier").orWhereNot("externalIdentifier", externalIdentifier);
+          })
+          .update({ externalIdentifier });
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "ClaimExternalIdentifier" });
     }
@@ -118,16 +138,23 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TCertificateSyncs[]> => {
     try {
-      const insertData = certificateData.map(({ certificateId, externalIdentifier }) => ({
-        pkiSyncId,
-        certificateId,
-        syncStatus: CertificateSyncStatus.Pending,
-        externalIdentifier
-      }));
+      return await $withLiveCertificateIds(
+        certificateData.map(({ certificateId }) => certificateId),
+        tx,
+        async (liveIds, trx) => {
+          const insertData = certificateData
+            .filter(({ certificateId }) => liveIds.has(certificateId))
+            .map(({ certificateId, externalIdentifier }) => ({
+              pkiSyncId,
+              certificateId,
+              syncStatus: CertificateSyncStatus.Pending,
+              externalIdentifier
+            }));
+          if (insertData.length === 0) return [];
 
-      const docs = await (tx || db)(TableName.CertificateSync).insert(insertData).returning("*");
-
-      return docs;
+          return trx(TableName.CertificateSync).insert(insertData).returning("*");
+        }
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "AddCertificates" });
     }

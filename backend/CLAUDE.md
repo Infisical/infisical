@@ -943,6 +943,60 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
+### Certificate soft delete
+
+Deleting a certificate stamps `deletedAt`, `deletedByActorType`, `deletedByActorId` and `deletedVia` on
+the row and, in the same transaction, removes its `certificate_bodies`, `certificate_secrets` and
+`certificate_syncs` rows. The row itself stays, so the inventory, audit trail and renewal chain keep
+pointing at something. Things that rely on that:
+
+- **Every background or enumeration query filters `whereNull("deletedAt")`**: expiry alerts, auto-renewal,
+  syncs, discovery, HSM connector usage and stats. A new query over `certificates` needs the same filter unless
+  it is deliberately showing deleted rows. Reads the API serves skip deleted certificates by default too:
+  `GET /certificates/:id` returns 404 and list or search returns none unless the caller passes
+  `includeDeleted` (or a `deleted` status filter), so clients written before soft delete keep seeing what they
+  saw when the row was hard deleted. The one background job that still reads deleted rows is the DigiCert
+  revocation sync: it records an upstream revocation on a deleted certificate (without alerts) so the quota
+  stops counting it.
+- **The foreign key no longer stops a write that references a deleted certificate.** A hard delete made any
+  later insert pointing at the row fail; the kept row accepts it. So every write that attaches something to a
+  certificate (sync link, collection item, signer, metadata, Application) locks the row `FOR SHARE` or
+  `FOR UPDATE` inside its own transaction and rechecks `deletedAt` on the locked copy; a check before the
+  transaction races the delete. `certificateSyncDAL.addCertificates` and `claimExternalIdentifier` do this
+  themselves and skip deleted ids, so every sync provider is covered. A new writer belongs in that DAL or
+  follows the same pattern.
+- **The licence quota still counts a deleted certificate Infisical issued until it expires or is revoked**,
+  because deleting neither revokes it nor requires it to be expired, so excluding it would let an org free
+  its cap while the certificate stays trusted. Deleted imported and discovered certificates stop counting, as
+  the hard delete used to make them.
+- **CRL and OCSP keep deleted certificates.** Deletion is not revocation, so a revoked certificate stays on
+  the CRL after it is deleted, and revoking a deleted certificate is still allowed.
+- **A deleted certificate is never renewed or changed.** `assertCertificateNotDeleted` guards the renewal
+  entry points, EST re-enroll and SCEP renewal refuse a deleted client certificate, and
+  external-CA renewals lock the original with `lockRenewalOriginalCertificate` as the first statement of
+  the transaction that stores the successor (before the insert, whose foreign key would otherwise take a
+  weaker lock first and deadlock two concurrent renewals), so a delete that commits while a CA is still
+  issuing aborts the link, and the error names the serial the CA issued so it can be revoked upstream.
+  Internal-CA and self-signed renewals run in one transaction that checks the original first, so they take no
+  extra lock. The issuance queue and the DigiCert and GoDaddy pollers also check the original before calling
+  the CA.
+- **Re-import restores the row** (`restoreDeleted`) when the deleted row has the same fingerprint, Application,
+  project, profile and CA (`canRestoreDeletedCertificate`). The import has to name the deleted row's profile, so the
+  profile's `IssueCert` check always runs before a profile-managed certificate comes back. Both restore paths
+  emit `restore-cert` with `restoredVia`, and `restoreDeleted` resets the HSM key fields. **Rediscovery restores it only when the
+  discovery job has `restoreDeletedCertificates` on** and the row has no Application, profile or CA (the same
+  `canRestoreDeletedCertificate` rule, which also requires the same project); otherwise the installation is linked to the deleted row,
+  so the inventory can still show where a deleted certificate is deployed.
+- **Discovery matches deleted rows by fingerprint, and certificates issued before 2026-01-27 have none.** The
+  delete computes and stores a missing fingerprint before it removes the body, so discovery can still find the
+  deleted row. If the body can't be read, the delete fails and nothing is removed.
+- **A deleted certificate can keep `keySource = hsm` after its HSM connector is deleted.** The key source CHECK
+  allows a null `hsmConnectorId` on deleted rows, so deleting a connector only detaches them and the record
+  still says the key lived in an HSM.
+- **Serial numbers stay globally unique, deleted rows included** (`certificates_serialnumber_unique`), so a
+  deleted certificate still holds its serial: re-importing it restores the row, and a re-import that cannot be
+  restored (another Application, profile or CA) is refused with a message naming where to import it instead.
+
 ### Certificate revocation: CRL and OCSP
 
 Internal CAs publish revocation two ways, both unauthenticated public endpoints under

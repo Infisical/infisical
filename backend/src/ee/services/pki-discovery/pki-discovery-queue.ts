@@ -1,3 +1,4 @@
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -40,6 +41,7 @@ type TPkiDiscoveryQueueFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "selectGatewayFromPool">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   keyStore: Pick<TKeyStoreFactory, "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 const SCAN_WORKER_CONCURRENCY = 3;
@@ -64,7 +66,8 @@ export const pkiDiscoveryQueueFactory = ({
   gatewayV2DAL,
   gatewayPoolService,
   telemetryService,
-  keyStore
+  keyStore,
+  auditLogService
 }: TPkiDiscoveryQueueFactoryDep) => {
   const scanDeps = {
     appConnectionDAL,
@@ -81,7 +84,8 @@ export const pkiDiscoveryQueueFactory = ({
     gatewayV2DAL,
     gatewayPoolService,
     telemetryService,
-    keyStore
+    keyStore,
+    auditLogService
   };
 
   const startPkiDiscoveryScanQueue = () => {

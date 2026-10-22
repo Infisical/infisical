@@ -194,7 +194,8 @@ export const applyPkiSyncCertificateDiff = async (
   removalOptions?: TPkiSyncRemovalOptions
 ): Promise<{ linked: TPkiSyncCertificateRef[]; unlinked: TPkiSyncCertificateRef[] }> => {
   const { certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL } = deps;
-  const { toLink, toUnlink } = diff;
+  const { toUnlink } = diff;
+  let { toLink } = diff;
 
   const unlinkIds = new Set(toUnlink.map((certificate) => certificate.id));
   const canRemoveCertificates = Boolean(
@@ -211,11 +212,13 @@ export const applyPkiSyncCertificateDiff = async (
     if (writeFilters) await writeFilters(tx);
 
     if (toLink.length > 0) {
-      await certificateSyncDAL.addCertificates(
+      const linked = await certificateSyncDAL.addCertificates(
         pkiSync.id,
         toLink.map((certificate) => ({ certificateId: certificate.id })),
         tx
       );
+      const linkedIds = new Set(linked.map(({ certificateId }) => certificateId));
+      toLink = toLink.filter((certificate) => linkedIds.has(certificate.id));
     }
 
     if (idsOnlyLinked.length > 0) {

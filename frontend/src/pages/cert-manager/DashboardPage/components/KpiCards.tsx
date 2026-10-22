@@ -2,6 +2,7 @@ import { AlertTriangle, FileCheck, FileClock, FileKey, FileX } from "lucide-reac
 
 import { Badge, Card, CardContent } from "@app/components/v3";
 import type { TDashboardStats } from "@app/hooks/api/certificates";
+import { LIVE_CERTIFICATE_STATUSES } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 import { formatShare } from "./chart-theme";
 
@@ -18,7 +19,7 @@ const cards = [
     icon: FileKey,
     iconClass: "text-org",
     iconBg: "bg-org/10 border-org/20",
-    filters: {} as Record<string, string>
+    filters: { filterStatus: LIVE_CERTIFICATE_STATUSES.join(",") } as Record<string, string>
   },
   {
     key: "active" as const,

@@ -5,6 +5,8 @@ import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { getCertificateDeletedMessage } from "../certificate/certificate-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { caUsesExternalIssuanceQueue } from "../certificate-authority/certificate-authority-maps";
@@ -17,7 +19,7 @@ import {
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
-import { CertificateRequestStatus } from "./certificate-request-types";
+import { CertificateRequestStatus, TUpdateCertificateRequestStatusDTO } from "./certificate-request-types";
 
 type TCertificateRequestBookkeepingDAL = Pick<
   TCertificateRequestDALFactory,
@@ -71,6 +73,41 @@ export const markPendingRequestFailed = async (
       `Failed to mark certificate request as failed [certificateRequestId=${certificateRequestId}]`
     );
   }
+};
+
+export const failRenewalIfOriginalDeleted = async ({
+  certificateDAL,
+  certificateRequestService,
+  certificateRequestId,
+  originalCertificateId,
+  upstreamOrderReference
+}: {
+  certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  certificateRequestService: {
+    updateCertificateRequestStatus: (args: TUpdateCertificateRequestStatusDTO) => Promise<unknown>;
+  };
+  certificateRequestId: string;
+  originalCertificateId: string;
+  upstreamOrderReference: string;
+}) => {
+  const originalCertificate = await certificateDAL.findById(originalCertificateId);
+  if (!originalCertificate?.deletedAt) return null;
+
+  await certificateRequestService.updateCertificateRequestStatus({
+    certificateRequestId,
+    status: CertificateRequestStatus.FAILED,
+    operation: CertificateIssuanceOperation.RENEW,
+    originalCertificateId,
+    errorMessage: `${getCertificateDeletedMessage({ ...originalCertificate, deletedAt: originalCertificate.deletedAt })} Cancel ${upstreamOrderReference} with the certificate authority if you no longer need it.`
+  });
+  logger.info(
+    `Renewal abandoned because the original certificate was deleted [certificateRequestId=${certificateRequestId}] [originalCertificateId=${originalCertificateId}]`
+  );
+  return {
+    status: CertificateRequestStatus.FAILED as const,
+    orderStatus: "original-deleted",
+    reason: "original certificate deleted"
+  };
 };
 
 export type TRecordCertificateRequestFailureDeps = Omit<

@@ -75,6 +75,14 @@ const SYSTEM_VIEWS: TSystemView[] = [
     createdByUserId: null
   },
   {
+    id: "system-deleted",
+    name: "Deleted",
+    filters: { status: ["deleted"] },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
+  {
     id: "system-pqc",
     name: "Post-Quantum (PQC)",
     filters: { keyAlgorithm: PQC_KEY_ALGORITHMS },

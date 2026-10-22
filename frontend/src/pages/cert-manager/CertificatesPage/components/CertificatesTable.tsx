@@ -95,12 +95,13 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
-  getCertificateDeletionBlockReason,
+  canRevokeAfterDeletion,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
   isExpiringWithinOneDay,
   isManagedCertificate,
+  liveCertificateStatusFilter,
   RENEWAL_UNAVAILABLE_NO_PROFILE
 } from "./CertificatesTable.utils";
 import { ColumnVisibilityToggle, getDefaultVisibleColumns } from "./ColumnVisibilityToggle";
@@ -135,6 +136,11 @@ type Props = {
       renewalError?: string;
       renewedFromCertificateId?: string;
       renewedByCertificateId?: string;
+      status?: string;
+      hasPrivateKey?: boolean;
+      canRevoke?: boolean;
+      isRevocableAfterDeletion?: boolean;
+      applicationId?: string | null;
     }
   ) => void;
   externalFilter?: {
@@ -173,6 +179,27 @@ const SortIcon = ({
   if (!sb || sb !== column) return null;
   const Icon = so === "asc" ? ArrowUpIcon : ArrowDownIcon;
   return <Icon className="ml-1 inline-block size-3" />;
+};
+
+const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
+  if (viewId === "system-pqc") {
+    return [
+      { id: "sv-pqc", field: "keyAlgorithm", operator: "in", value: [...PQC_KEY_ALGORITHMS] },
+      liveCertificateStatusFilter("sv-pqc-status")
+    ];
+  }
+  if (viewId === "system-non-pqc") {
+    return [
+      {
+        id: "sv-non-pqc",
+        field: "keyAlgorithm",
+        operator: "in",
+        value: [...NON_PQC_KEY_ALGORITHMS]
+      },
+      liveCertificateStatusFilter("sv-non-pqc-status")
+    ];
+  }
+  return [];
 };
 
 export const CertificatesTable = ({
@@ -216,25 +243,6 @@ export const CertificatesTable = ({
       PkiApplicationResourceSub.PkiSyncs
     )
   );
-
-  const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
-    if (viewId === "system-pqc") {
-      return [
-        { id: "sv-pqc", field: "keyAlgorithm", operator: "in", value: [...PQC_KEY_ALGORITHMS] }
-      ];
-    }
-    if (viewId === "system-non-pqc") {
-      return [
-        {
-          id: "sv-non-pqc",
-          field: "keyAlgorithm",
-          operator: "in",
-          value: [...NON_PQC_KEY_ALGORITHMS]
-        }
-      ];
-    }
-    return [];
-  };
 
   const [appliedFilters, setAppliedFilters] = useState<FilterRule[]>(() => {
     if (dashboardFilters?.length) return dashboardFilters;
@@ -402,6 +410,7 @@ export const CertificatesTable = ({
     metadataFilter: filterSearchParams.metadata,
     applicationId,
     applicationIds: filterSearchParams.applicationIds,
+    includeDeleted: true,
     sortBy,
     sortOrder
   });
@@ -530,24 +539,12 @@ export const CertificatesTable = ({
         setAppliedFilters([
           { id: "sv-status", field: "status", operator: "in", value: [CertStatus.REVOKED] }
         ]);
-      } else if (viewId === "system-pqc") {
+      } else if (viewId === "system-deleted") {
         setAppliedFilters([
-          {
-            id: "sv-pqc",
-            field: "keyAlgorithm",
-            operator: "in",
-            value: [...PQC_KEY_ALGORITHMS]
-          }
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.DELETED] }
         ]);
-      } else if (viewId === "system-non-pqc") {
-        setAppliedFilters([
-          {
-            id: "sv-non-pqc",
-            field: "keyAlgorithm",
-            operator: "in",
-            value: [...NON_PQC_KEY_ALGORITHMS]
-          }
-        ]);
+      } else if (viewId === "system-pqc" || viewId === "system-non-pqc") {
+        setAppliedFilters(getFiltersForSystemViewId(viewId));
       } else {
         const customFilters = filters as TInventoryViewFilters;
         const rules: FilterRule[] = [];
@@ -895,6 +892,7 @@ export const CertificatesTable = ({
                   const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
                   const displayStatus = getCertificateDisplayStatus(certificate);
                   const isRevoked = certificate.status === CertStatus.REVOKED;
+                  const isDeleted = Boolean(certificate.deletedAt);
                   const isExpired = new Date(certificate.notAfter) < new Date();
                   const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
                   const hasFailed = Boolean(certificate.renewalError);
@@ -923,6 +921,16 @@ export const CertificatesTable = ({
                     Boolean(certificate.caId) &&
                     (!certificateCaType ||
                       caSupportsCapability(certificateCaType, CaCapability.REVOKE_CERTIFICATES));
+                  const isRevocableAfterDeletion = canRevokeAfterDeletion(
+                    certificate,
+                    certificateCaType
+                  );
+                  const canOfferRevoke =
+                    canRevokeCertificate &&
+                    !isRevoked &&
+                    certificate.source !== CertSource.Discovered &&
+                    (!isDeleted || isRevocableAfterDeletion) &&
+                    !(isInventoryView && certificate.applicationId);
                   const canEditPkiSyncs =
                     permission.can(
                       ProjectPermissionPkiSyncActions.Edit,
@@ -930,6 +938,7 @@ export const CertificatesTable = ({
                     ) || canEditPkiSyncsAtApplication;
                   const canShowAutoRenewalIcon = Boolean(
                     !isInventoryView &&
+                      !isDeleted &&
                       certificate.profileId &&
                       certificate.hasPrivateKey !== false &&
                       !certificate.renewedByCertificateId &&
@@ -979,16 +988,17 @@ export const CertificatesTable = ({
                       )}
                       {visibleColumns.has("status") && (
                         <TableCell>
-                          <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                            {isDeleted && isRevoked && <Badge variant="danger">Revoked</Badge>}
+                          </div>
                         </TableCell>
                       )}
                       {visibleColumns.has("health") && (
                         <TableCell>
-                          {isRevoked ? (
-                            <Badge variant="danger">Critical</Badge>
-                          ) : (
-                            <Badge variant={variant}>{label}</Badge>
-                          )}
+                          {isDeleted && <EmptyCell />}
+                          {!isDeleted && isRevoked && <Badge variant="danger">Critical</Badge>}
+                          {!isDeleted && !isRevoked && <Badge variant={variant}>{label}</Badge>}
                         </TableCell>
                       )}
                       {visibleColumns.has("issuedAt") && (
@@ -1112,40 +1122,46 @@ export const CertificatesTable = ({
                               <IconButton
                                 variant="ghost"
                                 size="xs"
+                                isDisabled={isDeleted && !canOfferRevoke}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontalIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" sideOffset={2}>
-                              <DropdownMenuItem
-                                isDisabled={!canReadCertificate}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("certificateExport", {
-                                    certificateId: certificate.id,
-                                    serialNumber: certificate.serialNumber
-                                  });
-                                }}
-                              >
-                                <FileOutputIcon />
-                                Export Certificate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                isDisabled={!canReadCertificate}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("certificateCert", {
-                                    serialNumber: certificate.serialNumber
-                                  });
-                                }}
-                              >
-                                <EyeIcon />
-                                View Details
-                              </DropdownMenuItem>
+                              {!isDeleted && (
+                                <DropdownMenuItem
+                                  isDisabled={!canReadCertificate}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("certificateExport", {
+                                      certificateId: certificate.id,
+                                      serialNumber: certificate.serialNumber
+                                    });
+                                  }}
+                                >
+                                  <FileOutputIcon />
+                                  Export Certificate
+                                </DropdownMenuItem>
+                              )}
+                              {!isDeleted && (
+                                <DropdownMenuItem
+                                  isDisabled={!canReadCertificate}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("certificateCert", {
+                                      serialNumber: certificate.serialNumber
+                                    });
+                                  }}
+                                >
+                                  <EyeIcon />
+                                  View Details
+                                </DropdownMenuItem>
+                              )}
                               {(() => {
                                 const canManageRenewal =
                                   !isInventoryView &&
+                                  !isDeleted &&
                                   certificate.profileId &&
                                   certificate.hasPrivateKey !== false &&
                                   !certificate.renewedByCertificateId &&
@@ -1196,6 +1212,7 @@ export const CertificatesTable = ({
                               {(() => {
                                 const canDisableRenewal =
                                   !isInventoryView &&
+                                  !isDeleted &&
                                   certificate.profileId &&
                                   certificate.hasPrivateKey !== false &&
                                   !certificate.renewedByCertificateId &&
@@ -1225,6 +1242,7 @@ export const CertificatesTable = ({
                               {(() => {
                                 const isRenewable =
                                   !isInventoryView &&
+                                  !isDeleted &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired;
@@ -1269,6 +1287,7 @@ export const CertificatesTable = ({
                                 );
                               })()}
                               {!isInventoryView &&
+                                !isDeleted &&
                                 certificate.status === CertStatus.ACTIVE &&
                                 !certificate.renewedByCertificateId &&
                                 certificate.source !== CertSource.Discovered && (
@@ -1286,26 +1305,21 @@ export const CertificatesTable = ({
                                     Manage PKI Syncs
                                   </DropdownMenuItem>
                                 )}
-                              {hasProjectRole("admin") && !certificate.applicationId && (
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAssignTargetId(certificate.id);
-                                  }}
-                                >
-                                  <BoxIcon />
-                                  Assign to Application
-                                </DropdownMenuItem>
-                              )}
+                              {hasProjectRole("admin") &&
+                                !isDeleted &&
+                                !certificate.applicationId && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAssignTargetId(certificate.id);
+                                    }}
+                                  >
+                                    <BoxIcon />
+                                    Assign to Application
+                                  </DropdownMenuItem>
+                                )}
                               {(() => {
-                                if (
-                                  !canRevokeCertificate ||
-                                  isRevoked ||
-                                  certificate.source === CertSource.Discovered ||
-                                  (isInventoryView && certificate.applicationId)
-                                ) {
-                                  return null;
-                                }
+                                if (!canOfferRevoke) return null;
 
                                 return (
                                   <DropdownMenuItem
@@ -1323,49 +1337,28 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 );
                               })()}
-                              {!(isInventoryView && certificate.applicationId) &&
-                                (() => {
-                                  const deletionBlockReason = getCertificateDeletionBlockReason(
-                                    certificate,
-                                    canRevokeCertificate
-                                  );
-
-                                  const item = (
-                                    <DropdownMenuItem
-                                      variant="danger"
-                                      isDisabled={
-                                        !canDeleteCertificate || Boolean(deletionBlockReason)
-                                      }
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("deleteCertificate", {
-                                          certificateId: certificate.id,
-                                          commonName: certificate.commonName
-                                        });
-                                      }}
-                                    >
-                                      <Trash2Icon />
-                                      Delete Certificate
-                                    </DropdownMenuItem>
-                                  );
-
-                                  if (!deletionBlockReason) return item;
-
-                                  return (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div>{item}</div>
-                                      </TooltipTrigger>
-                                      <TooltipContent
-                                        side="left"
-                                        sideOffset={20}
-                                        className="max-w-72"
-                                      >
-                                        {deletionBlockReason}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  );
-                                })()}
+                              {!isDeleted && !(isInventoryView && certificate.applicationId) && (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  isDisabled={!canDeleteCertificate}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("deleteCertificate", {
+                                      certificateId: certificate.id,
+                                      applicationId: certificate.applicationId,
+                                      commonName: certificate.commonName,
+                                      status: certificate.status,
+                                      notAfter: certificate.notAfter,
+                                      hasPrivateKey: certificate.hasPrivateKey,
+                                      canRevoke: canRevokeCertificate,
+                                      isRevocableAfterDeletion
+                                    });
+                                  }}
+                                >
+                                  <Trash2Icon />
+                                  Delete Certificate
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

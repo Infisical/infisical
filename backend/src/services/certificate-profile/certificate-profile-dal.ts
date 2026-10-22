@@ -699,6 +699,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         });
       }
 
+      query = status === CertStatus.DELETED ? query.whereNotNull("deletedAt") : query.whereNull("deletedAt");
+
       if (status) {
         switch (status) {
           case CertStatus.ACTIVE:
@@ -727,13 +729,15 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .select((tx || db).ref("notAfter").withSchema(TableName.Certificate))
         .select((tx || db).ref("revokedAt").withSchema(TableName.Certificate))
         .select((tx || db).ref("createdAt").withSchema(TableName.Certificate))
+        .select((tx || db).ref("deletedAt").withSchema(TableName.Certificate))
         .orderBy("createdAt", "desc")
         .offset(offset)
         .limit(limit);
 
       return certificates.map((cert) => ({
         ...cert,
-        revokedAt: cert.revokedAt ?? null
+        revokedAt: cert.revokedAt ?? null,
+        deletedAt: cert.deletedAt ?? null
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Get certificates by profile" });
@@ -749,6 +753,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .where("status", "active")
         .where("notAfter", ">", now)
         .whereNull("revokedAt")
+        .whereNull("deletedAt")
         .orderBy("createdAt", "desc")
         .first();
 
