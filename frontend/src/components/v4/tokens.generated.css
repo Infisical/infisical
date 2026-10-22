@@ -144,7 +144,7 @@
   --v4-info-bg: #dfe7ef;
   --v4-info-wash: #eef3f8;
   --v4-info-line: #c3d1df;
-  --v4-link: var(--v4-info);
+  --v4-link: var(--v4-ink);
   --v4-sw-on: var(--v4-ink);
   --v4-sw-knob-on: var(--v4-accent);
   --v4-slider-range: var(--v4-ink);
@@ -321,7 +321,7 @@
   --v4-info-bg: #121e2b;
   --v4-info-wash: #0e1620;
   --v4-info-line: #243a52;
-  --v4-link: var(--v4-info);
+  --v4-link: var(--v4-ink);
   --v4-sw-on: var(--v4-accent);
   --v4-sw-knob-on: var(--v4-on-accent);
   --v4-slider-range: var(--v4-accent);

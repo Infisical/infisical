@@ -23,7 +23,10 @@ export const baselineOverlays = [
     ],
     referenceNames: ["AlertDialog"],
     behavior: [
-      "Controlled open/onOpenChange or defaultOpen owns visibility. Action and Cancel are Radix close controls; an async operation must explicitly control closing while it runs."
+      "Controlled open/onOpenChange or defaultOpen owns visibility. Action and Cancel are Radix close controls; an async operation must explicitly control closing while it runs.",
+      "tone danger (the default) shows a 40px bad-bg tile with the trash icon above the title; icon changes the glyph and tone neutral removes the tile. The destructive action is the solid danger Button: bad fill, on-bad text, the neutral disabled control when disabled.",
+      "confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.",
+      "One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer."
     ],
     accessibility: [
       "Title and Description name the alert dialog. Focus starts on Cancel and returns to the trigger on close. The dialog stays inside the viewport, and Escape inside an open editor closes that editor first."
@@ -49,6 +52,12 @@ export const baselineOverlays = [
         title: "Constrained content",
         module: "./examples/alert-dialog/content.tsx",
         states: ["overflow"]
+      },
+      {
+        id: "confirm",
+        title: "Type to confirm and tone",
+        module: "./examples/alert-dialog/confirm.tsx",
+        states: ["default", "disabled"]
       }
     ],
     coverage: [
@@ -66,6 +75,14 @@ export const baselineOverlays = [
             exampleId: "sizes",
             label: "sm"
           }
+        ]
+      },
+      {
+        axis: "AlertDialogContent.tone",
+        expected: ["danger", "neutral"],
+        shown: [
+          { value: "danger", exampleId: "confirm", label: "danger" },
+          { value: "neutral", exampleId: "confirm", label: "neutral" }
         ]
       }
     ],

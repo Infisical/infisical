@@ -37,8 +37,7 @@ const buttonVariants = cva(
           "hover:bg-[color:var(--v4-action-ghost-hover)] hover:text-foreground aria-expanded:bg-[color:var(--v4-action-ghost-hover)] aria-expanded:text-foreground",
           styles.neutralSelection
         ],
-        destructive:
-          "bg-[color:var(--v4-action-danger-surface)] text-destructive hover:bg-[color:var(--v4-action-danger-hover)]",
+        destructive: styles.danger,
         link: styles.link
       },
       size: {
@@ -55,18 +54,10 @@ const buttonVariants = cva(
     },
     compoundVariants: [
       {
-        variant: [
-          "primary",
-          "default",
-          "danger-ghost",
-          "outline",
-          "secondary",
-          "ghost",
-          "destructive",
-          "link"
-        ],
+        variant: ["primary", "default", "danger-ghost", "outline", "secondary", "ghost", "link"],
         className: [styles.paintTransition, "disabled:opacity-50"]
-      }
+      },
+      { variant: "destructive", className: styles.paintTransition }
     ],
     defaultVariants: {
       variant: "default",

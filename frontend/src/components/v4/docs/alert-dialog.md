@@ -48,6 +48,9 @@ Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 ## Behavior
 
 - Controlled open/onOpenChange or defaultOpen owns visibility. Action and Cancel are Radix close controls; an async operation must explicitly control closing while it runs.
+- tone danger (the default) shows a 40px bad-bg tile with the trash icon above the title; icon changes the glyph and tone neutral removes the tile. The destructive action is the solid danger Button: bad fill, on-bad text, the neutral disabled control when disabled.
+- confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.
+- One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.
 
 ## Accessibility
 
@@ -74,16 +77,22 @@ Source declarations and review criteria only. Generation checks references and c
 - default: example `sizes`, visible label "default".
 - sm: example `sizes`, visible label "sm".
 
+### AlertDialogContent.tone
+
+- danger: example `confirm`, visible label "danger".
+- neutral: example `confirm`, visible label "neutral".
+
 ## Executable examples
 
 ### Confirmation states
 
 Save this example at `src/pages/design-system/examples/alert-dialog/default.tsx`; its relative imports are generated for that exact path. States: default, loading, error, keyboard.
 
-Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/alert, @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
+import { Alert, AlertDescription } from "../../../../components/v4/ui/alert";
 import * as UI from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
 export default function Example() {
@@ -101,7 +110,9 @@ export default function Example() {
                   This client will no longer read Staging secrets.
                 </UI.AlertDialogDescription>
               </UI.AlertDialogHeader>
-              {state === "Error" && <p role="alert">Access could not be revoked. Try again.</p>}
+              {state === "Error" && (<Alert tone="bad">
+                  <AlertDescription>Access could not be revoked. Try again.</AlertDescription>
+                </Alert>)}
               <UI.AlertDialogFooter>
                 <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
                 <UI.AlertDialogAction asChild>
@@ -192,6 +203,61 @@ export default function Example() {
       </UI.AlertDialogContent>
     </UI.AlertDialog>
   );
+}
+```
+
+### Type to confirm and tone
+
+Save this example at `src/pages/design-system/examples/alert-dialog/confirm.tsx`; its relative imports are generated for that exact path. States: default, disabled.
+
+Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+import * as UI from "../../../../components/v4/ui/alert-dialog";
+import { Button } from "../../../../components/v4/ui/button";
+export default function Example() {
+    const [open, setOpen] = useState<string | null>(null);
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
+        <UI.AlertDialog open={open === "danger"} onOpenChange={(next) => setOpen(next ? "danger" : null)}>
+          <UI.AlertDialogTrigger asChild>
+            <Button variant="outline">Delete project</Button>
+          </UI.AlertDialogTrigger>
+          <UI.AlertDialogContent confirmText="payments-api">
+            <UI.AlertDialogHeader>
+              <UI.AlertDialogTitle>Delete payments-api?</UI.AlertDialogTitle>
+              <UI.AlertDialogDescription>
+                All 52 secrets, 9 environments and their history are removed. This cannot be undone.
+              </UI.AlertDialogDescription>
+            </UI.AlertDialogHeader>
+            <UI.AlertDialogFooter>
+              <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
+              <UI.AlertDialogAction variant="destructive">Delete project</UI.AlertDialogAction>
+            </UI.AlertDialogFooter>
+          </UI.AlertDialogContent>
+        </UI.AlertDialog>
+      </div><figcaption className="text-muted-foreground text-xs">{"danger"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
+        <UI.AlertDialog open={open === "neutral"} onOpenChange={(next) => setOpen(next ? "neutral" : null)}>
+          <UI.AlertDialogTrigger asChild>
+            <Button variant="outline">Rotate key</Button>
+          </UI.AlertDialogTrigger>
+          <UI.AlertDialogContent tone="neutral">
+            <UI.AlertDialogHeader>
+              <UI.AlertDialogTitle>Rotate the signing key?</UI.AlertDialogTitle>
+              <UI.AlertDialogDescription>
+                Clients pick up the new key on their next request.
+              </UI.AlertDialogDescription>
+            </UI.AlertDialogHeader>
+            <UI.AlertDialogFooter>
+              <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
+              <UI.AlertDialogAction>Rotate key</UI.AlertDialogAction>
+            </UI.AlertDialogFooter>
+          </UI.AlertDialogContent>
+        </UI.AlertDialog>
+      </div><figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption></figure>
+    </div>);
 }
 ```
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
 import * as UI from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 
@@ -25,7 +26,11 @@ export default function Example() {
                   This client will no longer read Staging secrets.
                 </UI.AlertDialogDescription>
               </UI.AlertDialogHeader>
-              {state === "Error" && <p role="alert">Access could not be revoked. Try again.</p>}
+              {state === "Error" && (
+                <Alert tone="bad">
+                  <AlertDescription>Access could not be revoked. Try again.</AlertDescription>
+                </Alert>
+              )}
               <UI.AlertDialogFooter>
                 <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
                 <UI.AlertDialogAction asChild>

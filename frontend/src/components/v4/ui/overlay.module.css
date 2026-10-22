@@ -58,11 +58,12 @@
 .close[data-slot] {
   position: absolute;
   top: calc(
-    var(--v4-space-overlay-inset) + (var(--v4-type-title-line-height) - var(--v4-size-nested-md)) /
-      2
+    var(--v4-dialog-pad, var(--v4-space-overlay-inset)) +
+      (var(--v4-type-title-line-height) - var(--v4-size-nested-md)) / 2
   );
   inset-inline-end: calc(
-    var(--v4-space-overlay-inset) - (var(--v4-size-nested-md) - var(--v4-size-icon)) / 2
+    var(--v4-dialog-pad, var(--v4-space-overlay-inset)) -
+      (var(--v4-size-nested-md) - var(--v4-size-icon)) / 2
   );
 }
 .sheet {

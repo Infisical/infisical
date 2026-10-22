@@ -621,7 +621,9 @@
       "type": "registry:ui",
       "registryDependencies": [
         "@infisical/button",
-        "@infisical/infisical-base"
+        "@infisical/icon",
+        "@infisical/infisical-base",
+        "@infisical/input"
       ],
       "dependencies": [
         "radix-ui@^1.6.7"

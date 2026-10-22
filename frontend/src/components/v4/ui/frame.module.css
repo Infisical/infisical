@@ -58,12 +58,14 @@
   font-weight: var(--v4-type-label-font-weight);
 }
 .frameAction > a:not([data-slot]) {
-  color: inherit;
-  text-decoration: none;
+  color: var(--v4-link);
+  text-decoration: underline;
+  text-decoration-thickness: var(--v4-size-control-border);
+  text-underline-offset: var(--v4-space-3);
 }
 .frameAction > a:not([data-slot]):hover {
-  color: var(--v4-ink);
-  text-decoration: underline;
+  color: var(--v4-text2);
+  text-decoration-thickness: var(--v4-space-2);
 }
 .frameInset {
   min-width: 0;

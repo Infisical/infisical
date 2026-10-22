@@ -5,11 +5,15 @@ import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 
 import { useV4PortalContainer } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
+import { Icon, type IconName } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
 
 import overlay from "./overlay.module.css";
+
+const ConfirmContext = React.createContext<{ ready: boolean }>({ ready: true });
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
@@ -52,28 +56,90 @@ const AlertDialogContent = React.forwardRef<
   React.ComponentRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> & {
     size?: "default" | "sm";
+    /** danger (the default) shows a bad-tone icon tile at the top; neutral shows none. */
+    tone?: "danger" | "neutral";
+    icon?: IconName;
+    /** The exact text the person types before the action enables. */
+    confirmText?: string;
   }
->(({ className, size = "default", onEscapeKeyDown, ...props }, ref) => {
-  const escape = useOwnedEscape(ref, onEscapeKeyDown);
-  return (
-    <AlertDialogPortal>
-      <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content
-        ref={escape.ref}
-        data-slot="alert-dialog-content"
-        data-size={size}
-        className={cn(
-          "group/alert-dialog-content z-50 data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
-          overlay.pop,
-          overlay.dialog,
-          className
-        )}
-        {...props}
-        onEscapeKeyDown={escape.onEscapeKeyDown}
-      />
-    </AlertDialogPortal>
-  );
-});
+>(
+  (
+    {
+      className,
+      size = "default",
+      tone = "danger",
+      icon = "trash",
+      confirmText,
+      onEscapeKeyDown,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const escape = useOwnedEscape(ref, onEscapeKeyDown);
+    const [typed, setTyped] = React.useState("");
+    const fieldId = React.useId();
+    const field = confirmText !== undefined && (
+      <div data-slot="alert-dialog-confirm" className="flex flex-col gap-1.5">
+        <label htmlFor={fieldId} className="text-sm">
+          Type <code className="font-mono">{confirmText}</code> to confirm
+        </label>
+        <Input
+          id={fieldId}
+          mono
+          autoFocus
+          autoComplete="off"
+          spellCheck={false}
+          value={typed}
+          onChange={(event) => setTyped(event.target.value)}
+        />
+      </div>
+    );
+    const parts = React.Children.toArray(children);
+    const footerAt = parts.findIndex(
+      (child) => React.isValidElement(child) && child.type === AlertDialogFooter
+    );
+    if (field) parts.splice(footerAt < 0 ? parts.length : footerAt, 0, field);
+    return (
+      <AlertDialogPortal>
+        <AlertDialogOverlay />
+        <AlertDialogPrimitive.Content
+          ref={escape.ref}
+          data-slot="alert-dialog-content"
+          data-size={size}
+          data-tone={tone}
+          className={cn(
+            "group/alert-dialog-content z-50 data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
+            overlay.pop,
+            overlay.dialog,
+            className
+          )}
+          {...props}
+          onOpenAutoFocus={(event) => {
+            props.onOpenAutoFocus?.(event);
+            if (confirmText !== undefined) setTyped("");
+          }}
+          onEscapeKeyDown={escape.onEscapeKeyDown}
+        >
+          <ConfirmContext.Provider
+            value={{ ready: confirmText === undefined || typed === confirmText }}
+          >
+            {tone === "danger" && (
+              <div
+                data-slot="alert-dialog-media"
+                data-tone="danger"
+                className="inline-flex size-10 items-center justify-center"
+              >
+                <Icon name={icon} size={20} />
+              </div>
+            )}
+            {parts}
+          </ConfirmContext.Provider>
+        </AlertDialogPrimitive.Content>
+      </AlertDialogPortal>
+    );
+  }
+);
 AlertDialogContent.displayName = "AlertDialogContent";
 
 const AlertDialogHeader = React.forwardRef<
@@ -84,10 +150,7 @@ const AlertDialogHeader = React.forwardRef<
     <div
       ref={ref}
       data-slot="alert-dialog-header"
-      className={cn(
-        "grid grid-rows-[auto_1fr] place-items-center gap-1.5 text-center has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4 sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-left sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
-        className
-      )}
+      className={cn("flex flex-col gap-1.5 text-left", className)}
       {...props}
     />
   );
@@ -103,7 +166,7 @@ const AlertDialogFooter = React.forwardRef<
       ref={ref}
       data-slot="alert-dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t border-[color:var(--v4-line)] bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -138,10 +201,7 @@ const AlertDialogTitle = React.forwardRef<
     <AlertDialogPrimitive.Title
       ref={ref}
       data-slot="alert-dialog-title"
-      className={cn(
-        "sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
-        className
-      )}
+      className={cn("", className)}
       {...props}
     />
   );
@@ -170,9 +230,21 @@ const AlertDialogAction = React.forwardRef<
   React.ComponentRef<typeof AlertDialogPrimitive.Action>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> &
     Pick<React.ComponentPropsWithoutRef<typeof Button>, "variant" | "size">
->(({ className, variant = "default", size = "default", ...props }, ref) => {
+>(({ className, variant = "default", size = "default", asChild, disabled, ...props }, ref) => {
+  const { ready } = React.useContext(ConfirmContext);
+  if (asChild)
+    return (
+      <AlertDialogPrimitive.Action
+        ref={ref}
+        asChild
+        data-slot="alert-dialog-action"
+        className={className}
+        disabled={disabled || !ready}
+        {...props}
+      />
+    );
   return (
-    <Button variant={variant} size={size} asChild>
+    <Button variant={variant} size={size} disabled={disabled || !ready} asChild>
       <AlertDialogPrimitive.Action
         ref={ref}
         data-slot="alert-dialog-action"
@@ -188,7 +260,17 @@ const AlertDialogCancel = React.forwardRef<
   React.ComponentRef<typeof AlertDialogPrimitive.Cancel>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel> &
     Pick<React.ComponentPropsWithoutRef<typeof Button>, "variant" | "size">
->(({ className, variant = "outline", size = "default", ...props }, ref) => {
+>(({ className, variant = "outline", size = "default", asChild, ...props }, ref) => {
+  if (asChild)
+    return (
+      <AlertDialogPrimitive.Cancel
+        ref={ref}
+        asChild
+        data-slot="alert-dialog-cancel"
+        className={className}
+        {...props}
+      />
+    );
   return (
     <Button variant={variant} size={size} asChild>
       <AlertDialogPrimitive.Cancel

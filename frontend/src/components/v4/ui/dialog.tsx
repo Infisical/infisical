@@ -112,10 +112,7 @@ const DialogFooter = React.forwardRef<
     <div
       ref={ref}
       data-slot="dialog-footer"
-      className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t border-[color:var(--v4-line)] bg-muted/50 p-4 sm:flex-row sm:justify-end",
-        className
-      )}
+      className={cn("flex flex-col-reverse sm:flex-row sm:justify-end", className)}
       {...props}
     >
       {children}
