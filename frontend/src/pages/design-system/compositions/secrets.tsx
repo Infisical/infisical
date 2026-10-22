@@ -8,7 +8,7 @@ import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 
-import { projectSections, Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs } from "./shared";
 
 type SecretRow = { id: string; name: string; folder?: boolean };
 const secretRows: SecretRow[] = [
@@ -60,7 +60,7 @@ export default function Secrets() {
   const [env, setEnv] = useState("dev");
   const { org, product, project } = useCrumbs();
   return (
-    <Shell sections={projectSections} current="secrets" crumbs={[org, product, project]}>
+    <Shell level="project" current="secrets" crumbs={[org, product, project]}>
       <Stack gap={24}>
         <PageHeader
           title="payments-api"

@@ -7,13 +7,13 @@ import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 import { SettingsCard } from "@app/components/v4/ui/settings-card";
 
-import { settingsSections, Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs } from "./shared";
 
 export default function Settings() {
   const { org } = useCrumbs();
   return (
     <Shell
-      sections={settingsSections}
+      level="settings"
       current="general"
       crumbs={[org, { label: "Settings" }, { label: "General" }]}
     >

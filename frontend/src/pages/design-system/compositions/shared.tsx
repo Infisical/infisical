@@ -43,6 +43,15 @@ export const projectSections: SidebarProps["sections"] = [
     ]
   }
 ];
+export const productSections: SidebarProps["sections"] = [
+  {
+    items: [
+      { id: "projects", label: "Projects", icon: "folder" },
+      { id: "product-insights", label: "Insights", icon: "globe" },
+      { id: "product-settings", label: "Product settings", icon: "settings" }
+    ]
+  }
+];
 export const settingsSections: SidebarProps["sections"] = [
   {
     label: "Settings",
@@ -112,25 +121,69 @@ const barActions = (
   </TooltipProvider>
 );
 
+export type ShellLevel = "org" | "settings" | "product" | "project";
+const levelSections: Record<ShellLevel, SidebarProps["sections"]> = {
+  org: orgSections,
+  settings: settingsSections,
+  product: productSections,
+  project: projectSections
+};
+const opens: Record<string, { level: ShellLevel; page: string }> = {
+  settings: { level: "settings", page: "general" },
+  projects: { level: "project", page: "secrets" }
+};
+const parent: Record<Exclude<ShellLevel, "org">, { level: ShellLevel; page: string }> = {
+  settings: { level: "org", page: "settings" },
+  product: { level: "org", page: "home" },
+  project: { level: "product", page: "projects" }
+};
+
 export const Shell = ({
-  sections,
+  level: initialLevel,
   current,
-  crumbs,
+  crumbs: initialCrumbs,
   children
 }: {
-  sections: SidebarProps["sections"];
+  level: ShellLevel;
   current: string;
   crumbs: readonly BreadcrumbCrumb[];
   children?: ReactNode;
 }) => {
-  const [page, setPage] = useState(current);
+  const { org, product, project } = useCrumbs();
+  const [at, setAt] = useState({ level: initialLevel, page: current });
+  const sections = levelSections[at.level];
+  const pageLabel =
+    sections?.flatMap((section) => section.items).find((item) => item.id === at.page)?.label ??
+    at.page;
+  const trail: Record<ShellLevel, readonly BreadcrumbCrumb[]> = {
+    org: [org, { label: pageLabel }],
+    settings: [org, { label: "Settings" }, { label: pageLabel }],
+    product: [org, product, { label: pageLabel }],
+    project: [org, product, project, { label: pageLabel }]
+  };
+  const crumbs = at.level === initialLevel && at.page === current ? initialCrumbs : trail[at.level];
+  const scope =
+    at.level === "org"
+      ? undefined
+      : {
+          id: at.level,
+          back: {
+            id: `back-${at.level}`,
+            label: at.level === "project" ? product.label : org.label
+          },
+          sections: sections ?? []
+        };
   return (
     <AppShell style={{ height: "100%" }}>
       <Sidebar
         label="Main"
         sections={sections}
-        current={page}
-        onNavigate={(item) => setPage(item.id)}
+        scope={scope}
+        current={at.page}
+        onNavigate={(item) => {
+          if (item.id.startsWith("back-") && at.level !== "org") setAt(parent[at.level]);
+          else setAt(opens[item.id] ?? { level: at.level, page: item.id });
+        }}
         search={{ onClick: () => {} }}
         user={user}
         footerItems={[

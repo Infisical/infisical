@@ -4,7 +4,7 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 
-import { orgSections, Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs } from "./shared";
 
 const products = [
   {
@@ -63,7 +63,7 @@ const products = [
 export default function Home() {
   const { org } = useCrumbs();
   return (
-    <Shell sections={orgSections} current="home" crumbs={[org, { label: "Home" }]}>
+    <Shell level="org" current="home" crumbs={[org, { label: "Home" }]}>
       <Stack gap={32}>
         <PageHeader
           title="Organization overview"

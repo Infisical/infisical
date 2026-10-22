@@ -7,7 +7,7 @@ import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Tabs } from "@app/components/v4/ui/tabs";
 
-import { orgSections, Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs } from "./shared";
 
 type UserRow = { id: string; name: string; email: string; role: string; serverAdmin?: boolean };
 const users: UserRow[] = [
@@ -64,7 +64,7 @@ const userColumns: DataTableColumn<UserRow>[] = [
 export default function Access() {
   const { org } = useCrumbs();
   return (
-    <Shell sections={orgSections} current="access" crumbs={[org, { label: "Access control" }]}>
+    <Shell level="org" current="access" crumbs={[org, { label: "Access control" }]}>
       <Stack gap={24}>
         <PageHeader
           title="Access control"

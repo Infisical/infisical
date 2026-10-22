@@ -44,6 +44,11 @@ export interface SidebarSpace {
   icon: IconName;
   sections: readonly SidebarSection[];
 }
+export interface SidebarScope {
+  id: string;
+  back: SidebarLink;
+  sections: readonly SidebarSection[];
+}
 export interface SidebarUser {
   name: string;
   email: string;
@@ -65,6 +70,7 @@ export interface SidebarOrganization {
 export type SidebarTheme = "light" | "dark" | "system";
 export interface SidebarProps {
   sections?: readonly SidebarSection[];
+  scope?: SidebarScope;
   spaces?: readonly SidebarSpace[];
   space?: string;
   defaultSpace?: string;
@@ -136,22 +142,26 @@ const SidebarRow = ({
   current,
   rail,
   child,
+  back,
   onNavigate
 }: {
   item: SidebarLink;
   current?: string;
   rail: boolean;
   child?: boolean;
+  back?: boolean;
   onNavigate?: SidebarProps["onNavigate"];
 }) => {
-  const isCurrent = item.id === current;
+  const isCurrent = !back && item.id === current;
+  const name = back ? `Back to ${item.label}` : item.label;
   const shared = {
-    className: styles.row,
+    className: cn(styles.row, back && styles.back),
+    "data-sidebar-back": back || undefined,
     "data-sidebar-target": "",
     "data-current": isCurrent || undefined,
     "data-child": child || undefined,
     "aria-current": isCurrent ? ("page" as const) : undefined,
-    "aria-label": rail ? item.label : undefined,
+    "aria-label": rail || back ? name : undefined,
     onClick: (event: React.MouseEvent) => {
       if (item.disabled) {
         event.preventDefault();
@@ -177,7 +187,7 @@ const SidebarRow = ({
     </button>
   );
   return rail ? (
-    <Tooltip content={item.label} side="right">
+    <Tooltip content={name} side="right">
       {row}
     </Tooltip>
   ) : (
@@ -396,6 +406,7 @@ const themeOptions: { value: SidebarTheme; label: string; icon: IconName }[] = [
 
 export const Sidebar = ({
   sections,
+  scope,
   spaces,
   space,
   defaultSpace,
@@ -436,9 +447,32 @@ export const Sidebar = ({
     if (currentSpace) setSpaceId(currentSpace);
   }, [current, currentSpace, setSpaceId]);
   const activeSpace = spaces?.find((entry) => entry.id === spaceId) ?? spaces?.[0];
-  const shownSections = activeSpace?.sections ?? sections ?? [];
+  const shownSections = scope?.sections ?? activeSpace?.sections ?? sections ?? [];
   const rail = collapsible && isCollapsed;
-  const navRef = useEdgeFade(rail, activeSpace?.id);
+  const view = scope?.id ?? activeSpace?.id ?? "root";
+  const navRef = useEdgeFade(rail, view);
+  const backRef = React.useRef<HTMLElement | null>(null);
+  const refocus = React.useRef(false);
+  const lastScope = React.useRef(scope);
+  const [enter, setEnter] = React.useState<"forward" | "back">();
+  React.useEffect(() => {
+    const previous = lastScope.current;
+    lastScope.current = scope;
+    if (previous?.id === scope?.id) return;
+    setEnter(!scope || previous?.back.id === scope.id ? "back" : "forward");
+    if (!refocus.current) return;
+    refocus.current = false;
+    navRef.current?.querySelector<HTMLElement>("[data-sidebar-target]")?.focus();
+  }, [scope, navRef]);
+  const goUp = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (!scope) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("input, textarea, [contenteditable='true']")) return;
+    if (event.key !== "Backspace" && !(event.altKey && event.key === "ArrowLeft")) return;
+    event.preventDefault();
+    refocus.current = true;
+    backRef.current?.click();
+  };
   const spaceRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
   const tooltipSide = rail ? "right" : "bottom";
   const hasUpdates = (entry: SidebarSpace) =>
@@ -487,7 +521,7 @@ export const Sidebar = ({
             {invite && tool(invite.label ?? "Invite members", "user-plus", invite.onClick)}
           </span>
         </div>
-        {spaces && activeSpace && !rail && (
+        {!scope && spaces && activeSpace && !rail && (
           <Tabs className={styles.spaces} value={activeSpace.id} onValueChange={setSpaceId}>
             <TabsList variant="segmented" aria-label={spacesLabel}>
               {spaces.map((entry) => (
@@ -504,7 +538,7 @@ export const Sidebar = ({
             </TabsList>
           </Tabs>
         )}
-        {spaces && activeSpace && rail && (
+        {!scope && spaces && activeSpace && rail && (
           <div className={styles.railSpacesShelf}>
             <div
               role="tablist"
@@ -552,9 +586,27 @@ export const Sidebar = ({
         <nav
           aria-label={label ?? (activeSpace ? `${activeSpace.label} navigation` : "Main")}
           className={styles.navigation}
-          onKeyDown={moveFocus}
+          onKeyDown={(event) => {
+            goUp(event);
+            moveFocus(event);
+          }}
         >
-          <div ref={navRef} className={styles.nav}>
+          <div ref={navRef} key={view} data-enter={enter} className={styles.nav}>
+            {scope && (
+              <div
+                className={styles.section}
+                ref={(node) => {
+                  backRef.current = node?.querySelector<HTMLElement>("[data-sidebar-back]") ?? null;
+                }}
+              >
+                <SidebarRow
+                  item={{ ...scope.back, icon: "chev-left" }}
+                  rail={rail}
+                  back
+                  onNavigate={onNavigate}
+                />
+              </div>
+            )}
             {shownSections.map((section, index) => (
               <div key={section.label ?? index} className={styles.section}>
                 {section.label && (

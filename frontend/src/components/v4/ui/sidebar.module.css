@@ -523,3 +523,37 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+.back {
+  color: var(--v4-muted);
+}
+.back:hover {
+  color: var(--v4-ink);
+}
+.nav[data-enter="forward"] {
+  animation: scopeForward var(--v4-duration-moderate) var(--v4-ease-standard) both;
+}
+.nav[data-enter="back"] {
+  animation: scopeBack var(--v4-duration-moderate) var(--v4-ease-standard) both;
+}
+@keyframes scopeForward {
+  from {
+    opacity: 0;
+    translate: var(--v4-space-16) 0;
+  }
+}
+@keyframes scopeBack {
+  from {
+    opacity: 0;
+    translate: calc(-1 * var(--v4-space-16)) 0;
+  }
+}
+@keyframes scopeFade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav[data-enter] {
+    animation-name: scopeFade;
+  }
+}

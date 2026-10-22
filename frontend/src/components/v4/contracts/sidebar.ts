@@ -17,11 +17,14 @@ export const sidebarDefinition = {
     "The nav scrolls when it runs out of room and fades the edge where more rows are cut off.",
     "Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.",
     "The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings. Without user there is no account button, for hosts such as the design system workbench.",
+    "Pass scope to show a product, project or settings level instead of the top level: a back row (chevron-left and the parent's name, named Back to the parent) above that scope's sections. The back row calls onNavigate with scope.back, so the host moves up one level and passes the parent scope, or none for the top level. Spaces show only at the top level.",
+    "A scope change slides the rows in over duration-moderate on ease-standard, from the right going deeper and from the left going back; with reduced motion it only fades. In the rail the back row is the first icon, with a Back to tooltip.",
     "A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail."
   ],
   accessibility: [
     "The rows sit in a nav landmark named for the space it shows. Up and Down move between rows and Home and End jump; Tab still reaches every row.",
     "The space switch is a tablist: Left and Right move between spaces, Up and Down in the rail. A hidden space with a count is announced as having updates.",
+    "Backspace or Alt+Left anywhere in the nav (outside a text field) activates the back row and moves focus to the first row of the parent level.",
     "The current page carries aria-current. Rail rows keep their label as the accessible name.",
     "Focus draws the 2px ink outline inside the row, so the scrolling nav never clips it.",
     "The account button is named for the person and the organization, and the popover returns focus to it on close."
@@ -36,6 +39,12 @@ export const sidebarDefinition = {
       title: "Expanded and rail",
       module: "./examples/sidebar/default.tsx",
       states: ["default", "controlled", "keyboard"]
+    },
+    {
+      id: "scopes",
+      title: "Scoped navigation",
+      module: "./examples/sidebar/scopes.tsx",
+      states: ["default", "controlled", "keyboard"]
     }
   ],
   coverage: [
@@ -45,6 +54,14 @@ export const sidebarDefinition = {
       shown: [
         { value: "expanded", exampleId: "default", label: "Expanded, a child page current" },
         { value: "rail", exampleId: "default", label: "Rail, counts as dots" }
+      ]
+    },
+    {
+      axis: "scope",
+      expected: ["top level", "scoped"],
+      shown: [
+        { value: "top level", exampleId: "scopes", label: "Top level" },
+        { value: "scoped", exampleId: "scopes", label: "Project scope with a back row" }
       ]
     },
     {
@@ -70,6 +87,23 @@ export const sidebarDefinition = {
     decision:
       "Choose Sidebar for the persistent app navigation. Use TopBar for the product-level trail and Tabs for sections inside one page.",
     rules: [
+      {
+        id: "sidebar-scopes",
+        when: "The person is inside a product, a project or the settings area.",
+        do: "Pass that level as scope, with a back row named for the parent level, and keep the TopBar breadcrumb on the same level.",
+        avoid:
+          "Mix several products' rows in one long list, or leave the person without a way up except the breadcrumb.",
+        reason:
+          "The current app swaps the nav per scope with a back row, and a sidebar that disagrees with the breadcrumb hides where the person is.",
+        evidence: [
+          "src/components/v4/ui/sidebar.tsx",
+          "src/pages/design-system/examples/sidebar/scopes.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Open a scoped composition and confirm the back row names the breadcrumb's parent crumb and returns to it."
+        }
+      },
       {
         id: "sidebar-account-identity",
         when: "The account button shows who is signed in and which organization they are in.",

@@ -3,7 +3,7 @@ import { Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Tabs } from "@app/components/v4/ui/tabs";
 
-import { projectSections, Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs } from "./shared";
 
 const requests: ApprovalRequest[] = [
   {
@@ -59,7 +59,7 @@ export default function Approvals() {
   const { org, product, project } = useCrumbs();
   return (
     <Shell
-      sections={projectSections}
+      level="project"
       current="approvals"
       crumbs={[org, product, project, { label: "Approvals" }]}
     >
