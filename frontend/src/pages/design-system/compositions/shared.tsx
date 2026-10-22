@@ -9,7 +9,6 @@ import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/to
 export const user = { name: "Sarah Lin", email: "sarah@acme.dev" };
 export const orgSections: SidebarProps["sections"] = [
   {
-    label: "General",
     items: [
       { id: "home", label: "Home", icon: "home" },
       { id: "integrations", label: "Integrations", icon: "apps" }
@@ -21,7 +20,7 @@ export const orgSections: SidebarProps["sections"] = [
       { id: "access", label: "Access control", icon: "user" },
       { id: "billing", label: "Usage & billing", icon: "file" },
       { id: "audit", label: "Audit logs", icon: "history" },
-      { id: "settings", label: "Settings", icon: "settings" }
+      { id: "settings", label: "Settings", icon: "settings", drillIn: true }
     ]
   }
 ];
@@ -46,7 +45,7 @@ export const projectSections: SidebarProps["sections"] = [
 export const productSections: SidebarProps["sections"] = [
   {
     items: [
-      { id: "projects", label: "Projects", icon: "folder" },
+      { id: "projects", label: "Projects", icon: "folder", drillIn: true },
       { id: "product-insights", label: "Insights", icon: "globe" },
       { id: "product-settings", label: "Product settings", icon: "settings" }
     ]
@@ -54,7 +53,6 @@ export const productSections: SidebarProps["sections"] = [
 ];
 export const settingsSections: SidebarProps["sections"] = [
   {
-    label: "Settings",
     items: [
       { id: "general", label: "General", icon: "settings" },
       { id: "sso", label: "SSO & provisioning", icon: "lock" },
@@ -182,7 +180,7 @@ export const Shell = ({
         current={at.page}
         onNavigate={(item) => {
           if (item.id.startsWith("back-") && at.level !== "org") setAt(parent[at.level]);
-          else setAt(opens[item.id] ?? { level: at.level, page: item.id });
+          else setAt((item.drillIn && opens[item.id]) || { level: at.level, page: item.id });
         }}
         search={{ onClick: () => {} }}
         user={user}

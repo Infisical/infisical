@@ -32,6 +32,7 @@ export interface SidebarLink {
   count?: number;
   external?: boolean;
   disabled?: boolean;
+  drillIn?: boolean;
 }
 export interface SidebarItem extends SidebarLink {
   children?: readonly SidebarLink[];
@@ -143,6 +144,8 @@ const RowContent = ({
   </>
 );
 
+const drill = <Icon name="chev-right" size={14} className={styles.trailing} />;
+
 const SidebarRow = ({
   item,
   current,
@@ -160,6 +163,7 @@ const SidebarRow = ({
 }) => {
   const isCurrent = !back && item.id === current;
   const name = back ? `Back to ${item.label}` : item.label;
+  const drillIn = !back && item.drillIn;
   const shared = {
     className: cn(styles.row, back && styles.back),
     "data-sidebar-back": back || undefined,
@@ -168,6 +172,7 @@ const SidebarRow = ({
     "data-child": child || undefined,
     "aria-current": isCurrent ? ("page" as const) : undefined,
     "aria-label": rail || back ? name : undefined,
+    "aria-description": drillIn ? "Opens section" : undefined,
     onClick: (event: React.MouseEvent) => {
       if (item.disabled) {
         event.preventDefault();
@@ -185,15 +190,25 @@ const SidebarRow = ({
       target={item.external ? "_blank" : undefined}
       rel={item.external ? "noreferrer" : undefined}
     >
-      <RowContent item={item} count={item.count} child={child} />
+      <RowContent
+        item={item}
+        count={item.count}
+        child={child}
+        trailing={drillIn && !rail ? drill : undefined}
+      />
     </a>
   ) : (
     <button {...shared} type="button" disabled={item.disabled}>
-      <RowContent item={item} count={item.count} child={child} />
+      <RowContent
+        item={item}
+        count={item.count}
+        child={child}
+        trailing={drillIn && !rail ? drill : undefined}
+      />
     </button>
   );
   return rail ? (
-    <Tooltip content={name} side="right">
+    <Tooltip content={drillIn ? `${name}, opens section` : name} side="right">
       {row}
     </Tooltip>
   ) : (

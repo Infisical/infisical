@@ -6,10 +6,9 @@ import { ExampleCell, ExampleGrid, ExampleStage } from "../../example-presentati
 
 const org: SidebarProps["sections"] = [
   {
-    label: "General",
     items: [
       { id: "home", label: "Home", icon: "home" },
-      { id: "secret-management", label: "Secrets Management", icon: "key" },
+      { id: "secret-management", label: "Secrets Management", icon: "key", drillIn: true },
       { id: "integrations", label: "Integrations", icon: "apps" }
     ]
   },
@@ -25,7 +24,7 @@ const org: SidebarProps["sections"] = [
 const product: SidebarProps["sections"] = [
   {
     items: [
-      { id: "projects", label: "Projects", icon: "folder" },
+      { id: "projects", label: "Projects", icon: "folder", count: 2, drillIn: true },
       { id: "product-settings", label: "Product settings", icon: "settings" }
     ]
   }
