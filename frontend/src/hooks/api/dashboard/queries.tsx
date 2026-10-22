@@ -173,21 +173,53 @@ export const fetchProjectSecretsDetails = async ({
   return data;
 };
 
+// Keys travel in the querystring and Node rejects a request whose request line and headers exceed
+// 16KB, so a long key list is split across requests that each stay well under it. The joined keys
+// are encoded here and again by axios, so each key is measured in that double-encoded form.
+const SECRETS_BY_KEYS_MAX_ENCODED_LENGTH = 6_000;
+
+const chunkKeysByEncodedLength = (keys: string[]) => {
+  const chunks: string[][] = [];
+  let chunk: string[] = [];
+  let chunkLength = 0;
+
+  keys.forEach((key) => {
+    const keyLength = encodeURIComponent(encodeURIComponent(`${key},`)).length;
+    if (chunk.length && chunkLength + keyLength > SECRETS_BY_KEYS_MAX_ENCODED_LENGTH) {
+      chunks.push(chunk);
+      chunk = [];
+      chunkLength = 0;
+    }
+    chunk.push(key);
+    chunkLength += keyLength;
+  });
+
+  if (chunk.length) chunks.push(chunk);
+
+  return chunks;
+};
+
 export const fetchDashboardProjectSecretsByKeys = async ({
   keys,
   ...params
-}: TGetDashboardProjectSecretsByKeys) => {
-  const { data } = await apiRequest.get<DashboardProjectSecretsByKeys>(
-    "/api/v1/dashboard/secrets-by-keys",
-    {
-      params: {
-        ...params,
-        keys: encodeURIComponent(keys.join(","))
-      }
-    }
+}: TGetDashboardProjectSecretsByKeys): Promise<DashboardProjectSecretsByKeys> => {
+  const responses = await Promise.all(
+    chunkKeysByEncodedLength(keys).map(async (keyChunk) => {
+      const { data } = await apiRequest.get<DashboardProjectSecretsByKeys>(
+        "/api/v1/dashboard/secrets-by-keys",
+        {
+          params: {
+            ...params,
+            keys: encodeURIComponent(keyChunk.join(","))
+          }
+        }
+      );
+
+      return data;
+    })
   );
 
-  return data;
+  return { secrets: responses.flatMap(({ secrets }) => secrets) };
 };
 
 const mergePersonalRotationSecrets = (secrets: (SecretV3Raw | null)[]) => {
@@ -670,6 +702,12 @@ export const useGetSecretValue = (
     queryKey: dashboardKeys.getSecretValue(params),
     queryFn: async () => fetchSecretValue(params),
     staleTime: 1000 * 60,
+    retry: (count, error) => {
+      // retrying a throttled request only extends the throttle
+      if (error instanceof AxiosError && error.status === 429) return false;
+
+      return count < 1;
+    },
     ...options
   });
 };

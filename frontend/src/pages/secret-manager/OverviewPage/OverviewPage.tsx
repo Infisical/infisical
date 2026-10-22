@@ -35,6 +35,7 @@ import {
   GroupIcon,
   InfoIcon,
   LayersIcon,
+  LoaderCircleIcon,
   LockIcon,
   TrashIcon,
   UsersIcon
@@ -187,7 +188,11 @@ import {
 } from "@app/hooks/api";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { dashboardKeys, useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
+import {
+  dashboardKeys,
+  fetchDashboardProjectSecretsByKeys,
+  useGetProjectSecretsOverview
+} from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
@@ -440,6 +445,7 @@ const OverviewPageContent = () => {
   );
 
   const [isSingleEnvSecretsVisible, setIsSingleEnvSecretsVisible] = useToggle();
+  const [isRevealingAllSecrets, setIsRevealingAllSecrets] = useToggle();
 
   // scott: keeping incase we bring it back
   // const [collapseEnvironments, setCollapseEnvironments] = useToggle(
@@ -2420,6 +2426,71 @@ const OverviewPageContent = () => {
     [getSecretByKey, isBatchModeActive, pendingChanges.secrets]
   );
 
+  // Rows fetch their own value once visible, so the cache is primed with one request per
+  // environment and path before they are shown instead of letting each row call the API.
+  const handleRevealAllSecrets = async () => {
+    const [{ slug: environment }] = visibleEnvs;
+    const groups: Record<string, { environment: string; secretPath: string; keys: string[] }> = {};
+    const addKey = (groupEnvironment: string, groupSecretPath: string, key: string) => {
+      const groupKey = JSON.stringify([groupEnvironment, groupSecretPath]);
+      groups[groupKey] ??= { environment: groupEnvironment, secretPath: groupSecretPath, keys: [] };
+      groups[groupKey].keys.push(key);
+    };
+
+    mergedSecKeys.forEach((key) => {
+      const secret = getSecretByKey(environment, key);
+      if (secret) {
+        const canRevealShared = !secret.isEmpty && !secret.secretValueHidden;
+        const canRevealOverride = Boolean(secret.idOverride) && !secret.isOverrideEmpty;
+        if (canRevealShared || canRevealOverride) addKey(environment, secretPath, key);
+        return;
+      }
+
+      const importedSecret = getImportedSecretByKey(environment, key);
+      if (importedSecret?.secret && !importedSecret.secret.isEmpty) {
+        addKey(importedSecret.environment, importedSecret.secretPath, importedSecret.secret.key);
+      }
+    });
+
+    setIsRevealingAllSecrets.on();
+    try {
+      await Promise.all(
+        Object.values(groups).map(async (group) => {
+          const { secrets: fetchedSecrets } = await fetchDashboardProjectSecretsByKeys({
+            projectId,
+            environment: group.environment,
+            secretPath: group.secretPath,
+            keys: group.keys,
+            viewSecretValue: true
+          });
+
+          fetchedSecrets.forEach((fetchedSecret) => {
+            if (fetchedSecret.secretValueHidden || fetchedSecret.secretValue === undefined) return;
+
+            const isOverride = fetchedSecret.type === SecretType.Personal;
+            queryClient.setQueryData(
+              dashboardKeys.getSecretValue({
+                projectId,
+                environment: group.environment,
+                secretPath: group.secretPath,
+                secretKey: fetchedSecret.secretKey,
+                ...(isOverride ? { isOverride: true } : {})
+              }),
+              isOverride
+                ? { value: undefined, valueOverride: fetchedSecret.secretValue }
+                : { value: fetchedSecret.secretValue, valueOverride: undefined }
+            );
+          });
+        })
+      );
+      setIsSingleEnvSecretsVisible.on();
+    } catch {
+      createNotification({ type: "error", text: "Failed to reveal secret values" });
+    } finally {
+      setIsRevealingAllSecrets.off();
+    }
+  };
+
   const mergedFolderNamesAndDescriptions = useMemo(() => {
     if (!isBatchModeActive)
       return folderNamesAndDescriptions.map((f) => ({ ...f, pendingAction: undefined }));
@@ -3812,13 +3883,18 @@ const OverviewPageContent = () => {
                               <Badge variant="ghost" asChild>
                                 <button
                                   type="button"
+                                  disabled={isRevealingAllSecrets}
                                   onClick={() => {
                                     overviewTelemetry.interaction({
                                       action: isSingleEnvSecretsVisible ? "hide" : "reveal",
                                       source: "header",
                                       resourceType: "secret"
                                     });
-                                    setIsSingleEnvSecretsVisible.toggle();
+                                    if (isSingleEnvSecretsVisible) {
+                                      setIsSingleEnvSecretsVisible.off();
+                                    } else {
+                                      handleRevealAllSecrets();
+                                    }
                                   }}
                                 >
                                   {isSingleEnvSecretsVisible ? (
@@ -3828,7 +3904,11 @@ const OverviewPageContent = () => {
                                     </>
                                   ) : (
                                     <>
-                                      <EyeIcon />
+                                      {isRevealingAllSecrets ? (
+                                        <LoaderCircleIcon className="animate-spin" />
+                                      ) : (
+                                        <EyeIcon />
+                                      )}
                                       Reveal All
                                     </>
                                   )}
