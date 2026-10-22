@@ -25,7 +25,11 @@ import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
 import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
 import { TSettableAuthMethod } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
-import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningFindingStatus,
+  SecretScanningScanType
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
@@ -232,8 +236,9 @@ export enum PostHogEventTypes {
 
   // Secret Scanning v2
   SecretScanningDataSourceCreated = "Secret Scanning Data Source Created",
+  SecretScanningResourcesAdded = "Secret Scanning Resources Added",
   SecretScanningScanCompleted = "Secret Scanning Scan Completed",
-  SecretScanningFindingResolved = "Secret Scanning Finding Resolved",
+  SecretScanningFindingClosed = "Secret Scanning Finding Closed",
 
   // Groups
   GroupCreated = "Group Created",
@@ -1957,21 +1962,31 @@ export type TSecretScanningDataSourceCreatedEvent = {
   };
 };
 
+export type TSecretScanningResourcesAddedEvent = {
+  event: PostHogEventTypes.SecretScanningResourcesAdded;
+  properties: {
+    type: SecretScanningDataSource;
+    resourceCount: number;
+    // "discovery" is the automatic add when discovery is turned on for a data source
+    source: "manual" | "all" | "discovery";
+  };
+};
+
 export type TSecretScanningScanCompletedEvent = {
   event: PostHogEventTypes.SecretScanningScanCompleted;
   properties: {
-    dataSourceId: string;
-    projectId: string;
     type: SecretScanningDataSource;
+    scanType: SecretScanningScanType;
+    // findings this scan detected for the first time; ones an earlier scan found are not counted again
     findingCount: number;
   };
 };
 
-export type TSecretScanningFindingResolvedEvent = {
-  event: PostHogEventTypes.SecretScanningFindingResolved;
+export type TSecretScanningFindingClosedEvent = {
+  event: PostHogEventTypes.SecretScanningFindingClosed;
   properties: {
-    findingId: string;
-    projectId: string;
+    // how it was closed out: resolved, false-positive or ignore
+    status: SecretScanningFindingStatus;
   };
 };
 
@@ -2816,8 +2831,9 @@ export type TPostHogEvent = {
   | TCmekEncryptEvent
   | TCmekDecryptEvent
   | TSecretScanningDataSourceCreatedEvent
+  | TSecretScanningResourcesAddedEvent
   | TSecretScanningScanCompletedEvent
-  | TSecretScanningFindingResolvedEvent
+  | TSecretScanningFindingClosedEvent
   | TGroupCreatedEvent
   | TGroupUpdatedEvent
   | TGroupDeletedEvent

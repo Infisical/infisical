@@ -4500,7 +4500,8 @@ export const registerRoutes = async (
     kmsService,
     keyStore,
     appConnectionDAL,
-    notificationService
+    notificationService,
+    telemetryService
   });
 
   const secretScanningV2ProjectResolver = secretScanningV2ProjectResolverFactory({
