@@ -68,7 +68,10 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
     Select the access bundle you just created, then select **Add Service**.
   </Step>
   <Step>
-    On the **Choose a template** panel, pick the template for the API, such as **Anthropic**, or select **Custom** and enter the API's host.
+    On the **Choose a template** panel, pick the template for the API, such as **Anthropic**, or select **Custom**.
+  </Step>
+  <Step>
+    On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom**, then select **Continue**.
   </Step>
   <Step>
     On the **Credential** step, paste the real API key.
@@ -95,9 +98,6 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
   </Step>
   <Step>
     Select **Create**, then copy the proxy token from the **Proxy Token** dialog. Infisical shows the token only once.
-  </Step>
-  <Step>
-    On the **Proxies** page, hover over the proxy's value in the **Certificate Authority** column and copy the full fingerprint. Your code passes the fingerprint to the agent's sandbox in [Step 4](#step-4-run-an-agent-in-a-sandbox), so that the agent only trusts your proxy.
   </Step>
 </Steps>
 
@@ -195,7 +195,7 @@ func buildImage(ctx context.Context, mc *modal.Client) (*modal.App, *modal.Image
 
 ## Step 4: Run an agent in a sandbox
 
-This function runs one prompt in a new sandbox. Replace the values at the top with your access bundle's name and the fingerprint from [Step 1](#create-a-proxy):
+This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` at the top with your access bundle's name:
 
 <CodeGroup>
 
@@ -210,7 +210,6 @@ from sandbox_image import app, image
 
 INFISICAL_URL = "https://app.infisical.com"
 ACCESS_BUNDLE = "<access-bundle-name>"
-PROXY_CA_FINGERPRINT = "SHA256:<fingerprint>"
 
 WAIT_FOR_PROXY = (
     "for i in $(seq 60); do "
@@ -219,24 +218,20 @@ WAIT_FOR_PROXY = (
 )
 
 # Reads the session token from the first line of stdin, and leaves the rest of
-# stdin, the prompt, for Claude Code. agent-vault run checks the proxy's
-# certificate against the fingerprint before it starts Claude Code.
+# stdin, the prompt, for Claude Code.
 START_AGENT = r"""
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false \
-  --proxy agent-proxy:17323 --ca-fingerprint "$PROXY_CA_FINGERPRINT" \
+exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 """
 
 AGENT_ENV = {
-    "PROXY_CA_FINGERPRINT": PROXY_CA_FINGERPRINT,
     # Claude Code won't start without a key; the proxy replaces this one.
     "ANTHROPIC_API_KEY": "agent-vault",
     # Makes the fetch built into Node.js send requests through the proxy.
     "NODE_USE_ENV_PROXY": "1",
-    # Skips update checks and telemetry, which fail without internet access.
-    "INFISICAL_DISABLE_UPDATE_CHECK": "1",
+    # Skips Claude Code's update checks and telemetry, which fail without internet access.
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "DISABLE_AUTOUPDATER": "1",
 }
@@ -280,11 +275,10 @@ def run_agent(prompt: str) -> str:
         # The agent reaches the proxy at agent-proxy:17323. Nothing outside the
         # sandbox can reach it.
         proxy = sandbox._experimental_sidecars.create(
-            "infisical",
-            "agent-vault",
-            "proxy",
-            "--log-file",
-            "/tmp/proxy.log",
+            "sh",
+            "-c",
+            # If the proxy exits, the sidecar stays up so its log can still be read.
+            "infisical agent-vault proxy > /tmp/proxy.log 2>&1 || sleep 600",
             name="agent-proxy",
             image=image,
             secrets=[modal.Secret.from_name("agent-vault-proxy")],
@@ -330,7 +324,6 @@ import { app, image, modal } from "./sandboxImage.js";
 
 const INFISICAL_URL = "https://app.infisical.com";
 const ACCESS_BUNDLE = "<access-bundle-name>";
-const PROXY_CA_FINGERPRINT = "SHA256:<fingerprint>";
 
 const WAIT_FOR_PROXY =
   "for i in $(seq 60); do " +
@@ -338,24 +331,20 @@ const WAIT_FOR_PROXY =
   "sleep 0.5; done; exit 1";
 
 // Reads the session token from the first line of stdin, and leaves the rest of
-// stdin, the prompt, for Claude Code. agent-vault run checks the proxy's
-// certificate against the fingerprint before it starts Claude Code.
+// stdin, the prompt, for Claude Code.
 const START_AGENT = String.raw`
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false \
-  --proxy agent-proxy:17323 --ca-fingerprint "$PROXY_CA_FINGERPRINT" \
+exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 `;
 
 const AGENT_ENV = {
-  PROXY_CA_FINGERPRINT,
   // Claude Code won't start without a key; the proxy replaces this one.
   ANTHROPIC_API_KEY: "agent-vault",
   // Makes the fetch built into Node.js send requests through the proxy.
   NODE_USE_ENV_PROXY: "1",
-  // Skips update checks and telemetry, which fail without internet access.
-  INFISICAL_DISABLE_UPDATE_CHECK: "1",
+  // Skips Claude Code's update checks and telemetry, which fail without internet access.
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
   DISABLE_AUTOUPDATER: "1",
 };
@@ -401,7 +390,8 @@ export async function runAgent(prompt: string): Promise<string> {
     // The agent reaches the proxy at agent-proxy:17323. Nothing outside the
     // sandbox can reach it.
     const proxy = await sandbox.experimentalSidecars.create("agent-proxy", image, {
-      command: ["infisical", "agent-vault", "proxy", "--log-file", "/tmp/proxy.log"],
+      // If the proxy exits, the sidecar stays up so its log can still be read.
+      command: ["sh", "-c", "infisical agent-vault proxy > /tmp/proxy.log 2>&1 || sleep 600"],
       secrets: [await modal.secrets.fromName("agent-vault-proxy")],
     });
     // The proxy serves only after it has loaded its settings from Infisical.
@@ -454,9 +444,8 @@ import (
 )
 
 const (
-	infisicalURL       = "https://app.infisical.com"
-	accessBundle       = "<access-bundle-name>"
-	proxyCAFingerprint = "SHA256:<fingerprint>"
+	infisicalURL = "https://app.infisical.com"
+	accessBundle = "<access-bundle-name>"
 )
 
 const waitForProxy = "for i in $(seq 60); do " +
@@ -464,24 +453,20 @@ const waitForProxy = "for i in $(seq 60); do " +
 	"sleep 0.5; done; exit 1"
 
 // Reads the session token from the first line of stdin, and leaves the rest of
-// stdin, the prompt, for Claude Code. agent-vault run checks the proxy's
-// certificate against the fingerprint before it starts Claude Code.
+// stdin, the prompt, for Claude Code.
 const startAgent = `
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false \
-  --proxy agent-proxy:17323 --ca-fingerprint "$PROXY_CA_FINGERPRINT" \
+exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 `
 
 var agentEnv = map[string]string{
-	"PROXY_CA_FINGERPRINT": proxyCAFingerprint,
 	// Claude Code won't start without a key; the proxy replaces this one.
 	"ANTHROPIC_API_KEY": "agent-vault",
 	// Makes the fetch built into Node.js send requests through the proxy.
 	"NODE_USE_ENV_PROXY": "1",
-	// Skips update checks and telemetry, which fail without internet access.
-	"INFISICAL_DISABLE_UPDATE_CHECK":           "1",
+	// Skips Claude Code's update checks and telemetry, which fail without internet access.
 	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 	"DISABLE_AUTOUPDATER":                      "1",
 }
@@ -583,7 +568,8 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 	// The agent reaches the proxy at agent-proxy:17323. Nothing outside the
 	// sandbox can reach it.
 	proxy, err := sandbox.ExperimentalSidecars.Create(ctx, "agent-proxy", image, &modal.SidecarCreateParams{
-		Command: []string{"infisical", "agent-vault", "proxy", "--log-file", "/tmp/proxy.log"},
+		// If the proxy exits, the sidecar stays up so its log can still be read.
+		Command: []string{"sh", "-c", "infisical agent-vault proxy > /tmp/proxy.log 2>&1 || sleep 600"},
 		Secrets: []*modal.Secret{proxySecret},
 	})
 	if err != nil {
@@ -712,20 +698,19 @@ The agent's container can't connect to the internet directly, but it has two kin
 
 ### Compromised sandboxes
 
-Each sidecar holds a copy of the proxy token. If you think someone took control of a sandbox, [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxys-token), put the new token in the `agent-vault-proxy` secret in Modal, and update `PROXY_CA_FINGERPRINT`, because the proxy gets a new certificate authority.
+Each sidecar holds a copy of the proxy token. If you think someone took control of a sandbox, [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxys-token), then put the new token in the `agent-vault-proxy` secret in Modal.
 
 ## Troubleshooting
 
 <AccordionGroup>
   <Accordion title="The proxy doesn't start in the sidecar">
-    The function's error includes the proxy's log. Check the following:
+    The function's error includes the proxy's log. If the log says `The provided access token is malformed`, the proxy token is wrong. Check the following:
 
     - The `agent-vault-proxy` secret in Modal has the current proxy token (a token stops working when you rotate it)
     - If you use EU Cloud or self-host Infisical, the secret has `INFISICAL_DOMAIN`
     - The image has an Infisical CLI version that can start a proxy from a proxy token
-  </Accordion>
-  <Accordion title="The agent doesn't start because of a fingerprint mismatch">
-    `infisical agent-vault run` stops before starting the agent if the proxy's certificate doesn't match `--ca-fingerprint`. If you rotated the proxy's token, copy the new fingerprint from the **Proxies** page.
+
+    Modal doesn't show a sidecar's output, and it removes a sidecar as soon as its command exits. That's why the code starts the proxy with `|| sleep 600`: if the proxy exits, the sidecar keeps running, and the function can read the proxy's log.
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked. Set the session's `ttl` a few minutes longer than the sandbox's `timeout`, so the session lasts as long as the sandbox can run.
