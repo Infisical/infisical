@@ -2452,16 +2452,21 @@ const OverviewPageContent = () => {
       }
     });
 
-    // expanded imports show these values too; cross-project imports are skipped since their
-    // environments are not part of this project
-    secretImports?.[0]?.data?.forEach((importedFolder) => {
-      const isSameProject = currentProject.environments.some(
-        ({ id }) => id === importedFolder.environmentInfo.id
-      );
-      if (!isSameProject) return;
+    // expanded imports show values for their keys matching the search; cross-project imports are
+    // skipped since their environments are not part of this project
+    sortableImportItems.forEach((imp) => {
+      const isExpanded = activeTableRows.has(getTableRowActivityId("secret-import", imp.id));
+      if (!isExpanded || imp.importEnv.projectId !== projectId) return;
 
-      importedFolder.secrets.forEach(({ key, isEmpty }) => {
-        if (!isEmpty) addKey(importedFolder.environment, importedFolder.secretPath, key);
+      const importedFolder = importedSecretsFlat.find(
+        (item) =>
+          item.environment === imp.importEnv.slug &&
+          item.secretPath === imp.importPath &&
+          item.sourceEnv === environment
+      );
+      importedFolder?.secrets.forEach(({ key, isEmpty }) => {
+        const matchesSearch = key.toUpperCase().includes(searchFilter.toUpperCase());
+        if (!isEmpty && matchesSearch) addKey(imp.importEnv.slug, imp.importPath, key);
       });
     });
 
