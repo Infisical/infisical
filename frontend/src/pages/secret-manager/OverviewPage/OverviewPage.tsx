@@ -2426,10 +2426,16 @@ const OverviewPageContent = () => {
     [getSecretByKey, isBatchModeActive, pendingChanges.secrets]
   );
 
+  // read again once the requests resolve, so a reveal started before switching environment or
+  // folder does not turn values on for the new one
+  const revealTargetRef = useRef("");
+  revealTargetRef.current = JSON.stringify([visibleEnvs[0]?.slug, secretPath]);
+
   // Rows fetch their own value once visible, so the cache is primed with one request per
   // environment and path before they are shown instead of letting each row call the API.
   const handleRevealAllSecrets = async () => {
     const [{ slug: environment }] = visibleEnvs;
+    const revealTarget = revealTargetRef.current;
     const groups: Record<string, { environment: string; secretPath: string; keys: string[] }> = {};
     const addKey = (groupEnvironment: string, groupSecretPath: string, key: string) => {
       const groupKey = JSON.stringify([groupEnvironment, groupSecretPath]);
@@ -2437,19 +2443,26 @@ const OverviewPageContent = () => {
       groups[groupKey].keys.push(key);
     };
 
+    // one shared value the user cannot read fails the whole request, so those keys (and any
+    // personal override on them) are left for their rows to fetch
     mergedSecKeys.forEach((key) => {
       const secret = getSecretByKey(environment, key);
-      if (secret) {
-        const canRevealShared = !secret.isEmpty && !secret.secretValueHidden;
-        const canRevealOverride = Boolean(secret.idOverride) && !secret.isOverrideEmpty;
-        if (canRevealShared || canRevealOverride) addKey(environment, secretPath, key);
-        return;
+      if (secret && !secret.isEmpty && !secret.secretValueHidden) {
+        addKey(environment, secretPath, key);
       }
+    });
 
-      const importedSecret = getImportedSecretByKey(environment, key);
-      if (importedSecret?.secret && !importedSecret.secret.isEmpty) {
-        addKey(importedSecret.environment, importedSecret.secretPath, importedSecret.secret.key);
-      }
+    // expanded imports show these values too; cross-project imports are skipped since their
+    // environments are not part of this project
+    secretImports?.[0]?.data?.forEach((importedFolder) => {
+      const isSameProject = currentProject.environments.some(
+        ({ id }) => id === importedFolder.environmentInfo.id
+      );
+      if (!isSameProject) return;
+
+      importedFolder.secrets.forEach(({ key, isEmpty }) => {
+        if (!isEmpty) addKey(importedFolder.environment, importedFolder.secretPath, key);
+      });
     });
 
     setIsRevealingAllSecrets.on();
@@ -2462,6 +2475,12 @@ const OverviewPageContent = () => {
             secretPath: group.secretPath,
             keys: group.keys,
             viewSecretValue: true
+          }).catch((error) => {
+            // every other group is an import; one the user cannot read in bulk should not block
+            // the rest, and its cells fetch their own values as before
+            const isImport = group.environment !== environment || group.secretPath !== secretPath;
+            if (isImport) return { secrets: [] };
+            throw error;
           });
 
           fetchedSecrets.forEach((fetchedSecret) => {
@@ -2483,7 +2502,7 @@ const OverviewPageContent = () => {
           });
         })
       );
-      setIsSingleEnvSecretsVisible.on();
+      if (revealTargetRef.current === revealTarget) setIsSingleEnvSecretsVisible.on();
     } catch {
       createNotification({ type: "error", text: "Failed to reveal secret values" });
     } finally {
