@@ -172,13 +172,13 @@ export const FolderAccessRow = ({
             temporaryLabel={
               remainingTime && remainingTime?.expiresAt ? (
                 <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
-                  Edit temporary access
+                  Edit Temporary Access
                   <span className="text-xs text-muted">
                     {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
                   </span>
                 </span>
               ) : (
-                "Add temporary access"
+                "Add Temporary Access"
               )
             }
             onSelectTier={onSetTier}
@@ -186,9 +186,9 @@ export const FolderAccessRow = ({
             onRemove={access ? onRemove : undefined}
             removeLabel={
               {
-                expired: "Clear expired access",
-                temporary: isOverride ? "End temporary override" : "End temporary access",
-                permanent: isOverride ? "Remove access override" : "Remove folder access"
+                expired: "Clear Expired Access",
+                temporary: isOverride ? "End Temporary Override" : "End Temporary Access",
+                permanent: isOverride ? "Remove Access Override" : "Remove Folder Access"
               }[grantState]
             }
             removeVariant={grantState === "expired" ? "default" : removeTone}
