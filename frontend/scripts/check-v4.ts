@@ -20,6 +20,7 @@ export type V4Check = {
 };
 
 const isUi = (file: string) => file.startsWith("src/components/v4/");
+const pageScrollerFiles = ["src/components/v4/ui/top-bar.module.css"];
 const isExample = (file: string) => file.startsWith("src/pages/design-system/");
 const isCss = (file: string) => file.endsWith(".css");
 const isMarkup = (file: string) => /\.tsx?$/.test(file);
@@ -253,8 +254,9 @@ export const v4Checks: readonly V4Check[] = [
     id: "scroll-fade",
     rule: "scroll-edge-fade",
     message:
-      "A v4 scroll container takes the shared edge fade: add data-scroll-fade (y, x or both) to the element that scrolls, or mark the rule with a reason.",
+      "A v4 component scroll container takes the shared edge fade: add data-scroll-fade (y, x or both) to the element that scrolls, or mark the rule with a reason. Page and inset scrollers never fade.",
     appliesTo: (file) => isUi(file) && isCss(file),
+    exempt: pageScrollerFiles,
     cssBlock: (_selector, body) =>
       [...body.matchAll(/(?:^|;|\n)\s*(overflow(?:-[xy])?\s*:\s*(?:auto|scroll)[^;]*)/g)].map(
         (match) => match[1].trim()

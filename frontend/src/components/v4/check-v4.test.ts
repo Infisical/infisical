@@ -125,7 +125,10 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
   },
   "scroll-fade": {
     bad: [["src/components/v4/ui/data.module.css", ".list { overflow-y: auto; }"]],
-    good: [["src/components/v4/ui/data.module.css", ".list { overflow: hidden; }"]]
+    good: [
+      ["src/components/v4/ui/data.module.css", ".list { overflow: hidden; }"],
+      ["src/components/v4/ui/top-bar.module.css", ".inset { overflow: auto; }"]
+    ]
   },
   "menu-row-margin": {
     bad: [["src/components/v4/ui/menu.module.css", ".separator { margin: 4px 0; }"]],

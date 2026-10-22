@@ -14,13 +14,7 @@ AppShell.displayName = "AppShell";
 
 export const AppInset = React.forwardRef<HTMLElement, React.ComponentPropsWithoutRef<"main">>(
   ({ className, ...props }, ref) => (
-    <main
-      ref={ref}
-      data-slot="app-inset"
-      data-scroll-fade="y"
-      className={cn(styles.inset, className)}
-      {...props}
-    />
+    <main ref={ref} data-slot="app-inset" className={cn(styles.inset, className)} {...props} />
   )
 );
 AppInset.displayName = "AppInset";
