@@ -67,6 +67,8 @@ Exports: Progress, ProgressSteps. Source TypeScript defines the API.
 ## Behavior
 
 - Progress clamps its ARIA value while preserving explicit over-limit copy. It supports automatic tone, indeterminate activity and a ProgressSteps companion.
+- A 6px bar on line-soft with square ends that follow corners. The label sits top left and wraps; the mono valueLabel sits top right and takes the warn or bad tone with the fill. A new value glides on duration-slow with ease-standard. Indeterminate work is a 30% ink segment that slides across the track in a 1.5s loop; reduced motion shows it parked.
+- ProgressSteps puts the label top left and Step n of N in mono top right, then flat segments 4px apart: done steps solid ink, upcoming on line-soft, the current one a 1px ink outline over 3px diagonal hatching that does not move, with each step's name under its segment and the current one in ink at 600.
 
 ## Accessibility
 
@@ -121,14 +123,26 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/progress/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/progress. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/layout, @infisical/progress. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
+import { useEffect, useState } from "react";
+import { Grid } from "../../../../components/v4/ui/layout";
 import { Progress, ProgressSteps } from "../../../../components/v4/ui/progress";
 export default function Example() {
+    const [synced, setSynced] = useState(9);
+    useEffect(() => {
+        const timer = setInterval(() => setSynced((value) => (value >= 14 ? 6 : value + 1)), 1600);
+        return () => clearInterval(timer);
+    }, []);
     return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <Progress label="Imported secrets" value={32} max={80} valueLabel="32 / 80"/>
-      <ProgressSteps label="Import stages" steps={["Connect", "Validate", "Import"]} current={1}/>
+      <Grid columns={2} gap={32}>
+        <Progress label="Syncing to GitHub Actions" value={synced} max={14} valueLabel={`${synced} of 14`}/>
+        <Progress label="Checking 412 secrets for expiry" valueLabel="About 1 min"/>
+        <Progress label="Secrets" value={412} max={500} tone="auto" valueLabel="412 of 500"/>
+        <Progress label="Agent calls today" value={10400} max={10000} tone="auto" valueLabel="10,400 of 10,000, over"/>
+      </Grid>
+      <ProgressSteps label="Rotating stripe_api_key" steps={["Generate", "Propagate", "Verify", "Revoke old"]} current={2}/>
     </div>);
 }
 ```

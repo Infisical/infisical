@@ -494,14 +494,46 @@
 .progressGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--v4-space-10);
   width: 100%;
 }
-.progress {
+.progressLabels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--v4-space-12);
+}
+.progressLabel {
+  min-width: 0;
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-type-label-font-size);
+  line-height: var(--v4-type-label-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+}
+.progressValue {
+  flex: none;
+  white-space: nowrap;
+  color: var(--v4-muted);
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+}
+.progressGroup[data-tone="warn"] .progressValue {
+  color: var(--v4-warn);
+}
+.progressGroup[data-tone="bad"] .progressValue {
+  color: var(--v4-bad);
+}
+.progress,
+.stepBar {
+  height: var(--v4-space-6);
   background: var(--v4-line-soft);
+  border-radius: calc(var(--v4-radius-xs) * var(--corners));
 }
 .progressIndicator {
   background: var(--v4-ink);
+  border-radius: inherit;
+  transition: transform var(--v4-duration-slow) var(--v4-ease-standard);
 }
 .progressIndicator[data-tone="warn"] {
   background: var(--v4-warn);
@@ -510,23 +542,59 @@
   background: var(--v4-bad);
 }
 .progress[data-state="indeterminate"] .progressIndicator {
-  flex: 0 0 35%;
-  /* v4-check-ignore motion-literal -- loader choreography, one owner */
-  animation: progressTravel 1.4s ease-in-out infinite;
+  flex: 0 0 30%;
+  /* v4-check-ignore motion-literal -- loader choreography, one owner: the reference slider loop */
+  animation: progressTravel 1.5s ease-in-out infinite;
 }
 @keyframes progressTravel {
   from {
-    transform: translateX(-100%);
+    transform: translateX(-110%);
   }
   to {
-    transform: translateX(300%);
+    transform: translateX(330%);
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .progressIndicator {
+    transition: none;
+  }
   .progress[data-state="indeterminate"] .progressIndicator {
     animation: none;
     transform: translateX(100%) !important;
   }
+}
+.stepBars,
+.stepLabels {
+  display: flex;
+  gap: var(--v4-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stepBar {
+  flex: 1;
+  box-sizing: border-box;
+}
+.stepBar[data-complete] {
+  background: var(--v4-ink);
+}
+.stepBar[data-current] {
+  background: repeating-linear-gradient(135deg, var(--v4-ink) 0 3px, transparent 3px 6px);
+  outline: var(--v4-size-control-border) solid var(--v4-ink);
+  outline-offset: calc(-1 * var(--v4-size-control-border));
+}
+.stepLabels > li {
+  flex: 1;
+  min-width: 0;
+  color: var(--v4-muted);
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+}
+.stepLabels > li[data-current] {
+  color: var(--v4-ink);
+  font-weight: 600;
 }
 .separatorLabel {
   display: flex;

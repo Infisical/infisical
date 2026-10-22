@@ -2133,7 +2133,9 @@ export const baselineContent = [
     exports: ["Progress", "ProgressSteps"],
     referenceNames: ["Progress", "ProgressSteps"],
     behavior: [
-      "Progress clamps its ARIA value while preserving explicit over-limit copy. It supports automatic tone, indeterminate activity and a ProgressSteps companion."
+      "Progress clamps its ARIA value while preserving explicit over-limit copy. It supports automatic tone, indeterminate activity and a ProgressSteps companion.",
+      "A 6px bar on line-soft with square ends that follow corners. The label sits top left and wraps; the mono valueLabel sits top right and takes the warn or bad tone with the fill. A new value glides on duration-slow with ease-standard. Indeterminate work is a 30% ink segment that slides across the track in a 1.5s loop; reduced motion shows it parked.",
+      "ProgressSteps puts the label top left and Step n of N in mono top right, then flat segments 4px apart: done steps solid ink, upcoming on line-soft, the current one a 1px ink outline over 3px diagonal hatching that does not move, with each step's name under its segment and the current one in ink at 600."
     ],
     accessibility: [
       "Name the operation. Indeterminate progress omits a value, and visible over-limit copy explains a value beyond the bound."

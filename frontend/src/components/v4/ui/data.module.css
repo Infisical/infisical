@@ -632,6 +632,9 @@
   display: grid;
   gap: var(--v4-space-4);
 }
+.listBody > .rowActions {
+  padding-top: calc(var(--v4-space-actions-gap) - var(--v4-space-4));
+}
 .titleLine {
   display: flex;
   align-items: center;

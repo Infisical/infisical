@@ -79,6 +79,9 @@
   gap: var(--v4-space-8);
   max-width: 100%;
 }
+.main:has(> .below) {
+  row-gap: var(--v4-space-actions-gap);
+}
 .below {
   flex-basis: 100%;
 }

@@ -386,8 +386,8 @@
 .alertActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--v4-space-8);
+  padding-top: var(--v4-space-actions-gap);
 }
 .toastStack {
   display: flex;

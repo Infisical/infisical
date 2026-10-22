@@ -4,7 +4,6 @@ import { Progress as ProgressPrimitive } from "radix-ui";
 import { cn } from "../lib/utils";
 
 import styles from "./controls.module.css";
-import helperStyles from "./helpers.module.css";
 
 export const Progress = React.forwardRef<
   React.ComponentRef<typeof ProgressPrimitive.Root>,
@@ -27,11 +26,11 @@ export const Progress = React.forwardRef<
     const ratio = typeof value === "number" ? value / resolvedMax : 0;
     const color = tone === "auto" ? (ratio >= 1 ? "bad" : ratio >= warnAt ? "warn" : "ink") : tone;
     return (
-      <div data-slot="progress-group" className={styles.progressGroup}>
+      <div data-slot="progress-group" data-tone={color} className={styles.progressGroup}>
         {(label || valueLabel) && (
           <div className={styles.progressLabels}>
-            {label && <span>{label}</span>}
-            {valueLabel && <span className={styles.mono}>{valueLabel}</span>}
+            {label && <span className={styles.progressLabel}>{label}</span>}
+            {valueLabel && <span className={styles.progressValue}>{valueLabel}</span>}
           </div>
         )}
         <ProgressPrimitive.Root
@@ -48,7 +47,7 @@ export const Progress = React.forwardRef<
               : undefined)
           }
           className={cn(
-            "relative flex h-1.5 w-full items-center overflow-hidden bg-[color:var(--v4-line-soft)]",
+            "relative flex w-full items-center overflow-hidden",
             styles.progress,
             className
           )}
@@ -57,7 +56,7 @@ export const Progress = React.forwardRef<
           <ProgressPrimitive.Indicator
             data-slot="progress-indicator"
             data-tone={color}
-            className={cn("size-full flex-1 transition-all", styles.progressIndicator)}
+            className={cn("size-full flex-1", styles.progressIndicator)}
             style={{
               transform: `translateX(-${100 - ((resolvedValue ?? 0) / resolvedMax) * 100}%)`
             }}
@@ -77,27 +76,46 @@ export const ProgressSteps = ({
   steps: readonly string[];
   current: number;
   label: string;
-}) => (
-  <div data-slot="progress-steps" role="group" aria-label={label}>
+}) => {
+  const step = Math.min(current + 1, steps.length);
+  return (
     <div
-      role="progressbar"
+      data-slot="progress-steps"
+      role="group"
       aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={steps.length}
-      aria-valuenow={Math.max(0, Math.min(current, steps.length))}
-      aria-valuetext={`Step ${Math.min(current + 1, steps.length)} of ${steps.length}${steps[current] ? `, ${steps[current]}` : ""}`}
-    />
-    <ol aria-hidden="true" className={helperStyles.steps}>
-      {steps.map((step, index) => (
-        <li
-          key={`${index}-${step}`}
-          className={helperStyles.step}
-          data-current={index === current || undefined}
-          data-complete={index < current || undefined}
-        >
-          {step}
-        </li>
-      ))}
-    </ol>
-  </div>
-);
+      className={styles.progressGroup}
+    >
+      <div className={styles.progressLabels}>
+        <span className={styles.progressLabel}>{label}</span>
+        <span className={styles.progressValue}>
+          Step {step} of {steps.length}
+        </span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={steps.length}
+        aria-valuenow={Math.max(0, Math.min(current, steps.length))}
+        aria-valuetext={`Step ${step} of ${steps.length}${steps[current] ? `, ${steps[current]}` : ""}`}
+        className={styles.stepBars}
+      >
+        {steps.map((name, index) => (
+          <span
+            key={`${index}-${name}`}
+            className={styles.stepBar}
+            data-current={index === current || undefined}
+            data-complete={index < current || undefined}
+          />
+        ))}
+      </div>
+      <ol aria-hidden="true" className={styles.stepLabels}>
+        {steps.map((name, index) => (
+          <li key={`${index}-${name}`} data-current={index === current || undefined}>
+            {name}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+};
