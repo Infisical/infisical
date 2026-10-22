@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Plus, ShieldAlert, Trash2, X } from "lucide-react";
+import { Plus, ShieldAlert, X } from "lucide-react";
 
 import {
   Alert,
@@ -268,7 +268,7 @@ export const AutoApprovalRuleCard = ({
           className="text-muted hover:text-danger"
           onClick={onRemove}
         >
-          <Trash2 className="size-4" />
+          <X className="size-4" />
         </IconButton>
       </div>
 
