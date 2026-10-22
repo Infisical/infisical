@@ -85,9 +85,9 @@ To view all events scoped to a single product:
     See the [audit log export API reference](/api-reference/endpoints/audit-logs/export-audit-log) for the full parameter list.
 
     <Note>
-      **Privileged Access Manager** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID.
+      **Privileged Access Management (PAM)** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID.
       
-      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to Privileged Access Manager and Agent Vault [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
+      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to PAM and Agent Vault [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
     </Note>
   </Tab>
 </Tabs>
@@ -417,7 +417,7 @@ Values that contain a literal `,` can't be filtered this way, because `,` separa
 
 Here are a few common patterns for filtering audit logs, grouped by product.
 
-### Secrets Manager
+### Secrets Management
 
 <AccordionGroup>
   <Accordion title="Who read a specific secret">
@@ -552,7 +552,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   </Accordion>
 </AccordionGroup>
 
-### Certificate Manager
+### Certificate Management
 
 <AccordionGroup>
   <Accordion title="Recent certificate issuance">
@@ -668,7 +668,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   </Accordion>
 </AccordionGroup>
 
-### KMS
+### Key Management Service (KMS)
 
 <AccordionGroup>
   <Accordion title="Recent key use">
@@ -791,7 +791,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   </Accordion>
 </AccordionGroup>
 
-### Privileged Access Manager
+### Privileged Access Management (PAM)
 
 <AccordionGroup>
   <Accordion title="All privileged sessions this week">
