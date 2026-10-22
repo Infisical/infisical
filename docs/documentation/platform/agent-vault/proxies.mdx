@@ -333,7 +333,7 @@ To keep the proxy available when one machine goes down, run it on several machin
 
 - **Load balancer type:** use a TCP (layer 4) load balancer, because agents send `CONNECT` requests that most HTTP load balancers don't forward. You don't need sticky sessions
 - **Health checks:** send an HTTP `GET` to `/_agent-vault/ca` on each machine, which returns `200` while the proxy is serving
-- **Your own certificate authority:** if you [use your own](#use-your-own-certificate-authority), pass the same `--ca-cert` and `--ca-key` to every machine, or agents see different certificate authorities depending on which machine they reach
+- **Your own certificate authority (optional):** if you want to [use your own](#use-your-own-certificate-authority), pass the same `--ca-cert` and `--ca-key` to every machine
 
 Point agents at the load balancer's address instead of a single machine.
 
