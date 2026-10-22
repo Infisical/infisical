@@ -301,7 +301,7 @@ After:
 - **Chained confirmations.** If `onConfirm` opens a second dialog instead of closing, as `IntegrationsDetailsByIDPage` does, keep that control flow and check the second dialog's focus return.
 - **Pending state outside the form.** If the mutation runs in the parent, pass the mutation's `isPending` to `DialogContent` or `ConfirmationAlertDialog`. Do not add `onOpenChange` guards.
 - **Reset and discard.** Keep the consumer's `reset()` or state clearing on close. Radix unmounts closed content, so state inside the content subtree resets by itself. Add `useDiscardChangesGuard` only when the product asks for a dirty-form guard; V2 never had one.
-- **Existing AlertDialog compositions** with `confirmationValue` do not lock while pending. New typed confirmations use `ConfirmationAlertDialog`.
+- **Existing AlertDialog compositions** with `confirmationValue` lock while pending when the mutation's `isPending` is passed to `AlertDialog`: Escape, Cancel, the confirmation input, and Enter are disabled, and `AlertDialogAction` shows the pending state. New typed confirmations use `ConfirmationAlertDialog`, which is built on the same confirmation state.
 - **Proof.** For each sweep, open each migrated overlay once in the preview: Escape with a nested popup open, Escape and an outside click while a mutation is pending, and focus after close.
 
 ## Completion acceptance
