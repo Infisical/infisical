@@ -127,8 +127,9 @@ export function ListHighlight() {
     list.addEventListener("focusin", schedule);
     list.addEventListener("focusout", schedule);
     document.addEventListener("keydown", key, true);
-    const resize = new ResizeObserver(schedule);
+    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
     const watchItems = () => {
+      if (!resize) return;
       resize.disconnect();
       resize.observe(list);
       list.querySelectorAll(LIST_HIGHLIGHT_ITEM).forEach((item) => resize.observe(item));
@@ -161,7 +162,7 @@ export function ListHighlight() {
       list.removeEventListener("focusin", schedule);
       list.removeEventListener("focusout", schedule);
       document.removeEventListener("keydown", key, true);
-      resize.disconnect();
+      resize?.disconnect();
       mutations.disconnect();
       list.removeAttribute("data-list-highlight");
     };
