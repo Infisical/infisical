@@ -289,6 +289,23 @@ describe("buildServiceSchema with OAuth", () => {
     expect(
       buildServiceSchema().safeParse(mcpForm({ ...authorized, headerName: "Host" })).success
     ).toBe(true);
+    expect(
+      buildServiceSchema().safeParse(
+        mcpForm({ ...authorized, headerName: "X Api Key", headerPrefix: "p".repeat(65) })
+      ).success
+    ).toBe(true);
+    const bearer = buildServiceSchema().safeParse(
+      mcpForm({
+        credentialType: AgentVaultCredentialType.Bearer,
+        secret: "token",
+        headerName: "X Api Key",
+        headerPrefix: "p".repeat(65)
+      })
+    );
+    expect(bearer.error?.issues.map((issue) => issue.path.join("."))).toEqual([
+      "headerName",
+      "headerPrefix"
+    ]);
     const clash = buildServiceSchema().safeParse(
       mcpForm({
         ...authorized,

@@ -35,13 +35,15 @@ vi.mock("@app/lib/validator", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@app/lib/validator")>();
   const post: typeof actual.safeRequest.post = (url, data, options) =>
     actual.safeRequest.post(url, data, { ...options, ca: transportTrust.ca });
-  return { ...actual, safeRequest: { ...actual.safeRequest, post } };
+  const get: typeof actual.safeRequest.get = (url, options) =>
+    actual.safeRequest.get(url, { ...options, ca: transportTrust.ca });
+  return { ...actual, safeRequest: { ...actual.safeRequest, post, get } };
 });
 
 describe("OAuth token requests over HTTPS", () => {
   let server: https.Server;
   let issuer: string;
-  const requests: { path: string; authorization?: string; form: URLSearchParams }[] = [];
+  const requests: { method?: string; path: string; authorization?: string; form: URLSearchParams }[] = [];
 
   beforeAll(async () => {
     const keys = forge.pki.rsa.generateKeyPair(2048);
@@ -69,8 +71,19 @@ describe("OAuth token requests over HTTPS", () => {
         });
         request.on("end", () => {
           const form = new URLSearchParams(body);
-          requests.push({ path: request.url ?? "", authorization: request.headers.authorization, form });
-          if (request.url === "/redirect") {
+          requests.push({
+            method: request.method,
+            path: request.url ?? "",
+            authorization: request.headers.authorization,
+            form
+          });
+          if (request.url === "/sse" && request.method === "GET") {
+            response.writeHead(401, { "WWW-Authenticate": `Bearer resource_metadata="${issuer}/meta"` });
+            response.end();
+          } else if (request.url === "/sse") {
+            response.writeHead(405);
+            response.end();
+          } else if (request.url === "/redirect") {
             response.writeHead(302, { Location: `${issuer}/unexpected` });
             response.end();
           } else if (request.url === "/unavailable") {
@@ -187,6 +200,12 @@ describe("OAuth token requests over HTTPS", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.message).toContain("because it's on a private network");
     expect(requests).toHaveLength(0);
+  });
+
+  test("the MCP probe falls back to GET when an SSE server refuses the POST without a challenge", async () => {
+    const result = await agentVaultOauthHttpClient.probe(`${issuer}/sse`);
+    expect(result).toEqual({ status: 401, wwwAuthenticate: `Bearer resource_metadata="${issuer}/meta"` });
+    expect(requests.map(({ method, path }) => `${method} ${path}`)).toEqual(["POST /sse", "GET /sse"]);
   });
 
   test("a provider trickling response bytes cannot extend the request deadline", async () => {

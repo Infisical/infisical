@@ -47,7 +47,8 @@ describe("client registration", () => {
     serverUrl: "https://mcp.example.com/mcp",
     registrationEndpoint: "https://mcp.example.com/register",
     redirectUri: "https://app.infisical.com/agent-vault/oauth/callback",
-    grantTypesSupported: null
+    grantTypesSupported: null,
+    tokenEndpointAuthMethodsSupported: null
   };
 
   test("sends the full metadata and keeps the method the server assigned", async () => {
@@ -76,6 +77,29 @@ describe("client registration", () => {
     const { http, calls } = stubPosts([json(201, { client_id: "c-1" })]);
     await registerOauthClient({ http, ...args, grantTypesSupported: ["authorization_code"] });
     expect(calls[0].json).toMatchObject({ grant_types: ["authorization_code"] });
+  });
+
+  test("asks for a confidential client when the server lists its auth methods without none", async () => {
+    const { http, calls } = stubPosts([json(201, { client_id: "c-3", client_secret: "s-3" })]);
+    const result = await registerOauthClient({
+      http,
+      ...args,
+      tokenEndpointAuthMethodsSupported: ["client_secret_post"]
+    });
+    expect(calls[0].json).toMatchObject({ token_endpoint_auth_method: "client_secret_post" });
+    expect(result.client).toEqual({
+      clientId: "c-3",
+      clientSecret: "s-3",
+      tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretPost
+    });
+
+    const both = stubPosts([json(201, { client_id: "c-4" })]);
+    await registerOauthClient({
+      http: both.http,
+      ...args,
+      tokenEndpointAuthMethodsSupported: ["client_secret_basic", "none"]
+    });
+    expect(both.calls[0].json).toMatchObject({ token_endpoint_auth_method: "none" });
   });
 
   test("a rejected registration is retried once without application_type, keeping the grant types", async () => {

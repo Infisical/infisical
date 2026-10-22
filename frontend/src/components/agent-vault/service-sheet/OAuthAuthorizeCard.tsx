@@ -324,6 +324,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
     } else {
       head = (
         <Status
+          icon={<CheckIcon />}
           title={
             authorizedAt ? (
               <Tooltip>
@@ -380,12 +381,13 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
       <FieldContent>
         <div className="flex flex-col gap-3">
           {status ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">{status.head}</div>
-                {!isOwnApp && authorizeButton}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                {status.head}
+                {/* Indented to the status text, past its icon, so the details read as part of it. */}
+                {status.details && <div className="pl-5">{status.details}</div>}
               </div>
-              {status.details}
+              {!isOwnApp && authorizeButton}
             </div>
           ) : (
             !isOwnApp && <div>{authorizeButton}</div>

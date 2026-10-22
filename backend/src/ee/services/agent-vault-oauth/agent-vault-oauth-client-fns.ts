@@ -37,7 +37,7 @@ const SUPPORTED_AUTH_METHODS = Object.values(AgentVaultOauthClientAuthMethod) as
 export const MAX_CLIENT_ID_LENGTH = 2048;
 export const MAX_CLIENT_SECRET_LENGTH = 4096;
 
-const parseRegistration = (body: string): TOauthClient | null => {
+const parseRegistration = (body: string, requestedMethod: AgentVaultOauthClientAuthMethod): TOauthClient | null => {
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(body) as Record<string, unknown>;
@@ -62,7 +62,9 @@ const parseRegistration = (body: string): TOauthClient | null => {
   // The server may assign a method other than the one asked for; what it returns is what the client holds.
   let method = typeof parsed.token_endpoint_auth_method === "string" ? parsed.token_endpoint_auth_method : null;
   if (!method || !SUPPORTED_AUTH_METHODS.includes(method)) {
-    method = clientSecret ? AgentVaultOauthClientAuthMethod.ClientSecretBasic : AgentVaultOauthClientAuthMethod.None;
+    if (!clientSecret) method = AgentVaultOauthClientAuthMethod.None;
+    else if (requestedMethod !== AgentVaultOauthClientAuthMethod.None) method = requestedMethod;
+    else method = AgentVaultOauthClientAuthMethod.ClientSecretBasic;
   }
   return {
     clientId: parsed.client_id,
@@ -71,28 +73,44 @@ const parseRegistration = (body: string): TOauthClient | null => {
   };
 };
 
+// RFC 8414 makes client_secret_basic the default when the server lists no methods.
+const secretAuthMethod = (supported: string[] | null) =>
+  supported &&
+  !supported.includes(AgentVaultOauthClientAuthMethod.ClientSecretBasic) &&
+  supported.includes(AgentVaultOauthClientAuthMethod.ClientSecretPost)
+    ? AgentVaultOauthClientAuthMethod.ClientSecretPost
+    : AgentVaultOauthClientAuthMethod.ClientSecretBasic;
+
 // RFC 7591. Servers must ignore metadata fields they don't understand, so the only one a strict server can refuse
 // is `application_type` (an OIDC registration value); a refusal is retried once without it. `grant_types` stays,
 // or a strict server registers authorization_code only and every refresh fails with unauthorized_client. It drops
 // refresh_token only when the server's metadata lists its grants without it, since a strict one refuses the request.
+// It asks for a public client unless the server lists its auth methods without `none`, for the same reason.
 export const registerOauthClient = async ({
   http,
   serverUrl,
   registrationEndpoint,
   redirectUri,
-  grantTypesSupported
+  grantTypesSupported,
+  tokenEndpointAuthMethodsSupported
 }: {
   http: TOauthHttpClient;
   serverUrl: string;
   registrationEndpoint: string;
   redirectUri: string;
   grantTypesSupported: string[] | null;
+  tokenEndpointAuthMethodsSupported: string[] | null;
 }): Promise<{ client: TOauthClient; compatibility: AgentVaultOauthCompatibility[] }> => {
   const refreshSupported = !grantTypesSupported || grantTypesSupported.includes("refresh_token");
+  const publicClientSupported =
+    !tokenEndpointAuthMethodsSupported ||
+    tokenEndpointAuthMethodsSupported.includes(AgentVaultOauthClientAuthMethod.None);
   const minimal = {
     client_name: AGENT_VAULT_OAUTH_CLIENT_NAME,
     redirect_uris: [redirectUri],
-    token_endpoint_auth_method: AgentVaultOauthClientAuthMethod.None,
+    token_endpoint_auth_method: publicClientSupported
+      ? AgentVaultOauthClientAuthMethod.None
+      : secretAuthMethod(tokenEndpointAuthMethodsSupported),
     grant_types: refreshSupported ? [AGENT_VAULT_OAUTH_GRANT_TYPE, "refresh_token"] : [AGENT_VAULT_OAUTH_GRANT_TYPE],
     response_types: ["code"]
   };
@@ -120,7 +138,7 @@ export const registerOauthClient = async ({
       lastReason = "";
     }
     if (response.status === 200 || response.status === 201) {
-      const client = parseRegistration(response.body);
+      const client = parseRegistration(response.body, minimal.token_endpoint_auth_method);
       if (!client) {
         throw new OauthRegistrationError("its registration endpoint returned no usable client ID.", response.status);
       }
@@ -141,7 +159,7 @@ export const registerOauthClient = async ({
   );
 };
 
-// An admin-entered client. RFC 8414 makes client_secret_basic the default when the server lists no methods.
+// An admin-entered client.
 export const manualOauthClient = ({
   clientId,
   clientSecret,
@@ -152,12 +170,5 @@ export const manualOauthClient = ({
   tokenEndpointAuthMethodsSupported: string[] | null;
 }): TOauthClient => {
   if (!clientSecret) return { clientId, tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None };
-  const supported = tokenEndpointAuthMethodsSupported;
-  const method =
-    supported &&
-    !supported.includes(AgentVaultOauthClientAuthMethod.ClientSecretBasic) &&
-    supported.includes(AgentVaultOauthClientAuthMethod.ClientSecretPost)
-      ? AgentVaultOauthClientAuthMethod.ClientSecretPost
-      : AgentVaultOauthClientAuthMethod.ClientSecretBasic;
-  return { clientId, clientSecret, tokenEndpointAuthMethod: method };
+  return { clientId, clientSecret, tokenEndpointAuthMethod: secretAuthMethod(tokenEndpointAuthMethodsSupported) };
 };

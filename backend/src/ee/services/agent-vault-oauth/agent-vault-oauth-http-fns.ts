@@ -110,6 +110,26 @@ export const agentVaultOauthHttpClient: TOauthHttpClient = {
     );
     response.data?.destroy?.();
     const challenge = headerValue(response.headers["www-authenticate"]);
-    return { status: response.status, wwwAuthenticate: challenge || null };
+    if (challenge || (response.status >= 200 && response.status < 300)) {
+      return { status: response.status, wwwAuthenticate: challenge || null };
+    }
+
+    // An SSE server may only challenge the GET that opens its stream, and answer the POST with 405.
+    const sse = await safeRequest
+      .get<Readable>(url, {
+        timeout: TIMEOUT_MS,
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        "axios-retry": { retries: 0 },
+        responseType: "stream",
+        validateStatus: () => true,
+        headers: { Accept: "text/event-stream" }
+      })
+      .catch(() => null);
+    if (sse) {
+      sse.data?.destroy?.();
+      const sseChallenge = headerValue(sse.headers["www-authenticate"]);
+      if (sseChallenge) return { status: sse.status, wwwAuthenticate: sseChallenge };
+    }
+    return { status: response.status, wwwAuthenticate: null };
   }
 };

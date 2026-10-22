@@ -267,16 +267,9 @@ export const buildServiceSchema = (
       hostDraft: z.string(),
       pathDraft: z.string(),
       credentialType: z.nativeEnum(AgentVaultCredentialType),
-      headerName: z
-        .string()
-        .trim()
-        .max(128)
-        .regex(
-          /^[A-Za-z0-9!#$%&'*+.^_`|~-]*$/,
-          "A header name can't contain spaces or colons. Use letters, digits and dashes, as in X-API-Key."
-        )
-        .optional(),
-      headerPrefix: z.string().trim().max(64).optional(),
+      // Checked in superRefine, only while Bearer is selected: switching away hides these fields but keeps them.
+      headerName: z.string().trim().optional(),
+      headerPrefix: z.string().trim().optional(),
       username: z.string().trim().max(256).optional(),
       secret: z.string().max(8192).optional(),
       oauthAuthorizationId: z.string(),
@@ -416,6 +409,31 @@ export const buildServiceSchema = (
         data.credentialType === AgentVaultCredentialType.OAuth
       ) {
         credentialHeader = "Authorization";
+      }
+
+      if (hasHeaderShape && data.headerName) {
+        if (data.headerName.length > 128) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["headerName"],
+            message: "A header name can be at most 128 characters."
+          });
+        } else if (!/^[A-Za-z0-9!#$%&'*+.^_`|~-]*$/.test(data.headerName)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["headerName"],
+            message:
+              "A header name can't contain spaces or colons. Use letters, digits and dashes, as in X-API-Key."
+          });
+        }
+      }
+
+      if (hasHeaderShape && data.headerPrefix && data.headerPrefix.length > 64) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["headerPrefix"],
+          message: "A prefix can be at most 64 characters."
+        });
       }
 
       // Basic and OAuth always write Authorization, which is not reserved, so only bearer can name one.

@@ -350,7 +350,8 @@ export const agentVaultOauthServiceFactory = ({
           serverUrl,
           registrationEndpoint: discovery.registrationEndpoint,
           redirectUri: callbackUri,
-          grantTypesSupported: discovery.grantTypesSupported
+          grantTypesSupported: discovery.grantTypesSupported,
+          tokenEndpointAuthMethodsSupported: discovery.tokenEndpointAuthMethodsSupported
         });
         client = registered.client;
         compatibility.push(...registered.compatibility);
