@@ -151,7 +151,9 @@ const formFromTemplate = (picked: AgentVaultHttpTemplate | null, hosts: string[]
     ...(cred.type === AgentVaultCredentialType.Bearer && {
       headerName: cred.headerName ?? "Authorization",
       headerPrefix: cred.headerPrefix ?? "Bearer"
-    })
+    }),
+    ...(cred.type === AgentVaultCredentialType.Basic &&
+      cred.username && { username: cred.username })
   };
 };
 

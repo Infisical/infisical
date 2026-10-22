@@ -18,7 +18,7 @@ export enum AgentVaultTemplateCategory {
 
 export type AgentVaultTemplateCredential =
   | { type: AgentVaultCredentialType.Bearer; headerName?: string; headerPrefix?: string }
-  | { type: AgentVaultCredentialType.Basic }
+  | { type: AgentVaultCredentialType.Basic; username?: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
 export type AgentVaultHttpTemplate = {
@@ -234,8 +234,10 @@ const HTTP_TEMPLATES: Omit<AgentVaultHttpTemplate, "serviceType">[] = [
     image: "GitHub.png",
     category: AgentVaultTemplateCategory.DeveloperTools,
     description: "Repos, issues, and more on GitHub.",
-    hostPattern: "api.github.com",
-    credential: { type: AgentVaultCredentialType.Bearer }
+    // Git over HTTPS only accepts the token as a Basic password, and the API takes Basic too, so one
+    // credential covers both.
+    hostPattern: "api.github.com, github.com, uploads.github.com, raw.githubusercontent.com",
+    credential: { type: AgentVaultCredentialType.Basic, username: "x-access-token" }
   },
   {
     key: "gitlab",

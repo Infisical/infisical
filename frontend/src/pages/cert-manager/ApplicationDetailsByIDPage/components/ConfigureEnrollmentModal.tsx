@@ -1010,7 +1010,7 @@ const ScepPanel = ({
           <CopyableField
             label="SCEP endpoint URL"
             value={initial.scepEndpointUrl}
-            helper="Configure your MDM or SCEP client to point at this URL."
+            helper="Configure your MDM or SCEP client to point at this URL. For Windows devices, remove /pkiclient.exe from the end."
           />
           {initial.challengeType === ScepChallengeType.DYNAMIC && initial.challengeEndpointUrl ? (
             <CopyableField

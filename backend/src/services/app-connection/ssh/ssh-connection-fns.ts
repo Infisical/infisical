@@ -273,7 +273,7 @@ type TSshGatewayServices = {
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
-const toSshExecCredentials = (config: TSshConnectionConfig): SshExecCredentials => {
+export const toSshExecCredentials = (config: TSshConnectionConfig): SshExecCredentials => {
   switch (config.method) {
     case SshConnectionMethod.Password:
       return {

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import { PenTool } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DocumentationLinkBadge,
@@ -28,10 +28,16 @@ import {
   CertKeySource,
   SignerKeyAlgorithm,
   SignerMemberRole,
+  TSignerExternalConfiguration,
+  useCheckSignerCertificateImport,
   useCreateSigner
 } from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
 
+import {
+  ExternalOrderMode,
+  isUsingExistingCertificate
+} from "../../../components/DigiCertExistingOrderField";
 import { SignerKeyStep } from "../../../components/SignerKeyStep";
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { ApprovalPolicyStep } from "./ApprovalPolicyStep";
@@ -76,6 +82,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   });
 
   const createSigner = useCreateSigner();
+  const checkCertificateImport = useCheckSignerCertificateImport();
+  const [importCheckError, setImportCheckError] = useState<string>();
 
   const caOptions: CaOption[] = useMemo(() => {
     const list = cas.data ?? [];
@@ -158,12 +166,22 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: state.keyAlgorithm,
       keySource: state.keySource,
       hsmConnectorId: state.hsmConnectorId,
-      reissueFromExternalOrderId: state.reissueFromExternalOrderId,
+      externalOrderId: state.externalOrderId,
+      externalOrderMode: state.externalOrderMode,
+      hsmKeyLabel: state.hsmKeyLabel,
+      hsmKeyId: state.hsmKeyId,
+      hsmKeyIdRequired: state.hsmKeyIdRequired,
+      hsmKeyUnresolved: state.hsmKeyUnresolved,
       adcsTemplate: state.adcsTemplate
     }
   });
 
   const selectedCaId = certificateForm.watch("caId");
+  const [watchedKeyLabel, watchedKeyId, watchedConnectorId, watchedOrderMode] =
+    certificateForm.watch(["hsmKeyLabel", "hsmKeyId", "hsmConnectorId", "externalOrderMode"]);
+  useEffect(() => {
+    setImportCheckError(undefined);
+  }, [watchedKeyLabel, watchedKeyId, watchedConnectorId, watchedOrderMode]);
   const selectedCa = caOptions.find((o) => o.id === selectedCaId) ?? null;
   const caCaps = getCaIssuanceCapabilities(selectedCa?.caType);
 
@@ -185,12 +203,18 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
       keySource: CertKeySource.Infisical,
       hsmConnectorId: null,
-      reissueFromExternalOrderId: null,
+      externalOrderId: null,
+      externalOrderMode: ExternalOrderMode.Reissue,
+      hsmKeyLabel: "",
+      hsmKeyId: "",
+      hsmKeyIdRequired: false,
+      hsmKeyUnresolved: false,
       adcsTemplate: ""
     });
   };
 
   const handleClose = (open: boolean) => {
+    if (!open && submitting) return;
     if (!open) reset();
     onOpenChange(open);
   };
@@ -215,26 +239,25 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
             }
           : undefined;
 
+      const usingExistingCertificate = isUsingExistingCertificate(state);
       const certificate =
         state.keySource === CertKeySource.Hsm && state.hsmConnectorId
           ? {
               keySource: CertKeySource.Hsm,
-              hsmConnectorId: state.hsmConnectorId
+              hsmConnectorId: state.hsmConnectorId,
+              hsmKeyLabel: usingExistingCertificate ? state.hsmKeyLabel : undefined,
+              hsmKeyId: usingExistingCertificate && state.hsmKeyId ? state.hsmKeyId : undefined
             }
           : undefined;
 
       const selectedCaType = caOptions.find((o) => o.id === state.caId)?.caType;
-      let externalConfiguration;
-      if (state.reissueFromExternalOrderId) {
-        externalConfiguration = {
-          caType: CaType.DIGICERT,
-          reissueFromExternalOrderId: state.reissueFromExternalOrderId
-        } as const;
+      let externalConfiguration: TSignerExternalConfiguration | undefined;
+      if (state.externalOrderId) {
+        externalConfiguration = usingExistingCertificate
+          ? { importFromExternalOrderId: state.externalOrderId }
+          : { reissueFromExternalOrderId: state.externalOrderId };
       } else if (selectedCaType === CaType.ADCS && state.adcsTemplate.trim()) {
-        externalConfiguration = {
-          caType: CaType.ADCS,
-          template: state.adcsTemplate.trim()
-        } as const;
+        externalConfiguration = { template: state.adcsTemplate.trim() };
       }
 
       await createSigner.mutateAsync({
@@ -242,10 +265,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         name: state.name,
         description: state.description || undefined,
         caId: state.caId,
-        commonName: state.commonName,
-        certificateTtlDays: state.certificateTtlDays,
+        commonName: usingExistingCertificate ? undefined : state.commonName,
+        certificateTtlDays: usingExistingCertificate ? undefined : state.certificateTtlDays,
         certificateRenewBeforeDays: state.certificateRenewBeforeDays,
-        keyAlgorithm: state.keyAlgorithm,
+        keyAlgorithm: usingExistingCertificate ? undefined : state.keyAlgorithm,
         members: state.pendingMembers.map((m) => ({
           kind: m.kind,
           id: m.id,
@@ -256,12 +279,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         externalConfiguration
       });
 
-      handleClose(false);
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to create signer"
-      });
+      reset();
+      onOpenChange(false);
+      // eslint-disable-next-line no-empty
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -280,7 +301,12 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: values.keyAlgorithm,
       keySource: values.keySource,
       hsmConnectorId: values.hsmConnectorId ?? null,
-      reissueFromExternalOrderId: values.reissueFromExternalOrderId ?? null,
+      externalOrderId: values.externalOrderId ?? null,
+      externalOrderMode: values.externalOrderMode,
+      hsmKeyLabel: values.hsmKeyLabel ?? "",
+      hsmKeyId: values.hsmKeyId ?? "",
+      hsmKeyIdRequired: values.hsmKeyIdRequired ?? false,
+      hsmKeyUnresolved: values.hsmKeyUnresolved ?? false,
       adcsTemplate: values.adcsTemplate ?? ""
     }));
   };
@@ -300,7 +326,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         "commonName",
         "certificateTtlDays",
         "certificateRenewBeforeDays",
-        "reissueFromExternalOrderId"
+        "externalOrderId"
       ]);
       if (!ok) return;
       if (
@@ -315,8 +341,37 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       return;
     }
     if (step === 2) {
-      const ok = await certificateForm.trigger(["keySource", "keyAlgorithm", "hsmConnectorId"]);
+      const ok = await certificateForm.trigger([
+        "keySource",
+        "keyAlgorithm",
+        "hsmConnectorId",
+        "hsmKeyLabel",
+        "hsmKeyId"
+      ]);
       if (!ok) return;
+      const values = certificateForm.getValues();
+      if (isUsingExistingCertificate(values) && values.externalOrderId && values.hsmConnectorId) {
+        setSubmitting(true);
+        try {
+          await checkCertificateImport.mutateAsync({
+            caId: values.caId,
+            externalOrderId: values.externalOrderId,
+            certificate: {
+              hsmConnectorId: values.hsmConnectorId,
+              hsmKeyLabel: values.hsmKeyLabel,
+              hsmKeyId: values.hsmKeyId || undefined
+            }
+          });
+        } catch (err) {
+          setImportCheckError(
+            (err as AxiosError<{ message?: string }>)?.response?.data?.message ??
+              "Could not check the key against the certificate."
+          );
+          return;
+        } finally {
+          setSubmitting(false);
+        }
+      }
       persistCertificateForm();
       setStep(3);
       return;
@@ -331,6 +386,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   };
 
   const goBack = () => {
+    if (submitting) return;
     if (step > 0) setStep((s) => s - 1);
   };
 
@@ -384,7 +440,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                 activeStep={step}
                 orientation="vertical"
                 onStepChange={(i) => {
-                  if (i < step) setStep(i);
+                  if (i < step && !submitting) setStep(i);
                 }}
               >
                 <StepperList>
@@ -421,6 +477,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                   minRsaKeyBits={caCaps.minRsaKeyBits}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
+                  importCheckError={importCheckError}
                 />
               )}
               {step === 3 && (
@@ -488,7 +545,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                 Step {step + 1} of {STEPS.length}
               </span>
               {step > 0 && (
-                <Button variant="outline" onClick={goBack}>
+                <Button variant="outline" onClick={goBack} isDisabled={submitting}>
                   Back
                 </Button>
               )}

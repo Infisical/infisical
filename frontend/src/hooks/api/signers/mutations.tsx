@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { approvalRequestQuery } from "@app/hooks/api/approvalRequests/queries";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 
 import { signerKeys } from "./queries";
 import {
@@ -10,10 +11,12 @@ import {
   TAddSignerGroupMemberDTO,
   TAddSignerIdentityMemberDTO,
   TAddSignerUserMembersDTO,
+  TCheckSignerCertificateImportDTO,
   TCreateSignerDTO,
   TDeleteSignerDTO,
   TDisableSignerDTO,
   TEnableSignerDTO,
+  TImportSignerCertificateDTO,
   TPreApproveSigningDTO,
   TReissueSignerCertificateDTO,
   TRemoveSignerGroupDTO,
@@ -134,6 +137,38 @@ export const useReissueSignerCertificate = () => {
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
       createNotification({ text: "Certificate re-issue scheduled", type: "success" });
+    }
+  });
+};
+
+export const useCheckSignerCertificateImport = () =>
+  useMutation<{ hsmKeyId: string | null }, object, TCheckSignerCertificateImportDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<{ check: { hsmKeyId: string | null } }>(
+        "/api/v1/cert-manager/signers/check-certificate-import",
+        body
+      );
+      return data.check;
+    },
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, ApiErrorTypes.ConflictError] }
+  });
+
+export const useImportSignerCertificate = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TSigner, object, TImportSignerCertificateDTO>({
+    mutationFn: async ({ signerId, ...body }) => {
+      const { data } = await apiRequest.post<TSigner>(
+        `/api/v1/cert-manager/signers/${signerId}/certificate/import`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (signer) => {
+      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
+      createNotification({ text: "Signer switched to the order's certificate", type: "success" });
     }
   });
 };
