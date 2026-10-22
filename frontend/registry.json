@@ -1187,11 +1187,12 @@
       "type": "registry:ui",
       "registryDependencies": [
         "@infisical/button",
+        "@infisical/checkbox",
         "@infisical/icon",
-        "@infisical/infisical-base"
-      ],
-      "dependencies": [
-        "lucide-react@^0.544.0"
+        "@infisical/infisical-base",
+        "@infisical/input",
+        "@infisical/popover",
+        "@infisical/select"
       ],
       "files": [
         {
@@ -1220,9 +1221,6 @@
         "@infisical/icon",
         "@infisical/infisical-base",
         "@infisical/table"
-      ],
-      "dependencies": [
-        "lucide-react@^0.544.0"
       ],
       "files": [
         {

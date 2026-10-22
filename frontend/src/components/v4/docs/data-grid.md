@@ -45,7 +45,7 @@ Why: Stable columns keep exact values comparable. Nulls, protected fields and in
 - src/components/v4/ui/data-grid-model.ts
 - src/components/v4/ui/data.module.css
 
-Exports: DataGrid, GridColumn, GridChange, GridSelection, GridValue. Source TypeScript defines the API.
+Exports: DataGrid, GridColumn, GridChange, GridSelection, GridValue, NewGridColumn, gridColumnTypes. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -54,12 +54,16 @@ Exports: DataGrid, GridColumn, GridChange, GridSelection, GridValue. Source Type
 - Quoted TSV preserves null, literal NULL, empty text, embedded separators and quotes. Copy writes null as the unquoted marker \N, and paste reads an unquoted \N back as null.
 - Invalid paste rejects the full batch. Async change failure keeps the edit draft.
 - Rows and columns use stable ids through sorting, filtering and reordering. Keyboard selection scrolls the real active cell into view on both axes using measured header and viewport bounds.
+- A header shows the column name in ink at the label weight and its type in muted mono at 400. A primary key column shows the key icon before its name.
+- The editor matches the cell's resting padding on every side and draws its 2px focus border inside the box, so text does not move when editing starts.
+- The last row has no divider, so the container border is the only bottom edge. With footer or onAddRow the grid becomes a framed shell: the grid sits inset in a frame-line, tint frame and the footer is the frame band below it.
+- onAddColumn shows a ghost + at the end of the header that opens a popover with name, type (text, int8, bool, timestamp, json) and nullable; Cancel closes it without a change. onAddRow shows New row in the footer band; when it returns the new id, the grid opens the row's first editable cell, and cancelling that first edit calls onAddRowCancel so the host can drop the row.
 
 ## Accessibility
 
 - The grid has a name and announces its row and column counts and the selected cell, even when that cell is scrolled out of view.
 - Arrows, Home/End, PageUp/Down, Shift range, Enter/F2 edit, Escape cancel, Tab commit, mod+A/C/Z.
-- Headers expose sorting buttons and keyboard-resizable separators. Sort buttons show the direction with an up, down or two-way arrow icon alongside aria-sort.
+- Headers expose sorting buttons and keyboard-resizable separators. Sort is a ghost icon Button: a sorted column always shows an up (ascending) or down (descending) arrow; an unsorted column shows the up arrow it would apply only while its header is hovered or focused. aria-sort carries the state; the button keeps the stable name Sort <column>.
 - Typing a printable key on a selected editable cell opens the editor with that key and the caret after it, so fast typing keeps its order.
 
 ## Use cases
@@ -120,24 +124,27 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/data-grid/workspace.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard, editing, error, overflow.
 
-Registry items used: @infisical/data-grid. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/data-grid. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
-import { DataGrid, type GridColumn } from "../../../../components/v4/ui/data-grid";
+import { Button } from "../../../../components/v4/ui/button";
+import { DataGrid, type GridColumn, type NewGridColumn } from "../../../../components/v4/ui/data-grid";
 type Row = {
     id: string;
     name: string;
     count: string;
     note: string | null;
+    extra: Record<string, string | null>;
 };
 const initial: Row[] = Array.from({ length: 6 }, (_, i) => ({
     id: `r${i}`,
     name: `resource_${i}`,
     count: i === 0 ? "9007199254740993" : String(i),
-    note: i % 5 === 0 ? null : (["Example only", "NULL"][i === 1 ? 1 : 0] ?? "Example only")
+    note: i % 5 === 0 ? null : (["Example only", "NULL"][i === 1 ? 1 : 0] ?? "Example only"),
+    extra: {}
 }));
-const columns: GridColumn<Row>[] = [
+const baseColumns: GridColumn<Row>[] = [
     {
         id: "name",
         header: "Name",
@@ -157,13 +164,20 @@ function compareRows(a: Row, b: Row, columnId: string): number {
             return 0;
         return first < second ? -1 : 1;
     }
-    const first = columnId === "note" ? a.note : a.name;
-    const second = columnId === "note" ? b.note : b.name;
+    const valueOf = (row: Row) => {
+        if (columnId === "note")
+            return row.note;
+        if (columnId === "name")
+            return row.name;
+        return row.extra[columnId];
+    };
+    const first = valueOf(a);
+    const second = valueOf(b);
     if (first === second)
         return 0;
-    if (first === null)
+    if (first === null || first === undefined)
         return -1;
-    if (second === null)
+    if (second === null || second === undefined)
         return 1;
     return first.localeCompare(second);
 }
@@ -173,23 +187,57 @@ export default function Example() {
         direction: "asc" | "desc";
     }>();
     const [rows, setRows] = useState(initial);
+    const [added, setAdded] = useState<NewGridColumn[]>([]);
+    const [next, setNext] = useState(initial.length);
+    const columns: GridColumn<Row>[] = [
+        ...baseColumns,
+        ...added.map((column): GridColumn<Row> => ({
+            id: column.name,
+            header: column.name,
+            type: column.type,
+            nullable: column.nullable,
+            getValue: (row) => row.extra[column.name] ?? null
+        }))
+    ];
     return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
       <div className="relative min-w-0 w-full overflow-auto max-h-[400px]">
-        <DataGrid label="Example resources" rows={rows} columns={columns} getRowId={(row) => row.id} editable height={320} sort={sort} onSortChange={(next) => {
-            setSort(next);
-            setRows((current) => [...current].sort((a, b) => compareRows(a, b, next.columnId) * (next.direction === "asc" ? 1 : -1)));
-        }} onCellsChange={(changes) => {
+        <DataGrid label="Example resources" rows={rows} columns={columns} getRowId={(row) => row.id} editable height={320} sort={sort} onSortChange={(nextSort) => {
+            setSort(nextSort);
+            setRows((current) => [...current].sort((a, b) => compareRows(a, b, nextSort.columnId) * (nextSort.direction === "asc" ? 1 : -1)));
+        }} onAddColumn={(column) => setAdded((current) => current.some((entry) => entry.name === column.name) ? current : [...current, column])} onAddRow={() => {
+            const id = `r${next}`;
+            setNext(next + 1);
+            setRows((current) => [
+                ...current,
+                { id, name: `resource_${next}`, count: "0", note: null, extra: {} }
+            ]);
+            return id;
+        }} onAddRowCancel={(id) => setRows((current) => current.filter((row) => row.id !== id))} footer={<>
+              <span>
+                {rows.length} rows, {columns.length} columns
+              </span>
+              {added.length > 0 && (<Button type="button" variant="link" onClick={() => setAdded((current) => current.slice(0, -1))}>
+                  Undo add column
+                </Button>)}
+            </>} onCellsChange={(changes) => {
             setRows((current) => current.map((row) => {
-                let next = row;
+                let nextRow = row;
                 changes
                     .filter((cell) => cell.rowId === row.id)
                     .forEach((cell) => {
                     if (cell.columnId === "note")
-                        next = { ...next, note: cell.value };
+                        nextRow = { ...nextRow, note: cell.value };
                     else if (cell.columnId === "count" && cell.value !== null)
-                        next = { ...next, count: cell.value };
+                        nextRow = { ...nextRow, count: cell.value };
+                    else if (cell.columnId === "name" && cell.value !== null)
+                        nextRow = { ...nextRow, name: cell.value };
+                    else
+                        nextRow = {
+                            ...nextRow,
+                            extra: { ...nextRow.extra, [cell.columnId]: cell.value }
+                        };
                 });
-                return next;
+                return nextRow;
             }));
         }}/>
       </div>

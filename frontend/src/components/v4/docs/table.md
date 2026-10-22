@@ -90,7 +90,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.
 - DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.
 - Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.
-- Sortable headers show the direction with an icon: up for ascending, down for descending and a two-way arrow when the column is not sorted. The sorted header steps up to ink.
+- Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
 
 ## Accessibility

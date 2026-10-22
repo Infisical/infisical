@@ -1,7 +1,7 @@
 import * as React from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { Button } from "./button";
+import { Checkbox } from "./checkbox";
 import {
   canEditColumn,
   encodeTsv,
@@ -14,6 +14,9 @@ import {
   pasteGrid
 } from "./data-grid-model";
 import { Icon } from "./icon";
+import { Input } from "./input";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
 import styles from "./data.module.css";
 
@@ -37,9 +40,112 @@ export interface DataGridProps<Row> {
   onSortChange?: (sort: { columnId: string; direction: "asc" | "desc" }) => void;
   onColumnResize?: (columnId: string, width: number | null) => void;
   onCopy?: (text: string, count: number) => void;
+  /** Content of the frame band under the grid: counts, pagination or actions. */
   footer?: React.ReactNode;
   empty?: React.ReactNode;
+  /** Shows a + at the end of the header that opens a name, type and nullable form. */
+  onAddColumn?: (column: NewGridColumn) => void;
+  /** Shows a New row action in the footer band. Return the new row's id to start editing it. */
+  onAddRow?: () => string | void;
+  /** Called when a new row's first edit is cancelled before anything was committed. */
+  onAddRowCancel?: (rowId: string) => void;
 }
+export const gridColumnTypes = ["text", "int8", "bool", "timestamp", "json"] as const;
+export type NewGridColumn = {
+  name: string;
+  type: (typeof gridColumnTypes)[number];
+  nullable: boolean;
+};
+const AddColumn = ({
+  onAdd,
+  disabled
+}: {
+  onAdd: (column: NewGridColumn) => void;
+  disabled?: boolean;
+}) => {
+  const [open, setOpen] = React.useState(false);
+  const [name, setName] = React.useState("");
+  const [type, setType] = React.useState<NewGridColumn["type"]>("text");
+  const [nullable, setNullable] = React.useState(true);
+  const nameId = React.useId();
+  const reset = () => {
+    setName("");
+    setType("text");
+    setNullable(true);
+  };
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) reset();
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          iconOnly
+          icon="plus"
+          aria-label="Add column"
+          disabled={disabled}
+          className={styles.gridAddColumn}
+        />
+      </PopoverTrigger>
+      <PopoverContent align="end">
+        <form
+          className={styles.gridAddForm}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!name.trim()) return;
+            onAdd({ name: name.trim(), type, nullable });
+            setOpen(false);
+            reset();
+          }}
+        >
+          <span id={nameId}>Name</span>
+          <Input
+            aria-labelledby={nameId}
+            mono
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <span>Type</span>
+          <Select value={type} onValueChange={(value) => setType(value as NewGridColumn["type"])}>
+            <SelectTrigger aria-label="Type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {gridColumnTypes.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className={styles.gridAddCheck}>
+            <Checkbox
+              aria-labelledby={`${nameId}-nullable`}
+              checked={nullable}
+              onCheckedChange={(value) => setNullable(value === true)}
+            />
+            <span id={`${nameId}-nullable`}>Nullable</span>
+          </span>
+          <div className={styles.gridAddActions}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!name.trim()}>
+              Add column
+            </Button>
+          </div>
+        </form>
+      </PopoverContent>
+    </Popover>
+  );
+};
 interface Edit {
   cell: GridCell;
   text: string;
@@ -63,8 +169,12 @@ export function DataGrid<Row>({
   onColumnResize,
   onCopy,
   footer,
-  empty = "No rows"
+  empty = "No rows",
+  onAddColumn,
+  onAddRow,
+  onAddRowCancel
 }: DataGridProps<Row>) {
+  const added = React.useRef<{ id: string; started: boolean; committed: boolean } | null>(null);
   const [selection, setSelection] = React.useState<GridSelection | null>(null);
   const [edit, setEdit] = React.useState<Edit | null>(null);
   const [status, setStatus] = React.useState("");
@@ -222,6 +332,24 @@ export function DataGrid<Row>({
     setEdit(null);
     setStatus("The edited cell is no longer available. The draft was not applied.");
   }, [rows, columns, getRowId, edit?.cell.rowId, edit?.cell.columnId]);
+  const cancelEdit = () => {
+    const fresh = added.current;
+    if (fresh && edit?.cell.rowId === fresh.id) {
+      added.current = null;
+      onAddRowCancel?.(fresh.id);
+    }
+    setEdit(null);
+    focusGrid();
+  };
+  React.useEffect(() => {
+    const fresh = added.current;
+    if (!fresh || fresh.started) return;
+    const r = rows.findIndex((row) => getRowId(row) === fresh.id);
+    const c = columns.findIndex((column) => canEditColumn(column));
+    if (r < 0 || c < 0) return;
+    fresh.started = true;
+    startEdit(r, c);
+  });
   const commit = async (dr = 0, dc = 0) => {
     if (!edit || busy) return;
     const row = rows.find((item) => getRowId(item) === edit.cell.rowId);
@@ -251,6 +379,7 @@ export function DataGrid<Row>({
     }
     const ok = await change([{ ...edit.cell, row, previous: edit.previous, value: parsed.value }]);
     if (ok) {
+      if (added.current?.id === edit.cell.rowId) added.current = null;
       setEdit(null);
       focusGrid();
       if (dr || dc) select(rowIndex + dr, colIndex + dc);
@@ -439,7 +568,7 @@ export function DataGrid<Row>({
     })
   );
   const effectiveWidth = (column: GridColumn<Row>) => effectiveWidths.get(column.id) ?? 64;
-  const template = `max-content ${columns.map((column) => `${effectiveWidth(column)}px`).join(" ")}`;
+  const template = `max-content ${columns.map((column) => `${effectiveWidth(column)}px`).join(" ")}${onAddColumn ? " var(--v4-size-control-sm)" : ""}`;
   const start = height ? Math.max(0, Math.floor(scrollTop / effectiveRowHeight) - 5) : 0;
   const end = height
     ? Math.min(rows.length, start + Math.ceil(height / effectiveRowHeight) + 10)
@@ -460,6 +589,7 @@ export function DataGrid<Row>({
         role="row"
         aria-rowindex={r + 2}
         key={getRowId(row)}
+        data-last={r === rows.length - 1 || undefined}
         className={styles.gridRow}
         style={{
           gridTemplateColumns: template,
@@ -560,8 +690,7 @@ export function DataGrid<Row>({
                     if (event.key === "Escape") {
                       event.preventDefault();
                       event.stopPropagation();
-                      setEdit(null);
-                      focusGrid();
+                      cancelEdit();
                     } else if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
                       commit(1, 0);
@@ -585,6 +714,7 @@ export function DataGrid<Row>({
   return (
     <div
       className={styles.gridShell}
+      data-footer={footer || onAddRow ? "" : undefined}
       role="group"
       aria-label={`${label} workspace`}
       data-v4-escape-owner={edit ? "" : undefined}
@@ -592,8 +722,7 @@ export function DataGrid<Row>({
         if (event.key === "Escape" && edit && !busy) {
           event.preventDefault();
           event.stopPropagation();
-          setEdit(null);
-          focusGrid();
+          cancelEdit();
         }
       }}
     >
@@ -651,16 +780,22 @@ export function DataGrid<Row>({
                 title={column.type ? `${column.header}, ${column.type}` : undefined}
               >
                 <span>
-                  {column.primaryKey ? "⌑ " : ""}
+                  {column.primaryKey && (
+                    <Icon name="key" size={12} label="Primary key" className={styles.gridKey} />
+                  )}
                   {column.header}
                 </span>
                 {effectiveWidth(column) >= 160 && <small>{column.type}</small>}
               </span>
               {onSortChange && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  iconOnly
                   aria-label={`Sort ${column.header}`}
                   data-active={sort?.columnId === column.id || undefined}
+                  className={styles.gridSort}
                   disabled={busy}
                   onClick={() =>
                     onSortChange({
@@ -671,15 +806,13 @@ export function DataGrid<Row>({
                   }
                 >
                   <Icon
-                    icon={
-                      sort?.columnId !== column.id
-                        ? ArrowUpDown
-                        : sort.direction === "asc"
-                          ? ArrowUp
-                          : ArrowDown
+                    name={
+                      sort?.columnId === column.id && sort.direction === "desc"
+                        ? "arrow-down"
+                        : "arrow-up"
                     }
                   />
-                </button>
+                </Button>
               )}
               <span
                 role="slider"
@@ -734,6 +867,11 @@ export function DataGrid<Row>({
               />
             </div>
           ))}
+          {onAddColumn && (
+            <div role="columnheader" className={styles.gridAddHeader}>
+              <AddColumn onAdd={onAddColumn} disabled={busy || !!edit} />
+            </div>
+          )}
         </div>
         <div
           role="rowgroup"
@@ -747,15 +885,7 @@ export function DataGrid<Row>({
       </div>
       {edit && (
         <div className={styles.actions}>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={busy}
-            onClick={() => {
-              setEdit(null);
-              focusGrid();
-            }}
-          >
+          <Button type="button" variant="outline" disabled={busy} onClick={cancelEdit}>
             Cancel edit
           </Button>
           <Button type="button" disabled={busy} onClick={() => commit()}>
@@ -782,7 +912,26 @@ export function DataGrid<Row>({
           </>
         )}
       </div>
-      {footer && <div className={styles.status}>{footer}</div>}
+      {(footer || onAddRow) && (
+        <div className={styles.gridFooter}>
+          {onAddRow && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              icon="plus"
+              disabled={busy || !!edit}
+              onClick={() => {
+                const id = onAddRow();
+                if (id) added.current = { id, started: false, committed: false };
+              }}
+            >
+              New row
+            </Button>
+          )}
+          {footer}
+        </div>
+      )}
     </div>
   );
 }

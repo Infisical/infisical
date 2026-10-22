@@ -10,19 +10,31 @@ export const dataGridDefinition = {
     "src/components/v4/ui/data-grid-model.ts",
     "src/components/v4/ui/data.module.css"
   ],
-  exports: ["DataGrid", "GridColumn", "GridChange", "GridSelection", "GridValue"],
+  exports: [
+    "DataGrid",
+    "GridColumn",
+    "GridChange",
+    "GridSelection",
+    "GridValue",
+    "NewGridColumn",
+    "gridColumnTypes"
+  ],
   referenceNames: ["DataGrid"],
   behavior: [
     "A hovered row shades its cells with a translucent ink overlay at the opacity-hover token, so the grid surface and cell content stay visible; selected and edited cells keep their own wash.",
     "Editable and read-only cells share range selection, copy and resize. rowHeight defaults to a requested 32px minimum. The measured content floor raises one uniform effective height used by cells, virtual positions and keyboard navigation; this is not arbitrary variable-height row support.",
     "Quoted TSV preserves null, literal NULL, empty text, embedded separators and quotes. Copy writes null as the unquoted marker \\N, and paste reads an unquoted \\N back as null.",
     "Invalid paste rejects the full batch. Async change failure keeps the edit draft.",
-    "Rows and columns use stable ids through sorting, filtering and reordering. Keyboard selection scrolls the real active cell into view on both axes using measured header and viewport bounds."
+    "Rows and columns use stable ids through sorting, filtering and reordering. Keyboard selection scrolls the real active cell into view on both axes using measured header and viewport bounds.",
+    "A header shows the column name in ink at the label weight and its type in muted mono at 400. A primary key column shows the key icon before its name.",
+    "The editor matches the cell's resting padding on every side and draws its 2px focus border inside the box, so text does not move when editing starts.",
+    "The last row has no divider, so the container border is the only bottom edge. With footer or onAddRow the grid becomes a framed shell: the grid sits inset in a frame-line, tint frame and the footer is the frame band below it.",
+    "onAddColumn shows a ghost + at the end of the header that opens a popover with name, type (text, int8, bool, timestamp, json) and nullable; Cancel closes it without a change. onAddRow shows New row in the footer band; when it returns the new id, the grid opens the row's first editable cell, and cancelling that first edit calls onAddRowCancel so the host can drop the row."
   ],
   accessibility: [
     "The grid has a name and announces its row and column counts and the selected cell, even when that cell is scrolled out of view.",
     "Arrows, Home/End, PageUp/Down, Shift range, Enter/F2 edit, Escape cancel, Tab commit, mod+A/C/Z.",
-    "Headers expose sorting buttons and keyboard-resizable separators. Sort buttons show the direction with an up, down or two-way arrow icon alongside aria-sort.",
+    "Headers expose sorting buttons and keyboard-resizable separators. Sort is a ghost icon Button: a sorted column always shows an up (ascending) or down (descending) arrow; an unsorted column shows the up arrow it would apply only while its header is hovered or focused. aria-sort carries the state; the button keeps the stable name Sort <column>.",
     "Typing a printable key on a selected editable cell opens the editor with that key and the caret after it, so fast typing keeps its order."
   ],
   limitations: [

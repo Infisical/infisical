@@ -1,5 +1,4 @@
 import * as React from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { cn } from "../lib/utils";
 import { Button } from "./button";
@@ -180,12 +179,10 @@ export function DataTable<Row>({
                     >
                       {column.header}
                       <Icon
-                        icon={
-                          sort?.columnId !== column.id
-                            ? ArrowUpDown
-                            : sort.direction === "asc"
-                              ? ArrowUp
-                              : ArrowDown
+                        name={
+                          sort?.columnId === column.id && sort.direction === "desc"
+                            ? "arrow-down"
+                            : "arrow-up"
                         }
                       />
                     </button>

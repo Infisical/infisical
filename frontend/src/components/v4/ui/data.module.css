@@ -77,6 +77,66 @@
 .gridRow {
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
+.gridRow[data-last] {
+  border-bottom-color: transparent;
+}
+/* With a footer the grid is a framed shell: the frame-line frame and tint band hold the inset
+   grid on top and the footer below, so there is exactly one edge at the bottom. */
+.gridShell[data-footer] {
+  --v4-frame-pad: var(--v4-space-3);
+  padding: var(--v4-frame-pad) var(--v4-frame-pad) 0;
+  background: var(--v4-tint);
+  border: var(--v4-size-control-border) solid var(--v4-frame-line);
+  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+}
+.gridShell[data-footer] > .gridScroll {
+  border-radius: calc((var(--v4-radius-panel) - var(--v4-frame-pad)) * var(--corners));
+  box-shadow: var(--v4-shadow-raised);
+}
+.gridShell[data-footer] > .status,
+.gridShell[data-footer] > .actions {
+  padding-inline: var(--v4-space-8);
+}
+.gridFooter {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-12);
+  min-height: var(--v4-space-40);
+  padding: var(--v4-space-4) var(--v4-space-8);
+  color: var(--v4-muted);
+  font-family: var(--v4-type-caption-font-family);
+  font-size: var(--v4-type-caption-font-size);
+  line-height: var(--v4-type-caption-line-height);
+  font-variant-numeric: tabular-nums;
+}
+.gridAddHeader {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--v4-space-4);
+}
+.gridAddForm {
+  display: grid;
+  gap: var(--v4-space-6);
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+}
+.gridAddCheck {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-8);
+  margin-top: var(--v4-space-4);
+}
+.gridAddActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--v4-space-8);
+  margin-top: var(--v4-space-8);
+}
+.gridKey {
+  flex: none;
+  color: var(--v4-muted);
+}
 .gridHead {
   position: sticky;
   top: 0;
@@ -109,6 +169,15 @@
   overflow: hidden;
 }
 .gridHeaderLabel > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  color: var(--v4-ink);
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-type-label-font-size);
+  line-height: var(--v4-type-label-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+  letter-spacing: var(--v4-type-label-letter-spacing);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -118,28 +187,21 @@
   min-width: 0;
   overflow: hidden;
   color: var(--v4-muted);
-  font-size: inherit;
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.gridHeader button[data-active] {
+.gridSort[data-active] {
   color: var(--v4-ink);
 }
-.gridHeader button > svg {
-  width: var(--v4-size-icon-xs);
-  height: var(--v4-size-icon-xs);
+.gridSort:not([data-active]) {
+  opacity: 0;
 }
-.gridHeader button {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--v4-space-24);
-  height: var(--v4-space-24);
-  background: none;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
+.gridHeader:is(:hover, :focus-within) > .gridSort {
+  opacity: 1;
 }
 .gutter {
   position: sticky;
@@ -209,9 +271,13 @@
   height: 100%;
   resize: none;
   border: 0;
+  box-sizing: border-box;
   outline: 2px solid var(--v4-ink);
   outline-offset: -2px;
-  padding: var(--v4-space-6);
+  padding: var(--v4-space-6) var(--v4-space-8);
+  line-height: inherit;
+  white-space: pre;
+  overflow: hidden;
 }
 .gridCell textarea[aria-invalid="true"] {
   outline-color: var(--v4-bad);
@@ -883,6 +949,12 @@ button.rowTitle::after {
 }
 .tableSort[data-active] {
   color: var(--v4-ink);
+}
+.tableSort:not([data-active]) > svg {
+  opacity: 0;
+}
+:is(th:hover, th:focus-within) > .tableSort > svg {
+  opacity: 1;
 }
 .tableSort > svg {
   flex: none;
