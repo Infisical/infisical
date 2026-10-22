@@ -63,7 +63,7 @@ export const SecretCommentForm = ({
 
   // In batch mode, debounce comment changes to parent form
   const watchedComment = watch("comment");
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};

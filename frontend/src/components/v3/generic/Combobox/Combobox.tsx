@@ -142,7 +142,7 @@ type ComboboxSharedProps<TOption> = {
 };
 
 type ComboboxInputProps = Omit<
-  React.ComponentPropsWithoutRef<"input">,
+  React.ComponentProps<"input">,
   "children" | "disabled" | "multiple" | "onChange" | "size" | "type" | "value"
 >;
 
@@ -409,7 +409,7 @@ type ComboboxListProps<TOption> = Omit<
   creationError: { error: unknown; inputValue: string } | null;
   isCreationPending: boolean;
   selectedValues: ReadonlySet<string>;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
   maxHeight: string;
 };
 
@@ -932,10 +932,12 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onClick,
     onFocus,
     onKeyDown,
+    ref,
     ...inputProps
   } = props;
   const isInsideOverlayLayer = useIsInsideOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, []);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
@@ -1336,10 +1338,12 @@ const MultipleCombobox = <TOption,>({
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   onKeyDown,
+  ref,
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
   const isInsideOverlayLayer = useIsInsideOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, []);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
   const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(

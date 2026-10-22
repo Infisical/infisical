@@ -126,8 +126,8 @@ const CopySecretsSession = ({
 }: Props & { invocation: CopySecretsInvocation }) => {
   const overviewTelemetry = useOverviewTelemetry();
   const [telemetry] = useState(overviewTelemetry);
-  const sessionOwner = useRef<object>();
-  const sessionFlow = useRef<OverviewFlowHandle>();
+  const sessionOwner = useRef<object>(undefined);
+  const sessionFlow = useRef<OverviewFlowHandle>(undefined);
   const flow = {
     action: "copy" as const,
     resourceType: "mixed" as const,

@@ -562,7 +562,8 @@
                     "group": "Discovery",
                     "root": "documentation/platform/pki/discovery/overview",
                     "pages": [
-                      "documentation/platform/pki/discovery/network"
+                      "documentation/platform/pki/discovery/network",
+                      "documentation/platform/pki/discovery/linux-server"
                     ]
                   },
                   {
@@ -1315,7 +1316,8 @@
                   "cli/usage",
                   "cli/upgrade",
                   "cli/project-config",
-                  "cli/faq"
+                  "cli/faq",
+                  "cli/troubleshooting"
                 ]
               },
               {
@@ -1348,6 +1350,7 @@
                       "cli/reference/sm/agent-proxy",
                       "cli/reference/sm/dynamic-secrets",
                       "cli/reference/sm/export",
+                      "cli/reference/sm/projects",
                       "cli/reference/sm/run",
                       "cli/reference/sm/secrets"
                     ]
@@ -4047,6 +4050,7 @@
                           "api-reference/endpoints/certificates/delete",
                           "api-reference/endpoints/certificates/cert-body",
                           "api-reference/endpoints/certificates/bundle",
+                          "api-reference/endpoints/certificates/pkcs12",
                           "api-reference/endpoints/certificates/private-key",
                           "api-reference/endpoints/certificates/import-certificate"
                         ]
@@ -4425,6 +4429,7 @@
                           "api-reference/endpoints/code-signing/signers/enable",
                           "api-reference/endpoints/code-signing/signers/disable",
                           "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                          "api-reference/endpoints/code-signing/signers/import-certificate",
                           "api-reference/endpoints/code-signing/signers/list-operations"
                         ]
                       },
@@ -5123,6 +5128,18 @@
     {
       "source": "/ai/model-context-protocol",
       "destination": "/documentation/getting-started/set-up-with-ai"
+    },
+    {
+      "source": "/documentation/getting-started/cli",
+      "destination": "/documentation/guides/local-development"
+    },
+    {
+      "source": "/documentation/getting-started/docker",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/documentation/getting-started/sdks",
+      "destination": "/sdks/overview"
     },
     {
       "source": "/integrations/platforms/docker-intro",
