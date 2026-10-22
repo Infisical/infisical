@@ -227,10 +227,10 @@ export const v4Checks: readonly V4Check[] = [
     id: "overlay-section-padding",
     rule: "overlay-section-padding",
     message:
-      "Dialog, AlertDialog, Sheet and Drawer headers, bodies and footers pad every side by the one overlay pad. Use a single padding value.",
+      "Dialog, AlertDialog and Sheet headers, bodies and footers pad every side by the one overlay pad. Use a single padding value.",
     appliesTo: (file) => file === "src/components/v4/v4.css",
     cssBlock: (selector, body) => {
-      if (!/(?:dialog|sheet|drawer)-(?:header|footer|body|content)/.test(selector)) return [];
+      if (!/(?:dialog|sheet)-(?:header|footer|body|content)/.test(selector)) return [];
       return [...body.matchAll(/(?:^|;|\n)\s*(padding\s*:\s*([^;]+))/g)]
         .filter((match) => match[2].trim().split(/\s+(?![^(]*\))/).length > 1)
         .map((match) => match[1].trim());

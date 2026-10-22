@@ -281,7 +281,6 @@
         [role="dialog"],
         [role="alertdialog"],
         [role="menu"],
-        [role="menubar"],
         [role="listbox"],
         [data-slot$="-content"]
       )
@@ -384,8 +383,7 @@
   :is(
     [data-slot="dialog-title"],
     [data-slot="alert-dialog-title"],
-    [data-slot="sheet-title"],
-    [data-slot="drawer-title"]
+    [data-slot="sheet-title"]
   ) {
   font-family: var(--v4-type-title-font-family);
   font-size: var(--v4-type-title-font-size);
@@ -400,7 +398,6 @@
     [data-slot="dialog-description"],
     [data-slot="alert-dialog-description"],
     [data-slot="sheet-description"],
-    [data-slot="drawer-description"],
     [data-slot="popover-description"]
   ) {
   font-family: var(--v4-type-small-font-family);
@@ -452,8 +449,7 @@
 .v4
   :is(
     [data-slot="dialog-subheader"],
-    [data-slot="sheet-subheader"],
-    [data-slot="drawer-subheader"]
+    [data-slot="sheet-subheader"]
   ) {
   min-width: 0;
 }
@@ -490,7 +486,7 @@
   color: var(--v4-bad);
 }
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
-.v4 :is([data-slot="sheet-content"], [data-slot="drawer-content"]) {
+.v4 :is([data-slot="sheet-content"]) {
   font-family: var(--v4-type-body-font-family);
   font-size: var(--v4-type-body-font-size);
   line-height: var(--v4-type-body-line-height);
@@ -503,14 +499,12 @@
 .v4
   :is(
     [data-slot="sheet-header"],
-    [data-slot="sheet-footer"],
-    [data-slot="drawer-header"],
-    [data-slot="drawer-footer"]
+    [data-slot="sheet-footer"]
   ) {
   padding: var(--v4-space-overlay-inset);
   gap: var(--v4-space-6);
 }
-.v4 :is([data-slot="sheet-footer"], [data-slot="drawer-footer"]) {
+.v4 :is([data-slot="sheet-footer"]) {
   gap: var(--v4-space-8);
 }
 .v4 [data-slot="sheet-content"] {
@@ -531,11 +525,6 @@
   letter-spacing: var(--v4-type-body-letter-spacing);
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
 }
-.v4 :is([data-slot="navigation-menu-list"]) {
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: var(--v4-space-4);
-}
 .v4 :is([data-slot="chart"], [data-slot="chart-tooltip"], [data-slot="chart-legend"]) {
   font-family: var(--v4-type-caption-font-family);
   font-size: var(--v4-type-caption-font-size);
@@ -551,33 +540,14 @@
   border-radius: calc(var(--v4-radius-pop) * var(--corners));
 }
 
-.v4 [data-slot="drawer-content"][data-vaul-drawer-direction="bottom"] {
-  max-height: 80vh;
-  border-radius: calc(var(--v4-radius-panel) * var(--corners))
-    calc(var(--v4-radius-panel) * var(--corners)) 0 0;
-}
-.v4 [data-slot="drawer-content"][data-vaul-drawer-direction="top"] {
-  max-height: 80vh;
-  border-radius: 0 0 calc(var(--v4-radius-panel) * var(--corners))
-    calc(var(--v4-radius-panel) * var(--corners));
-}
-.v4 [data-slot="drawer-content"][data-vaul-drawer-direction="left"] {
-  border-radius: 0 calc(var(--v4-radius-panel) * var(--corners))
-    calc(var(--v4-radius-panel) * var(--corners)) 0;
-}
-.v4 [data-slot="drawer-content"][data-vaul-drawer-direction="right"] {
-  border-radius: calc(var(--v4-radius-panel) * var(--corners)) 0 0
-    calc(var(--v4-radius-panel) * var(--corners));
-}
-
 /* v4-check-ignore overlay-section-padding -- the body's block space comes from the padded header and footer around it */
-.v4 :is([data-slot="sheet-body"], [data-slot="drawer-body"]) {
+.v4 :is([data-slot="sheet-body"]) {
   min-width: 0;
   flex: 1 0 auto;
   padding: 0 var(--v4-space-overlay-inset);
 }
 /* v4-check-ignore overlay-section-padding -- its block-start space comes from the padded header above it */
-.v4 :is([data-slot="sheet-subheader"], [data-slot="drawer-subheader"]) {
+.v4 :is([data-slot="sheet-subheader"]) {
   padding: 0 var(--v4-space-overlay-inset) var(--v4-space-overlay-inset);
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
@@ -585,20 +555,17 @@
   :is(
     [data-slot="sheet-header"],
     [data-slot="sheet-subheader"],
-    [data-slot="sheet-footer"],
-    [data-slot="drawer-header"],
-    [data-slot="drawer-subheader"],
-    [data-slot="drawer-footer"]
+    [data-slot="sheet-footer"]
   ) {
   flex-shrink: 0;
 }
 
-.v4 :is([data-slot="sheet-content"], [data-slot="drawer-content"])[data-sections] {
+.v4 :is([data-slot="sheet-content"])[data-sections] {
   overflow: hidden;
   gap: 0;
 }
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
-.v4 :is([data-slot="sheet-scroll"], [data-slot="drawer-scroll"]) {
+.v4 :is([data-slot="sheet-scroll"]) {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -607,33 +574,16 @@
   overscroll-behavior: contain;
 }
 .v4
-  :is([data-slot="sheet-subheader"], [data-slot="drawer-subheader"])
-  + :is([data-slot="sheet-scroll"], [data-slot="drawer-scroll"]) {
+  :is([data-slot="sheet-subheader"])
+  + :is([data-slot="sheet-scroll"]) {
   padding-top: var(--v4-space-overlay-inset);
 }
 .v4
-  :is([data-slot="sheet-scroll"], [data-slot="drawer-scroll"]):not(
-    :has(+ :is([data-slot="sheet-footer"], [data-slot="drawer-footer"]))
+  :is([data-slot="sheet-scroll"]):not(
+    :has(+ :is([data-slot="sheet-footer"]))
   )
-  > :is([data-slot="sheet-body"], [data-slot="drawer-body"]):last-child {
+  > :is([data-slot="sheet-body"]):last-child {
   padding-bottom: var(--v4-space-overlay-inset);
-}
-
-.v4 [data-slot="menubar"] {
-  height: auto;
-  min-height: var(--v4-size-control-default);
-  padding: var(--v4-space-control-slot-inset);
-  gap: var(--v4-space-control-slot-gap);
-}
-.v4 [data-slot="menubar-trigger"] {
-  font-family: var(--v4-type-label-font-family);
-  font-size: var(--v4-type-label-font-size);
-  line-height: var(--v4-type-label-line-height);
-  font-weight: var(--v4-type-label-font-weight);
-  letter-spacing: var(--v4-type-label-letter-spacing);
-  min-height: var(--v4-size-nested-default);
-  padding: var(--v4-space-2) var(--v4-space-8);
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
 }
 
 .v4 [data-slot="chart-tooltip"] .font-mono {
@@ -642,12 +592,6 @@
   line-height: var(--v4-type-mono-sm-line-height);
   font-weight: var(--v4-type-mono-sm-font-weight);
   letter-spacing: var(--v4-type-mono-sm-letter-spacing);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .v4 [data-slot="navigation-menu-content"][data-motion] {
-    animation: none;
-  }
 }
 
 /* tw-animate otherwise falls back to its own timing. Base layer, so an explicit duration-* or ease-* utility still wins. */

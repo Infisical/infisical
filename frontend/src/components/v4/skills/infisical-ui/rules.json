@@ -35,7 +35,7 @@
       "title": "Give every border a line color",
       "instruction": "A border width utility (border, border-t, border-x and the rest) names its color in the same class string, usually a line token: border-[color:var(--v4-line)] or var(--v4-line-soft) for hairlines between rows. A bare border falls back to the global gray, which reads as a bright stripe in dark mode.",
       "good": "border-t border-[color:var(--v4-line)] on a dialog footer.",
-      "avoid": "border-t alone on a footer, or border on a menubar with no color.",
+      "avoid": "border-t alone on a footer, or border on a menu with no color.",
       "detect": {
         "by": "lint",
         "check": "bare-border"
@@ -849,7 +849,7 @@
       "id": "overlay-section-padding",
       "title": "Pad overlay sections evenly",
       "category": "Visual",
-      "instruction": "Dialog, AlertDialog, Sheet and Drawer headers, bodies and footers pad all four sides by the one overlay pad (space-16 for dialogs, the overlay inset for sheets). Sections stack with the content gap and carry no margins.",
+      "instruction": "Dialog, AlertDialog and Sheet headers, bodies and footers pad all four sides by the one overlay pad (space-16 for dialogs, the overlay inset for sheets). Sections stack with the content gap and carry no margins.",
       "good": "A dialog footer padded 16px on every side, the same as the header and body.",
       "avoid": "A footer padded 12px 16px, or a header with extra end padding beyond the close button slot.",
       "detect": {
@@ -875,7 +875,7 @@
       "id": "scroll-edge-fade",
       "title": "Fade only the edge that has more",
       "category": "Visual",
-      "instruction": "Page and inset scrollers never fade; component scrollers do. Every component scroll area (ScrollArea, menus and lists, CommandMenu, the Sidebar nav, Table, DataGrid, Code, FileTree, Json, and the Sheet, Drawer and Dialog bodies) carries data-scroll-fade on the element that scrolls. The AppInset island and any other page-level scroller scroll with crisp edges, so the sticky TopBar and its divider stay solid. The shared watcher in lib/scroll-edges.ts marks each edge that has more content past it, and v4.css masks only that edge by size-scroll-fade (16px). An area that does not scroll shows no fade. ScrollArea takes edgeBehavior fade (default), border or none.",
+      "instruction": "Page and inset scrollers never fade; component scrollers do. Every component scroll area (ScrollArea, menus and lists, CommandMenu, the Sidebar nav, Table, DataGrid, Code, FileTree, Json, and the Sheet and Dialog bodies) carries data-scroll-fade on the element that scrolls. The AppInset island and any other page-level scroller scroll with crisp edges, so the sticky TopBar and its divider stay solid. The shared watcher in lib/scroll-edges.ts marks each edge that has more content past it, and v4.css masks only that edge by size-scroll-fade (16px). An area that does not scroll shows no fade. ScrollArea takes edgeBehavior fade (default), border or none.",
       "good": "A long menu whose bottom edge fades until the last row is scrolled into view, then fades at the top instead.",
       "avoid": "A one-off mask-image or scroll-timeline fade on a single component, a fade on an area that does not scroll, or a fade on the AppInset that blurs the sticky TopBar.",
       "detect": {

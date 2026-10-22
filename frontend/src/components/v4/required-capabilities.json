@@ -167,21 +167,6 @@
       ]
     },
     {
-      "id": "aspect-ratio",
-      "name": "AspectRatio",
-      "kind": "component",
-      "exports": [],
-      "variants": [
-        "ratio default/custom",
-        "responsive"
-      ],
-      "behavior": "Reserve media ratio without intrinsic sizing shift; child overflow policy explicit",
-      "acceptance": [
-        "Ratio holds at320/desktop",
-        "No content clipping that conceals focus"
-      ]
-    },
-    {
       "id": "avatar",
       "name": "Avatar",
       "kind": "component",
@@ -357,25 +342,6 @@
         "Title wraps around metadata",
         "Tile selected and focus distinct",
         "Long property value recoverable"
-      ]
-    },
-    {
-      "id": "carousel",
-      "name": "Carousel",
-      "kind": "component",
-      "exports": [],
-      "variants": [
-        "horizontal/vertical",
-        "previous/next",
-        "disabled edges",
-        "Embla API"
-      ],
-      "behavior": "Embla-backed carousel, named region/slide position and keyboard arrows; no autoplay requirement",
-      "acceptance": [
-        "Arrow direction",
-        "Prev/Next disabled edges",
-        "Slide count",
-        "Reduced motion"
       ]
     },
     {
@@ -630,28 +596,6 @@
         "Tab cannot escape",
         "Removed trigger safe restore",
         "Long content body scroll"
-      ]
-    },
-    {
-      "id": "drawer",
-      "name": "Drawer",
-      "kind": "component",
-      "exports": [
-        "DrawerBody"
-      ],
-      "variants": [
-        "top/right/bottom/left",
-        "open/closed",
-        "modal",
-        "dismissible",
-        "touch gesture"
-      ],
-      "behavior": "Vaul gesture drawer within React18 stack; named modal, focus and scroll restoration; direction token geometry. DrawerBody forwards native div props/ref and owns the shared inset and bounded scroll region; arbitrary Content children remain supported.",
-      "acceptance": [
-        "Pointer close threshold",
-        "Keyboard safe close",
-        "No background focus",
-        "Reduced motion"
       ]
     },
     {
@@ -1029,26 +973,6 @@
       ]
     },
     {
-      "id": "menubar",
-      "name": "Menubar",
-      "kind": "component",
-      "exports": [],
-      "variants": [
-        "menu",
-        "submenu",
-        "checkbox/radio",
-        "shortcut",
-        "disabled/danger"
-      ],
-      "behavior": "Radix desktop application menubar navigation and focus transfer; no global shortcut binding implied",
-      "acceptance": [
-        "Left/right switches menus",
-        "Up/down navigates",
-        "Escape return",
-        "Checks announced"
-      ]
-    },
-    {
       "id": "middle-truncate",
       "name": "MiddleTruncate",
       "kind": "component",
@@ -1120,24 +1044,6 @@
         "Invalid step focuses its first invalid field",
         "Enter continues",
         "Footer shows failures"
-      ]
-    },
-    {
-      "id": "navigation-menu",
-      "name": "NavigationMenu",
-      "kind": "component",
-      "exports": [],
-      "variants": [
-        "with/without viewport",
-        "trigger/content/link",
-        "active"
-      ],
-      "behavior": "Radix navigation landmark and menu/link distinction; pointer/focus panels; no application route migration",
-      "acceptance": [
-        "Keyboard panel navigation",
-        "Current link announced",
-        "Open panel collision",
-        "No hover-only destination"
       ]
     },
     {
@@ -1247,26 +1153,6 @@
         "One tab stop",
         "Required submit",
         "Disabled skipped"
-      ]
-    },
-    {
-      "id": "resizable",
-      "name": "Resizable",
-      "kind": "component",
-      "exports": [],
-      "variants": [
-        "horizontal/vertical",
-        "withHandle",
-        "collapsed/min/max panels"
-      ],
-      "behavior": "react-resizable-panels typed v4Group/Panel/Separator API; pointer/keyboard resize and bounds",
-      "acceptance": [
-        "Arrow resize",
-        "Min/max and collapse",
-        "Focus visible",
-        "aria-valuenow",
-        "min",
-        "max"
       ]
     },
     {
@@ -1736,7 +1622,6 @@
     "accordion",
     "alert",
     "alert-dialog",
-    "aspect-ratio",
     "avatar",
     "badge",
     "breadcrumb",
@@ -1744,7 +1629,6 @@
     "button-group",
     "calendar",
     "card",
-    "carousel",
     "chart",
     "checkbox",
     "collapsible",
@@ -1752,7 +1636,6 @@
     "command",
     "context-menu",
     "dialog",
-    "drawer",
     "dropdown-menu",
     "empty",
     "field",
@@ -1763,13 +1646,10 @@
     "item",
     "kbd",
     "label",
-    "menubar",
-    "navigation-menu",
     "pagination",
     "popover",
     "progress",
     "radio-group",
-    "resizable",
     "scroll-area",
     "select",
     "separator",

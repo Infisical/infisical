@@ -90,40 +90,6 @@
 .sheet[data-state="closed"] {
   animation: sheetOut var(--v4-duration-exit-slow) var(--v4-ease-exit) both;
 }
-.drawer.drawer[data-vaul-drawer] {
-  transition-duration: var(--v4-duration-slow);
-  transition-timing-function: var(--v4-ease-spring-soft);
-  animation-duration: var(--v4-duration-slow);
-  animation-timing-function: var(--v4-ease-spring-soft);
-  animation-fill-mode: both;
-}
-.drawer.drawer[data-vaul-drawer][data-state="closed"] {
-  transition-duration: var(--v4-duration-exit-slow);
-  transition-timing-function: var(--v4-ease-exit);
-  animation-duration: var(--v4-duration-exit-slow);
-  animation-timing-function: var(--v4-ease-exit);
-}
-.handle {
-  display: none;
-  flex: none;
-  width: var(--v4-space-48);
-  height: var(--v4-space-4);
-  margin: var(--v4-space-12) auto 0;
-  border-radius: calc(var(--v4-radius-pop) * var(--corners));
-  background-color: var(--v4-control);
-}
-[data-vaul-drawer-direction="bottom"] > .handle {
-  display: block;
-}
-.scrim.scrim[data-vaul-overlay] {
-  animation-duration: var(--v4-duration-slow);
-  animation-timing-function: var(--v4-ease-fade);
-  animation-fill-mode: both;
-}
-.scrim.scrim[data-vaul-overlay][data-state="closed"] {
-  animation-duration: var(--v4-duration-exit-slow);
-  animation-timing-function: var(--v4-ease-exit);
-}
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -163,15 +129,6 @@
   }
   .dialog[data-state="closed"],
   .sheet[data-state="closed"] {
-    animation-name: fadeOut;
-  }
-  .drawer.drawer[data-vaul-drawer] {
-    transition: none;
-  }
-  .drawer.drawer.drawer[data-vaul-drawer][data-state="open"] {
-    animation-name: fadeIn;
-  }
-  .drawer.drawer.drawer[data-vaul-drawer][data-state="closed"] {
     animation-name: fadeOut;
   }
 }

@@ -16,7 +16,6 @@ import {
 import { ContextMenu, ContextMenuTrigger } from "./context-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./dialog";
 import { DropdownMenu, DropdownMenuTrigger } from "./dropdown-menu";
-import { Menubar, MenubarMenu, MenubarTrigger } from "./menubar";
 import { Sheet, SheetBody, SheetContent, SheetHeader, SheetSubheader, SheetTitle } from "./sheet";
 
 let host: HTMLDivElement;
@@ -36,11 +35,6 @@ it("keeps menu trigger labels", async () => {
   await React.act(async () =>
     root.render(
       <V4Scope>
-        <Menubar>
-          <MenubarMenu>
-            <MenubarTrigger>Environment</MenubarTrigger>
-          </MenubarMenu>
-        </Menubar>
         <DropdownMenu>
           <DropdownMenuTrigger>Environment actions</DropdownMenuTrigger>
         </DropdownMenu>
@@ -50,7 +44,6 @@ it("keeps menu trigger labels", async () => {
       </V4Scope>
     )
   );
-  expect(host.querySelector('[data-slot="menubar-trigger"]')?.textContent).toBe("Environment");
   expect(host.querySelector('[data-slot="dropdown-menu-trigger"]')?.textContent).toBe(
     "Environment actions"
   );
