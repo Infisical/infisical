@@ -223,7 +223,8 @@ export const useRetryDelegatedApprovalDispatch = () => {
                   ...request,
                   delegatedApproval: {
                     status: DelegatedApprovalRequestStatus.PendingDispatch,
-                    statusReason: null
+                    statusReason: null,
+                    provider: request.delegatedApproval.provider ?? null
                   }
                 }
               : request
