@@ -26,7 +26,7 @@ export const ServiceNowAccessRequestPayloadSchema = z.object({
     .string()
     .array()
     .refine(
-      (lines) => lines.join("\n").length <= SERVICENOW_PERMISSIONS_MAX_CHARS,
+      (lines) => lines.join("\n").length < SERVICENOW_PERMISSIONS_MAX_CHARS,
       "The permission list is too long for ServiceNow to store. Split it into smaller requests"
     )
     .optional(),

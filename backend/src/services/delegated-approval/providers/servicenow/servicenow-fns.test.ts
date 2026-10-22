@@ -128,6 +128,23 @@ describe("buildServiceNowAccessRequestPayload", () => {
     ).toThrow(/too long for ServiceNow to store/);
   });
 
+  test("refuses a permission list that fills the ServiceNow column, which read-back treats as cut short", () => {
+    expect(() =>
+      buildServiceNowAccessRequestPayload(
+        makeInput({
+          details: {
+            policyType: ApprovalPolicyType.SecretAccess,
+            environment: "prod",
+            secretPath: "/",
+            permissions: ["x".repeat(4000)],
+            isTemporary: false,
+            temporaryRange: null
+          }
+        })
+      )
+    ).toThrow(/too long for ServiceNow to store/);
+  });
+
   test("refuses a temporary range longer than ServiceNow stores", () => {
     expect(() =>
       buildServiceNowAccessRequestPayload(
