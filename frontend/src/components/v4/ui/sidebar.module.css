@@ -402,8 +402,9 @@
 }
 .accountShelf {
   flex: none;
-  padding: var(--v4-space-8);
-  border-top: 1px solid var(--v4-sidebar-line);
+  margin-inline: var(--v4-space-8);
+  padding-block: var(--v4-space-8);
+  border-top: var(--v4-size-control-border) solid var(--v4-sidebar-line);
 }
 .account {
   display: flex;

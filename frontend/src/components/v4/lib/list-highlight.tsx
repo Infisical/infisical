@@ -10,6 +10,7 @@ const ACTIVE =
 const CURRENT =
   '[data-current], [aria-current="page"], [role="option"][data-state="checked"], [role="menuitemradio"][aria-checked="true"]';
 const HOLDS = "[data-holds-current]";
+const EXPANDED = '[aria-haspopup]:is([aria-expanded="true"], [data-state="open"])';
 const DANGER = '[data-danger], [data-variant="destructive"]';
 const KEYS = ["ArrowDown", "ArrowUp", "Home", "End", "PageUp", "PageDown"];
 
@@ -65,7 +66,10 @@ const offsetIn = (element: HTMLElement, list: HTMLElement) => {
 
 /**
  * Two translucent thumbs per list. The hover thumb follows the pointer and the keyboard's active
- * row and stays on the last row while the pointer is anywhere in the list. The selection thumb
+ * row and stays on the last row while the pointer is anywhere in the list. A row whose popover,
+ * flyout or submenu is open (aria-haspopup with aria-expanded="true" or data-state="open"; a
+ * wrapping Tooltip overwrites data-state, so aria-expanded is the reliable signal) pins the hover
+ * thumb until it closes, even after the pointer leaves for the popover. The selection thumb
  * rests on the current row and shows only while the hover thumb is hidden. Render it as the list's
  * last child; it measures its parent.
  */
@@ -121,9 +125,10 @@ export function ListHighlight() {
     const measure = () => {
       frame = 0;
       const current = first(CURRENT) ?? first(HOLDS);
-      let hoverTarget: HTMLElement | null = null;
-      if (keyboard) hoverTarget = first(ACTIVE) ?? current;
-      else if (inside && hovered?.isConnected) hoverTarget = hovered;
+      const expanded = first(EXPANDED);
+      let hoverTarget: HTMLElement | null = expanded && !blocked(expanded) ? expanded : null;
+      if (!hoverTarget && keyboard) hoverTarget = first(ACTIVE) ?? current;
+      else if (!hoverTarget && inside && hovered?.isConnected) hoverTarget = hovered;
       measureOne(hoverTarget, setHover);
       measureOne(hoverTarget ? null : current, setSelection);
     };
@@ -194,6 +199,7 @@ export function ListHighlight() {
         "aria-current",
         "data-holds-current",
         "data-state",
+        "aria-expanded",
         "aria-checked"
       ]
     });

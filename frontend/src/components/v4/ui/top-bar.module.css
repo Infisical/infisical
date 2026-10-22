@@ -33,7 +33,7 @@
   border: var(--v4-size-control-border) solid var(--v4-line);
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
 }
-.shell > [data-slot="sidebar"] {
+.shell > [data-slot="sidebar"][data-edge]:not([data-sheet]) {
   border-inline-end-color: transparent;
 }
 .shell > .inset:first-child {
