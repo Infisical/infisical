@@ -48,4 +48,25 @@ describe("copyToClipboard", () => {
       "Clipboard access is unavailable"
     );
   });
+
+  it("removes the fallback element when the copy command throws", async () => {
+    const textArea = {
+      value: "",
+      setAttribute: vi.fn(),
+      select: vi.fn(),
+      remove: vi.fn(),
+      style: { position: "", opacity: "" }
+    };
+    vi.stubGlobal("navigator", {});
+    vi.stubGlobal("document", {
+      createElement: vi.fn().mockReturnValue(textArea),
+      body: { appendChild: vi.fn() },
+      execCommand: vi.fn().mockImplementation(() => {
+        throw new Error("Not allowed");
+      })
+    });
+
+    await expect(copyToClipboard("invitation-link")).rejects.toThrow("Not allowed");
+    expect(textArea.remove).toHaveBeenCalled();
+  });
 });

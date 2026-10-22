@@ -23,10 +23,14 @@ export const copyToClipboard = async (text: string) => {
   textArea.style.position = "fixed";
   textArea.style.opacity = "0";
   document.body.appendChild(textArea);
-  textArea.select();
 
-  const copied = document.execCommand("copy");
-  textArea.remove();
+  let copied = false;
+  try {
+    textArea.select();
+    copied = document.execCommand("copy");
+  } finally {
+    textArea.remove();
+  }
 
   if (!copied) {
     throw new Error("Clipboard access is unavailable");
