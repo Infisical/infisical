@@ -3363,6 +3363,7 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       folderDAL,
       secretDAL: mainExpanderSecretDAL,
+      crossProjectSecretDAL: secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretName, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {

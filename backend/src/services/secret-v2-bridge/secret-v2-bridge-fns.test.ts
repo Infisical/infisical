@@ -109,7 +109,7 @@ describe("createFetchFolderSecretsWithImports", () => {
       directOverride,
       importedOnlySecret
     ]);
-    expect(findBySecretPath).toHaveBeenCalledWith("project-1", "source", "/");
+    expect(findBySecretPath).toHaveBeenCalledWith("project-1", "source", "/", undefined);
   });
 });
 
