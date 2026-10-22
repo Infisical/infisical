@@ -4,12 +4,16 @@ import { BotIcon, ChevronDownIcon, ClockIcon, ShieldIcon } from "lucide-react";
 import {
   Badge,
   Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuTrigger,
-  Input,
-  Popover,
-  PopoverAnchor,
-  PopoverContent
+  Input
 } from "@app/components/v3";
 import { SecretFolderRole } from "@app/hooks/api/folderAccess";
 
@@ -116,121 +120,116 @@ export const FolderAccessRow = ({
     <div className={ROW_CLASS_NAME}>
       <ActorIdentity actor={actor} />
 
-      <Popover open={isTemporaryOpen} onOpenChange={setIsTemporaryOpen}>
-        <PopoverAnchor asChild>
-          <div className="shrink-0">
-            <DropdownMenu>
-              {access ? (
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" isDisabled={isDisabled}>
-                    {FOLDER_ROLE_TIER_LABELS[access.permission]}
-                    {isOverride && <Badge variant="warning">Override</Badge>}
-                    {remainingTime && (
-                      // the menu repeats the time left, so narrow sheets drop this badge to keep the
-                      // member name visible
-                      <span className="hidden sm:contents">
-                        <Badge
-                          variant={remainingTime.isExpired ? "danger" : "neutral"}
-                          iconPosition="left"
-                          title={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
-                        >
-                          <ClockIcon />
-                          {remainingTime.isExpired ? "Expired" : remainingTime.value}
-                        </Badge>
-                      </span>
-                    )}
-                    <ChevronDownIcon />
-                  </Button>
-                </DropdownMenuTrigger>
-              ) : (
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="max-w-48"
-                    title={roleNames || undefined}
-                    isDisabled={isDisabled}
-                  >
-                    <span className="truncate">{roleNames || "Role"}</span>
-                    <span className="-ml-1.5 shrink-0 text-muted">(Project)</span>
-                    <ChevronDownIcon />
-                  </Button>
-                </DropdownMenuTrigger>
-              )}
-              <TierDropdown
-                activeTier={access?.permission ?? null}
-                footerNote={
-                  access
-                    ? undefined
-                    : `Choosing a tier overrides ${firstName}'s project role in this folder.`
-                }
-                temporaryLabel={
-                  remainingTime && remainingTime?.expiresAt ? (
-                    <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
-                      Edit temporary access
-                      <span className="text-xs text-muted">
-                        {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
-                      </span>
-                    </span>
-                  ) : (
-                    "Add temporary access"
-                  )
-                }
-                onSelectTier={onSetTier}
-                onEditTemporaryAccess={access ? openTemporary : undefined}
-                onRemove={access ? onRemove : undefined}
-                removeLabel={isOverride ? "Remove access override" : "Remove folder access"}
-                removeVariant={isOverride ? "warning" : "danger"}
-              />
-            </DropdownMenu>
-          </div>
-        </PopoverAnchor>
-
-        <PopoverContent
-          align="end"
-          className="w-72 space-y-3 p-4"
-          onFocusOutside={(e) => e.preventDefault()}
-        >
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Temporary access</p>
-            <p className="text-xs text-muted">
-              Access is revoked automatically once the duration elapses.
-            </p>
-          </div>
-          <Input
-            value={range}
-            onChange={(e) => setRange(e.target.value)}
-            placeholder={DEFAULT_TEMPORARY_RANGE}
-          />
-          <div className="flex gap-1.5">
-            {TEMPORARY_RANGE_PRESETS.map((preset) => (
-              <Button key={preset} variant="outline" size="xs" onClick={() => setRange(preset)}>
-                {preset}
+      <div className="shrink-0">
+        <DropdownMenu>
+          {access ? (
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" isDisabled={isDisabled}>
+                {FOLDER_ROLE_TIER_LABELS[access.permission]}
+                {isOverride && <Badge variant="warning">Override</Badge>}
+                {remainingTime && (
+                  // the menu repeats the time left, so narrow sheets drop this badge to keep the
+                  // member name visible
+                  <span className="hidden sm:contents">
+                    <Badge
+                      variant={remainingTime.isExpired ? "danger" : "neutral"}
+                      iconPosition="left"
+                      title={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
+                    >
+                      <ClockIcon />
+                      {remainingTime.isExpired ? "Expired" : remainingTime.value}
+                    </Badge>
+                  </span>
+                )}
+                <ChevronDownIcon />
               </Button>
-            ))}
-          </div>
-          {!isRangeValid && (
-            <p className="text-xs text-danger">Enter a duration such as 30m, 4h or 1d.</p>
-          )}
-          <div className="flex justify-between gap-2">
-            {remainingTime && remainingTime.expiresAt ? (
+            </DropdownMenuTrigger>
+          ) : (
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-danger"
+                className="max-w-48"
+                title={roleNames || undefined}
+                isDisabled={isDisabled}
+              >
+                <span className="truncate">{roleNames || "Role"}</span>
+                <span className="-ml-1.5 shrink-0 text-muted">(Project)</span>
+                <ChevronDownIcon />
+              </Button>
+            </DropdownMenuTrigger>
+          )}
+          <TierDropdown
+            activeTier={access?.permission ?? null}
+            footerNote={
+              access
+                ? undefined
+                : `Choosing a tier overrides ${firstName}'s project role in this folder.`
+            }
+            temporaryLabel={
+              remainingTime && remainingTime?.expiresAt ? (
+                <span className="flex flex-1 items-center justify-between gap-3 whitespace-nowrap">
+                  Edit temporary access
+                  <span className="text-xs text-muted">
+                    {remainingTime.isExpired ? "Expired" : `${remainingTime.value} left`}
+                  </span>
+                </span>
+              ) : (
+                "Add temporary access"
+              )
+            }
+            onSelectTier={onSetTier}
+            onEditTemporaryAccess={access ? openTemporary : undefined}
+            onRemove={access ? onRemove : undefined}
+            removeLabel={isOverride ? "Remove access override" : "Remove folder access"}
+            removeVariant={isOverride ? "warning" : "danger"}
+          />
+        </DropdownMenu>
+      </div>
+
+      <Dialog open={isTemporaryOpen} onOpenChange={setIsTemporaryOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Temporary Access</DialogTitle>
+            <DialogDescription>
+              Folder access for {actor.name} is revoked automatically once the duration elapses.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-3">
+            <Input
+              value={range}
+              onChange={(e) => setRange(e.target.value)}
+              placeholder={DEFAULT_TEMPORARY_RANGE}
+            />
+            <div className="flex gap-1.5">
+              {TEMPORARY_RANGE_PRESETS.map((preset) => (
+                <Button key={preset} variant="outline" size="xs" onClick={() => setRange(preset)}>
+                  {preset}
+                </Button>
+              ))}
+            </div>
+            {!isRangeValid && (
+              <p className="text-xs text-danger">Enter a duration such as 30m, 4h or 1d.</p>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            {remainingTime && remainingTime.expiresAt && (
+              <Button
+                variant="danger"
+                className="mr-auto"
                 onClick={() => {
                   onMakePermanent();
                   setIsTemporaryOpen(false);
                 }}
               >
-                Remove expiration
+                Remove Expiration
               </Button>
-            ) : (
-              <span />
             )}
+            <Button variant="ghost" onClick={() => setIsTemporaryOpen(false)}>
+              Cancel
+            </Button>
             <Button
               variant="project"
-              size="sm"
               isDisabled={!isRangeValid}
               onClick={() => {
                 onSetTemporaryRange(range);
@@ -239,9 +238,9 @@ export const FolderAccessRow = ({
             >
               Apply
             </Button>
-          </div>
-        </PopoverContent>
-      </Popover>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

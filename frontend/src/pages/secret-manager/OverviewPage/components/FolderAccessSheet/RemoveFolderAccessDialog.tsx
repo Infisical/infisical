@@ -32,20 +32,35 @@ export const RemoveFolderAccessDialog = ({
   const isOpen = Boolean(actor);
 
   const tierLabel = actor?.access ? FOLDER_ROLE_TIER_LABELS[actor.access.permission] : null;
+  // roles only lists the roles that grant access here, so a non-empty list means this grant overrides
+  // access the member would keep without it
+  const isOverride = Boolean(actor?.roles.length);
+  const roleNames = actor?.roles.map((role) => role.name).join(", ");
+  const actorKind = actor?.type === "identity" ? "identity" : "user";
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Remove Folder Access</AlertDialogTitle>
-          <AlertDialogDescription>
-            The {actor?.type === "identity" ? "identity" : "user"}{" "}
-            <span className="font-medium text-foreground">{actor?.name}</span> will fall back to
-            their project role permissions in{" "}
-            <span className="font-mono text-foreground">{folderPath}</span> on {environmentName}.
-            {tierLabel ? ` This ${tierLabel} grant currently replaces` : " This grant replaces"}{" "}
-            those permissions on this folder, so removing it can broaden their access.
-          </AlertDialogDescription>
+          <AlertDialogTitle>
+            {isOverride ? "Remove Access Override" : "Remove Folder Access"}
+          </AlertDialogTitle>
+          {isOverride ? (
+            <AlertDialogDescription>
+              The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
+              will fall back to their{" "}
+              <span className="font-medium text-foreground">{roleNames}</span> project role in{" "}
+              <span className="font-mono text-foreground">{folderPath}</span> on {environmentName}.
+              {tierLabel ? ` This ${tierLabel} override` : " This override"} currently replaces that
+              role here, so removing it can broaden or narrow their access.
+            </AlertDialogDescription>
+          ) : (
+            <AlertDialogDescription>
+              The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
+              will lose access to <span className="font-mono text-foreground">{folderPath}</span> on{" "}
+              {environmentName}. No project role grants them access to this folder.
+            </AlertDialogDescription>
+          )}
         </AlertDialogHeader>
 
         {/* <div className="overflow-hidden rounded-lg border border-danger/20 bg-danger/5">
@@ -107,14 +122,14 @@ export const RemoveFolderAccessDialog = ({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            variant="danger"
+            variant={isOverride ? "warning" : "danger"}
             isPending={isPending}
             onClick={(e) => {
               e.preventDefault();
               if (actor) onConfirm(actor);
             }}
           >
-            Remove Access
+            {isOverride ? "Remove Override" : "Remove Access"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
