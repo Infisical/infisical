@@ -7,8 +7,12 @@ import { cn } from "../lib/utils";
 
 const ScrollArea = React.forwardRef<
   React.ComponentRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
+    /** What marks an edge with more content past it: a fade (default), a hairline or nothing. */
+    edgeBehavior?: "fade" | "border" | "none";
+    orientation?: "vertical" | "horizontal" | "both";
+  }
+>(({ className, children, edgeBehavior = "fade", orientation = "vertical", ...props }, ref) => {
   return (
     <ScrollAreaPrimitive.Root
       ref={ref}
@@ -18,12 +22,19 @@ const ScrollArea = React.forwardRef<
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
+        data-scroll-fade={
+          edgeBehavior === "none"
+            ? undefined
+            : { vertical: "y", horizontal: "x", both: "both" }[orientation]
+        }
+        data-scroll-edge={edgeBehavior === "border" ? "border" : undefined}
         tabIndex={0}
         className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--v4-focus-ring)] focus-visible:outline-1"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
-      <ScrollBar />
+      {orientation !== "horizontal" && <ScrollBar />}
+      {orientation !== "vertical" && <ScrollBar orientation="horizontal" />}
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   );

@@ -64,6 +64,7 @@
   --v4-size-measure-prose: 65ch;
   --v4-size-control-default: var(--v4-size-control-sm);
   --v4-size-nested-default: var(--v4-size-nested-sm);
+  --v4-size-scroll-fade: 16px;
   --v4-radius-xs: 1px;
   --v4-radius-sm: 4px;
   --v4-radius-control: 4px;

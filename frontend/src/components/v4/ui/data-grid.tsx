@@ -739,6 +739,7 @@ export function DataGrid<Row>({
         aria-activedescendant={
           rowIndex >= 0 && colIndex >= 0 && !edit ? cellId(rowIndex, colIndex) : undefined
         }
+        data-scroll-fade="both"
         className={styles.gridScroll}
         style={{ maxHeight: height }}
         onKeyDown={onKeyDown}

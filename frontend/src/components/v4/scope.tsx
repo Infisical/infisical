@@ -2,6 +2,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { MotionConfig } from "motion/react";
 
+import { watchScrollEdges } from "./lib/scroll-edges";
 import { cn } from "./lib/utils";
 
 type Theme = "light" | "dark";
@@ -45,6 +46,7 @@ export const V4Scope = React.forwardRef<
     },
     [forwardedRef]
   );
+  React.useEffect(() => watchScrollEdges(), []);
   React.useLayoutEffect(() => {
     if (!wrapper || theme !== undefined) return undefined;
     const update = () => setInherited(inheritedTheme(wrapper, parentTheme));

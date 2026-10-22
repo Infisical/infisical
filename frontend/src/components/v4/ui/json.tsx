@@ -167,6 +167,7 @@ export const Json = ({
       role="region"
       aria-label={label}
       tabIndex={0}
+      data-scroll-fade="both"
       className={cn(styles.tree, wrap && styles.wrap, className)}
       style={{
         maxHeight:

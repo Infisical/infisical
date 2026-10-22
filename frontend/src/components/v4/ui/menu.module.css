@@ -13,6 +13,7 @@
   font-weight: var(--v4-type-body-font-weight);
   letter-spacing: var(--v4-type-body-letter-spacing);
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .panel {
   min-width: min(
     max(var(--v4-size-menu-min), var(--radix-popper-anchor-width, 0px)),
@@ -29,6 +30,7 @@
 .sub {
   min-width: var(--v4-size-menu-min);
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .card {
   display: flex;
   flex-direction: column;
@@ -152,6 +154,7 @@
   --v4-menu-icon-slot: calc(var(--v4-size-icon) + var(--v4-space-8));
 }
 
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .list {
   max-height: calc(9 * var(--v4-size-control-sm));
   overflow-x: hidden;

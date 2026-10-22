@@ -11,7 +11,11 @@ const Table = React.forwardRef<
   React.ComponentPropsWithoutRef<"table">
 >(({ className, ...props }, ref) => {
   return (
-    <div data-slot="table-container" className={cn("relative w-full", styles.nativeTableContainer)}>
+    <div
+      data-slot="table-container"
+      data-scroll-fade="x"
+      className={cn("relative w-full", styles.nativeTableContainer)}
+    >
       <table
         ref={ref}
         data-slot="table"

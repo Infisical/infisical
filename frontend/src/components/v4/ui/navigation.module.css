@@ -10,6 +10,7 @@
 .tabsTrack[data-variant="underline"] {
   border-bottom: 1px solid var(--v4-line);
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .tabsList {
   position: relative;
   display: flex;

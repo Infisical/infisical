@@ -107,6 +107,7 @@ const CommandList = React.forwardRef<
     <CommandPrimitive.List
       ref={ref}
       data-slot="command-list"
+      data-scroll-fade="y"
       className={cn(menu.list, menu.inset, className)}
       {...props}
     >

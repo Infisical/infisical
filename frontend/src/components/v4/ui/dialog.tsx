@@ -68,6 +68,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={escape.ref}
         data-slot="dialog-content"
+        data-scroll-fade="y"
         className={cn("z-50", overlay.pop, overlay.dialog, className)}
         {...props}
         onEscapeKeyDown={escape.onEscapeKeyDown}

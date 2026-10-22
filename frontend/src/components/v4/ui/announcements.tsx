@@ -88,6 +88,7 @@ export const Announcements = ({
         data-slot="announcements"
         showCloseButton={false}
         aria-roledescription="carousel"
+        data-scroll-fade="y"
         className={styles.dialog}
         onOpenAutoFocus={(event) => {
           event.preventDefault();

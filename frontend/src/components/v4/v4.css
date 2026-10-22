@@ -419,7 +419,9 @@
     [data-slot="dialog-header"]:has(~ [data-slot="dialog-close"]),
     [data-slot="sheet-header"]:has(~ [data-slot="sheet-close"])
   ) {
-  padding-inline-end: calc(var(--v4-dialog-pad, var(--v4-space-overlay-inset)) + var(--v4-size-nested-md));
+  padding-inline-end: calc(
+    var(--v4-dialog-pad, var(--v4-space-overlay-inset)) + var(--v4-size-nested-md)
+  );
 }
 /* Dialog spacing model: one pad (--v4-dialog-pad) on all four sides; header, body and footer
    stack with the content gap and carry no margins of their own. The Dialog footer is a paper
@@ -445,6 +447,7 @@
   background: var(--v4-bad-bg);
   color: var(--v4-bad);
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .v4 :is([data-slot="sheet-content"], [data-slot="drawer-content"]) {
   font-family: var(--v4-type-body-font-family);
   font-size: var(--v4-type-body-font-size);
@@ -525,12 +528,15 @@
     calc(var(--v4-radius-panel) * var(--corners));
 }
 
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
+.v4 :is([data-slot="sheet-body"], [data-slot="drawer-body"]) {
+  overflow-y: auto;
+}
 /* v4-check-ignore overlay-section-padding -- the body's block space comes from the padded header and footer around it */
 .v4 :is([data-slot="sheet-body"], [data-slot="drawer-body"]) {
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
-  overflow-y: auto;
   padding: 0 var(--v4-space-overlay-inset);
 }
 .v4
@@ -636,4 +642,53 @@
   .v4 :active > [data-press] {
     scale: none;
   }
+}
+
+/* Edge-aware scroll fade (lib/scroll-edges.ts): only an edge with more content past it fades. */
+.v4 [data-scroll-fade] {
+  --v4-fade-y-start: 0px;
+  --v4-fade-y-end: 0px;
+  --v4-fade-x-start: 0px;
+  --v4-fade-x-end: 0px;
+}
+.v4 [data-scroll-fade][data-scroll-start-y] {
+  --v4-fade-y-start: var(--v4-size-scroll-fade);
+}
+.v4 [data-scroll-fade][data-scroll-end-y] {
+  --v4-fade-y-end: var(--v4-size-scroll-fade);
+}
+.v4 [data-scroll-fade][data-scroll-start-x] {
+  --v4-fade-x-start: var(--v4-size-scroll-fade);
+}
+.v4 [data-scroll-fade][data-scroll-end-x] {
+  --v4-fade-x-end: var(--v4-size-scroll-fade);
+}
+.v4
+  [data-scroll-fade]:is(
+    [data-scroll-start-y],
+    [data-scroll-end-y],
+    [data-scroll-start-x],
+    [data-scroll-end-x]
+  ):not([data-scroll-edge="border"]) {
+  mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black var(--v4-fade-y-start),
+      black calc(100% - var(--v4-fade-y-end)),
+      transparent
+    ),
+    linear-gradient(
+      to right,
+      transparent,
+      black var(--v4-fade-x-start),
+      black calc(100% - var(--v4-fade-x-end)),
+      transparent
+    );
+  mask-composite: intersect;
+}
+.v4 [data-scroll-fade][data-scroll-edge="border"][data-scroll-start-y] {
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
+.v4 [data-scroll-fade][data-scroll-edge="border"][data-scroll-end-y] {
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }

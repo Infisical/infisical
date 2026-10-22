@@ -103,6 +103,7 @@ const AlertDialogContent = React.forwardRef<
         <AlertDialogPrimitive.Content
           ref={escape.ref}
           data-slot="alert-dialog-content"
+          data-scroll-fade="y"
           data-size={size}
           data-tone={tone}
           className={cn(

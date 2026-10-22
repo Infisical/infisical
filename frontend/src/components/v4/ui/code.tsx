@@ -58,6 +58,7 @@ export const Code = React.forwardRef<HTMLElement, CodeProps>(
         tabIndex={0}
         role="region"
         aria-label={label ?? `${language} code`}
+        data-scroll-fade="both"
         className={cn(styles.code, styles.block, wrap && styles.wrap, className)}
         style={{
           maxHeight:

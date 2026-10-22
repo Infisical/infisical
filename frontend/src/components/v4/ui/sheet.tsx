@@ -69,6 +69,7 @@ const SheetContent = React.forwardRef<
         <SheetPrimitive.Content
           ref={escape.ref}
           data-slot="sheet-content"
+          data-scroll-fade="y"
           data-side={side}
           className={cn(
             "fixed z-50 flex flex-col gap-4 data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm",
@@ -112,7 +113,13 @@ SheetHeader.displayName = "SheetHeader";
 
 const SheetBody = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<"div">>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} data-slot="sheet-body" className={cn(className)} {...props} />
+    <div
+      ref={ref}
+      data-slot="sheet-body"
+      data-scroll-fade="y"
+      className={cn(className)}
+      {...props}
+    />
   )
 );
 SheetBody.displayName = "SheetBody";

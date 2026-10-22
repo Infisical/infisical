@@ -181,9 +181,8 @@
   gap: var(--v4-space-8);
   min-height: 0;
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .nav {
-  --fade-start: 0px;
-  --fade-end: 0px;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -197,15 +196,6 @@
 }
 .nav::-webkit-scrollbar {
   display: none;
-}
-.nav[data-overflow] {
-  mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    black var(--fade-start),
-    black calc(100% - var(--fade-end)),
-    transparent
-  );
 }
 .flyoutCurrent.flyoutCurrent {
   background: var(--v4-sidebar-current);

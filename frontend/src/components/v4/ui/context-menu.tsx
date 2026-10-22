@@ -88,6 +88,7 @@ const ContextMenuContent = React.forwardRef<
         data-slot="context-menu-content"
         collisionPadding={collisionPadding}
         className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
+        data-scroll-fade="y"
         {...props}
       >
         {children}
@@ -151,6 +152,7 @@ const ContextMenuSubContent = React.forwardRef<
       data-slot="context-menu-sub-content"
       collisionPadding={collisionPadding}
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
+      data-scroll-fade="y"
       {...props}
     >
       {children}

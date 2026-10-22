@@ -18,6 +18,7 @@
     var(--v4-shadow-pop);
   outline: none;
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .dialog {
   position: fixed;
   top: 50%;

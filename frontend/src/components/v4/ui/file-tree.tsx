@@ -288,6 +288,7 @@ export function FileTree({
       aria-label={label}
       data-slot="file-tree"
       data-size={size}
+      data-scroll-fade="both"
       className={styles.tree}
       style={{ maxHeight }}
       onFocusCapture={() => {

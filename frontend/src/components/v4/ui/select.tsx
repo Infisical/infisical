@@ -172,7 +172,7 @@ const SelectContent = React.forwardRef<
           {...props}
         >
           <SelectScrollUpButton />
-          <SelectPrimitive.Viewport className={menu.inset}>
+          <SelectPrimitive.Viewport className={menu.inset} data-scroll-fade="y">
             {children}
             <ListHighlight />
           </SelectPrimitive.Viewport>

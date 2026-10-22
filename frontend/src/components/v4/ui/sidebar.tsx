@@ -363,43 +363,6 @@ const moveFocus = (event: React.KeyboardEvent<HTMLElement>) => {
   targets[next]?.focus();
 };
 
-const useEdgeFade = (rail: boolean, spaceId?: string) => {
-  const ref = React.useRef<HTMLDivElement>(null);
-  React.useLayoutEffect(() => {
-    const node = ref.current;
-    if (!node) return undefined;
-    const fade = 32;
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const max = node.scrollHeight - node.clientHeight;
-      node.style.setProperty("--fade-start", `${Math.max(0, Math.min(fade, node.scrollTop))}px`);
-      node.style.setProperty(
-        "--fade-end",
-        `${Math.max(0, Math.min(fade, max - node.scrollTop))}px`
-      );
-      node.toggleAttribute("data-overflow", max > 0.5);
-    };
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    update();
-    node.addEventListener("scroll", schedule, { passive: true });
-    node.addEventListener("transitionend", schedule);
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
-    observer?.observe(node);
-    if (node.firstElementChild) observer?.observe(node.firstElementChild);
-    [...node.children].forEach((section) => observer?.observe(section));
-    return () => {
-      node.removeEventListener("scroll", schedule);
-      node.removeEventListener("transitionend", schedule);
-      observer?.disconnect();
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [rail, spaceId]);
-  return ref;
-};
-
 const themeOptions: { value: SidebarTheme; label: string; icon: IconName }[] = [
   { value: "light", label: "Light", icon: "sun" },
   { value: "dark", label: "Dark", icon: "moon" },
@@ -452,7 +415,7 @@ export const Sidebar = ({
   const shownSections = scope?.sections ?? activeSpace?.sections ?? sections ?? [];
   const rail = collapsible && isCollapsed;
   const view = scope?.id ?? activeSpace?.id ?? "root";
-  const navRef = useEdgeFade(rail, view);
+  const navRef = React.useRef<HTMLDivElement>(null);
   const backRef = React.useRef<HTMLElement | null>(null);
   const refocus = React.useRef(false);
   const lastScope = React.useRef(scope);
@@ -593,7 +556,13 @@ export const Sidebar = ({
             moveFocus(event);
           }}
         >
-          <div ref={navRef} key={view} data-enter={enter} className={styles.nav}>
+          <div
+            ref={navRef}
+            key={view}
+            data-enter={enter}
+            data-scroll-fade="y"
+            className={styles.nav}
+          >
             {scope && (
               <div
                 className={styles.section}

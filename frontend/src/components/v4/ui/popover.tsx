@@ -48,6 +48,7 @@ const PopoverContent = React.forwardRef<
           align={align}
           sideOffset={sideOffset}
           data-surface={surface}
+          data-scroll-fade="y"
           className={cn(
             "z-50",
             menu.surface,

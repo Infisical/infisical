@@ -250,6 +250,17 @@ export const v4Checks: readonly V4Check[] = [
     }
   },
   {
+    id: "scroll-fade",
+    rule: "scroll-edge-fade",
+    message:
+      "A v4 scroll container takes the shared edge fade: add data-scroll-fade (y, x or both) to the element that scrolls, or mark the rule with a reason.",
+    appliesTo: (file) => isUi(file) && isCss(file),
+    cssBlock: (_selector, body) =>
+      [...body.matchAll(/(?:^|;|\n)\s*(overflow(?:-[xy])?\s*:\s*(?:auto|scroll)[^;]*)/g)].map(
+        (match) => match[1].trim()
+      )
+  },
+  {
     id: "dot-separator",
     rule: "no-dot-separators",
     message: "Separate details with words or layout, not a middle dot or bullet.",

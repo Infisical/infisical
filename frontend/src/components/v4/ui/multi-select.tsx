@@ -394,6 +394,7 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
           aria-multiselectable={multiple || undefined}
           tabIndex={0}
           aria-activedescendant={currentActive ? optionId(currentActive.value) : undefined}
+          data-scroll-fade="y"
           className={cn(menu.list, menu.inset)}
         >
           {groups.map((group) => (

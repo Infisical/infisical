@@ -13,6 +13,7 @@
   background: var(--v4-tint, var(--muted));
   overflow-wrap: anywhere;
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .block {
   margin: 0;
   overflow: auto;
@@ -103,6 +104,7 @@
   letter-spacing: var(--v4-type-body-letter-spacing);
   padding: var(--v4-space-surface-inset);
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .tree {
   font-family: var(--v4-type-mono-font-family);
   font-size: var(--v4-type-mono-font-size);

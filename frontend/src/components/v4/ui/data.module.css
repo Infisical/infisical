@@ -4,6 +4,7 @@
   color: var(--v4-ink);
 }
 .gridScroll,
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .tableScroll {
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
   overflow: auto;
@@ -12,47 +13,6 @@
 .gridScroll {
   background: var(--v4-surface);
   border: var(--v4-size-control-border) solid var(--v4-line);
-}
-@property --v4-fade-start {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
-}
-@property --v4-fade-end {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
-}
-@keyframes scrollEdges {
-  0% {
-    --v4-fade-start: 0px;
-    --v4-fade-end: var(--v4-space-24);
-  }
-  3%,
-  97% {
-    --v4-fade-start: var(--v4-space-24);
-    --v4-fade-end: var(--v4-space-24);
-  }
-  100% {
-    --v4-fade-start: var(--v4-space-24);
-    --v4-fade-end: 0px;
-  }
-}
-@supports (animation-timeline: scroll()) {
-  .gridScroll,
-  .tableScroll {
-    animation-name: scrollEdges;
-    animation-fill-mode: both;
-    animation-timing-function: linear(0, 1);
-    animation-timeline: scroll(self inline);
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      var(--v4-ink) var(--v4-fade-start),
-      var(--v4-ink) calc(100% - var(--v4-fade-end)),
-      transparent
-    );
-  }
 }
 .gridScroll {
   font-family: var(--v4-type-mono-font-family);
@@ -462,6 +422,7 @@
   color: var(--v4-bad);
   overflow-wrap: anywhere;
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .tree {
   list-style: none;
   margin: 0;
@@ -1106,6 +1067,7 @@ button.rowTitle::after {
   line-height: var(--v4-type-small-line-height);
 }
 
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .nativeTableContainer {
   overflow-x: auto;
 }

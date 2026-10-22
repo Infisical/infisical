@@ -9,6 +9,7 @@
   min-height: 0;
   background: var(--v4-sidebar);
 }
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .inset {
   --v4-page-gutter: max(
     var(--v4-space-16),

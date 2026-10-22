@@ -1,3 +1,4 @@
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .dialog.dialog {
   max-width: 480px;
   padding: 0;

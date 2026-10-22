@@ -68,6 +68,7 @@ const DropdownMenuContent = React.forwardRef<
           sideOffset={sideOffset}
           align={align}
           className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
+          data-scroll-fade="y"
           {...props}
         >
           {children}
@@ -267,6 +268,7 @@ const DropdownMenuSubContent = React.forwardRef<
       data-slot="dropdown-menu-sub-content"
       collisionPadding={collisionPadding}
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
+      data-scroll-fade="y"
       {...props}
     >
       {children}

@@ -119,6 +119,7 @@ export function DataTable<Row>({
     <div className={styles.tableShell} data-slot="data-table" data-variant={variant}>
       <div
         ref={scroll}
+        data-scroll-fade="x"
         className={cn(frame.frame, styles.tableScroll)}
         data-virtual={Boolean(height && virtual) || undefined}
         style={tableStyle}

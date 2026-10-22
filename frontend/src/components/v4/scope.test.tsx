@@ -156,10 +156,14 @@ describe("portable theme boundaries", () => {
     expect(disconnects[0]).toHaveBeenCalledOnce();
     expect(document.querySelector('[data-probe="first-portal"]')).toBeNull();
     expect(
-      observations.every(
-        (options) =>
-          options.attributes && !options.subtree && options.attributeFilter?.join() === "data-theme"
-      )
+      observations
+        .filter((options) => options.attributeFilter?.join() !== "data-scroll-fade")
+        .every(
+          (options) =>
+            options.attributes &&
+            !options.subtree &&
+            options.attributeFilter?.join() === "data-theme"
+        )
     ).toBe(true);
     await render(null);
     expect(ref.current).toBeNull();

@@ -203,6 +203,7 @@ const TabsList = React.forwardRef<
           data-moving
           data-before={edge.before || undefined}
           data-after={edge.after || undefined}
+          data-scroll-fade="x"
           className={cn(tabsListVariants({ variant }), className)}
           onScroll={(event) => {
             measure();

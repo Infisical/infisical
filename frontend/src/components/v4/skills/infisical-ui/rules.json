@@ -872,6 +872,19 @@
       "exceptions": "Drag handles and sliders that move by design."
     },
     {
+      "id": "scroll-edge-fade",
+      "title": "Fade only the edge that has more",
+      "category": "Visual",
+      "instruction": "Every v4 scroll area (ScrollArea, menus and lists, CommandMenu, the Sidebar nav, Table, DataGrid, Code, FileTree, Json, Sheet, Dialog and the AppInset) carries data-scroll-fade on the element that scrolls. The shared watcher in lib/scroll-edges.ts marks each edge that has more content past it, and v4.css masks only that edge by size-scroll-fade (16px). An area that does not scroll shows no fade. ScrollArea takes edgeBehavior fade (default), border or none.",
+      "good": "A long menu whose bottom edge fades until the last row is scrolled into view, then fades at the top instead.",
+      "avoid": "A one-off mask-image or scroll-timeline fade on a single component, or a fade on an area that does not scroll.",
+      "detect": {
+        "by": "lint",
+        "check": "scroll-fade"
+      },
+      "exceptions": "Inputs and scroll containers the person drags or that host their own virtualized edge treatment, marked with v4-check-ignore scroll-fade and a reason."
+    },
+    {
       "id": "menu-spacing-model",
       "title": "Space menus from one panel padding",
       "category": "Visual",

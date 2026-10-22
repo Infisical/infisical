@@ -101,6 +101,7 @@ const MenubarContent = React.forwardRef<
           alignOffset={alignOffset}
           sideOffset={sideOffset}
           className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
+          data-scroll-fade="y"
           {...props}
         >
           {children}
@@ -282,6 +283,7 @@ const MenubarSubContent = React.forwardRef<
       data-slot="menubar-sub-content"
       collisionPadding={collisionPadding}
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
+      data-scroll-fade="y"
       {...props}
     >
       {children}
