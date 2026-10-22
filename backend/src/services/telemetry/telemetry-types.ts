@@ -2,6 +2,7 @@ import { IdentityAuthMethod, ProjectType, SecretFolderRole } from "@app/db/schem
 import {
   AgentVaultCredentialType,
   AgentVaultMemberType,
+  AgentVaultProxyMode,
   AgentVaultTrafficPolicy
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
@@ -2534,6 +2535,7 @@ export type TAgentVaultProxyRegisteredEvent = {
   event: PostHogEventTypes.AgentVaultProxyRegistered;
   properties: TAgentVaultEventBase & {
     proxyId: string;
+    mode: AgentVaultProxyMode;
     trafficPolicy: AgentVaultTrafficPolicy;
     allowedHostCount: number;
   };
@@ -2560,7 +2562,11 @@ export type TAgentVaultProxyAccessRevokedEvent = {
 
 export type TAgentVaultProxyEnrollmentTokenReissuedEvent = {
   event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued;
-  properties: TAgentVaultEventBase & { proxyId: string };
+  properties: TAgentVaultEventBase & {
+    proxyId: string;
+    mode: AgentVaultProxyMode;
+    kind: "enrollment-token" | "proxy-token";
+  };
 };
 
 export type TAgentVaultProxyEnrolledEvent = {
@@ -2569,6 +2575,7 @@ export type TAgentVaultProxyEnrolledEvent = {
     orgId: string;
     channel: string;
     proxyId: string;
+    mode: AgentVaultProxyMode;
     replacedExistingCa: boolean;
   };
 };

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultProxyMode, AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -18,6 +18,7 @@ import { agentVaultListQuery } from "./agent-vault-schemas";
 const ProxyMemberViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
   name: z.string().describe(AGENT_VAULT.PROXY.name),
+  mode: z.nativeEnum(AgentVaultProxyMode).describe(AGENT_VAULT.PROXY.mode),
   heartbeat: z.date().nullable().describe(AGENT_VAULT.PROXY.heartbeat),
   isHealthy: z.boolean().describe(AGENT_VAULT.PROXY.isHealthy),
   rootCaFingerprint: z.string().nullable().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
@@ -34,6 +35,11 @@ const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
 const EnrollmentSchema = z.object({
   token: z.string().describe(AGENT_VAULT.PROXY.enrollmentToken),
   expiresAt: z.date()
+});
+
+const ProxyTokenSchema = z.object({
+  proxyToken: z.string().describe(AGENT_VAULT.PROXY.proxyToken),
+  rootCaFingerprint: z.string().describe(AGENT_VAULT.PROXY.rootCaFingerprint)
 });
 
 const ProxySettingsSchema = {
@@ -82,23 +88,31 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       operationId: "createAgentVaultProxy",
-      description: "Register an Agent Vault proxy and issue its one-time enrollment token",
+      description:
+        "Register an Agent Vault proxy. A Standard proxy gets its one-time enrollment token; an HA proxy gets its proxy token.",
       tags: [ApiDocsTags.AgentVaultProxies],
       body: z.object({
         name: slugSchema({ max: 64, field: "Name" }).describe(AGENT_VAULT.PROXY.name),
+        mode: z.nativeEnum(AgentVaultProxyMode).default(AgentVaultProxyMode.Standard).describe(AGENT_VAULT.PROXY.mode),
         trafficPolicy: ProxySettingsSchema.trafficPolicy.default(AgentVaultTrafficPolicy.AnyHost),
         allowedHosts: ProxySettingsSchema.allowedHosts.default(null),
         pollInterval: ProxySettingsSchema.pollInterval.default(60)
       }),
-      response: { 200: z.object({ proxy: ProxyAdminViewSchema, ...EnrollmentSchema.shape }) }
+      response: {
+        200: z.union([
+          z.object({ proxy: ProxyAdminViewSchema, ...EnrollmentSchema.shape }),
+          z.object({ proxy: ProxyAdminViewSchema, ...ProxyTokenSchema.shape })
+        ])
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { proxy, enrollment } = await server.services.agentVaultProxy.createProxy({
+      const created = await server.services.agentVaultProxy.createProxy({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         ...req.body
       });
+      const { proxy } = created;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -106,7 +120,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_REGISTER,
-          metadata: { proxyId: proxy.id, name: proxy.name }
+          metadata: { proxyId: proxy.id, name: proxy.name, mode: created.mode }
         }
       });
 
@@ -114,6 +128,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         event: PostHogEventTypes.AgentVaultProxyRegistered,
         properties: {
           proxyId: proxy.id,
+          mode: created.mode,
           trafficPolicy: proxy.trafficPolicy,
           allowedHostCount: proxy.allowedHosts
             ? parseHostPatterns(proxy.allowedHosts, "host exception").patterns.length
@@ -121,7 +136,10 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      return { proxy, ...enrollment };
+      if (created.mode === AgentVaultProxyMode.HA) {
+        return { proxy, proxyToken: created.proxyToken, rootCaFingerprint: created.rootCaFingerprint };
+      }
+      return { proxy, ...created.enrollment };
     }
   });
 
@@ -248,16 +266,56 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
-          metadata: { proxyId: proxy.id, name: proxy.name }
+          metadata: { proxyId: proxy.id, name: proxy.name, kind: "enrollment-token" }
         }
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued,
-        properties: { proxyId: proxy.id }
+        properties: { proxyId: proxy.id, mode: proxy.mode, kind: "enrollment-token" }
       });
 
       return enrollment;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:proxyId/token-auth/proxy-token",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "rotateAgentVaultProxyToken",
+      description:
+        "Issue a new proxy token for an HA proxy. Every earlier proxy token stops working and the proxy gets a new certificate authority.",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      response: { 200: z.object({ proxy: ProxyAdminViewSchema, ...ProxyTokenSchema.shape }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { proxy, proxyToken, rootCaFingerprint } = await server.services.agentVaultProxy.rotateProxyToken({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
+          metadata: { proxyId: proxy.id, name: proxy.name, kind: "proxy-token", rootCaFingerprint }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued,
+        properties: { proxyId: proxy.id, mode: proxy.mode, kind: "proxy-token" }
+      });
+
+      return { proxy, proxyToken, rootCaFingerprint };
     }
   });
 

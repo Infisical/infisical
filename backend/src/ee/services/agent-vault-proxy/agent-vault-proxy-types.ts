@@ -1,6 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
+import { AgentVaultProxyMode, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
@@ -20,6 +20,7 @@ export type TListProxiesDTO = TAgentVaultProxyScoped & {
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
+  mode?: AgentVaultProxyMode;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -37,7 +38,17 @@ export type TProxyByIdDTO = TAgentVaultProxyScoped & { proxyId: string };
 
 export type TEnrollProxyDTO = {
   enrollmentToken: string;
-  rootCaCertificate: string;
+  rootCaCertificate?: string;
+};
+
+export type TBootstrapProxyDTO = {
+  proxyId: string;
+  servedCaCertificate?: string;
+};
+
+export type TProxyRootCa = {
+  certificate: string;
+  privateKey: string;
 };
 
 export type THeartbeatDTO = {

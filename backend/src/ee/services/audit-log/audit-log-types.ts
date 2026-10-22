@@ -6432,6 +6432,7 @@ interface AgentVaultProxyRegisterEvent {
   metadata: {
     proxyId: string;
     name: string;
+    mode: "standard" | "ha";
   };
 }
 
@@ -6440,6 +6441,9 @@ interface AgentVaultProxyTokenReissueEvent {
   metadata: {
     proxyId: string;
     name: string;
+    kind: "enrollment-token" | "proxy-token";
+    // Only on a proxy-token rotation, which also replaces the certificate authority.
+    rootCaFingerprint?: string;
   };
 }
 
@@ -6449,6 +6453,7 @@ interface AgentVaultProxyEnrollEvent {
     proxyId: string;
     name: string;
     rootCaFingerprint: string;
+    caSource: "infisical" | "client";
     replacedExistingCa: boolean;
   };
 }

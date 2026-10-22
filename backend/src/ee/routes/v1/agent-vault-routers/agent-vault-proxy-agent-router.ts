@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultProxyMode, AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import {
   AgentVaultSessionLogChunkCreateResponseSchema,
@@ -27,6 +27,13 @@ const ProxyConfigSchema = z.object({
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval)
 });
 
+const RootCaSchema = z
+  .object({
+    certificate: z.string(),
+    privateKey: z.string()
+  })
+  .describe(AGENT_VAULT.PROXY.rootCa);
+
 const SESSION_HEADER = "x-infisical-agent-session";
 
 export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvider) => {
@@ -44,7 +51,13 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         z.object({
           method: z.literal(ResourceAuthMethodType.Token),
           token: z.string().trim().min(1).max(256).describe(AGENT_VAULT.PROXY.enrollmentToken),
-          rootCaCertificate: z.string().trim().min(1).max(16384).describe(AGENT_VAULT.PROXY.rootCaCertificate)
+          rootCaCertificate: z
+            .string()
+            .trim()
+            .min(1)
+            .max(16384)
+            .optional()
+            .describe(AGENT_VAULT.PROXY.rootCaCertificate)
         })
       ]),
       response: {
@@ -52,7 +65,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
           proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
           name: z.string().describe(AGENT_VAULT.PROXY.name),
           accessToken: z.string(),
-          config: ProxyConfigSchema
+          config: ProxyConfigSchema,
+          rootCa: RootCaSchema.optional()
         })
       }
     },
@@ -76,6 +90,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               proxyId: result.proxyId,
               name: result.name,
               rootCaFingerprint: result.rootCaFingerprint,
+              caSource: result.caSource,
               replacedExistingCa: result.replacedExistingCa
             }
           }
@@ -97,6 +112,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             orgId: result.orgId,
             channel: req.auditLogInfo.userAgentType ?? UserAgentType.OTHER,
             proxyId: result.proxyId,
+            mode: AgentVaultProxyMode.Standard,
             replacedExistingCa: result.replacedExistingCa
           }
         })
@@ -106,9 +122,47 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         proxyId: result.proxyId,
         name: result.name,
         accessToken: result.accessToken,
-        config: result.config
+        config: result.config,
+        rootCa: result.rootCa
       };
     }
+  });
+
+  // POST, not GET: a copy using its own certificate authority reports it here, and that is recorded.
+  server.route({
+    method: "POST",
+    url: "/bootstrap",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "bootstrapAgentVaultProxy",
+      description:
+        "Start a copy of an HA proxy: returns its identity, settings and, unless it serves its own, the certificate authority",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      body: z.object({
+        servedCaCertificate: z
+          .string()
+          .trim()
+          .min(1)
+          .max(16384)
+          .optional()
+          .describe(AGENT_VAULT.PROXY.servedCaCertificate)
+      }),
+      response: {
+        200: z.object({
+          proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
+          name: z.string().describe(AGENT_VAULT.PROXY.name),
+          config: ProxyConfigSchema,
+          rootCa: RootCaSchema.optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
+    handler: async (req) =>
+      server.services.agentVaultProxy.bootstrap({
+        proxyId: req.permission.id,
+        servedCaCertificate: req.body.servedCaCertificate
+      })
   });
 
   server.route({

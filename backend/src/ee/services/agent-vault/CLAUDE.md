@@ -13,7 +13,7 @@ never in anything the agent holds.
 | **Access bundle** | A named set of services. The unit you grant |
 | **Service** | One host pattern set plus its credential |
 | **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
-| **Proxy** | One deployed egress node with its own CA. One row per box |
+| **Proxy** | One egress node and its CA. A Standard proxy is one box; an HA proxy is any number of copies sharing one row |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
@@ -110,9 +110,18 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Proxies
 
-- Infisical stores no copy of a proxy's CA, only the fingerprint and expiry. Agents fetch the CA from the
-  proxy's own unauthenticated `/_agent-vault/ca`, so the trust path has no dependency on Infisical and there
-  is deliberately no download endpoint.
+- A proxy's `mode` is fixed at creation. **Standard** enrolls one box with a one-time enrollment token. **HA**
+  never gets an enrollment token: its copies all start from one proxy token (the same non-expiring access JWT a
+  login returns) and load their settings and CA from `POST /proxy/bootstrap`, saving nothing to disk. An HA
+  proxy must never be enrolled, since enrolling bumps `tokenVersion` and would stop every copy, so
+  `reissueEnrollmentToken` refuses it.
+- Infisical generates and keeps the CA (cert in plain text, key sealed with the project data key) when a
+  Standard proxy enrolls without sending a certificate, when an HA proxy is created, and on every HA token
+  rotation. Every enroll and every rotation makes a new CA. A proxy that brings its own CA (an older CLI, or
+  `--ca-cert`) is recorded by fingerprint and expiry only, and Infisical drops any CA it held for that proxy.
+  An HA copy serving its own CA reports it at bootstrap; the row shows whichever CA the latest copy reported.
+- Agents still fetch the CA from the proxy's own unauthenticated `/_agent-vault/ca`, so the agent's trust path
+  has no dependency on Infisical. There is deliberately no admin download endpoint for the CA.
 - The login route is unauthenticated (the enrollment token is the credential), so its audit event names the
   proxy as actor explicitly, as gateway, relay and KMIP enrollment do. Otherwise it logs as `unknownUser`.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
@@ -121,7 +130,8 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - The proxy's access token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks
   on every proxy request. Revoke Access goes through the shared resource-auth revoke so a pending enrollment
   token is burned too.
-- Resolve is not audited: once per poll per session would swamp the audit table.
+- Resolve is not audited: once per poll per session would swamp the audit table. Bootstrap is not audited
+  either, since an HA proxy running as sidecars starts a copy per agent run.
 
 ## Host and path grammar
 

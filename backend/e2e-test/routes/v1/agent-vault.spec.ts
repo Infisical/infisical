@@ -3351,6 +3351,164 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("HA proxies and Infisical-held CAs", async () => {
+    type TRootCa = { certificate: string; privateKey: string };
+
+    const fingerprintOf = (pem: string) => {
+      const digest = crypto
+        .createHash("sha256")
+        .update(Buffer.from(new x509.X509Certificate(pem).rawData))
+        .digest("hex")
+        .toUpperCase();
+      return `SHA256:${digest.match(/.{2}/g)!.join(":")}`;
+    };
+
+    const ownCaPem = async () => {
+      const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+      const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+        name: "CN=Agent Vault HA Test CA",
+        serialNumber: "01",
+        notBefore: new Date(Date.now() - 60_000),
+        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        signingAlgorithm: algorithm,
+        keys,
+        extensions: [
+          new x509.BasicConstraintsExtension(true, undefined, true),
+          // eslint-disable-next-line no-bitwise
+          new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
+        ]
+      });
+      return certificate.toString("pem");
+    };
+
+    const asProxy = (accessToken: string, url: string, body?: Record<string, unknown>) =>
+      testServer.inject({
+        method: "POST",
+        url: `/api/v1/agent-vault/proxy/${url}`,
+        headers: { authorization: `Bearer ${accessToken}` },
+        body
+      });
+
+    const createHa = async (name: string) => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name, mode: "ha" });
+      expect(created.statusCode).toBe(200);
+      return JSON.parse(created.payload) as {
+        proxy: { id: string; mode: string; rootCaFingerprint: string };
+        proxyToken: string;
+        rootCaFingerprint: string;
+        token?: string;
+      };
+    };
+
+    const login = (token: string, rootCaCertificate?: string) =>
+      testServer.inject({
+        method: "POST",
+        url: "/api/v1/agent-vault/proxy/login",
+        body: { method: ResourceAuthMethodType.Token, token, ...(rootCaCertificate ? { rootCaCertificate } : {}) }
+      });
+
+    test("creating an HA proxy returns a proxy token and the CA its copies will serve", async () => {
+      const created = await createHa("ha-create");
+      expect(created.proxy.mode).toBe("ha");
+      expect(created.token).toBeUndefined();
+      expect(created.proxyToken).toBeTruthy();
+      expect(created.proxy.rootCaFingerprint).toBe(created.rootCaFingerprint);
+
+      const boot = await asProxy(created.proxyToken, "bootstrap", {});
+      expect(boot.statusCode).toBe(200);
+      const body = JSON.parse(boot.payload) as { proxyId: string; rootCa: TRootCa; config: { pollInterval: number } };
+      expect(body.proxyId).toBe(created.proxy.id);
+      expect(body.config.pollInterval).toBe(60);
+      expect(fingerprintOf(body.rootCa.certificate)).toBe(created.rootCaFingerprint);
+      expect(body.rootCa.privateKey).toContain("BEGIN PRIVATE KEY");
+
+      const again = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as { rootCa: TRootCa };
+      expect(again.rootCa.certificate).toBe(body.rootCa.certificate);
+
+      expect((await asProxy(created.proxyToken, "heartbeat")).statusCode).toBe(200);
+    });
+
+    test("an HA proxy is never issued an enrollment token", async () => {
+      const { proxy } = await createHa("ha-no-enrollment");
+      const reissued = await inject("POST", `/api/v1/agent-vault/proxies/${proxy.id}/token-auth/enrollment-token`);
+      expect(reissued.statusCode).toBe(400);
+      expect(JSON.parse(reissued.payload).message).toContain("is an HA proxy");
+    });
+
+    test("rotating stops the old proxy token and replaces the CA", async () => {
+      const created = await createHa("ha-rotate");
+      const rotated = await inject("POST", `/api/v1/agent-vault/proxies/${created.proxy.id}/token-auth/proxy-token`);
+      expect(rotated.statusCode).toBe(200);
+      const next = JSON.parse(rotated.payload) as { proxyToken: string; rootCaFingerprint: string };
+      expect(next.rootCaFingerprint).not.toBe(created.rootCaFingerprint);
+
+      expect((await asProxy(created.proxyToken, "heartbeat")).statusCode).toBe(401);
+      const boot = JSON.parse((await asProxy(next.proxyToken, "bootstrap", {})).payload) as { rootCa: TRootCa };
+      expect(fingerprintOf(boot.rootCa.certificate)).toBe(next.rootCaFingerprint);
+    });
+
+    test("revoking access stops an HA proxy's token", async () => {
+      const created = await createHa("ha-revoke");
+      expect((await inject("POST", `/api/v1/agent-vault/proxies/${created.proxy.id}/revoke`)).statusCode).toBe(200);
+      expect((await asProxy(created.proxyToken, "bootstrap", {})).statusCode).toBe(401);
+    });
+
+    test("a copy serving its own CA reports it and gets no CA back", async () => {
+      const created = await createHa("ha-own-ca");
+      const own = await ownCaPem();
+      const boot = await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: own });
+      expect(boot.statusCode).toBe(200);
+      expect((JSON.parse(boot.payload) as { rootCa?: TRootCa }).rootCa).toBeUndefined();
+
+      const row = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
+      expect(row.rootCaFingerprint).toBe(fingerprintOf(own));
+    });
+
+    test("a Standard proxy can neither rotate a proxy token nor bootstrap", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "standard-guards" });
+      const { proxy, token } = JSON.parse(created.payload) as { proxy: { id: string; mode: string }; token: string };
+      expect(proxy.mode).toBe("standard");
+
+      const rotated = await inject("POST", `/api/v1/agent-vault/proxies/${proxy.id}/token-auth/proxy-token`);
+      expect(rotated.statusCode).toBe(400);
+      expect(JSON.parse(rotated.payload).message).toContain("is a Standard proxy");
+
+      const { accessToken } = JSON.parse((await login(token)).payload) as { accessToken: string };
+      const boot = await asProxy(accessToken, "bootstrap", {});
+      expect(boot.statusCode).toBe(400);
+      expect(JSON.parse(boot.payload).message).toContain("--enrollment-token");
+    });
+
+    test("a Standard enroll without a certificate gets a new Infisical CA every time", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "standard-infisical-ca" });
+      const { proxy, token } = JSON.parse(created.payload) as { proxy: { id: string }; token: string };
+
+      const first = await login(token);
+      expect(first.statusCode).toBe(200);
+      const { rootCa } = JSON.parse(first.payload) as { rootCa: TRootCa };
+      expect(rootCa.privateKey).toContain("BEGIN PRIVATE KEY");
+      let row = await testDb("agent_vault_proxies").where({ id: proxy.id }).first();
+      expect(row.rootCaFingerprint).toBe(fingerprintOf(rootCa.certificate));
+      expect(row.encryptedRootCaPrivateKey).not.toBeNull();
+
+      const reissued = await inject("POST", `/api/v1/agent-vault/proxies/${proxy.id}/token-auth/enrollment-token`);
+      const second = await login((JSON.parse(reissued.payload) as { token: string }).token);
+      const { rootCa: next } = JSON.parse(second.payload) as { rootCa: TRootCa };
+      expect(fingerprintOf(next.certificate)).not.toBe(fingerprintOf(rootCa.certificate));
+
+      const own = await ownCaPem();
+      const third = await inject("POST", `/api/v1/agent-vault/proxies/${proxy.id}/token-auth/enrollment-token`);
+      const withOwn = await login((JSON.parse(third.payload) as { token: string }).token, own);
+      expect(withOwn.statusCode).toBe(200);
+      expect((JSON.parse(withOwn.payload) as { rootCa?: TRootCa }).rootCa).toBeUndefined();
+      row = await testDb("agent_vault_proxies").where({ id: proxy.id }).first();
+      expect(row.rootCaFingerprint).toBe(fingerprintOf(own));
+      expect(row.rootCaCertificate).toBeNull();
+      expect(row.encryptedRootCaPrivateKey).toBeNull();
+    });
+  });
+
   describe("roles", async () => {
     test("the predefined roles are admin and member only", async () => {
       const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {

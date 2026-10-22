@@ -4622,8 +4622,15 @@ export const AGENT_VAULT = {
     heartbeat: "When the proxy last checked in, or `null` if it never has.",
     isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
     enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
+    mode: "How the proxy runs. `standard` runs on one machine and enrolls with an enrollment token; `ha` runs any number of copies from one proxy token. Set at creation and cannot be changed.",
+    proxyToken:
+      "The token every copy of an HA proxy starts with. Shown once, and works until the proxy token is rotated or the proxy's access is revoked.",
     rootCaCertificate:
-      "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",
+      "A certificate authority the proxy brings itself, in PEM form. Omit it to have Infisical generate one and return it as `rootCa`. When sent, Infisical records only its fingerprint and expiry.",
+    rootCa:
+      "The certificate authority Infisical keeps for this proxy: a PEM certificate and its PKCS#8 PEM private key.",
+    servedCaCertificate:
+      "The certificate authority this copy serves, in PEM form, when it uses its own instead of Infisical's. Infisical records its fingerprint and returns no `rootCa`.",
     rootCaFingerprint:
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
