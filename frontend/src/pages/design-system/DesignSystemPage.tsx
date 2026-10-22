@@ -139,7 +139,19 @@ export const DesignSystemPage = () => {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const dock = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState<number>();
-  const { resolvedTheme: theme, theme: themeChoice, setTheme } = useTheme();
+  const { resolvedTheme: hostTheme } = useTheme();
+  const [themeChoice, setTheme] = useState<"light" | "dark" | "system">(hostTheme);
+  const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() =>
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setSystemTheme(media.matches ? "dark" : "light");
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  const theme = themeChoice === "system" ? systemTheme : themeChoice;
   const [corners, setCorners] = useState<"square" | "soft">(() => {
     try {
       return window.localStorage.getItem("v4-corners") === "soft" ? "soft" : "square";
@@ -213,7 +225,7 @@ export const DesignSystemPage = () => {
             }}
             theme={{
               value: themeChoice === "system" ? "system" : theme,
-              onChange: (value) => setTheme(value, "design-system")
+              onChange: setTheme
             }}
             sections={sidebarSections}
             current={currentPage}
@@ -266,7 +278,7 @@ export const DesignSystemPage = () => {
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
           groups={navigationGroups}
-          toggleTheme={() => setTheme(nextTheme, "design-system")}
+          toggleTheme={() => setTheme(nextTheme)}
           toggleCorners={() => {
             try {
               window.localStorage.setItem("v4-corners", nextCorners);
@@ -321,7 +333,7 @@ export const DesignSystemPage = () => {
               size="icon-sm"
               className={dockStyles.segment}
               iconOnly
-              onClick={() => setTheme(nextTheme, "design-system")}
+              onClick={() => setTheme(nextTheme)}
               aria-label={`Switch to ${nextTheme} theme`}
             >
               <Icon name={theme === "dark" ? "sun" : "moon"} />

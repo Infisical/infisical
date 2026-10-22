@@ -23,7 +23,7 @@ Icons come from the Infisical 2.0 line set: use `Icon` with one of its 52 names.
 
 Disable blocked actions instead of hiding them, and gate each one by its own permission. Hover and press overlays are translucent ink, never opaque fills. Show Skeleton shapes when the loaded shape is known and a Loader only when it is not. Focus glows share size-focus-glow and focus-ring.
 
-Use `V4Scope` for the workbench boundary so portals inherit its colors, fonts and corner mode. Pass the host's resolved light/dark theme to `V4Scope`, or inherit the nearest host theme. Keep preference and storage in the host. The workbench uses its existing ThemeProvider; installed consumers use their own provider. Do not theme `document.body` or maintain a second preference state.
+Use `V4Scope` for the workbench boundary so portals inherit its colors, fonts and corner mode. The workbench initializes from the host's resolved theme, then keeps preview changes local. Never save those changes to the user's theme preference or send theme analytics. Installed consumers use their own provider. Do not theme `document.body`.
 
 Protect code, commands, identifiers, protocol payloads, legal and license text, quoted material and user-entered values from prose editing. Never include real secrets in examples, logs or captures. The rules file defines the narrow exemption boundary.
 

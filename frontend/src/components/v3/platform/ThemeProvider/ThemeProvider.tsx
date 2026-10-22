@@ -1,13 +1,12 @@
 import * as React from "react";
 
 import { analytics } from "@app/lib/analytics";
-import { ThemePreferenceChangedProperties } from "@app/lib/analytics/events";
 
 import { isDarkAuthPath } from "./auth-theme";
 
 export type Theme = "dark" | "light" | "system";
 export type ResolvedTheme = Exclude<Theme, "system">;
-export type ThemeChangeSource = ThemePreferenceChangedProperties["source"];
+export type ThemeChangeSource = "command-menu" | "navbar-toggle" | "profile-menu";
 
 type ThemeContextValue = {
   theme: Theme;
