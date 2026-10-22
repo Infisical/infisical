@@ -99,7 +99,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   gateway: false,
   gatewayPool: false,
   pamEnterpriseAlerting: false,
-  secretScanning: false,
+  secretScanning: true,
   enterpriseSecretSyncs: false,
   enterpriseAppConnections: false,
   machineIdentityAuthTemplates: false,
@@ -134,7 +134,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   maxWildcardCertificates: null,
   maxSansPerCertificate: null,
   // product gating
-  pam: null,
+  pam: true,
   certManager: null,
   secretsTemporaryAccess: null,
   enterprisePamAccount: null,
