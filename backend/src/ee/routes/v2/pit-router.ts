@@ -77,9 +77,10 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       ],
       body: z
         .object({
+          // Not z.string().uuid(): project ids are varchar(36) and older projects still have pre-UUID ids
           projectId: z.string().trim().min(1).max(36),
           environment: z.string().trim().min(1).max(64),
-          secretPath: z.string().trim().max(1024).default("/").transform(removeTrailingSlash),
+          secretPath: z.string().trim().max(6144).default("/").transform(removeTrailingSlash),
           message: z.string().trim().max(255).optional(),
           secrets: z
             .object({

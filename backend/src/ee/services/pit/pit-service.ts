@@ -1075,6 +1075,7 @@ export const pitServiceFactory = ({
     );
 
     let environmentName = environment;
+    const deferredReferenceSyncs: Parameters<TSecretQueueFactory["syncSecrets"]>[0][] = [];
     const response = await folderCommitDAL.transaction(async (trx) => {
       const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
       if (!targetFolder)
@@ -1328,6 +1329,7 @@ export const pitServiceFactory = ({
           mode: SecretUpdateMode.FailOnNotFound,
           tx: trx,
           skipPostProcessing: true,
+          deferredReferenceSyncs,
           commitChanges
         });
         secrets.updated = updatedSecrets;
@@ -1437,6 +1439,19 @@ export const pitServiceFactory = ({
         );
       }
     }
+
+    await Promise.all(
+      deferredReferenceSyncs.map(async (syncPayload) => {
+        try {
+          await secretQueueService.syncSecrets(syncPayload);
+        } catch (error) {
+          logger.error(
+            error,
+            `Failed to queue secret sync for renamed secret references [projectId=${projectId}] [secretPath=${syncPayload.secretPath}]`
+          );
+        }
+      })
+    );
 
     if ("approval" in response && response.approval) {
       try {
