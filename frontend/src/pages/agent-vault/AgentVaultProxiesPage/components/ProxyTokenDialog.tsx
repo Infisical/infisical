@@ -70,7 +70,6 @@ type Props = {
 
 export const ProxyTokenDialog = ({ proxyToken, onOpenChange }: Props) => {
   const token = proxyToken?.proxyToken ?? "";
-  const fingerprint = proxyToken?.rootCaFingerprint ?? "";
   const { protocol, hostname, port } = window.location;
   const siteUrl = `${protocol}//${hostname}${port && port !== "80" ? `:${port}` : ""}`;
 
@@ -80,8 +79,7 @@ export const ProxyTokenDialog = ({ proxyToken, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle>Proxy Token</DialogTitle>
           <DialogDescription>
-            Start as many copies as you need from this token. Each one loads its settings and
-            certificate authority from Infisical, so nothing is saved to disk.
+            Start the proxy with this token. You can run it on as many machines as you need.
           </DialogDescription>
         </DialogHeader>
 
@@ -89,7 +87,8 @@ export const ProxyTokenDialog = ({ proxyToken, onOpenChange }: Props) => {
           <Alert variant="warning">
             <TriangleAlertIcon />
             <AlertDescription>
-              Proxy token: shown once, works until rotated or revoked.
+              This token is shown only once. It works until you rotate it or revoke the proxy&apos;s
+              access.
             </AlertDescription>
           </Alert>
 
@@ -111,8 +110,6 @@ export const ProxyTokenDialog = ({ proxyToken, onOpenChange }: Props) => {
               <CodeBlock value={kubernetesManifest(token, siteUrl)} label="Manifest" />
             </TabsContent>
           </Tabs>
-
-          <CodeBlock value={fingerprint} label="Agents pin" />
         </div>
 
         <DialogFooter>

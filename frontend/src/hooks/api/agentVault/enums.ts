@@ -32,11 +32,6 @@ export enum AgentVaultTrafficPolicy {
   BundleHosts = "bundle-hosts"
 }
 
-export enum AgentVaultProxyMode {
-  Standard = "standard",
-  Ha = "ha"
-}
-
 export enum AgentVaultSessionStatus {
   Active = "active",
   Revoked = "revoked",

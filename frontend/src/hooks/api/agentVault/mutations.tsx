@@ -11,20 +11,17 @@ import {
   TAgentVaultAccessBundle,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
-  TAgentVaultEnrollment,
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
-  TAgentVaultProxyToken,
+  TAgentVaultProxyWithToken,
   TAgentVaultService,
   TAgentVaultSessionLogSettings,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
   TCreateAgentVaultAccessBundleDTO,
-  TCreateAgentVaultProxyDTO,
-  TCreateAgentVaultProxyResponse,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
@@ -242,8 +239,8 @@ export const useCreateAgentVaultProxy = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: TCreateAgentVaultProxyDTO) => {
-      const { data } = await apiRequest.post<TCreateAgentVaultProxyResponse>(
+    mutationFn: async (params: TAgentVaultProxySettingsDTO) => {
+      const { data } = await apiRequest.post<TAgentVaultProxyWithToken>(
         "/api/v1/agent-vault/proxies",
         params
       );
@@ -291,22 +288,12 @@ export const useDeleteAgentVaultProxy = () => {
   });
 };
 
-export const useReissueAgentVaultProxyEnrollmentToken = () =>
-  useMutation({
-    mutationFn: async (proxyId: string) => {
-      const { data } = await apiRequest.post<TAgentVaultEnrollment>(
-        `/api/v1/agent-vault/proxies/${proxyId}/token-auth/enrollment-token`
-      );
-      return data;
-    }
-  });
-
 export const useRotateAgentVaultProxyToken = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (proxyId: string) => {
-      const { data } = await apiRequest.post<TAgentVaultProxyToken>(
+      const { data } = await apiRequest.post<TAgentVaultProxyWithToken>(
         `/api/v1/agent-vault/proxies/${proxyId}/token-auth/proxy-token`
       );
       return data;
