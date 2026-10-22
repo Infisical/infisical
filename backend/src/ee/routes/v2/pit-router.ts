@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { SecretApprovalRequestsSchema, SecretFoldersSchema } from "@app/db/schemas";
 import { EventType, SecretApprovalEvent } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags, RAW_SECRETS, SECRET_COMMITS } from "@app/lib/api-docs";
+import { RAW_SECRETS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
 import { secretsLimit } from "@app/server/config/rateLimiter";
@@ -10,11 +10,10 @@ import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas"
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-
-import { secretRawSchema } from "../sanitizedSchemas";
 
 const MAX_CHANGES_PER_OPERATION = 1000;
 
@@ -26,11 +25,10 @@ const FolderNameSchema = z
   .max(255)
   .refine((name) => isValidFolderName(name), {
     message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
-  })
-  .describe(SECRET_COMMITS.CREATE.folderName);
+  });
 
 const CommitSecretSchema = secretRawSchema.extend({
-  secretValueHidden: z.boolean().describe(SECRET_COMMITS.CREATE.secretValueHidden)
+  secretValueHidden: z.boolean()
 });
 
 const CommitApprovalSchema = SecretApprovalRequestsSchema.pick({
@@ -58,20 +56,18 @@ const CommitFolderSchema = SecretFoldersSchema.pick({
   updatedAt: true
 });
 
-export const registerCommitRouter = async (server: FastifyZodProvider) => {
+export const registerPITRouter = async (server: FastifyZodProvider) => {
   // A commit is one changeset against one folder, so its body groups creates, updates, and deletes of both
   // secrets and folders. That is intentional: it is the unit that is applied (or sent for approval) atomically
   // and recorded as a single entry in the folder's commit history.
   server.route({
     method: "POST",
-    url: "/",
+    url: "/batch/commit",
     config: {
       rateLimit: secretsLimit
     },
     schema: {
-      hide: false,
-      operationId: "createCommitV4",
-      tags: [ApiDocsTags.Secrets],
+      hide: true,
       description:
         "Commit a set of secret and folder changes to one folder in a single atomic operation. When a change policy applies to the environment and path, the secret changes become an approval request instead of being applied.",
       security: [
@@ -81,16 +77,10 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
       ],
       body: z
         .object({
-          projectId: z.string().trim().min(1).max(36).describe(SECRET_COMMITS.CREATE.projectId),
-          environment: z.string().trim().min(1).max(64).describe(SECRET_COMMITS.CREATE.environment),
-          secretPath: z
-            .string()
-            .trim()
-            .max(1024)
-            .default("/")
-            .transform(removeTrailingSlash)
-            .describe(SECRET_COMMITS.CREATE.secretPath),
-          message: z.string().trim().max(255).optional().describe(SECRET_COMMITS.CREATE.message),
+          projectId: z.string().trim().min(1).max(36),
+          environment: z.string().trim().min(1).max(64),
+          secretPath: z.string().trim().max(1024).default("/").transform(removeTrailingSlash),
+          message: z.string().trim().max(255).optional(),
           secrets: z
             .object({
               create: z
@@ -99,15 +89,12 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
                   secretValue: SecretValueSchema.describe(RAW_SECRETS.CREATE.secretValue),
                   secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
                   skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
-                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional().describe(
-                    SECRET_COMMITS.CREATE.secretMetadata
-                  ),
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
                   tagIds: z.string().uuid().array().max(100).optional().describe(RAW_SECRETS.CREATE.tagIds)
                 })
                 .array()
                 .max(MAX_CHANGES_PER_OPERATION)
-                .optional()
-                .describe(SECRET_COMMITS.CREATE.secretsCreate),
+                .optional(),
               update: z
                 .object({
                   secretKey: BaseSecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName),
@@ -115,15 +102,12 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
                   secretValue: SecretValueSchema.optional().describe(RAW_SECRETS.UPDATE.secretValue),
                   secretComment: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.secretComment),
                   skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
-                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional().describe(
-                    SECRET_COMMITS.CREATE.secretMetadataUpdate
-                  ),
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
                   tagIds: z.string().uuid().array().max(100).optional().describe(RAW_SECRETS.UPDATE.tagIds)
                 })
                 .array()
                 .max(MAX_CHANGES_PER_OPERATION)
-                .optional()
-                .describe(SECRET_COMMITS.CREATE.secretsUpdate),
+                .optional(),
               delete: z
                 .object({
                   secretKey: BaseSecretNameSchema.describe(RAW_SECRETS.DELETE.secretName)
@@ -131,48 +115,36 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
                 .array()
                 .max(MAX_CHANGES_PER_OPERATION)
                 .optional()
-                .describe(SECRET_COMMITS.CREATE.secretsDelete)
             })
-            .optional()
-            .describe(SECRET_COMMITS.CREATE.secrets),
+            .optional(),
           folders: z
             .object({
               create: z
                 .object({
                   folderName: FolderNameSchema,
-                  description: z.string().trim().max(255).optional().describe(SECRET_COMMITS.CREATE.folderDescription)
+                  description: z.string().trim().max(255).optional()
                 })
                 .array()
                 .max(MAX_CHANGES_PER_OPERATION)
-                .optional()
-                .describe(SECRET_COMMITS.CREATE.foldersCreate),
+                .optional(),
               update: z
                 .object({
-                  id: z.string().uuid().describe(SECRET_COMMITS.CREATE.folderId),
+                  id: z.string().uuid(),
                   folderName: FolderNameSchema,
-                  description: z
-                    .string()
-                    .trim()
-                    .max(255)
-                    .nullable()
-                    .optional()
-                    .describe(SECRET_COMMITS.CREATE.folderDescription)
+                  description: z.string().trim().max(255).nullable().optional()
                 })
                 .array()
                 .max(MAX_CHANGES_PER_OPERATION)
-                .optional()
-                .describe(SECRET_COMMITS.CREATE.foldersUpdate),
+                .optional(),
               delete: z
                 .object({
-                  id: z.string().uuid().describe(SECRET_COMMITS.CREATE.folderId)
+                  id: z.string().uuid()
                 })
                 .array()
                 .max(MAX_CHANGES_PER_OPERATION)
                 .optional()
-                .describe(SECRET_COMMITS.CREATE.foldersDelete)
             })
             .optional()
-            .describe(SECRET_COMMITS.CREATE.folders)
         })
         .refine(
           ({ secrets, folders }) =>
@@ -183,26 +155,22 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
         ),
       response: {
         201: z.object({
-          commitId: z.string().uuid().nullable().describe(SECRET_COMMITS.CREATE.commitId),
-          approval: CommitApprovalSchema.nullable().describe(SECRET_COMMITS.CREATE.approval),
-          secrets: z
-            .object({
-              created: CommitSecretSchema.array(),
-              updated: CommitSecretSchema.array(),
-              deleted: CommitSecretSchema.array()
-            })
-            .describe(SECRET_COMMITS.CREATE.appliedSecrets),
-          folders: z
-            .object({
-              created: CommitFolderSchema.array(),
-              updated: CommitFolderSchema.array(),
-              deleted: CommitFolderSchema.array()
-            })
-            .describe(SECRET_COMMITS.CREATE.appliedFolders)
+          commitId: z.string().uuid().nullable(),
+          approval: CommitApprovalSchema.nullable(),
+          secrets: z.object({
+            created: CommitSecretSchema.array(),
+            updated: CommitSecretSchema.array(),
+            deleted: CommitSecretSchema.array()
+          }),
+          folders: z.object({
+            created: CommitFolderSchema.array(),
+            updated: CommitFolderSchema.array(),
+            deleted: CommitFolderSchema.array()
+          })
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, res) => {
       const {
         projectId,
@@ -213,7 +181,7 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
         folders: folderChanges
       } = req.body;
 
-      const result = await server.services.pit.processNewCommitRaw({
+      const result = await server.services.pit.processNewCommitRawV2({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,

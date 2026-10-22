@@ -2805,7 +2805,6 @@
                       "api-reference/endpoints/secrets/update-many",
                       "api-reference/endpoints/secrets/delete-many",
                       "api-reference/endpoints/secrets/duplicate",
-                      "api-reference/endpoints/secrets/commit",
                       {
                         "group": "Legacy",
                         "pages": [
