@@ -546,7 +546,7 @@ export const useCreateCommit = () => {
         else secretDeletes.push(change);
       });
 
-      const { data } = await apiRequest.post<TCreateCommitResponse>("/api/v4/commits", {
+      const { data } = await apiRequest.post<TCreateCommitResponse>("/api/v2/pit/batch/commit", {
         projectId,
         environment,
         secretPath,
@@ -570,7 +570,7 @@ export const useCreateCommit = () => {
             secretComment: change.secretComment,
             skipMultilineEncoding: change.skipMultilineEncoding ?? undefined,
             tagIds: change.tags?.map((tag) => tag.id),
-            secretMetadata: change.secretMetadata ?? change.existingSecret.secretMetadata
+            secretMetadata: change.secretMetadata
           })),
           delete: secretDeletes.map((change) => ({ secretKey: change.secretKey }))
         },

@@ -199,6 +199,17 @@ describe("toLegacyAccessApprovalRequest", () => {
     expect(legacy.revokedByUserId).toBe("admin");
   });
 
+  test("an expired grant stays approved and keeps the privilege", () => {
+    const legacy = toLegacyAccessApprovalRequest({
+      ...request({ status: ApprovalRequestStatus.Approved }),
+      grant: grant({ status: ApprovalRequestGrantStatus.Expired }),
+      privilegeId: "privilege-1"
+    });
+
+    expect(legacy.status).toBe(ApprovalStatus.APPROVED);
+    expect(legacy.privilegeId).toBe("privilege-1");
+  });
+
   test("a cancelled request reads as rejected", () => {
     const legacy = toLegacyAccessApprovalRequest({
       ...request({ status: ApprovalRequestStatus.Cancelled }),
@@ -454,6 +465,19 @@ describe("toSecretAccessRequestListItem", () => {
     expect(item?.policy.deletedAt).toEqual(updatedAt);
     expect(item?.status).toBe(ApprovalStatus.REVOKED);
     expect(item?.privilege).toBeNull();
+  });
+
+  test("an expired grant still reports when its access ended", () => {
+    const temporaryAccessEndTime = new Date("2026-01-03T00:00:00.000Z");
+    const item = toItem({
+      requests: [request({ status: ApprovalRequestStatus.Approved })],
+      grants: [grant({ status: ApprovalRequestGrantStatus.Expired })],
+      privileges: [privilege({ isTemporary: true, temporaryAccessEndTime })]
+    });
+
+    expect(item?.isApproved).toBe(true);
+    expect(item?.privilegeId).toBe("privilege-1");
+    expect(item?.privilege?.temporaryAccessEndTime).toEqual(temporaryAccessEndTime);
   });
 
   test("a request is hidden when its policy and environment are both gone", () => {

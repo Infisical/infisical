@@ -1,4 +1,11 @@
-import { DetailedHTMLProps, forwardRef, HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
+import {
+  DetailedHTMLProps,
+  forwardRef,
+  HTMLAttributes,
+  type JSX,
+  ReactNode,
+  TdHTMLAttributes
+} from "react";
 import { twMerge } from "tailwind-merge";
 
 import { Skeleton } from "../Skeleton";

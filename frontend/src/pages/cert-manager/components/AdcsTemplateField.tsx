@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { Control, Controller, FieldValues, Path } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 

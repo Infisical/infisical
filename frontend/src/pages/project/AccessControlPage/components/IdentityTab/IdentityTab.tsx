@@ -75,7 +75,7 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { withProjectPermission } from "@app/hoc";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import { usePagination, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import {
   IdentityAuthMethod,
   identityAuthToNameMap,
@@ -96,6 +96,7 @@ import { CreateProjectIdentitySheet } from "./components/CreateProjectIdentity/C
 
 export const IdentityTab = withProjectPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
@@ -230,7 +231,7 @@ export const IdentityTab = withProjectPermission(
               >
                 {(isAllowed) => (
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     onClick={() => handlePopUpOpen("createIdentity")}
                     isDisabled={!isAllowed}
                   >
@@ -264,7 +265,7 @@ export const IdentityTab = withProjectPermission(
                   <DropdownMenuTrigger asChild>
                     <IconButton
                       aria-label="Filter machine identities"
-                      variant={isTableFiltered ? "project" : "outline"}
+                      variant={isTableFiltered ? scopeVariant : "outline"}
                     >
                       <FilterIcon />
                     </IconButton>
@@ -416,7 +417,7 @@ export const IdentityTab = withProjectPermission(
                                   variant={
                                     // eslint-disable-next-line no-nested-ternary
                                     identityProjectId
-                                      ? "project"
+                                      ? scopeVariant
                                       : isSubOrganization && currentOrg.id === identityOrgId
                                         ? "sub-org"
                                         : "org"
