@@ -7239,6 +7239,27 @@ func (e CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope) Valid() bool {
 	}
 }
 
+// Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType.
+const (
+	CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeActions    CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType = "actions"
+	CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeCodespaces CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType = "codespaces"
+	CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeDependabot CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType enum.
+func (e CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeActions:
+		return true
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeCodespaces:
+		return true
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility.
 const (
 	CreateGitHubSecretSyncJSONBodyDestinationConfig0VisibilityAll      CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility = "all"
@@ -7275,6 +7296,27 @@ func (e CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope) Valid() bool {
 	}
 }
 
+// Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType.
+const (
+	CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeActions    CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType = "actions"
+	CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeCodespaces CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType = "codespaces"
+	CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeDependabot CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType enum.
+func (e CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeActions:
+		return true
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeCodespaces:
+		return true
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope.
 const (
 	CreateGitHubSecretSyncJSONBodyDestinationConfig2ScopeRepositoryEnvironment CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope = "repository-environment"
@@ -7284,6 +7326,27 @@ const (
 func (e CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case CreateGitHubSecretSyncJSONBodyDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType.
+const (
+	CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeActions    CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType = "actions"
+	CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeCodespaces CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType = "codespaces"
+	CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeDependabot CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType enum.
+func (e CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeActions:
+		return true
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeCodespaces:
+		return true
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -7350,6 +7413,27 @@ func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Sco
 	}
 }
 
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions    CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "actions"
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "codespaces"
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions:
+		return true
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces:
+		return true
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
 const (
 	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
@@ -7386,6 +7470,27 @@ func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Sco
 	}
 }
 
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions    CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "actions"
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "codespaces"
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions:
+		return true
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces:
+		return true
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
 const (
 	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
@@ -7395,6 +7500,27 @@ const (
 func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions    CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "actions"
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "codespaces"
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions:
+		return true
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces:
+		return true
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -7569,6 +7695,27 @@ func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Sco
 	}
 }
 
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions    DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "actions"
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "codespaces"
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions:
+		return true
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces:
+		return true
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
 const (
 	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
@@ -7605,6 +7752,27 @@ func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Sco
 	}
 }
 
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions    DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "actions"
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "codespaces"
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions:
+		return true
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces:
+		return true
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
 const (
 	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
@@ -7614,6 +7782,27 @@ const (
 func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions    DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "actions"
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "codespaces"
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions:
+		return true
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces:
+		return true
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -7770,6 +7959,27 @@ func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope)
 	}
 }
 
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions    GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "actions"
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "codespaces"
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions:
+		return true
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces:
+		return true
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
 const (
 	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
@@ -7806,6 +8016,27 @@ func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope)
 	}
 }
 
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions    GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "actions"
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "codespaces"
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions:
+		return true
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces:
+		return true
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
 const (
 	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
@@ -7815,6 +8046,27 @@ const (
 func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions    GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "actions"
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "codespaces"
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions:
+		return true
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces:
+		return true
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -7971,6 +8223,27 @@ func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationCon
 	}
 }
 
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions    RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType = "actions"
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType = "codespaces"
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions:
+		return true
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces:
+		return true
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility.
 const (
 	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
@@ -8007,6 +8280,27 @@ func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationCon
 	}
 }
 
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions    RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType = "actions"
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType = "codespaces"
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions:
+		return true
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces:
+		return true
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope.
 const (
 	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
@@ -8016,6 +8310,27 @@ const (
 func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions    RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType = "actions"
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType = "codespaces"
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions:
+		return true
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces:
+		return true
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -8172,6 +8487,27 @@ func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope
 	}
 }
 
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions    SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "actions"
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "codespaces"
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions:
+		return true
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces:
+		return true
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
 const (
 	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
@@ -8208,6 +8544,27 @@ func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope
 	}
 }
 
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions    SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "actions"
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "codespaces"
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions:
+		return true
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces:
+		return true
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
 const (
 	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
@@ -8217,6 +8574,27 @@ const (
 func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions    SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "actions"
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "codespaces"
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions:
+		return true
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces:
+		return true
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -17068,13 +17446,19 @@ type CreateGitHubSecretSyncJSONBodyDestinationConfig0 struct {
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                 `json:"selectedRepositoryIds,omitempty"`
-	Visibility            CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility `json:"visibility"`
+	Scope CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                  `json:"selectedRepositoryIds,omitempty"`
+	Visibility            CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope string
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig0SecretType string
 
 // CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility string
@@ -17089,10 +17473,16 @@ type CreateGitHubSecretSyncJSONBodyDestinationConfig1 struct {
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope string
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig1SecretType string
 
 // CreateGitHubSecretSyncJSONBodyDestinationConfig2 defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSyncJSONBodyDestinationConfig2 struct {
@@ -17107,10 +17497,16 @@ type CreateGitHubSecretSyncJSONBodyDestinationConfig2 struct {
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope string
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretType string
 
 // CreateGitHubSecretSyncJSONBody_DestinationConfig defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSyncJSONBody_DestinationConfig struct {
@@ -17132,13 +17528,19 @@ type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struc
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                      `json:"selectedRepositoryIds,omitempty"`
-	Visibility            CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+	Scope CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                       `json:"selectedRepositoryIds,omitempty"`
+	Visibility            CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType string
 
 // CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
@@ -17153,10 +17555,16 @@ type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struc
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType string
 
 // CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
@@ -17171,10 +17579,16 @@ type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struc
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType string
 
 // CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for CreateGitHubSecretSync.
 type CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
@@ -17223,13 +17637,19 @@ type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struc
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                      `json:"selectedRepositoryIds,omitempty"`
-	Visibility            DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+	Scope DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                       `json:"selectedRepositoryIds,omitempty"`
+	Visibility            DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for DeleteGitHubSecretSync.
 type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType string
 
 // DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for DeleteGitHubSecretSync.
 type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
@@ -17244,10 +17664,16 @@ type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struc
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for DeleteGitHubSecretSync.
 type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType string
 
 // DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for DeleteGitHubSecretSync.
 type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
@@ -17262,10 +17688,16 @@ type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struc
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for DeleteGitHubSecretSync.
 type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType string
 
 // DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for DeleteGitHubSecretSync.
 type DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
@@ -17305,13 +17737,19 @@ type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                   `json:"selectedRepositoryIds,omitempty"`
-	Visibility            GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+	Scope GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                    `json:"selectedRepositoryIds,omitempty"`
+	Visibility            GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for GetGitHubSecretSync.
 type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType string
 
 // GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for GetGitHubSecretSync.
 type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
@@ -17326,10 +17764,16 @@ type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for GetGitHubSecretSync.
 type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType string
 
 // GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for GetGitHubSecretSync.
 type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
@@ -17344,10 +17788,16 @@ type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for GetGitHubSecretSync.
 type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType string
 
 // GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for GetGitHubSecretSync.
 type GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
@@ -17387,13 +17837,19 @@ type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                             `json:"selectedRepositoryIds,omitempty"`
-	Visibility            RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+	Scope RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                              `json:"selectedRepositoryIds,omitempty"`
+	Visibility            RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for RemoveGitHubSecretSyncSecrets.
 type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType string
 
 // RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for RemoveGitHubSecretSyncSecrets.
 type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility string
@@ -17408,10 +17864,16 @@ type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for RemoveGitHubSecretSyncSecrets.
 type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType string
 
 // RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for RemoveGitHubSecretSyncSecrets.
 type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 struct {
@@ -17426,10 +17888,16 @@ type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for RemoveGitHubSecretSyncSecrets.
 type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType string
 
 // RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig defines parameters for RemoveGitHubSecretSyncSecrets.
 type RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig struct {
@@ -17469,13 +17937,19 @@ type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct 
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                    `json:"selectedRepositoryIds,omitempty"`
-	Visibility            SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+	Scope SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                     `json:"selectedRepositoryIds,omitempty"`
+	Visibility            SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for SyncGitHubSecretSync.
 type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType string
 
 // SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for SyncGitHubSecretSync.
 type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
@@ -17490,10 +17964,16 @@ type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct 
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for SyncGitHubSecretSync.
 type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType string
 
 // SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for SyncGitHubSecretSync.
 type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
@@ -17508,10 +17988,16 @@ type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct 
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for SyncGitHubSecretSync.
 type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType string
 
 // SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for SyncGitHubSecretSync.
 type SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {

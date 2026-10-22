@@ -3356,7 +3356,9 @@ export const SecretSyncs = {
       org: "The name of the GitHub organization.",
       owner: "The name of the GitHub account owner of the repository.",
       repo: "The name of the GitHub repository.",
-      env: "The name of the GitHub environment."
+      env: "The name of the GitHub environment.",
+      secretType:
+        "The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server."
     },
     AZURE_ENTRA_ID_SCIM: {
       servicePrincipalId:

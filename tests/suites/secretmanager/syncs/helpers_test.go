@@ -66,6 +66,17 @@ func newSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection,
 	dest destination, opts ...syncOption) *sync {
 	tt.Helper()
 
+	res, err := p.Tenant().Admin.API.CreateGitHubSecretSyncWithResponse(tt.Context(), syncBody(tt, p, conn, dest, opts...))
+	require.NoError(tt, err, "creating a sync")
+	require.NotNilf(tt, res.JSON200, "creating a sync returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return &sync{ID: res.JSON200.SecretSync.Id, proj: p}
+}
+
+// syncBody is the create request newSync sends, for a test that expects it refused.
+func syncBody(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection,
+	dest destination, opts ...syncOption) api.CreateGitHubSecretSyncJSONRequestBody {
+	tt.Helper()
+
 	cfg := syncConfig{autoSync: false, environment: "dev", secretPath: "/"}
 	for _, o := range opts {
 		o(&cfg)
@@ -88,11 +99,7 @@ func newSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection,
 	if cfg.disableSecretDeletion {
 		body.SyncOptions.DisableSecretDeletion = &cfg.disableSecretDeletion
 	}
-
-	res, err := p.Tenant().Admin.API.CreateGitHubSecretSyncWithResponse(tt.Context(), body)
-	require.NoError(tt, err, "creating a sync")
-	require.NotNilf(tt, res.JSON200, "creating a sync returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return &sync{ID: res.JSON200.SecretSync.Id, proj: p}
+	return body
 }
 
 // trigger runs the sync and waits on its status rather than the destination, so a
