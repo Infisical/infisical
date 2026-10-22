@@ -21,7 +21,8 @@ const screens: Record<string, ComponentType> = {
   approvals: lazy(() => import("./compositions/approvals")),
   certificates: lazy(() => import("./compositions/certificates")),
   kms: lazy(() => import("./compositions/kms")),
-  connections: lazy(() => import("./compositions/connections"))
+  connections: lazy(() => import("./compositions/connections")),
+  identities: lazy(() => import("./compositions/identities"))
 };
 
 export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {

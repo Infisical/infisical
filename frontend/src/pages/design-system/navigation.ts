@@ -72,6 +72,13 @@ export const comparisonPages = [
     title: "App connections",
     description:
       "9 app connections with method, owner and status, and New connection opens a three-step Sheet."
+  },
+  {
+    id: "compare-identities",
+    screen: "identities",
+    title: "Machine identities",
+    description:
+      "6 machine identities with their auth methods; open one for its details, auth methods and projects."
   }
 ] as const;
 export type ComparisonPage = (typeof comparisonPages)[number]["id"];
