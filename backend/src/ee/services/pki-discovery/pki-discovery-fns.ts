@@ -50,6 +50,23 @@ const shouldBlockPrivateIps = (hasGateway: boolean): boolean => {
   return true;
 };
 
+export const getPrivateIpRangeError = (ipRanges: string[] | undefined, hasGateway: boolean): string | undefined => {
+  if (!ipRanges?.length || !shouldBlockPrivateIps(hasGateway)) return undefined;
+
+  const appCfg = getConfig();
+  const selfHostedHint = appCfg.isCloud
+    ? ""
+    : " If you are self-hosting, you can alternatively set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to scan private networks without a gateway.";
+
+  if (ipRanges.some((ip) => !ip.includes("/") && isPrivateIp(ip))) {
+    return `Private/internal IP addresses require a gateway. Use a gateway to scan private networks.${selfHostedHint}`;
+  }
+  if (ipRanges.some((cidr) => cidr.includes("/") && isPrivateIp(cidr.split("/")[0]))) {
+    return `Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks.${selfHostedHint}`;
+  }
+  return undefined;
+};
+
 export type TTargetValidationResult = {
   valid: boolean;
   error?: string;
@@ -102,26 +119,9 @@ export const validateTargetConfig = (
     const cidrRanges = ipRanges.filter((r) => r.includes("/"));
     const singleIps = ipRanges.filter((r) => !r.includes("/"));
 
-    if (shouldBlockPrivateIps(!!hasGateway)) {
-      const appCfg = getConfig();
-      const selfHostedHint = appCfg.isCloud
-        ? ""
-        : " If you are self-hosting, you can alternatively set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to scan private networks without a gateway.";
-
-      const privateIp = singleIps.find((ip) => isPrivateIp(ip));
-      if (privateIp) {
-        return {
-          valid: false,
-          error: `Private/internal IP addresses require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
-        };
-      }
-      const privateCidr = cidrRanges.find((cidr) => isPrivateIp(cidr.split("/")[0]));
-      if (privateCidr) {
-        return {
-          valid: false,
-          error: `Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
-        };
-      }
+    const privateIpRangeError = getPrivateIpRangeError(ipRanges, !!hasGateway);
+    if (privateIpRangeError) {
+      return { valid: false, error: privateIpRangeError };
     }
 
     let totalIpCount = singleIps.length;
@@ -632,7 +632,8 @@ export const resolveTargets = async (
 
   if (targetConfig.ipRanges) {
     for (const range of targetConfig.ipRanges) {
-      const ips = expandCIDR(range);
+      const expandedIps = expandCIDR(range);
+      const ips = blockPrivate ? expandedIps.filter((ip) => !isPrivateIp(ip)) : expandedIps;
 
       for (const ip of ips) {
         for (const port of ports) {

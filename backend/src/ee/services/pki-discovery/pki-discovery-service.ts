@@ -17,6 +17,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
+import { validateTargetConfig } from "./pki-discovery-fns";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import {
   PkiDiscoveryScanStatus,
@@ -62,15 +63,24 @@ type TPkiDiscoveryServiceFactoryDep = {
 
 export type TPkiDiscoveryServiceFactory = ReturnType<typeof pkiDiscoveryServiceFactory>;
 
-const validateTargetConfigForType = (discoveryType: PkiDiscoveryType, config: TPkiDiscoveryTargetConfig) => {
+const validateTargetConfigForType = (
+  discoveryType: PkiDiscoveryType,
+  config: TPkiDiscoveryTargetConfig,
+  hasGateway: boolean
+) => {
   switch (discoveryType) {
-    case PkiDiscoveryType.Network:
+    case PkiDiscoveryType.Network: {
       if (!config.ipRanges?.length && !config.domains?.length) {
         throw new BadRequestError({
           message: "Target configuration must include at least one IP range or domain"
         });
       }
+      const validation = validateTargetConfig(config.ipRanges, config.ports, config.domains, hasGateway);
+      if (!validation.valid) {
+        throw new BadRequestError({ message: validation.error || "Invalid target configuration" });
+      }
       break;
+    }
     default:
       throw new BadRequestError({ message: `Unsupported discovery type: ${discoveryType as string}` });
   }
@@ -139,7 +149,7 @@ export const pkiDiscoveryServiceFactory = ({
       }
     }
 
-    validateTargetConfigForType(discoveryType, targetConfig);
+    validateTargetConfigForType(discoveryType, targetConfig, Boolean(gatewayId || gatewayPoolId));
 
     if (gatewayId) {
       const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actorOrgId });
@@ -234,10 +244,16 @@ export const pkiDiscoveryServiceFactory = ({
       ProjectPermissionSub.PkiDiscovery
     );
 
-    if (targetConfig) {
+    const gatewayIdValue = gatewayPoolId ? null : gatewayId;
+    const gatewayPoolIdValue = gatewayId ? null : gatewayPoolId;
+
+    if (targetConfig || gatewayIdValue !== undefined || gatewayPoolIdValue !== undefined) {
+      const effectiveGatewayId = gatewayIdValue === undefined ? discovery.gatewayId : gatewayIdValue;
+      const effectiveGatewayPoolId = gatewayPoolIdValue === undefined ? discovery.gatewayPoolId : gatewayPoolIdValue;
       validateTargetConfigForType(
         (discovery.discoveryType as PkiDiscoveryType) || PkiDiscoveryType.Network,
-        targetConfig
+        targetConfig ?? (discovery.targetConfig as TPkiDiscoveryTargetConfig),
+        Boolean(effectiveGatewayId || effectiveGatewayPoolId)
       );
     }
 
@@ -274,9 +290,6 @@ export const pkiDiscoveryServiceFactory = ({
         actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
     }
-
-    const gatewayIdValue = gatewayPoolId ? null : gatewayId;
-    const gatewayPoolIdValue = gatewayId ? null : gatewayPoolId;
 
     try {
       const updatedDiscovery = await pkiDiscoveryConfigDAL.updateById(discoveryId, {

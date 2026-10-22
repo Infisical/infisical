@@ -7,12 +7,10 @@ import {
   MAX_DOMAINS,
   MAX_IPS,
   MAX_PORTS,
-  MIN_CIDR_PREFIX,
-  validateTargetConfig
+  MIN_CIDR_PREFIX
 } from "@app/ee/services/pki-discovery/pki-discovery-fns";
 import { PkiDiscoveryType, TPkiDiscoveryTargetConfig } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -107,16 +105,6 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const validation = validateTargetConfig(
-        req.body.targetConfig.ipRanges,
-        req.body.targetConfig.ports,
-        req.body.targetConfig.domains,
-        !!req.body.gatewayId || !!req.body.gatewayPoolId
-      );
-      if (!validation.valid) {
-        throw new BadRequestError({ message: validation.error || "Invalid target configuration" });
-      }
-
       const projectId = req.internalCertManagerProjectId;
       const discovery = await server.services.pkiDiscovery.createDiscovery({
         projectId,
@@ -321,31 +309,6 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      if (req.body.targetConfig) {
-        let hasGateway =
-          (req.body.gatewayId !== null && req.body.gatewayId !== undefined) ||
-          (req.body.gatewayPoolId !== null && req.body.gatewayPoolId !== undefined);
-        if (!hasGateway && req.body.gatewayId === undefined && req.body.gatewayPoolId === undefined) {
-          const existing = await server.services.pkiDiscovery.getDiscovery({
-            discoveryId: req.params.discoveryId,
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId
-          });
-          hasGateway = !!existing.gatewayId || !!existing.gatewayPoolId;
-        }
-        const validation = validateTargetConfig(
-          req.body.targetConfig.ipRanges,
-          req.body.targetConfig.ports,
-          req.body.targetConfig.domains,
-          hasGateway
-        );
-        if (!validation.valid) {
-          throw new BadRequestError({ message: validation.error || "Invalid target configuration" });
-        }
-      }
-
       const discovery = await server.services.pkiDiscovery.updateDiscovery({
         discoveryId: req.params.discoveryId,
         name: req.body.name,
