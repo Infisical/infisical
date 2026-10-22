@@ -10,6 +10,7 @@ import {
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { reapOrphanedFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -21,8 +22,10 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { emitGroupLinkRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
@@ -70,6 +73,7 @@ type TMembershipGroupServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -94,7 +98,8 @@ export const membershipGroupServiceFactory = ({
   alertChannelRecipientDAL,
   additionalPrivilegeDAL,
   identityGroupMembershipDAL,
-  userGroupMembershipDAL
+  userGroupMembershipDAL,
+  eventEmitter
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -373,6 +378,51 @@ export const membershipGroupServiceFactory = ({
     return { membership: membershipDoc, group };
   };
 
+  // Unlinks a group from an org plus its project rows there (or they'd keep granting access) and folder grants
+  // members only had through it. Members' own project rows are left to the reconcile consumer.
+  const detachGroupFromOrg = async (
+    { groupId, orgId, orgMembershipId }: { groupId: string; orgId: string; orgMembershipId?: string },
+    tx: Knex
+  ) => {
+    const groupUsers = await userGroupMembershipDAL.find({ groupId }, { tx });
+    const groupIdentities = await identityGroupMembershipDAL.find({ groupId }, { tx });
+    const groupProjectMemberships = await membershipGroupDAL.find(
+      { actorGroupId: groupId, scopeOrgId: orgId, scope: AccessScope.Project },
+      { tx }
+    );
+
+    const userIds = groupUsers.map((membership) => membership.userId);
+    const identityIds = groupIdentities.map((membership) => membership.identityId);
+    const groupProjectIds = Array.from(
+      new Set(groupProjectMemberships.map((membership) => membership.scopeProjectId).filter(Boolean) as string[])
+    );
+
+    const membershipIds = [...groupProjectMemberships.map((membership) => membership.id)];
+    if (orgMembershipId) membershipIds.push(orgMembershipId);
+    if (membershipIds.length) {
+      await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
+      await membershipGroupDAL.delete({ $in: { id: membershipIds } }, tx);
+    }
+
+    await reapOrphanedFolderGrants(
+      { userGroupMembershipDAL, identityGroupMembershipDAL, additionalPrivilegeDAL },
+      {
+        groupId,
+        projectIdsByUserId: new Map(userIds.map((userId) => [userId, [...groupProjectIds]])),
+        projectIdsByIdentityId: new Map(identityIds.map((identityId) => [identityId, [...groupProjectIds]]))
+      },
+      tx
+    );
+
+    await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
+
+    await emitGroupLinkRemoved(
+      eventEmitter,
+      { orgId, groupId, members: toOrgMembershipActors({ userIds, identityIds }) },
+      tx
+    );
+  };
+
   const deleteMembership = async (dto: TDeleteMembershipGroupDTO, externalTx?: Knex) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
@@ -531,6 +581,18 @@ export const membershipGroupServiceFactory = ({
         }
       }
 
+      if (scopeData.scope === AccessScope.Organization) {
+        await detachGroupFromOrg(
+          {
+            groupId: dto.selector.groupId,
+            orgId: existingMembership.scopeOrgId,
+            orgMembershipId: existingMembership.id
+          },
+          tx
+        );
+        return existingMembership;
+      }
+
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipGroupDAL.deleteById(existingMembership.id, tx);
 
@@ -597,6 +659,7 @@ export const membershipGroupServiceFactory = ({
     createMembership,
     updateMembership,
     deleteMembership,
+    detachGroupFromOrg,
     listMemberships,
     getMembershipByGroupId
   };

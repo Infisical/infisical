@@ -60,6 +60,15 @@ export type UserEnc = {
   tag?: string;
 };
 
+// Includes users who reach the project's org only through a group.
+export type TAvailableProjectUser = {
+  id: string;
+  username: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+};
+
 export type OrgUser = {
   id: string;
   metadata: { key: string; value: string; id: string }[];

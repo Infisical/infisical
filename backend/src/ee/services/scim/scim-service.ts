@@ -39,17 +39,19 @@ import { isUuidV4 } from "@app/lib/validator/validate-uuid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "@app/services/membership-user/membership-user-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipsFn } from "@app/services/org/org-fns";
+import { emitGroupRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -108,6 +110,7 @@ type TScimServiceFactoryDep = {
   orgDAL: Pick<
     TOrgDALFactory,
     | "createMembership"
+    | "lockActorsForOrgAccess"
     | "findById"
     | "find"
     | "findMembership"
@@ -124,6 +127,8 @@ type TScimServiceFactoryDep = {
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
+    | "findGroupActorsAndOrgs"
+    | "findGroupOrgIds"
     | "findOne"
     | "findAllGroupPossibleUsers"
     | "delete"
@@ -153,7 +158,7 @@ type TScimServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -161,6 +166,7 @@ type TScimServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  eventEmitter: TEventEmitter;
 };
 
 export const scimServiceFactory = ({
@@ -182,14 +188,15 @@ export const scimServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
-  approvalPolicyDAL,
+  projectAccessRevokeService,
   alertChannelRecipientDAL,
   scimEventsDAL,
   emailDomainDAL,
   telemetryService,
   usageMeteringService,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  eventEmitter
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -1085,17 +1092,12 @@ export const scimServiceFactory = ({
       orgMembershipIds: [membership.id],
       orgId: membership.scopeOrgId,
       orgDAL,
-      projectKeyDAL,
       userAliasDAL,
       licenseService,
       membershipUserDAL,
-      membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL,
-      approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      pamSessionDAL,
-      gatewayV2Service
+      projectAccessRevokeService,
+      eventEmitter
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
@@ -1600,9 +1602,11 @@ export const scimServiceFactory = ({
           userDAL,
           userGroupMembershipDAL,
           membershipGroupDAL,
+          groupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
           alertChannelRecipientDAL,
+          eventEmitter,
           tx,
           shouldFailOnMissingMembers
         });
@@ -1775,6 +1779,8 @@ export const scimServiceFactory = ({
     };
   };
 
+  // SCIM can delete a group that's still linked into sub-orgs, so read its orgs and members before the
+  // cascade drops the links.
   const deleteScimGroup: TScimServiceFactory["deleteScimGroup"] = async ({ groupId, orgId }) => {
     const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) {
@@ -1792,6 +1798,7 @@ export const scimServiceFactory = ({
 
     const [group] = await groupDAL.transaction(async (tx) => {
       if (!isUuidV4(groupId)) return [];
+      if (!(await groupDAL.findOne({ id: groupId, orgId }, tx))) return [];
 
       const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
         { userGroupMembershipDAL, alertChannelRecipientDAL },
@@ -1802,6 +1809,12 @@ export const scimServiceFactory = ({
       await reapDeletedGroupFolderGrants(
         { userGroupMembershipDAL, identityGroupMembershipDAL, membershipGroupDAL, additionalPrivilegeDAL },
         groupId,
+        tx
+      );
+      const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
+      await emitGroupRemoved(
+        eventEmitter,
+        { groupId, orgIds, members: toOrgMembershipActors({ userIds, identityIds }) },
         tx
       );
 

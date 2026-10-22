@@ -37,7 +37,7 @@ import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TProjectMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -70,6 +70,7 @@ export const newProjectMembershipUserFactory = ({
 
   const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
+  // Same add rule as everywhere else (findActorsWithActiveOrgAccess).
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
     newUsers
@@ -85,18 +86,13 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
 
-    // TODO(namespace): this becomes tricky in namespace due to group flow
-    const orgMemberships = await membershipUserDAL.find({
-      scope: AccessScope.Organization,
-      scopeOrgId: dto.permission.orgId,
-      $in: {
-        actorUserId: newUsers.map((el) => el.id)
-      }
+    const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({
+      orgId: dto.permission.orgId,
+      userIds: newUsers.map((el) => el.id),
+      identityIds: []
     });
-    if (orgMemberships.length !== newUsers.length) {
-      const missingUsers = newUsers
-        .filter((el) => !orgMemberships.find((memb) => memb.actorUserId === el.id))
-        .map((el) => el.email);
+    const missingUsers = newUsers.filter((el) => !withOrgAccess.userIds.has(el.id)).map((el) => el.email);
+    if (missingUsers.length) {
       throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
     }
 
@@ -159,6 +155,7 @@ export const newProjectMembershipUserFactory = ({
     }
   };
 
+  // Only email users who can already sign in: accepted direct members and group-only members.
   const onCreateMembershipComplete: TMembershipUserScopeFactory["onCreateMembershipComplete"] = async (
     dto,
     newMembers
@@ -172,16 +169,26 @@ export const newProjectMembershipUserFactory = ({
       });
     }
 
-    const orgMembershipAccepted = await membershipUserDAL.find({
+    const newMemberIds = newMembers.map((el) => el.id);
+    const directOrgMemberships = await membershipUserDAL.find({
       scope: AccessScope.Organization,
       scopeOrgId: dto.permission.orgId,
-      status: OrgMembershipStatus.Accepted,
       $in: {
-        actorUserId: newMembers.map((el) => el.id)
+        actorUserId: newMemberIds
       }
     });
+    const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({
+      orgId: dto.permission.orgId,
+      userIds: newMemberIds,
+      identityIds: []
+    });
+    const directByUserId = new Map(directOrgMemberships.map((el) => [el.actorUserId as string, el]));
+    const orgMembershipAcceptedUserIds = newMemberIds.filter((userId) => {
+      const direct = directByUserId.get(userId);
+      return direct ? direct.status === OrgMembershipStatus.Accepted : withOrgAccess.userIds.has(userId);
+    });
 
-    if (!orgMembershipAccepted.length) return { signUpTokens: [] };
+    if (!orgMembershipAcceptedUserIds.length) return { signUpTokens: [] };
 
     const appCfg = getConfig();
     const scope = getScopeField(dto.scopeData);
@@ -189,7 +196,6 @@ export const newProjectMembershipUserFactory = ({
       projectDAL.findById(scope.value)
     );
 
-    const orgMembershipAcceptedUserIds = orgMembershipAccepted.map((el) => el.actorUserId as string);
     const emails = newMembers
       .filter((el) => Boolean(el?.email) && orgMembershipAcceptedUserIds.includes(el.id))
       .map((el) => el?.email as string);
