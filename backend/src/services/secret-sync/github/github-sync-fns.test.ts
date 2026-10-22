@@ -221,6 +221,24 @@ describe("GithubSyncFns.syncSecrets", () => {
     ]);
   });
 
+  it("treats a stale secret already removed on GitHub as deleted and keeps pruning", async () => {
+    paginatedMock.mockResolvedValue([{ name: "GONE" }, { name: "STALE" }]);
+    requestMock.mockImplementation(async (_gateway: unknown, _service: unknown, config: any) => {
+      if (config.method === "DELETE" && config.url.endsWith("/GONE")) throw httpError(404);
+      if (config.method === "GET") {
+        return { data: { key_id: "key-1", key: sodium.to_base64(keyPair.publicKey, sodium.base64_variants.ORIGINAL) } };
+      }
+      return { data: {} };
+    });
+
+    await runSync(makeSync(repoConfig(GitHubSyncSecretType.Dependabot)), makePayload(["A"]));
+
+    expect(callsWith("DELETE").map((c) => c.url)).toEqual([
+      "https://api.github.com/repos/acme/app/dependabot/secrets/GONE",
+      "https://api.github.com/repos/acme/app/dependabot/secrets/STALE"
+    ]);
+  });
+
   it("deletes nothing when secret deletion is disabled", async () => {
     paginatedMock.mockResolvedValue([{ name: "STALE" }]);
 
@@ -353,7 +371,9 @@ describe("GitHub permission errors", () => {
     expect((error as SecretSyncError).message).toContain(
       "lacks permissions to access Dependabot secrets for repository 'acme/app'"
     );
-    expect((error as SecretSyncError).message).toContain("read and write access to Dependabot secrets");
+    expect((error as SecretSyncError).message).toContain(
+      "read and write access to the 'Dependabot secrets' permission"
+    );
     expect((error as SecretSyncError).message).toContain("'repo' scope");
   });
 
@@ -365,9 +385,20 @@ describe("GitHub permission errors", () => {
     ).rejects.toMatchObject({
       shouldRetry: false,
       message: expect.stringMatching(
-        /lacks permissions to access Codespaces secrets for organization 'acme'.*'admin:org' scope/
+        /lacks permissions to access Codespaces secrets for organization 'acme'.*the 'Organization codespaces secrets' permission.*'admin:org' scope/
       )
     });
+  });
+
+  it("names GitHub's Secrets permission for an Actions sync, which has no 'Actions secrets' permission", async () => {
+    paginatedMock.mockRejectedValueOnce(httpError(403));
+
+    const error = await runSync(makeSync(repoConfig(GitHubSyncSecretType.Actions)), makePayload(["A"])).catch(
+      (err: unknown) => err
+    );
+
+    expect((error as SecretSyncError).message).toContain("read and write access to the 'Secrets' permission");
+    expect((error as SecretSyncError).message).not.toContain("access to Actions secrets");
   });
 
   it("names the Actions secret type for an environment sync", async () => {
@@ -380,12 +411,15 @@ describe("GitHub permission errors", () => {
       secretType: GitHubSyncSecretType.Actions
     };
 
-    await expect(runSync(makeSync(environmentConfig), makePayload(["A"]))).rejects.toMatchObject({
-      shouldRetry: false,
-      message: expect.stringContaining(
-        "lacks permissions to access Actions secrets for environment 'prod' in repository 'acme/app'"
-      )
-    });
+    const error = await runSync(makeSync(environmentConfig), makePayload(["A"])).catch((err: unknown) => err);
+
+    expect(error).toMatchObject({ shouldRetry: false });
+    expect((error as SecretSyncError).message).toContain(
+      "lacks permissions to access Actions secrets for environment 'prod' in repository 'acme/app'"
+    );
+    expect((error as SecretSyncError).message).toContain(
+      "read and write access to the 'Secrets' and 'Environments' permissions"
+    );
   });
 
   it("reports a 404 as a missing target or permission", async () => {
@@ -412,7 +446,7 @@ describe("GitHub permission errors", () => {
     ).rejects.toMatchObject({
       shouldRetry: false,
       secretKey: undefined,
-      message: expect.stringContaining("read and write access to Codespaces secrets")
+      message: expect.stringContaining("read and write access to the 'Codespaces secrets' permission")
     });
   });
 
@@ -457,6 +491,27 @@ describe("GithubSyncFns.removeSecrets", () => {
     expect(callsWith("DELETE").map((c) => c.url)).toEqual([
       "https://api.github.com/orgs/acme/dependabot/secrets/A",
       "https://api.github.com/orgs/acme/dependabot/secrets/B"
+    ]);
+  });
+
+  it("keeps removing when a secret is already gone on GitHub", async () => {
+    paginatedMock.mockResolvedValue([{ name: "A" }, { name: "B" }]);
+    requestMock.mockImplementation(async (_gateway: unknown, _service: unknown, config: any) => {
+      if (config.url.endsWith("/A")) throw httpError(404);
+      return { data: {} };
+    });
+
+    await GithubSyncFns.removeSecrets(
+      makeSync(repoConfig(GitHubSyncSecretType.Codespaces)),
+      makePayload(["A", "B"]),
+      gatewayV2Service,
+      gatewayPoolService,
+      gitHubAppDeps
+    );
+
+    expect(callsWith("DELETE").map((c) => c.url)).toEqual([
+      "https://api.github.com/repos/acme/app/codespaces/secrets/A",
+      "https://api.github.com/repos/acme/app/codespaces/secrets/B"
     ]);
   });
 });

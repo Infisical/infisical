@@ -274,7 +274,7 @@ func TestGitHubSync_Create(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "%s", apierr.Body(res.Body))
 		require.Contains(t, string(res.Body), "Repository environment scope is only available for Actions secrets")
 		gh.ExpectNoEvent[github.SecretCreated](t, nil)
 	})

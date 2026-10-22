@@ -160,13 +160,18 @@ export const toGitHubSecretsError = (error: unknown, destinationConfig: TGitHubS
   if (status !== 403 && status !== 404) return error;
   if (status === 403 && isGitHubRateLimitError(error)) return error;
 
-  const { name } = GITHUB_SECRET_TYPES[getGitHubSyncSecretType(destinationConfig)];
+  const { name, permission } = GITHUB_SECRET_TYPES[getGitHubSyncSecretType(destinationConfig)];
   const { target, missing } = describeGitHubSecretsTarget(destinationConfig);
-  const classicScope = destinationConfig.scope === GitHubSyncScope.Organization ? "admin:org" : "repo";
+  const isOrganization = destinationConfig.scope === GitHubSyncScope.Organization;
+  const classicScope = isOrganization ? "admin:org" : "repo";
+  const requiredPermissions =
+    destinationConfig.scope === GitHubSyncScope.RepositoryEnvironment
+      ? `the '${permission.repository}' and 'Environments' permissions`
+      : `the '${isOrganization ? permission.organization : permission.repository}' permission`;
 
   const message =
     status === 403
-      ? `The GitHub connection lacks permissions to access ${name} secrets for ${target}. Grant read and write access to ${name} secrets on the GitHub App or fine-grained token, or use the '${classicScope}' scope for OAuth and classic tokens. An owner of a GitHub App installation must also approve newly requested permissions.`
+      ? `The GitHub connection lacks permissions to access ${name} secrets for ${target}. Grant read and write access to ${requiredPermissions} on the GitHub App or fine-grained token, or use the '${classicScope}' scope for OAuth and classic tokens. An owner of a GitHub App installation must also approve newly requested permissions.`
       : `GitHub could not find the ${name} secrets for ${target}. Check that ${missing} and that the GitHub connection has the permissions to access it.`;
 
   return new SecretSyncError({ error, message, shouldRetry: false });
@@ -239,16 +244,23 @@ const getPublicKey = (secretSync: TGitHubSyncWithCredentials, deps: TGitHubSyncD
     path: "/public-key"
   });
 
-const deleteSecret = (
+const deleteSecret = async (
   secretSync: TGitHubSyncWithCredentials,
   deps: TGitHubSyncDeps,
   token: string,
   encryptedSecret: TGitHubSecret
-) =>
-  requestGitHubSecretsApi(secretSync, deps, token, {
-    method: "DELETE",
-    path: `/${encodeURIComponent(encryptedSecret.name)}`
-  });
+) => {
+  try {
+    await requestGitHubSecretsApi(secretSync, deps, token, {
+      method: "DELETE",
+      path: `/${encodeURIComponent(encryptedSecret.name)}`
+    });
+  } catch (error) {
+    // The secret was removed on GitHub after it was listed, which is the state this delete wanted
+    if (error instanceof SecretSyncError && isAxiosError(error.error) && error.error.response?.status === 404) return;
+    throw error;
+  }
+};
 
 const putSecret = (
   secretSync: TGitHubSyncWithCredentials,
