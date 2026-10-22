@@ -2726,9 +2726,11 @@ const OverviewPageContent = () => {
       const savedKey =
         pendingSecret.type === PendingAction.Update ? pendingSecret.newSecretName : undefined;
       if (
+        pendingSecret.type === PendingAction.Update &&
         savedKey &&
         savedKey !== pendingSecret.secretKey &&
-        draft?.type === PendingAction.Update
+        draft?.type === PendingAction.Update &&
+        appliedSecrets.some((secret) => secret.secretKey === savedKey)
       ) {
         removePendingChange(draft.id, "secret", context);
         addPendingChange(
