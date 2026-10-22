@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "./tabs";
 import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 import { Tooltip, TooltipProvider } from "./tooltip";
 
+import menu from "./menu.module.css";
 import styles from "./sidebar.module.css";
 
 export interface SidebarLink {
@@ -693,6 +694,9 @@ export const Sidebar = ({
                           ))}
                         </ToggleGroup>
                       </div>
+                    )}
+                    {theme && (user.href || user.onClick) && (
+                      <div role="separator" className={menu.separator} />
                     )}
                     {(user.href || user.onClick) &&
                       React.createElement(

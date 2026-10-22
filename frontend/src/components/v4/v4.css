@@ -313,13 +313,16 @@
 
 .v4 .v4-switcher-header,
 .v4 .v4-switcher-footer {
-  padding: var(--v4-space-12);
+  --v4-menu-pad: var(--v4-space-3);
+  display: flex;
+  flex-direction: column;
+  padding: var(--v4-menu-pad);
 }
 .v4 .v4-switcher-header {
-  border-bottom: 1px solid var(--v4-line);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .v4 .v4-switcher-footer {
-  border-top: 1px solid var(--v4-line);
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 /* Switcher popovers (sidebar account, breadcrumb switchers) use the shared menu recipe: the same 3px panel inset, rows and eyebrow as every other menu; the current row is an inset rounded tint. */
 .v4 [data-v4-switcher] [cmdk-list] {
@@ -339,9 +342,6 @@
 .v4 [data-v4-switcher] [data-switcher-meta] {
   color: var(--v4-muted);
   font-weight: var(--v4-type-body-font-weight);
-}
-.v4 [data-v4-switcher] .v4-switcher-footer {
-  padding: 0;
 }
 .v4 .v4-switcher-description {
   display: block;

@@ -13,6 +13,8 @@ export type V4Check = {
   css?: readonly RegExp[];
   /** Files this one check does not scan. */
   exempt?: readonly string[];
+  /** For .css files: judges each innermost rule block and returns the offending declarations. */
+  cssBlock?: (selector: string, body: string) => readonly string[];
   /** For .ts/.tsx files: judges each className-like string literal and returns the offending text. */
   classString?: (value: string) => readonly string[];
 };
@@ -190,6 +192,37 @@ export const v4Checks: readonly V4Check[] = [
     ]
   },
   {
+    id: "menu-row-margin",
+    rule: "menu-spacing-model",
+    message:
+      "Menu rows, labels and rules never set an outer margin. The panel pads every side by --v4-menu-pad and a separator draws its own full-width rule.",
+    appliesTo: (file) =>
+      [
+        "src/components/v4/ui/menu.module.css",
+        "src/components/v4/ui/picker.module.css",
+        "src/components/v4/ui/sidebar.module.css",
+        "src/components/v4/v4.css"
+      ].includes(file),
+    cssBlock: (selector, body) => {
+      const subject =
+        /(?:^|[\s>+~,])(?:\.(?:row|label|separator|themeRow|userRow)|\[cmdk-(?:item|separator|group-heading)\]|\.v4-switcher-(?:header|footer))(?=[\s:[.,{]|$)/;
+      const last = selector
+        .split(",")
+        .map(
+          (part) =>
+            part
+              .trim()
+              .split(/[\s>+~]+/)
+              .pop() ?? ""
+        )
+        .some((part) => subject.test(` ${part.replace(/::?[\w-]+(\([^)]*\))?/g, "")}`));
+      if (!last) return [];
+      return [...body.matchAll(/(?:^|;|\n)\s*(margin(?:-[\w-]+)?\s*:\s*[^;]+)/g)]
+        .map((match) => match[1].trim())
+        .filter((declaration) => !/:\s*0(?:px)?\s*$/.test(declaration));
+    }
+  },
+  {
     id: "dot-separator",
     rule: "no-dot-separators",
     message: "Separate details with words or layout, not a middle dot or bullet.",
@@ -228,6 +261,20 @@ export const scanSource = (file: string, text: string): Finding[] => {
   return v4Checks
     .filter((check) => check.appliesTo(file) && !check.exempt?.includes(file))
     .flatMap((check) => {
+      const block = check.cssBlock;
+      if (block && isCss(file))
+        return [...text.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap((match) => {
+          const selector = match[1].replace(/\/\*[\s\S]*?\*\//g, "").trim();
+          if (selector.startsWith("@")) return [];
+          const line = text.slice(0, (match.index ?? 0) + match[0].indexOf("{")).split("\n").length;
+          if (exemptLine(line, check.id)) return [];
+          return block(selector, match[2]).map((found) => ({
+            check: check.id,
+            file,
+            line,
+            text: found
+          }));
+        });
       const judge = check.classString;
       if (judge)
         return classStrings.flatMap(({ value, index }) => {

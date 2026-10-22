@@ -473,8 +473,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--v4-space-8);
-  min-height: var(--v4-space-40);
-  padding: var(--v4-space-4) var(--v4-space-12);
+  min-height: var(--v4-size-control-sm);
+  padding-inline: var(--v4-space-8);
   color: var(--v4-ink);
 }
 .userRow {
@@ -482,10 +482,9 @@
   align-items: center;
   gap: var(--v4-space-8);
   width: 100%;
-  margin-top: 0;
-  padding: var(--v4-space-8) var(--v4-space-12);
+  padding: var(--v4-space-6) var(--v4-space-8);
   border: 0;
-  border-top: 1px solid var(--v4-line-soft);
+  border-radius: calc((var(--v4-radius-pop) - var(--v4-space-3)) * var(--corners));
   background: transparent;
   color: var(--v4-ink);
   text-align: start;

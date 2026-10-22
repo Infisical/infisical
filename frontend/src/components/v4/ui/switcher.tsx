@@ -146,7 +146,8 @@ export const Switcher = ({
         align={align}
         side={side}
         data-v4-switcher=""
-        style={{ width, padding: 0 }}
+        surface="menu"
+        style={{ width }}
         aria-label={label}
         onOpenAutoFocus={(event) => {
           const target = command.current?.querySelector<HTMLElement>(

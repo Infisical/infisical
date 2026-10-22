@@ -115,6 +115,17 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [ui, 'import { XIcon } from "lucide-react";']
     ]
   },
+  "menu-row-margin": {
+    bad: [["src/components/v4/ui/menu.module.css", ".separator {
+  margin: 4px 0;
+}"]],
+    good: [["src/components/v4/ui/menu.module.css", ".separator {
+  height: 7px;
+}
+.meta {
+  margin-inline-start: auto;
+}"]]
+  },
   "dot-separator": {
     bad: [[example, "<span>Primary · alias of default</span>"]],
     good: [[example, "<span>Primary, alias of default</span>"]]

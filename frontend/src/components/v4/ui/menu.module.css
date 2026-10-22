@@ -148,9 +148,6 @@
   --v4-menu-pad: var(--v4-space-3);
   padding: var(--v4-menu-pad);
 }
-.inset .separator {
-  margin-inline: calc(-1 * var(--v4-menu-pad));
-}
 .inset:has(.row > :is(svg, [data-menu-icon]):not(.trail), .row[data-inset], .label[data-inset]) {
   --v4-menu-icon-slot: calc(var(--v4-size-icon) + var(--v4-space-8));
 }
@@ -323,17 +320,37 @@
   font-weight: var(--v4-type-eyebrow-font-weight);
   letter-spacing: var(--v4-type-eyebrow-letter-spacing);
 }
+/* Menu spacing model: the panel pads every side by --v4-menu-pad (p). Rows and rules carry no
+   outer margin. A rule is a full-width 1px line drawn p below the previous row and p above the
+   next one, so a section's content sits p from the panel edge and from every rule. */
 .label:not(:first-child, .separator + *),
 :is([role="group"], [cmdk-group]):not(:first-child)
   > :is(.label, [cmdk-group-heading]):first-child {
-  margin-top: var(--v4-space-4);
-  padding-top: calc(var(--v4-space-6) + var(--v4-space-4));
-  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
+  position: relative;
+  padding-top: calc(var(--v4-space-6) + 2 * var(--v4-menu-pad, var(--v4-space-3)) + var(--v4-size-control-border));
+}
+.label:not(:first-child, .separator + *),
+:is([role="group"], [cmdk-group]):not(:first-child)
+  > :is(.label, [cmdk-group-heading]):first-child::before {
+  content: "";
+  position: absolute;
+  inset-inline: calc(-1 * var(--v4-menu-pad, var(--v4-space-3)));
+  top: var(--v4-menu-pad, var(--v4-space-3));
+  height: var(--v4-size-control-border);
+  background-color: var(--v4-line-soft);
 }
 .separator {
-  height: var(--v4-size-control-border);
-  margin: var(--v4-space-4) 0;
+  position: relative;
+  flex: none;
+  height: calc(2 * var(--v4-menu-pad, var(--v4-space-3)) + var(--v4-size-control-border));
   border: 0;
+}
+.separator::before {
+  content: "";
+  position: absolute;
+  inset-inline: calc(-1 * var(--v4-menu-pad, var(--v4-space-3)));
+  top: var(--v4-menu-pad, var(--v4-space-3));
+  height: var(--v4-size-control-border);
   background-color: var(--v4-line-soft);
 }
 .empty {

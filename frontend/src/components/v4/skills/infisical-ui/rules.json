@@ -846,6 +846,19 @@
       "exceptions": "A static illustration explicitly presented as non-status content."
     },
     {
+      "id": "menu-spacing-model",
+      "title": "Space menus from one panel padding",
+      "category": "Visual",
+      "instruction": "Every menu-like popover pads all four sides by one token, --v4-menu-pad. Rows, labels, theme and user rows carry no outer margin and fill the inset, so hover and highlight blocks never touch the panel edge. A separator is a full-width 1px rule drawn the same pad below the previous row and above the next one.",
+      "good": "The first row sits 3px from the panel top, the last row 3px from the bottom, and each rule sits 3px from the rows on both sides.",
+      "avoid": "A separator with margin: 4px 0, a footer row with a negative inline margin, or a row that runs flush to the panel edge.",
+      "detect": {
+        "by": "lint",
+        "check": "menu-row-margin"
+      },
+      "exceptions": "Auto margins inside a row that push trailing content to the end are layout, not outer spacing."
+    },
+    {
       "id": "no-dot-separators",
       "title": "Separate labels without decorative dots",
       "category": "Copy",
