@@ -2262,14 +2262,6 @@ const OverviewPageContent = () => {
         }
         return;
       }
-
-      const pendingSecretChange = pendingChanges.secrets.find((c) => c.id === existingSecret.id);
-      if (pendingSecretChange)
-        removePendingChange(pendingSecretChange.id, "secret", {
-          projectId,
-          environment: env,
-          secretPath
-        });
     }
 
     const result = await observeOverviewRequest(
@@ -2285,6 +2277,18 @@ const OverviewPageContent = () => {
           type
         })
     );
+
+    const deletedSecretId =
+      isSingleEnvView && type !== SecretType.Personal ? getSecretByKey(env, key)?.id : undefined;
+    if (
+      deletedSecretId &&
+      batchStoreApi.getState().pendingChanges.secrets.some((c) => c.id === deletedSecretId)
+    )
+      removePendingChange(deletedSecretId, "secret", {
+        projectId,
+        environment: env,
+        secretPath
+      });
 
     if ("approval" in result) {
       createNotification({
