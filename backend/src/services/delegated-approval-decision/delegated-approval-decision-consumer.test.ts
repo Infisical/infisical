@@ -72,6 +72,7 @@ const pendingApprovalRequest = {
   policyId: "policy-1",
   projectId: "project-1",
   organizationId: ORG_ID,
+  requesterId: "user-1" as string | null,
   type: ApprovalPolicyType.SecretAccess,
   status: ApprovalRequestStatus.Pending as string,
   expiresAt: null as Date | null
@@ -104,7 +105,8 @@ const buildConsumer = ({
   delegatedRequest = waitingDelegatedRequest as TDelegatedRow | null,
   approvalRequest = pendingApprovalRequest as TApprovalRow | null,
   policy = delegatedPolicy as typeof delegatedPolicy | null,
-  connection = { id: "connection-1", orgId: ORG_ID, app: "servicenow" } as { id: string; orgId: string } | null
+  connection = { id: "connection-1", orgId: ORG_ID, app: "servicenow" } as { id: string; orgId: string } | null,
+  isRequesterProjectMember = true
 } = {}) => {
   let row: TDelegatedRow | null = delegatedRequest ? { ...delegatedRequest } : null;
   let approval: TApprovalRow | null = approvalRequest ? { ...approvalRequest } : null;
@@ -147,6 +149,7 @@ const buildConsumer = ({
       transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(TX))
     },
     appConnectionDAL: { findById: vi.fn().mockResolvedValue(connection) },
+    membershipDAL: { isUserProjectMember: vi.fn().mockResolvedValue(isRequesterProjectMember) },
     kmsService: { createCipherPairWithDataKey: vi.fn() },
     auditLogService: { createAuditLog },
     approvalResources: { [ApprovalPolicyType.SecretAccess]: { postApprovalTxRoutine } },
@@ -290,6 +293,38 @@ describe("delegatedApprovalDecisionConsumer", () => {
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Failed);
     expect(approval()?.status).toBe(ApprovalRequestStatus.Cancelled);
+  });
+
+  test("cancels a request whose requester was deleted without reading the decision", async () => {
+    const { consumer, row, approval, postApprovalTxRoutine, createAuditLog } = buildConsumer({
+      approvalRequest: { ...pendingApprovalRequest, requesterId: null }
+    });
+
+    const [result] = await consumer.handle([makeEvent()]);
+
+    expect(result.status).toBe(EventResultStatus.Failed);
+    expect(result.error).toContain("was deleted");
+    expect(fetchDecision).not.toHaveBeenCalled();
+    expect(row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.Failed,
+      details: { statusReason: result.error }
+    });
+    expect(approval()?.status).toBe(ApprovalRequestStatus.Cancelled);
+    expect(postApprovalTxRoutine).not.toHaveBeenCalled();
+    auditedWith(createAuditLog, { outcome: DelegatedApprovalDecisionOutcome.Failed, reason: result.error });
+  });
+
+  test("cancels a request whose requester left the project without reading the decision", async () => {
+    const { consumer, row, approval, postApprovalTxRoutine } = buildConsumer({ isRequesterProjectMember: false });
+
+    const [result] = await consumer.handle([makeEvent()]);
+
+    expect(result.status).toBe(EventResultStatus.Failed);
+    expect(result.error).toContain("no longer a member of this project");
+    expect(fetchDecision).not.toHaveBeenCalled();
+    expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Failed);
+    expect(approval()?.status).toBe(ApprovalRequestStatus.Cancelled);
+    expect(postApprovalTxRoutine).not.toHaveBeenCalled();
   });
 
   test("retries while the system has not recorded a decision, telling the user why", async () => {

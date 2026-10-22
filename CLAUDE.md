@@ -211,7 +211,12 @@ that locks the approval request, moves the delegated row `waiting_approval` → 
 runs the policy type's `postApprovalTxRoutine` from `approvalResources`. A mismatch, a record for another
 request, or any other `UnrecoverableError` goes through `failDelegatedApprovalRequest`: the delegated row
 becomes `failed` with a readable `statusReason`, the approval request is cancelled, and nothing can retry
-it. Every outcome is audited as `ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION` with the `PLATFORM` actor, and
+it. A request whose requester was deleted (`requesterId` is set null) or is no longer a member of the
+project, directly or through a group (`membershipDAL.isUserProjectMember`), takes the same path before the
+decision is read back. The secret access `postApprovalTxRoutine` refuses a non-member too, on both approval
+paths: removing a member reaps only the privileges that already exist, so one written afterwards would take
+effect if the user were ever added back. Every outcome is audited as
+`ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION` with the `PLATFORM` actor, and
 product notifications (the access request webhook) go through `decisionNotifiers`, never through the
 consumer itself. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
 the provider reads that field alone and ignores `state`.

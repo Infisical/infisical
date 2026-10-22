@@ -19,6 +19,7 @@ import (
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,6 +64,56 @@ func TestDelegatedAccessRequest_Decision(t *testing.T) {
 		// Assert
 		require.Equal(t, http.StatusOK, code)
 		require.Equal(t, delegatedState{status: "rejected", delegated: "rejected"}, req.await(t, "rejected"))
+		require.Equal(t, http.StatusForbidden, req.readSecret(t))
+	})
+
+	t.Run("should cancel the request when the requester was deleted before ServiceNow approved", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "The access request list drops a request whose requester is gone, so the cancellation "+
+			"is observed through the policy, which cannot be edited while it has a pending request.")
+
+		// Setup
+		req := newWaitingDelegatedRequest(t)
+		req.sn.Seed(t, servicenow.Approved(req.record.SysID))
+		deleted, err := req.requester.API.DeleteUserWithResponse(t.Context())
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, deleted.StatusCode(), "deleting the requester returned %s", apierr.Body(deleted.Body))
+
+		// Action
+		code := req.callback(t, req.record.CallbackToken)
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		wait.Until(t, "the policy to have no pending request", func() bool { return req.renamePolicy(t) == http.StatusOK },
+			wait.Timeout(outboxWait), wait.Interval(time.Second))
+		require.Equal(t, "renamed", accessPolicyName(t, req.proj, req.policyID))
+	})
+
+	t.Run("should not grant a requester who left the project before ServiceNow approved, even after they return", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "The requester is added back only once the request has closed, because a decision read while "+
+			"they are a member again would rightly grant them access. Until then they cannot list the request, so "+
+			"the wait is on the policy, which cannot be edited while it has a pending request.")
+
+		// Setup
+		req := newWaitingDelegatedRequest(t)
+		req.sn.Seed(t, servicenow.Approved(req.record.SysID))
+		removed, err := req.tn.Admin.API.RemoveProjectMembersWithResponse(t.Context(), req.proj.ID,
+			api.RemoveProjectMembersJSONRequestBody{Emails: &[]openapi_types.Email{openapi_types.Email(req.requester.Email)}})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, removed.StatusCode(), "removing the requester returned %s", apierr.Body(removed.Body))
+
+		// Action
+		code := req.callback(t, req.record.CallbackToken)
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		wait.Until(t, "the policy to have no pending request", func() bool { return req.renamePolicy(t) == http.StatusOK },
+			wait.Timeout(outboxWait), wait.Interval(time.Second))
+		req.proj.Grant(t, req.requester, "no-access")
+		closed := req.current(t)
+		require.Equal(t, delegatedState{status: "rejected", delegated: "failed", reason: closed.reason}, closed)
+		require.Contains(t, closed.reason, "no longer a member of this project")
 		require.Equal(t, http.StatusForbidden, req.readSecret(t))
 	})
 }
@@ -164,6 +215,7 @@ func TestDelegatedAccessRequest_DuplicateCallback(t *testing.T) {
 type delegatedRequest struct {
 	tn        *harness.Tenant
 	proj      *fixture.Project
+	policyID  uuid.UUID
 	requester *harness.Principal
 	sn        *servicenow.ControlPlane
 	id        uuid.UUID
@@ -177,11 +229,12 @@ func newWaitingDelegatedRequest(t *testing.T) *delegatedRequest {
 	tn := harness.From(t).NewTenant(t)
 	proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 	conn := newDelegatedApprovalSystem(t, tn)
-	newDelegatedAccessPolicy(t, proj, conn)
+	policyID, _ := newDelegatedAccessPolicy(t, proj, conn)
 	secretmanager.CreateSecret(t, proj, "dev", "DB_PASSWORD", "hunter2")
 	req := &delegatedRequest{
 		tn:        tn,
 		proj:      proj,
+		policyID:  policyID,
 		requester: proj.NewUser(t, fixture.WithPrincipalName("requester"), fixture.WithRoles("no-access")),
 		sn:        servicenow.Open(t, conn.FakenetAdmin(t), conn.Nonce()),
 	}
@@ -268,6 +321,14 @@ func sendCallback(ctx context.Context, client *api.ClientWithResponses, sysID, t
 		return 0, err
 	}
 	return res.StatusCode(), nil
+}
+
+func (r *delegatedRequest) renamePolicy(t *testing.T) int {
+	t.Helper()
+	res, err := r.tn.Admin.API.UpdateAccessApprovalPolicyWithBodyWithResponse(t.Context(), r.policyID.String(),
+		"application/json", jsonBody(t, map[string]any{"name": "renamed", "allowedSelfApprovals": false}))
+	require.NoError(t, err)
+	return res.StatusCode()
 }
 
 func (r *delegatedRequest) readSecret(t *testing.T) int {

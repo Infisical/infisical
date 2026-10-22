@@ -2648,7 +2648,8 @@ export const registerRoutes = async (
   const secretAccessApprovalGlobalResource = secretAccessApprovalGlobalResourceFactory({
     approvalPolicyDAL,
     approvalRequestGrantsDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    membershipDAL
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
@@ -3301,6 +3302,7 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     approvalRequestDAL,
     appConnectionDAL,
+    membershipDAL,
     kmsService,
     auditLogService,
     approvalResources: { [ApprovalPolicyType.SecretAccess]: secretAccessApprovalGlobalResource },

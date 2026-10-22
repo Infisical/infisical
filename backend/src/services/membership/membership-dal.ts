@@ -159,6 +159,28 @@ export const membershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Matches a user's project memberships the way permissionDAL.getPermission does, directly or through a
+  // group, so it answers whether a privilege granted to the user in the project would take effect.
+  const isUserProjectMember = async ({ projectId, userId }: { projectId: string; userId: string }, tx?: Knex) => {
+    try {
+      const conn = tx || db.replicaNode();
+      const userGroupSubquery = conn(TableName.UserGroupMembership).where("userId", userId).select("groupId");
+
+      const membership = (await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
+        })
+        .first(`${TableName.Membership}.id`)) as { id: string } | undefined;
+      return Boolean(membership);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Is user project member" });
+    }
+  };
+
   // Locks the row so a concurrent deactivation or removal of the same membership serializes behind the
   // caller. Always reads the primary, so it also bypasses the cached permission blob.
   const lockOrgMembershipForUser = async (
@@ -231,6 +253,7 @@ export const membershipDALFactory = (db: TDbClient) => {
     findResourceMembershipsForActor,
     findResourceMembershipsForActors,
     findResourceMembershipsForGroup,
+    isUserProjectMember,
     lockOrgMembershipForUser,
     lockResourceMembershipForActor
   };

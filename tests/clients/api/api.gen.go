@@ -786,6 +786,21 @@ func (e UpdateAccessApprovalPolicy500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type.
+const (
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0TypeServicenow ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type enum.
+func (e ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0TypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus.
 const (
 	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusApproved        ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "approved"
@@ -6345,6 +6360,96 @@ func (e CreateProjectMachineIdentity500JSONResponseBodyStatusCode) Valid() bool 
 	}
 }
 
+// Defines values for RemoveProjectMembers400JSONResponseBodyStatusCode.
+const (
+	RemoveProjectMembers400JSONResponseBodyStatusCodeN400 RemoveProjectMembers400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RemoveProjectMembers400JSONResponseBodyStatusCode enum.
+func (e RemoveProjectMembers400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveProjectMembers400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveProjectMembers401JSONResponseBodyStatusCode.
+const (
+	RemoveProjectMembers401JSONResponseBodyStatusCodeN401 RemoveProjectMembers401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RemoveProjectMembers401JSONResponseBodyStatusCode enum.
+func (e RemoveProjectMembers401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveProjectMembers401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveProjectMembers403JSONResponseBodyStatusCode.
+const (
+	RemoveProjectMembers403JSONResponseBodyStatusCodeN403 RemoveProjectMembers403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RemoveProjectMembers403JSONResponseBodyStatusCode enum.
+func (e RemoveProjectMembers403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveProjectMembers403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveProjectMembers404JSONResponseBodyStatusCode.
+const (
+	RemoveProjectMembers404JSONResponseBodyStatusCodeN404 RemoveProjectMembers404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RemoveProjectMembers404JSONResponseBodyStatusCode enum.
+func (e RemoveProjectMembers404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveProjectMembers404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveProjectMembers422JSONResponseBodyStatusCode.
+const (
+	RemoveProjectMembers422JSONResponseBodyStatusCodeN422 RemoveProjectMembers422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RemoveProjectMembers422JSONResponseBodyStatusCode enum.
+func (e RemoveProjectMembers422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveProjectMembers422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveProjectMembers500JSONResponseBodyStatusCode.
+const (
+	RemoveProjectMembers500JSONResponseBodyStatusCodeN500 RemoveProjectMembers500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RemoveProjectMembers500JSONResponseBodyStatusCode enum.
+func (e RemoveProjectMembers500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveProjectMembers500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for InviteProjectMembers400JSONResponseBodyStatusCode.
 const (
 	InviteProjectMembers400JSONResponseBodyStatusCodeN400 InviteProjectMembers400JSONResponseBodyStatusCode = 400
@@ -11520,6 +11625,96 @@ func (e CreateSecretImport500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for DeleteUser400JSONResponseBodyStatusCode.
+const (
+	DeleteUser400JSONResponseBodyStatusCodeN400 DeleteUser400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser400JSONResponseBodyStatusCode enum.
+func (e DeleteUser400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser401JSONResponseBodyStatusCode.
+const (
+	DeleteUser401JSONResponseBodyStatusCodeN401 DeleteUser401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser401JSONResponseBodyStatusCode enum.
+func (e DeleteUser401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser403JSONResponseBodyStatusCode.
+const (
+	DeleteUser403JSONResponseBodyStatusCodeN403 DeleteUser403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser403JSONResponseBodyStatusCode enum.
+func (e DeleteUser403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser404JSONResponseBodyStatusCode.
+const (
+	DeleteUser404JSONResponseBodyStatusCodeN404 DeleteUser404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser404JSONResponseBodyStatusCode enum.
+func (e DeleteUser404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser422JSONResponseBodyStatusCode.
+const (
+	DeleteUser422JSONResponseBodyStatusCodeN422 DeleteUser422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser422JSONResponseBodyStatusCode enum.
+func (e DeleteUser422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser500JSONResponseBodyStatusCode.
+const (
+	DeleteUser500JSONResponseBodyStatusCodeN500 DeleteUser500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser500JSONResponseBodyStatusCode enum.
+func (e DeleteUser500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetCurrentUser400JSONResponseBodyStatusCode.
 const (
 	GetCurrentUser400JSONResponseBodyStatusCodeN400 GetCurrentUser400JSONResponseBodyStatusCode = 400
@@ -14008,6 +14203,21 @@ type ListAccessApprovalRequestsParams struct {
 	ProjectSlug  string  `form:"projectSlug" json:"projectSlug"`
 	AuthorUserId *string `form:"authorUserId,omitempty" json:"authorUserId,omitempty"`
 	EnvSlug      *string `form:"envSlug,omitempty" json:"envSlug,omitempty"`
+}
+
+// ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 struct {
+	// RecordNumber The number of the ServiceNow record that tracks this request, as shown in ServiceNow.
+	RecordNumber string                                                                              `json:"recordNumber"`
+	Type         ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type `json:"type"`
+}
+
+// ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type string
+
+// ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider struct {
+	union json.RawMessage
 }
 
 // ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus defines parameters for ListAccessApprovalRequests.
@@ -18023,6 +18233,33 @@ type CreateProjectMachineIdentity422JSONResponseBodyStatusCode float32
 // CreateProjectMachineIdentity500JSONResponseBodyStatusCode defines parameters for CreateProjectMachineIdentity.
 type CreateProjectMachineIdentity500JSONResponseBodyStatusCode float32
 
+// RemoveProjectMembersJSONBody defines parameters for RemoveProjectMembers.
+type RemoveProjectMembersJSONBody struct {
+	// Emails A list of organization member emails to remove from the project.
+	Emails *[]openapi_types.Email `json:"emails,omitempty"`
+
+	// Usernames A list of usernames to remove from the project.
+	Usernames *[]string `json:"usernames,omitempty"`
+}
+
+// RemoveProjectMembers400JSONResponseBodyStatusCode defines parameters for RemoveProjectMembers.
+type RemoveProjectMembers400JSONResponseBodyStatusCode float32
+
+// RemoveProjectMembers401JSONResponseBodyStatusCode defines parameters for RemoveProjectMembers.
+type RemoveProjectMembers401JSONResponseBodyStatusCode float32
+
+// RemoveProjectMembers403JSONResponseBodyStatusCode defines parameters for RemoveProjectMembers.
+type RemoveProjectMembers403JSONResponseBodyStatusCode float32
+
+// RemoveProjectMembers404JSONResponseBodyStatusCode defines parameters for RemoveProjectMembers.
+type RemoveProjectMembers404JSONResponseBodyStatusCode float32
+
+// RemoveProjectMembers422JSONResponseBodyStatusCode defines parameters for RemoveProjectMembers.
+type RemoveProjectMembers422JSONResponseBodyStatusCode float32
+
+// RemoveProjectMembers500JSONResponseBodyStatusCode defines parameters for RemoveProjectMembers.
+type RemoveProjectMembers500JSONResponseBodyStatusCode float32
+
 // InviteProjectMembersJSONBody defines parameters for InviteProjectMembers.
 type InviteProjectMembersJSONBody struct {
 	// Emails A list of organization member emails to invite to the project.
@@ -20097,6 +20334,24 @@ type CreateSecretImport422JSONResponseBodyStatusCode float32
 // CreateSecretImport500JSONResponseBodyStatusCode defines parameters for CreateSecretImport.
 type CreateSecretImport500JSONResponseBodyStatusCode float32
 
+// DeleteUser400JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser400JSONResponseBodyStatusCode float32
+
+// DeleteUser401JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser401JSONResponseBodyStatusCode float32
+
+// DeleteUser403JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser403JSONResponseBodyStatusCode float32
+
+// DeleteUser404JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser404JSONResponseBodyStatusCode float32
+
+// DeleteUser422JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser422JSONResponseBodyStatusCode float32
+
+// DeleteUser500JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser500JSONResponseBodyStatusCode float32
+
 // GetCurrentUser400JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
 type GetCurrentUser400JSONResponseBodyStatusCode float32
 
@@ -21372,6 +21627,9 @@ type CreateProjectJSONRequestBody CreateProjectJSONBody
 // CreateProjectMachineIdentityJSONRequestBody defines body for CreateProjectMachineIdentity for application/json ContentType.
 type CreateProjectMachineIdentityJSONRequestBody CreateProjectMachineIdentityJSONBody
 
+// RemoveProjectMembersJSONRequestBody defines body for RemoveProjectMembers for application/json ContentType.
+type RemoveProjectMembersJSONRequestBody RemoveProjectMembersJSONBody
+
 // InviteProjectMembersJSONRequestBody defines body for InviteProjectMembers for application/json ContentType.
 type InviteProjectMembersJSONRequestBody InviteProjectMembersJSONBody
 
@@ -21745,6 +22003,42 @@ func (t UpdateAccessApprovalPolicyJSONBody_Bypassers_Item) MarshalJSON() ([]byte
 }
 
 func (t *UpdateAccessApprovalPolicyJSONBody_Bypassers_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 returns the union data inside the ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider as a ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0
+func (t ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) AsListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0() (ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0, error) {
+	var body ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 overwrites any union data inside the ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider as the provided ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0
+func (t *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) FromListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0(v ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 performs a merge with any union data inside the ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider, using the provided ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0
+func (t *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) MergeListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0(v ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -27038,6 +27332,18 @@ type ClientInterface interface {
 	// Create an identity in a project.
 	CreateProjectMachineIdentity(ctx context.Context, projectId string, body CreateProjectMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RemoveProjectMembersWithBody performs a DELETE /api/v1/projects/{projectId}/memberships (the `RemoveProjectMembers` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Remove members from project.
+	RemoveProjectMembersWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveProjectMembers performs a DELETE /api/v1/projects/{projectId}/memberships (the `RemoveProjectMembers` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Remove members from project.
+	RemoveProjectMembers(ctx context.Context, projectId string, body RemoveProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// InviteProjectMembersWithBody performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -27421,6 +27727,9 @@ type ClientInterface interface {
 	//
 	// Create secret imports.
 	CreateSecretImport(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteUser performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
+	DeleteUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
 	//
@@ -28392,6 +28701,38 @@ func (c *Client) CreateProjectMachineIdentityWithBody(ctx context.Context, proje
 // Create an identity in a project.
 func (c *Client) CreateProjectMachineIdentity(ctx context.Context, projectId string, body CreateProjectMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateProjectMachineIdentityRequest(c.Server, projectId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveProjectMembersWithBody performs a DELETE /api/v1/projects/{projectId}/memberships (the `RemoveProjectMembers` operationId) request,
+// with any type of body and a specified content type.
+//
+// Remove members from project.
+func (c *Client) RemoveProjectMembersWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveProjectMembersRequestWithBody(c.Server, projectId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveProjectMembers performs a DELETE /api/v1/projects/{projectId}/memberships (the `RemoveProjectMembers` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Remove members from project.
+func (c *Client) RemoveProjectMembers(ctx context.Context, projectId string, body RemoveProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveProjectMembersRequest(c.Server, projectId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -29656,6 +29997,19 @@ func (c *Client) CreateSecretImportWithBody(ctx context.Context, contentType str
 // Create secret imports.
 func (c *Client) CreateSecretImport(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateSecretImportRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteUser performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
+func (c *Client) DeleteUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteUserRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -31922,6 +32276,53 @@ func NewCreateProjectMachineIdentityRequestWithBody(server string, projectId str
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveProjectMembersRequest calls the generic RemoveProjectMembers builder with application/json body
+func NewRemoveProjectMembersRequest(server string, projectId string, body RemoveProjectMembersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRemoveProjectMembersRequestWithBody(server, projectId, "application/json", bodyReader)
+}
+
+// NewRemoveProjectMembersRequestWithBody constructs an http.Request for the RemoveProjectMembers method, with any body, and a specified content type
+func NewRemoveProjectMembersRequestWithBody(server string, projectId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/memberships", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -34867,6 +35268,33 @@ func NewCreateSecretImportRequestWithBody(server string, contentType string, bod
 	return req, nil
 }
 
+// NewDeleteUserRequest constructs an http.Request for the DeleteUser method
+func NewDeleteUserRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/users/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetCurrentUserRequest constructs an http.Request for the GetCurrentUser method
 func NewGetCurrentUserRequest(server string) (*http.Request, error) {
 	var err error
@@ -36376,6 +36804,20 @@ type ClientWithResponsesInterface interface {
 	// Create an identity in a project.
 	CreateProjectMachineIdentityWithResponse(ctx context.Context, projectId string, body CreateProjectMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectMachineIdentityResponse, error)
 
+	// RemoveProjectMembersWithBodyWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships (the `RemoveProjectMembers` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Remove members from project.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RemoveProjectMembersWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemoveProjectMembersResponse, error)
+
+	// RemoveProjectMembersWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships (the `RemoveProjectMembers` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Remove members from project.
+	RemoveProjectMembersWithResponse(ctx context.Context, projectId string, body RemoveProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*RemoveProjectMembersResponse, error)
+
 	// InviteProjectMembersWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -36879,6 +37321,11 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create secret imports.
 	CreateSecretImportWithResponse(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSecretImportResponse, error)
+
+	// DeleteUserWithResponse performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
 
 	// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
 	//
@@ -38186,6 +38633,9 @@ type ListAccessApprovalRequestsResponse struct {
 			BypassReason      *string             `json:"bypassReason,omitempty"`
 			CreatedAt         time.Time           `json:"createdAt"`
 			DelegatedApproval *struct {
+				// Provider How the delegated approval system identifies this request to its own users, when it reported that.
+				Provider *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider `json:"provider"`
+
 				// Status Where the request stands in the delegated approval system that reviews it.
 				Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
 
@@ -38326,6 +38776,9 @@ func (r ListAccessApprovalRequestsResponse) GetJSON200() *struct {
 		BypassReason      *string             `json:"bypassReason,omitempty"`
 		CreatedAt         time.Time           `json:"createdAt"`
 		DelegatedApproval *struct {
+			// Provider How the delegated approval system identifies this request to its own users, when it reported that.
+			Provider *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider `json:"provider"`
+
 			// Status Where the request stands in the delegated approval system that reviews it.
 			Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
 
@@ -43968,6 +44421,169 @@ func (r CreateProjectMachineIdentityResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateProjectMachineIdentityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveProjectMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Memberships []struct {
+			CreatedAt time.Time          `json:"createdAt"`
+			Id        openapi_types.UUID `json:"id"`
+			ProjectId string             `json:"projectId"`
+			UpdatedAt time.Time          `json:"updatedAt"`
+			UserId    openapi_types.UUID `json:"userId"`
+		} `json:"memberships"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveProjectMembers400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveProjectMembers401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveProjectMembers403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveProjectMembers404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveProjectMembers422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveProjectMembers500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemoveProjectMembersResponse) GetJSON200() *struct {
+	Memberships []struct {
+		CreatedAt time.Time          `json:"createdAt"`
+		Id        openapi_types.UUID `json:"id"`
+		ProjectId string             `json:"projectId"`
+		UpdatedAt time.Time          `json:"updatedAt"`
+		UserId    openapi_types.UUID `json:"userId"`
+	} `json:"memberships"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RemoveProjectMembersResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveProjectMembers400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemoveProjectMembersResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveProjectMembers401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemoveProjectMembersResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveProjectMembers403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveProjectMembersResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveProjectMembers404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RemoveProjectMembersResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveProjectMembers422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RemoveProjectMembersResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveProjectMembers500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveProjectMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveProjectMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveProjectMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveProjectMembersResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -53145,6 +53761,175 @@ func (r CreateSecretImportResponse) ContentType() string {
 	return ""
 }
 
+type DeleteUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		User struct {
+			AuthMethods     *[]string          `json:"authMethods,omitempty"`
+			Email           *string            `json:"email,omitempty"`
+			FirstName       *string            `json:"firstName,omitempty"`
+			Id              openapi_types.UUID `json:"id"`
+			IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+			LastName        *string            `json:"lastName,omitempty"`
+			PublicKey       *string            `json:"publicKey,omitempty"`
+			Username        string             `json:"username"`
+		} `json:"user"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                             `json:"details,omitempty"`
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                             `json:"details,omitempty"`
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                  `json:"error"`
+		Message    interface{}                             `json:"message,omitempty"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteUserResponse) GetJSON200() *struct {
+	User struct {
+		AuthMethods     *[]string          `json:"authMethods,omitempty"`
+		Email           *string            `json:"email,omitempty"`
+		FirstName       *string            `json:"firstName,omitempty"`
+		Id              openapi_types.UUID `json:"id"`
+		IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+		LastName        *string            `json:"lastName,omitempty"`
+		PublicKey       *string            `json:"publicKey,omitempty"`
+		Username        string             `json:"username"`
+	} `json:"user"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteUserResponse) GetJSON400() *struct {
+	Details    interface{}                             `json:"details,omitempty"`
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteUserResponse) GetJSON401() *struct {
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteUserResponse) GetJSON403() *struct {
+	Details    interface{}                             `json:"details,omitempty"`
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteUserResponse) GetJSON404() *struct {
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteUserResponse) GetJSON422() *struct {
+	Error      string                                  `json:"error"`
+	Message    interface{}                             `json:"message,omitempty"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteUserResponse) GetJSON500() *struct {
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCurrentUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -57434,6 +58219,32 @@ func (c *ClientWithResponses) CreateProjectMachineIdentityWithResponse(ctx conte
 	return ParseCreateProjectMachineIdentityResponse(rsp)
 }
 
+// RemoveProjectMembersWithBodyWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships (the `RemoveProjectMembers` operationId) request,
+// with any type of body and a specified content type.
+//
+// Remove members from project.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RemoveProjectMembersWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RemoveProjectMembersResponse, error) {
+	rsp, err := c.RemoveProjectMembersWithBody(ctx, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveProjectMembersResponse(rsp)
+}
+
+// RemoveProjectMembersWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships (the `RemoveProjectMembers` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Remove members from project.
+func (c *ClientWithResponses) RemoveProjectMembersWithResponse(ctx context.Context, projectId string, body RemoveProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*RemoveProjectMembersResponse, error) {
+	rsp, err := c.RemoveProjectMembers(ctx, projectId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveProjectMembersResponse(rsp)
+}
+
 // InviteProjectMembersWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -58464,6 +59275,17 @@ func (c *ClientWithResponses) CreateSecretImportWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseCreateSecretImportResponse(rsp)
+}
+
+// DeleteUserWithResponse performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
+	rsp, err := c.DeleteUser(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteUserResponse(rsp)
 }
 
 // GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
@@ -59598,6 +60420,9 @@ func ParseListAccessApprovalRequestsResponse(rsp *http.Response) (*ListAccessApp
 				BypassReason      *string             `json:"bypassReason,omitempty"`
 				CreatedAt         time.Time           `json:"createdAt"`
 				DelegatedApproval *struct {
+					// Provider How the delegated approval system identifies this request to its own users, when it reported that.
+					Provider *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider `json:"provider"`
+
 					// Status Where the request stands in the delegated approval system that reviews it.
 					Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
 
@@ -63256,6 +64081,114 @@ func ParseCreateProjectMachineIdentityResponse(rsp *http.Response) (*CreateProje
 			Message    string                                                    `json:"message"`
 			ReqId      string                                                    `json:"reqId"`
 			StatusCode CreateProjectMachineIdentity500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveProjectMembersResponse parses an HTTP response from a RemoveProjectMembersWithResponse call
+func ParseRemoveProjectMembersResponse(rsp *http.Response) (*RemoveProjectMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveProjectMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Memberships []struct {
+				CreatedAt time.Time          `json:"createdAt"`
+				Id        openapi_types.UUID `json:"id"`
+				ProjectId string             `json:"projectId"`
+				UpdatedAt time.Time          `json:"updatedAt"`
+				UserId    openapi_types.UUID `json:"userId"`
+			} `json:"memberships"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveProjectMembers400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveProjectMembers401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveProjectMembers403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveProjectMembers404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveProjectMembers422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveProjectMembers500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -68987,6 +69920,117 @@ func ParseCreateSecretImportResponse(rsp *http.Response) (*CreateSecretImportRes
 			Message    string                                          `json:"message"`
 			ReqId      string                                          `json:"reqId"`
 			StatusCode CreateSecretImport500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteUserResponse parses an HTTP response from a DeleteUserWithResponse call
+func ParseDeleteUserResponse(rsp *http.Response) (*DeleteUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			User struct {
+				AuthMethods     *[]string          `json:"authMethods,omitempty"`
+				Email           *string            `json:"email,omitempty"`
+				FirstName       *string            `json:"firstName,omitempty"`
+				Id              openapi_types.UUID `json:"id"`
+				IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+				LastName        *string            `json:"lastName,omitempty"`
+				PublicKey       *string            `json:"publicKey,omitempty"`
+				Username        string             `json:"username"`
+			} `json:"user"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                             `json:"details,omitempty"`
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                             `json:"details,omitempty"`
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                  `json:"error"`
+			Message    interface{}                             `json:"message,omitempty"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

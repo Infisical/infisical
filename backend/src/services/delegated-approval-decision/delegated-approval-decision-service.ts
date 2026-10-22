@@ -56,6 +56,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
   approvalPolicyDAL,
   approvalRequestDAL,
   appConnectionDAL,
+  membershipDAL,
   kmsService,
   auditLogService,
   approvalResources,
@@ -284,6 +285,21 @@ export const delegatedApprovalDecisionServiceFactory = ({
       approvalRequest,
       delegatedApprovalType: delegatedApprovalName ?? "the delegated approval system"
     };
+
+    if (!approvalRequest.requesterId) {
+      return $terminal(context, "The user who created this access request was deleted, so the request was cancelled.");
+    }
+
+    const isRequesterProjectMember = await membershipDAL.isUserProjectMember(
+      { projectId: approvalRequest.projectId, userId: approvalRequest.requesterId },
+      delegatedApprovalRequestDAL.primaryNode()
+    );
+    if (!isRequesterProjectMember) {
+      return $terminal(
+        context,
+        "The user who created this access request is no longer a member of this project, so the request was cancelled."
+      );
+    }
 
     if (!delegatedPolicy) {
       return $terminal(
