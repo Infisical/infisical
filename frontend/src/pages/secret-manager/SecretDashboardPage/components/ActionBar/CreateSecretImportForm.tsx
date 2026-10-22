@@ -210,6 +210,7 @@ export const CreateSecretImportForm = ({
                   options={environments}
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   placeholder="Select environment..."
                   value={selectedItem || null}
                   onValueChange={field.onChange}
@@ -324,6 +325,7 @@ export const CreateSecretImportForm = ({
               options={environmentOptions}
               getOptionLabel={(o) => o.label}
               getOptionValue={(o) => o.value}
+              getOptionKeywords={(o) => [o.value]}
               placeholder="Select environment..."
               isDisabled={!selectedSourceProjectId}
               value={

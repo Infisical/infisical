@@ -94,11 +94,6 @@ const getApproverOptionKeywords = (option: ApproverOptionData) =>
 
 const MEMBER_EMAIL_HINT = "Enter an exact project member email address.";
 
-const formatMemberEmailCreateLabel = (input: string) =>
-  isValidMemberEmail(input.trim().toLowerCase())
-    ? `Use member email “${input.trim()}”`
-    : MEMBER_EMAIL_HINT;
-
 const getManualMemberOption = (
   email: string,
   type: ApproverType.User | BypasserType.User
@@ -114,6 +109,12 @@ const canAddMemberEmail = (input: string, options: readonly ApproverOptionData[]
   return !options.some((option) =>
     [option.username, option.memberEmail].some((value) => value?.toLowerCase() === username)
   );
+};
+
+const formatMemberEmailCreateLabel = (input: string, options: readonly ApproverOptionData[]) => {
+  if (!isValidMemberEmail(input.trim().toLowerCase())) return MEMBER_EMAIL_HINT;
+  if (!canAddMemberEmail(input, options)) return "Member already listed";
+  return `Use member email “${input.trim()}”`;
 };
 
 const hasOptionId = (option: ApproverOptionData): option is ApproverOptionData & { id: string } =>
@@ -604,7 +605,8 @@ const Form = ({
           isValid: (input, { options, selectedOptions: selected }) =>
             canAddMemberEmail(input, [...selected, ...options]),
           isDuplicate: () => false,
-          formatLabel: formatMemberEmailCreateLabel,
+          formatLabel: (input) =>
+            formatMemberEmailCreateLabel(input, [...selectedOptions, ...approverOptions]),
           emptyLabel: MEMBER_EMAIL_HINT,
           onCreate: (input) =>
             updateSelectedOptions([
@@ -1008,7 +1010,11 @@ const Form = ({
                   isValid: (input, { options, selectedOptions }) =>
                     canAddMemberEmail(input, [...selectedOptions, ...options]),
                   isDuplicate: () => false,
-                  formatLabel: formatMemberEmailCreateLabel,
+                  formatLabel: (input) =>
+                    formatMemberEmailCreateLabel(input, [
+                      ...selectedPolicyApprovers,
+                      ...approverOptions
+                    ]),
                   emptyLabel: MEMBER_EMAIL_HINT,
                   onCreate: (input) =>
                     updatePolicyApprovers([
@@ -1110,7 +1116,11 @@ const Form = ({
                     isValid: (input, { options, selectedOptions }) =>
                       canAddMemberEmail(input, [...selectedOptions, ...options]),
                     isDuplicate: () => false,
-                    formatLabel: formatMemberEmailCreateLabel,
+                    formatLabel: (input) =>
+                      formatMemberEmailCreateLabel(input, [
+                        ...selectedPolicyBypassers,
+                        ...bypasserOptions
+                      ]),
                     emptyLabel: MEMBER_EMAIL_HINT,
                     onCreate: (input) =>
                       updatePolicyBypassers([

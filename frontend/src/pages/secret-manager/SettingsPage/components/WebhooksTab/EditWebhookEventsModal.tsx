@@ -132,6 +132,7 @@ export const EditWebhookEventsModal = ({
               value={selectedOptions}
               onValueChange={handleChange}
               getOptionValue={(option) => option.value}
+              getOptionKeywords={(option) => [option.value]}
               getOptionLabel={(option) => option.label}
               placeholder="Select events..."
               renderOption={renderEventOption}

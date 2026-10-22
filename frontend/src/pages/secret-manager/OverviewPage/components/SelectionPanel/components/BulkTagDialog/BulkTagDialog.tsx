@@ -301,10 +301,13 @@ const BulkTagDialogContent = ({
                           isValid: (inputValue) =>
                             slugSchema().safeParse(inputValue).success &&
                             !projectTags?.map((tag) => tag.slug).includes(inputValue),
-                          formatLabel: (inputValue) =>
-                            slugSchema().safeParse(inputValue).success
-                              ? `Create "${inputValue}"`
-                              : "Tag must be slug-friendly"
+                          formatLabel: (inputValue) => {
+                            if (!slugSchema().safeParse(inputValue).success)
+                              return "Tag must be slug-friendly";
+                            if (projectTags?.some((tag) => tag.slug === inputValue))
+                              return "Tag already exists";
+                            return `Create "${inputValue}"`;
+                          }
                         }
                       : undefined
                   }

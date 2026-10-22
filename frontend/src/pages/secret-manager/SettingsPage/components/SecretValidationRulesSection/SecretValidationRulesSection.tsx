@@ -135,6 +135,7 @@ const ProviderMultiSelect = <T extends string>({
               onValueChange={(next) => field.onChange(next.map((o) => o.value))}
               options={options}
               getOptionValue={(o) => o.value}
+              getOptionKeywords={(o) => [o.value]}
               getOptionLabel={(o) => o.label}
               isError={Boolean(error)}
             />
