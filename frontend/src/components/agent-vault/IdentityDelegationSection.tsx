@@ -256,10 +256,8 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
           <DocumentationLinkBadge href={AgentVaultDocsUrls.sessionsOnBehalfOfUsers} />
         </CardTitle>
         <CardDescription>
-          Adding a user or group lets this machine identity start sessions on their behalf. It can
-          still start sessions as itself. A session on a user&apos;s behalf uses that user&apos;s
-          personal values instead of the machine identity&apos;s, and only access bundles they can
-          both use.
+          Lets this machine identity start sessions on behalf of these users and groups, using each
+          user&apos;s personal values. It can still start its own sessions.
         </CardDescription>
         {!isPending && (
           <CardAction>
