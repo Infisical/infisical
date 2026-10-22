@@ -153,7 +153,10 @@ const isGitHubRateLimitError = (error: AxiosError) => {
   return typeof message === "string" && message.toLowerCase().includes("rate limit");
 };
 
-export const toGitHubSecretsError = (error: unknown, destinationConfig: TGitHubSyncDestinationConfig) => {
+export const toGitHubSecretsError = (
+  error: unknown,
+  { destinationConfig, connection }: Pick<TGitHubSyncWithCredentials, "destinationConfig" | "connection">
+) => {
   if (!isAxiosError(error) || !error.response) return error;
 
   const { status } = error.response;
@@ -169,10 +172,16 @@ export const toGitHubSecretsError = (error: unknown, destinationConfig: TGitHubS
       ? `the '${permission.repository}' and 'Environments' permissions`
       : `the '${isOrganization ? permission.organization : permission.repository}' permission`;
 
-  const message =
-    status === 403
-      ? `The GitHub connection lacks permissions to access ${name} secrets for ${target}. Grant read and write access to ${requiredPermissions} on the GitHub App or fine-grained token, or use the '${classicScope}' scope for OAuth and classic tokens. An owner of a GitHub App installation must also approve newly requested permissions.`
-      : `GitHub could not find the ${name} secrets for ${target}. Check that ${missing} and that the GitHub connection has the permissions to access it.`;
+  let message: string;
+  if (status === 404) {
+    message = `GitHub could not find the ${name} secrets for ${target}. Check that ${missing} and that the GitHub connection has the permissions to access it.`;
+  } else if (connection.method === GitHubConnectionMethod.App) {
+    const { host, installationId } = connection.credentials;
+    const installationUrl = `https://${host || "github.com"}/settings/installations/${encodeURIComponent(installationId)}`;
+    message = `The GitHub connection lacks permissions to access ${name} secrets for ${target}. Grant read and write access to ${requiredPermissions} on the GitHub App installation: ${installationUrl}`;
+  } else {
+    message = `The GitHub connection lacks permissions to access ${name} secrets for ${target}. Grant read and write access to ${requiredPermissions} on the fine-grained token, or use the '${classicScope}' scope for OAuth and classic tokens.`;
+  }
 
   return new SecretSyncError({ error, message, shouldRetry: false });
 };
@@ -213,7 +222,7 @@ const requestGitHubSecretsApi = async <T>(
 
     return response.data;
   } catch (error) {
-    throw toGitHubSecretsError(error, destinationConfig);
+    throw toGitHubSecretsError(error, secretSync);
   }
 };
 
@@ -234,7 +243,7 @@ const getEncryptedSecrets = async (
       (data) => data.secrets
     );
   } catch (error) {
-    throw toGitHubSecretsError(error, destinationConfig);
+    throw toGitHubSecretsError(error, secretSync);
   }
 };
 

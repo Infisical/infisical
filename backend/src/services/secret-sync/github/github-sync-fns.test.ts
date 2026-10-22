@@ -422,6 +422,23 @@ describe("GitHub permission errors", () => {
     );
   });
 
+  it.each([
+    ["github.com", undefined, "https://github.com/settings/installations/172172533"],
+    ["GitHub Enterprise Server", "github.example.com", "https://github.example.com/settings/installations/172172533"]
+  ])("links the GitHub App installation on %s", async (_label, host, installationUrl) => {
+    appTokenMock.mockResolvedValue("app-token");
+    paginatedMock.mockRejectedValueOnce(httpError(403));
+    const sync = {
+      ...makeSync(repoConfig(GitHubSyncSecretType.Codespaces)),
+      connection: { method: "github-app", credentials: { installationId: "172172533", host } }
+    };
+
+    await expect(runSync(sync, makePayload(["A"]))).rejects.toMatchObject({
+      shouldRetry: false,
+      message: `The GitHub connection lacks permissions to access Codespaces secrets for repository 'acme/app'. Grant read and write access to the 'Codespaces secrets' permission on the GitHub App installation: ${installationUrl}`
+    });
+  });
+
   it("reports a 404 as a missing target or permission", async () => {
     paginatedMock.mockRejectedValueOnce(httpError(404));
 
