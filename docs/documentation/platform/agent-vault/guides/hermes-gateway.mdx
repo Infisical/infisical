@@ -54,7 +54,7 @@ This guide walks you through running the [Hermes Agent](https://hermes-agent.nou
 - An Infisical organization where you're an Agent Vault admin
 - Two machines on the same private network, one for the Agent Vault proxy and one for Hermes (physical machines, virtual machines, or containers)
 - [Hermes Agent](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart) installed on the Hermes machine, with the [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) set up and working with your real API keys
-- The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/services#substitutions))
+- The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/http-apis#substitutions))
 - [`curl`](https://curl.se/download.html) and [`jq`](https://jqlang.org/download/) installed on the Hermes machine
 
 <SeparateMachinesNote />
@@ -113,7 +113,7 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
     On the **Credential** step, paste the real value of the API key from `~/.hermes/.env`.
 
     <Note>
-    [Add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) for each key instead if either of these is true:
+    [Add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) for each key instead if either of these is true:
 
     - The API expects the key outside a header, such as in the URL path. For example, Telegram's bot token goes in the URL of every request: `https://api.telegram.org/bot<token>/getUpdates`
     - The API uses more than one key (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
@@ -371,7 +371,7 @@ Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you 
 
     - The session was revoked or has expired (check the **Sessions** page in Infisical, and [replace the session](#revoke-or-replace-the-session) if needed)
     - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host Hermes called (add a service that does, or use a pass-through service)
-    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/services#methods-and-paths))
+    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths))
   </Accordion>
   <Accordion title="Requests to Telegram fail with a 502">
     The proxy can only attach credentials to a request that names the API by its hostname (`api.telegram.org`). Hermes's Telegram adapter can connect to Telegram by IP address instead, and for those requests the proxy can't verify Telegram's certificate, so it returns a 502. The proxy logs these requests with `decision=error` and an IP address as the host.

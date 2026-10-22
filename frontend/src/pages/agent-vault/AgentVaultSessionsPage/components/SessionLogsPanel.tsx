@@ -110,6 +110,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
   const [serviceHost, setServiceHost] = useState<string | null>(null);
+  const [servicePath, setServicePath] = useState<string | undefined>();
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [addedHosts, setAddedHosts] = useState<Set<string>>(() => new Set());
 
@@ -349,7 +350,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
     )} and ${format(range.endDate, "MMM d, yyyy HH:mm")}.`;
   } else if (isFiltered) {
     noRecordsTitle = "No requests match these filters";
-    noRecordsDescription = "Try a different search term, outcome or time range.";
+    noRecordsDescription = "Try a different search term, type, outcome or time range.";
   } else if (liveState === "live") {
     noRecordsLiveState = liveState;
     noRecordsTitle = "Waiting for requests";
@@ -495,7 +496,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <InputGroupInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search host, path, method or service..."
+              placeholder="Search host, path, method, tool or service..."
             />
             {search && (
               <InputGroupAddon align="inline-end">
@@ -658,7 +659,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
               <TableHead className="w-48">Time</TableHead>
               <TableHead className="w-24">Method</TableHead>
               <TableHead>Host</TableHead>
-              <TableHead>Path</TableHead>
+              <TableHead>Request</TableHead>
               <TableHead className="w-24">Upstream</TableHead>
               <TableHead className="w-36">Outcome</TableHead>
               <TableHead variant="action" className={canAddService ? "w-36" : "w-12"} />
@@ -695,6 +696,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                     isAddable
                       ? () => {
                           setServiceHost(hostPatternFor(record));
+                          setServicePath(record.path);
                           setIsServiceSheetOpen(true);
                         }
                       : undefined
@@ -763,6 +765,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           onOpenChange={setIsServiceSheetOpen}
           accessBundleId={accessBundle.id}
           prefillHost={serviceHost ?? undefined}
+          prefillPath={servicePath}
           onSaved={() => {
             if (serviceHost) setAddedHosts((prev) => new Set(prev).add(serviceHost));
           }}

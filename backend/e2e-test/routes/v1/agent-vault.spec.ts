@@ -7,7 +7,10 @@ import { pollUntil } from "e2e-test/testUtils/poll";
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
+import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { MAX_OAUTH_SCOPES } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import {
   AGENT_VAULT_MAX_PROXIES_PER_ORG,
@@ -246,6 +249,26 @@ const createAccessBundle = async (name: string) => {
   return (JSON.parse(res.payload) as { accessBundle: { id: string; name: string } }).accessBundle;
 };
 
+// Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
+const createProxyCaPem = async () => {
+  const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+  const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+  const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+    name: "CN=Agent Vault Proxy Test CA",
+    serialNumber: "01",
+    notBefore: new Date(Date.now() - 60_000),
+    notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    signingAlgorithm: algorithm,
+    keys,
+    extensions: [
+      new x509.BasicConstraintsExtension(true, undefined, true),
+      // eslint-disable-next-line no-bitwise
+      new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
+    ]
+  });
+  return certificate.toString("pem");
+};
+
 describe("Agent Vault V1 Router", async () => {
   // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
   beforeEach(async () => {
@@ -397,6 +420,7 @@ describe("Agent Vault V1 Router", async () => {
       const attempts = await Promise.all(
         [1, 2].map((n) =>
           inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
             name: `race-${n}`,
             hostPattern: "api.raced.example.com",
             credential: { type: "passthrough" }
@@ -418,6 +442,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("overlap-check");
 
       const first = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog-us5",
         hostPattern: "api.us5.datadoghq.com, api.datadoghq.eu",
         credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
@@ -425,6 +450,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(first.statusCode).toBe(200);
 
       const overlapping = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog-eu",
         hostPattern: "api.datadoghq.eu, api.datadoghq.com",
         credential: { type: "bearer", value: "def456" }
@@ -433,6 +459,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(overlapping.payload).message).toContain("api.datadoghq.eu:443");
 
       const contained = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog-wildcard",
         hostPattern: "*.datadoghq.com",
         credential: { type: "passthrough" }
@@ -444,6 +471,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("secret-handling");
 
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: " API.GitHub.com ",
         credential: { type: "bearer", value: "ghp_secret_value" }
@@ -470,6 +498,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("credential-patch");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",
         credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
@@ -501,6 +530,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("basic-halves");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "stripe",
         hostPattern: "api.stripe.com",
         credential: { type: "basic", username: "sk_live_key", password: "" }
@@ -545,6 +575,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("type-change");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "bearer", value: "ghp_one" }
@@ -565,6 +596,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a path in a host pattern is rejected", async () => {
       const bundle = await createAccessBundle("no-paths");
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "with-path",
         hostPattern: "gitlab.com/api/v4",
         credential: { type: "passthrough" }
@@ -576,6 +608,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("service-policy");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         allowedMethods: ["GET", "HEAD"],
@@ -608,6 +641,7 @@ describe("Agent Vault V1 Router", async () => {
       const reject = async (prefix: string) =>
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
             name: `svc-${Math.random().toString(36).slice(2, 8)}`,
             hostPattern: `h${Math.random().toString(36).slice(2, 8)}.example.com`,
             allowedPathPrefixes: [prefix],
@@ -633,6 +667,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("transformations");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "passthrough" },
@@ -674,6 +709,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("keep-stored-value");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "passthrough" },
@@ -726,6 +762,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("header-shadowing");
 
       const clash = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "clash",
         hostPattern: "api.clash.example.com",
         credential: { type: "bearer", headerName: "X-Api-Key", headerPrefix: "", value: "k" },
@@ -735,6 +772,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(clash.payload).message).toContain("X-Api-Key");
 
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "bearer", headerName: "X-Api-Key", headerPrefix: "", value: "k" },
@@ -763,6 +801,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a header the proxy controls is refused, from either side", async () => {
       const bundle = await createAccessBundle("reserved-headers");
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "reserved",
         hostPattern: "api.reserved.example.com",
         credential: { type: "passthrough" },
@@ -771,11 +810,309 @@ describe("Agent Vault V1 Router", async () => {
       expect(res.statusCode).toBe(422);
 
       const asCredential = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "reserved-credential",
         hostPattern: "api.reserved-credential.example.com",
         credential: { type: "bearer", headerName: "Content-Length", value: "t" }
       });
       expect(asCredential.statusCode).toBe(422);
+    });
+  });
+
+  describe("MCP services", async () => {
+    const servicesUrl = (bundleId: string) => `/api/v1/agent-vault/access-bundles/${bundleId}/services`;
+
+    const createMcpService = async (bundleId: string, name: string, serverUrl: string) => {
+      const res = await inject("POST", servicesUrl(bundleId), {
+        type: "mcp",
+        name,
+        serverUrl,
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "mcp-token" }
+      });
+      expect(res.statusCode).toBe(200);
+      return (JSON.parse(res.payload) as { service: { id: string; hostPattern: string } }).service;
+    };
+
+    const messageOf = (res: { payload: string }) => (JSON.parse(res.payload) as { message: string }).message;
+
+    test("an MCP service takes its host from the server URL, and moves with it", async () => {
+      const bundle = await createAccessBundle("mcp-host-pattern");
+
+      const res = await inject("POST", servicesUrl(bundle.id), {
+        type: "mcp",
+        name: "linear",
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "sse",
+        credential: { type: "bearer", value: "lin_api_secret" }
+      });
+      expect(res.statusCode).toBe(200);
+      const { service } = JSON.parse(res.payload) as {
+        service: { id: string; type: string; hostPattern: string; serverUrl: string; transport: string };
+      };
+      expect(service).toMatchObject({
+        type: "mcp",
+        hostPattern: "mcp.linear.app",
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "sse"
+      });
+      expect(res.payload).not.toContain("lin_api_secret");
+
+      const withPort = await createMcpService(bundle.id, "internal", "https://mcp.example.com:8443/mcp");
+      expect(withPort.hostPattern).toBe("mcp.example.com:8443");
+
+      const moved = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        serverUrl: "https://mcp.linear.dev/mcp"
+      });
+      expect(moved.statusCode).toBe(200);
+      expect(JSON.parse(moved.payload).service.hostPattern).toBe("mcp.linear.dev");
+    });
+
+    test("a field that belongs to the other type is refused by name, on create and update", async () => {
+      const bundle = await createAccessBundle("mcp-wrong-fields");
+      const mcp = {
+        type: "mcp",
+        name: "linear",
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "token" }
+      };
+
+      const withHttpFields = await inject("POST", servicesUrl(bundle.id), {
+        ...mcp,
+        hostPattern: "mcp.linear.app",
+        allowedMethods: ["GET"]
+      });
+      expect(withHttpFields.statusCode).toBe(400);
+      expect(messageOf(withHttpFields)).toContain("An MCP service doesn't take 'hostPattern' or 'allowedMethods'.");
+
+      const withBasic = await inject("POST", servicesUrl(bundle.id), {
+        ...mcp,
+        credential: { type: "basic", username: "user", password: "pass" }
+      });
+      expect(withBasic.statusCode).toBe(400);
+      expect(messageOf(withBasic)).toContain("An MCP service can't use basic auth as its credential.");
+
+      const httpWithServerUrl = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
+        name: "github",
+        hostPattern: "api.github.com",
+        serverUrl: "https://api.github.com/mcp",
+        credential: { type: "bearer", value: "token" }
+      });
+      expect(httpWithServerUrl.statusCode).toBe(400);
+      expect(messageOf(httpWithServerUrl)).toContain("An HTTP service doesn't take 'serverUrl'.");
+
+      const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+      const patchedHostPattern = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        hostPattern: "other.example.com"
+      });
+      expect(patchedHostPattern.statusCode).toBe(400);
+      expect(messageOf(patchedHostPattern)).toContain("An MCP service doesn't take 'hostPattern'.");
+    });
+
+    test("a service's type can't be changed", async () => {
+      const bundle = await createAccessBundle("mcp-type-change");
+      const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+
+      const res = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, { type: "http" });
+      expect(res.statusCode).toBe(400);
+      expect(messageOf(res)).toContain("A service's type can't be changed.");
+
+      const stored = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+      expect(stored.payload).toContain('"type":"mcp"');
+    });
+
+    describe("credential refresh", async () => {
+      // A real enrolled proxy on the real route, so the session and proxy checks run as they do in production.
+      const proxyFor = async (bundle: { name: string }, proxyName: string) => {
+        const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+        expect(mint.statusCode).toBe(200);
+        const { session } = JSON.parse(mint.payload) as { session: { token: string } };
+
+        const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: proxyName });
+        expect(created.statusCode).toBe(200);
+        const { token } = JSON.parse(created.payload) as { token: string };
+        const login = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/proxy/login",
+          body: { method: ResourceAuthMethodType.Token, token, rootCaCertificate: await createProxyCaPem() }
+        });
+        expect(login.statusCode).toBe(200);
+        const { accessToken } = JSON.parse(login.payload) as { accessToken: string };
+
+        return (serviceId: string, hostPattern: string) =>
+          testServer.inject({
+            method: "POST",
+            url: `/api/v1/agent-vault/proxy/services/${serviceId}/credential-refresh`,
+            headers: { authorization: `Bearer ${accessToken}`, "x-infisical-agent-session": session.token },
+            body: { hostPattern, rejectedTokenHash: "a".repeat(64) }
+          });
+      };
+
+      test("a service outside the session is a 404, and one without OAuth is a 400", async () => {
+        const bundle = await createAccessBundle("refresh-not-found");
+        const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+        const otherBundle = await createAccessBundle("refresh-other-bundle");
+        const outside = await createMcpService(otherBundle.id, "linear", "https://mcp.linear.app/mcp");
+        const refresh = await proxyFor(bundle, "refresh-not-found");
+
+        const unknown = await refresh(crypto.randomUUID(), "mcp.linear.app");
+        expect(unknown.statusCode).toBe(404);
+        const otherSession = await refresh(outside.id, "mcp.linear.app");
+        expect(otherSession.statusCode).toBe(404);
+
+        const bearer = await refresh(service.id, "mcp.linear.app");
+        expect(bearer.statusCode).toBe(400);
+        expect(messageOf(bearer)).toBe(
+          "The service 'linear' doesn't use OAuth, so Infisical can't refresh its credential."
+        );
+      });
+
+      test("a host pattern the service no longer has is a 409, so no token goes to the old host", async () => {
+        const bundle = await createAccessBundle("refresh-moved");
+        const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+        // Connecting OAuth needs a browser sign-in, so the row is switched to OAuth directly.
+        await testDb("agent_vault_services")
+          .where({ id: service.id })
+          .update({
+            credentialType: "oauth",
+            credentialConfig: { status: "connected", accessTokenHash: "a".repeat(64) }
+          });
+        const refresh = await proxyFor(bundle, "refresh-moved");
+
+        const res = await refresh(service.id, "mcp.old-linear.app");
+        expect(res.statusCode).toBe(409);
+        expect(messageOf(res)).toBe(AGENT_VAULT_SERVICE_MOVED_MESSAGE);
+      });
+    });
+  });
+
+  // The unit tests run these against a JS copy of the SQL. Only Postgres can show the compare, the jsonb merge and
+  // the union happen in one UPDATE, against the row being written.
+  describe("OAuth credential writes (postgres)", async () => {
+    const serviceDAL = agentVaultServiceDALFactory(testDb as never);
+    const SEALED = Buffer.from("sealed-credential-1");
+    const TOKEN_HASH = "b".repeat(64);
+
+    const oauthService = async (name: string, config: Record<string, unknown> = {}) => {
+      const bundle = await createAccessBundle(name);
+      const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "mcp",
+        name,
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "token" }
+      });
+      expect(res.statusCode).toBe(200);
+      const { service } = JSON.parse(res.payload) as { service: { id: string } };
+      // Connecting OAuth needs a browser sign-in, so the row is switched to OAuth directly.
+      await testDb("agent_vault_services")
+        .where({ id: service.id })
+        .update({
+          credentialType: "oauth",
+          encryptedCredential: SEALED,
+          credentialConfig: {
+            status: "connected",
+            accessTokenHash: TOKEN_HASH,
+            grantedScopes: ["read"],
+            requiredScopes: [],
+            ...config
+          }
+        });
+      return service.id;
+    };
+
+    const storedConfig = async (id: string) =>
+      (await testDb("agent_vault_services").where({ id }).first()).credentialConfig as Record<string, unknown>;
+
+    test("compareAndSwapCredential writes only over the sealed credential it read, and merges just its keys", async () => {
+      const id = await oauthService("cas-write");
+      const swapped = await serviceDAL.compareAndSwapCredential({
+        id,
+        expectedEncryptedCredential: SEALED,
+        encryptedCredential: Buffer.from("sealed-credential-2"),
+        credentialConfigPatch: { accessTokenHash: "c".repeat(64), lastError: null }
+      });
+      expect(swapped?.credentialConfig).toMatchObject({ accessTokenHash: "c".repeat(64), grantedScopes: ["read"] });
+
+      const stale = await serviceDAL.compareAndSwapCredential({
+        id,
+        expectedEncryptedCredential: SEALED,
+        encryptedCredential: Buffer.from("sealed-credential-3"),
+        credentialConfigPatch: { accessTokenHash: "d".repeat(64) }
+      });
+      expect(stale).toBeUndefined();
+      const row = await testDb("agent_vault_services").where({ id }).first();
+      expect(row.encryptedCredential.toString()).toBe("sealed-credential-2");
+      expect(row.credentialConfig.accessTokenHash).toBe("c".repeat(64));
+    });
+
+    test("compareAndSwapCredential keeps needs-additional-scopes only when asked, judged on the stored row", async () => {
+      const patch = { status: "connected", lastError: null };
+      const kept = await oauthService("cas-keep-scopes", { status: "needs-additional-scopes", lastError: "old" });
+      await serviceDAL.compareAndSwapCredential({
+        id: kept,
+        expectedEncryptedCredential: SEALED,
+        credentialConfigPatch: patch,
+        keepAdditionalScopesStatus: true
+      });
+      expect(await storedConfig(kept)).toMatchObject({ status: "needs-additional-scopes", lastError: null });
+
+      const replaced = await oauthService("cas-replace-scopes", { status: "needs-additional-scopes" });
+      await serviceDAL.compareAndSwapCredential({
+        id: replaced,
+        expectedEncryptedCredential: SEALED,
+        credentialConfigPatch: patch
+      });
+      expect((await storedConfig(replaced)).status).toBe("connected");
+    });
+
+    test("addRequiredScopes unions in the UPDATE, so two reports at once both land", async () => {
+      const id = await oauthService("scopes-concurrent");
+      const report = (requiredScopes: string[]) =>
+        serviceDAL.addRequiredScopes({
+          id,
+          expectedEncryptedCredential: SEALED,
+          rejectedTokenHash: TOKEN_HASH,
+          requiredScopes
+        });
+
+      await Promise.all([report(["admin"]), report(["write", "admin"])]);
+      const config = await storedConfig(id);
+      expect(config.status).toBe("needs-additional-scopes");
+      expect([...(config.requiredScopes as string[])].sort()).toEqual(["admin", "write"]);
+    });
+
+    test("addRequiredScopes writes nothing for granted scopes, a replaced token, or a dead login", async () => {
+      const id = await oauthService("scopes-refused");
+      const report = (requiredScopes: string[], rejectedTokenHash = TOKEN_HASH) =>
+        serviceDAL.addRequiredScopes({ id, expectedEncryptedCredential: SEALED, rejectedTokenHash, requiredScopes });
+
+      expect(await report(["read"])).toBeUndefined();
+      expect(await report(["admin"], "e".repeat(64))).toBeUndefined();
+
+      const dead = await oauthService("scopes-dead-login", { status: "needs-reauthorization" });
+      expect(
+        await serviceDAL.addRequiredScopes({
+          id: dead,
+          expectedEncryptedCredential: SEALED,
+          rejectedTokenHash: TOKEN_HASH,
+          requiredScopes: ["admin"]
+        })
+      ).toBeUndefined();
+      expect(await storedConfig(id)).toMatchObject({ status: "connected", requiredScopes: [] });
+    });
+
+    test("addRequiredScopes stops growing the list at the scope limit", async () => {
+      const id = await oauthService("scopes-cap");
+      await serviceDAL.addRequiredScopes({
+        id,
+        expectedEncryptedCredential: SEALED,
+        rejectedTokenHash: TOKEN_HASH,
+        requiredScopes: Array.from({ length: MAX_OAUTH_SCOPES + 5 }, (_, index) => `scope-${index}`)
+      });
+      expect((await storedConfig(id)).requiredScopes).toHaveLength(MAX_OAUTH_SCOPES);
     });
   });
 
@@ -811,26 +1148,6 @@ describe("Agent Vault V1 Router", async () => {
 
     const referencesByField = (references: TReference[]) =>
       references.map((reference) => `${reference.field}:${reference.key}`).sort();
-
-    // Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
-    const createProxyCaPem = async () => {
-      const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
-      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
-      const certificate = await x509.X509CertificateGenerator.createSelfSigned({
-        name: "CN=Agent Vault Variables Test CA",
-        serialNumber: "01",
-        notBefore: new Date(Date.now() - 60_000),
-        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        signingAlgorithm: algorithm,
-        keys,
-        extensions: [
-          new x509.BasicConstraintsExtension(true, undefined, true),
-          // eslint-disable-next-line no-bitwise
-          new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
-        ]
-      });
-      return certificate.toString("pem");
-    };
 
     type TResolved = {
       services: {
@@ -993,6 +1310,7 @@ describe("Agent Vault V1 Router", async () => {
       const org = await createVariable({ key: "ORG_ID", value: "org-42" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "bearer", value: "{{GITHUB_TOKEN}}" },
@@ -1047,6 +1365,7 @@ describe("Agent Vault V1 Router", async () => {
       const long = await createVariable({ key: "LONG", value: "x" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "longest",
         hostPattern: "longest.example.com",
         credential: { type: "bearer", value: "{{LONG}}".repeat(3) }
@@ -1065,6 +1384,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-username-trim");
       await createVariable({ key: "PADDED", value: " padded " });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "padded",
         hostPattern: "padded.example.com",
         credential: { type: "basic", username: "{{PADDED}}", password: "{{PADDED}}" }
@@ -1083,6 +1403,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-missing");
       const gone = await createVariable({ key: "GONE", value: "x" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "missing",
         hostPattern: "api.example.com",
         allowedMethods: ["GET"],
@@ -1106,6 +1427,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-rename");
       const variable = await createVariable({ key: "OLD_NAME", value: "first" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "bearer", value: "{{OLD_NAME}}" }
@@ -1134,6 +1456,7 @@ describe("Agent Vault V1 Router", async () => {
       expect((await resolve()).services[0].credential).toMatchObject({ value: "second" });
 
       const stale = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "stale",
         hostPattern: "stale.example.com",
         credential: { type: "bearer", value: "{{OLD_NAME}}" }
@@ -1146,6 +1469,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-in-use");
       const variable = await createVariable({ key: "API_KEY", value: "key_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",
         credential: { type: "bearer", headerName: "DD-API-KEY", value: "{{API_KEY}}" }
@@ -1173,6 +1497,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-validation");
 
       const unknown = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "unknown",
         hostPattern: "unknown.example.com",
         credential: { type: "bearer", value: "{{NOT_DEFINED}}" }
@@ -1181,6 +1506,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(unknown.payload).message).toContain("NOT_DEFINED");
 
       const malformed = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "malformed",
         hostPattern: "malformed.example.com",
         credential: { type: "passthrough" },
@@ -1190,6 +1516,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(malformed.payload).not.toContain("lower_case_secret");
 
       const bracedPlaceholder = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "braced",
         hostPattern: "braced.example.com",
         credential: { type: "passthrough" },
@@ -1199,12 +1526,14 @@ describe("Agent Vault V1 Router", async () => {
 
       // A prefix is sent as typed, so braces in one would reach the host as a reference nobody fills in.
       const bracedBearerPrefix = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "braced-bearer",
         hostPattern: "braced-bearer.example.com",
         credential: { type: "bearer", headerPrefix: "{{ORG}}", value: "x" }
       });
       expect(bracedBearerPrefix.statusCode).toBe(422);
       const bracedHeaderPrefix = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "braced-header",
         hostPattern: "braced-header.example.com",
         credential: { type: "passthrough" },
@@ -1220,6 +1549,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "TOKEN", value: "t" });
 
       const atLimit = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "at-limit",
         hostPattern: "at-limit.example.com",
         credential: { type: "bearer", value: "{{TOKEN}}".repeat(3) }
@@ -1227,6 +1557,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(atLimit.statusCode).toBe(200);
 
       const overLimit = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "over-limit",
         hostPattern: "over-limit.example.com",
         credential: { type: "bearer", value: "{{TOKEN}}".repeat(4) }
@@ -1311,7 +1642,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "BETA_TOKEN", value: "b" });
       await createVariable({ key: "GAMMA_KEY", value: "g" });
       const createService = async (body: Record<string, unknown>) =>
-        expect((await inject("POST", servicesUrl(bundle.id), body)).statusCode).toBe(200);
+        expect((await inject("POST", servicesUrl(bundle.id), { type: "http", ...body })).statusCode).toBe(200);
       // Two fields of one service count as one service.
       await createService({
         name: "both-fields",
@@ -1379,6 +1710,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const createdIn = async (bundle: { id: string }, name: string) => {
         const res = await inject("POST", servicesUrl(bundle.id), {
+          type: "http",
           name,
           hostPattern: `${name}.example.com`,
           credential: { type: "bearer", value: "{{SHARED_TOKEN}}" }
@@ -1427,6 +1759,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-delete-race");
       const variable = await createVariable({ key: "RACED", value: "raced_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "raced",
         hostPattern: "raced.example.com",
         credential: { type: "passthrough" }
@@ -1472,6 +1805,7 @@ describe("Agent Vault V1 Router", async () => {
         await trx("agent_vault_variables").where({ id: variable.id }).forUpdate().first();
 
         const pending = inject("POST", servicesUrl(bundle.id), {
+          type: "http",
           name: "doomed",
           hostPattern: "doomed.example.com",
           credential: { type: "bearer", value: "{{DOOMED}}" }
@@ -1500,6 +1834,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "HEADER", value: "the-header" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "basic",
         hostPattern: "basic.example.com",
         credential: { type: "basic", username: "{{USER}}", password: "{{PASS}}" },
@@ -1545,6 +1880,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "USER", value: "the-user" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "legacy",
         hostPattern: "legacy.example.com",
         credential: { type: "basic", username: "u", password: "p" }
@@ -1588,6 +1924,7 @@ describe("Agent Vault V1 Router", async () => {
       await createVariable({ key: "PASS", value: "the-pass" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "stale",
         hostPattern: "stale.example.com",
         credential: { type: "basic", username: "{{FIRST_USER}}", password: "plain-pass" }
@@ -1598,6 +1935,7 @@ describe("Agent Vault V1 Router", async () => {
 
       // What the other save commits, sealed by the API itself on a second service: a new username.
       const other = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "other",
         hostPattern: "other.example.com",
         credential: { type: "basic", username: "{{SECOND_USER}}", password: "plain-pass" }
@@ -1654,6 +1992,7 @@ describe("Agent Vault V1 Router", async () => {
     test("an update whose service is deleted while it waits is a 404, not a deleted variable", async () => {
       const bundle = await createAccessBundle("variables-deleted-service");
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "doomed",
         hostPattern: "doomed.example.com",
         credential: { type: "passthrough" }
@@ -1689,6 +2028,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-bundle-delete");
       const variable = await createVariable({ key: "TOKEN", value: "t" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "one",
         hostPattern: "one.example.com",
         credential: { type: "bearer", value: "{{TOKEN}}" },
@@ -1715,6 +2055,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("variables-admin-only");
       const variable = await createVariable({ key: "TOKEN", value: "admin_only_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "uses-token",
         hostPattern: "api.example.com",
         credential: { type: "bearer", value: "{{TOKEN}}" }
@@ -2371,7 +2712,7 @@ describe("Agent Vault V1 Router", async () => {
         [
           "POST",
           `/api/v1/agent-vault/access-bundles/${unknown}/services`,
-          { name: "c", hostPattern: "api.foo.com", credential: { type: "passthrough" } }
+          { type: "http", name: "c", hostPattern: "api.foo.com", credential: { type: "passthrough" } }
         ],
         // The bundle is the path resource, so a missing one is still 404 even though a missing actor in
         // the body is reported as skipped.
@@ -2917,6 +3258,7 @@ describe("Agent Vault V1 Router", async () => {
         } as never,
         licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
         resourceAuthMethodService: {} as never,
+        agentVaultOauthService: {} as never,
         ...overrides
       });
 
@@ -3009,6 +3351,7 @@ describe("Agent Vault V1 Router", async () => {
     test("resolve carries the policy and the decrypted transformations", async () => {
       const bundle = await createAccessBundle("resolve-transformations");
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "github",
         hostPattern: "api.github.com",
         allowedMethods: ["GET"],
@@ -3048,7 +3391,8 @@ describe("Agent Vault V1 Router", async () => {
             Promise.resolve({ decryptor: () => Buffer.from(JSON.stringify({ value: "unsealed" })) })
         } as never,
         licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
-        resourceAuthMethodService: {} as never
+        resourceAuthMethodService: {} as never,
+        agentVaultOauthService: {} as never
       });
 
       const resolved = await resolver.resolveSession({
@@ -3071,6 +3415,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a deactivated actor stops resolving, and resolves again once reactivated", async () => {
       const bundle = await createAccessBundle("resolve-deactivation");
       const service = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -3118,6 +3463,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a session whose user was deleted is refused before any lookup", async () => {
       const bundle = await createAccessBundle("resolve-deleted-user");
       await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -3149,6 +3495,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a session whose machine identity was deleted is refused before any lookup", async () => {
       const bundle = await createAccessBundle("resolve-deleted-identity");
       await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -3190,6 +3537,7 @@ describe("Agent Vault V1 Router", async () => {
       };
       const bundle = await createAccessBundle("resolve-temporary-role");
       await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -3214,7 +3562,8 @@ describe("Agent Vault V1 Router", async () => {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
         licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
-        resourceAuthMethodService: {} as never
+        resourceAuthMethodService: {} as never,
+        agentVaultOauthService: {} as never
       });
       const resolve = () =>
         resolver.resolveSession({
@@ -3907,6 +4256,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
             name: "echo",
             hostPattern: "echo.example.com",
             credential: { type: "passthrough" }
@@ -3953,7 +4303,8 @@ describe("Agent Vault V1 Router", async () => {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
-          resourceAuthMethodService: {} as never
+          resourceAuthMethodService: {} as never,
+          agentVaultOauthService: {} as never
         });
         const resolve = () =>
           resolver.resolveSession({
@@ -4001,6 +4352,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
             name: "echo",
             hostPattern: "echo.example.com",
             credential: { type: "passthrough" }
@@ -4052,7 +4404,8 @@ describe("Agent Vault V1 Router", async () => {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
-          resourceAuthMethodService: {} as never
+          resourceAuthMethodService: {} as never,
+          agentVaultOauthService: {} as never
         });
         const resolve = () =>
           resolver.resolveSession({

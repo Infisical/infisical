@@ -8,12 +8,16 @@ import {
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
+  AgentVaultMcpTransport,
   AgentVaultMemberType,
+  AgentVaultOauthStatus,
+  AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix-schemas";
+import { agentVaultMcpServerUrlSchema } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
 import {
   acceptsVariableReferences,
   addDuplicateCustomHeaderNameIssues,
@@ -35,7 +39,7 @@ import {
 } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { AGENT_VAULT } from "@app/lib/api-docs";
-import { slugSchema } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 
 export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
 
@@ -58,34 +62,45 @@ const basicHalvesAreNotBothEmpty = (
   });
 };
 
-export const AgentVaultCredentialInputSchema = z
-  .discriminatedUnion("type", [
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Bearer),
-        headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-        headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
-        value: acceptsVariableReferences(
-          z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        ).describe(AGENT_VAULT.SERVICE.value)
-      })
-      .describe(JSON.stringify({ title: "Bearer" })),
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Basic),
-        username: acceptsVariableReferences(
-          z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        ).describe(AGENT_VAULT.SERVICE.username),
-        password: acceptsVariableReferences(
-          z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        ).describe(AGENT_VAULT.SERVICE.password)
-      })
-      .describe(JSON.stringify({ title: "Basic Auth" })),
-    z
-      .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-      .describe(JSON.stringify({ title: "Pass-through" }))
-  ])
-  .superRefine(basicHalvesAreNotBothEmpty);
+const bearerCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.Bearer),
+  headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
+  headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
+  value: acceptsVariableReferences(
+    z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  ).describe(AGENT_VAULT.SERVICE.value)
+});
+const basicCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.Basic),
+  username: acceptsVariableReferences(
+    z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  ).describe(AGENT_VAULT.SERVICE.username),
+  password: acceptsVariableReferences(
+    z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  ).describe(AGENT_VAULT.SERVICE.password)
+});
+const passthroughCredentialInput = z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) });
+const oauthCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.OAuth),
+  authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.authorizationId)
+});
+
+const docsTitle = (title: string, hidden = false) => JSON.stringify({ title, ...(hidden ? { "x-hidden": true } : {}) });
+
+// Only a user in the UI can complete an authorization, so the API docs never offer OAuth. The MCP schema also
+// hides the types an MCP service can't use, but still accepts them so the service refuses them by name.
+const credentialInputSchema = ({ mcp }: { mcp: boolean }) =>
+  z
+    .discriminatedUnion("type", [
+      bearerCredentialInput.describe(docsTitle("Bearer")),
+      basicCredentialInput.describe(docsTitle("Basic Auth", mcp)),
+      passthroughCredentialInput.describe(docsTitle("Pass-through", mcp)),
+      oauthCredentialInput.describe(docsTitle("OAuth", true))
+    ])
+    .superRefine(basicHalvesAreNotBothEmpty);
+
+export const AgentVaultCredentialInputSchema = credentialInputSchema({ mcp: false });
+export const AgentVaultMcpCredentialInputSchema = credentialInputSchema({ mcp: true });
 
 // Not derived from the create schema: its `.default()`s would turn an omitted field into a reset on a PATCH.
 export const AgentVaultCredentialUpdateSchema = z
@@ -119,7 +134,14 @@ export const AgentVaultCredentialUpdateSchema = z
       .describe(JSON.stringify({ title: "Basic Auth" })),
     z
       .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-      .describe(JSON.stringify({ title: "Pass-through" }))
+      .describe(JSON.stringify({ title: "Pass-through" })),
+    z
+      .object({
+        type: z.literal(AgentVaultCredentialType.OAuth),
+        authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
+      })
+      // Only a user in the UI can complete an authorization, so the API docs don't offer it.
+      .describe(JSON.stringify({ title: "OAuth", "x-hidden": true }))
   ])
   .superRefine(basicHalvesAreNotBothEmpty);
 
@@ -134,7 +156,19 @@ export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(AgentVaultCredentialType.Basic) }).describe(JSON.stringify({ title: "Basic Auth" })),
   z
     .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-    .describe(JSON.stringify({ title: "Pass-through" }))
+    .describe(JSON.stringify({ title: "Pass-through" })),
+  z
+    .object({
+      type: z.literal(AgentVaultCredentialType.OAuth),
+      status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.SERVICE.oauthStatus),
+      issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
+      grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
+      requiredScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthRequiredScopes),
+      expiresAt: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthExpiresAt),
+      authorizedAt: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthAuthorizedAt),
+      lastError: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthLastError)
+    })
+    .describe(JSON.stringify({ title: "OAuth" }))
 ]);
 
 export const AgentVaultAllowedMethodsSchema = z
@@ -154,6 +188,12 @@ export const AgentVaultCustomHeadersInputSchema = AgentVaultCustomHeaderInputSch
   .superRefine(addDuplicateCustomHeaderNameIssues)
   .describe(AGENT_VAULT.SERVICE.customHeaders);
 
+export const AgentVaultServerUrlSchema = agentVaultMcpServerUrlSchema.describe(AGENT_VAULT.SERVICE.serverUrl);
+
+export const AgentVaultMcpTransportSchema = z
+  .nativeEnum(AgentVaultMcpTransport)
+  .describe(AGENT_VAULT.SERVICE.transport);
+
 export const AgentVaultCustomHeadersUpdateSchema = AgentVaultCustomHeaderUpdateSchema.array()
   .max(AGENT_VAULT_MAX_CUSTOM_HEADERS)
   .superRefine(addDuplicateCustomHeaderNameIssues)
@@ -168,6 +208,39 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
   .max(AGENT_VAULT_MAX_SUBSTITUTIONS)
   .superRefine(addDuplicatePlaceholderIssues)
   .describe(AGENT_VAULT.SERVICE.substitutions);
+
+// Each option also takes the other type's fields, hidden from the docs, so the service can refuse them with a
+// message naming the field rather than zod dropping them silently.
+export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.type),
+      name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
+      hostPattern: AgentVaultHostPatternSchema,
+      allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
+      allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
+      credential: AgentVaultCredentialInputSchema,
+      customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
+      substitutions: AgentVaultSubstitutionsInputSchema.optional(),
+      serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
+      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden())
+    })
+    .describe(JSON.stringify({ title: "HTTP service" })),
+  z
+    .object({
+      type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
+      name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
+      serverUrl: AgentVaultServerUrlSchema,
+      transport: AgentVaultMcpTransportSchema,
+      credential: AgentVaultMcpCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
+      customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
+      hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
+      allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
+      allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
+      substitutions: AgentVaultSubstitutionsInputSchema.optional().describe(openApiHidden())
+    })
+    .describe(JSON.stringify({ title: "MCP service" }))
+]);
 
 const variableReferenceBase = {
   variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
@@ -206,6 +279,9 @@ export const AgentVaultServiceSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
+  type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
+  serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
+  transport: z.nativeEnum(AgentVaultMcpTransport).nullable().describe(AGENT_VAULT.SERVICE.transportRead),
   hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPattern),
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
   allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),

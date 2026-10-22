@@ -44,10 +44,20 @@ import {
   AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultResourceRole,
+  AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import {
+  assertCredentialTypeSupported,
+  assertServiceFieldsSupported,
+  buildServiceConfig,
+  getAgentVaultServiceType,
+  getServiceServerUrl,
+  resolveServiceHostPattern,
+  TAgentVaultServiceConfig
+} from "../agent-vault/agent-vault-service-type-fns";
 import {
   findStoredVariableIds,
   findVariableKeys,
@@ -55,6 +65,13 @@ import {
   toVariableReference
 } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
+import {
+  checkOauthClaimUnderLock,
+  checkOauthServerUnderLock,
+  OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE,
+  TAgentVaultOauthServiceFactory
+} from "../agent-vault-oauth/agent-vault-oauth-service";
+import { AGENT_VAULT_OAUTH_HEADER_NAME, TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { TAgentVaultAccessBundleActorRef, TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
 import {
@@ -100,6 +117,10 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultOauthService: Pick<
+    TAgentVaultOauthServiceFactory,
+    "claimAuthorization" | "buildCredentialFromAuthorization"
+  >;
 } & TAgentVaultActorNameDALs;
 
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
@@ -128,6 +149,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     agentVaultMemberDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
+    agentVaultOauthService,
     userDAL,
     groupDAL,
     identityDAL
@@ -319,6 +341,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           secret: { username: credential.username, password: credential.password }
         };
       }
+      // Its tokens come from a completed authorization, never from the request.
+      case AgentVaultCredentialType.OAuth:
+        throw new BadRequestError({ message: "An OAuth credential needs a completed authorization" });
       default:
         return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null };
     }
@@ -329,6 +354,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     stored: TAgentVaultServices,
     storedSecret: Record<string, string> | null
   ): TCredentialWrite => {
+    if (credential.type === AgentVaultCredentialType.OAuth) {
+      throw new BadRequestError({ message: "An OAuth credential needs a completed authorization" });
+    }
     if (credential.type !== stored.credentialType) {
       if (credential.type === AgentVaultCredentialType.Bearer && credential.value === undefined) {
         throw new BadRequestError({
@@ -374,6 +402,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const summarizeCredential = (service: TAgentVaultServices): TAgentVaultCredentialSummary => {
     const config = service.credentialConfig as Record<string, string>;
     switch (service.credentialType as AgentVaultCredentialType) {
+      // Nothing secret and nothing that identifies the token: no client, no token hash.
+      case AgentVaultCredentialType.OAuth: {
+        const oauth = service.credentialConfig as TAgentVaultOauthConfig;
+        return {
+          type: AgentVaultCredentialType.OAuth,
+          status: oauth.status,
+          issuer: oauth.issuer,
+          grantedScopes: oauth.grantedScopes ?? [],
+          requiredScopes: oauth.requiredScopes ?? [],
+          expiresAt: oauth.expiresAt ?? null,
+          authorizedAt: oauth.authorizedAt ?? null,
+          lastError: oauth.lastError ?? null
+        };
+      }
       case AgentVaultCredentialType.Bearer:
         return {
           type: AgentVaultCredentialType.Bearer,
@@ -419,24 +461,31 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     customHeaders: TAgentVaultServiceCustomHeaders[],
     substitutions: TAgentVaultServiceSubstitutions[],
     variableReferences: TAgentVaultVariableReferenceWithKey[]
-  ) => ({
-    id: service.id,
-    accessBundleId: service.accessBundleId,
-    name: service.name,
-    hostPattern: service.hostPattern,
-    allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
-    allowedPathPrefixes: service.allowedPathPrefixes ?? null,
-    credential: summarizeCredential(service),
-    customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
-    substitutions: substitutions.map((substitution) => ({
-      id: substitution.id,
-      placeholder: substitution.placeholder,
-      surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
-    })),
-    variableReferences: variableReferences.map(summarizeVariableReference),
-    createdAt: service.createdAt,
-    updatedAt: service.updatedAt
-  });
+  ) => {
+    const config = (service.config ?? {}) as TAgentVaultServiceConfig;
+    return {
+      id: service.id,
+      accessBundleId: service.accessBundleId,
+      name: service.name,
+      type: service.type as AgentVaultServiceType,
+      // Flat, like the create and update bodies, so a client can send back what it read. Null for an http service.
+      serverUrl: config.serverUrl ?? null,
+      transport: config.transport ?? null,
+      hostPattern: service.hostPattern,
+      allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
+      allowedPathPrefixes: service.allowedPathPrefixes ?? null,
+      credential: summarizeCredential(service),
+      customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
+      substitutions: substitutions.map((substitution) => ({
+        id: substitution.id,
+        placeholder: substitution.placeholder,
+        surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
+      })),
+      variableReferences: variableReferences.map(summarizeVariableReference),
+      createdAt: service.createdAt,
+      updatedAt: service.updatedAt
+    };
+  };
 
   const loadTransformations = async (
     serviceIds: string[],
@@ -586,11 +635,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE =
     "This service's credential was changed by another save while this one was in progress. Reload the service and save again.";
 
-  // Basic has no header name in its config, but the proxy always writes Authorization.
+  // Basic and OAuth have no header name in their config, but the proxy always writes Authorization for both.
   const credentialHeaderName = (credentialType: AgentVaultCredentialType, headerName?: string): string | null => {
     switch (credentialType) {
       case AgentVaultCredentialType.Bearer:
         return headerName || "Authorization";
+      case AgentVaultCredentialType.OAuth:
+        return AGENT_VAULT_OAUTH_HEADER_NAME;
       case AgentVaultCredentialType.Basic:
         return "Authorization";
       default:
@@ -601,14 +652,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   // The proxy writes the credential last, so a collision costs the header rather than the token; refusing it
   // on write is what tells the author. Either half of a PATCH can introduce one, which is why both are read.
   const assertCustomHeadersDoNotShadowCredential = (
-    config: TAgentVaultCredentialConfig,
+    config: { type: AgentVaultCredentialType; headerName?: string },
     customHeaders: { name: string }[] | undefined
   ) => {
     if (!customHeaders?.length) return;
-    const credentialHeader = credentialHeaderName(
-      config.type,
-      config.type === AgentVaultCredentialType.Bearer ? config.headerName : undefined
-    );
+    const credentialHeader = credentialHeaderName(config.type, config.headerName);
     if (!credentialHeader) return;
 
     const clash = customHeaders.find((header) => header.name.toLowerCase() === credentialHeader.toLowerCase());
@@ -616,6 +664,53 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw new BadRequestError({
         message: `The ${credentialHeader} header is already set by the credential. Rename the custom header or change the credential.`
       });
+    }
+  };
+
+  // An authorization only comes from a browser sign-in in the UI, so a machine identity could never hold one.
+  const assertOauthConnectedByUser = (
+    ctx: TGetAccessBundleDTO["ctx"],
+    credential?: TAgentVaultCredentialInput | TAgentVaultCredentialUpdate
+  ) => {
+    if (credential?.type === AgentVaultCredentialType.OAuth && ctx.actor !== ActorType.USER) {
+      throw new BadRequestError({ message: "OAuth services can only be connected by a user in the Infisical UI." });
+    }
+  };
+
+  // The tokens come from an authorization the same user completed. Claiming it deletes it right before the write,
+  // and a save that then fails puts it back, so it can be retried without authorizing again.
+  const claimOauthCredential = async ({
+    projectId,
+    ctx,
+    accessBundleId,
+    serviceId,
+    serverUrl,
+    authorizationId,
+    previousRequiredScopes
+  }: {
+    projectId: string;
+    ctx: TGetAccessBundleDTO["ctx"];
+    accessBundleId: string;
+    serviceId?: string;
+    serverUrl: string;
+    authorizationId: string;
+    previousRequiredScopes?: string[];
+  }) => {
+    const claim = await agentVaultOauthService.claimAuthorization({
+      authorizationId,
+      projectId,
+      accessBundleId,
+      serviceId,
+      ctx,
+      serverUrl
+    });
+    const build = (requiredScopes?: string[]) =>
+      agentVaultOauthService.buildCredentialFromAuthorization(claim.record, { previousRequiredScopes: requiredScopes });
+    try {
+      return { claim, ...build(previousRequiredScopes), rebuild: build };
+    } catch (err) {
+      await claim.restore();
+      throw err;
     }
   };
 
@@ -798,8 +893,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const createService = async ({
     accessBundleId,
+    type,
     name,
-    hostPattern,
+    hostPattern: requestedHostPattern,
+    serverUrl,
+    transport,
     allowedMethods,
     allowedPathPrefixes,
     credential,
@@ -812,6 +910,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    assertOauthConnectedByUser(rest.ctx, credential);
+
+    const serviceType = getAgentVaultServiceType(type);
+    assertServiceFieldsSupported(serviceType, {
+      hostPattern: requestedHostPattern,
+      allowedMethods,
+      allowedPathPrefixes,
+      customHeaders,
+      substitutions,
+      serverUrl,
+      transport
+    });
+    assertCredentialTypeSupported(serviceType, credential.type);
+    const serviceConfig = buildServiceConfig(serviceType, { serverUrl, transport });
+    const hostPattern = resolveServiceHostPattern(serviceType, serviceConfig, requestedHostPattern);
 
     const existing = await agentVaultServiceDAL.findOne({ accessBundleId: bundle.id, name });
     if (existing) {
@@ -831,17 +944,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const store = (text: string) => toStoredVariableReferences(text, idOfKey);
 
     // Encrypt before the lock: KMS is a network call and the transaction has to stay short.
-    const { config, secret } = splitCredential(
-      storeCredentialReferences(credential, store) as TAgentVaultCredentialInput
-    );
-    assertCustomHeadersDoNotShadowCredential(config, customHeaders);
+    const split =
+      credential.type === AgentVaultCredentialType.OAuth
+        ? null
+        : splitCredential(storeCredentialReferences(credential, store) as TAgentVaultCredentialInput);
+    assertCustomHeadersDoNotShadowCredential(split ? split.config : { type: credential.type }, customHeaders);
+    const secret = split?.secret ?? null;
 
     const { encryptor } = await getProjectCipher(rest.projectId);
     const seal = (value: string) => encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
-
-    const encryptedCredential = secret
-      ? encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob
-      : null;
     // Stored once, so the sealed text and the references read off it are the same string.
     const storedCustomHeaderValues = (customHeaders ?? []).map((header) => store(header.value));
     const storedSubstitutionValues = (substitutions ?? []).map((substitution) => store(substitution.value));
@@ -857,6 +968,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       position,
       encryptedValue: seal(storedSubstitutionValues[position])
     }));
+
+    const oauth =
+      credential.type === AgentVaultCredentialType.OAuth
+        ? await claimOauthCredential({
+            projectId: rest.projectId,
+            ctx: rest.ctx,
+            accessBundleId: bundle.id,
+            serverUrl: serviceConfig.serverUrl!,
+            authorizationId: credential.authorizationId
+          })
+        : null;
+    const credentialConfig: TAgentVaultCredentialConfig = oauth ? oauth.config : split!.config;
+    let encryptedCredential: Buffer | null = null;
+    if (oauth) encryptedCredential = oauth.encryptedCredential;
+    else if (secret) encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
 
     // The pre-check above is only a fast failure. The authoritative one runs under the bundle row lock,
     // the same lock addMembers takes, because no database constraint can express host-pattern overlap.
@@ -874,11 +1000,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           {
             accessBundleId: bundle.id,
             name,
+            type: serviceType.type,
+            config: serviceConfig,
             hostPattern,
             allowedMethods: allowedMethods ?? null,
             allowedPathPrefixes: allowedPathPrefixes ?? null,
             credentialType: credential.type,
-            credentialConfig: config,
+            credentialConfig,
             encryptedCredential
           },
           tx
@@ -928,6 +1056,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     try {
       result = await write();
     } catch (err) {
+      await oauth?.claim.restore();
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
@@ -957,8 +1086,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const updateService = async ({
     accessBundleId,
     serviceId,
+    type,
     name,
-    hostPattern,
+    hostPattern: requestedHostPattern,
+    serverUrl,
+    transport,
     credential,
     allowedMethods,
     allowedPathPrefixes,
@@ -971,9 +1103,51 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    assertOauthConnectedByUser(rest.ctx, credential);
 
     const service = await agentVaultServiceDAL.findByIdInAccessBundle({ id: serviceId, accessBundleId: bundle.id });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+
+    if (type !== undefined) {
+      throw new BadRequestError({
+        message: "A service's type can't be changed. Leave 'type' out, or create a new service of the other type."
+      });
+    }
+    const serviceType = getAgentVaultServiceType(service.type);
+    assertServiceFieldsSupported(serviceType, {
+      hostPattern: requestedHostPattern,
+      allowedMethods,
+      allowedPathPrefixes,
+      customHeaders,
+      substitutions,
+      serverUrl,
+      transport
+    });
+    if (credential) assertCredentialTypeSupported(serviceType, credential.type);
+
+    // The fields of the type's config this request sent. Ones left out keep their stored value, so the config
+    // is merged here for the fast checks and again under the lock against the row read there.
+    const configUpdate = Object.fromEntries(
+      Object.entries({ serverUrl, transport }).filter(([, value]) => value !== undefined)
+    );
+    const hasConfigUpdate = Object.keys(configUpdate).length > 0;
+    const deriveHostPattern = (config: TAgentVaultServiceConfig) =>
+      resolveServiceHostPattern(serviceType, config, requestedHostPattern);
+    const serviceConfig = hasConfigUpdate ? buildServiceConfig(serviceType, configUpdate, service.config) : undefined;
+    const hostPattern =
+      serviceConfig && serviceType.deriveHostPattern ? deriveHostPattern(serviceConfig) : requestedHostPattern;
+
+    const storedOauth =
+      service.credentialType === AgentVaultCredentialType.OAuth
+        ? (service.credentialConfig as TAgentVaultOauthConfig)
+        : undefined;
+    const oauthAuthorizationId =
+      credential?.type === AgentVaultCredentialType.OAuth ? credential.authorizationId : undefined;
+    const storedServerUrl = getServiceServerUrl(service.config);
+    const staysOauth = credential ? credential.type === AgentVaultCredentialType.OAuth : Boolean(storedOauth);
+    if (serverUrl !== undefined && serverUrl !== storedServerUrl && staysOauth && !oauthAuthorizationId) {
+      throw new BadRequestError({ message: OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE });
+    }
 
     if (name && name !== service.name) {
       const existing = await agentVaultServiceDAL.findOne({ accessBundleId: bundle.id, name });
@@ -1026,7 +1200,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // Undefined leaves the sealed secret, and the references read off it, as they are.
     let writtenSecret: TCredentialWrite["secret"];
     let effectiveCredentialConfig = service.credentialConfig as TAgentVaultCredentialConfig;
-    if (credential) {
+    // A new OAuth authorization is claimed right before the write.
+    if (credential && credential.type !== AgentVaultCredentialType.OAuth) {
       const { config, secret } = mergeCredential(storeCredentialReferences(credential, store), service, storedSecret);
       let encryptedCredential: Buffer | null | undefined;
       if (secret === null) encryptedCredential = null;
@@ -1082,70 +1257,147 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       encryptedValue: seal(storedSubstitutionValues[index])
     }));
 
-    // Same lock as create, and below the credential work so no KMS call sits inside the transaction. The
-    // re-check only earns its place when the pattern actually changes.
+    const oauth = oauthAuthorizationId
+      ? await claimOauthCredential({
+          projectId: rest.projectId,
+          ctx: rest.ctx,
+          accessBundleId: bundle.id,
+          serviceId: service.id,
+          serverUrl: getServiceServerUrl(serviceConfig ?? service.config)!,
+          authorizationId: oauthAuthorizationId,
+          previousRequiredScopes: storedOauth?.requiredScopes
+        })
+      : null;
+    if (oauth) {
+      credentialUpdate = {
+        credentialType: AgentVaultCredentialType.OAuth,
+        credentialConfig: oauth.config,
+        encryptedCredential: oauth.encryptedCredential
+      };
+      // Clears the old credential's variable references, since OAuth tokens never hold one.
+      writtenSecret = null;
+      effectiveCredentialConfig = oauth.config;
+    }
+
+    // Every rule about a save that committed between the read above and the bundle lock, run against the one row
+    // read under the lock. That save may have moved the service, retyped or rotated its credential, or
+    // reauthorized it, and writing over it from the first read would undo it. Pure, so it can't touch the database.
+    const reconcileWithLockedRow = (locked: TAgentVaultServices) => {
+      const lockedOauth =
+        locked.credentialType === AgentVaultCredentialType.OAuth
+          ? (locked.credentialConfig as TAgentVaultOauthConfig)
+          : undefined;
+      let lockedServiceConfig = serviceConfig;
+      let lockedHostPattern = hostPattern;
+      let lockedCredentialUpdate = credentialUpdate;
+      let lockedCredentialConfig = locked.credentialConfig as TAgentVaultCredentialConfig;
+
+      if (hasConfigUpdate) {
+        lockedServiceConfig = buildServiceConfig(serviceType, configUpdate, locked.config);
+        if (serviceType.deriveHostPattern) lockedHostPattern = deriveHostPattern(lockedServiceConfig);
+        // An edit that keeps the tokens must still point at the server they were authorized for.
+        if (lockedOauth && !oauth && (!credential || credential.type === AgentVaultCredentialType.OAuth)) {
+          checkOauthServerUnderLock({
+            requestedServerUrl: serverUrl,
+            readServerUrl: storedServerUrl,
+            effectiveServerUrl: getServiceServerUrl(lockedServiceConfig),
+            lockedOauth
+          });
+        }
+      }
+
+      if (credential) {
+        // The credential was merged against the first read, whose type decided how the request reads. Writing
+        // over a newer one would set a half this request left out back to an older value.
+        const secretChanged =
+          storedSecret !== null && !locked.encryptedCredential?.equals(service.encryptedCredential!);
+        if (locked.credentialType !== service.credentialType || secretChanged) {
+          throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+        }
+        lockedCredentialConfig = effectiveCredentialConfig;
+        if (oauth && credential.type === AgentVaultCredentialType.OAuth) {
+          // The claim checked the server URL of the first read; these tokens must never reach another host.
+          const requiredScopes = checkOauthClaimUnderLock({
+            authorizedServerUrl: oauth.claim.record.serverUrl,
+            authorizedIssuer: oauth.claim.record.issuer,
+            lockedServerUrl: getServiceServerUrl(lockedServiceConfig ?? locked.config),
+            readOauth: storedOauth,
+            lockedOauth
+          });
+          const rebuilt = oauth.rebuild(requiredScopes);
+          lockedCredentialUpdate = {
+            credentialType: AgentVaultCredentialType.OAuth,
+            credentialConfig: rebuilt.config,
+            encryptedCredential: rebuilt.encryptedCredential
+          };
+          lockedCredentialConfig = rebuilt.config;
+        }
+      }
+
+      return {
+        serviceConfig: lockedServiceConfig,
+        hostPattern: lockedHostPattern,
+        credentialUpdate: lockedCredentialUpdate,
+        credentialConfig: lockedCredentialConfig
+      };
+    };
+
+    // Same lock as create, and below the credential work so no KMS call sits inside the transaction.
     const write = () =>
       agentVaultServiceDAL.transaction(async (tx) => {
-        const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
+        const lockedBundle = await agentVaultAccessBundleDAL.lockByIdInProject(
           { id: bundle.id, projectId: rest.projectId },
           tx
         );
-        if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
+        if (!lockedBundle) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
-        if (hostPattern && hostPattern !== service.hostPattern) {
-          await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern, excludeServiceId: service.id }, tx);
+        const locked = await agentVaultServiceDAL.lockByIdInAccessBundle(
+          { id: service.id, accessBundleId: bundle.id },
+          tx
+        );
+        if (!locked) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+        const reconciled = reconcileWithLockedRow(locked);
+
+        // Only when the pattern actually changes, against the siblings read under the lock.
+        if (reconciled.hostPattern && reconciled.hostPattern !== locked.hostPattern) {
+          await checkHostPatternConflicts(
+            { accessBundleId: bundle.id, hostPattern: reconciled.hostPattern, excludeServiceId: service.id },
+            tx
+          );
         }
 
-        // The credential was merged against the row read before the lock, whose type decided how the request
-        // reads. If another save changed it since, writing now would set a half this request left out back to
-        // an older value.
-        if (credential) {
-          const current = await agentVaultServiceDAL.findById(service.id, tx);
-          if (!current) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
-          const secretChanged =
-            storedSecret !== null && !current.encryptedCredential?.equals(service.encryptedCredential!);
-          if (current.credentialType !== service.credentialType || secretChanged) {
-            throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
-          }
-        }
-
-        // Both halves read under the lock. The service read above the transaction came before it, and stale it
-        // would admit the very collision this check exists to stop.
         if (credential || customHeaders) {
           const effectiveCustomHeaders =
             customHeaders ??
             (await agentVaultServiceCustomHeaderDAL.findByServiceIds([service.id], tx)).map((row) => ({
               name: row.name
             }));
-          if (!credential) {
-            const current = await agentVaultServiceDAL.findById(service.id, tx);
-            if (!current) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
-            effectiveCredentialConfig = current.credentialConfig as TAgentVaultCredentialConfig;
-          }
-          assertCustomHeadersDoNotShadowCredential(effectiveCredentialConfig, effectiveCustomHeaders);
+          assertCustomHeadersDoNotShadowCredential(reconciled.credentialConfig, effectiveCustomHeaders);
         }
 
         const hasColumnUpdate =
           name !== undefined ||
-          hostPattern !== undefined ||
+          reconciled.hostPattern !== undefined ||
+          reconciled.serviceConfig !== undefined ||
           allowedMethods !== undefined ||
           allowedPathPrefixes !== undefined ||
-          Object.keys(credentialUpdate).length > 0;
+          Object.keys(reconciled.credentialUpdate).length > 0;
 
         const updatedService = hasColumnUpdate
           ? await agentVaultServiceDAL.updateById(
               service.id,
               {
                 name,
-                hostPattern,
+                hostPattern: reconciled.hostPattern,
+                ...(reconciled.serviceConfig === undefined ? {} : { config: reconciled.serviceConfig }),
                 // `null` clears the restriction, `undefined` leaves the column alone.
                 ...(allowedMethods === undefined ? {} : { allowedMethods }),
                 ...(allowedPathPrefixes === undefined ? {} : { allowedPathPrefixes }),
-                ...credentialUpdate
+                ...reconciled.credentialUpdate
               },
               tx
             )
-          : service;
+          : locked;
 
         // Outside the lock, two concurrent PATCHes both pass the ownership check and the loser's writes no-op.
         const applyDiff = async <TRow extends { id: string; encryptedValue: Buffer }, TColumns>(
@@ -1267,6 +1519,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     try {
       result = await write();
     } catch (err) {
+      await oauth?.claim.restore();
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
