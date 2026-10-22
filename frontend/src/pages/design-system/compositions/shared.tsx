@@ -95,6 +95,23 @@ export const kmsSections: SidebarProps["sections"] = [
     ]
   }
 ];
+export const scanningSections: SidebarProps["sections"] = [
+  {
+    items: [
+      { id: "data-sources", label: "Data sources", icon: "git" },
+      { id: "findings", label: "Findings", icon: "alert", count: 14 },
+      { id: "app-connections", label: "App connections", icon: "link" }
+    ]
+  },
+  {
+    label: "Administration",
+    items: [
+      { id: "scanning-access", label: "Access control", icon: "user" },
+      { id: "scanning-audit", label: "Audit logs", icon: "history" },
+      { id: "scanning-settings", label: "Settings", icon: "settings" }
+    ]
+  }
+];
 export const settingsSections: SidebarProps["sections"] = [
   {
     items: [
@@ -117,7 +134,8 @@ const organizations = [
 const products = [
   { value: "secrets", label: "Secrets Management" },
   { value: "certs", label: "Certificate Manager" },
-  { value: "kms", label: "KMS" }
+  { value: "kms", label: "KMS" },
+  { value: "scanning", label: "Secret Scanning" }
 ];
 const projects = [
   { value: "payments-api", label: "payments-api", mono: true },
@@ -165,14 +183,15 @@ const barActions = (
   </TooltipProvider>
 );
 
-export type ShellLevel = "org" | "settings" | "product" | "project" | "pki" | "kms";
+export type ShellLevel = "org" | "settings" | "product" | "project" | "pki" | "kms" | "scanning";
 const levelSections: Record<ShellLevel, SidebarProps["sections"]> = {
   org: orgSections,
   settings: settingsSections,
   product: productSections,
   project: projectSections,
   pki: pkiSections,
-  kms: kmsSections
+  kms: kmsSections,
+  scanning: scanningSections
 };
 const projectHome: Record<string, { level: ShellLevel; page: string }> = {
   secrets: { level: "project", page: "secrets" },
@@ -184,7 +203,8 @@ const parent: Record<Exclude<ShellLevel, "org">, { level: ShellLevel; page: stri
   product: { level: "org", page: "home" },
   project: { level: "product", page: "projects" },
   pki: { level: "product", page: "projects" },
-  kms: { level: "product", page: "projects" }
+  kms: { level: "product", page: "projects" },
+  scanning: { level: "org", page: "home" }
 };
 const projectLevels: readonly ShellLevel[] = ["project", "pki", "kms"];
 
@@ -221,7 +241,8 @@ export const Shell = ({
     product: [org, product, { label: pageLabel }],
     project: [org, product, project, { label: pageLabel }],
     pki: [org, product, project, { label: pageLabel }],
-    kms: [org, product, project, { label: pageLabel }]
+    kms: [org, product, project, { label: pageLabel }],
+    scanning: [org, product, { label: pageLabel }]
   };
   const crumbs = at.level === initialLevel && at.page === current ? initialCrumbs : trail[at.level];
   const scope =

@@ -23,7 +23,8 @@ const screens: Record<string, ComponentType> = {
   kms: lazy(() => import("./compositions/kms")),
   connections: lazy(() => import("./compositions/connections")),
   identities: lazy(() => import("./compositions/identities")),
-  "audit-logs": lazy(() => import("./compositions/audit-logs"))
+  "audit-logs": lazy(() => import("./compositions/audit-logs")),
+  "secret-scanning": lazy(() => import("./compositions/secret-scanning"))
 };
 
 export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {

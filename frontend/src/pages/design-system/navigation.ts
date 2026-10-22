@@ -86,6 +86,13 @@ export const comparisonPages = [
     title: "Audit logs",
     description:
       "12,408 organization events from the last 30 days in a virtual DataTable that loads 500 rows at a time."
+  },
+  {
+    id: "compare-secret-scanning",
+    screen: "secret-scanning",
+    title: "Secret Scanning findings",
+    description:
+      "Unresolved leaks across 3 GitHub data sources, with status and source filters and bulk triage."
   }
 ] as const;
 export type ComparisonPage = (typeof comparisonPages)[number]["id"];
