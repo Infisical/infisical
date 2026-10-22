@@ -59,6 +59,12 @@ export const comparisonPages = [
     title: "Certificates",
     description:
       "The internal-pki inventory in a DataTable, with each certificate opening its detail page."
+  },
+  {
+    id: "compare-kms",
+    screen: "kms",
+    title: "KMS keys",
+    description: "The 7 keys in kms-keys with their usage, algorithm, status and key actions."
   }
 ] as const;
 export type ComparisonPage = (typeof comparisonPages)[number]["id"];
