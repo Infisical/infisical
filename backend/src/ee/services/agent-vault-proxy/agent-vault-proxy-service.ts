@@ -172,8 +172,8 @@ export const agentVaultProxyServiceFactory = ({
     };
   };
 
-  // Key generation is CPU-bound and the KMS may be remote, so a CA is always made before any write. The
-  // fingerprint columns show the CA a start actually served, so create and rotate store only the CA itself.
+  // Key generation is CPU-bound and the KMS may be remote, so a CA is always made before any write. Create and
+  // rotate record its fingerprint too, so it can be pinned before any start; a start serving another CA replaces it.
   const $newRootCa = async (projectId: string) => {
     const generated = await generateProxyRootCa();
     return {
@@ -248,7 +248,8 @@ export const agentVaultProxyServiceFactory = ({
     const existing = await agentVaultProxyDAL.findOne({ projectId, name });
     if (existing) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
 
-    const { stored: rootCa } = await $newRootCa(projectId);
+    const { stored, reported } = await $newRootCa(projectId);
+    const rootCa = { ...stored, ...reported };
 
     const create = () =>
       agentVaultProxyDAL.transaction(async (tx) => {
@@ -302,7 +303,7 @@ export const agentVaultProxyServiceFactory = ({
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.IssueToken);
     const proxy = await $findProxyOr404({ projectId, proxyId });
 
-    const { stored: rootCa } = await $newRootCa(proxy.projectId);
+    const { stored, reported } = await $newRootCa(proxy.projectId);
 
     const rotated = await agentVaultProxyDAL.transaction(async (tx) => {
       const updated = await agentVaultProxyDAL.updateById(
@@ -311,9 +312,8 @@ export const agentVaultProxyServiceFactory = ({
           $incr: { tokenVersion: 1 },
           heartbeat: null,
           heartbeatTTL: null,
-          ...rootCa,
-          rootCaFingerprint: null,
-          rootCaExpiresAt: null
+          ...stored,
+          ...reported
         },
         tx
       );
