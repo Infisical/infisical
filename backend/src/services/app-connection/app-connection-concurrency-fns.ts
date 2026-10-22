@@ -1,14 +1,14 @@
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 
-import {
-  PKI_SYNC_CONNECTION_AGGREGATE_CONCURRENCY_LIMIT,
-  PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-  PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
-} from "./pki-sync-enums";
+export const APP_CONNECTION_CONCURRENCY_LIMIT = 3;
+
+export const APP_CONNECTION_AGGREGATE_CONCURRENCY_LIMIT = 15;
+
+export const APP_CONNECTION_CONCURRENCY_TTL_S = 15 * 60;
 
 type TConcurrencyKeyStore = Pick<TKeyStoreFactory, "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
 
-export const tryAdmitPkiSyncConcurrency = async (
+export const tryAdmitAppConnectionConcurrency = async (
   keyStore: TConcurrencyKeyStore,
   connectionId: string,
   targetHost?: string
@@ -18,23 +18,23 @@ export const tryAdmitPkiSyncConcurrency = async (
   if (!targetHost) {
     const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
       aggregateKey,
-      PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-      PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
+      APP_CONNECTION_CONCURRENCY_LIMIT,
+      APP_CONNECTION_CONCURRENCY_TTL_S
     );
     return count !== -1;
   }
 
   const aggregateCount = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
     aggregateKey,
-    PKI_SYNC_CONNECTION_AGGREGATE_CONCURRENCY_LIMIT,
-    PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
+    APP_CONNECTION_AGGREGATE_CONCURRENCY_LIMIT,
+    APP_CONNECTION_CONCURRENCY_TTL_S
   );
   if (aggregateCount === -1) return false;
 
   const hostCount = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
     KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId, targetHost),
-    PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-    PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
+    APP_CONNECTION_CONCURRENCY_LIMIT,
+    APP_CONNECTION_CONCURRENCY_TTL_S
   );
   if (hostCount === -1) {
     await keyStore.decrementByOrDelete(aggregateKey);
@@ -44,7 +44,7 @@ export const tryAdmitPkiSyncConcurrency = async (
   return true;
 };
 
-export const releasePkiSyncConcurrency = async (
+export const releaseAppConnectionConcurrency = async (
   keyStore: TConcurrencyKeyStore,
   connectionId: string,
   targetHost?: string
