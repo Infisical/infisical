@@ -197,7 +197,7 @@ The gateway runs all the time, so run the proxy as a service that starts again w
       --domain <your-instance-url>
     ```
 
-    With `--restart unless-stopped`, Docker starts the proxy again whenever Docker itself starts, unless you stopped the container yourself. Docker must also start at boot, which you can turn on with `sudo systemctl enable docker` on most Linux machines. The volume keeps the proxy's [cache](/documentation/platform/agent-vault/proxies#if-infisical-is-unreachable), so the proxy can start after a reboot even if Infisical is unreachable.
+    With `--restart unless-stopped`, Docker starts the proxy again whenever Docker itself starts, unless you stopped the container yourself. Docker must also start at boot, which you can turn on with `sudo systemctl enable docker` on most Linux machines. The volume keeps the proxy's [cache](/documentation/platform/agent-vault/proxies#command-flags), so the proxy can start after a reboot even if Infisical is unreachable.
   </Tab>
 </Tabs>
 

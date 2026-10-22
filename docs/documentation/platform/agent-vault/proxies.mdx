@@ -68,7 +68,7 @@ The commands look like this:
       --domain <your-instance-url>
     ```
 
-    To let the container start while [Infisical is unreachable](#if-infisical-is-unreachable), add `-v agent-vault-proxy:/etc/infisical/agent-vault` so that the proxy keeps its cache when the container is re-created.
+    To let the container start while [Infisical is unreachable](#command-flags), add `-v agent-vault-proxy:/etc/infisical/agent-vault` so that the proxy keeps its cache when the container is re-created.
   </Tab>
   <Tab title="Kubernetes">
     ```yaml expandable
@@ -153,18 +153,11 @@ The commands use these settings:
 - `INFISICAL_AGENT_VAULT_PROXY_TOKEN` or `--proxy-token`: the proxy token (prefer the environment variable, because other users on the machine can read anything on a command line)
 - `--domain` or `INFISICAL_DOMAIN`: your Infisical instance URL (required for EU Cloud and self-hosted instances, because the default is Infisical Cloud in the US)
 
+Each time the proxy starts, it loads its settings and certificate authority from Infisical and, if it can, saves a copy in its data directory (`~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` as root, or `--data-dir`). If it can't reach Infisical for 60 seconds, it starts from that copy, or exits if there isn't one.
+
 <Info>
   For the proxy's other flags, such as the port and the data directory, check out the [`agent-vault proxy` CLI reference](/cli/reference#agent-vault-proxy).
 </Info>
-
-### If Infisical is unreachable
-
-Each time the proxy starts, it loads its settings and certificate authority from Infisical. If the proxy can't reach Infisical, it retries for 60 seconds, then:
-
-- If its data directory has a cache from an earlier start, the proxy starts from the cache
-- Otherwise, the proxy exits without serving any requests
-
-The proxy writes the cache after each start if it can write to its data directory. The data directory is `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` if you run the proxy as root. To use a different directory, pass `--data-dir`.
 
 ### Run the proxy behind a load balancer
 
