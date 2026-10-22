@@ -377,6 +377,7 @@ function AddMemberPopover({
             options={SECRET_ACTION_OPTIONS}
             getOptionValue={(option) => option.value}
             getOptionLabel={(option) => option.label}
+            getOptionKeywords={(option) => [option.value]}
             placeholder="Select permissions..."
           />
         </div>

@@ -83,6 +83,7 @@ const ChannelsField = ({
       onValueChange={(selected) => onChange(selected.map((channel) => channel.id))}
       getOptionValue={(option) => option.id}
       getOptionLabel={(option) => option.name}
+      getOptionKeywords={(option) => [option.id]}
       placeholder="Select channels..."
       isLoading={isLoading}
       isError={Boolean(error)}
