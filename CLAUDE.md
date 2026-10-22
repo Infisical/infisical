@@ -190,10 +190,12 @@ request; the provider keeps the first token it was given and cannot be told anot
 unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
 with the token in the `Infisical-Approval-Token` header and a body naming the event and the provider's record id;
 the body carries no decision, which a later worker reads back from the provider. The route finds the row by
-`providerRequestId` (404 when none), counts the callback in `callbackAttempts` before checking anything else so a
-wrong token for a known record still burns the request, and on the sixth callback sets the row `failed` with a
-readable `statusReason` and cancels the attached approval request in the same transaction, so the policy is freed
-and the UI stops offering Cancel. Every other refusal (bad or missing token, request not `waiting_approval`)
+`providerRequestId` (404 when none), checks the token, and only then counts the callback in `callbackAttempts`; on
+the sixth callback with a valid token it sets the row `failed` with a readable `statusReason` and cancels the
+attached approval request in the same transaction, so the policy is freed and the UI stops offering Cancel. A
+refused callback is never counted: the limit closes the request, so counting it would let anyone who knows the
+record id cancel the request, and the token is 256 random bits, so there is nothing to brute force. Every other
+refusal (bad or missing token, request not `waiting_approval`)
 gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event, and
 only when it wins `claimDecisionRead`: a conditional update of `decisionReadRequestedAt`, in the emit's
 transaction, that one of any number of concurrent callbacks wins. A repeat while a read-back is still in

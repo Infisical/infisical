@@ -158,6 +158,41 @@ func TestDelegatedAccessRequest_CallbackLimit(t *testing.T) {
 		require.False(t, req.current(t).granted)
 		require.Equal(t, http.StatusForbidden, req.readSecret(t))
 	})
+
+	t.Run("should keep the request open when a sixth callback arrives without a token", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		req := newWaitingDelegatedRequest(t)
+		for range 5 {
+			require.Equal(t, http.StatusForbidden, req.callback(t, ""))
+		}
+
+		// Action
+		code := req.callback(t, "")
+
+		// Assert
+		require.Equal(t, http.StatusForbidden, code)
+		require.Equal(t, delegatedState{status: "pending", delegated: "waiting_approval"}, req.current(t))
+	})
+
+	t.Run("should grant access when ServiceNow approves after six callbacks without a token", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		req := newWaitingDelegatedRequest(t)
+		for range 6 {
+			require.Equal(t, http.StatusForbidden, req.callback(t, ""))
+		}
+		req.sn.Seed(t, servicenow.Approved(req.record.SysID))
+
+		// Action
+		code := req.callback(t, req.record.CallbackToken)
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		require.Equal(t, delegatedState{status: "approved", delegated: "approved", granted: true}, req.await(t, "approved"))
+	})
 }
 
 func TestDelegatedAccessRequest_CallbackToken(t *testing.T) {

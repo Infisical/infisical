@@ -192,28 +192,32 @@ describe("handleCallback", () => {
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 
-  test("counts the callback before checking the token", async () => {
-    const { service, delegatedApprovalRequestDAL, eventEmitter } = makeCallbackService();
-
-    await expect(service.handleCallback(callback({ token: "inf_ext_wrong" }))).rejects.toBeInstanceOf(
-      ForbiddenRequestError
-    );
-    expect(delegatedApprovalRequestDAL.update).toHaveBeenCalledWith(
-      { id: "delegated-1" },
-      { $incr: { callbackAttempts: 1 } }
-    );
-    expect(eventEmitter.emit).not.toHaveBeenCalled();
-  });
-
   test.each([
     ["missing", undefined],
     ["unprefixed", "stored-token"],
     ["mismatched", "inf_ext_other-token"]
-  ])("rejects a %s token with 403 and no event", async (_label, token) => {
-    const { service, eventEmitter } = makeCallbackService();
+  ])("rejects a %s token without counting it, even when it would pass the limit", async (_label, token) => {
+    const { service, delegatedApprovalRequestDAL, approvalRequestDAL, eventEmitter } = makeCallbackService({
+      delegatedRequest: makeDelegatedRequest({ callbackAttempts: DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS }),
+      attemptsAfterIncrement: DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS + 1
+    });
 
     await expect(service.handleCallback(callback({ token }))).rejects.toBeInstanceOf(ForbiddenRequestError);
+    expect(delegatedApprovalRequestDAL.update).not.toHaveBeenCalled();
+    expect(delegatedApprovalRequestDAL.updateWithDetails).not.toHaveBeenCalled();
+    expect(approvalRequestDAL.updateById).not.toHaveBeenCalled();
     expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("counts a callback once its token matches", async () => {
+    const { service, delegatedApprovalRequestDAL } = makeCallbackService();
+
+    await service.handleCallback(callback());
+
+    expect(delegatedApprovalRequestDAL.update).toHaveBeenCalledWith(
+      { id: "delegated-1" },
+      { $incr: { callbackAttempts: 1 } }
+    );
   });
 
   test("rejects a request that is not awaiting a decision", async () => {
@@ -226,7 +230,7 @@ describe("handleCallback", () => {
   });
 
   test("fails the request and cancels its approval request on the callback past the limit", async () => {
-    const { service, delegatedApprovalRequestDAL, approvalRequestDAL, eventEmitter, kmsService } = makeCallbackService({
+    const { service, delegatedApprovalRequestDAL, approvalRequestDAL, eventEmitter } = makeCallbackService({
       attemptsAfterIncrement: DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS + 1
     });
 
@@ -247,7 +251,6 @@ describe("handleCallback", () => {
     expect(patch.status).toBe(DelegatedApprovalRequestStatus.Failed);
     expect(patch.details.statusReason).toContain(`more than ${DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS} times`);
     expect(tx).toBe(TX);
-    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 

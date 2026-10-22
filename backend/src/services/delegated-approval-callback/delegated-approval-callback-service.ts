@@ -70,8 +70,25 @@ export const delegatedApprovalCallbackServiceFactory = ({
 
     const logContext = { delegatedRequestId: delegatedRequest.id, externalId };
 
-    // Counted before the token is checked, so a wrong token for a known external ID still burns the
-    // request and the token cannot be brute-forced.
+    if (!token || !token.startsWith(DELEGATED_APPROVAL_CALLBACK_TOKEN_PREFIX)) {
+      throw rejectApprovalCallback("missing or malformed token", logContext);
+    }
+    if (!delegatedRequest.encryptedCallbackToken) {
+      throw rejectApprovalCallback("request has no callback token", logContext);
+    }
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: delegatedRequest.approvalRequestOrganizationId
+    });
+    const storedToken = decryptor({ cipherTextBlob: delegatedRequest.encryptedCallbackToken }).toString();
+    if (!isTokenMatch(token, storedToken)) {
+      throw rejectApprovalCallback("token mismatch", logContext);
+    }
+
+    // Counted only after the token matches: the limit closes the request, so a refused callback must
+    // not count toward it, or anyone who knows the external ID could cancel the request. The token is
+    // 256 random bits, so refusals need no counter of their own to stop it being guessed.
     const [counted] = await delegatedApprovalRequestDAL.update(
       { id: delegatedRequest.id },
       { $incr: { callbackAttempts: 1 } }
@@ -90,22 +107,6 @@ export const delegatedApprovalCallbackServiceFactory = ({
         ...logContext,
         attempts: String(attempts)
       });
-    }
-
-    if (!token || !token.startsWith(DELEGATED_APPROVAL_CALLBACK_TOKEN_PREFIX)) {
-      throw rejectApprovalCallback("missing or malformed token", logContext);
-    }
-    if (!delegatedRequest.encryptedCallbackToken) {
-      throw rejectApprovalCallback("request has no callback token", logContext);
-    }
-
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: delegatedRequest.approvalRequestOrganizationId
-    });
-    const storedToken = decryptor({ cipherTextBlob: delegatedRequest.encryptedCallbackToken }).toString();
-    if (!isTokenMatch(token, storedToken)) {
-      throw rejectApprovalCallback("token mismatch", logContext);
     }
 
     if (delegatedRequest.status !== DelegatedApprovalRequestStatus.WaitingApproval) {
