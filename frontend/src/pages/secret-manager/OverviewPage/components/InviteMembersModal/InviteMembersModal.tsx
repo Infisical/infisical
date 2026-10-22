@@ -213,10 +213,11 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
                 <Combobox
                   id="invite-members-project-role"
                   isLoading={Boolean(projectId) && isProjectRolesLoading}
-                  value={value}
+                  value={filteredRoles.find((role) => role.slug === value?.slug) ?? value}
                   isClearable={false}
                   onValueChange={onChange}
                   options={filteredRoles}
+                  includeMissingSelectedOptions={false}
                   getOptionValue={(option) => option.slug}
                   getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}

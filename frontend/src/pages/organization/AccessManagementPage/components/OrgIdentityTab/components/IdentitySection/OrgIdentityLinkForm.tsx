@@ -97,7 +97,6 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
                   onValueChange={onChange}
                   placeholder="Select machine identity..."
                   searchAriaLabel="Search machine identities"
-                  // onSearchChange={setSearchValue}
                   autoFocus
                   options={rootOrgIdentities}
                   getOptionValue={(option) => option.id}

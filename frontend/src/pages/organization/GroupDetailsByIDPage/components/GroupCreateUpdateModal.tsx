@@ -184,7 +184,7 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
                   searchAriaLabel="Search roles"
                   isClearable={false}
                   onValueChange={onChange}
-                  value={value}
+                  value={roles?.find((role) => role.slug === value?.slug) ?? value}
                   isError={Boolean(error)}
                   getOptionValue={(option) => option.slug}
                   getOptionKeywords={(option) => [option.slug]}
