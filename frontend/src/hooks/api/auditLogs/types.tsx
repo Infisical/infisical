@@ -981,7 +981,7 @@ interface PamAccessPolicyBypassedEvent {
 interface PamAccessRequestAutoApprovedEvent {
   type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
   metadata: {
-    requestId: string;
+    approvalRequestId: string;
     grantId?: string;
     accountId?: string;
     accountName?: string;

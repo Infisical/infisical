@@ -190,7 +190,7 @@ export const AutoApprovalRuleCard = ({
   onRemove
 }: Props) => {
   const choices = getSubjectChoices(inputs, catalog);
-  const ruleError = showErrors ? getRuleError(rule, catalog) : null;
+  const ruleError = showErrors ? getRuleError(rule) : null;
   const missingChecks = [
     ...getSubjectsMissingCheck(rule, catalog, ASSIGNED_TO_REQUESTER_CONSTRAINT).map(
       (condition) => ({
@@ -254,6 +254,7 @@ export const AutoApprovalRuleCard = ({
           onChange={(e) => onChange({ ...rule, name: e.target.value })}
           placeholder="Name this rule"
           aria-label="Rule name"
+          aria-invalid={showErrors && !rule.name.trim()}
           maxLength={128}
           className={cn(
             "-mx-1 min-w-0 flex-1 rounded-sm bg-transparent px-1 py-0.5 text-sm text-foreground outline-none placeholder:text-muted hover:bg-foreground/5 focus:bg-foreground/5",

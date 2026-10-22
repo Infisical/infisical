@@ -213,6 +213,8 @@ export type TApprovalResource<
   ) => Promise<{ grantId: string } | void>;
   postApprovalRoutine?: (request: TApprovalRequest, actor?: TApprovalActor) => Promise<void>;
 
+  // Policies of this type can hold auto-approval rules
+  supportsAutoApproval?: boolean;
   // Whether the policy's auto-approval rules may decide this request
   allowsAutoApproval?: (args: {
     projectId: string;

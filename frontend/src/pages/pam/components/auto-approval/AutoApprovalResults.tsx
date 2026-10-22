@@ -7,6 +7,21 @@ type Props = {
   outcome: TAutoApprovalOutcome;
 };
 
+export const LinkedRecordValue = ({ input }: { input: TAutoApprovalOutcome["inputs"][number] }) =>
+  input.url ? (
+    <a
+      href={input.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-foreground underline-offset-2 hover:underline"
+    >
+      {input.value}
+      <ExternalLink className="size-3" />
+    </a>
+  ) : (
+    <span className="text-foreground">{input.value}</span>
+  );
+
 const LinkedRecords = ({ inputs }: { inputs: TAutoApprovalOutcome["inputs"] }) => {
   if (!inputs.length) return null;
 
@@ -14,20 +29,7 @@ const LinkedRecords = ({ inputs }: { inputs: TAutoApprovalOutcome["inputs"] }) =
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
       {inputs.map((input) => (
         <span key={`${input.label}:${input.value}`} className="text-muted">
-          {input.label}:{" "}
-          {input.url ? (
-            <a
-              href={input.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-foreground underline-offset-2 hover:underline"
-            >
-              {input.value}
-              <ExternalLink className="size-3" />
-            </a>
-          ) : (
-            <span className="text-foreground">{input.value}</span>
-          )}
+          {input.label}: <LinkedRecordValue input={input} />
         </span>
       ))}
     </div>

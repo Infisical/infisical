@@ -26,7 +26,10 @@ import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
-import { AutoApprovalResults } from "../../components/auto-approval/AutoApprovalResults";
+import {
+  AutoApprovalResults,
+  LinkedRecordValue
+} from "../../components/auto-approval/AutoApprovalResults";
 import { formatDuration } from "../../components/formatDuration";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { isMachineIdentityRequest } from "../../components/requesterDisplay";
@@ -143,7 +146,11 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
                 }
               ]
             : []),
-          { label: "Reason", value: requestData?.reason || "No reason provided" }
+          { label: "Reason", value: requestData?.reason || "No reason provided" },
+          ...(request?.autoApproval?.inputs ?? []).map((input) => ({
+            label: input.label,
+            value: <LinkedRecordValue input={input} />
+          }))
         ]}
         contentFooter={
           (isPending || canRevoke) && (

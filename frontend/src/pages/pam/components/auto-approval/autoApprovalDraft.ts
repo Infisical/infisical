@@ -102,18 +102,18 @@ export const getConditionError = (
   return null;
 };
 
-export const getRuleError = (
+export const getRuleError = (rule: TDraftRule): string | null => {
+  if (!rule.name.trim()) return "Name this rule";
+  if (rule.conditions.length === 0) return "Add at least one condition";
+  return null;
+};
+
+export const isRuleComplete = (
   rule: TDraftRule,
   catalog: TAutoApprovalCatalogConnection[] | undefined
-): string | null => {
-  if (!rule.name.trim()) return "Name this rule";
-  if (rule.conditions.length === 0) {
-    return "Add at least one condition, or this rule would approve every request";
-  }
-  return rule.conditions.some((condition) => getConditionError(condition, catalog))
-    ? "Finish every condition"
-    : null;
-};
+) =>
+  !getRuleError(rule) &&
+  !rule.conditions.some((condition) => getConditionError(condition, catalog));
 
 // The rule checks a record without this check, like an assignee check or the reuse check
 export const getSubjectsMissingCheck = (

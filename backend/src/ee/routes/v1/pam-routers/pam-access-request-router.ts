@@ -17,7 +17,7 @@ import {
   AutoApprovalOutcomeSchema
 } from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import { parsePamAccessDuration } from "@app/services/approval-policy/pam-access/pam-access-policy-fns";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 // The evidence holds data fetched from other services, so only its outcome is returned
@@ -154,6 +154,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         if (autoApprovedEvent) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
+            actor: { type: ActorType.PLATFORM, metadata: {} },
             orgId: req.permission.orgId,
             projectId: req.internalPamProjectId,
             event: autoApprovedEvent

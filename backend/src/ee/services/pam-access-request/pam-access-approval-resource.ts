@@ -1074,7 +1074,7 @@ export const pamAccessApprovalResourceFactory = ({
         type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED,
         metadata: {
           ...scope,
-          requestId: request.id,
+          approvalRequestId: request.id,
           grantId: grantId ?? grant?.id,
           requesterName: request.requesterName,
           requesterEmail: request.requesterEmail,
@@ -1163,6 +1163,7 @@ export const pamAccessApprovalResourceFactory = ({
     verifyPolicyActors,
     assertCanCreateRequest,
     assertCanReview,
+    supportsAutoApproval: true,
     allowsAutoApproval,
     isBreakGlassEligible,
     assertBreakGlassEligible,

@@ -1,15 +1,11 @@
 import { z } from "zod";
 
 import { APPROVAL_POLICY_AUTO_APPROVAL as DOCS } from "@app/lib/api-docs";
+import { slugSchema } from "@app/server/lib/schemas";
 
 import { AutoApprovalConstraintValue } from "./auto-approval-types";
 
-const IdentifierSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(64)
-  .regex(/^[a-z0-9-]+$/, "Must contain only lowercase letters, numbers, and hyphens");
+const IdentifierSchema = slugSchema({ field: "Identifier" });
 
 const ConditionValueSchema = z.string().trim().min(1, "Values cannot be empty").max(255);
 

@@ -78,7 +78,7 @@ import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRe
 import { AutoApprovalCard } from "../../components/auto-approval/AutoApprovalCard";
 import {
   EMPTY_AUTO_APPROVAL_DRAFT,
-  getRuleError,
+  isRuleComplete,
   serializeAutoApprovalDraft,
   TAutoApprovalDraft,
   toAutoApprovalConfig,
@@ -369,7 +369,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       return;
     }
 
-    if (autoApprovalDraft.rules.some((rule) => getRuleError(rule, autoApprovalCatalog))) {
+    if (autoApprovalDraft.rules.some((rule) => !isRuleComplete(rule, autoApprovalCatalog))) {
       setShowAutoApprovalErrors(true);
       createNotification({ type: "error", text: "Finish the auto-approval rules before saving" });
       return;

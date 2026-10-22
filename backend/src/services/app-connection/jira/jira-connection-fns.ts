@@ -36,6 +36,7 @@ export type TJiraRequestConfig = DiscriminativePick<
 type TJiraRequest = {
   path: string;
   params?: Record<string, string | number | undefined>;
+  headers?: Record<string, string>;
 };
 
 export const getJiraConnectionListItem = () => ({
@@ -76,7 +77,7 @@ const getJiraTlsOptions = (config: TJiraRequestConfig) => {
 
 export const jiraRequest = async <T>(
   config: TJiraRequestConfig,
-  { path, params }: TJiraRequest,
+  { path, params, headers: extraHeaders }: TJiraRequest,
   { gatewayV2Service, gatewayPoolService }: TJiraGatewayDeps = {}
 ): Promise<T> => {
   const { gatewayId: directGatewayId, gatewayPoolId } = config;
@@ -98,7 +99,7 @@ export const jiraRequest = async <T>(
   }
 
   const url = new URL(`${removeTrailingSlash(config.credentials.instanceUrl)}${path}`);
-  const headers = { Authorization: getJiraAuthorizationHeader(config), Accept: "application/json" };
+  const headers = { Authorization: getJiraAuthorizationHeader(config), Accept: "application/json", ...extraHeaders };
   const { ca, rejectUnauthorized } = getJiraTlsOptions(config);
 
   const baseRequestConfig: AxiosRequestConfig = {
@@ -441,7 +442,9 @@ export const listJiraIssueApprovals = async (
       config,
       {
         path: `/rest/servicedeskapi/request/${encodeURIComponent(issueKey)}/approval`,
-        params: { start, limit: JIRA_PAGE_SIZE }
+        params: { start, limit: JIRA_PAGE_SIZE },
+        // Data Center rejects this experimental endpoint without the opt-in header
+        headers: { "X-ExperimentalApi": "opt-in" }
       },
       deps
     );
@@ -452,8 +455,9 @@ export const listJiraIssueApprovals = async (
     page += 1;
   }
 
+  // The newest decision could be on a page that wasn't read
   if (!isLastPage) {
-    logger.warn(`listJiraIssueApprovals: stopped after ${JIRA_MAX_PAGES} pages [issueKey=${issueKey}]`);
+    throw new BadRequestError({ message: `${issueKey} has more Jira approvals than Infisical can read` });
   }
 
   return approvals;

@@ -37,7 +37,7 @@ import {
   CreatePamAccessPolicySchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes, TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 type TCreatePolicySchema =
@@ -534,6 +534,7 @@ export const registerApprovalPolicyEndpoints = ({
         if (autoApprovalSummary) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
+            actor: { type: ActorType.PLATFORM, metadata: {} },
             orgId: req.permission.orgId,
             projectId: request.projectId,
             event: (await server.services.approvalPolicy.buildAuditEvent({

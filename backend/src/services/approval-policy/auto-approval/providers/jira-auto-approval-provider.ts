@@ -1,5 +1,8 @@
+import RE2 from "re2";
+
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   getJiraErrorMessage,
@@ -46,7 +49,7 @@ export type TJiraTicketFacts = {
 };
 
 const JIRA_TICKET_FIELDS = ["status", "project", "issuetype", "labels", "assignee"];
-const JIRA_ISSUE_KEY_REGEX = /^[A-Z][A-Z0-9_]+-[1-9][0-9]*$/;
+const JIRA_ISSUE_KEY_REGEX = new RE2("^[A-Z][A-Z0-9_]+-[1-9][0-9]*$");
 const MAX_TICKET_INPUT_LENGTH = 2048;
 const MAX_STORED_LABELS = 100;
 const MAX_OPTIONS = 100;
@@ -124,13 +127,20 @@ export const parseJiraTicket = (userInput: string, conn: Pick<TJiraConnection, "
   return key;
 };
 
-// A hidden email can't be confirmed to be the requester's, so only an exact, visible email matches
 const matchAssigneeToRequester = (
   issue: TJiraIssue,
   ctx: TAutoApprovalContext
 ): NonNullable<TJiraTicketFacts["assignee"]> => {
+  const assignee = issue.fields?.assignee;
+  if (!assignee) return { matchesRequester: false, reason: `${issue.key} isn't assigned to anyone` };
+
+  // A hidden email can't be confirmed to be the requester's, so only an exact, visible email matches
+  const assigneeEmail = assignee.emailAddress?.trim().toLowerCase();
+  if (!assigneeEmail) {
+    return { matchesRequester: false, reason: `Jira doesn't share the email address of ${issue.key}'s assignee` };
+  }
+
   const email = ctx.requester.email?.trim().toLowerCase();
-  const assigneeEmail = issue.fields?.assignee?.emailAddress?.trim().toLowerCase();
   return email && assigneeEmail === email
     ? { matchesRequester: true, reason: null }
     : { matchesRequester: false, reason: `${issue.key} isn't assigned to the requester` };
@@ -141,14 +151,24 @@ const readLatestApproval = async (
   key: string,
   deps: TAutoApprovalProviderDeps
 ): Promise<NonNullable<TJiraTicketFacts["approval"]>> => {
-  const notApproved = { approved: false, reason: `${key} isn't approved in Jira` };
   try {
     const approvals = await listJiraIssueApprovals(conn, key, deps);
+    if (!approvals.length) return { approved: false, reason: `${key} has no approvals in Jira yet` };
+
     const sorted = [...approvals].sort((a, b) => (a.createdDate?.epochMillis ?? 0) - (b.createdDate?.epochMillis ?? 0));
-    return sorted[sorted.length - 1]?.finalDecision === "approved" ? { approved: true, reason: null } : notApproved;
+    return sorted[sorted.length - 1]?.finalDecision === "approved"
+      ? { approved: true, reason: null }
+      : { approved: false, reason: `${key} isn't approved in Jira` };
   } catch (error) {
-    if (isJiraNotFoundError(error)) return notApproved;
-    return { approved: false, reason: `Couldn't read Jira approvals on ${key}: ${getJiraErrorMessage(error)}` };
+    if (isJiraNotFoundError(error)) {
+      return {
+        approved: false,
+        reason: `${key} isn't a Jira Service Management request, or the Jira connection can't see its approvals`
+      };
+    }
+    if (error instanceof BadRequestError) return { approved: false, reason: error.message };
+    logger.warn({ err: error }, `Couldn't read Jira approvals [issueKey=${key}]`);
+    return { approved: false, reason: `Couldn't read Jira approvals on ${key}` };
   }
 };
 
@@ -178,7 +198,9 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
               message: `Jira ticket ${id} doesn't exist, or the Jira connection can't see it`
             });
           }
-          throw new BadRequestError({ message: `Couldn't read Jira ticket ${id}: ${getJiraErrorMessage(error)}` });
+          if (error instanceof BadRequestError) throw error;
+          logger.warn({ err: error }, `Couldn't read Jira ticket [issueKey=${id}]`);
+          throw new BadRequestError({ message: `Couldn't read Jira ticket ${id}` });
         }
 
         const key = issue.key || id;

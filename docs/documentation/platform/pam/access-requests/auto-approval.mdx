@@ -85,7 +85,7 @@ Every linked record also has a **hasn't been used before** check. It passes only
 
 | Check | Passes when |
 | --- | --- |
-| **is assigned to the requester** | The ticket's assignee has the same email address in Jira as the requester has in Infisical (it never passes if the assignee hides their email address in Jira) |
+| **is assigned to the requester** | The ticket's assignee has the same email address in Jira as the requester has in Infisical (it never passes if Jira hides the assignee's email address, through the assignee's profile on Jira Cloud or the **User email visibility** setting on Jira Data Center) |
 | **is approved in Jira** | The ticket is a Jira Service Management request, and its latest approval was approved |
 | **has status** | The ticket's status is one of the values |
 | **is in project** | The ticket is in one of the projects |
@@ -110,9 +110,9 @@ If you turn on **Break glass** in the form, the record fields disappear, because
 
 The outcome of the rules shows up in these places:
 
-- **Approval Requests**: the **Auto-approval status** section of each request shows the rule that approved it and the linked records, or, if no rule passed, why each rule failed (select a rule to see all of its conditions)
+- **Approval Requests**: for each request waiting on your approval, the **Auto-approval status** section shows the linked records and why each rule failed (select a rule to see all of its conditions)
 - Notifications: approvers get an email and an in-app notification when a rule approves a request
-- The folder's **Approvals** tab: under **Access Requests**, auto-approved requests have the **Auto-approved** status, and a Folder Admin can revoke the access from an auto-approved request, as with any other approved request
+- The folder's **Approvals** tab: under **Access Requests**, auto-approved requests have the **Auto-approved** status. Hover over it to see the rule that approved the request. A Folder Admin can revoke the access from an auto-approved request, as with any other approved request
 - The [audit log](/documentation/platform/pam/auditing): each auto-approval adds a **PAM Access Request Auto-Approved** event with the rule, its conditions, the linked records, the account, and the folder
 
 ## How Infisical checks the rules
@@ -122,6 +122,7 @@ Infisical checks the rules once, when the request is submitted, by reading each 
 - Later changes in the service don't affect the result, so closing a ticket doesn't revoke access that a rule granted, and a pending request isn't approved when its record passes later
 - If no record was linked, or Infisical can't read the record (the service doesn't respond or rejects the connection's credentials, the record doesn't exist, or the connection's user can't see it), every condition on that record fails
 - A record can be linked to any number of requests, and each request passes as long as the record still passes the rule (unless the rule also requires that the record **hasn't been used before**)
+- Rules only apply to requests from users. A machine identity's request waits for the folder's approvers, or is rejected if the folder has none
 
 <Warning>
   Infisical trusts what the linked service reports. It can't tell whether a requester approved their own ticket or assigned another person's ticket to themselves before linking it. Prevent both in the service itself. For example, in Jira Service Management, exclude the reporter and assignee from approving requests, and limit who can assign tickets.

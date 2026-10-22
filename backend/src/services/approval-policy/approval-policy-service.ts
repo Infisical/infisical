@@ -326,9 +326,9 @@ export const approvalPolicyServiceFactory = ({
 
   const $assertSupportsAutoApproval = (policyType: ApprovalPolicyType, autoApproval?: TAutoApprovalConfig) => {
     const configuresAutoApproval = Boolean(autoApproval?.rules.length || autoApproval?.inputs.length);
-    if (configuresAutoApproval && policyType === ApprovalPolicyType.CertRequest) {
+    if (configuresAutoApproval && !resources[policyType]?.supportsAutoApproval) {
       throw new BadRequestError({
-        message: "Auto-approval rules aren't available for certificate request policies"
+        message: `Auto-approval rules aren't available for ${policyType} policies`
       });
     }
   };
@@ -1347,30 +1347,25 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
-    const parsedInputs = await autoApprovalService.parseInputValues({
-      stored: storedAutoApproval,
-      values: autoApprovalInputs ?? [],
-      orgId: actor.orgId,
-      projectId
-    });
-
     let autoApprovalEvidence: TAutoApprovalEvidence | null = null;
-    if (storedAutoApproval?.rules.length && !skipAutoApproval) {
+    if (storedAutoApproval?.rules.length && !skipAutoApproval && actor.type === ActorType.USER) {
       const allowed =
         (await resource.allowsAutoApproval?.({ projectId, requestData: requestData as TApprovalRequestData })) ?? true;
 
       if (allowed) {
+        const parsedInputs = await autoApprovalService.parseInputValues({
+          stored: storedAutoApproval,
+          values: autoApprovalInputs ?? [],
+          orgId: actor.orgId,
+          projectId
+        });
         autoApprovalEvidence = await autoApprovalService.evaluate({
           stored: storedAutoApproval,
           parsedInputs,
           usedInputIds: await $findUsedInputIds(policy.id, storedAutoApproval, parsedInputs),
           orgId: actor.orgId,
           projectId,
-          ctx: {
-            requester: {
-              email: actor.type === ActorType.USER ? requesterEmail || null : null
-            }
-          }
+          ctx: { requester: { email: requesterEmail || null } }
         });
       }
     }
@@ -2306,7 +2301,7 @@ export const approvalPolicyServiceFactory = ({
       scopeType,
       scopeId,
       actor,
-      ResourcePermissionApprovalPolicyActions.Read,
+      ResourcePermissionApprovalPolicyActions.Edit,
       policyType
     );
 
