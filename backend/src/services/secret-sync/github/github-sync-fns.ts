@@ -143,7 +143,7 @@ export const toGitHubSecretsError = (error: unknown, destinationConfig: TGitHubS
 
   const message =
     status === 403
-      ? `The GitHub connection lacks permissions to access ${target}. Grant read and write access on the GitHub App or fine-grained token, or use the '${classicScope}' scope for OAuth and classic tokens. An owner of a GitHub App installation must also approve newly requested permissions.`
+      ? `The GitHub connection lacks permissions to access ${name} secrets for ${target}. Grant read and write access to ${name} secrets on the GitHub App or fine-grained token, or use the '${classicScope}' scope for OAuth and classic tokens. An owner of a GitHub App installation must also approve newly requested permissions.`
       : `GitHub could not find the ${name} secrets for ${target}. Check that ${missing} and that the GitHub connection has the permissions to access it.`;
 
   return new SecretSyncError({ error, message, shouldRetry: false });

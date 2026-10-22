@@ -288,8 +288,9 @@ describe("GitHub permission errors", () => {
     expect(error).toBeInstanceOf(SecretSyncError);
     expect(error).toMatchObject({ shouldRetry: false });
     expect((error as SecretSyncError).message).toContain(
-      "lacks the 'Dependabot secrets' repository permission for repository 'acme/app'"
+      "lacks permissions to access Dependabot secrets for repository 'acme/app'"
     );
+    expect((error as SecretSyncError).message).toContain("read and write access to Dependabot secrets");
     expect((error as SecretSyncError).message).toContain("'repo' scope");
   });
 
@@ -301,12 +302,12 @@ describe("GitHub permission errors", () => {
     ).rejects.toMatchObject({
       shouldRetry: false,
       message: expect.stringMatching(
-        /lacks the 'Organization codespaces secrets' organization permission for organization 'acme'.*'admin:org' scope/
+        /lacks permissions to access Codespaces secrets for organization 'acme'.*'admin:org' scope/
       )
     });
   });
 
-  it("names both permissions an Actions environment sync needs", async () => {
+  it("names the Actions secret type for an environment sync", async () => {
     paginatedMock.mockRejectedValueOnce(httpError(403));
     const environmentConfig = {
       scope: GitHubSyncScope.RepositoryEnvironment,
@@ -319,7 +320,7 @@ describe("GitHub permission errors", () => {
     await expect(runSync(makeSync(environmentConfig), makePayload(["A"]))).rejects.toMatchObject({
       shouldRetry: false,
       message: expect.stringContaining(
-        "lacks the 'Secrets' and 'Environments' repository permissions for environment 'prod' in repository 'acme/app'"
+        "lacks permissions to access Actions secrets for environment 'prod' in repository 'acme/app'"
       )
     });
   });
@@ -348,7 +349,7 @@ describe("GitHub permission errors", () => {
     ).rejects.toMatchObject({
       shouldRetry: false,
       secretKey: undefined,
-      message: expect.stringContaining("'Codespaces secrets' repository permission")
+      message: expect.stringContaining("read and write access to Codespaces secrets")
     });
   });
 
