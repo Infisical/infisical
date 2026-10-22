@@ -3,7 +3,10 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
-import { useIsInsideOverlayLayer, useOverlayPopupRegistration } from "../../utils/overlay-layer";
+import {
+  useIsInsideModalOverlayLayer,
+  useOverlayPopupRegistration
+} from "../../utils/overlay-layer";
 import { useScrollEdges } from "../../utils/useScrollEdges";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../Dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../Sheet";
@@ -925,12 +928,12 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onKeyDown,
     ...inputProps
   } = props;
-  const isInsideOverlayLayer = useIsInsideOverlayLayer();
+  const isInsideModalOverlayLayer = useIsInsideModalOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
-  const modal = modalProp ?? isInsideOverlayLayer;
+  const modal = modalProp ?? isInsideModalOverlayLayer;
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
@@ -1325,7 +1328,7 @@ const MultipleCombobox = <TOption,>({
   onKeyDown,
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
-  const isInsideOverlayLayer = useIsInsideOverlayLayer();
+  const isInsideModalOverlayLayer = useIsInsideModalOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
@@ -1333,7 +1336,7 @@ const MultipleCombobox = <TOption,>({
     singleLine ? "horizontal" : "vertical"
   );
   const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
-  const modal = modalProp ?? isInsideOverlayLayer;
+  const modal = modalProp ?? isInsideModalOverlayLayer;
   const openRef = React.useRef(open);
   openRef.current = open;
   const [search, setSearch] = React.useState("");

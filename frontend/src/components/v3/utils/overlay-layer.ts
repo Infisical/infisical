@@ -1,6 +1,7 @@
 import * as React from "react";
 
 type OverlayLayerContextValue = {
+  isModal: boolean;
   isPending: boolean;
   registerPopup: (
     id: string,
@@ -21,8 +22,9 @@ const registerMenuItemFocusReturn = (item: Element, trigger: HTMLElement | null)
 const getOriginalEvent = (event: Event) =>
   (event as CustomEvent<{ originalEvent?: Event } | undefined>).detail?.originalEvent ?? event;
 
-const useOverlayLayer = (isPending: boolean) => {
+const useOverlayLayer = (isPending: boolean, isModal = true) => {
   const parentLayer = React.useContext(OverlayLayerContext);
+  const isModalLayer = isModal || Boolean(parentLayer?.isModal);
   const parentRegisterPopup = parentLayer?.registerPopup;
   const parentMarkPopupDismissEvent = parentLayer?.markPopupDismissEvent;
   const openPopups = React.useRef(new Map<string, ((event: KeyboardEvent) => void) | undefined>());
@@ -58,8 +60,8 @@ const useOverlayLayer = (isPending: boolean) => {
   );
 
   const contextValue = React.useMemo(
-    () => ({ isPending, registerPopup, markPopupDismissEvent }),
-    [isPending, registerPopup, markPopupDismissEvent]
+    () => ({ isModal: isModalLayer, isPending, registerPopup, markPopupDismissEvent }),
+    [isModalLayer, isPending, registerPopup, markPopupDismissEvent]
   );
 
   const guardDismiss = <TEvent extends Event>(event: TEvent, handler?: (event: TEvent) => void) => {
@@ -106,7 +108,7 @@ const useOverlayLayer = (isPending: boolean) => {
   return { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn };
 };
 
-const useIsInsideOverlayLayer = () => React.useContext(OverlayLayerContext) !== null;
+const useIsInsideModalOverlayLayer = () => Boolean(React.useContext(OverlayLayerContext)?.isModal);
 
 const useOverlayIsPending = () => Boolean(React.useContext(OverlayLayerContext)?.isPending);
 
@@ -142,7 +144,7 @@ const useOverlayPopupRegistration = (
 export {
   OverlayLayerContext,
   registerMenuItemFocusReturn,
-  useIsInsideOverlayLayer,
+  useIsInsideModalOverlayLayer,
   useOverlayIsPending,
   useOverlayLayer,
   useOverlayPopupRegistration
