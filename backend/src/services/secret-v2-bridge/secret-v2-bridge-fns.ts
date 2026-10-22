@@ -1424,13 +1424,14 @@ export const createFetchFolderSecretsWithImports = ({
   const recursiveFetch = async (
     folderId: string,
     userIdArg: string | undefined,
-    visitedFolderIds: Set<string>
+    visitedFolderIds: Set<string>,
+    tx?: Knex
   ): Promise<SecretRow[]> => {
     if (visitedFolderIds.has(folderId)) return [];
     visitedFolderIds.add(folderId);
 
-    const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg });
-    const rawImports = (await secretImportDAL.findByFolderIds([folderId])) as ImportRow[];
+    const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg, tx });
+    const rawImports = (await secretImportDAL.findByFolderIds([folderId], tx)) as ImportRow[];
     if (!rawImports.length) return directSecrets;
 
     const reservedIds: string[] = [];
@@ -1442,7 +1443,7 @@ export const createFetchFolderSecretsWithImports = ({
     }
     let activeImports: ImportRow[] = rawImports;
     if (reservedIds.length) {
-      const referenced = (await secretImportDAL.findByIds(reservedIds)) as ImportRow[];
+      const referenced = (await secretImportDAL.findByIds(reservedIds, tx)) as ImportRow[];
       const detailMap = new Map(referenced.map((r) => [r.id, { importPath: r.importPath, importEnv: r.importEnv }]));
       activeImports = rawImports.map((imp) => {
         if (!imp.isReserved) return imp;
@@ -1454,17 +1455,18 @@ export const createFetchFolderSecretsWithImports = ({
     }
 
     const importedFolders = await Promise.all(
-      activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath))
+      activeImports.map((i) => folderDAL.findBySecretPath(projectId, i.importEnv.slug, i.importPath, tx))
     );
     const importedSecretArrays = await Promise.all(
-      importedFolders.filter(Boolean).map((f) => recursiveFetch(f!.id, userIdArg, visitedFolderIds))
+      importedFolders.filter(Boolean).map((f) => recursiveFetch(f!.id, userIdArg, visitedFolderIds, tx))
     );
     const importedMerged = new Map<string, SecretRow>(importedSecretArrays.flat().map((s) => [s.key, s]));
     directSecrets.forEach((s) => importedMerged.set(s.key, s));
     return [...importedMerged.values()];
   };
 
-  return (args: { folderId: string; userId?: string }) => recursiveFetch(args.folderId, args.userId, new Set());
+  return (args: { folderId: string; userId?: string; tx?: Knex }) =>
+    recursiveFetch(args.folderId, args.userId, new Set(), args.tx);
 };
 
 type TCreateRelativeImportExpanderArg = {
