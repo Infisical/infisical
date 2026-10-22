@@ -58,7 +58,7 @@ type TAutoApprovalServiceFactoryDep = {
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
 };
 
 export type TAutoApprovalServiceFactory = ReturnType<typeof autoApprovalServiceFactory>;

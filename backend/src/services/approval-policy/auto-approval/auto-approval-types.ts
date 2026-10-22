@@ -15,7 +15,7 @@ export type TAutoApprovalOption = { value: string; label: string };
 
 export type TAutoApprovalProviderDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
 };
 
 // Infisical runs this check itself, against its own approved requests, on every record a requester links

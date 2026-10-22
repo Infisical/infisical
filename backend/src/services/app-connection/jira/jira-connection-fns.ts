@@ -25,7 +25,7 @@ const JIRA_MAX_ERROR_DETAIL_LENGTH = 300;
 
 export type TJiraGatewayDeps = {
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
 };
 
 export type TJiraRequestConfig = DiscriminativePick<
@@ -88,16 +88,6 @@ export const jiraRequest = async <T>(
     });
   }
 
-  const gatewayId =
-    gatewayPoolId && gatewayPoolService
-      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
-      : directGatewayId;
-
-  // a pinned gateway must never fall through to the direct request below
-  if (gatewayId && !gatewayV2Service) {
-    throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
-  }
-
   const url = new URL(`${removeTrailingSlash(config.credentials.instanceUrl)}${path}`);
   const headers = { Authorization: getJiraAuthorizationHeader(config), Accept: "application/json", ...extraHeaders };
   const { ca, rejectUnauthorized } = getJiraTlsOptions(config);
@@ -109,62 +99,77 @@ export const jiraRequest = async <T>(
     maxContentLength: JIRA_MAX_RESPONSE_BYTES
   };
 
-  if (!gatewayId || !gatewayV2Service) {
-    const { data } = await safeRequest.request<T>({
-      ...baseRequestConfig,
-      url: url.toString(),
-      headers,
-      ca,
-      rejectUnauthorized
+  const requestThroughGateway = async (gatewayId: string) => {
+    // a pinned gateway must never fall through to the direct request below
+    if (!gatewayV2Service) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
+    }
+
+    const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
+    const isHttps = url.protocol === "https:";
+    const targetPort = url.port ? Number(url.port) : (isHttps && 443) || 80;
+
+    const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost,
+      targetPort
     });
 
-    return data;
+    if (!platformConnectionDetails) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
+    }
+
+    const outcome = await withGatewayV2Proxy<{ data: T } | { error: AxiosError }>(
+      async (proxyPort) => {
+        const proxiedUrl = new URL(url.toString());
+        proxiedUrl.host = `localhost:${proxyPort}`;
+
+        try {
+          const { data } = await request.request<T>({
+            ...baseRequestConfig,
+            url: proxiedUrl.toString(),
+            headers: { ...headers, Host: url.host },
+            maxRedirects: 0,
+            ...(isHttps && {
+              httpsAgent: getSharedHttpsAgent({ servername: targetHost, ca, rejectUnauthorized })
+            })
+          });
+          return { data };
+        } catch (error) {
+          // The proxy reduces a thrown error to its message, so Jira's own responses are passed out whole
+          if (isAxiosError(error) && error.response) return { error };
+          throw error;
+        }
+      },
+      {
+        protocol: GatewayProxyProtocol.Tcp,
+        ...platformConnectionDetails
+      }
+    );
+
+    if ("error" in outcome) throw outcome.error;
+    return outcome.data;
+  };
+
+  if (gatewayPoolId && gatewayPoolService) {
+    const { result } = await gatewayPoolService.runWithPoolFailover(
+      { poolId: gatewayPoolId, gatewayId: directGatewayId },
+      requestThroughGateway
+    );
+    return result;
   }
 
-  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
-  const isHttps = url.protocol === "https:";
-  const targetPort = url.port ? Number(url.port) : (isHttps && 443) || 80;
+  if (directGatewayId) return requestThroughGateway(directGatewayId);
 
-  const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-    gatewayId,
-    targetHost,
-    targetPort
+  const { data } = await safeRequest.request<T>({
+    ...baseRequestConfig,
+    url: url.toString(),
+    headers,
+    ca,
+    rejectUnauthorized
   });
 
-  if (!platformConnectionDetails) {
-    throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
-  }
-
-  const outcome = await withGatewayV2Proxy<{ data: T } | { error: AxiosError }>(
-    async (proxyPort) => {
-      const proxiedUrl = new URL(url.toString());
-      proxiedUrl.host = `localhost:${proxyPort}`;
-
-      try {
-        const { data } = await request.request<T>({
-          ...baseRequestConfig,
-          url: proxiedUrl.toString(),
-          headers: { ...headers, Host: url.host },
-          maxRedirects: 0,
-          ...(isHttps && {
-            httpsAgent: getSharedHttpsAgent({ servername: targetHost, ca, rejectUnauthorized })
-          })
-        });
-        return { data };
-      } catch (error) {
-        // The proxy reduces a thrown error to its message, so Jira's own responses are passed out whole
-        if (isAxiosError(error) && error.response) return { error };
-        throw error;
-      }
-    },
-    {
-      protocol: GatewayProxyProtocol.Tcp,
-      ...platformConnectionDetails
-    }
-  );
-
-  if ("error" in outcome) throw outcome.error;
-  return outcome.data;
+  return data;
 };
 
 export const isJiraNotFoundError = (error: unknown) => isAxiosError(error) && error.response?.status === 404;
