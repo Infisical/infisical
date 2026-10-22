@@ -116,6 +116,14 @@ export const validateTargetConfig = (
   }
 
   if (hasIpRanges) {
+    const invalidRange = ipRanges.find((r) => net.isIP(r.split("/")[0]) === 0);
+    if (invalidRange) {
+      return {
+        valid: false,
+        error: `'${invalidRange}' is not a valid IP address or CIDR range. Add hostnames as domains instead.`
+      };
+    }
+
     const cidrRanges = ipRanges.filter((r) => r.includes("/"));
     const singleIps = ipRanges.filter((r) => !r.includes("/"));
 
@@ -632,6 +640,12 @@ export const resolveTargets = async (
 
   if (targetConfig.ipRanges) {
     for (const range of targetConfig.ipRanges) {
+      // expandCIDR passes a hostname through unchanged, and the TLS connect would resolve it from inside our network.
+      if (blockPrivate && net.isIP(range.split("/")[0]) === 0) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       const expandedIps = expandCIDR(range);
       const ips = blockPrivate ? expandedIps.filter((ip) => !isPrivateIp(ip)) : expandedIps;
 
