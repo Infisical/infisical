@@ -2092,7 +2092,8 @@ const OverviewPageContent = () => {
     tags: updatedTags,
     secretMetadata: updatedMetadata,
     skipMultilineEncoding: updatedSkipMultilineEncoding,
-    originalValue: providedOriginalValue
+    originalValue: providedOriginalValue,
+    onUpdateResult
   }: {
     env: string;
     key: string;
@@ -2106,6 +2107,7 @@ const OverviewPageContent = () => {
     secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     skipMultilineEncoding?: boolean | null;
     originalValue?: string;
+    onUpdateResult?: (requiresApproval: boolean) => void;
   }) => {
     if (isBatchModeActive && type !== SecretType.Personal) {
       const existingSecret = getSecretByKey(env, key);
@@ -2216,6 +2218,11 @@ const OverviewPageContent = () => {
           skipMultilineEncoding: updatedSkipMultilineEncoding
         })
     );
+
+    if (onUpdateResult) {
+      onUpdateResult("approval" in result);
+      return;
+    }
 
     if ("approval" in result) {
       createNotification({
