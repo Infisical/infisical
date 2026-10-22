@@ -190,7 +190,7 @@ Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI a
     { name: "--log-file", value: "<string>", type: "string", description: "A file to also write logs to, as JSON lines. The file is appended to." },
     { name: "--log-format", value: "<string>", type: "string", default: "console", description: "The format of the logs written to stderr: `console` or `json`." },
     { name: "--port", value: "<int>", type: "int", default: "17323", description: "The port to listen on, on all interfaces. `0` picks any free port, which the startup line reports. Can also be set with `INFISICAL_AGENT_VAULT_PORT`." },
-    { name: "--proxy-token", value: "<string>", type: "string", description: "The token the proxy starts from, shown when the proxy was created or its token was rotated. Can also be set with `INFISICAL_AGENT_VAULT_PROXY_TOKEN`, which keeps it off the command line." },
+    { name: "--proxy-token", value: "<string>", type: "string", description: "The proxy token, which Infisical shows once when you create the proxy or rotate its token. Can also be set with `INFISICAL_AGENT_VAULT_PROXY_TOKEN`, which keeps it off the command line." },
   ]}
   examples={[
     { title: "Start a proxy", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy" },
@@ -201,7 +201,7 @@ Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI a
 
 Run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in the foreground. For each request, the proxy decides whether the agent's session allows the host and attaches the real credential on the way out, so the agent never holds a secret.
 
-Start the proxy with its proxy token. You can start the proxy on as many machines as you need from the same token. Each time the proxy starts, it loads its settings and certificate authority from Infisical. If it can't reach Infisical, it retries for 60 seconds, then starts from the cache in `--data-dir` if there is one, or exits.
+Start the proxy with its proxy token. You can run the proxy on as many machines as you need with the same token. Each time the proxy starts, it loads its settings and certificate authority from Infisical. If it can't reach Infisical, it retries for 60 seconds, then starts from the cache in `--data-dir` if there is one, or exits.
 
 You set the proxy's traffic policy, exceptions, and poll interval in Infisical, not with flags.
 

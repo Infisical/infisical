@@ -186,7 +186,7 @@ The gateway runs all the time, so run the proxy as a service that starts again w
     `enable` starts the proxy every time the machine boots, and `--now` also starts it right away.
   </Tab>
   <Tab title="Docker">
-    In the Docker command from the dialog, add `--restart unless-stopped` after `docker run -d` and add `-v agent-vault-proxy:/etc/infisical/agent-vault`, then run the command. For example:
+    Run the following command, replacing `<proxy-token>` with the proxy token and `<your-instance-url>` with your Infisical instance URL:
 
     ```bash
     docker run -d --restart unless-stopped --name agent-vault-proxy \
