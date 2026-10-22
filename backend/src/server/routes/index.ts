@@ -2814,7 +2814,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     usageMeteringService,
     alertService,
-    identityAccessTokenService
+    identityAccessTokenService,
+    eventEmitter: eventOutboxService
   });
 
   const identityV2Service = identityV2ServiceFactory({

@@ -894,7 +894,8 @@ itself whether the actor still reaches the org.
   - `group`: `groupId`, `orgIds`, all `members`. From owned and SCIM group deletes, read with
     `groupDAL.findGroupActorsAndOrgs` before the cascade.
   - `membership`: `orgId` + actor. From `deleteOrgMembershipsFn` (users), the org branch of
-    `membershipIdentityService.deleteMembership` (identities) and the sweep.
+    `membershipIdentityService.deleteMembership` and the invited-identity branch of `identityService.deleteIdentity`
+    (identities), and the sweep.
 
   Group events snapshot orgs and members at removal time, since a later removal can wipe those rows before
   the consumer runs. The org list always comes from `groupDAL.findGroupOrgIds` (the owning org plus every
@@ -908,11 +909,13 @@ itself whether the actor still reaches the org.
   live PAM sessions, across every project in the given orgs since those can exist in group-only projects.
   It runs in the caller's tx and hands back the PAM cancellation sender for after commit. Don't add another
   copy of that list.
-- **Removing a user from an org tears down synchronously, an identity doesn't.** `deleteOrgMembershipsFn`
+- **Removing a user from an org tears down synchronously; for an identity it depends on the path.** `deleteOrgMembershipsFn`
   (org member removal, bulk removal, SCIM deprovision) drops the user's org rows in the sub-orgs, their
   groups there and calls `revokeActorsInOrgs` for the org plus its sub-orgs in the same tx; its event only
-  lets the consumer confirm nothing's left. Identity removal just writes the revocation marker and emits, so
-  the consumer does all the project cleanup.
+  lets the consumer confirm nothing's left. `membershipIdentityService.deleteMembership` just writes the
+  revocation marker and emits, so the consumer does all the project cleanup there. `identityService.deleteIdentity`
+  (the UI's "Remove From Sub-Organization") deletes the identity's rows in the org itself and emits anyway, like
+  `deleteOrgMembershipsFn`.
 - **The consumer (`org-access-reconcile`) rechecks against current state.** Orgs and actors come from the
   payload for group events, and from the org plus its sub-orgs for a membership removal. Per org it works in
   batches of 10 actors, each its own tx with `SET LOCAL statement_timeout` (30s) that locks the actors,
