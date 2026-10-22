@@ -336,19 +336,22 @@ export const CreateSecretForm = ({
     const isPendingContextTargeted =
       currentContext?.secretPath === secretPath &&
       selectedEnv.some((env) => env.slug === currentContext?.environment);
-    const reservedByPendingRename = new Set(
-      (isPendingContextTargeted ? storedPendingChanges.secrets : []).flatMap((change) =>
-        change.type === PendingAction.Update && change.newSecretName ? [change.newSecretName] : []
-      )
+    const reservedByPendingChange = new Set(
+      (isPendingContextTargeted ? storedPendingChanges.secrets : []).flatMap((change) => {
+        if (change.type === PendingAction.Create) return [change.secretKey];
+        return change.type === PendingAction.Update && change.newSecretName
+          ? [change.newSecretName]
+          : [];
+      })
     );
     const conflictingKeys = secrets
       .map((secret) => secret.key)
-      .filter((key) => reservedByPendingRename.has(key));
+      .filter((key) => reservedByPendingChange.has(key));
     if (conflictingKeys.length) {
       attempt.flow({ ...flow, phase: "failed" });
       createNotification({
         type: "error",
-        text: `A pending rename already uses ${conflictingKeys.map((key) => `"${key}"`).join(", ")}. Save or discard that change first.`
+        text: `A pending change already uses ${conflictingKeys.map((key) => `"${key}"`).join(", ")}. Save or discard that change first.`
       });
       return;
     }

@@ -569,7 +569,7 @@ export const useCreateCommit = () => {
             secretValue: change.secretValue,
             secretComment: change.secretComment,
             skipMultilineEncoding: change.skipMultilineEncoding ?? undefined,
-            tagIds: change.tags?.map((tag) => tag.id),
+            tagIds: (change.tags ?? change.originalTags)?.map((tag) => tag.id),
             secretMetadata: change.secretMetadata
           })),
           delete: secretDeletes.map((change) => ({ secretKey: change.secretKey }))
