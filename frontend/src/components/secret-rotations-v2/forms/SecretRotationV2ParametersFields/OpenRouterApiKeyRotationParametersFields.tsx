@@ -76,6 +76,7 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
               placeholder="Select a workspace..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              getOptionKeywords={(option) => [option.id]}
               isError={Boolean(error)}
             />
             {(isUpdate || error?.message) && (

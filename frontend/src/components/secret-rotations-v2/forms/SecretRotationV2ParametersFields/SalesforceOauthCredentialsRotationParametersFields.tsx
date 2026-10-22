@@ -55,6 +55,7 @@ export const SalesforceOauthCredentialsRotationParametersFields = () => {
             placeholder="Select an external client app..."
             getOptionLabel={(option) => option.developerName}
             getOptionValue={(option) => option.identifier}
+            getOptionKeywords={(option) => [option.identifier]}
             isError={Boolean(error)}
             aria-describedby="salesforce-external-client-app-feedback"
           />

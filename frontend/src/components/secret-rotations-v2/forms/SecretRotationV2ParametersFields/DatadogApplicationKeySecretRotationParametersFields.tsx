@@ -41,6 +41,7 @@ export const DatadogApplicationKeySecretRotationParametersFields = () => {
             placeholder="Select a service account..."
             getOptionLabel={(option) => option.name}
             getOptionValue={(option) => option.id}
+            getOptionKeywords={(option) => [option.id]}
             isError={Boolean(error)}
           />
           <FieldError>{error?.message}</FieldError>

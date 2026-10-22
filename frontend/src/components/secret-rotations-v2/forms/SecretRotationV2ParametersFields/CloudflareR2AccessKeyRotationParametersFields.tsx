@@ -124,6 +124,7 @@ export const CloudflareR2AccessKeyRotationParametersFields = () => {
                 renderValue={formatBucketOptionLabel}
                 getOptionLabel={getBucketSearchLabel}
                 getOptionValue={r2BucketKey}
+                getOptionKeywords={(option) => [r2BucketKey(option)]}
                 // the form field holds the option shape itself, and Combobox matches selections by
                 // `getOptionValue`, so the stored value can be handed back as-is
                 value={value ?? []}

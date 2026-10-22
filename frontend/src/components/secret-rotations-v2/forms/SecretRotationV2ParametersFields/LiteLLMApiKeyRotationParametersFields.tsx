@@ -255,6 +255,7 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
                 placeholder="Select models..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 isError={Boolean(error)}
               />
               <FieldError>{error?.message}</FieldError>

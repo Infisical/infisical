@@ -43,6 +43,7 @@ export const OktaClientSecretRotationParametersFields = () => {
             placeholder="Select an application..."
             getOptionLabel={(option) => option.label}
             getOptionValue={(option) => option.id}
+            getOptionKeywords={(option) => [option.id]}
             isError={Boolean(error)}
           />
           <FieldError>{error?.message}</FieldError>

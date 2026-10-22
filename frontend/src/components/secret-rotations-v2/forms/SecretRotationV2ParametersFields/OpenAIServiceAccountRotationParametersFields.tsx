@@ -48,6 +48,7 @@ export const OpenAIServiceAccountRotationParametersFields = () => {
               placeholder="Select a project..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              getOptionKeywords={(option) => [option.id]}
               isError={Boolean(error)}
             />
             <FieldError>{error?.message}</FieldError>

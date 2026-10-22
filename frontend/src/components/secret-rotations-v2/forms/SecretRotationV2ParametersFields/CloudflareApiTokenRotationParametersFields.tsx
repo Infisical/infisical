@@ -251,6 +251,7 @@ export const CloudflareApiTokenRotationParametersFields = () => {
                               placeholder="Select zones..."
                               getOptionLabel={(option) => option.name}
                               getOptionValue={(option) => option.id}
+                              getOptionKeywords={(option) => [option.id]}
                               value={zones?.filter((zone) => (value ?? []).includes(zone.id)) ?? []}
                               onBlur={onBlur}
                               onValueChange={(option) => onChange(option.map((zone) => zone.id))}
@@ -277,6 +278,7 @@ export const CloudflareApiTokenRotationParametersFields = () => {
                             placeholder="Select a permission group..."
                             getOptionLabel={(option) => option.name}
                             getOptionValue={(option) => option.id}
+                            getOptionKeywords={(option) => [option.id]}
                             value={
                               permissionGroupOptions.find((group) => group.id === value) ?? null
                             }

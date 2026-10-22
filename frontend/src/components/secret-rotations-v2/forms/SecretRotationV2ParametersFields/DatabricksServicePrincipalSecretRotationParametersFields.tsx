@@ -53,6 +53,7 @@ export const DatabricksServicePrincipalSecretRotationParametersFields = () => {
             placeholder="Select a service principal..."
             getOptionLabel={(option) => option.name}
             getOptionValue={(option) => option.id}
+            getOptionKeywords={(option) => [option.id]}
             isError={Boolean(error)}
             aria-describedby="databricks-service-principal-feedback"
           />

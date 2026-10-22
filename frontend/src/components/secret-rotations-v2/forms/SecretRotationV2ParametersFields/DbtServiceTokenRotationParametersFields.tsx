@@ -147,6 +147,9 @@ export const DbtServiceTokenRotationParametersFields = () => {
                       getOptionValue={(option) =>
                         typeof option.id === "undefined" ? "" : option.id.toString()
                       }
+                      getOptionKeywords={(option) =>
+                        typeof option.id === "undefined" ? [] : [option.id.toString()]
+                      }
                       value={selectableProjects.find((p) => p.id === value) ?? null}
                       onBlur={onBlur}
                       onValueChange={(option) =>
