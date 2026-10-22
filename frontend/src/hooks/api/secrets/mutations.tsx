@@ -546,7 +546,7 @@ export const useCreateCommit = () => {
         else secretDeletes.push(change);
       });
 
-      const { data } = await apiRequest.post<TCreateCommitResponse>("/api/v4/commits", {
+      const { data } = await apiRequest.post<TCreateCommitResponse>("/api/v2/pit/batch/commit", {
         projectId,
         environment,
         secretPath,
