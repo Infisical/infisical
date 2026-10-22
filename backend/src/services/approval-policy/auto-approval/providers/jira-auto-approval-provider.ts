@@ -38,6 +38,8 @@ export enum JiraTicketConstraint {
 }
 
 export type TJiraTicketFacts = {
+  // Stays the same when the ticket moves to another project and gets a new key
+  issueId: string | null;
   key: string;
   status: string | null;
   projectKey: string | null;
@@ -212,6 +214,7 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
         ]);
 
         return {
+          issueId: issue.id || null,
           key,
           status: issue.fields?.status?.name ?? null,
           projectKey: issue.fields?.project?.key ?? null,
@@ -221,6 +224,7 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
           approval
         };
       },
+      getStableId: (facts: TJiraTicketFacts) => facts.issueId,
       constraints: {
         [JiraTicketConstraint.AssignedToRequester]: {
           label: "is assigned to the requester",

@@ -65,6 +65,8 @@ export type TAutoApprovalSubject<TConn, TFacts> = {
     deps: TAutoApprovalProviderDeps
   ) => Promise<TFacts>;
   constraints: Record<string, TAutoApprovalConstraint<TConn, TFacts>>;
+  // An ID that survives renames and moves, so linking the same record under another name still counts as reuse
+  getStableId?: (facts: TFacts) => string | null;
 };
 
 export type TAutoApprovalProvider<TConn = unknown> = {
@@ -120,7 +122,7 @@ export type TAutoApprovalEvidence = {
   version: 1;
   evaluatedAt: string;
   approvedByRuleId: string | null;
-  inputs: TParsedAutoApprovalInput[];
+  inputs: (TParsedAutoApprovalInput & { stableId: string })[];
   subjects: {
     connectionId: string;
     subject: string;

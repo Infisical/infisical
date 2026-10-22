@@ -32,6 +32,7 @@ const ctx: TAutoApprovalContext = {
 };
 
 const facts = (overrides: Partial<TJiraTicketFacts> = {}): TJiraTicketFacts => ({
+  issueId: "10001",
   key: "PAY-123",
   status: "Approved",
   projectKey: "PAY",
@@ -207,6 +208,13 @@ describe("resolving a Jira ticket", () => {
       "PAY-123 isn't assigned to the requester"
     );
     expect((await assigneeOf(null))?.reason).toBe("PAY-123 isn't assigned to anyone");
+  });
+
+  test("identifies a ticket by Jira's issue id, which survives a move to another key", async () => {
+    vi.mocked(getJiraIssue).mockResolvedValue({ ...issue(), key: "OPS-9" });
+    const { getStableId } = JIRA_AUTO_APPROVAL_PROVIDER.subjects[JIRA_SUBMITTED_TICKET_SUBJECT];
+
+    expect(getStableId?.(await resolveTicket([]))).toBe("10001");
   });
 
   test("only reads approvals when a rule checks them", async () => {

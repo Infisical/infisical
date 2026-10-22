@@ -90,9 +90,7 @@ import { TAutoApprovalServiceFactory } from "./auto-approval/auto-approval-servi
 import {
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   TAutoApprovalConfig,
-  TAutoApprovalEvidence,
-  TParsedAutoApprovalInput,
-  TStoredAutoApproval
+  TAutoApprovalEvidence
 } from "./auto-approval/auto-approval-types";
 
 type TApprovalPolicyServiceFactoryDep = {
@@ -1120,35 +1118,6 @@ export const approvalPolicyServiceFactory = ({
   };
 
   // Inputs a rule requires to be unused whose record an earlier approved request on this policy already linked
-  const $findUsedInputIds = async (
-    policyId: string,
-    stored: TStoredAutoApproval,
-    parsedInputs: TParsedAutoApprovalInput[]
-  ) => {
-    const checkedInputIds = new Set(
-      stored.rules.flatMap((rule) =>
-        rule.conditions
-          .filter((condition) => condition.constraint === AUTO_APPROVAL_UNUSED_CONSTRAINT && condition.inputId)
-          .map((condition) => condition.inputId as string)
-      )
-    );
-    const used = await Promise.all(
-      parsedInputs
-        .filter((input) => checkedInputIds.has(input.inputId))
-        .map(async (input) =>
-          (await approvalRequestDAL.hasApprovedRequestLinkingRecord({
-            policyId,
-            connectionId: input.connectionId,
-            subject: input.subject,
-            recordId: input.id
-          }))
-            ? input.inputId
-            : null
-        )
-    );
-    return new Set(used.filter((inputId): inputId is string => Boolean(inputId)));
-  };
-
   // Two requests can pass the reuse check at once, so the approving one locks and rechecks its records
   const $claimUnusedRecords = async (policyId: string, evidence: TAutoApprovalEvidence, tx: Knex) => {
     const rule = evidence.rules.find((candidate) => candidate.id === evidence.approvedByRuleId);
@@ -1162,13 +1131,15 @@ export const approvalPolicyServiceFactory = ({
     );
     if (!claimed.length) return;
 
-    const keys = claimed.map((input) => `auto-approval:${policyId}:${input.connectionId}:${input.subject}:${input.id}`);
+    const keys = claimed.map(
+      (input) => `auto-approval:${policyId}:${input.connectionId}:${input.subject}:${input.stableId}`
+    );
     await tx.raw("SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest(?::text[]) AS key ORDER BY key", [keys]);
 
     const used = await Promise.all(
       claimed.map(async (input) =>
         (await approvalRequestDAL.hasApprovedRequestLinkingRecord(
-          { policyId, connectionId: input.connectionId, subject: input.subject, recordId: input.id },
+          { policyId, connectionId: input.connectionId, subject: input.subject, stableId: input.stableId },
           tx
         ))
           ? input
@@ -1363,7 +1334,8 @@ export const approvalPolicyServiceFactory = ({
         autoApprovalEvidence = await autoApprovalService.evaluate({
           stored: storedAutoApproval,
           parsedInputs,
-          usedInputIds: await $findUsedInputIds(policy.id, storedAutoApproval, parsedInputs),
+          isRecordUsed: (record) =>
+            approvalRequestDAL.hasApprovedRequestLinkingRecord({ policyId: policy.id, ...record }),
           orgId: actor.orgId,
           projectId,
           ctx: { requester: { email: requesterEmail || null } }

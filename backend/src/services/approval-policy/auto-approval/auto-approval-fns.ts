@@ -24,6 +24,7 @@ export type TResolvedAutoApprovalSubject = {
   facts: unknown;
   error: string | null;
   recordId?: string | null;
+  stableId?: string | null;
   previouslyUsed?: boolean;
 };
 

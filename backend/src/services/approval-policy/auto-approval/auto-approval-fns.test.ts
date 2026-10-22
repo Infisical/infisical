@@ -153,7 +153,8 @@ describe("toAutoApprovalOutcome", () => {
         label: "Jira ticket",
         value: "https://acme.atlassian.net/browse/PAY-123",
         id: "PAY-123",
-        url: "https://acme.atlassian.net/browse/PAY-123"
+        url: "https://acme.atlassian.net/browse/PAY-123",
+        stableId: "10001"
       }
     ],
     subjects: [

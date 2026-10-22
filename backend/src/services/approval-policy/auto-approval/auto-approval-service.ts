@@ -325,15 +325,15 @@ export const autoApprovalServiceFactory = ({
   const evaluate = async ({
     stored,
     parsedInputs,
-    usedInputIds,
+    isRecordUsed,
     orgId,
     projectId,
     ctx
   }: {
     stored: TStoredAutoApproval;
     parsedInputs: TParsedAutoApprovalInput[];
-    // Inputs whose linked record an earlier approved request on the policy already used
-    usedInputIds: Set<string>;
+    // Whether an earlier approved request on the policy already linked this record
+    isRecordUsed: (record: { connectionId: string; subject: string; stableId: string }) => Promise<boolean>;
     orgId: string;
     projectId: string;
     ctx: TAutoApprovalContext;
@@ -407,8 +407,9 @@ export const autoApprovalServiceFactory = ({
             ];
           }
 
+          let facts: unknown;
           try {
-            const facts: unknown = await withTimeout(
+            facts = await withTimeout(
               (signal) =>
                 definition.resolve(connection, parsedInput?.id ?? null, ctx, [...target.constraintIds], {
                   ...providerDeps,
@@ -417,18 +418,6 @@ export const autoApprovalServiceFactory = ({
               RESOLVE_TIMEOUT_MS,
               `${getAppName(connection.app)} didn't respond in time`
             );
-            return [
-              key,
-              {
-                ...target,
-                label,
-                definition,
-                facts,
-                error: null,
-                recordId: parsedInput?.id ?? null,
-                previouslyUsed: Boolean(target.inputId && usedInputIds.has(target.inputId))
-              }
-            ];
           } catch (error) {
             if (!(error instanceof BadRequestError)) {
               logger.error(error, `Auto-approval subject resolution failed [connectionId=${target.connectionId}]`);
@@ -444,18 +433,41 @@ export const autoApprovalServiceFactory = ({
               }
             ];
           }
+
+          const stableId = parsedInput ? (definition.getStableId?.(facts) ?? parsedInput.id) : null;
+          const previouslyUsed = Boolean(
+            stableId &&
+              target.constraintIds.has(AUTO_APPROVAL_UNUSED_CONSTRAINT) &&
+              (await isRecordUsed({ connectionId: target.connectionId, subject: target.subject, stableId }))
+          );
+          return [
+            key,
+            {
+              ...target,
+              label,
+              definition,
+              facts,
+              error: null,
+              recordId: parsedInput?.id ?? null,
+              stableId,
+              previouslyUsed
+            }
+          ];
         }
       )
     );
 
     const resolved = new Map(resolvedEntries);
+    const stableIdByInputId = new Map(
+      [...resolved.values()].flatMap(({ inputId, stableId }) => (inputId && stableId ? [[inputId, stableId]] : []))
+    );
     const { rules, approvedByRuleId } = evaluateAutoApprovalRules(stored.rules, resolved, ctx);
 
     return {
       version: 1,
       evaluatedAt: new Date().toISOString(),
       approvedByRuleId,
-      inputs: parsedInputs,
+      inputs: parsedInputs.map((input) => ({ ...input, stableId: stableIdByInputId.get(input.inputId) ?? input.id })),
       subjects: [...resolved.values()].map(({ connectionId, subject, inputId, facts, error }) => ({
         connectionId,
         subject,
