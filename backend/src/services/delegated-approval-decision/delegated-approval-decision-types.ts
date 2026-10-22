@@ -1,5 +1,6 @@
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { DelegatedApprovalSupportedPolicyType } from "@app/services/delegated-approval/delegated-approval-maps";
@@ -51,6 +52,7 @@ export type TDelegatedApprovalDecisionServiceFactoryDep = {
     "findById" | "primaryNode" | "updateWithDetails"
   >;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "findByIdForUpdate" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -63,6 +65,8 @@ export type TDelegatedApprovalDecisionContext = {
   delegatedRequestId: string;
   providerRequestId: string;
   providerRecordNumber?: string;
+  policyName?: string;
+  permissions?: string[];
   approvalRequest: { id: string; organizationId: string; projectId: string; policyId?: string | null };
   delegatedApprovalType: string;
 };

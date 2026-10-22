@@ -3298,6 +3298,7 @@ export const registerRoutes = async (
   const delegatedApprovalDecisionService = delegatedApprovalDecisionServiceFactory({
     delegatedApprovalRequestDAL,
     delegatedApprovalPolicyDAL,
+    approvalPolicyDAL,
     approvalRequestDAL,
     appConnectionDAL,
     kmsService,

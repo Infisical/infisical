@@ -53,6 +53,7 @@ export type TDelegatedApprovalDecisionServiceFactory = ReturnType<typeof delegat
 export const delegatedApprovalDecisionServiceFactory = ({
   delegatedApprovalRequestDAL,
   delegatedApprovalPolicyDAL,
+  approvalPolicyDAL,
   approvalRequestDAL,
   appConnectionDAL,
   kmsService,
@@ -74,9 +75,11 @@ export const delegatedApprovalDecisionServiceFactory = ({
           metadata: {
             requestId: context.approvalRequest.id,
             policyId: context.approvalRequest.policyId ?? "",
+            ...(context.policyName ? { policyName: context.policyName } : {}),
             delegatedApprovalType: context.delegatedApprovalType,
-            providerRequestId: context.providerRequestId,
+            delegatedProviderRequestId: context.providerRequestId,
             ...(context.providerRecordNumber ? { providerRecordNumber: context.providerRecordNumber } : {}),
+            ...(context.permissions ? { permissions: context.permissions } : {}),
             outcome: metadata.outcome,
             ...(metadata.decided
               ? {
@@ -259,10 +262,25 @@ export const delegatedApprovalDecisionServiceFactory = ({
         ? DELEGATED_APPROVAL_NAME_MAP[delegatedPolicy.type as DelegatedApprovalPolicyType]
         : undefined;
 
+    const policy = approvalRequest.policyId ? await approvalPolicyDAL.findById(approvalRequest.policyId) : undefined;
+    let permissions: string[] | undefined;
+    if (isDelegatedApprovalSupportedPolicyType(approvalRequest.type)) {
+      try {
+        permissions = getDelegatedApprovalDispatchDetailsBuilder(approvalRequest.type)(approvalRequest).permissions;
+      } catch (error) {
+        logger.warn(
+          error,
+          `Could not read the permissions on the access request [approvalRequestId=${approvalRequest.id}]`
+        );
+      }
+    }
+
     const context: TDelegatedApprovalDecisionContext = {
       delegatedRequestId,
       providerRequestId: delegatedRequest.providerRequestId,
       providerRecordNumber: delegatedRequest.details.provider?.recordNumber,
+      policyName: policy?.name,
+      permissions,
       approvalRequest,
       delegatedApprovalType: delegatedApprovalName ?? "the delegated approval system"
     };

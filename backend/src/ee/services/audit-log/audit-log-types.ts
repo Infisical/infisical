@@ -7191,9 +7191,11 @@ interface AccessApprovalRequestDelegatedDecisionEvent {
   metadata: {
     requestId: string;
     policyId: string;
+    policyName?: string;
     delegatedApprovalType: string;
-    providerRequestId: string;
+    delegatedProviderRequestId: string;
     providerRecordNumber?: string;
+    permissions?: string[];
     outcome: string;
     decision?: string;
     decidedBy?: string;

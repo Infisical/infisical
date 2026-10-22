@@ -29,14 +29,17 @@ vi.mock("@app/lib/telemetry/metrics", () => ({
   recordEventOutboxExhaustedMetric: () => {}
 }));
 
-const { fetchDecision } = vi.hoisted(() => ({ fetchDecision: vi.fn() }));
+const { fetchDecision, REQUESTED_PERMISSIONS } = vi.hoisted(() => ({
+  fetchDecision: vi.fn(),
+  REQUESTED_PERMISSIONS: ["secrets:        read, create", "secret-folders: edit"]
+}));
 vi.mock("@app/services/delegated-approval/dispatch/delegated-approval-dispatch-fns", () => ({
   getDelegatedApprovalProvider: () => ({ fetchDecision }),
   getDelegatedApprovalDispatchDetailsBuilder: () => () => ({
     policyType: "secret-access",
     environment: "dev",
     secretPath: "/",
-    permissions: ["secrets:        read, create", "secret-folders: edit"],
+    permissions: REQUESTED_PERMISSIONS,
     isTemporary: false,
     temporaryRange: null
   })
@@ -50,6 +53,7 @@ const DELEGATED_REQUEST_ID = "11111111-1111-1111-1111-111111111111";
 const APPROVAL_REQUEST_ID = "33333333-3333-3333-3333-333333333333";
 const ORG_ID = "22222222-2222-2222-2222-222222222222";
 const EXTERNAL_ID = "snow-1";
+const POLICY_NAME = "Production secrets";
 const TX = { tx: true } as never;
 const PRIMARY = { primary: true } as never;
 const SERVICENOW_RECORD = { type: DelegatedApprovalPolicyType.ServiceNow, recordNumber: "INFAR1000000" };
@@ -135,6 +139,7 @@ const buildConsumer = ({
       updateWithDetails
     },
     delegatedApprovalPolicyDAL: { findOne: vi.fn().mockResolvedValue(policy) },
+    approvalPolicyDAL: { findById: vi.fn().mockResolvedValue({ id: "policy-1", name: POLICY_NAME }) },
     approvalRequestDAL: {
       findById: vi.fn(async () => approval),
       findByIdForUpdate: vi.fn(async () => approval),
@@ -179,7 +184,15 @@ const auditedWith = (createAuditLog: ReturnType<typeof vi.fn>, expected: Record<
   expect(createAuditLog.mock.calls[0][0]).toMatchObject({
     orgId: ORG_ID,
     projectId: "project-1",
-    event: { metadata: { requestId: APPROVAL_REQUEST_ID, providerRequestId: EXTERNAL_ID, ...expected } }
+    event: {
+      metadata: {
+        requestId: APPROVAL_REQUEST_ID,
+        policyName: POLICY_NAME,
+        delegatedProviderRequestId: EXTERNAL_ID,
+        permissions: REQUESTED_PERMISSIONS,
+        ...expected
+      }
+    }
   });
 };
 
