@@ -168,7 +168,11 @@ export const AutoApprovalCard = ({
                 </DisabledReason>
               </div>
 
-              {draft.inputs.length > 0 && (
+              {draft.inputs.length === 0 ? (
+                <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
+                  No request form fields added. Rules have nothing to check until you add one.
+                </div>
+              ) : (
                 <div className="flex flex-col divide-y divide-border rounded-md border border-border">
                   {draft.inputs.map((input) => {
                     const { connection, subject } = findSubject(
