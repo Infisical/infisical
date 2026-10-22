@@ -25,6 +25,7 @@ import {
 import {
   formatExpirationTime,
   formatExpiryFull,
+  grantStateOf,
   isValidTemporaryRange,
   TFolderAccessActor
 } from "./folder-access.utils";
@@ -88,6 +89,8 @@ export const FolderAccessRow = ({
   const isRangeValid = isValidTemporaryRange(range);
   const roleNames = actor.roles.map((role) => role.name).join(", ");
   const isOverride = Boolean(access && actor.roles.length > 0);
+  const grantState = grantStateOf(access);
+  const removeTone = isOverride ? ("warning" as const) : ("danger" as const);
 
   const remainingTime =
     access?.isTemporary && access?.temporaryAccessEndTime
@@ -181,8 +184,14 @@ export const FolderAccessRow = ({
             onSelectTier={onSetTier}
             onEditTemporaryAccess={access ? openTemporary : undefined}
             onRemove={access ? onRemove : undefined}
-            removeLabel={isOverride ? "Remove access override" : "Remove folder access"}
-            removeVariant={isOverride ? "warning" : "danger"}
+            removeLabel={
+              {
+                expired: "Clear expired access",
+                temporary: isOverride ? "End temporary override" : "End temporary access",
+                permanent: isOverride ? "Remove access override" : "Remove folder access"
+              }[grantState]
+            }
+            removeVariant={grantState === "expired" ? "default" : removeTone}
           />
         </DropdownMenu>
       </div>

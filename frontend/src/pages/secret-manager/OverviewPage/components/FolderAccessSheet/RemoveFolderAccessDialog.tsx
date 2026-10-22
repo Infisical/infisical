@@ -10,7 +10,12 @@ import {
 } from "@app/components/v3";
 
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
-import { TFolderAccessActor } from "./folder-access.utils";
+import {
+  formatExpirationTime,
+  formatExpiryFull,
+  grantStateOf,
+  TFolderAccessActor
+} from "./folder-access.utils";
 
 type Props = {
   actor: TFolderAccessActor | null;
@@ -40,15 +45,43 @@ export const RemoveFolderAccessDialog = ({
   const isOverride = Boolean(actor?.roles.length);
   const roleNames = actor?.roles.map((role) => role.name).join(", ");
   const actorKind = actor?.type === "identity" ? "identity" : "user";
+  const grantState = grantStateOf(actor?.access ?? null);
+  const endTime = actor?.access?.temporaryAccessEndTime;
+  const expiry = endTime ? formatExpirationTime(endTime, Date.now()) : null;
+  const isExpired = grantState === "expired";
+  const isTemporary = grantState === "temporary";
+  const noun = isOverride ? "Override" : "Access";
+
+  const title = (() => {
+    if (isExpired) return "Clear Expired Access";
+    if (isTemporary) return `End Temporary ${noun}`;
+    return isOverride ? "Remove Access Override" : "Remove Folder Access";
+  })();
+  const confirmLabel = (() => {
+    if (isExpired) return "Clear Access";
+    if (isTemporary) return `End ${noun}`;
+    return isOverride ? "Remove Override" : "Remove Access";
+  })();
+  const confirmVariant = (() => {
+    if (isExpired) return "outline" as const;
+    return isOverride ? ("warning" as const) : ("danger" as const);
+  })();
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            {isOverride ? "Remove Access Override" : "Remove Folder Access"}
-          </AlertDialogTitle>
-          {isOverride && (
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          {isExpired && expiry && (
+            <AlertDialogDescription>
+              This {tierLabel} grant for{" "}
+              <span className="font-medium text-foreground">{actor?.name}</span> expired on{" "}
+              {formatExpiryFull(expiry.expiresAt)} and no longer applies in{" "}
+              <span className="font-mono text-foreground">{folderPath}</span>. Clearing it does not
+              change their access.
+            </AlertDialogDescription>
+          )}
+          {!isExpired && isOverride && (
             <AlertDialogDescription>
               The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
               will fall back to their{" "}
@@ -58,20 +91,25 @@ export const RemoveFolderAccessDialog = ({
               role here, so removing it can broaden or narrow their access.
             </AlertDialogDescription>
           )}
-          {isRoleContextKnown && !isOverride && (
+          {!isExpired && isRoleContextKnown && !isOverride && (
             <AlertDialogDescription>
               The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
               will lose access to <span className="font-mono text-foreground">{folderPath}</span> on{" "}
               {environmentName}. No project role grants them access to this folder.
             </AlertDialogDescription>
           )}
-          {!isRoleContextKnown && (
+          {!isExpired && !isRoleContextKnown && (
             <AlertDialogDescription>
               The {actorKind} <span className="font-medium text-foreground">{actor?.name}</span>{" "}
               will fall back to their project role permissions in{" "}
               <span className="font-mono text-foreground">{folderPath}</span> on {environmentName}.
               {tierLabel ? ` This ${tierLabel} grant` : " This grant"} currently replaces those
               permissions here, so removing it can change their access.
+            </AlertDialogDescription>
+          )}
+          {isTemporary && expiry && (
+            <AlertDialogDescription>
+              It would otherwise expire in {expiry.value}, on {formatExpiryFull(expiry.expiresAt)}.
             </AlertDialogDescription>
           )}
         </AlertDialogHeader>
@@ -135,14 +173,14 @@ export const RemoveFolderAccessDialog = ({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            variant={isOverride ? "warning" : "danger"}
+            variant={confirmVariant}
             isPending={isPending}
             onClick={(e) => {
               e.preventDefault();
               if (actor) onConfirm(actor);
             }}
           >
-            {isOverride ? "Remove Override" : "Remove Access"}
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

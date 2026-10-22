@@ -80,6 +80,14 @@ export const expiryOf = (access: TFolderAccess | null) =>
     ? new Date(access.temporaryAccessEndTime)
     : null;
 
+// how removing a grant plays out: an expired grant no longer applies, so removing it only cleans up,
+// while an active temporary grant is ended early
+export const grantStateOf = (access: TFolderAccess | null) => {
+  const expiresAt = expiryOf(access);
+  if (!expiresAt) return "permanent" as const;
+  return expiresAt.getTime() <= Date.now() ? ("expired" as const) : ("temporary" as const);
+};
+
 export const formatExpiryFull = (expiresAt: Date) => format(expiresAt, "MMM d, yyyy, h:mm a");
 
 export const formatExpirationTime = (expiresAt: string, now: number, suffix?: string) => {

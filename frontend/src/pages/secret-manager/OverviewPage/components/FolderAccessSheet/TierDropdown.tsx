@@ -21,7 +21,7 @@ type Props = {
   onEditTemporaryAccess?: () => void;
   onRemove?: () => void;
   removeLabel?: string;
-  removeVariant?: "danger" | "warning";
+  removeVariant?: "default" | "danger" | "warning";
 };
 
 // option rows follow the Combobox rich option shape: label over a muted text-xs description, with the
