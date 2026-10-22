@@ -1,6 +1,14 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, it } from "vitest";
@@ -13,15 +21,17 @@ const generateWith = (file: string, from: string, to: string) => {
       "scripts/check-v4.ts",
       "src/components/v4",
       "src/pages/design-system/examples",
-      "package.json",
-      "public/r",
-      "registry.json"
+      "package.json"
     ].forEach((entry) => {
       cpSync(path.resolve(entry), path.join(fixture, entry), { recursive: true });
     });
     symlinkSync(path.resolve("node_modules"), path.join(fixture, "node_modules"), "dir");
-    const manifest = "src/components/v4/generated-manifest.json";
-    const outputs: string[] = JSON.parse(readFileSync(path.join(fixture, manifest), "utf8"));
+    const outputs = [
+      "src/components/v4/catalog.ts",
+      ...readdirSync(path.join(fixture, "src/components/v4/docs"))
+        .filter((entry) => entry.endsWith(".md"))
+        .map((entry) => `src/components/v4/docs/${entry}`)
+    ];
     const digest = () =>
       outputs.map((output) =>
         createHash("sha256")

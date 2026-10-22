@@ -13,11 +13,18 @@ const componentRoot = "src/components/v4";
 const check = process.argv.includes("--check");
 const failures: string[] = [];
 const generated = new Set<string>();
-const manifestPath = `${componentRoot}/generated-manifest.json`;
+const buildOutputs = [
+  "registry.json",
+  `${componentRoot}/tokens.generated.css`,
+  `${componentRoot}/docs/components.json`,
+  `${componentRoot}/docs/coverage.json`
+];
+const isBuildOutput = (file: string) => file.startsWith("public/r/") || buildOutputs.includes(file);
+const emittedOutputs = new Map<string, string>();
 const pendingOutputs = new Map<string, string>();
 const obsoleteOutputs = new Set<string>();
 const read = (file: string) =>
-  pendingOutputs.get(file) ?? readFileSync(path.join(root, file), "utf8");
+  emittedOutputs.get(file) ?? readFileSync(path.join(root, file), "utf8");
 const packageManifest: {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -38,15 +45,18 @@ const filesIn = (folder: string): string[] =>
   readdirSync(path.join(root, folder), { withFileTypes: true }).flatMap((entry) =>
     entry.isDirectory() ? filesIn(`${folder}/${entry.name}`) : [`${folder}/${entry.name}`]
   );
-const previousGenerated: string[] = existsSync(path.join(root, manifestPath))
-  ? JSON.parse(readFileSync(path.join(root, manifestPath), "utf8"))
-  : ["public/r", `${componentRoot}/docs`].flatMap((folder) =>
-      existsSync(path.join(root, folder)) ? filesIn(folder) : []
-    );
+const previousGenerated = ["public/r", `${componentRoot}/docs`].flatMap((folder) =>
+  existsSync(path.join(root, folder)) ? filesIn(folder) : []
+);
 const emit = (file: string, text: string) => {
   generated.add(file);
-  if (existsSync(path.join(root, file)) && read(file) === text) return;
+  const current = existsSync(path.join(root, file))
+    ? readFileSync(path.join(root, file), "utf8")
+    : undefined;
+  emittedOutputs.set(file, text);
+  if (current === text) return;
   if (check) {
+    if (isBuildOutput(file)) return;
     failures.push(`Stale generated file: ${file}`);
     return;
   }
@@ -693,10 +703,10 @@ const localFile = (from: string, specifier: string): string | undefined => {
     `${base}.json`,
     `${base}/index.ts`,
     `${base}/index.tsx`
-  ].find((file) => existsSync(path.join(root, file)));
+  ].find((file) => emittedOutputs.has(file) || existsSync(path.join(root, file)));
 };
 const importsFrom = (file: string) => {
-  if (!existsSync(path.join(root, file))) return [];
+  if (!emittedOutputs.has(file) && !existsSync(path.join(root, file))) return [];
   if (file.endsWith(".css"))
     return [...read(file).matchAll(/@(?:import|reference)\s+["']([^"']+)["']/g)].map(
       (match) => match[1]
@@ -930,14 +940,19 @@ emit(
 );
 previousGenerated.forEach((file) => {
   if (!file.startsWith(`${componentRoot}/docs/`) || generated.has(file)) return;
-  if (check) failures.push(`Obsolete generated file: ${file}`);
-  else if (existsSync(path.join(root, file))) obsoleteOutputs.add(file);
+  if (check) {
+    if (!isBuildOutput(file)) failures.push(`Obsolete generated file: ${file}`);
+  } else if (existsSync(path.join(root, file))) obsoleteOutputs.add(file);
 });
-const support = filesIn(componentRoot).filter(
+const support = [
+  ...new Set([
+    ...filesIn(componentRoot),
+    ...[...generated].filter((file) => file.startsWith(`${componentRoot}/`))
+  ])
+].filter(
   (file) =>
     !file.includes("/ui/") &&
     !file.includes("/patterns/") &&
-    !file.endsWith("/generated-manifest.json") &&
     !file.includes("/contracts/") &&
     !file.endsWith("/catalog.ts") &&
     !/\.(test|spec)\./.test(file) &&
@@ -1043,10 +1058,10 @@ items.forEach((item) => {
 previousGenerated.forEach((file) => {
   if (generated.has(file)) return;
   if (!file.startsWith("public/r/") && !file.startsWith(`${componentRoot}/docs/`)) return;
-  if (check) failures.push(`Obsolete generated file: ${file}`);
-  else if (existsSync(path.join(root, file))) obsoleteOutputs.add(file);
+  if (check) {
+    if (!isBuildOutput(file)) failures.push(`Obsolete generated file: ${file}`);
+  } else if (existsSync(path.join(root, file))) obsoleteOutputs.add(file);
 });
-emit(manifestPath, json([...generated].sort()));
 v4Checks.forEach((v4Check) => {
   if (lintedRules.get(v4Check.id) !== v4Check.rule)
     failures.push(
