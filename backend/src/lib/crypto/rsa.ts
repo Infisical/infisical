@@ -21,6 +21,21 @@ export const rsaPkcs1Decrypt = (encryptedKey: Buffer, privateKeyDer: Buffer): Bu
   return Buffer.from(decrypted, "binary");
 };
 
+export const rsaOaepDecrypt = (
+  encryptedKey: Buffer,
+  privateKeyDer: Buffer,
+  { hash, label }: { hash: string; label?: Buffer }
+): Buffer =>
+  nativeCrypto.privateDecrypt(
+    {
+      key: nativeCrypto.createPrivateKey({ key: privateKeyDer, format: "der", type: "pkcs8" }),
+      padding: nativeCrypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: hash,
+      oaepLabel: label
+    },
+    encryptedKey
+  );
+
 /**
  * RSA PKCS#1 v1.5 encryption using node-forge.
  * Counterpart to rsaPkcs1Decrypt — uses forge for consistency.

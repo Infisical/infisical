@@ -15,6 +15,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -171,7 +172,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -678,9 +679,10 @@ export const certificateAuthorityServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     const plan = await licenseService.getPlan(project.orgId);
+    const countOrgId = isInstanceWidePkiQuota(licenseService) ? null : project.orgId;
     const [totalUsed, internalUsed] = await Promise.all([
-      certificateAuthorityDAL.countCasByOrgId(project.orgId),
-      certificateAuthorityDAL.countInternalCasByOrgId(project.orgId)
+      certificateAuthorityDAL.countCasByOrgId(countOrgId),
+      certificateAuthorityDAL.countInternalCasByOrgId(countOrgId)
     ]);
 
     return {

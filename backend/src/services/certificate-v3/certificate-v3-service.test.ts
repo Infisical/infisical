@@ -10,6 +10,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { InstanceType } from "@app/ee/services/license/license-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -195,7 +196,7 @@ describe("CertificateV3Service", () => {
   const mockUsageCounterDAL = {
     resolveRootOrgId: vi.fn(async (id: string) => id),
     countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
-    isCertificateQuotaKeyActiveInOrg: vi.fn((orgId: string, quotaKey: string) =>
+    isCertificateQuotaKeyActiveInOrg: vi.fn((orgId: string | undefined, quotaKey: string) =>
       Promise.resolve(Boolean(orgId && quotaKey && false))
     )
   };
@@ -207,7 +208,8 @@ describe("CertificateV3Service", () => {
   };
 
   const mockLicenseService = {
-    getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
+    getPlan: vi.fn().mockResolvedValue({ pkiPqc: true }),
+    getInstanceType: vi.fn(() => InstanceType.OnPrem)
   };
 
   const mockCertificateIssuanceQueue = {

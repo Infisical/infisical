@@ -611,8 +611,7 @@ function SidebarCollapsibleGroup({
         expandedHeader
       )}
       <div
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {...(!isCollapsed && !open ? { inert: "" as any } : {})}
+        inert={!isCollapsed && !open}
         className={cn(
           "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out",
           isCollapsed || open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"

@@ -1,0 +1,64 @@
+version: v0.167.0
+releasedAt: 2026-10-22T00:46:55+05:30
+sourceTag: v0.167.0
+previousTag: v0.166.9
+impactLevel: low
+summary: Adds a startup-run database migration for PKI HSM key metadata.
+  Standalone Docker images also drop the bundled go-sidecar binary and move to
+  newer Node and CLI base versions.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PKI HSM key metadata
+    description: Startup adds nullable hsmKeyId columns to certificate, certificate
+      authority secret, and signer issuance job tables for PKI HSM-backed
+      signing metadata.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261016142318_hsm-key-id.ts
+        path: backend/src/db/migrations/20261016142318_hsm-key-id.ts
+        description: Adds three nullable hsmKeyId columns
+configChanges: []
+deploymentNotes:
+  - title: Standalone image runtime base
+    description: Standalone Dockerfiles move from node:26.10.0 to node:26.12.1 and
+      bump the bundled Infisical CLI from 0.43.136 to 0.44.5.
+    action: If you build custom images from these Dockerfiles, rebuild and validate
+      against the newer Node and CLI versions.
+    confidence: high
+    evidence:
+      - type: file
+        ref: Dockerfile.standalone-infisical
+        path: Dockerfile.standalone-infisical
+        description: Base image and CLI version updated
+      - type: file
+        ref: Dockerfile.fips.standalone-infisical
+        path: Dockerfile.fips.standalone-infisical
+        description: FIPS base image and CLI version updated
+  - title: Standalone go-sidecar removal
+    description: Standalone Docker images no longer build or copy the backend
+      go-sidecar binary. Custom deployments that invoked or mounted that binary
+      may fail after upgrade.
+    action: If your deployment depends on /backend/go-sidecar, keep the previous
+      image until you remove that dependency.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: Dockerfile.standalone-infisical
+        path: Dockerfile.standalone-infisical
+        description: Current file omits go-builder and go-sidecar copy
+      - type: file
+        ref: Dockerfile.fips.standalone-infisical
+        path: Dockerfile.fips.standalone-infisical
+        description: Current file omits go-builder and go-sidecar copy
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-21T20:18:18.396Z
+  sourceRange:
+    from: v0.166.9
+    to: v0.167.0
