@@ -26,6 +26,7 @@ const JIRA_MAX_ERROR_DETAIL_LENGTH = 300;
 export type TJiraGatewayDeps = {
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
+  signal?: AbortSignal;
 };
 
 export type TJiraRequestConfig = DiscriminativePick<
@@ -78,7 +79,7 @@ const getJiraTlsOptions = (config: TJiraRequestConfig) => {
 export const jiraRequest = async <T>(
   config: TJiraRequestConfig,
   { path, params, headers: extraHeaders }: TJiraRequest,
-  { gatewayV2Service, gatewayPoolService }: TJiraGatewayDeps = {}
+  { gatewayV2Service, gatewayPoolService, signal }: TJiraGatewayDeps = {}
 ): Promise<T> => {
   const { gatewayId: directGatewayId, gatewayPoolId } = config;
 
@@ -96,7 +97,8 @@ export const jiraRequest = async <T>(
     method: "GET",
     params,
     timeout: JIRA_REQUEST_TIMEOUT_MS,
-    maxContentLength: JIRA_MAX_RESPONSE_BYTES
+    maxContentLength: JIRA_MAX_RESPONSE_BYTES,
+    signal
   };
 
   const requestThroughGateway = async (gatewayId: string) => {

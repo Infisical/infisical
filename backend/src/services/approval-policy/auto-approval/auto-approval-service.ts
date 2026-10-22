@@ -63,13 +63,22 @@ type TAutoApprovalServiceFactoryDep = {
 
 export type TAutoApprovalServiceFactory = ReturnType<typeof autoApprovalServiceFactory>;
 
-const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
+// Aborts the work on timeout, so a slow service isn't still being called after the result stopped mattering
+const withTimeout = async <T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  message: string
+): Promise<T> => {
+  const controller = new AbortController();
   let timer: NodeJS.Timeout | undefined;
   try {
     return await Promise.race([
-      promise,
+      run(controller.signal),
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new BadRequestError({ message })), timeoutMs);
+        timer = setTimeout(() => {
+          reject(new BadRequestError({ message }));
+          controller.abort();
+        }, timeoutMs);
       })
     ]);
   } finally {
@@ -397,7 +406,11 @@ export const autoApprovalServiceFactory = ({
 
           try {
             const facts: unknown = await withTimeout(
-              definition.resolve(connection, parsedInput?.id ?? null, ctx, [...target.constraintIds], providerDeps),
+              (signal) =>
+                definition.resolve(connection, parsedInput?.id ?? null, ctx, [...target.constraintIds], {
+                  ...providerDeps,
+                  signal
+                }),
               RESOLVE_TIMEOUT_MS,
               `${getAppName(connection.app)} didn't respond in time`
             );
