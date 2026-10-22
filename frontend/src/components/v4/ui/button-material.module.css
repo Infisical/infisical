@@ -83,36 +83,60 @@
 .pendable {
   position: relative;
 }
+/* Loading morphs the label into the spinner inside the same box: the label group (icons
+   included) fades, shrinks and blurs out while the spinner fades in centered over it, and back.
+   The idle spinner is absolute, so it never takes layout space and the box never resizes. */
 .labelGroup {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: inherit;
   min-width: 0;
+  transition-property: opacity, scale, filter;
+  transition-duration: var(--v4-duration-moderate);
+  transition-timing-function: var(--v4-ease-standard);
+}
+.pendable > [data-press] {
+  position: relative;
 }
 .progress {
-  flex-shrink: 0;
-  visibility: hidden;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+  transition-property: opacity, scale;
+  transition-duration: var(--v4-duration-moderate);
+  transition-timing-function: var(--v4-ease-standard);
 }
 [data-v4-button] .progress[data-slot="button-progress"][aria-hidden="true"] {
   width: var(--v4-space-12);
   height: var(--v4-space-6);
 }
-.pendable > .progress {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  translate: -50% -50%;
-}
-.pendable[data-leading-icon] > .progress {
-  left: calc(var(--v4-action-inset) + var(--v4-action-icon-size) / 2);
-}
-.pending.pendable:not([data-leading-icon]) > .labelGroup,
-.pending.pendable[data-leading-icon] > .labelGroup > [data-button-icon] {
+.pending .labelGroup {
   opacity: 0;
+  scale: 0.85;
+  filter: blur(2px);
 }
 .progress[data-active] {
-  visibility: visible;
+  opacity: 1;
+  scale: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .labelGroup,
+  .progress {
+    transition-property: opacity;
+    transition-duration: var(--v4-duration-fast);
+  }
+  .pending .labelGroup {
+    scale: none;
+    filter: none;
+  }
+  .progress {
+    scale: none;
+  }
 }
 .progress:not([data-active]) rect {
   animation: none;

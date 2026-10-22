@@ -183,7 +183,11 @@ describe("brand runtime", () => {
       </Button>
     );
     const button = host.querySelector("button");
-    expect(button?.querySelectorAll("svg")).toHaveLength(1);
+    const progress = button?.querySelector('[data-slot="button-progress"]');
+    expect(progress?.hasAttribute("data-active")).toBe(true);
+    expect(button?.querySelector("[data-button-icon]")?.parentElement).not.toBe(
+      progress?.parentElement
+    );
     expect(button?.querySelector(".sr-only")?.textContent).toBe("Create project");
     expect(button?.getAttribute("aria-busy")).toBe("true");
   });

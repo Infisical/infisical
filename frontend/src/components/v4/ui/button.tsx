@@ -136,29 +136,16 @@ const Button = React.forwardRef<
     const content = (label: React.ReactNode) => {
       const labelGroup = (
         <>
-          {icon && !(loading && iconOnly) && (
-            <Icon name={icon} size={iconSize} data-button-icon="" />
-          )}
-          {iconOnly && (icon || iconRight || loading) ? (
-            <span className="sr-only">{label}</span>
-          ) : (
-            label
-          )}
-          {iconRight && !(loading && iconOnly) && <Icon name={iconRight} size={iconSize} />}
+          {icon && <Icon name={icon} size={iconSize} data-button-icon="" />}
+          {iconOnly && (icon || iconRight) ? <span className="sr-only">{label}</span> : label}
+          {iconRight && <Icon name={iconRight} size={iconSize} />}
         </>
       );
-      if (loadingProp === undefined && !icon && !iconRight && !iconOnly) return label;
-      if (loadingProp === undefined || iconOnly)
-        return (
-          <>
-            {loading && iconOnly && progress}
-            {labelGroup}
-          </>
-        );
+      if (loadingProp === undefined) return labelGroup;
       return (
         <>
-          {progress}
           <span className={styles.labelGroup}>{labelGroup}</span>
+          {progress}
         </>
       );
     };
@@ -196,7 +183,6 @@ const Button = React.forwardRef<
         data-size={size}
         {...props}
         data-v4-button=""
-        data-leading-icon={icon && loadingProp !== undefined && !iconOnly ? "" : undefined}
         data-v4-button-material={material ? "" : undefined}
         aria-busy={loading || undefined}
         aria-disabled={loading || props.disabled || props["aria-disabled"] || undefined}
