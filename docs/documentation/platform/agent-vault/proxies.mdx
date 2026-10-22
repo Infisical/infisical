@@ -337,9 +337,7 @@ To keep the proxy available when one machine goes down, run it on several machin
 
 Point agents at the load balancer's address instead of a single machine.
 
-<Note>
-  On Infisical Cloud, all machines running one proxy share its rate limits. Run at most about 30 machines per proxy at the default poll interval of 60 seconds, and fewer if you lower it.
-</Note>
+On Infisical Cloud, every machine running a proxy shares that proxy's rate limits.
 
 ## Proxies set up with an enrollment token
 
