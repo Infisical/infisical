@@ -86,6 +86,7 @@ Exports: Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, Breadcr
 
 - Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths.
 - A crumb with a menu is a switcher segment: its text and its standalone chevron button open the same Switcher, anchored to the segment's start. The segment draws no ground or padding; hover, press, open and focus states draw on the chevron.
+- Every separator sits space-8 from the visible text or glyph on each side, in both variants. In the product variant the separator's margins cancel the link padding and the inset of the switcher chevron, so hit areas and focus rings keep their full size.
 - lastIsCurrent={false} keeps every crumb an ancestor, for trails that sit above a page title.
 
 ## Accessibility

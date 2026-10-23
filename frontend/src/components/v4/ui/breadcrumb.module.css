@@ -136,10 +136,16 @@
   padding-inline: var(--v4-space-6);
 }
 .product .separator {
-  margin-inline: calc(-1 * var(--v4-space-6));
-}
-.product .entry[data-menu] > .separator {
   margin-inline: 0;
+}
+.product .entry:not([data-menu]) > .separator {
+  margin-inline-end: calc(-1 * var(--v4-space-6));
+}
+.product .entry:not([data-menu]) + .entry > .separator {
+  margin-inline-start: calc(-1 * var(--v4-space-6));
+}
+.product .entry[data-menu] + .entry > .separator {
+  margin-inline-start: calc((var(--v4-size-icon-sm) - var(--v4-size-nested-sm)) / 2);
 }
 .product .link:hover {
   background: var(--v4-tint);

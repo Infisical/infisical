@@ -813,34 +813,36 @@ function Overview({ scenario }: { scenario: Scenario }) {
               <Card
                 variant="framed"
                 footer={
-                  <div className={styles.footer}>
-                    {notice ? (
-                      <p role="status" className={styles.notice}>
-                        {notice}
-                      </p>
-                    ) : (
-                      <ResourceCount counts={totals} />
-                    )}
-                    {!unavailableState && totalCount > 0 && (
-                      <div className={styles.pagination}>
-                        <Pagination
-                          page={currentPage}
-                          total={totalCount}
-                          pageSize={perPage}
-                          pageSizeOptions={[10, 20, 50, 100]}
-                          onPageChange={(value) => {
-                            setPage(value);
-                            setSelected([]);
-                          }}
-                          onPageSizeChange={(value) => {
-                            setPerPage(value);
-                            setPage(1);
-                            setSelected([]);
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  totalCount > 0 || notice ? (
+                    <div className={styles.footer}>
+                      {notice ? (
+                        <p role="status" className={styles.notice}>
+                          {notice}
+                        </p>
+                      ) : (
+                        <ResourceCount counts={totals} />
+                      )}
+                      {!unavailableState && totalCount > 0 && (
+                        <div className={styles.pagination}>
+                          <Pagination
+                            page={currentPage}
+                            total={totalCount}
+                            pageSize={perPage}
+                            pageSizeOptions={[10, 20, 50, 100]}
+                            onPageChange={(value) => {
+                              setPage(value);
+                              setSelected([]);
+                            }}
+                            onPageSizeChange={(value) => {
+                              setPerPage(value);
+                              setPage(1);
+                              setSelected([]);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : undefined
                 }
               >
                 <div className={styles.toolbar}>

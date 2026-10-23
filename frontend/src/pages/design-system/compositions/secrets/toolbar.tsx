@@ -350,6 +350,7 @@ export function QuickAddRow({
       </TableCell>
       <TableCell className={styles.nameCell}>
         <Input
+          className={styles.inlineInput}
           aria-label="New secret name"
           placeholder="Add a secret name"
           autoComplete="off"
@@ -371,6 +372,7 @@ export function QuickAddRow({
       <TableCell colSpan={colSpan} className={styles.valueCell}>
         <div className={styles.nameLine}>
           <Input
+            className={styles.inlineInput}
             ref={valueRef}
             aria-label="New secret value"
             placeholder={multiple ? "Add a secret value (applies to all)" : "Add a secret value"}
