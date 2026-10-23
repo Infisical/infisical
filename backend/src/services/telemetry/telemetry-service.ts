@@ -37,7 +37,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
   PostHogEventTypes.PkiSyncExecuted,
   PostHogEventTypes.CertificateRequestCreated,
   PostHogEventTypes.CmekEncrypt,
-  PostHogEventTypes.CmekDecrypt
+  PostHogEventTypes.CmekDecrypt,
+  PostHogEventTypes.AgentVaultSessionLogChunkAccepted,
+  PostHogEventTypes.SecretScanningScanCompleted
 ];
 
 // Properties that should be used as additional grouping dimensions during aggregation.
@@ -47,7 +49,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
 const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
   [PostHogEventTypes.PkiSyncExecuted]: ["projectId", "destination"],
   [PostHogEventTypes.CertificateRequestCreated]: ["projectId"],
-  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"]
+  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"],
+  [PostHogEventTypes.AgentVaultSessionLogChunkAccepted]: ["storageType"],
+  [PostHogEventTypes.SecretScanningScanCompleted]: ["type", "scanType"]
 };
 
 // Bucket configuration
@@ -64,6 +68,7 @@ const TELEMETRY_EVENT_STREAM_RETENTION_MS = 30 * 60 * 1000;
 const TELEMETRY_EVENT_STREAM_KEY_TTL_SECONDS = 60 * 60;
 const BUCKET_CONCURRENCY = 2;
 
+const ORG_GROUP_PROPERTIES_BATCH_SIZE = 1000;
 const TELEMETRY_POSTHOG_MAX_QUEUE_SIZE = TELEMETRY_EVENT_STREAM_COLLECT_CEILING * BUCKET_CONCURRENCY;
 
 type AggregatedEventData = Record<string, unknown>;
@@ -286,6 +291,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       ]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
+      properties.has_secret_scanning = Boolean(plan.secretScanning);
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }
@@ -562,6 +568,16 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       }
       const properties = aggregateGroupProperties(groupedEvents, breakdownDimensions);
 
+      if (eventType === PostHogEventTypes.SecretPulled) {
+        const numberOfSecretsByChannel: Record<string, number> = {};
+        for (const event of groupedEvents) {
+          const { channel, numberOfSecrets } = event.properties as TSecretModifiedEvent["properties"];
+          const channelKey = channel ?? "unknown";
+          numberOfSecretsByChannel[channelKey] = (numberOfSecretsByChannel[channelKey] ?? 0) + numberOfSecrets;
+        }
+        properties.numberOfSecretsByChannel = numberOfSecretsByChannel;
+      }
+
       for (const dim of breakdownDimensions) {
         if (key[dim] !== undefined) {
           properties[dim] = key[dim];
@@ -800,6 +816,22 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const setOrgGroupProperties = async (orgs: { organizationId: string; properties: Record<string, unknown> }[]) => {
+    if (!postHog) return;
+
+    for (let i = 0; i < orgs.length; i += ORG_GROUP_PROPERTIES_BATCH_SIZE) {
+      orgs.slice(i, i + ORG_GROUP_PROPERTIES_BATCH_SIZE).forEach(({ organizationId, properties }) => {
+        postHog.groupIdentify({ groupType: "organization", groupKey: organizationId, properties });
+      });
+
+      // See settleCapturedEvents: without the yield, flush() finds an empty queue and sends nothing.
+      // eslint-disable-next-line no-await-in-loop
+      await settleCapturedEvents();
+      // eslint-disable-next-line no-await-in-loop
+      await postHog.flush();
+    }
+  };
+
   const flushAll = async () => {
     if (postHog) {
       await postHog.shutdown();
@@ -813,6 +845,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     identifyUser,
     identifyIdentity,
     processAggregatedEvents,
+    setOrgGroupProperties,
     flushAll,
     getBucketForDistinctId
   };

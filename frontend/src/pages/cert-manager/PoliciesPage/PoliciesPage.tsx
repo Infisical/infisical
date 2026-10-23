@@ -31,7 +31,7 @@ export const PoliciesPage = () => {
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
   const searchParams = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/policies"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/policies"
   });
 
   const activeTab = (searchParams.selectedTab as TabSections) || TabSections.Certificates;
@@ -135,7 +135,7 @@ export const PoliciesPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Manager" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Certificate Manager"

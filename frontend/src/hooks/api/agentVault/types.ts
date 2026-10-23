@@ -3,6 +3,7 @@ import {
   AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultSessionLogDecision,
+  AgentVaultSessionLogStorageType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface,
@@ -103,11 +104,7 @@ export type TAgentVaultActor =
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
-export type TAgentVaultMember = {
-  id: string;
-  createdAt: string;
-  actor: TAgentVaultActor;
-};
+export type TAgentVaultMember = TAgentVaultActor & { grantedAt: string };
 
 export type TAgentVaultProductActor =
   | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
@@ -119,20 +116,16 @@ export type TAgentVaultProductActor =
     })
   | Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>;
 
-export type TAgentVaultProductMember = {
-  id: string;
+export type TAgentVaultProductMember = TAgentVaultProductActor & {
   role: string;
   isActive: boolean;
-  createdAt: string;
-  actor: TAgentVaultProductActor;
+  addedAt: string;
 };
 
-export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Omit<
+export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Extract<
   TAgentVaultProductMember,
-  "actor"
-> & {
-  actor: Extract<TAgentVaultProductActor, { type: T }>;
-};
+  { type: T }
+>;
 
 export type TListAgentVaultProxiesDTO = {
   search?: string;
@@ -144,6 +137,16 @@ export type TListAgentVaultProxiesDTO = {
 
 export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "orderBy"> & {
   orderBy?: "name" | "serviceCount" | "createdAt";
+};
+
+export type TListAgentVaultVariablesDTO = {
+  search?: string;
+  /** Exact keys. A key that doesn't exist is left out of the response. */
+  keys?: string[];
+  orderBy?: "key" | "serviceCount";
+  orderDirection?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
 };
 
 export type TListAgentVaultMembersDTO = {
@@ -164,16 +167,15 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
-export type TAgentVaultWrittenMember = {
-  id: string;
-  role: string;
-  createdAt: string;
-  actor: TAgentVaultActorRef;
-};
+export type TUpdateAgentVaultMemberRolesDTO = TAgentVaultActorIdsDTO & { role: string };
 
-export type TAgentVaultMemberWriteResult<T> = {
-  members: T[];
-  skipped: (TAgentVaultActorRef & { identifier: string })[];
+export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
+
+export type TAgentVaultGrantedMember = TAgentVaultActorRef & { grantedAt: string };
+
+export type TAgentVaultMemberWriteResult<TMember, TSkipped = TAgentVaultActorRef> = {
+  members: TMember[];
+  skipped: TSkipped[];
 };
 
 export type TAgentVaultAccessBundle = {
@@ -216,7 +218,6 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
-  recentSessionLogCounts: { recordedCount: number; droppedCount: number };
 };
 
 export type TAgentVaultMintedSession = {
@@ -240,9 +241,12 @@ export type TAgentVaultProxy = {
   createdAt?: string;
 };
 
-export type TAgentVaultEnrollment = {
-  token: string;
-  expiresAt: string;
+export type TAgentVaultProxyToken = {
+  proxyToken: string;
+};
+
+export type TAgentVaultProxyWithToken = TAgentVaultProxyToken & {
+  proxy: TAgentVaultProxy;
 };
 
 export type TListAgentVaultSessionsDTO = {
@@ -303,16 +307,30 @@ export type TAgentVaultProxySettingsDTO = {
   pollInterval?: number;
 };
 
-export type TAgentVaultSessionLogSettings = {
-  enabled: boolean;
-  appConnectionId: string | null;
-  bucket: string | null;
-  region: string | null;
+export type TAgentVaultSessionLogExternalStorage = {
+  type: AgentVaultSessionLogStorageType.External;
+  appConnectionId: string;
+  bucket: string;
+  region: string;
   keyPrefix: string | null;
 };
 
+export type TAgentVaultSessionLogStorage =
+  | { type: AgentVaultSessionLogStorageType.Default }
+  | TAgentVaultSessionLogExternalStorage;
+
+export type TAgentVaultSessionLogSettings = {
+  enabled: boolean;
+  storage: TAgentVaultSessionLogStorage;
+};
+
+// settings is null when the instance has no default storage and no external bucket is saved.
+export type TAgentVaultSessionLogSettingsState = {
+  settings: TAgentVaultSessionLogSettings | null;
+  defaultStorage: { configured: boolean };
+};
+
 export type TAgentVaultSessionLogHealth = {
-  isStorageFull: boolean;
   connectionError: string | null;
 };
 
@@ -332,39 +350,29 @@ export type TAgentVaultSessionLogReadCheck = {
   host: string;
 };
 
-export type TUpdateAgentVaultSessionLogSettingsDTO = {
-  enabled?: boolean;
-  appConnectionId?: string | null;
-  bucket?: string;
-  region?: string;
-  keyPrefix?: string;
-};
+export type TAgentVaultSessionLogStorageInput =
+  | { type: AgentVaultSessionLogStorageType.Default }
+  | (Omit<TAgentVaultSessionLogExternalStorage, "keyPrefix"> & { keyPrefix?: string });
+
+export type TUpdateAgentVaultSessionLogSettingsDTO =
+  | { enabled: false }
+  | { enabled: true; storage: TAgentVaultSessionLogStorageInput };
 
 export type TAgentVaultSessionLogChunk = {
   chunkId: string;
   proxyId: string;
-  proxyName: string;
-  startedAt: string;
-  endedAt: string;
-  firstSeq: number;
-  lastSeq: number;
-  recordCount: number;
-  droppedCount: number;
   ciphertextBytes: number;
-  iv: string;
-  ciphertextSha256: string;
-  presignedGetUrl: string | null;
-  createdAt: string;
+  presignedGetUrl: string;
 };
+
+export type TAgentVaultSessionLogDisabledReason = "off" | "not-on-plan";
 
 export type TAgentVaultSessionLog = {
   enabled: boolean;
+  disabledReason: TAgentVaultSessionLogDisabledReason | null;
+  storageType: AgentVaultSessionLogStorageType | null;
   isRecordable: boolean;
   sessionKey: string | null;
-  storageUnavailable: {
-    reason: "no-connection" | "connection-unusable";
-    message: string | null;
-  } | null;
 };
 
 export type TAgentVaultSessionLogPage = {
@@ -374,12 +382,10 @@ export type TAgentVaultSessionLogPage = {
 
 export type TAgentVaultSessionLogHistoryPage = TAgentVaultSessionLogPage & {
   nextCursor: string | null;
-  liveCursor: string;
 };
 
 export type TAgentVaultSessionLogTailPage = TAgentVaultSessionLogPage & {
   nextCursor: string;
-  hasMore: boolean;
 };
 
 export type TAgentVaultSessionLogRecord = {
@@ -401,26 +407,14 @@ export type TAgentVaultSessionLogGapReason =
   | "missing"
   | "refused"
   | "size"
-  | "altered"
   | "gcm"
   | "json"
-  | "mismatch"
-  | "repointed";
+  | "mismatch";
 
 export type TAgentVaultSessionLogGap = {
-  chunkId: string;
-  proxyId: string;
-  proxyName: string;
-  startedAt: string;
   reason: TAgentVaultSessionLogGapReason;
-  recordCount: number;
-};
-
-export type TAgentVaultSessionLogDrop = {
-  chunkId: string;
-  proxyId: string;
-  startedAt: string;
-  droppedCount: number;
+  // When this browser first saw the chunk on the live tail; null for chunks listed from the bucket.
+  firstSeenAt: number | null;
 };
 
 export type TAgentVaultDecryptedChunk = {
@@ -435,32 +429,30 @@ export type TAgentVaultDecryptedSessionLogPage<
   decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };
 
+export type TAgentVaultVariableUsedByService = {
+  id: string;
+  name: string;
+  hostPattern: string;
+  accessBundleId: string;
+  accessBundleName: string;
+};
+
 export type TAgentVaultVariable = {
   id: string;
-  accessBundleId: string;
   key: string;
-  isSecret: boolean;
-  /** Null for a secret variable, whose value comes only from the value route. */
-  value: string | null;
-  serviceIds: string[];
+  // Every service that references the variable, across all access bundles.
+  usedByServices: TAgentVaultVariableUsedByService[];
   createdAt: string;
   updatedAt: string;
 };
 
-export type TAgentVaultVariableRef = {
-  accessBundleId: string;
-  variableId: string;
-};
-
 export type TCreateAgentVaultVariableDTO = {
-  accessBundleId: string;
   key: string;
   value: string;
-  isSecret: boolean;
 };
 
-export type TUpdateAgentVaultVariableDTO = TAgentVaultVariableRef & {
+export type TUpdateAgentVaultVariableDTO = {
+  variableId: string;
   key?: string;
   value?: string;
-  isSecret?: boolean;
 };

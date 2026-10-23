@@ -526,6 +526,13 @@ export const identityCredentialAlertProviderFactory = ({
       );
     },
     assertPermission,
-    assertResourceInScope
+    assertResourceInScope,
+    getResourceNames: async ({ orgId, resourceIds }) =>
+      new Map(
+        (await identityCredentialAlertDAL.findIdentitiesByIds(resourceIds, orgId)).map((identity) => [
+          identity.id,
+          identity.name
+        ])
+      )
   };
 };

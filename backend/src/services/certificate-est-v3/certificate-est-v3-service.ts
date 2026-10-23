@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -13,6 +14,9 @@ import {
   getCaCertChain,
   getCaCertChains
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
+import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -20,6 +24,7 @@ import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -40,6 +45,8 @@ type TCertificateEstV3ServiceFactoryDep = {
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
 };
 
 export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3ServiceFactory>;
@@ -55,8 +62,67 @@ export const certificateEstV3ServiceFactory = ({
   certificateProfileDAL,
   estEnrollmentConfigDAL,
   certificatePolicyDAL,
-  pkiApplicationProfileDAL
+  pkiApplicationProfileDAL,
+  pkiApplicationDAL,
+  auditLogService
 }: TCertificateEstV3ServiceFactoryDep) => {
+  const $recordEstFailure = async ({
+    error,
+    profile,
+    csr,
+    applicationId,
+    auditLogInfo,
+    operation,
+    originalCertificateId
+  }: {
+    error: unknown;
+    profile: { id: string; projectId: string; slug: string; caId?: string | null };
+    csr: string;
+    applicationId?: string;
+    auditLogInfo?: AuditLogInfo;
+    operation: CertificateIssuanceOperation;
+    originalCertificateId?: string;
+  }) => {
+    if (!auditLogInfo) return;
+    let commonName: string | undefined;
+    try {
+      commonName = extractCertificateRequestFromCSR(csr).commonName;
+    } catch {
+      commonName = undefined;
+    }
+    await recordCertificateIssuanceFailure(
+      { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
+      {
+        auditLogInfo: { ...auditLogInfo, actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId: profile.id } } },
+        projectId: profile.projectId,
+        error,
+        metadata: {
+          operation,
+          enrollmentType: EnrollmentType.EST,
+          certificateProfileId: profile.id,
+          profileName: profile.slug,
+          caId: profile.caId,
+          commonName,
+          originalCertificateId,
+          applicationId
+        }
+      }
+    );
+  };
+
+  const $resolveEstTtl = async (profile: {
+    certificatePolicyId: string;
+    defaults?: { ttlDays?: number | null } | null;
+  }) => {
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    return resolveEffectiveTtl({
+      requestTtl: undefined, // EST doesn't accept TTL in request
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: "90d"
+    });
+  };
+
   const resolveEstConfigId = async (
     profile: { estConfigId?: string | null },
     profileId: string,
@@ -124,12 +190,14 @@ export const certificateEstV3ServiceFactory = ({
     csr,
     profileId,
     sslClientCert,
-    applicationId
+    applicationId,
+    auditLogInfo
   }: {
     csr: string;
     profileId: string;
     sslClientCert: string;
     applicationId?: string;
+    auditLogInfo?: AuditLogInfo;
   }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
@@ -170,12 +238,16 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     await validateEstClientCertificate(estConfig, profile.projectId, sslClientCert);
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    const ttl = resolveEffectiveTtl({
-      requestTtl: undefined, // EST doesn't accept TTL in request
-      profileDefaultTtlDays: profile.defaults?.ttlDays,
-      policyMaxValidity: policy?.validity?.max,
-      flowDefaultTtl: "90d"
+    const ttl = await $resolveEstTtl(profile).catch(async (error: unknown) => {
+      await $recordEstFailure({
+        error,
+        profile,
+        csr,
+        applicationId,
+        auditLogInfo,
+        operation: CertificateIssuanceOperation.SIGN
+      });
+      throw error;
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
@@ -187,7 +259,11 @@ export const certificateEstV3ServiceFactory = ({
       csr,
       validity: { ttl },
       enrollmentType: EnrollmentType.EST,
-      applicationId
+      applicationId,
+      auditLogInfo: auditLogInfo && {
+        ...auditLogInfo,
+        actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }
+      }
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -208,12 +284,14 @@ export const certificateEstV3ServiceFactory = ({
     csr,
     profileId,
     sslClientCert,
-    applicationId
+    applicationId,
+    auditLogInfo
   }: {
     csr: string;
     profileId: string;
     sslClientCert: string;
     applicationId?: string;
+    auditLogInfo?: AuditLogInfo;
   }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
@@ -284,20 +362,31 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     // Transaction forces primary (not replica) so a just-revoked cert cannot slip through replica lag.
-    const isRevoked = await certificateDAL.transaction(async (tx) => {
-      const storedCert = await certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx);
-      return storedCert?.status === CertStatus.REVOKED;
-    });
+    const storedCert = await certificateDAL.transaction(async (tx) =>
+      certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx)
+    );
 
-    if (isRevoked) {
+    if (storedCert?.status === CertStatus.REVOKED) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 
+    const $rejectReenrollCsr = async (message: string) => {
+      const error = new BadRequestError({ message });
+      await $recordEstFailure({
+        error,
+        profile,
+        csr,
+        applicationId,
+        auditLogInfo,
+        operation: CertificateIssuanceOperation.RENEW,
+        originalCertificateId: storedCert?.id
+      });
+      return error;
+    };
+
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
     if (csrObj.subject !== cert.subject) {
-      throw new BadRequestError({
-        message: "Subject mismatch"
-      });
+      throw await $rejectReenrollCsr("Subject mismatch");
     }
 
     let csrSanSet: Set<string> = new Set();
@@ -315,17 +404,20 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     if (csrSanSet.size !== certSanSet.size || ![...csrSanSet].every((element) => certSanSet.has(element))) {
-      throw new BadRequestError({
-        message: "Subject alternative names mismatch"
-      });
+      throw await $rejectReenrollCsr("Subject alternative names mismatch");
     }
 
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    const ttl = resolveEffectiveTtl({
-      requestTtl: undefined, // EST doesn't accept TTL in request
-      profileDefaultTtlDays: profile.defaults?.ttlDays,
-      policyMaxValidity: policy?.validity?.max,
-      flowDefaultTtl: "90d"
+    const ttl = await $resolveEstTtl(profile).catch(async (error: unknown) => {
+      await $recordEstFailure({
+        error,
+        profile,
+        csr,
+        applicationId,
+        auditLogInfo,
+        operation: CertificateIssuanceOperation.RENEW,
+        originalCertificateId: storedCert?.id
+      });
+      throw error;
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
@@ -337,7 +429,13 @@ export const certificateEstV3ServiceFactory = ({
       csr,
       validity: { ttl },
       enrollmentType: EnrollmentType.EST,
-      applicationId
+      applicationId,
+      issuanceOperation: CertificateIssuanceOperation.RENEW,
+      originalCertificateId: storedCert?.id,
+      auditLogInfo: auditLogInfo && {
+        ...auditLogInfo,
+        actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }
+      }
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {

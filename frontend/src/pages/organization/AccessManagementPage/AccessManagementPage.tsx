@@ -6,14 +6,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
-import { Button, PageHeader } from "@app/components/v2";
 import {
+  Button,
   LookingForOrgPageLink,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -130,8 +131,8 @@ export const AccessManagementPage = () => {
               hierarchy comparisons.
             </p>
             <Button
-              colorSchema="primary"
-              className="mt-2 w-fit text-xs"
+              variant={isSubOrganization ? "sub-org" : "org"}
+              className="mt-2"
               onClick={() => setIsUpgradePrivilegeSystemModalOpen(true)}
             >
               Learn More & Upgrade

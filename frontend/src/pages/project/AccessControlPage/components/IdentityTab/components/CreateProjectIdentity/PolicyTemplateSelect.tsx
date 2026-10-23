@@ -1,8 +1,7 @@
 import { useFormContext, useWatch } from "react-hook-form";
-import { components, OptionProps } from "react-select";
-import { CheckIcon, InfoIcon } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 
-import { FilterableSelect, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { Combobox, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
@@ -41,36 +40,30 @@ const PermissionsTooltip = ({ permissions }: { permissions: TemplatePermission[]
   </div>
 );
 
-const TemplateOptionRow = ({ isSelected, children, ...props }: OptionProps<TemplateOption>) => (
-  <components.Option isSelected={isSelected} {...props}>
-    <div className="flex flex-row items-center justify-between gap-2">
-      <div className="min-w-0 flex-1">
-        <p className="truncate">{children}</p>
-        <p className="text-xs leading-4 break-words whitespace-normal text-muted">
-          {props.data.description}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className="flex size-4 items-center justify-center">
-          {isSelected && <CheckIcon className="size-4" />}
-        </span>
-        <Tooltip>
-          <TooltipTrigger
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            <InfoIcon className="size-4 text-muted hover:text-foreground" />
-          </TooltipTrigger>
-          <TooltipContent side="left" align="start" className="max-w-sm">
-            <PermissionsTooltip permissions={props.data.permissions} />
-          </TooltipContent>
-        </Tooltip>
-      </div>
+const TemplateOptionRow = ({ option }: { option: TemplateOption }) => (
+  <div className="flex flex-row items-center justify-between gap-2">
+    <div className="min-w-0 flex-1">
+      <p className="truncate">{option.name}</p>
+      <p className="text-xs leading-4 break-words whitespace-normal text-muted">
+        {option.description}
+      </p>
     </div>
-  </components.Option>
+    <Tooltip>
+      <TooltipTrigger
+        type="button"
+        className="shrink-0"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
+        <InfoIcon className="size-4 text-muted hover:text-foreground" />
+      </TooltipTrigger>
+      <TooltipContent side="left" align="start" className="max-w-sm">
+        <PermissionsTooltip permissions={option.permissions} />
+      </TooltipContent>
+    </Tooltip>
+  </div>
 );
 
 type Props = {
@@ -90,18 +83,20 @@ export const PolicyTemplateSelect = ({ projectType }: Props) => {
   const value = options.filter((option) => templateIds.includes(option.id));
 
   return (
-    <FilterableSelect
-      isMulti
+    <Combobox
+      multiple
       value={value}
       options={options}
       placeholder="Select additional privileges..."
+      searchAriaLabel="Search additional privileges"
       getOptionValue={(option) => option.id}
+      getOptionKeywords={(option) => [option.id]}
       getOptionLabel={(option) => option.name}
-      components={{ Option: TemplateOptionRow }}
-      onChange={(newValue) =>
+      renderOption={(option) => <TemplateOptionRow option={option} />}
+      onValueChange={(newValue) =>
         setValue(
           "templateIds",
-          (newValue as TemplateOption[]).map((option) => option.id),
+          newValue.map((option) => option.id),
           { shouldDirty: true }
         )
       }

@@ -14,6 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,7 +27,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Table,
   TableBody,
@@ -280,22 +280,19 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
 
                                 return (
                                   <Field className="mb-0 max-w-[786px]">
-                                    <FilterableSelect
-                                      isMulti
+                                    <Combobox
+                                      multiple
                                       isDisabled={!isAllowed}
                                       options={allOptions}
                                       value={selectedValues}
-                                      onChange={(selected) => {
-                                        field.onChange(
-                                          (selected as { slug: string; name: string }[]).map(
-                                            (s) => s.slug
-                                          )
-                                        );
+                                      onValueChange={(selected) => {
+                                        field.onChange(selected.map((s) => s.slug));
                                       }}
                                       getOptionValue={(option) => option.slug}
+                                      getOptionKeywords={(option) => [option.slug]}
                                       getOptionLabel={(option) => option.name}
                                       placeholder="Select roles..."
-                                      menuPosition="fixed"
+                                      searchAriaLabel="Search roles"
                                     />
                                     {error?.message && <FieldError>{error.message}</FieldError>}
                                   </Field>
@@ -356,13 +353,17 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Select users</FieldLabel>
-                    <FilterableSelect
-                      isMulti
+                    <Combobox
+                      multiple
                       options={availableOrgUsers}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
+                      getOptionValue={(option) => option.value}
+                      getOptionKeywords={(option) => [option.value]}
+                      getOptionLabel={(option) => option.label}
                       placeholder="Select one or more users..."
-                      noOptionsMessage={() =>
+                      searchAriaLabel="Search users"
+                      emptyMessage={() =>
                         availableOrgUsers.length === 0
                           ? "All organization members have been added"
                           : "No matching users found"
@@ -380,14 +381,16 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Select roles</FieldLabel>
-                    <FilterableSelect
-                      isMulti
+                    <Combobox
+                      multiple
                       options={availableRoles}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       getOptionValue={(option) => option.slug}
+                      getOptionKeywords={(option) => [option.slug]}
                       getOptionLabel={(option) => option.name}
                       placeholder="Select roles..."
+                      searchAriaLabel="Search roles"
                     />
                     {addUserErrors.roles?.message && (
                       <FieldError>{addUserErrors.roles.message}</FieldError>

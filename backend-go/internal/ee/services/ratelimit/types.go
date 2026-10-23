@@ -28,9 +28,12 @@ type Limits struct {
 	ProjectCreationLimit  int
 }
 
-// DefaultLimits are the instance-wide defaults (matching Node.js).
+// GlobalLimit is the per-IP baseline applied to routes without a preset, matching globalRateLimiterCfg in Node.
+const GlobalLimit = 600
+
+// DefaultLimits must match DEFAULT_RATE_LIMITS in backend/src/server/config/rateLimiter.ts.
 var DefaultLimits = Limits{
-	ReadLimit:             600,
+	ReadLimit:             60,
 	WriteLimit:            200,
 	SecretsLimit:          60,
 	AuthRateLimit:         60,

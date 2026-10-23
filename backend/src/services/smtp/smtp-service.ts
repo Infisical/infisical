@@ -37,6 +37,7 @@ import {
   OrgAdminProjectFolderGrantAccessTemplate,
   OrganizationAssignmentTemplate,
   OrganizationInvitationTemplate,
+  PamFolderAdminAccessTemplate,
   PasswordResetTemplate,
   PasswordSetupTemplate,
   PkiApprovalRequestNeedsReviewTemplate,
@@ -62,7 +63,7 @@ import {
 } from "./emails";
 import DynamicSecretLeaseRevocationFailedTemplate from "./emails/DynamicSecretLeaseRevocationFailedTemplate";
 
-export type TSmtpConfig = SMTPTransport.Options;
+export type TSmtpConfig = SMTPTransport.Options & Pick<SMTPTransport.MailOptions, "from">;
 export type TSmtpAttachment = {
   filename: string;
   content: Buffer | string;
@@ -119,6 +120,7 @@ export enum SmtpTemplates {
   SecretRotationFailed = "secretRotationFailed",
   ProjectAccessRequest = "projectAccess",
   OrgAdminProjectDirectAccess = "orgAdminProjectFolderGrantAccess",
+  PamFolderAdminAccess = "pamFolderAdminAccess",
   OrgAdminBreakglassAccess = "orgAdminBreakglassAccess",
   ServiceTokenExpired = "serviceTokenExpired",
   SecretScanningV2ScanFailed = "secretScanningV2ScanFailed",
@@ -180,6 +182,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.SecretRotationFailed]: SecretRotationFailedTemplate,
   [SmtpTemplates.SecretSyncFailed]: SecretSyncFailedTemplate,
   [SmtpTemplates.OrgAdminProjectDirectAccess]: OrgAdminProjectFolderGrantAccessTemplate,
+  [SmtpTemplates.PamFolderAdminAccess]: PamFolderAdminAccessTemplate,
   [SmtpTemplates.ProjectAccessRequest]: ProjectAccessRequestTemplate,
   [SmtpTemplates.SecretApprovalRequestNeedsReview]: SecretApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.OAuthPasswordReset]: OAuthPasswordResetTemplate,

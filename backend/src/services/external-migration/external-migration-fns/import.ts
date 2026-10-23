@@ -7,6 +7,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
@@ -293,14 +294,19 @@ export const importDataIntoInfisicalFn = async ({
           });
         }
 
-        const { encryptor: secretManagerEncrypt, generateSecretBlindIndex } =
-          await kmsService.createCipherPairWithDataKey(
-            {
-              type: KmsDataKey.SecretManager,
-              projectId: selectedProjectId
-            },
-            tx
-          );
+        const { encryptor: secretManagerEncrypt } = await kmsService.createCipherPairWithDataKey(
+          {
+            type: KmsDataKey.SecretManager,
+            projectId: selectedProjectId
+          },
+          tx
+        );
+        const blindIndexer = await createSecretBlindIndexer({
+          projectId: selectedProjectId,
+          orgId: actorOrgId,
+          kmsService,
+          tx
+        });
 
         const secretBatches = chunkArray(secrets, 2500);
         for await (const secretBatch of secretBatches) {
@@ -327,9 +333,9 @@ export const importDataIntoInfisicalFn = async ({
                 encryptedValue: el.secretValue
                   ? secretManagerEncrypt({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
                   : undefined,
-                secretValueBlindIndex: el.secretValue
-                  ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
-                  : undefined,
+                blindIndexes: await (el.secretValue
+                  ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+                  : null),
                 key: el.secretKey,
                 references,
                 type: SecretType.Shared

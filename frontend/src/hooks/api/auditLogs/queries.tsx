@@ -38,6 +38,7 @@ export const useGetAuditLogs = (
                   }
                 : {}),
               ...(filters.eventType?.length ? { eventType: filters.eventType.join(",") } : {}),
+              ...(filters.eventClass?.length ? { eventClass: filters.eventClass.join(",") } : {}),
               ...(projectId ? { projectId } : {})
             }
           }

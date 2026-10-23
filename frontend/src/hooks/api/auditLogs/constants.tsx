@@ -120,10 +120,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ALERT]: "Update alert",
   [EventType.DELETE_ALERT]: "Delete alert",
   [EventType.TEST_ALERT_CHANNEL]: "Test alert channel",
-  [EventType.CREATE_PKI_APPLICATION_ALERT]: "Create application alert",
-  [EventType.UPDATE_PKI_APPLICATION_ALERT]: "Update application alert",
-  [EventType.DELETE_PKI_APPLICATION_ALERT]: "Delete application alert",
-  [EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL]: "Test application alert channel",
   [EventType.CREATE_PKI_COLLECTION]: "Create PKI collection",
   [EventType.GET_PKI_COLLECTION]: "Get PKI collection",
   [EventType.UPDATE_PKI_COLLECTION]: "Update PKI collection",
@@ -271,6 +267,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN]: "Trigger Secret Scanning Data Source Scan",
   [EventType.SECRET_SCANNING_DATA_SOURCE_SCAN]: "Secret Scanning Data Source Scan",
   [EventType.SECRET_SCANNING_RESOURCE_LIST]: "List Secret Scanning Resources",
+  [EventType.SECRET_SCANNING_RESOURCE_ADD]: "Add Secret Scanning Resources",
+  [EventType.SECRET_SCANNING_RESOURCE_REMOVE]: "Remove Secret Scanning Resource",
   [EventType.SECRET_SCANNING_SCAN_LIST]: "List Secret Scanning Scans",
   [EventType.SECRET_SCANNING_FINDING_LIST]: "List Secret Scanning Findings",
   [EventType.SECRET_SCANNING_FINDING_UPDATE]: "Update Secret Scanning Finding Status",
@@ -287,6 +285,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates",
 
   [EventType.UPDATE_ORG]: "Update Organization",
+  [EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING]: "Enable Org-Wide Secret Value Tracking",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
   [EventType.DELETE_PROJECT]: "Delete Project",
@@ -297,6 +296,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.DASHBOARD_LIST_SECRETS]: "Dashboard List Secrets",
   [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
+  [EventType.SEARCH_SECRETS_BY_VALUE]: "Search Secrets by Value",
   [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value",
 
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR]:
@@ -310,6 +310,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY]: "View Secrets Management Summary Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION]: "View Secrets Duplication Insights",
+  [EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION]: "View Org Secrets Duplication Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS]:
     "View Secrets Management Resource Counts Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE]: "View Secrets Management Usage Insights",
@@ -353,6 +354,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_FOLDER_CREATE]: "Create PAM Folder",
   [EventType.PAM_FOLDER_UPDATE]: "Update PAM Folder",
   [EventType.PAM_FOLDER_DELETE]: "Delete PAM Folder",
+  [EventType.ORG_ADMIN_ACCESS_PAM_FOLDER]: "Org admin accessed PAM folder",
   [EventType.PAM_PRODUCT_MEMBER_ADD]: "Add PAM Product Member",
   [EventType.PAM_PRODUCT_MEMBER_UPDATE]: "Update PAM Product Member",
   [EventType.PAM_PRODUCT_MEMBER_REMOVE]: "Remove PAM Product Member",
@@ -390,6 +392,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Issue Certificate From Profile",
   [EventType.SIGN_CERTIFICATE_FROM_PROFILE]: "Sign Certificate From Profile",
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
+  [EventType.CERTIFICATE_ISSUANCE_FAILED]: "Certificate Issuance Failed",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
     "Get Certificate Profile Latest Active Bundle",
 
@@ -491,10 +494,13 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_REGISTER]: "Create proxy",
   [EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE]: "Generate proxy enrollment token",
   [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
+  [EventType.AGENT_VAULT_PROXY_TOKEN_ROTATE]: "Rotate proxy token",
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
   [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
-  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings"
+  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings",
+  [EventType.PERMISSION_DENIED]: "Permission denied",
+  [EventType.UPDATE_AUDIT_LOG_SETTINGS]: "Update audit log settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -518,6 +524,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_FOLDER_CREATE,
     EventType.PAM_FOLDER_UPDATE,
     EventType.PAM_FOLDER_DELETE,
+    EventType.ORG_ADMIN_ACCESS_PAM_FOLDER,
     EventType.PAM_PRODUCT_MEMBER_ADD,
     EventType.PAM_PRODUCT_MEMBER_UPDATE,
     EventType.PAM_PRODUCT_MEMBER_REMOVE,
@@ -569,6 +576,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.AGENT_VAULT_PROXY_REGISTER,
     EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
     EventType.AGENT_VAULT_PROXY_ENROLL,
+    EventType.AGENT_VAULT_PROXY_TOKEN_ROTATE,
     EventType.AGENT_VAULT_PROXY_UPDATE,
     EventType.AGENT_VAULT_PROXY_REVOKE,
     EventType.AGENT_VAULT_PROXY_DELETE,

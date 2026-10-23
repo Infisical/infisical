@@ -5,7 +5,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { MemberDetailsByIDPage } from "./MemberDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/members/$membershipId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/members/$membershipId"
 )({
   component: MemberDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -15,10 +15,9 @@ export const Route = createFileRoute(
         {
           label: "Access Control",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/access-management",
+            to: "/organizations/$orgId/cert-manager/access-management",
             params: {
-              orgId: params.orgId,
-              projectId: params.projectId
+              orgId: params.orgId
             },
             search: {
               selectedTab: ProjectAccessControlTabs.Member

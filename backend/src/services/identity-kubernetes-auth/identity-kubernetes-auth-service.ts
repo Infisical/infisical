@@ -14,12 +14,14 @@ import {
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -107,7 +109,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
-  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId">;
+  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId" | "findByIdForShare">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   permissionService: Pick<
@@ -427,7 +429,9 @@ export const identityKubernetesAuthServiceFactory = ({
           const serviceAccountJwtFingerprint = getJwtFingerprintForLog(serviceAccountJwt);
 
           if (err instanceof AxiosError) {
-            logger.error(
+            const status = err.response?.status;
+            const level = status === 401 || status === 403 ? "warn" : "error";
+            logger[level](
               {
                 host,
                 port,
@@ -447,7 +451,7 @@ export const identityKubernetesAuthServiceFactory = ({
             );
           }
 
-          logger.error(
+          logger[isKnownError(err) ? "warn" : "error"](
             { error: err as Error, host, port, tokenReviewerJwtFingerprint, serviceAccountJwtFingerprint },
             `tokenReviewCallbackRaw: Kubernetes token review request error (non-request error) [identityId=${identityKubernetesAuth.identityId}]`
           );
@@ -849,35 +853,6 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -1018,6 +993,13 @@ export const identityKubernetesAuthServiceFactory = ({
           OrgPermissionSubjects.Gateway
         );
       }
+      // A template's gateway can predate the org's pool requirement, so it is checked here as well.
+      await assertIndividualGatewayAllowed({
+        orgDAL,
+        orgId: identityMembershipOrg.scopeOrgId,
+        gatewayId,
+        inheritedFrom: template ? `Auth template '${template.name}'` : undefined
+      });
 
       if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
         const gatewayExecutor = $createGatewayValidationRequest(gatewayId);
@@ -1108,6 +1090,9 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityKubernetesAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
@@ -1208,35 +1193,6 @@ export const identityKubernetesAuthServiceFactory = ({
         (accessTokenMaxTTL || identityKubernetesAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
-    }
-
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
     }
 
     await assertIdentityAuthAccessAllowed(
@@ -1412,6 +1368,14 @@ export const identityKubernetesAuthServiceFactory = ({
           OrgPermissionSubjects.Gateway
         );
       }
+      // A template's gateway can predate the org's pool requirement, so it is checked here as well.
+      await assertIndividualGatewayAllowed({
+        orgDAL,
+        orgId: identityMembershipOrg.scopeOrgId,
+        gatewayId,
+        previousGatewayId: identityKubernetesAuth.gatewayV2Id,
+        inheritedFrom: template ? `Auth template '${template.name}'` : undefined
+      });
     }
 
     // Handle gateway pool permission check
@@ -1623,6 +1587,9 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery, tx);
       await emitIdentityAuthMethodChanged(
         eventEmitter,
@@ -1777,32 +1744,6 @@ export const identityKubernetesAuthServiceFactory = ({
         message: "The identity does not have kubernetes auth"
       });
     }
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {

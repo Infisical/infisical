@@ -306,10 +306,11 @@ export const CertificatesTable = ({
 
   const [applicationFilterSearch, setApplicationFilterSearch] = useState("");
   const [debouncedApplicationFilterSearch] = useDebounce(applicationFilterSearch);
-  const { data: applicationOptionsResponse } = useListPkiApplications(
-    { search: debouncedApplicationFilterSearch || undefined, limit: 20 },
-    { enabled: !applicationId }
-  );
+  const { data: applicationOptionsResponse, isFetching: isFetchingApplicationOptions } =
+    useListPkiApplications(
+      { search: debouncedApplicationFilterSearch || undefined, limit: 20 },
+      { enabled: !applicationId }
+    );
 
   const selectedApplicationIds = useMemo(() => {
     const ids = new Set<string>();
@@ -424,7 +425,7 @@ export const CertificatesTable = ({
   const handleDisableAutoRenewal = async (certificateId: string, commonName: string) => {
     if (!currentProject?.slug) {
       createNotification({
-        text: "Unable to disable auto-renewal: Project not found.",
+        text: "Unable to disable auto-renewal: Certificate Manager could not be loaded. Please refresh and try again.",
         type: "error"
       });
       return;
@@ -785,6 +786,11 @@ export const CertificatesTable = ({
               onSaveView={canCreateViews ? () => setIsSaveViewOpen(true) : undefined}
               dynamicFieldOptions={dynamicFieldOptions}
               onDynamicFieldSearch={{ applicationId: setApplicationFilterSearch }}
+              dynamicFieldLoading={{
+                applicationId:
+                  applicationFilterSearch !== debouncedApplicationFilterSearch ||
+                  isFetchingApplicationOptions
+              }}
               hiddenFieldKeys={applicationId ? ["applicationId"] : undefined}
             />
           </PopoverContent>
@@ -949,10 +955,9 @@ export const CertificatesTable = ({
                       key={`certificate-${certificate.id}`}
                       onClick={() => {
                         navigate({
-                          to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+                          to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
                           params: {
                             orgId: currentOrg.id,
-                            projectId: currentProject.id,
                             certificateId: certificate.id
                           },
                           search: applicationName ? { fromApplication: applicationName } : undefined
@@ -1287,19 +1292,17 @@ export const CertificatesTable = ({
                                     Manage PKI Syncs
                                   </DropdownMenuItem>
                                 )}
-                              {hasProjectRole("admin") &&
-                                !certificate.applicationId &&
-                                certificate.source !== CertSource.Discovered && (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAssignTargetId(certificate.id);
-                                    }}
-                                  >
-                                    <BoxIcon />
-                                    Assign to Application
-                                  </DropdownMenuItem>
-                                )}
+                              {hasProjectRole("admin") && !certificate.applicationId && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssignTargetId(certificate.id);
+                                  }}
+                                >
+                                  <BoxIcon />
+                                  Assign to Application
+                                </DropdownMenuItem>
+                              )}
                               {(() => {
                                 if (
                                   !canRevokeCertificate ||

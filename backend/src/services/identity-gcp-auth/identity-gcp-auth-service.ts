@@ -10,6 +10,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -35,7 +36,12 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityGcpAuthDALFactory } from "./identity-gcp-auth-dal";
-import { validateIamIdentity, validateIdTokenIdentity } from "./identity-gcp-auth-fns";
+import {
+  GCP_TRUST_BINDING_REQUIRED_MESSAGE,
+  hasGcpTrustBinding,
+  validateIamIdentity,
+  validateIdTokenIdentity
+} from "./identity-gcp-auth-fns";
 import {
   TAttachGcpAuthDTO,
   TGcpIdentityDetails,
@@ -103,6 +109,10 @@ export const identityGcpAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
+      if (!hasGcpTrustBinding(identityGcpAuth)) {
+        logger.warn(`GCP Auth Login: identity has no trust binding, allowing [identity-id=${identity.id}]`);
+      }
+
       let gcpIdentityDetails: TGcpIdentityDetails;
       switch (identityGcpAuth.type) {
         case "gce": {
@@ -340,33 +350,8 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
+    if (!hasGcpTrustBinding({ type, allowedServiceAccounts, allowedProjects })) {
+      throw new BadRequestError({ message: GCP_TRUST_BINDING_REQUIRED_MESSAGE });
     }
 
     await assertIdentityAuthAccessAllowed(
@@ -472,39 +457,20 @@ export const identityGcpAuthServiceFactory = ({
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
 
     if (
+      !hasGcpTrustBinding({
+        type: type ?? identityGcpAuth.type,
+        allowedServiceAccounts: allowedServiceAccounts ?? identityGcpAuth.allowedServiceAccounts,
+        allowedProjects: allowedProjects ?? identityGcpAuth.allowedProjects
+      })
+    ) {
+      throw new BadRequestError({ message: GCP_TRUST_BINDING_REQUIRED_MESSAGE });
+    }
+
+    if (
       (accessTokenMaxTTL || identityGcpAuth.accessTokenMaxTTL) > 0 &&
       (accessTokenTTL || identityGcpAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityGcpAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
-    }
-
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
     }
 
     await assertIdentityAuthAccessAllowed(
@@ -653,32 +619,6 @@ export const identityGcpAuthServiceFactory = ({
         message: "The identity does not have gcp auth"
       });
     }
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {

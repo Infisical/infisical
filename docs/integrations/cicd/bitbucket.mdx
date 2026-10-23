@@ -1,6 +1,7 @@
 ---
-title: "Bitbucket"
-description: "How to sync secrets from Infisical to Bitbucket"
+title: "Inject secrets into Bitbucket Pipelines"
+sidebarTitle: "Bitbucket"
+description: "Fetch secrets from Infisical in Bitbucket Pipelines."
 ---
 
 Infisical lets you sync secrets to Bitbucket at the repository-level and deployment environment-level.
@@ -41,11 +42,11 @@ Prerequisites:
                   - curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
                   - apt-get update && apt-get install -y infisical
                   - export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$INFISICAL_CLIENT_ID --client-secret=$INFISICAL_CLIENT_SECRET --silent --plain)
-                  - infisical run --projectId=1d0443c1-cd43-4b3a-91a3-9d5f81254a89 --env=dev -- npm run build
+                  - infisical sm run --projectId=1d0443c1-cd43-4b3a-91a3-9d5f81254a89 --env=dev -- npm run build
         ```
 
       <Tip>
-        Set the values of `projectId` and `env` flags in the `infisical run` command to your intended source path. For more options, refer to the CLI command reference [here](/cli/reference#run).
+        Set the values of `projectId` and `env` flags in the `infisical sm run` command to your intended source path. For more options, refer to the CLI command reference [here](/cli/reference#sm-run).
       </Tip>
       </Step>
     </Steps>

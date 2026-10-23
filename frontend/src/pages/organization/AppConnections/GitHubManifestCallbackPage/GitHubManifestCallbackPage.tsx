@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { ContentLoader } from "@app/components/v2";
+import { PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   consumeCsrfToken,
@@ -97,9 +97,5 @@ export const GitHubManifestCallbackPage = () => {
     navigateBack(true);
   }, []);
 
-  return (
-    <div className="flex h-full w-full items-center justify-center">
-      <ContentLoader text="Creating your GitHub App, please wait..." />
-    </div>
-  );
+  return <PageLoader text="Creating your GitHub App, please wait..." />;
 };

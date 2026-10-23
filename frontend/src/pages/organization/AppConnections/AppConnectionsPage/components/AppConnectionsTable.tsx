@@ -98,6 +98,7 @@ type Props = {
 export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
   const isProjectView = Boolean(projectId);
   const isCertManagerView = projectType === ProjectType.CertificateManager;
+  const isSecretScanningView = projectType === ProjectType.SecretScanning;
   const scopeVariant = useScopeVariant();
   const { isPending, data: appConnections = [] } = useListAppConnections(projectId);
   const rotateCredentials = useRotateAppConnectionCredentials();
@@ -302,11 +303,14 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
             <DocumentationLinkBadge href="https://infisical.com/docs/integrations/app-connections/overview" />
           </CardTitle>
           <CardDescription>
+            {/* eslint-disable-next-line no-nested-ternary */}
             {isCertManagerView
               ? "Create and configure connections with third-party apps for your Applications and Signers."
-              : `Create and configure connections with third-party apps for re-use across your project${
-                  isProjectView ? "" : "s"
-                }.`}
+              : isSecretScanningView
+                ? "Create and configure connections with third-party apps for your Data Sources."
+                : `Create and configure connections with third-party apps for re-use across your project${
+                    isProjectView ? "" : "s"
+                  }.`}
           </CardDescription>
           <CardAction>
             <VariablePermissionCan

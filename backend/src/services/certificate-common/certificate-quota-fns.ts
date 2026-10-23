@@ -6,12 +6,13 @@ import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usag
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { buildCertificateQuotaKey, certificateHasWildcard } from "./certificate-quota-key";
+import { isInstanceWidePkiQuota, PKI_INSTANCE_QUOTA_SCOPE } from "./certificate-quota-scope";
 
 type TQuotaCounts = { total: number; wildcard: number };
 
 export type TCertificateQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
@@ -21,6 +22,7 @@ export type TCertificateQuotaDeps = {
 
 // The cache only saves a query, so a keystore failure degrades to the exact count rather than failing
 // issuance. That keeps issuance dependent on Postgres alone, which it already needs to write the row.
+// orgId is the cache scope: a root org id, or PKI_INSTANCE_QUOTA_SCOPE for an instance-wide count.
 const $getQuotaCounts = async (orgId: string, deps: TCertificateQuotaDeps): Promise<TQuotaCounts> => {
   const totalKey = KeyStorePrefixes.PkiCertificateQuotaCount(orgId);
   const wildcardKey = KeyStorePrefixes.PkiWildcardCertificateQuotaCount(orgId);
@@ -39,7 +41,9 @@ const $getQuotaCounts = async (orgId: string, deps: TCertificateQuotaDeps): Prom
     logger.error(error, `Failed to read certificate quota cache [orgId=${orgId}]`);
   }
 
-  const counts = await deps.usageCounterDAL.countActiveCertificateQuotaKeysByOrg(orgId);
+  const counts = await deps.usageCounterDAL.countActiveCertificateQuotaKeysByOrg(
+    orgId === PKI_INSTANCE_QUOTA_SCOPE ? undefined : orgId
+  );
 
   try {
     const ttl = KeyStoreTtls.PkiCertificateQuotaCountInSeconds;
@@ -85,8 +89,9 @@ export const assertCertificateQuota = async ({
   altNames?: string | null;
   deps: TCertificateQuotaDeps;
   isApprovedRequest?: boolean;
-  // quotaOrgId is the tree root the cache is keyed on. Callers must pass it back to
-  // recordNewCertificateQuotaKey rather than their own orgId.
+  // quotaOrgId is the scope the cache is keyed on: the tree root, or PKI_INSTANCE_QUOTA_SCOPE when the
+  // caps count the whole instance. Callers must pass it back to recordNewCertificateQuotaKey rather
+  // than their own orgId.
 }): Promise<{ quotaKey: string; isNewQuotaKey: boolean; quotaOrgId: string; isWildcard: boolean }> => {
   const quotaKey = buildCertificateQuotaKey({ commonName, altNames });
   const isWildcard = certificateHasWildcard({ commonName, altNames });
@@ -97,11 +102,18 @@ export const assertCertificateQuota = async ({
   const hasWildcardCap = isWildcard && typeof maxWildcardCertificates === "number";
   if (typeof maxCertificates !== "number" && !hasWildcardCap) return unlimited;
 
-  // Correctness, not an optimization: reissuing names the org already holds cannot raise either count,
-  // and this is what lets an org sitting at its cap keep renewing. Remove it and its certs expire.
-  const isAlreadyActive = await deps.usageCounterDAL.isCertificateQuotaKeyActiveInOrg(orgId, quotaKey);
-  const quotaOrgId = await deps.usageCounterDAL.resolveRootOrgId(orgId);
+  // Correctness, not an optimization: reissuing names already held in the counted scope cannot raise
+  // either count, and this is what lets an org sitting at its cap keep renewing. Remove it and its
+  // certs expire.
+  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseService);
+  const isAlreadyActive = await deps.usageCounterDAL.isCertificateQuotaKeyActiveInOrg(
+    isInstanceWide ? undefined : orgId,
+    quotaKey
+  );
+  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.usageCounterDAL.resolveRootOrgId(orgId);
   if (isAlreadyActive) return { quotaKey, isNewQuotaKey: false, quotaOrgId, isWildcard };
+  const scopeNote = isInstanceWide ? " across this instance" : "";
+  const holder = isInstanceWide ? "this instance" : "your organization";
 
   // 0 is how a plan says it has no wildcard support at all.
   if (isWildcard && maxWildcardCertificates === 0) {
@@ -115,11 +127,11 @@ export const assertCertificateQuota = async ({
   const refuse = (used: number, cap: number, subject: string) => {
     if (isApprovedRequest) {
       throw new BadRequestError({
-        message: `This certificate request was approved, but your organization has since reached its plan limit of ${cap} ${subject} (${used} of ${cap} in use). Upgrade plan or revoke an unused certificate, then submit the request again.`
+        message: `This certificate request was approved, but ${holder} has since reached its plan limit of ${cap} ${subject} (${used} of ${cap} in use). Upgrade plan or revoke an unused certificate, then submit the request again.`
       });
     }
     throw new BadRequestError({
-      message: `Failed to issue certificate due to plan limit reached (${used} of ${cap} ${subject}). Upgrade plan to issue more certificates.`
+      message: `Failed to issue certificate due to plan limit reached (${used} of ${cap} ${subject}${scopeNote}). Upgrade plan to issue more certificates.`
     });
   };
 

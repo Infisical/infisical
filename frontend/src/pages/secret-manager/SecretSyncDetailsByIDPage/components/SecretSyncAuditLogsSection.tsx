@@ -44,7 +44,10 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
   const destinationName = SECRET_SYNC_MAP[secretSync.destination].name;
   const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
-  const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
+  const auditLogsRetentionDays =
+    subscription?.auditLogsRetentionDays === null
+      ? Infinity
+      : (subscription?.auditLogsRetentionDays ?? 30);
 
   const handleTriggerSync = async () => {
     await triggerSyncSecrets.mutateAsync({

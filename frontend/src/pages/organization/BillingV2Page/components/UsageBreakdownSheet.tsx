@@ -482,6 +482,7 @@ type UsageBreakdownSheetProps = {
   scope: BillingV2BreakdownScopeKind;
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
+  initialDimensionKey?: string;
   onClose: () => void;
 };
 
@@ -490,10 +491,11 @@ export const UsageBreakdownSheet = ({
   scope,
   prod,
   entitlement,
+  initialDimensionKey,
   onClose
 }: UsageBreakdownSheetProps) => {
   const dimensions = breakdownableDimensions(entitlement);
-  const [activeKey, setActiveKey] = useState(dimensions[0]?.key ?? "");
+  const [activeKey, setActiveKey] = useState(initialDimensionKey ?? dimensions[0]?.key ?? "");
   const activeDim = dimensions.find((dim) => dim.key === activeKey) ?? dimensions[0];
 
   const dimensionKey = activeDim?.key ?? null;

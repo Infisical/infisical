@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
+This is the **frontend** package of the Infisical monorepo — a React 19 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
 
 ## Essential Commands
 
@@ -104,6 +104,12 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 PAM and Agent Vault live at `/organizations/$orgId/<slug>` over a single implicit project, so their URLs carry no `$projectId`. Their layout's `beforeLoad` publishes `implicitProjectId` and `implicitProductType` into route context, and `useImplicitProjectId()` / `useImplicitProduct()` read them back off the matched routes. **Anything that decides whether a `useProject()` caller renders must use `useImplicitProduct()`, never the pathname.** The router changes location before it swaps matches, so a pathname gate mounts a frame early on the way in and unmounts a frame late on the way out, leaving the component asking for a project the router no longer resolves — which throws into `ErrorPage`. Reading the matches keeps these products in step with `useParams`, which is match-derived and is what every other product's gate already uses. The gates that matter today are `OrgSidebar`'s `isInsideProject`, the `ProjectSelect` wrapper, and `OrganizationCommandMenu` in `RootCommandMenu.tsx`, which had exactly this bug when it arrived from main with a pathname check; `getOrgScopedProductFromPath` remains correct for the cosmetic uses behind no `useProject` (navbar scope, `useScopeVariant`, `TypeSelect`).
 
 A new org-scoped product therefore needs: a `<product>ProjectId` on the `Organization` type, an entry in `ORG_SCOPED_PRODUCT_TYPES` and `getOrgScopedProductFromPath` (`helpers/project.ts`), and a layout `beforeLoad` that bootstraps the id, patches it into the cached org, and returns both `implicitProjectId` and `implicitProductType` (see `pages/agent-vault/layout.tsx`). Use `isOrgScopedProduct(type)` rather than adding another pathname check; the sidebar, navbar, project switcher and nav links all key off it.
+
+Certificate Manager is org-scoped too (`/organizations/$orgId/cert-manager/...`), but legacy orgs can hold several instances, so its layout resolves the project from instance state instead of an org field, through `resolveCertManagerProjectId` (`helpers/certManagerActiveProject.ts`): the `infisical-cm-active-project-<orgId>` cookie while the user is a member of that instance, else the active instance. The product switcher and the 403 page use the same helper. The layout writes the resolved id back to the cookie, because `inject-cert-manager-project-id.ts` resolves requests that name no project from it, and reloads the page when the resolved instance changes within one page load, since several cert-manager queries are not keyed by project. Consequences: anything that sends someone into a *specific* instance (the instance picker, a project-scoped identity row, a gateway's discovery row) sets that cookie first, since the URL can't say which; old `/projects/cert-manager/$projectId/...` URLs (emails and alerts sent before the move, bookmarks; the backend now links to `/cert-manager/...`, except legacy PKI Alerts V2 and the legacy-deprecation email) go through `redirects/cert-manager-project-url-redirect.tsx`, which pins the named instance and strips the id. In multi-instance orgs each tab also tags its Certificate Manager API requests with the instance it shows (`setTabCertManagerProjectId`, read by the `apiRequest` interceptor), because the cookie is shared across tabs; single-instance orgs send no project id. Shared views that pick project vs org scope from the URL use `useRouteProjectId()`, which also returns Certificate Manager's implicit project.
+
+### Single-project products
+
+Secret Scanning has one active project per org (see the root `CLAUDE.md`). Members are sent straight into it, and UI for orgs with older projects is gated on `isMultiInstance` from `useGetSecretScanningInstanceState`.
 
 ## Conventions
 

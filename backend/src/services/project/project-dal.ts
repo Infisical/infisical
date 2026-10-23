@@ -779,10 +779,10 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectWithOrg = async (projectId: string) => {
+  const findProjectWithOrg = async (projectId: string, tx?: Knex) => {
     // we just need the project, and we need to include a new .organization field that includes the org from the orgId reference
 
-    const project = await db(TableName.Project)
+    const project = await (tx || db)(TableName.Project)
       .where({ [`${TableName.Project}.id` as "id"]: projectId })
       .whereNull(`${TableName.Project}.deleteAfter`)
       .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
@@ -1025,7 +1025,12 @@ export const projectDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.Project)
         .whereNotIn("type", [ProjectType.CertificateManager])
         .whereNull("deleteAfter")
-        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])
+        .whereNotIn("type", [
+          ProjectType.CertificateManager,
+          ProjectType.SecretScanning,
+          ProjectType.PAM,
+          ProjectType.AgentVault
+        ])
         // Project rows of the removed SSH / Agent Sentinel products are left in
         // place (see migration 20260729150000) but must not consume workspace quota.
         .whereNotIn("type", ["ssh", "ai"])

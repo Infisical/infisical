@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -13,16 +11,33 @@ import {
   AccordionTrigger,
   Button,
   Checkbox,
-  FormControl,
-  FormLabel,
+  Combobox,
+  DiscardChangesAlertDialog,
+  Field,
+  FieldFeedback,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
   Input,
-  Modal,
-  ModalContent,
   Select,
+  SelectContent,
   SelectItem,
-  Tooltip
-} from "@app/components/v2";
-import { useProject } from "@app/context";
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   CaStatus,
   useCreateCertificate,
@@ -39,8 +54,11 @@ import {
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import { CertKeyUsage } from "@app/hooks/api/certificates/enums";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
+import { useCaCreation } from "@app/pages/cert-manager/components/useCaCreation";
 
+import { PkiCollectionModal } from "../../AlertingPage/components/PkiCollectionModal";
 import { CertificateContent } from "./CertificateContent";
 
 const schema = z.object({
@@ -85,17 +103,21 @@ const CERT_TEMPLATE_NONE_VALUE = "none";
 
 export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
+  const initialValuesRef = useRef<FormData | null>(null);
+  const hydratedTemplateId = useRef<string | null>(null);
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const collectionPopup = usePopUp(["pkiCollection"] as const);
   const { data: cert } = useGetCert(
     (popUp?.certificate?.data as { serialNumber: string })?.serialNumber || ""
   );
 
-  const { data: cas } = useListWorkspaceCas({
+  const { data: cas, refetch: refetchCas } = useListWorkspaceCas({
     projectId: currentProject.id,
     status: CaStatus.ACTIVE
   });
 
-  const { data } = useListWorkspacePkiCollections({
+  const { data, refetch: refetchCollections } = useListWorkspacePkiCollections({
     projectId: currentProject?.id || ""
   });
 
@@ -109,7 +131,9 @@ export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting },
+    resetField,
+    getFieldState,
+    formState: { isDirty, isSubmitting, dirtyFields },
     setValue,
     watch
   } = useForm<FormData>({
@@ -123,7 +147,31 @@ export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate
     }
   });
 
+  const closeSheet = () => {
+    handlePopUpToggle("certificate", false);
+    reset();
+    setCertificateDetails(null);
+  };
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty: !cert && !certificateDetails && isDirty,
+      onDiscard: closeSheet
+    });
+
   const selectedCertTemplateId = watch("certificateTemplateId");
+  const { creation: caCreation, caCreationModals } = useCaCreation<NonNullable<typeof cas>[number]>(
+    async (ca) => {
+      const result = await refetchCas();
+      if (!result.data?.some((option) => option.id === ca.id)) {
+        createNotification({
+          type: "error",
+          text: "The certificate authority was created, but is not available for this certificate request yet."
+        });
+        return;
+      }
+      setValue("caId", ca.id, { shouldDirty: true, shouldValidate: true });
+    }
+  );
   const hasCertTemplateSelected =
     selectedCertTemplateId !== "" && selectedCertTemplateId !== CERT_TEMPLATE_NONE_VALUE;
 
@@ -147,8 +195,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate
     } else if (popUp?.certificate?.isOpen) {
       const templateId = preselectedTemplate?.id || CERT_TEMPLATE_NONE_VALUE;
 
-      reset({
-        caId: "",
+      const initialValues: FormData = {
+        caId: cas?.[0]?.id ?? "",
         commonName: "",
         subjectAltNames: "",
         ttl: "",
@@ -158,23 +206,59 @@ export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate
           [CertKeyUsage.KEY_ENCIPHERMENT]: true
         },
         extendedKeyUsages: {}
-      });
+      };
+      initialValuesRef.current = initialValues;
+      hydratedTemplateId.current = null;
+      reset(initialValues);
     }
-  }, [cert, preselectedTemplate, popUp?.certificate?.isOpen]);
+  }, [cert, preselectedTemplate?.id, popUp?.certificate?.isOpen]);
 
   useEffect(() => {
-    if (!cert && selectedCertTemplate) {
-      setValue("ttl", selectedCertTemplate.ttl);
-      setValue(
-        "keyUsages",
-        Object.fromEntries(selectedCertTemplate.keyUsages.map((name) => [name, true]))
-      );
-      setValue(
-        "extendedKeyUsages",
-        Object.fromEntries(selectedCertTemplate.extendedKeyUsages.map((name) => [name, true]))
-      );
+    if (!hasCertTemplateSelected) {
+      hydratedTemplateId.current = null;
+      return;
     }
-  }, [selectedCertTemplate, cert]);
+    if (
+      cert ||
+      !popUp.certificate.isOpen ||
+      !selectedCertTemplate ||
+      selectedCertTemplate.id !== selectedCertTemplateId ||
+      hydratedTemplateId.current === selectedCertTemplateId
+    )
+      return;
+
+    const templateValues = {
+      ttl: selectedCertTemplate.ttl,
+      keyUsages: Object.fromEntries(selectedCertTemplate.keyUsages.map((name) => [name, true])),
+      extendedKeyUsages: Object.fromEntries(
+        selectedCertTemplate.extendedKeyUsages.map((name) => [name, true])
+      )
+    };
+    if (
+      initialValuesRef.current &&
+      initialValuesRef.current.certificateTemplateId === selectedCertTemplateId &&
+      hydratedTemplateId.current === null
+    ) {
+      reset(
+        { ...initialValuesRef.current, ...templateValues },
+        {
+          keepDirtyValues: Object.keys(dirtyFields).length > 0
+        }
+      );
+    } else {
+      setValue("ttl", templateValues.ttl);
+      setValue("keyUsages", templateValues.keyUsages);
+      setValue("extendedKeyUsages", templateValues.extendedKeyUsages);
+    }
+    hydratedTemplateId.current = selectedCertTemplateId as string;
+  }, [
+    selectedCertTemplate,
+    selectedCertTemplateId,
+    hasCertTemplateSelected,
+    cert,
+    popUp.certificate.isOpen,
+    dirtyFields
+  ]);
 
   const onFormSubmit = async ({
     caId,
@@ -222,300 +306,391 @@ export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate
   };
 
   useEffect(() => {
-    if (cas?.length) {
-      setValue("caId", cas[0].id);
+    if (cas?.length && !cert && popUp.certificate.isOpen && !getFieldState("caId").isDirty) {
+      resetField("caId", { defaultValue: cas[0].id });
     }
-  }, [cas]);
+  }, [cas, cert, popUp.certificate.isOpen]);
 
   return (
-    <Modal
-      isOpen={popUp?.certificate?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("certificate", isOpen);
-        reset();
-        setCertificateDetails(null);
-      }}
-    >
-      <ModalContent title={`${cert ? "View" : "Request"} Certificate`}>
-        {!certificateDetails ? (
-          <form onSubmit={handleSubmit(onFormSubmit)}>
-            <Controller
-              control={control}
-              name="certificateTemplateId"
-              defaultValue=""
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label={
-                    <div>
-                      <FormLabel
-                        isRequired
-                        label="Certificate Template"
-                        icon={
-                          <Tooltip
-                            className="text-center"
-                            content={
-                              <span>
-                                When a template is selected, the details provided are validated
-                                against the template policies.
-                              </span>
-                            }
+    <>
+      <Sheet
+        open={popUp?.certificate?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (isSubmitting) return;
+          if (!isOpen) {
+            requestDiscard();
+            return;
+          }
+          handlePopUpToggle("certificate", true);
+        }}
+      >
+        <SheetContent size="form" isPending={isSubmitting}>
+          <SheetHeader>
+            <SheetTitle>{cert ? "View" : "Request"} Certificate</SheetTitle>
+            <SheetDescription>
+              {certificateDetails
+                ? "Copy or download the issued certificate and private key."
+                : "Certificate subject, lifetime, and key usage details."}
+            </SheetDescription>
+          </SheetHeader>
+          {!certificateDetails ? (
+            <form
+              className="flex min-h-0 flex-1 flex-col"
+              onSubmit={(event) => {
+                if (isSubmitting || cert) {
+                  event.preventDefault();
+                  return;
+                }
+                handleSubmit(onFormSubmit)(event);
+              }}
+            >
+              <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto p-4">
+                <FieldGroup>
+                  <Controller
+                    control={control}
+                    name="certificateTemplateId"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="certificate-template">Certificate Template</FieldLabel>
+                        <Select
+                          name={field.name}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={Boolean(cert) || Boolean(preselectedTemplate) || isSubmitting}
+                        >
+                          <SelectTrigger
+                            id="certificate-template"
+                            ref={field.ref}
+                            onBlur={field.onBlur}
+                            isError={Boolean(error)}
+                            aria-required
+                            aria-describedby="certificate-template-feedback"
                           >
-                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                          </Tooltip>
-                        }
+                            <SelectValue placeholder="Select a template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={CERT_TEMPLATE_NONE_VALUE} key="cert-template-none">
+                              None
+                            </SelectItem>
+                            {preselectedTemplate &&
+                              !templatesData?.certificateTemplates?.find(
+                                (t) => t.id === preselectedTemplate.id
+                              ) && (
+                                <SelectItem
+                                  value={preselectedTemplate.id}
+                                  key={`cert-template-preselected-${preselectedTemplate.id}`}
+                                >
+                                  {preselectedTemplate.name}
+                                </SelectItem>
+                              )}
+                            {(templatesData?.certificateTemplates || []).map(({ id, name }) => (
+                              <SelectItem value={id} key={`cert-template-${id}`}>
+                                {name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldFeedback
+                          id="certificate-template-feedback"
+                          error={error?.message}
+                          description="When a template is selected, the details provided are validated against the template policies."
+                        />
+                      </Field>
+                    )}
+                  />
+                  {(!selectedCertTemplateId ||
+                    selectedCertTemplateId === CERT_TEMPLATE_NONE_VALUE ||
+                    cert) && (
+                    <>
+                      <Controller
+                        control={control}
+                        name="caId"
+                        render={({ field, fieldState: { error } }) => (
+                          <Field data-invalid={Boolean(error)}>
+                            <FieldLabel htmlFor="certificate-ca">Issuing CA</FieldLabel>
+                            <Combobox
+                              ref={field.ref}
+                              name={field.name}
+                              id="certificate-ca"
+                              onBlur={field.onBlur}
+                              value={cas?.find((ca) => ca.id === field.value) ?? null}
+                              onValueChange={(ca) => field.onChange(ca.id)}
+                              options={cas ?? []}
+                              getOptionValue={(ca) => ca.id}
+                              getOptionLabel={(ca) => `${caTypeToNameMap[ca.type]}: ${ca.dn}`}
+                              isClearable={false}
+                              isDisabled={Boolean(cert) || isSubmitting}
+                              isError={Boolean(error)}
+                              aria-required
+                              aria-describedby="certificate-ca-feedback"
+                              placeholder="Select a certificate authority"
+                              creation={!cert ? caCreation : undefined}
+                            />
+                            <FieldFeedback id="certificate-ca-feedback" error={error?.message} />
+                          </Field>
+                        )}
                       />
-                    </div>
-                  }
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isRequired
-                >
-                  <Select
-                    value={field.value}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                    isDisabled={Boolean(cert) || Boolean(preselectedTemplate)}
-                  >
-                    <SelectItem value={CERT_TEMPLATE_NONE_VALUE} key="cert-template-none">
-                      None
-                    </SelectItem>
-                    {preselectedTemplate &&
-                      !templatesData?.certificateTemplates?.find(
-                        (t) => t.id === preselectedTemplate.id
-                      ) && (
-                        <SelectItem
-                          value={preselectedTemplate.id}
-                          key={`cert-template-preselected-${preselectedTemplate.id}`}
-                        >
-                          {preselectedTemplate.name}
-                        </SelectItem>
-                      )}
-                    {(templatesData?.certificateTemplates || []).map(({ id, name }) => (
-                      <SelectItem value={id} key={`cert-template-${id}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-            {(!selectedCertTemplateId ||
-              selectedCertTemplateId === CERT_TEMPLATE_NONE_VALUE ||
-              cert) && (
-              <>
-                <Controller
-                  control={control}
-                  name="caId"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Issuing CA"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                      className="mt-4"
-                      isRequired
-                    >
-                      <Select
-                        defaultValue={field.value}
-                        {...field}
-                        onValueChange={(e) => onChange(e)}
-                        className="w-full"
-                        isDisabled={Boolean(cert)}
-                      >
-                        {(cas || []).map(({ id, type, dn }) => (
-                          <SelectItem value={id} key={`ca-${id}`}>
-                            {`${caTypeToNameMap[type]}: ${dn}`}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                      <Controller
+                        control={control}
+                        name="collectionId"
+                        render={({ field, fieldState: { error } }) => (
+                          <Field data-invalid={Boolean(error)}>
+                            <FieldLabel htmlFor="certificate-collection">
+                              Certificate Collection (Optional)
+                            </FieldLabel>
+                            <Combobox
+                              ref={field.ref}
+                              name={field.name}
+                              id="certificate-collection"
+                              onBlur={field.onBlur}
+                              value={
+                                data?.collections.find(
+                                  (collection) => collection.id === field.value
+                                ) ?? null
+                              }
+                              onValueChange={(collection) => field.onChange(collection.id)}
+                              options={data?.collections ?? []}
+                              getOptionValue={(collection) => collection.id}
+                              getOptionLabel={(collection) => collection.name}
+                              isClearable={false}
+                              isDisabled={Boolean(cert) || isSubmitting}
+                              isError={Boolean(error)}
+                              aria-describedby="certificate-collection-feedback"
+                              placeholder="Select a certificate collection"
+                              creation={
+                                !cert &&
+                                permission.can(
+                                  ProjectPermissionActions.Create,
+                                  ProjectPermissionSub.PkiCollections
+                                )
+                                  ? {
+                                      mode: "action",
+                                      emptyLabel: "Create New Collection",
+                                      formatLabel: () => "Create New Collection",
+                                      onAction: () =>
+                                        collectionPopup.handlePopUpOpen("pkiCollection")
+                                    }
+                                  : undefined
+                              }
+                            />
+                            <FieldFeedback
+                              id="certificate-collection-feedback"
+                              error={error?.message}
+                            />
+                          </Field>
+                        )}
+                      />
+                    </>
                   )}
-                />
-                <Controller
-                  control={control}
-                  name="collectionId"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Certificate Collection (Optional)"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                      className="mt-4"
-                    >
-                      <Select
-                        defaultValue={field.value}
-                        {...field}
-                        onValueChange={(e) => onChange(e)}
-                        className="w-full"
-                        isDisabled={Boolean(cert)}
-                      >
-                        {(data?.collections || []).map(({ id, name }) => (
-                          <SelectItem value={id} key={`pki-collection-${id}`}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </>
-            )}
-            <Controller
-              control={control}
-              defaultValue=""
-              name="commonName"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Common Name (CN)"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Input {...field} placeholder="service.acme.com" isDisabled={Boolean(cert)} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue=""
-              name="subjectAltNames"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Alternative Names (SANs)"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input
-                    {...field}
-                    placeholder="app1.acme.com, app2.acme.com, ..."
-                    isDisabled={Boolean(cert)}
-                  />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="ttl"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="TTL"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Input
-                    {...field}
-                    placeholder="2 days, 1d, 2h, 1y, ..."
-                    isDisabled={Boolean(cert)}
-                  />
-                </FormControl>
-              )}
-            />
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="key-usages" className="data-[state=open]:border-none">
-                <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                  <div className="order-1 ml-3">Key Usage</div>
-                </AccordionTrigger>
-                <AccordionContent>
                   <Controller
                     control={control}
-                    name="keyUsages"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => {
-                      return (
-                        <FormControl
-                          label="Key Usage"
-                          errorText={error?.message}
+                    defaultValue=""
+                    name="commonName"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="certificate-common-name">Common Name (CN)</FieldLabel>
+                        <Input
+                          {...field}
+                          id="certificate-common-name"
+                          placeholder="service.acme.com"
+                          disabled={Boolean(cert) || isSubmitting}
                           isError={Boolean(error)}
-                        >
-                          <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                            {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                              return (
-                                <Checkbox
-                                  id={optionValue}
-                                  key={optionValue}
-                                  isDisabled={Boolean(cert)}
-                                  isChecked={value[optionValue]}
-                                  onCheckedChange={(state) => {
-                                    onChange({
-                                      ...value,
-                                      [optionValue]: state
-                                    });
-                                  }}
-                                >
-                                  {label}
-                                </Checkbox>
-                              );
-                            })}
-                          </div>
-                        </FormControl>
-                      );
-                    }}
+                          aria-required
+                          aria-describedby="certificate-common-name-feedback"
+                        />
+                        <FieldFeedback
+                          id="certificate-common-name-feedback"
+                          error={error?.message}
+                        />
+                      </Field>
+                    )}
                   />
                   <Controller
                     control={control}
-                    name="extendedKeyUsages"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => {
-                      return (
-                        <FormControl
-                          label="Extended Key Usage"
-                          errorText={error?.message}
+                    defaultValue=""
+                    name="subjectAltNames"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="certificate-alternative-names">
+                          Alternative Names (SANs)
+                        </FieldLabel>
+                        <Input
+                          {...field}
+                          id="certificate-alternative-names"
+                          placeholder="app1.acme.com, app2.acme.com, ..."
+                          disabled={Boolean(cert) || isSubmitting}
                           isError={Boolean(error)}
-                        >
-                          <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                            {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                              return (
-                                <Checkbox
-                                  id={optionValue}
-                                  key={optionValue}
-                                  isDisabled={Boolean(cert)}
-                                  isChecked={value[optionValue]}
-                                  onCheckedChange={(state) => {
-                                    onChange({
-                                      ...value,
-                                      [optionValue]: state
-                                    });
-                                  }}
-                                >
-                                  {label}
-                                </Checkbox>
-                              );
-                            })}
-                          </div>
-                        </FormControl>
-                      );
-                    }}
+                          aria-describedby="certificate-alternative-names-feedback"
+                        />
+                        <FieldFeedback
+                          id="certificate-alternative-names-feedback"
+                          error={error?.message}
+                        />
+                      </Field>
+                    )}
                   />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-            {!cert && (
-              <div className="mt-4 flex items-center">
-                <Button
-                  className="mr-4"
-                  size="sm"
-                  type="submit"
-                  isLoading={isSubmitting}
-                  isDisabled={isSubmitting}
-                >
-                  Create
-                </Button>
-                <Button
-                  colorSchema="secondary"
-                  variant="plain"
-                  onClick={() => handlePopUpToggle("certificate", false)}
-                >
-                  Cancel
-                </Button>
+                  <Controller
+                    control={control}
+                    name="ttl"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="certificate-ttl">TTL</FieldLabel>
+                        <Input
+                          {...field}
+                          id="certificate-ttl"
+                          placeholder="2 days, 1d, 2h, 1y, ..."
+                          disabled={Boolean(cert) || isSubmitting}
+                          isError={Boolean(error)}
+                          aria-required
+                          aria-describedby="certificate-ttl-feedback"
+                        />
+                        <FieldFeedback id="certificate-ttl-feedback" error={error?.message} />
+                      </Field>
+                    )}
+                  />
+                  <Accordion type="single" collapsible variant="ghost">
+                    <AccordionItem value="key-usages">
+                      <AccordionTrigger>Key Usage</AccordionTrigger>
+                      <AccordionContent>
+                        <FieldGroup>
+                          <Controller
+                            control={control}
+                            name="keyUsages"
+                            render={({ field: { onChange, value }, fieldState: { error } }) => (
+                              <FieldSet aria-describedby="certificate-key-usages-feedback">
+                                <FieldLegend variant="label">Key Usage</FieldLegend>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => (
+                                    <Field
+                                      orientation="horizontal"
+                                      key={optionValue}
+                                      data-disabled={Boolean(cert) || isSubmitting}
+                                    >
+                                      <Checkbox
+                                        id={`certificate-key-usage-${optionValue}`}
+                                        isDisabled={Boolean(cert) || isSubmitting}
+                                        isChecked={Boolean(value[optionValue])}
+                                        onCheckedChange={(state) => {
+                                          onChange({
+                                            ...value,
+                                            [optionValue]: state === true
+                                          });
+                                        }}
+                                      />
+                                      <FieldLabel htmlFor={`certificate-key-usage-${optionValue}`}>
+                                        {label}
+                                      </FieldLabel>
+                                    </Field>
+                                  ))}
+                                </div>
+                                <FieldFeedback
+                                  id="certificate-key-usages-feedback"
+                                  error={error?.message}
+                                />
+                              </FieldSet>
+                            )}
+                          />
+                          <Controller
+                            control={control}
+                            name="extendedKeyUsages"
+                            render={({ field: { onChange, value }, fieldState: { error } }) => (
+                              <FieldSet aria-describedby="certificate-extended-key-usages-feedback">
+                                <FieldLegend variant="label">Extended Key Usage</FieldLegend>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  {EXTENDED_KEY_USAGES_OPTIONS.map(
+                                    ({ label, value: optionValue }) => (
+                                      <Field
+                                        orientation="horizontal"
+                                        key={optionValue}
+                                        data-disabled={Boolean(cert) || isSubmitting}
+                                      >
+                                        <Checkbox
+                                          id={`certificate-extended-key-usage-${optionValue}`}
+                                          isDisabled={Boolean(cert) || isSubmitting}
+                                          isChecked={Boolean(value[optionValue])}
+                                          onCheckedChange={(state) => {
+                                            onChange({
+                                              ...value,
+                                              [optionValue]: state === true
+                                            });
+                                          }}
+                                        />
+                                        <FieldLabel
+                                          htmlFor={`certificate-extended-key-usage-${optionValue}`}
+                                        >
+                                          {label}
+                                        </FieldLabel>
+                                      </Field>
+                                    )
+                                  )}
+                                </div>
+                                <FieldFeedback
+                                  id="certificate-extended-key-usages-feedback"
+                                  error={error?.message}
+                                />
+                              </FieldSet>
+                            )}
+                          />
+                        </FieldGroup>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </FieldGroup>
               </div>
-            )}
-          </form>
-        ) : (
-          <CertificateContent
-            serialNumber={certificateDetails.serialNumber}
-            certificate={certificateDetails.certificate}
-            certificateChain={certificateDetails.certificateChain}
-            privateKey={certificateDetails.privateKey}
-          />
-        )}
-      </ModalContent>
-    </Modal>
+              <SheetFooter className="justify-end border-t">
+                <Button variant="ghost" onClick={requestDiscard} isDisabled={isSubmitting}>
+                  {cert ? "Close" : "Cancel"}
+                </Button>
+                {!cert && (
+                  <Button variant="project" type="submit" isPending={isSubmitting}>
+                    Create
+                  </Button>
+                )}
+              </SheetFooter>
+            </form>
+          ) : (
+            <>
+              <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto p-4">
+                <CertificateContent
+                  serialNumber={certificateDetails.serialNumber}
+                  certificate={certificateDetails.certificate}
+                  certificateChain={certificateDetails.certificateChain}
+                  privateKey={certificateDetails.privateKey}
+                />
+              </div>
+              <SheetFooter className="justify-end border-t">
+                <Button variant="ghost" onClick={requestDiscard} isDisabled={isSubmitting}>
+                  Close
+                </Button>
+              </SheetFooter>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+      {caCreationModals}
+      <PkiCollectionModal
+        popUp={collectionPopup.popUp}
+        handlePopUpToggle={collectionPopup.handlePopUpToggle}
+        onComplete={async (collection) => {
+          const result = await refetchCollections();
+          if (!result.data?.collections.some((option) => option.id === collection.id)) {
+            createNotification({
+              type: "error",
+              text: "The collection was created, but the list could not be refreshed. Refresh the list to select it."
+            });
+            return;
+          }
+          setValue("collectionId", collection.id, { shouldDirty: true, shouldValidate: true });
+        }}
+      />
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved certificate request details will be lost."
+      />
+    </>
   );
 };

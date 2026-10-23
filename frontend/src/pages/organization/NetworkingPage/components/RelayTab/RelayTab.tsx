@@ -65,7 +65,7 @@ import {
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
 
 import { RelayDeployModal } from "./components/RelayDeployModal";
@@ -101,6 +101,7 @@ const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
 
 export const RelayTab = withPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const [search, setSearch] = useState("");
     const { data: relays, isPending: isRelaysLoading } = useGetRelays();
     const { currentOrg } = useOrganization();
@@ -159,7 +160,7 @@ export const RelayTab = withPermission(
           </CardTitle>
           <CardDescription>Create and manage network relays from Infisical</CardDescription>
           <CardAction>
-            <Button variant="org" onClick={() => handlePopUpOpen("deployRelay")}>
+            <Button variant={scopeVariant} onClick={() => handlePopUpOpen("deployRelay")}>
               <PlusIcon />
               Create Relay
             </Button>
@@ -299,6 +300,7 @@ export const RelayTab = withPermission(
             </Table>
           )}
           <AlertDialog
+            isPending={deleteRelayById.isPending}
             open={popUp.deleteRelay.isOpen}
             confirmationValue={(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
             onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
@@ -319,10 +321,9 @@ export const RelayTab = withPermission(
                 <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
               </Alert>
               <AlertDialogFooter>
-                <AlertDialogCancel isDisabled={deleteRelayById.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   variant="danger"
-                  isPending={deleteRelayById.isPending}
                   onClick={(event) => {
                     event.preventDefault();
                     handleDeleteRelay();

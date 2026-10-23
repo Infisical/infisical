@@ -2,7 +2,15 @@ import { useReducer } from "react";
 import { faCheck, faCopy, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { GenericFieldLabel, IconButton, Tooltip } from "@app/components/v2";
+import {
+  Detail,
+  DetailLabel,
+  DetailValue,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 
 type Props = {
@@ -19,43 +27,52 @@ export const CredentialDisplay = ({ children, label, isSensitive }: Props) => {
   });
 
   return (
-    <GenericFieldLabel label={label}>
+    <Detail className="min-w-0">
+      <DetailLabel>{label}</DetailLabel>
       {children ? (
-        <div className="flex w-full min-w-0 items-center gap-1 text-foreground">
+        <DetailValue className="flex w-full min-w-0 items-center gap-1">
           <span className="min-w-0 flex-1 truncate" title={showCredential ? children : undefined}>
             {showCredential ? children : "****************************"}
           </span>
           <span className="flex-shrink-0">
-            <Tooltip content={`Copy ${label}`}>
-              <IconButton
-                onClick={() => {
-                  setCopyCredential(children);
-                  navigator.clipboard.writeText(children);
-                }}
-                ariaLabel="Copy credential"
-                variant="plain"
-                size="xs"
-              >
-                <FontAwesomeIcon icon={isCopyingCredential ? faCheck : faCopy} />
-              </IconButton>
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <IconButton
+                  onClick={() => {
+                    setCopyCredential(children);
+                    navigator.clipboard.writeText(children);
+                  }}
+                  aria-label="Copy credential"
+                  variant="ghost"
+                  size="xs"
+                >
+                  <FontAwesomeIcon icon={isCopyingCredential ? faCheck : faCopy} />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>{`Copy ${label}`}</TooltipContent>
             </Tooltip>
           </span>
           {isSensitive && (
             <span className="flex-shrink-0">
-              <Tooltip content={`Show ${label}`}>
-                <IconButton
-                  variant="plain"
-                  size="xs"
-                  onClick={toggleShowCredential}
-                  ariaLabel={`${showCredential ? "Hide" : "Show"} credential`}
-                >
-                  <FontAwesomeIcon icon={faEyeSlash} />
-                </IconButton>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    onClick={toggleShowCredential}
+                    aria-label={`${showCredential ? "Hide" : "Show"} credential`}
+                  >
+                    <FontAwesomeIcon icon={faEyeSlash} />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{`Show ${label}`}</TooltipContent>
               </Tooltip>
             </span>
           )}
-        </div>
-      ) : null}
-    </GenericFieldLabel>
+        </DetailValue>
+      ) : (
+        <DetailValue className="text-muted italic">None</DetailValue>
+      )}
+    </Detail>
   );
 };

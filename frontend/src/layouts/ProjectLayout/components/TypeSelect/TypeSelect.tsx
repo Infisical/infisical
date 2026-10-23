@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 
 import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { Command, CommandGroup, CommandItem, CommandList } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { getCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import {
+  resolveCertManagerProjectId,
+  setCertManagerActiveProjectCookie
+} from "@app/helpers/certManagerActiveProject";
 import {
   getOrgScopedProductFromPath,
   getProjectHomePage,
@@ -16,10 +19,13 @@ import {
   projectTypeToUrlSlug,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { useImplicitProjectId } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 import {
+  NavbarBlock,
   NavbarSwitcher,
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
@@ -36,14 +42,14 @@ const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.AgentVault
 ];
 
+const ORG_PRODUCT_PAGE_PATH_RE = /^\/organizations\/[^/]+\/projects\/([^/]+)\//;
+
 const TypeSelectInner = ({
   currentType,
-  currentProjectName,
-  showDivider
+  currentProjectName
 }: {
   currentType: ProjectType;
   currentProjectName?: string;
-  showDivider?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
@@ -61,20 +67,23 @@ const TypeSelectInner = ({
     [projects]
   );
 
-  const certManagerTargetProjectId = useMemo(() => {
-    const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
-    if (cookieValue && projects.some((p) => p.id === cookieValue)) {
-      return cookieValue;
-    }
-    return certManagerInstance?.activeProjectId ?? null;
-  }, [currentOrg?.id, projects, certManagerInstance?.activeProjectId]);
+  const certManagerTargetProjectId = useMemo(
+    () =>
+      resolveCertManagerProjectId({
+        orgId: currentOrg.id,
+        activeProjectId: certManagerInstance?.activeProjectId ?? null,
+        memberProjectIds: projects.map((p) => p.id)
+      }),
+    [currentOrg.id, projects, certManagerInstance?.activeProjectId]
+  );
 
   const navigateToCertManager = () => {
     if (isCertManagerInstancePending) return;
     if (certManagerTargetProjectId) {
+      setCertManagerActiveProjectCookie(currentOrg.id, certManagerTargetProjectId);
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-        params: { orgId: currentOrg?.id || "", projectId: certManagerTargetProjectId }
+        to: "/organizations/$orgId/cert-manager/overview",
+        params: { orgId: currentOrg?.id || "" }
       });
     } else {
       setIsCertManagerSetupOpen(true);
@@ -111,9 +120,7 @@ const TypeSelectInner = ({
   const ProductIcon = getProjectLucideIcon(currentType);
 
   return (
-    <div
-      className={`flex h-full min-w-16 items-center gap-1 pr-2 pl-1 ${showDivider ? "mr-2 border-r border-border-soft" : "mr-2"}`}
-    >
+    <NavbarBlock className="min-w-16">
       <NavbarSwitcher open={open} onOpenChange={setOpen}>
         <button
           type="button"
@@ -132,7 +139,7 @@ const TypeSelectInner = ({
               });
             }
           }}
-          className="group grid min-w-min cursor-pointer grid-flow-col grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
+          className="group grid min-w-min cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
           <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>
@@ -177,17 +184,19 @@ const TypeSelectInner = ({
         isOpen={isCertManagerSetupOpen}
         onOpenChange={setIsCertManagerSetupOpen}
       />
-    </div>
+    </NavbarBlock>
   );
 };
 
 export const TypeSelect = () => {
   const params = useParams({ strict: false });
   const { pathname } = useLocation();
-  const search = useSearch({ strict: false }) as { fromApplication?: string };
+  const implicitProjectId = useImplicitProjectId();
   const { data: projects = [] } = useGetUserProjects();
   const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
     useCertManagerInstanceState();
+  const { currentOrg } = useOrganization();
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg.id);
 
   if (params.type && !params.projectId) {
     const resolvedType = urlSlugToProjectType(params.type);
@@ -197,6 +206,35 @@ export const TypeSelect = () => {
   }
 
   const orgScopedProduct = getOrgScopedProductFromPath(pathname);
+  if (orgScopedProduct === ProjectType.CertificateManager) {
+    const project = projects.find((p) => p.id === implicitProjectId);
+    // Only orgs with several legacy instances can be viewing one that is not the active instance.
+    const isLegacyCertManagerProject =
+      Boolean(project) &&
+      !isCertManagerInstancePending &&
+      certManagerInstance?.activeProjectId !== project?.id;
+    return (
+      <TypeSelectInner
+        currentType={ProjectType.CertificateManager}
+        currentProjectName={isLegacyCertManagerProject ? project?.name : undefined}
+      />
+    );
+  }
+
+  if (orgScopedProduct === ProjectType.SecretScanning) {
+    const project = projects.find((p) => p.id === implicitProjectId);
+    const isLegacySecretScanningProject =
+      Boolean(project) &&
+      Boolean(secretScanningInstance?.isMultiInstance) &&
+      secretScanningInstance?.activeProjectId !== project?.id;
+    return (
+      <TypeSelectInner
+        currentType={ProjectType.SecretScanning}
+        currentProjectName={isLegacySecretScanningProject ? project?.name : undefined}
+      />
+    );
+  }
+
   if (!params.projectId && orgScopedProduct) {
     return <TypeSelectInner currentType={orgScopedProduct} />;
   }
@@ -204,23 +242,15 @@ export const TypeSelect = () => {
   if (params.projectId) {
     const project = projects.find((p) => p.id === params.projectId);
     if (project) {
-      const applicationName =
-        (params as { applicationName?: string }).applicationName ?? search.fromApplication;
-      const hasApplicationSelect =
-        project.type === ProjectType.CertificateManager && Boolean(applicationName);
-      const hasSiblingProjectSelect = project.type !== ProjectType.CertificateManager;
-      const isLegacyCertManagerProject =
-        project.type === ProjectType.CertificateManager &&
-        !isCertManagerInstancePending &&
-        certManagerInstance?.activeProjectId !== project.id;
-      return (
-        <TypeSelectInner
-          currentType={project.type}
-          currentProjectName={isLegacyCertManagerProject ? project.name : undefined}
-          showDivider={hasSiblingProjectSelect || hasApplicationSelect}
-        />
-      );
+      return <TypeSelectInner currentType={project.type} />;
     }
+    return null;
+  }
+
+  const orgProductSlug = pathname.match(ORG_PRODUCT_PAGE_PATH_RE)?.[1];
+  const orgProductType = orgProductSlug ? urlSlugToProjectType(orgProductSlug) : null;
+  if (orgProductType) {
+    return <TypeSelectInner currentType={orgProductType} />;
   }
 
   return null;

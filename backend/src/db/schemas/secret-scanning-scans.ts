@@ -13,11 +13,13 @@ export const SecretScanningScansSchema = z.object({
   statusMessage: z.string().nullable().optional(),
   type: z.string(),
   resourceId: z.string().uuid(),
-  createdAt: z.date().nullable().optional(),
-  scanningStartedAt: z.date().nullable().optional(),
+  createdAt: z.date(),
+  startedAt: z.date().nullable().optional(),
   lastScannedCommit: z.string().nullable().optional(),
   progressUpdatedAt: z.date().nullable().optional(),
-  lastScannedCommitDigest: z.string().nullable().optional()
+  lastScannedCommitDigest: z.string().nullable().optional(),
+  triggeredByUserId: z.string().uuid().nullable().optional(),
+  completedAt: z.date().nullable().optional()
 });
 
 export type TSecretScanningScans = z.infer<typeof SecretScanningScansSchema>;

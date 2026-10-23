@@ -14,9 +14,12 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { AppConnection } from "../app-connection-enums";
 import { GCP_GLOBAL_LOCATION } from "./gcp-connection-constants";
 import { GcpConnectionMethod } from "./gcp-connection-enums";
+import { isGcpServiceDisabledError, TGoogleApiError } from "./gcp-connection-errors";
 import {
   GCPApp,
+  GCPCloudDnsManagedZone,
   GCPGetCertificateMapsRes,
+  GCPGetCloudDnsManagedZonesRes,
   GCPGetProjectLocationsRes,
   GCPGetProjectsRes,
   GCPGetServiceRes,
@@ -296,10 +299,6 @@ export const validateGcpConnectionCredentials = async (appConnection: TGcpConnec
   return appConnection.credentials;
 };
 
-type TGoogleApiError = {
-  error?: { status?: string; message?: string };
-};
-
 const toGcpDiscoveryError = (error: unknown, context: { api: string; gcpProjectId?: string }) => {
   if (!(error instanceof AxiosError)) return error;
 
@@ -308,7 +307,7 @@ const toGcpDiscoveryError = (error: unknown, context: { api: string; gcpProjectI
   const scope = context.gcpProjectId ? `GCP project "${context.gcpProjectId}"` : "your GCP project";
 
   if (error.response?.status === 403) {
-    if (message.includes("has not been used in project") || message.includes("is disabled")) {
+    if (isGcpServiceDisabledError(body, message)) {
       return new BadRequestError({
         message: `The ${context.api} API is not enabled on ${scope}. Enable it in the Google Cloud console and try again.`
       });
@@ -327,6 +326,7 @@ const toGcpDiscoveryError = (error: unknown, context: { api: string; gcpProjectI
 };
 
 const GCP_MAX_PAGES = 10;
+const TRAILING_DOT_REGEX = new RE2("\\.$");
 const GCP_PAGE_SIZE = 100;
 const GCP_SERVICE_CHECK_CONCURRENCY = 10;
 
@@ -336,7 +336,8 @@ const fetchGcpPages = async <TResponse extends { nextPageToken?: string }, TItem
   pick,
   api,
   gcpProjectId,
-  resourceLabel
+  resourceLabel,
+  pageSizeParam = "pageSize"
 }: {
   url: string;
   accessToken: string;
@@ -344,6 +345,7 @@ const fetchGcpPages = async <TResponse extends { nextPageToken?: string }, TItem
   api: string;
   gcpProjectId?: string;
   resourceLabel: string;
+  pageSizeParam?: string;
 }) => {
   const items: TItem[] = [];
   let pageToken: string | undefined;
@@ -357,7 +359,7 @@ const fetchGcpPages = async <TResponse extends { nextPageToken?: string }, TItem
       // eslint-disable-next-line no-await-in-loop
       ({ data } = await request.get<TResponse>(url, {
         params: new URLSearchParams({
-          pageSize: String(GCP_PAGE_SIZE),
+          [pageSizeParam]: String(GCP_PAGE_SIZE),
           ...(currentPageToken ? { pageToken: currentPageToken } : {})
         }),
         headers: {
@@ -406,7 +408,7 @@ const isGcpServiceEnabled = async (accessToken: string, projectId: string, servi
   }
 };
 
-export const getGcpCertificateManagerProjects = async (appConnection: TGcpConnection) => {
+const getGcpProjectsWithServiceEnabled = async (appConnection: TGcpConnection, serviceName: string) => {
   const accessToken = await getGcpConnectionAuthToken(appConnection);
 
   const apps = await fetchGcpPages<GCPGetProjectsRes, GCPApp>({
@@ -422,11 +424,7 @@ export const getGcpCertificateManagerProjects = async (appConnection: TGcpConnec
   for (let i = 0; i < apps.length; i += GCP_SERVICE_CHECK_CONCURRENCY) {
     const batch = apps.slice(i, i + GCP_SERVICE_CHECK_CONCURRENCY);
     // eslint-disable-next-line no-await-in-loop
-    const enabled = await Promise.all(
-      batch.map((app) =>
-        isGcpServiceEnabled(accessToken, app.projectId, IntegrationUrls.GCP_CERTIFICATE_MANAGER_SERVICE_NAME)
-      )
-    );
+    const enabled = await Promise.all(batch.map((app) => isGcpServiceEnabled(accessToken, app.projectId, serviceName)));
 
     batch.forEach((app, index) => {
       if (enabled[index]) projects.push({ id: app.projectId, name: app.name });
@@ -434,6 +432,35 @@ export const getGcpCertificateManagerProjects = async (appConnection: TGcpConnec
   }
 
   return projects.sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const getGcpCertificateManagerProjects = async (appConnection: TGcpConnection) =>
+  getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CERTIFICATE_MANAGER_SERVICE_NAME);
+
+export const getGcpCloudDnsProjects = async (appConnection: TGcpConnection) =>
+  getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CLOUD_DNS_SERVICE_NAME);
+
+export const getGcpCloudDnsZones = async (projectId: string, appConnection: TGcpConnection) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection);
+
+  const zones = await fetchGcpPages<GCPGetCloudDnsManagedZonesRes, GCPCloudDnsManagedZone>({
+    url: `${IntegrationUrls.GCP_CLOUD_DNS_URL}/dns/v1/projects/${projectId}/managedZones`,
+    accessToken,
+    pick: (data) => data.managedZones,
+    api: "Cloud DNS",
+    gcpProjectId: projectId,
+    resourceLabel: "GCP Cloud DNS managed zones",
+    pageSizeParam: "maxResults"
+  });
+
+  return zones
+    .filter((zone) => zone.visibility !== "private")
+    .map((zone) => ({
+      id: `projects/${projectId}/managedZones/${zone.name}`,
+      name: zone.name,
+      dnsName: zone.dnsName.replace(TRAILING_DOT_REGEX, "")
+    }))
+    .sort((a, b) => a.dnsName.localeCompare(b.dnsName));
 };
 
 export const getGcpCertificateManagerLocations = async (projectId: string, appConnection: TGcpConnection) => {

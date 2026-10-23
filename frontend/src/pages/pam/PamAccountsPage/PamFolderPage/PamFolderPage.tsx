@@ -5,7 +5,6 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Filter, FolderOpen, MoreHorizontal, Plus, Search, Settings, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -43,6 +42,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   PamAccessType,

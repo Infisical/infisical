@@ -18,6 +18,7 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretStatus } from "../dynamic-secret/dynamic-secret-types";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
+import { decryptLeaseData } from "./dynamic-secret-lease-fns";
 import { TDynamicSecretLeaseConfig } from "./dynamic-secret-lease-types";
 
 type TDynamicSecretLeaseQueueServiceFactoryDep = {
@@ -171,9 +172,15 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
         ) as object;
 
-        await selectedProvider.revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId, {
-          projectId: folder.projectId
-        });
+        await selectedProvider.revoke(
+          decryptedStoredInput,
+          dynamicSecretLease.externalEntityId,
+          {
+            projectId: folder.projectId,
+            leaseData: decryptLeaseData(secretManagerDecryptor, dynamicSecretLease.encryptedLeaseData)
+          },
+          dynamicSecretLease.config as TDynamicSecretLeaseConfig
+        );
         await dynamicSecretLeaseDAL.deleteById(dynamicSecretLease.id);
         return;
       }
@@ -212,12 +219,13 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
           await Promise.all(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));
           await Promise.all(
-            dynamicSecretLeases.map(({ externalEntityId, config }) =>
+            dynamicSecretLeases.map(({ externalEntityId, config, encryptedLeaseData }) =>
               selectedProvider.revoke(
                 decryptedStoredInput,
                 externalEntityId,
                 {
-                  projectId: folder.projectId
+                  projectId: folder.projectId,
+                  leaseData: decryptLeaseData(secretManagerDecryptor, encryptedLeaseData)
                 },
                 config as TDynamicSecretLeaseConfig
               )

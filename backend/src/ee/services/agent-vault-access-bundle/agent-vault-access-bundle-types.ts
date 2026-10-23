@@ -101,25 +101,6 @@ export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
   serviceId: string;
 };
 
-export type TListVariablesDTO = TAgentVaultProjectScoped & { accessBundleId: string };
-
-export type TCreateVariableDTO = TAgentVaultProjectScoped & {
-  accessBundleId: string;
-  key: string;
-  value: string;
-  isSecret: boolean;
-};
-
-export type TUpdateVariableDTO = TAgentVaultProjectScoped & {
-  accessBundleId: string;
-  variableId: string;
-  key?: string;
-  value?: string;
-  isSecret?: boolean;
-};
-
-export type TVariableByIdDTO = TAgentVaultProjectScoped & { accessBundleId: string; variableId: string };
-
 export type TListMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   search?: string;

@@ -74,3 +74,14 @@ export type TGcpCertificateManagerProjectScopedDTO = {
   connectionId: string;
   gcpProjectId: string;
 };
+
+export type GCPCloudDnsManagedZone = {
+  name: string;
+  dnsName: string;
+  visibility?: "public" | "private";
+};
+
+export type GCPGetCloudDnsManagedZonesRes = {
+  managedZones?: GCPCloudDnsManagedZone[];
+  nextPageToken?: string;
+};

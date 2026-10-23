@@ -21,12 +21,14 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import {
-  CertificateAlertEvent,
+  CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -48,7 +50,6 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
-import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -93,11 +94,12 @@ import {
   extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
+  normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
+  parsePemCertificateChain,
   resolveCertificateDeletionEligibility,
-  revocationReasonToCrlCode,
-  splitPemChain
+  revocationReasonToCrlCode
 } from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
@@ -159,14 +161,14 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
-  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
 
@@ -203,7 +205,7 @@ export const certificateServiceFactory = ({
   usageCounterDAL,
   keyStore,
   usageMeteringService,
-  hsmConnectorService,
+  caKeySourceService,
   internalCertificateAuthorityDAL
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
@@ -775,7 +777,7 @@ export const certificateServiceFactory = ({
       certificateId: revokedCertId,
       projectId: ca.projectId,
       orgId: actorOrgId,
-      eventType: CertificateAlertEvent.Revocation,
+      eventType: CertificateApplicationAlertEvent.Revocation,
       applicationId: revokedCertApplicationId
     });
 
@@ -804,7 +806,7 @@ export const certificateServiceFactory = ({
         projectDAL,
         certificateDAL,
         kmsService,
-        hsmConnectorService
+        caKeySourceService
       });
     }
 
@@ -1148,13 +1150,16 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId,
     friendlyName,
-    certificatePem,
-    chainPem,
-    privateKeyPem,
+    certificatePem: rawCertificatePem,
+    chainPem: rawChainPem,
+    privateKeyPem: rawPrivateKeyPem,
     profileId,
     externalMetadata
   }: TImportCertDTO) => {
     const collectionId = pkiCollectionId;
+    const certificatePem = normalizePemText(rawCertificatePem);
+    const chainPem = rawChainPem ? normalizePemText(rawChainPem) : rawChainPem;
+    const privateKeyPem = rawPrivateKeyPem ? normalizePemText(rawPrivateKeyPem) : rawPrivateKeyPem;
 
     const resolveProjectId = async (): Promise<string> => {
       if (projectIdInput) return projectIdInput;
@@ -1233,7 +1238,13 @@ export const certificateServiceFactory = ({
 
     // Verify the certificate chain when one is provided
     if (chainPem) {
-      const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
+      const chainCerts = parsePemCertificateChain(chainPem);
+      if (!chainCerts) {
+        throw new BadRequestError({
+          message:
+            "The certificate chain contains a block that is not a valid certificate. Paste each certificate in full, including its BEGIN and END lines."
+        });
+      }
 
       // Remove leaf cert from the chain if it's present
       if (chainCerts[0]?.equal(leafCert)) {
@@ -1273,7 +1284,9 @@ export const certificateServiceFactory = ({
       try {
         privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
       } catch (err) {
-        throw new BadRequestError({ message: "Invalid private key format" });
+        throw new BadRequestError({
+          message: "Invalid private key. Provide an unencrypted private key in PEM format."
+        });
       }
 
       try {
@@ -1619,13 +1632,10 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId
   }: TGetCertPkcs12DTO) => {
-    if (!password || password.trim() === "") {
-      throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
-    }
-
-    if (password.length < 6) {
+    const passwordCheck = Pkcs12PasswordSchema.safeParse(password);
+    if (!passwordCheck.success) {
       throw new BadRequestError({
-        message: "Password must be at least 6 characters long for PKCS12 keystore security"
+        message: `Invalid keystore password: ${passwordCheck.error.issues.map((issue) => issue.message).join(", ")}`
       });
     }
 

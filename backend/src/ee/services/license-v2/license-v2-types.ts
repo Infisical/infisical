@@ -341,6 +341,7 @@ export type TStartBillingV2TrialDTO = {
   plan: string;
   // Billing email for the trial; a trial has no Stripe customer yet, so the server needs it up front.
   email?: string;
+  returnPath?: string;
 };
 
 export type TCancelBillingV2TrialDTO = {

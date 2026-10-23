@@ -35,7 +35,6 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
 import { ServicesCard } from "./components/ServicesCard";
-import { VariablesCard } from "./components/VariablesCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
   const { t } = useTranslation();
@@ -80,7 +79,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
   }
 
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: accessBundle.name })}</title>
       </Helmet>
@@ -139,11 +138,6 @@ export const AgentVaultAccessBundleDetailPage = () => {
           setIsServiceSheetOpen(true);
         }}
       />
-
-      {/* The variables routes are admin only. */}
-      {isAdmin && (
-        <VariablesCard accessBundleId={accessBundle.id} services={accessBundle.services} />
-      )}
 
       <ManageAccessSheet
         accessBundle={isManageAccessOpen ? accessBundle : null}

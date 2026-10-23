@@ -28,6 +28,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
+import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
 import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
 
@@ -40,6 +41,20 @@ const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSec
 export const listSecretScanningDataSourceOptions = () => {
   return Object.values(SECRET_SCANNING_SOURCE_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
+
+// GitLab only reports new projects through group webhooks, so discovery needs a group. Self-hosted system
+// hooks would also work, but are not supported.
+export const doesDataSourceSupportDiscovery = ({ type, config }: { type: string; config?: unknown }) =>
+  type !== SecretScanningDataSource.GitLab || (config as { scope?: string })?.scope === GitLabDataSourceScope.Group;
+
+// Push events drive both discovery and new commit scans, so with both off there is nothing to listen for.
+export const isDataSourceWebhookRequired = ({
+  isDiscoveryEnabled,
+  isScanNewCommitsEnabled
+}: {
+  isDiscoveryEnabled?: boolean | null;
+  isScanNewCommitsEnabled?: boolean | null;
+}) => Boolean(isDiscoveryEnabled || isScanNewCommitsEnabled);
 
 // The scanner exits 77 when it wrote findings; that is a successful scan, not a failure.
 const SCAN_FINDINGS_EXIT_CODE = 77;
@@ -173,6 +188,28 @@ export type TCommitBatch = {
    * change (rebase) to cause some commits to not be scanned.
    */
   prefixDigest: string;
+};
+
+/**
+ * An empty repository has an unborn HEAD, which `git rev-list HEAD` cannot resolve and then reports
+ * as an argument-order error, so history is only enumerated or scanned once this returns true.
+ */
+export const repositoryHasCommits = async (repoPath: string) => {
+  try {
+    await execFileBounded("git", ["rev-parse", "--verify", "--quiet", "HEAD"], {
+      phase: SecretScanningExecPhase.Enumerate,
+      cwd: repoPath,
+      timeoutMs: SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT,
+      env: GIT_PROCESS_ENV
+    });
+
+    return true;
+  } catch (error) {
+    // --quiet exits 1 when HEAD does not point at a commit; anything else is a real failure
+    if (error instanceof SecretScanningExecError && error.exitCode === 1) return false;
+
+    throw error;
+  }
 };
 
 const COMMIT_LOG_OPTS = COMMIT_LIST_ARGS.slice(1).join(" ");

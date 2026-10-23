@@ -202,7 +202,7 @@ export const registerApprovalPolicyEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission);
+      const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission, policyType);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -246,7 +246,8 @@ export const registerApprovalPolicyEndpoints = ({
       const { policy } = await server.services.approvalPolicy.updateById(
         req.params.policyId,
         req.body as TUpdatePolicyDTO,
-        req.permission
+        req.permission,
+        policyType
       );
 
       await server.services.auditLog.createAuditLog({
@@ -302,7 +303,8 @@ export const registerApprovalPolicyEndpoints = ({
     handler: async (req) => {
       const { policyId, projectId } = await server.services.approvalPolicy.deleteById(
         req.params.policyId,
-        req.permission
+        req.permission,
+        policyType
       );
 
       await server.services.auditLog.createAuditLog({

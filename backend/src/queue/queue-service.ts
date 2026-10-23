@@ -11,6 +11,7 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { TAuditLogCollapsedFlushJobData } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -120,10 +121,12 @@ export enum QueueName {
   PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
+  PkiDiscoveryRescan = "pki-discovery-rescan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   AuditLogStreamOutbox = "audit-log-stream-outbox",
+  AuditLogCollapsedFlush = "audit-log-collapsed-flush",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
   ProjectEnvHardDelete = "project-env-hard-delete",
@@ -203,11 +206,13 @@ export enum QueueJobs {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  PkiDiscoveryRescanInstallation = "pki-discovery-rescan-installation",
   AppConnectionCredentialRotationQueueRotations = "app-connection-credential-rotation-queue-rotations",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   AuditLogStreamFlush = "audit-log-stream-flush",
+  AuditLogCollapsedFlush = "audit-log-collapsed-flush-job",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
@@ -572,6 +577,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
       };
+  [QueueName.PkiDiscoveryRescan]: {
+    name: QueueJobs.PkiDiscoveryRescanInstallation;
+    payload: { installationId: string };
+  };
   [QueueName.AppConnectionCredentialRotation]:
     | {
         name: QueueJobs.AppConnectionCredentialRotationQueueRotations;
@@ -592,6 +601,10 @@ export type TQueueJobTypes = {
   [QueueName.AuditLogStreamOutbox]: {
     name: QueueJobs.AuditLogStreamFlush;
     payload: TAuditLogStreamFlushJobData;
+  };
+  [QueueName.AuditLogCollapsedFlush]: {
+    name: QueueJobs.AuditLogCollapsedFlush;
+    payload: TAuditLogCollapsedFlushJobData;
   };
   [QueueName.CaAutoRenewal]:
     | {
@@ -624,7 +637,8 @@ export type TQueueJobTypes = {
   };
   [QueueName.SecretBlindIndexMigration]: {
     name: QueueJobs.SecretBlindIndexMigration;
-    payload: { projectId: string };
+    // `scope` is absent on jobs queued before the org-wide walk shipped.
+    payload: { scope: "org"; orgId: string } | { scope: "project"; projectId: string } | { projectId: string };
   };
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;

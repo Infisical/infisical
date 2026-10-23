@@ -89,7 +89,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
   const isFiltered = Boolean(debouncedSearch.trim());
-  const memberToRemoveName = memberToRemove ? memberDisplayName(memberToRemove.actor) : "";
+  const memberToRemoveName = memberToRemove ? memberDisplayName(memberToRemove) : "";
 
   const handleRemove = async () => {
     try {
@@ -97,7 +97,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
 
       await revokeMembers.mutateAsync({
         accessBundleId: accessBundle.id,
-        ...actorIdsPayload([memberToRemove.actor])
+        ...actorIdsPayload([memberToRemove])
       });
       createNotification({
         text: `Access bundle revoked from "${memberToRemoveName}"`,
@@ -168,18 +168,18 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
               </TableHeader>
               <TableBody>
                 {members.map((member) => (
-                  <TableRow key={member.id}>
+                  <TableRow key={`${member.type}:${member.id}`}>
                     <TableCell>
                       <MemberName member={member} />
                     </TableCell>
-                    <TableCell>{format(new Date(member.createdAt), "MMM d, yyyy")}</TableCell>
+                    <TableCell>{format(new Date(member.grantedAt), "MMM d, yyyy")}</TableCell>
                     <TableCell variant="action">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton
                             variant="ghost"
                             size="xs"
-                            aria-label={`Actions for ${memberDisplayName(member.actor)}`}
+                            aria-label={`Actions for ${memberDisplayName(member)}`}
                           >
                             <MoreHorizontalIcon />
                           </IconButton>

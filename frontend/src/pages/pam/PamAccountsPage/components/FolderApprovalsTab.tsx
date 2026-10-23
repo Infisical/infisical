@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
 import {
   Ban,
   FilterIcon,
@@ -10,8 +9,8 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { PamEnterpriseAlertingUpgradeIntent } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -21,12 +20,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  FilterableSelect,
   IconButton,
   Pagination,
   Table,
@@ -40,12 +40,13 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { useOrganization, useSubscription } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   PamAccessRequestStatus,
@@ -61,6 +62,7 @@ import {
 } from "@app/hooks/api/pam";
 import { TPamAccessRequest, TPamNotificationConfig } from "@app/hooks/api/pam/types";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
+import { AlertAction } from "@app/views/Alerts";
 
 import { AccessTypeBadge } from "../../components/AccessTypeBadge";
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
@@ -82,20 +84,18 @@ const KIND_ICON: Record<PamApproverType, typeof UserIcon> = {
   [PamApproverType.Group]: UsersIcon
 };
 
-const ApproverSelectOption = ({ children, ...props }: OptionProps<ApproverOption>) => {
-  const Icon = KIND_ICON[props.data.kind];
+const renderApproverOption = (option: ApproverOption) => {
+  const Icon = KIND_ICON[option.kind];
   return (
-    <components.Option {...props}>
-      <div className="flex items-center gap-2.5">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <div className="min-w-0">
-          <p className="truncate">{children}</p>
-          {props.data.subtitle && (
-            <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
-          )}
-        </div>
+    <div className="flex items-center gap-2.5">
+      <Icon className="size-4 shrink-0 text-muted" />
+      <div className="min-w-0">
+        <p className="truncate">{option.label}</p>
+        {option.subtitle && (
+          <p className="truncate text-xs leading-4 text-muted">{option.subtitle}</p>
+        )}
       </div>
-    </components.Option>
+    </div>
   );
 };
 
@@ -106,8 +106,8 @@ type Props = {
 
 export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
-  const isPamSlackEnabled = Boolean(subscription?.pamSlackNotifications);
   const { data: config, isLoading } = useGetPamApprovalConfig(folderId);
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
@@ -313,19 +313,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const handleSave = () => {
-    const hasIncompleteConfig =
-      isPamSlackEnabled &&
-      notificationConfigs.some(
-        (c) => !c.workflowIntegrationId || c.channels.length === 0 || c.events.length === 0
-      );
-    if (hasIncompleteConfig) {
-      createNotification({
-        type: "error",
-        text: "Each notification needs a Slack workspace, at least one channel, and at least one event"
-      });
-      return;
-    }
-
     if (breakGlassUsers.length > 0 && approvers.length === 0) {
       createNotification({
         type: "error",
@@ -339,8 +326,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         folderId,
         steps: [{ approvers }],
         breakGlassUsers,
-        // undefined leaves server-side configs untouched when the plan doesn't include the feature
-        notificationConfigs: isPamSlackEnabled ? notificationConfigs : undefined
+        // Legacy Slack configs can only be removed, so they're sent only when one was.
+        notificationConfigs: isNotifDirty ? notificationConfigs : undefined
       },
       {
         onSuccess: () => {
@@ -384,17 +371,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <FilterableSelect
+          <Combobox
+            isClearable={false}
             value={null}
             options={approverOptions}
-            onChange={(opt) => addApprover(opt as ApproverOption | null)}
+            onValueChange={addApprover}
             getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
             getOptionLabel={(opt) => opt.label}
-            components={{ Option: ApproverSelectOption }}
+            renderOption={renderApproverOption}
             placeholder="Add a user or group..."
-            noOptionsMessage={() =>
-              "No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
-            }
+            emptyMessage="No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
           />
 
           {approvers.length === 0 ? (
@@ -472,17 +458,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <FilterableSelect
+          <Combobox
+            isClearable={false}
             value={null}
             options={breakGlassOptions}
-            onChange={(opt) => addBreakGlassUser(opt as ApproverOption | null)}
+            onValueChange={addBreakGlassUser}
             getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
             getOptionLabel={(opt) => opt.label}
-            components={{ Option: ApproverSelectOption }}
+            renderOption={renderApproverOption}
             placeholder="Add a user or group..."
-            noOptionsMessage={() =>
-              "No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
-            }
+            emptyMessage="No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
           />
 
           {breakGlassUsers.length === 0 ? (
@@ -546,7 +531,37 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      {isPamSlackEnabled && (
+      <Card>
+        <CardHeader>
+          <CardTitle>Alerts</CardTitle>
+          <CardDescription>
+            Notify email, Slack, webhook, or PagerDuty channels about access request activity for
+            accounts in this folder.
+          </CardDescription>
+          <CardAction>
+            <AlertAction
+              resourceType={AlertResourceType.PamFolder}
+              resourceId={folderId}
+              projectId={currentProject.id}
+              channelPaywall={
+                subscription?.pamEnterpriseAlerting
+                  ? undefined
+                  : {
+                      lockedChannelTypes: [
+                        AlertChannelType.Slack,
+                        AlertChannelType.Webhook,
+                        AlertChannelType.PagerDuty
+                      ],
+                      intent: PamEnterpriseAlertingUpgradeIntent,
+                      paywallKey: "pam.folder-alert-channels"
+                    }
+              }
+            />
+          </CardAction>
+        </CardHeader>
+      </Card>
+
+      {savedNotificationConfigs.length > 0 && (
         <FolderNotificationsSection
           configs={notificationConfigs}
           integrationSlugById={integrationSlugById}
@@ -704,16 +719,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={!!requestToRevoke}
-        onChange={(open) => {
+        onOpenChange={(open) => {
           if (!open) setRequestToRevoke(null);
         }}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this user's approved access?"
-        deleteKey="revoke"
-        buttonText="Revoke"
-        onDeleteApproved={confirmRevoke}
+        description="Are you sure you want to revoke this user's approved access?"
+        confirmKey="revoke"
+        confirmLabel="Revoke"
+        onConfirm={confirmRevoke}
       />
 
       <div aria-hidden className="h-8 shrink-0" />

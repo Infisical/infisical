@@ -36,6 +36,7 @@ export type Organization = {
   maxSharedSecretViewLimit: number | null;
   blockDuplicateSecretSyncDestinations: boolean;
   allowCrossProjectSecretSharing: boolean;
+  requireGatewayPools: boolean;
   parentOrgId: string | null;
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
@@ -65,6 +66,7 @@ export type UpdateOrgDTO = {
   maxSharedSecretLifetime?: number;
   blockDuplicateSecretSyncDestinations?: boolean;
   allowCrossProjectSecretSharing?: boolean;
+  requireGatewayPools?: boolean;
   secretShareBrandConfig?: TSecretShareBrandConfig;
 };
 
@@ -112,6 +114,7 @@ export type TOrgProductStats = {
   secretScanning: {
     dataSourcesCount: number;
     resourcesCount: number;
+    findingsCount: number;
     projectsCount: number;
   };
   pam: {

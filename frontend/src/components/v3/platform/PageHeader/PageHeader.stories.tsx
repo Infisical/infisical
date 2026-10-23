@@ -4,6 +4,7 @@ import { ChevronLeftIcon, FingerprintIcon, PlusIcon } from "lucide-react";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { Button } from "../../generic/Button";
+import { Card, CardContent } from "../../generic/Card";
 import { PageHeader, type TPageHeaderScope } from "./PageHeader";
 
 const meta = {
@@ -45,7 +46,8 @@ export const Default: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use a project-scoped header as the standard heading for project pages."
+        story:
+          "Use a project-scoped header as the standard heading for project pages. PageHeader owns a 40px bottom boundary (mb-10). Do not add a parent row gap or repeat mb-10 at ordinary callers; keep independent body spacing inside the body layout."
       }
     }
   }
@@ -54,7 +56,7 @@ export const Default: Story = {
 export const SupportedScopes: Story = {
   name: "Example: Supported Scopes",
   render: () => (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col">
       {SCOPES.map(({ label, scope }) => (
         <PageHeader key={scope} scope={scope} title={label} />
       ))}
@@ -163,6 +165,54 @@ export const LongTitle: Story = {
     docs: {
       description: {
         story: "Long titles truncate before they displace the page action."
+      }
+    }
+  }
+};
+
+export const WithBodySections: Story = {
+  name: "Example: Header and Body Spacing",
+  render: (args) => (
+    <div className="flex flex-col">
+      <PageHeader {...args} />
+      <div className="flex flex-col gap-6">
+        <Card>
+          <CardContent>First body section</CardContent>
+        </Card>
+        <Card>
+          <CardContent>Second body section</CardContent>
+        </Card>
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The header supplies the 40px boundary to the next region. The body group independently owns 24px between sections. Use an existing body container when one already owns that layout; do not remove its card-to-card gaps."
+      }
+    }
+  }
+};
+
+export const CompactResponsive: Story = {
+  name: "Example: Compact Responsive Boundary",
+  args: {
+    className: "mb-6 md:mb-10"
+  },
+  render: (args) => (
+    <div className="flex flex-col">
+      <PageHeader {...args} />
+      <Card>
+        <CardContent>Overview body</CardContent>
+      </Card>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "className supports genuine compact or responsive boundaries. This Overview composition uses 24px below md and the normal 40px at md and above. Use mb-0 only when an enclosing composition intentionally owns the boundary, not as a default migration workaround."
       }
     }
   }

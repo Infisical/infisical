@@ -7,7 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
@@ -20,7 +20,6 @@ import { EditHsmConnectorSheet } from "../SettingsPage/components/HsmConnectorsT
 import { HsmConnectorLinkedResourcesSection, HsmConnectorOverviewSection } from "./components";
 
 const Page = () => {
-  const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const { connectorId } = useParams({
@@ -33,12 +32,10 @@ const Page = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  const projectId = currentProject?.id || "";
-
   const navigateBackToList = () => {
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
-      params: { orgId: currentOrg.id, projectId },
+      to: "/organizations/$orgId/cert-manager/settings",
+      params: { orgId: currentOrg.id },
       search: { selectedTab: "hsm-connectors" }
     });
   };
@@ -80,12 +77,12 @@ const Page = () => {
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
                 <PageHeader
                   backLink={
                     <Link
-                      to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
-                      params={{ orgId: currentOrg.id, projectId }}
+                      to="/organizations/$orgId/cert-manager/settings"
+                      params={{ orgId: currentOrg.id }}
                       search={{ selectedTab: "hsm-connectors" }}
                     >
                       <ChevronLeftIcon className="size-4" />

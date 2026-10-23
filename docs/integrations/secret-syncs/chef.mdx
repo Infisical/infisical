@@ -44,9 +44,10 @@ description: "Learn how to configure a Chef Sync for Infisical."
 
         ![Configure Destination](/images/secret-syncs/chef/sync-destination.png)
 
-        - **Chef Connection**: The Chef Connection to authenticate with.
-        - **Data Bag**: The Data Bag to sync secrets to.
-        - **Data Bag Item**: The Data Bag Item to sync secrets to.
+        - **Chef Connection**: The Chef Connection to authenticate with
+        - **Data Bag**: The Data Bag to sync secrets to
+        - **Data Bag Item**: The Data Bag Item to sync secrets to
+        - **Encrypt Secrets**: Whether to write the item as a Chef encrypted data bag item (see [Encrypt secrets in Chef](#encrypt-secrets-in-chef))
       </Step>
       <Step title="Configure Sync Options">
         Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
@@ -110,7 +111,8 @@ description: "Learn how to configure a Chef Sync for Infisical."
                 },
                 "destinationConfig": {
                     "dataBagName": "my-data-bag",
-                    "dataBagItemName": "my-data-bag-item"
+                    "dataBagItemName": "my-data-bag-item",
+                    "shouldEncryptSecrets": false
                 }
             }'
     ```
@@ -153,7 +155,8 @@ description: "Learn how to configure a Chef Sync for Infisical."
             "destination": "chef",
             "destinationConfig": {
                 "dataBagName": "my-data-bag",
-                "dataBagItemName": "my-data-bag-item"
+                "dataBagItemName": "my-data-bag-item",
+                "shouldEncryptSecrets": false
             }
         }
     }
@@ -161,3 +164,48 @@ description: "Learn how to configure a Chef Sync for Infisical."
 
   </Tab>
 </Tabs>
+
+## Encrypt secrets in Chef
+
+By default, the sync writes secrets to the data bag item in plain text, so anyone who can read the data bag on your Chef server can read the secrets. If you turn on **Encrypt Secrets**, the sync writes the item as a Chef [encrypted data bag item](https://docs.chef.io/data_bags/) instead, and only nodes and users that have your data bag secret can read the values.
+
+### Turn on encryption
+
+<Steps>
+  <Step>
+    Copy your data bag secret to every node that reads the data bag item. If a node doesn't have the secret, the Chef Infra Client run on that node fails when a recipe reads the item.
+  </Step>
+  <Step>
+    Add the same secret to the sync's [Chef connection](/integrations/app-connections/chef). In **App Connections**, select the three dot menu next to the connection, then select **Edit Credentials**. Enter the **Private Key** and the **Data Bag Secret**, then select **Update Credentials**.
+  </Step>
+  <Step>
+    On the sync's page, select the three dot menu next to **Details**, then select **Edit Sync**. Turn on **Encrypt Secrets**, then select **Save**.
+  </Step>
+</Steps>
+
+On the next sync, Infisical encrypts every value in the item, including values that Infisical doesn't manage. Chef only decrypts an item if every value in it is encrypted.
+
+### Read encrypted secrets in Chef
+
+Recipes that read the item with `data_bag_item` don't need to change. If the secret is at the path that `encrypted_data_bag_secret` sets in the Chef Infra Client configuration (`/etc/chef/encrypted_data_bag_secret` on Linux by default), `data_bag_item` decrypts the item automatically.
+
+To read the item from a workstation, pass the secret file to knife:
+
+```bash
+knife data bag show <data-bag> <data-bag-item> --secret-file <path-to-secret-file>
+```
+
+### Turn off encryption
+
+If you turn off **Encrypt Secrets**, the next sync writes every value in the item in plain text again. Keep the data bag secret on the connection until that sync finishes, because Infisical needs the secret to read the encrypted values.
+
+### Troubleshooting encryption errors
+
+If the sync can't read or write the encrypted item, the sync fails, and Infisical doesn't change the item. The sync's status shows one of these errors:
+
+| Error | Fix |
+| --- | --- |
+| Chef data bag item is encrypted | Add the data bag secret that the item was encrypted with to the Chef connection, for example after updating the connection's credentials without entering the secret again |
+| Couldn't decrypt value | Update the Chef connection with the data bag secret that the item was encrypted with |
+| Encryption is turned on for this sync, but its Chef connection has no data bag secret | Add the data bag secret to the Chef connection (this error appears if you turn on encryption before adding the secret) |
+| Uses encrypted data bag version 1 or 2 | Encrypt the item again with Chef Infra Client 13 or later, which uses version 3 by default |

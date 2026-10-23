@@ -1,6 +1,8 @@
+import "./lib/config/disable-sdk-platform-detection";
 // Note(Daniel): Do not rename this import, as it is strictly removed from FIPS standalone builds to avoid FIPS mode issues.
 // If you rename the import, update the Dockerfile.fips.standalone-infisical file as well.
 import "./lib/telemetry/instrumentation";
+import "./lib/config/snowflake-sdk-ocsp";
 
 import axios from "axios";
 import dotenv from "dotenv";
@@ -20,7 +22,6 @@ import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { CustomLogger } from "./lib/logger/logger";
 import { registerInfrastructureMetrics } from "./lib/telemetry/metrics";
-import { registerSegfaultHandler } from "./lib/telemetry/segfault-handler";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
@@ -36,7 +37,6 @@ const setupAxiosResponseInterceptor = (logger: CustomLogger) => {
 
 const run = async () => {
   const logger = initLogger();
-  await registerSegfaultHandler();
   await removeTemporaryBaseDirectory();
 
   setupAxiosResponseInterceptor(logger);

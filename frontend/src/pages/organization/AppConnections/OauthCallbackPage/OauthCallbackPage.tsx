@@ -26,6 +26,7 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
 import { FormDataMap } from "./OauthCallbackPage.types";
 
@@ -97,6 +98,10 @@ export const OAuthCallbackPage = () => {
             connectionName: data.connection.name,
             ...(data.returnUrl.includes("integrations")
               ? { selectedTab: getIntegrationsListTab() }
+              : {}),
+            ...(data.returnUrl.includes("/cert-manager/applications/") &&
+            localStorage.getItem("pkiSyncFormData")
+              ? { selectedTab: ApplicationTab.Syncs }
               : {})
           }
     });

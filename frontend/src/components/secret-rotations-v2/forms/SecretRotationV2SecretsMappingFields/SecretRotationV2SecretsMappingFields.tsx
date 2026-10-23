@@ -14,6 +14,7 @@ import { DatadogApiKeyRotationSecretsMappingFields } from "./DatadogApiKeyRotati
 import { DatadogApplicationKeySecretRotationSecretsMappingFields } from "./DatadogApplicationKeySecretRotationSecretsMappingFields";
 import { DbtServiceTokenRotationSecretsMappingFields } from "./DbtServiceTokenRotationSecretsMappingFields";
 import { FireworksApiKeyRotationSecretsMappingFields } from "./FireworksApiKeyRotationSecretsMappingFields";
+import { GcpServiceAccountKeyRotationSecretsMappingFields } from "./GcpServiceAccountKeyRotationSecretsMappingFields";
 import { HpIloRotationSecretsMappingFields } from "./HpIloRotationSecretsMappingFields";
 import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotationSecretsMappingFields";
 import { LiteLLMApiKeyRotationSecretsMappingFields } from "./LiteLLMApiKeyRotationSecretsMappingFields";
@@ -61,7 +62,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationSecretsMappingFields,
   [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationSecretsMappingFields,
   [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationSecretsMappingFields,
-  [SecretRotation.StripeApiKey]: StripeApiKeyRotationSecretsMappingFields
+  [SecretRotation.StripeApiKey]: StripeApiKeyRotationSecretsMappingFields,
+  [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

@@ -114,6 +114,12 @@ import {
   TCloudflarePagesSyncWithCredentials
 } from "./cloudflare-pages/cloudflare-pages-types";
 import {
+  TCloudflareSecretsStoreSync,
+  TCloudflareSecretsStoreSyncInput,
+  TCloudflareSecretsStoreSyncListItem,
+  TCloudflareSecretsStoreSyncWithCredentials
+} from "./cloudflare-secrets-store";
+import {
   TCloudflareWorkersSync,
   TCloudflareWorkersSyncInput,
   TCloudflareWorkersSyncListItem,
@@ -160,6 +166,12 @@ import {
   THumanitecSyncWithCredentials
 } from "./humanitec";
 import {
+  TKeeperSync,
+  TKeeperSyncInput,
+  TKeeperSyncListItem,
+  TKeeperSyncWithCredentials
+} from "./keeper/keeper-sync-types";
+import {
   TLaravelForgeSync,
   TLaravelForgeSyncInput,
   TLaravelForgeSyncListItem,
@@ -180,6 +192,12 @@ import {
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
 import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
+import {
+  TPortainerSync,
+  TPortainerSyncInput,
+  TPortainerSyncListItem,
+  TPortainerSyncWithCredentials
+} from "./portainer/portainer-sync-types";
 import { TQoverySync, TQoverySyncInput, TQoverySyncListItem, TQoverySyncWithCredentials } from "./qovery";
 import {
   TRailwaySync,
@@ -267,11 +285,13 @@ export type TSecretSync =
   | TGitLabSync
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
+  | TCloudflareSecretsStoreSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
   | TRundeckSync
+  | TPortainerSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -287,7 +307,8 @@ export type TSecretSync =
   | THasuraCloudSync
   | TCloud66Sync
   | TSpaceliftSync
-  | TDaytonaSync;
+  | TDaytonaSync
+  | TKeeperSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -316,11 +337,13 @@ export type TSecretSyncWithCredentials =
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
   | TCloudflareWorkersSyncWithCredentials
+  | TCloudflareSecretsStoreSyncWithCredentials
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
   | TRundeckSyncWithCredentials
+  | TPortainerSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -338,7 +361,8 @@ export type TSecretSyncWithCredentials =
   | THasuraCloudSyncWithCredentials
   | TCloud66SyncWithCredentials
   | TSpaceliftSyncWithCredentials
-  | TDaytonaSyncWithCredentials;
+  | TDaytonaSyncWithCredentials
+  | TKeeperSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -367,11 +391,13 @@ export type TSecretSyncInput =
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
   | TCloudflareWorkersSyncInput
+  | TCloudflareSecretsStoreSyncInput
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
   | TRundeckSyncInput
+  | TPortainerSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -389,7 +415,8 @@ export type TSecretSyncInput =
   | THasuraCloudSyncInput
   | TCloud66SyncInput
   | TSpaceliftSyncInput
-  | TDaytonaSyncInput;
+  | TDaytonaSyncInput
+  | TKeeperSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -419,11 +446,13 @@ export type TSecretSyncListItem =
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
   | TCloudflareWorkersSyncListItem
+  | TCloudflareSecretsStoreSyncListItem
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
   | TRundeckSyncListItem
+  | TPortainerSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
@@ -440,7 +469,8 @@ export type TSecretSyncListItem =
   | THasuraCloudSyncListItem
   | TCloud66SyncListItem
   | TSpaceliftSyncListItem
-  | TDaytonaSyncListItem;
+  | TDaytonaSyncListItem
+  | TKeeperSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
@@ -623,6 +653,7 @@ export type TPreSaveTransformSyncOptionsParams = {
 
 export type TPreSaveTransformDestinationConfigParams = {
   destinationConfig: Record<string, unknown> | undefined;
+  existingDestinationConfig?: Record<string, unknown>;
   connectionId: string;
 };
 

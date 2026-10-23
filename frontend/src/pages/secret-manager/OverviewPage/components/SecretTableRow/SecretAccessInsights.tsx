@@ -20,6 +20,7 @@ import {
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Command,
   CommandEmpty,
   CommandGroup,
@@ -35,7 +36,6 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  FilterableSelect,
   IconButton,
   InputGroup,
   InputGroupAddon,
@@ -370,13 +370,14 @@ function AddMemberPopover({
         </Command>
         <div className="border-t border-border px-3 py-2">
           <span className="mb-1 block text-xs text-muted">Grant access:</span>
-          <FilterableSelect
-            isMulti
+          <Combobox
+            multiple
             value={selectedActions}
-            onChange={(opts) =>
-              setSelectedActions([...(opts as { value: string; label: string }[])])
-            }
+            onValueChange={setSelectedActions}
             options={SECRET_ACTION_OPTIONS}
+            getOptionValue={(option) => option.value}
+            getOptionLabel={(option) => option.label}
+            getOptionKeywords={(option) => [option.value]}
             placeholder="Select permissions..."
           />
         </div>

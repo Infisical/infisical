@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { ApiDocsTags, DYNAMIC_SECRETS } from "@app/lib/api-docs";
@@ -12,7 +11,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedDynamicSecretLeaseSchema, SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -446,7 +445,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          leases: DynamicSecretLeasesSchema.array()
+          leases: SanitizedDynamicSecretLeaseSchema.array()
         })
       }
     },

@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { Button } from "../Button";
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldTitle } from "../Field";
 import { Label } from "../Label";
 import { Toggle } from "./Toggle";
@@ -265,6 +267,31 @@ export const WithLabel: Story = {
       <Label htmlFor="toggle-mfa">Require MFA on sign-in</Label>
     </div>
   )
+};
+
+export const NativeFocus: Story = {
+  name: "Example: Native Focus",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The ref points to the native switch button and supports focus(). With React Hook Form's Controller, pass field.ref to ref, field.value to checked, field.onChange to onCheckedChange, and field.onBlur to onBlur so setFocus targets the toggle."
+      }
+    }
+  },
+  render: function Render() {
+    const ref = useRef<HTMLButtonElement>(null);
+
+    return (
+      <div className="flex items-center gap-3">
+        <Toggle ref={ref} id="toggle-focus" />
+        <Label htmlFor="toggle-focus">Enable notifications</Label>
+        <Button variant="outline" onClick={() => ref.current?.focus()}>
+          Focus Toggle
+        </Button>
+      </div>
+    );
+  }
 };
 
 export const WithDescription: Story = {

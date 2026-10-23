@@ -154,6 +154,7 @@ export const useUpdateOrg = () => {
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
+      requireGatewayPools,
       secretShareBrandConfig
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
@@ -177,6 +178,7 @@ export const useUpdateOrg = () => {
         maxSharedSecretViewLimit,
         blockDuplicateSecretSyncDestinations,
         allowCrossProjectSecretSharing,
+        requireGatewayPools,
         secretShareBrandConfig
       });
     },

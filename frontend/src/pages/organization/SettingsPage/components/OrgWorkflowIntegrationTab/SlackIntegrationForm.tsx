@@ -16,7 +16,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useToggle } from "@app/hooks";
+import { useScopeVariant, useToggle } from "@app/hooks";
 import {
   fetchSlackInstallUrl,
   useGetSlackIntegrationById,
@@ -38,6 +38,7 @@ const slackFormSchema = z.object({
 type TSlackFormData = z.infer<typeof slackFormSchema>;
 
 export const SlackIntegrationForm = ({ id, onClose, onBack }: Props) => {
+  const scopeVariant = useScopeVariant();
   const {
     control,
     handleSubmit,
@@ -154,7 +155,7 @@ export const SlackIntegrationForm = ({ id, onClose, onBack }: Props) => {
         </DialogClose>
         <Button
           type="submit"
-          variant="org"
+          variant={scopeVariant}
           isPending={isSubmitting || isConnectLoading}
           isDisabled={!isDirty || isConnectLoading || isSubmitting}
         >

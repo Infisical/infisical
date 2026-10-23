@@ -38,7 +38,7 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const { orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/$discoveryId"
   });
 
   const { data, isPending } = useListPkiInstallations(
@@ -91,16 +91,15 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
                     key={installation.id}
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId",
+                        to: "/organizations/$orgId/cert-manager/discovery/installations/$installationId",
                         params: {
                           orgId,
-                          projectId,
                           installationId: installation.id
                         }
                       })
                     }
                   >
-                    <TableCell>{getEndpoint(installation)}</TableCell>
+                    <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
                     <TableCell>{installation.primaryCertName || "N/A"}</TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>

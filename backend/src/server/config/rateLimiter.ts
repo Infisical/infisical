@@ -4,6 +4,33 @@ import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { RateLimitError } from "@app/lib/errors";
 
+export type RateLimitConfiguration = {
+  readLimit: number;
+  publicEndpointLimit: number;
+  writeLimit: number;
+  secretsLimit: number;
+  authRateLimit: number;
+  inviteUserRateLimit: number;
+  mfaRateLimit: number;
+  identityCreationLimit: number;
+  projectCreationLimit: number;
+};
+
+// Requests without an org, and the limits the license server does not set per plan, use these.
+// Read, write and secrets limits come from the org's plan (see inject-rate-limits.ts).
+// Mirrored in backend-go/internal/ee/services/ratelimit/types.go.
+export const DEFAULT_RATE_LIMITS: Readonly<RateLimitConfiguration> = Object.freeze({
+  readLimit: 60,
+  publicEndpointLimit: 30,
+  writeLimit: 200,
+  secretsLimit: 60,
+  authRateLimit: 60,
+  inviteUserRateLimit: 30,
+  mfaRateLimit: 20,
+  identityCreationLimit: 30,
+  projectCreationLimit: 30
+});
+
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
   const redis = appCfg.isRedisConfigured ? buildRedisFromConfig(appCfg, "rate-limiter") : null;
@@ -87,6 +114,18 @@ export const agentVaultSessionLogChunkLimit: RateLimitOptions = {
   keyGenerator: (req) => {
     const actorId = (req as { permission?: { id?: string } }).permission?.id;
     return actorId ? `agent-vault-session-log:${actorId}` : req.realIp;
+  }
+};
+
+// Called once per proxy start, and per-sandbox sidecars start often from egress addresses shared with other
+// tenants, so this keys on the proxy like the other proxy routes rather than on the IP writeLimit uses.
+export const agentVaultBootstrapLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.writeLimit,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-bootstrap:${actorId}` : req.realIp;
   }
 };
 

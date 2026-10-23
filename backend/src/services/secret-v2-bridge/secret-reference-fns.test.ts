@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ClientClosedRequestError } from "@app/lib/errors";
 
-import { expandSecretReferencesFactory } from "./secret-reference-fns";
+import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 
 vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
 vi.mock("../project-folder-grant/project-folder-grant-fns", () => ({ isCrossProjectEnabled: vi.fn() }));
 
 type Args = Parameters<typeof expandSecretReferencesFactory>[0];
 
-const makeDALs = () => {
+const makeDALs = (key = "SOURCE") => {
   const findBySecretPath = vi
     .fn<Args["folderDAL"]["findBySecretPath"]>()
     .mockResolvedValue({ id: "folder" } as Awaited<ReturnType<Args["folderDAL"]["findBySecretPath"]>>);
@@ -17,7 +17,7 @@ const makeDALs = () => {
     {
       id: "secret",
       _id: "secret",
-      key: "SOURCE",
+      key,
       version: 1,
       type: "shared",
       folderId: "folder",
@@ -142,5 +142,78 @@ describe("expandSecretReferencesFactory", () => {
     expect(results.every((r) => r.status === "rejected" && r.reason instanceof ClientClosedRequestError)).toBe(true);
     expect(findByFolderId).toHaveBeenCalledOnce();
     expect(decryptSecretValue).not.toHaveBeenCalled();
+  });
+
+  it("resolves references to a secret whose name contains a space", async () => {
+    const { findBySecretPath, findByFolderId } = makeDALs("My Secret");
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId },
+      decryptSecretValue: (value) => value?.toString(),
+      canExpandValue: vi.fn(() => true)
+    });
+    const expand = (value: string) =>
+      expandSecretReferences({ secretKey: "KEY", value, environment: "prod", secretPath: "/shared" });
+
+    expect(await expand(`\${My Secret}`)).toBe("resolved");
+    expect(await expand(`\${prod.shared.My Secret}`)).toBe("resolved");
+    expect(await expand(`user=\${My Secret};`)).toBe("user=resolved;");
+  });
+
+  it("leaves a reference padded with spaces literal without looking anything up", async () => {
+    const { findBySecretPath, findByFolderId } = makeDALs("My Secret");
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId },
+      decryptSecretValue: (value) => value?.toString(),
+      canExpandValue: vi.fn(() => true)
+    });
+
+    const value = `\${ My Secret }`;
+    expect(await expandSecretReferences({ secretKey: "KEY", value, environment: "prod", secretPath: "/shared" })).toBe(
+      value
+    );
+    expect(findBySecretPath).not.toHaveBeenCalled();
+    expect(findByFolderId).not.toHaveBeenCalled();
+  });
+});
+
+describe("getAllSecretReferences", () => {
+  it("parses the reference forms that predate spaces in secret names the same way", () => {
+    expect(getAllSecretReferences(`\${KEY} \${dev.KEY} \${dev.a.b.KEY} \${@proj.dev.a.KEY}`)).toEqual({
+      localReferences: ["KEY"],
+      nestedReferences: [
+        { environment: "dev", secretPath: "/", secretKey: "KEY" },
+        { environment: "dev", secretPath: "/a/b", secretKey: "KEY" },
+        { targetProjectSlug: "proj", environment: "dev", secretPath: "/a", secretKey: "KEY" }
+      ]
+    });
+  });
+
+  it("accepts spaces inside the secret name of local, nested, and cross-project references", () => {
+    expect(
+      getAllSecretReferences(`\${My Secret} \${My  Secret} \${dev.a.My Secret} \${@proj.dev.My Secret Name}`)
+    ).toEqual({
+      localReferences: ["My Secret", "My  Secret"],
+      nestedReferences: [
+        { environment: "dev", secretPath: "/a", secretKey: "My Secret" },
+        { targetProjectSlug: "proj", environment: "dev", secretPath: "/", secretKey: "My Secret Name" }
+      ]
+    });
+  });
+
+  it.each([
+    [`\${ KEY }`],
+    [`\${ KEY}`],
+    [`\${KEY }`],
+    [`\${my env.KEY}`],
+    [`\${dev.my folder.KEY}`],
+    [`\${@my proj.dev.KEY}`],
+    [`\${{ secrets.KEY }}`],
+    [`\${a + b}`]
+  ])("does not treat %s as a reference", (value) => {
+    expect(getAllSecretReferences(value)).toEqual({ localReferences: [], nestedReferences: [] });
   });
 });
