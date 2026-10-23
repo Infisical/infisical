@@ -171,6 +171,8 @@ export const KeyStorePrefixes = {
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
+  // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
+  ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,
@@ -357,6 +359,12 @@ export type TKeyStoreFactory = {
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
+  incrementByIfUnderLimitWithFixedExpiry: (
+    key: string,
+    value: number,
+    limit: number,
+    expiryInSeconds: number
+  ) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
   decrementIfExists: (key: string) => Promise<number | null>;
   claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
@@ -535,6 +543,22 @@ export const keyStoreFactory = (
     return count
   `;
 
+  // Adds the value only if the total stays within the limit, in one atomic step, and otherwise returns -1 without
+  // adding. The expiry is set only when the key has none, so it counts from the first write and retries can't push it
+  // back.
+  const INCREMENT_BY_IF_UNDER_LIMIT_WITH_FIXED_EXPIRY_SCRIPT = `
+    local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+    local value = tonumber(ARGV[1])
+    if current + value > tonumber(ARGV[2]) then
+      return -1
+    end
+    local total = redis.call("INCRBY", KEYS[1], value)
+    if redis.call("TTL", KEYS[1]) == -1 then
+      redis.call("EXPIRE", KEYS[1], ARGV[3])
+    end
+    return total
+  `;
+
   // Atomic release: DECR but never below 0, and never leave a no-TTL key behind. If
   // the counter is missing or already ≤ 1, DEL so the next admit creates a fresh
   // key with a fresh TTL. Does NOT touch EXPIRE — the slot is being released.
@@ -564,6 +588,23 @@ export const keyStoreFactory = (
       INCREMENT_AND_REFRESH_EXPIRY_IF_UNDER_LIMIT_SCRIPT,
       1,
       key,
+      limit,
+      expiryInSeconds
+    );
+    return Number(result);
+  };
+
+  const incrementByIfUnderLimitWithFixedExpiry = async (
+    key: string,
+    value: number,
+    limit: number,
+    expiryInSeconds: number
+  ): Promise<number> => {
+    const result = await primaryRedis.eval(
+      INCREMENT_BY_IF_UNDER_LIMIT_WITH_FIXED_EXPIRY_SCRIPT,
+      1,
+      key,
+      value,
       limit,
       expiryInSeconds
     );
@@ -900,6 +941,7 @@ export const keyStoreFactory = (
     deleteItems,
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
+    incrementByIfUnderLimitWithFixedExpiry,
     decrementByOrDelete,
     decrementIfExists,
     claimLeastLoaded,

@@ -38,6 +38,7 @@ export const POSTHOG_AGGREGATED_EVENTS = [
   PostHogEventTypes.CertificateRequestCreated,
   PostHogEventTypes.CmekEncrypt,
   PostHogEventTypes.CmekDecrypt,
+  PostHogEventTypes.AgentVaultSessionLogChunkAccepted,
   PostHogEventTypes.SecretScanningScanCompleted
 ];
 
@@ -49,6 +50,7 @@ const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string
   [PostHogEventTypes.PkiSyncExecuted]: ["projectId", "destination"],
   [PostHogEventTypes.CertificateRequestCreated]: ["projectId"],
   [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"],
+  [PostHogEventTypes.AgentVaultSessionLogChunkAccepted]: ["storageType"],
   [PostHogEventTypes.SecretScanningScanCompleted]: ["type", "scanType"]
 };
 

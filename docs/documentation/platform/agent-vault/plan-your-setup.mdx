@@ -161,7 +161,7 @@ Configure the following options to get custom guidance and best practices tailor
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="forward">
-  The [real credential](/documentation/platform/agent-vault/services#credential-types) is added to the request at the proxy, so it never passes through the agent. If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), the request appears in the session's logs.
+  The [real credential](/documentation/platform/agent-vault/services#credential-types) is added to the request at the proxy, so it never passes through the agent. The request appears in the session's [logs](/documentation/platform/agent-vault/session-logs).
 
   The proxy only attaches credentials for the services in the access bundle. Requests to any other host go out without a credential, unless the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) blocks them.
 </AgentVaultSetupStep>
