@@ -389,14 +389,18 @@ export const secretApprovalRequestCommitFnsFactory = ({
             const { metadata, ...el } = latestSecretVersions[secretId];
             return {
               ...el,
-              secretMetadata: JSON.stringify(
-                (secretMetadata || [])?.map((meta) => ({
-                  key: meta.key,
-                  [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
-                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("base64")
-                    : meta.value
-                }))
-              ),
+              secretMetadata: secretMetadata
+                ? JSON.stringify(
+                    secretMetadata.map((meta) => ({
+                      key: meta.key,
+                      [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                        ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString(
+                            "base64"
+                          )
+                        : meta.value
+                    }))
+                  )
+                : null,
               key: newSecretName || secretKey,
               encryptedComment: setKnexStringValue(
                 secretComment,

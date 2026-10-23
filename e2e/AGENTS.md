@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 Guidance for Claude Code sessions working in this directory. Covers both the operator-facing view (env vars, bootstrap, how to run) and the agent-facing context (architecture, gotchas, file layout).
 
@@ -103,4 +103,4 @@ These external dependencies have to stay in sync — if you change the backend o
 - Backend SAML service: `../backend/src/ee/services/saml-config/`
 - Mock IdP Worker code: `preview-environments` repo, `src/saml-idp/` (separate repo — owned independently)
 - IdP keypair provenance + rotation: [`fixtures/README.md`](fixtures/README.md)
-- Root architectural notes: [`../CLAUDE.md`](../CLAUDE.md), [`../backend/CLAUDE.md`](../backend/CLAUDE.md)
+- Root architectural notes: [`../AGENTS.md`](../AGENTS.md), [`../backend/AGENTS.md`](../backend/AGENTS.md)
