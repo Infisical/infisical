@@ -1,5 +1,5 @@
-import { Fragment } from "react";
-import { Plus, ShieldAlert, X } from "lucide-react";
+import { Fragment, useId } from "react";
+import { Pencil, Plus, ShieldAlert, X } from "lucide-react";
 
 import {
   Alert,
@@ -190,6 +190,7 @@ export const AutoApprovalRuleCard = ({
   onChange,
   onRemove
 }: Props) => {
+  const nameInputId = useId();
   const choices = getSubjectChoices(inputs, catalog);
   const ruleError = showErrors ? getRuleError(rule) : null;
   const missingChecks = [
@@ -252,18 +253,25 @@ export const AutoApprovalRuleCard = ({
   return (
     <div className="rounded-md border border-border">
       <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
-        <input
-          value={rule.name}
-          onChange={(e) => onChange({ ...rule, name: e.target.value })}
-          placeholder="Name this rule"
-          aria-label="Rule name"
-          aria-invalid={showErrors && !rule.name.trim()}
-          maxLength={128}
-          className={cn(
-            "-mx-1 min-w-0 flex-1 rounded-sm bg-transparent px-1 py-0.5 text-sm text-foreground outline-none placeholder:text-muted hover:bg-foreground/5 focus:bg-foreground/5",
-            showErrors && !rule.name.trim() && "placeholder:text-danger"
-          )}
-        />
+        <label
+          htmlFor={nameInputId}
+          className="group -mx-1.5 flex min-w-0 flex-1 cursor-text items-center gap-2 rounded-sm px-1.5 py-0.5 focus-within:bg-foreground/5 hover:bg-foreground/5"
+        >
+          <Pencil className="size-3.5 shrink-0 text-muted group-focus-within:text-foreground group-hover:text-foreground" />
+          <input
+            id={nameInputId}
+            value={rule.name}
+            onChange={(e) => onChange({ ...rule, name: e.target.value })}
+            placeholder="Name this rule"
+            aria-label="Rule name"
+            aria-invalid={showErrors && !rule.name.trim()}
+            maxLength={128}
+            className={cn(
+              "min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted",
+              showErrors && !rule.name.trim() && "placeholder:text-danger"
+            )}
+          />
+        </label>
         <IconButton
           variant="ghost"
           size="xs"
