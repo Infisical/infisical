@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { HoneyTokenStatus } from "./honey-token-enums";
+
 export type THoneyTokenDALFactory = ReturnType<typeof honeyTokenDALFactory>;
 
 export const honeyTokenDALFactory = (db: TDbClient) => {
@@ -74,6 +76,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.HoneyToken}.tokenIdentifier`, tokenIdentifier)
       .andWhere(`${TableName.Project}.orgId`, orgId)
+      .whereNotNull(`${TableName.HoneyToken}.folderId`)
       .select(selectAllTableCols(TableName.HoneyToken))
       .first();
 
@@ -84,6 +87,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     const row = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.HoneyToken}.tokenIdentifier`, tokenIdentifier)
+      .whereNotNull(`${TableName.HoneyToken}.folderId`)
       .select(selectAllTableCols(TableName.HoneyToken), db.ref("orgId").withSchema(TableName.Project).as("orgId"))
       .first();
 
@@ -95,6 +99,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.Project}.orgId`, orgId)
       .whereNot(`${TableName.HoneyToken}.status`, "revoked")
+      .whereNotNull(`${TableName.HoneyToken}.folderId`)
       .count<{ count: string | number }>({
         count: `${TableName.HoneyToken}.id`
       });
@@ -154,6 +159,29 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
+  const $selectForCleanup = (tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.HoneyToken)
+      .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
+      .select(
+        db.ref("id").withSchema(TableName.HoneyToken),
+        db.ref("type").withSchema(TableName.HoneyToken),
+        db.ref("status").withSchema(TableName.HoneyToken),
+        db.ref("projectId").withSchema(TableName.HoneyToken),
+        db.ref("encryptedCredentials").withSchema(TableName.HoneyToken),
+        db.ref("orgId").withSchema(TableName.Project)
+      );
+
+  const findUnrevokedByProjectIdForCleanup = async (projectId: string, tx?: Knex) =>
+    $selectForCleanup(tx)
+      .where(`${TableName.HoneyToken}.projectId`, projectId)
+      .whereNot(`${TableName.HoneyToken}.status`, HoneyTokenStatus.Revoked);
+
+  const findFolderlessForCleanup = async (limit: number, tx?: Knex) =>
+    $selectForCleanup(tx)
+      .whereNull(`${TableName.HoneyToken}.folderId`)
+      .orderBy(`${TableName.HoneyToken}.updatedAt`, "asc")
+      .limit(limit);
+
   return {
     ...orm,
     findByFolderIds,
@@ -164,6 +192,8 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     countByProjectId,
     tryMarkTriggered,
     createSecretMappings,
-    deleteSecretMappingsByHoneyTokenId
+    deleteSecretMappingsByHoneyTokenId,
+    findUnrevokedByProjectIdForCleanup,
+    findFolderlessForCleanup
   };
 };

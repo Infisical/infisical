@@ -1,5 +1,6 @@
 import { AccessScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -61,6 +62,7 @@ type TProjectCleanupQueueFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "deleteInternalKms">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findExternallyKeyedByProjectId">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "prepareKeyReleases">;
+  honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "deleteItem">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
@@ -76,6 +78,7 @@ export const projectCleanupQueueFactory = ({
   kmsService,
   certificateAuthoritySecretDAL,
   caKeySourceService,
+  honeyTokenCleanupService,
   keyStore,
   auditLogService,
   queueService,
@@ -124,6 +127,9 @@ export const projectCleanupQueueFactory = ({
         logger.info(`project-hard-delete: skipping (gone/already-removed/not-yet-expired) [projectId=${projectId}]`);
         return;
       }
+
+      // The final cascade drops the project KMS key the honey token credentials are encrypted with.
+      await honeyTokenCleanupService.revokeProjectHoneyTokens(projectId);
 
       // 1) Chunk-delete the largest project-scoped table ahead of the final cascade. secret_versions_v2
       // has no folderId/secretId FK and no other FK back to the project tree, so the project-delete

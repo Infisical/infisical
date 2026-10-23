@@ -86,6 +86,7 @@ import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { honeyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { honeyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { honeyTokenEventDALFactory } from "@app/ee/services/honey-token/honey-token-event-dal";
 import { honeyTokenServiceFactory } from "@app/ee/services/honey-token/honey-token-service";
@@ -1074,6 +1075,13 @@ export const registerRoutes = async (
     hsmService,
     keyStore,
     envConfig
+  });
+
+  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
+    honeyTokenDAL,
+    honeyTokenConfigDAL,
+    appConnectionDAL,
+    kmsService
   });
 
   const encryptionKeyRotationService = encryptionKeyRotationServiceFactory({
@@ -3165,7 +3173,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL
+    scepTransactionDAL,
+    honeyTokenCleanupService
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -3374,7 +3383,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     caKeySourceService,
     keyStore,
-    auditLogService
+    auditLogService,
+    honeyTokenCleanupService
   });
 
   const certificateProfileService = certificateProfileServiceFactory({
