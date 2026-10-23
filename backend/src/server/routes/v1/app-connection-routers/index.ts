@@ -75,6 +75,7 @@ import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
 import { registerS3CompatibleConnectionRouter } from "./s3-compatible-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
+import { registerServiceNowConnectionRouter } from "./servicenow-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
 import { registerSpaceliftConnectionRouter } from "./spacelift-connection-router";
@@ -188,5 +189,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Stripe]: registerStripeConnectionRouter,
     [AppConnection.Keeper]: registerKeeperConnectionRouter,
     [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter,
+    [AppConnection.ServiceNow]: registerServiceNowConnectionRouter,
     [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter
   };
