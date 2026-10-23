@@ -78,7 +78,7 @@ To delete several secrets at once, select their checkboxes, then select **Delete
 
 ### Import nested JSON as folders
 
-If the JSON you upload or paste through [Upload Secrets](#secrets) contains nested objects, the review step shows an **Import Nested Objects as Folders** toggle below **Overwrite Existing Secrets**. The toggle is off by default, so each top-level key becomes one secret, and Infisical stores each nested object as a JSON string.
+If the JSON you upload or paste through [Upload Secrets](#secrets) contains nested objects, the review step shows an **Import Nested Objects as Folders** toggle below **Overwrite Existing Secrets**. The toggle is off by default. With the toggle off, top-level keys with `null` values are skipped. Each other top-level key becomes one secret, and Infisical stores nested objects as JSON strings.
 
 If you turn the toggle on:
 
