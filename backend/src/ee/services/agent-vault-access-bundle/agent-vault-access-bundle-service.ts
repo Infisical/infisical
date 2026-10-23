@@ -61,7 +61,11 @@ import {
 } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TAgentVaultPersonalValueServiceFactory } from "../agent-vault-personal-value/agent-vault-personal-value-service";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
-import { TAgentVaultAccessBundleActorRef, TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
+import {
+  TAgentVaultAccessBundleActorRef,
+  TAgentVaultAccessBundleDALFactory,
+  TAgentVaultAccessBundleListRow
+} from "./agent-vault-access-bundle-dal";
 import {
   TAddMembersDTO,
   TAgentVaultBasicMemberField,
@@ -443,7 +447,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       const missing = findVariableKeys(text).find((key) => !idOfKey.has(key));
       if (missing) {
         throw new BadRequestError({
-          message: `${label} uses ${toVariableReference(missing)}, but Agent Vault has no variable named '${missing}'. Add it under Variables, or correct the name.`
+          message: `${label} uses ${toVariableReference(missing)}, but there's no global variable named '${missing}'. Add it under Variables, or correct the name.`
         });
       }
     });
@@ -586,8 +590,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return { bundle, ...reachability };
   };
 
-  // Setup is counted over the bundles granted to the caller, the ones they take on. An admin reaches every bundle,
-  // but one they were never granted asks nothing of them until they open it.
+  // Setup is counted over every bundle the caller reaches, since an admin can start a session on one they were never
+  // granted. isGranted lets the sidebar nag only about the bundles they take on.
   const listAccessBundles = async ({ projectId, ctx, requiresSetup, ...page }: TListAccessBundlesDTO) => {
     const { permission, accessBundleIds, grantedAccessBundleIds } = await getAgentVaultGrantedReachability(
       { permissionService, membershipDAL },
@@ -599,9 +603,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
 
     const owner = ownerOrNullOf(ctx);
-    const pendingByBundleOf = async (bundleIds: string[]) => {
+    const granted = new Set(grantedAccessBundleIds);
+    const pendingByBundleOf = async (bundleIds: string[] | null) => {
       const byBundle = new Map<string, { id: string; name: string }[]>();
-      if (!owner || !bundleIds.length) return byBundle;
+      if (!owner || bundleIds?.length === 0) return byBundle;
       const statuses = await agentVaultPersonalValueService.findStatusesForOwner({
         projectId,
         owner,
@@ -618,23 +623,26 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         );
       return byBundle;
     };
+    const withSetup = (
+      accessBundles: TAgentVaultAccessBundleListRow[],
+      pendingByBundle: Map<string, { id: string; name: string }[]>
+    ) =>
+      accessBundles.map((bundle) => ({
+        ...bundle,
+        isGranted: granted.has(bundle.id),
+        servicesRequiringSetup: pendingByBundle.get(bundle.id) ?? []
+      }));
 
-    // Either filter needs every granted bundle's status before it can page; the plain list only needs the page's.
+    // Either filter needs every reachable bundle's status before it can page; the plain list only needs the page's.
     if (requiresSetup !== undefined) {
-      const pendingByBundle = await pendingByBundleOf(grantedAccessBundleIds);
+      const pendingByBundle = await pendingByBundleOf(accessBundleIds);
       const pendingIds = [...pendingByBundle.keys()];
       const { accessBundles, totalCount } = await agentVaultAccessBundleDAL.findForList({
         projectId,
         ...(requiresSetup ? { accessBundleIds: pendingIds } : { accessBundleIds, excludeAccessBundleIds: pendingIds }),
         ...page
       });
-      return {
-        accessBundles: accessBundles.map((bundle) => ({
-          ...bundle,
-          servicesRequiringSetup: pendingByBundle.get(bundle.id) ?? []
-        })),
-        totalCount
-      };
+      return { accessBundles: withSetup(accessBundles, pendingByBundle), totalCount };
     }
 
     const { accessBundles, totalCount } = await agentVaultAccessBundleDAL.findForList({
@@ -642,17 +650,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       accessBundleIds,
       ...page
     });
-    const granted = new Set(grantedAccessBundleIds);
-    const pendingByBundle = await pendingByBundleOf(
-      accessBundles.map((bundle) => bundle.id).filter((id) => granted.has(id))
-    );
-    return {
-      accessBundles: accessBundles.map((bundle) => ({
-        ...bundle,
-        servicesRequiringSetup: pendingByBundle.get(bundle.id) ?? []
-      })),
-      totalCount
-    };
+    const pendingByBundle = await pendingByBundleOf(accessBundles.map((bundle) => bundle.id));
+    return { accessBundles: withSetup(accessBundles, pendingByBundle), totalCount };
   };
 
   const getAccessBundleById = async (dto: TGetAccessBundleDTO) => {
@@ -787,11 +786,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    // Bundle row first: its DELETE holds the row lock addMember takes. Roles cascade.
+    // Bundle row first, for the row lock addMember takes. Then the grants before the bundle's own delete, which
+    // cascades to its services' personal values: a removal from Agent Vault deletes grants and then those values,
+    // and taking them in the same order is what keeps the two from deadlocking. Roles cascade with the grants.
     return agentVaultAccessBundleDAL.transaction(async (tx) => {
-      const deleted = await agentVaultAccessBundleDAL.deleteById(bundle.id, tx);
+      await agentVaultAccessBundleDAL.lockByIdInProject({ id: bundle.id, projectId: rest.projectId }, tx);
       await membershipDAL.delete(bundleScope(rest.projectId, bundle.id), tx);
-      return deleted;
+      return agentVaultAccessBundleDAL.deleteById(bundle.id, tx);
     });
   };
 

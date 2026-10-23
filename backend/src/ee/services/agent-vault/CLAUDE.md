@@ -179,10 +179,10 @@ header" is the name in every layer; unqualified "header" means the credential's 
 
 ## Variables
 
-A variable is a key and a sealed value on the Agent Vault project, so every bundle's services share one set and keys
-are unique per project. A service uses one as `{{KEY}}` in its token, username, password, a custom header value or a
-substitution value. Nothing else takes one: a host pattern, method or
-path decides what a service can reach, so it stays literal.
+A global variable is a key and a sealed value on the Agent Vault project, so every bundle's services share one set
+and global keys are unique per project (personal variables are covered under Member-provided values). A service uses
+one as `{{KEY}}` in its token, username, password, a custom header value or a substitution value. Nothing else takes
+one: a host pattern, method or path decides what a service can reach, so it stays literal.
 
 - **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
   boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
@@ -238,7 +238,7 @@ path decides what a service can reach, so it stays literal.
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- Global variables are admin only, reads included: their routes check `Edit` on access bundles, which a member lacks,
+- Global variables are admin only, reads included: the service checks `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
   an empty list would claim they use none). Every value is sealed and no response but the value route returns
   one. That route is a GET with no-store headers and one audit event per read.
@@ -247,23 +247,25 @@ path decides what a service can reach, so it stays literal.
 
 An admin can leave a credential field to each member: the bearer token, or either half of a basic credential
 (`memberProvidedFields` on the service, named like variable references: `credential-value` is a token or a password,
-`credential-username` a username). Custom header and substitution values can't be member-provided yet, but every
-personal-value shape already carries the reference tables' target columns and field descriptors, so they can join
-without a migration or an API change. Each actor saves their own **personal values** for the service, one row per
-field, and a session uses the values of whoever it belongs to. Every actor, admins included, also keeps **personal
-variables**, rows of `agent_vault_variables` with an owner, that only their own personal values can reference.
+`credential-username` a username). Custom header and substitution values can't be member-provided yet. The personal
+value tables already carry the reference tables' target columns, but adding them still needs the service's check
+constraint and the API's field enum widened. Each actor saves their own **personal values** for the service, one row
+per field, and a session uses the values of whoever it belongs to. Every actor, admins included, also keeps
+**personal variables**, rows of `agent_vault_variables` with an owner, that only their own personal values can
+reference.
 
-- **The column is NULL, never `{}`, for a credential the admin sets in full**, like `allowedMethods`. The
-  service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at
-  all and the column is NULL. Code that reads `encryptedCredential` NULL as passthrough has to check
+- **`memberProvidedFields` is NULL, never `{}`, for a credential the admin sets in full**, like `allowedMethods`. The
+  service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at all
+  and `encryptedCredential` is NULL. Code that reads `encryptedCredential` NULL as passthrough has to check
   `memberProvidedFields` first.
 - **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global` or `personal`) picks the list
   and is required for a new one; a list without it returns everything the caller can see (their own, plus the global
-  ones for an admin), and the service sheet's picker asks for `global` explicitly. Every variable read and lock in
-  the DAL takes an owner (`null` for global) so a global lookup never matches a personal key, and resolve expands
-  each kind only against its own. By id, a variable the caller may not act on is a 404, never a 403: someone else's
-  personal one, and a global one for a member. Global keys are unique per project (500 cap), personal ones per owner
-  (100 cap), each enforced by a partial unique index plus an advisory lock per project or per owner.
+  ones for an admin), and the service sheet's picker asks for `global` explicitly. Every variable read and lock by
+  key or for a list takes an owner (`null` for global), so a global lookup never matches a personal key, and resolve
+  expands each kind only against its own. The by-id reads and locks take any owner, and the service checks it. By id,
+  a variable the caller may not act on is a 404, never a 403: someone else's personal one, and a global one for a
+  member. Global keys are unique per project (500 cap), personal ones per owner (100 cap), each enforced by a partial
+  unique index plus an advisory lock per project or per owner.
 - **Everything personal is scoped to the caller, never to an id the caller sends.** No route names another actor,
   so an admin can't list, read or set anyone else's variables or values. The owner is a user or a machine identity
   (`ownerOf`); the UI only covers users for now, but resolve and the API already work for an identity's own
@@ -286,13 +288,17 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   the new one.
 - **Losing a bundle through Agent Vault clears what an actor saved for its services**
   (`clearPersonalValuesAfterRevoke`). It runs on a bundle revoke, on removal from Agent Vault, and on a demotion from
-  admin, for the actors named and the members of a named group, after that change is written. It skips anyone who
-  still holds the bundle through another grant, and anyone who is still a project admin, since an admin reaches every
-  bundle. Platform paths (group removal, a lapsed role, project, org or SCIM removal) don't run it, so values can
-  outlive the grant there and return with a later one. They are only ever the same actor's, and resolve still checks
-  reach. Deleting a personal variable also clears the owner's values on bundles they no longer reach, which otherwise
-  would hold the variable in place with nothing able to edit them. Personal variables survive all of this, and their
-  Used By lists only the bundles the owner still reaches.
+  admin, for the actors named and the members of a named group, after that change is written. It takes the project's
+  `ClearAgentVaultPersonalValues` advisory lock last, after those writes, so of two changes that each leave the
+  other's access in place (a demotion and the revoke of the last grant) the second checks against the first once
+  committed. It skips anyone who still holds the bundle through another grant, and anyone who is still a project
+  admin, since an admin reaches every bundle. Platform paths don't run it: group removal, a lapsed role, org or SCIM
+  removal, and the generic project membership routes (role change, deactivate, remove from project, leave, and their
+  identity and group forms, which also reach the Agent Vault project), so values can outlive the grant there and
+  return with a later one. They are only ever the same actor's, and resolve still checks reach. Deleting a personal
+  variable also clears the owner's values on bundles they no longer reach, which otherwise would hold the variable in
+  place with nothing able to edit them. Personal variables survive all of this, and their Used By lists only the
+  bundles the owner still reaches.
 - Personal variables follow the global variables' reference rules: sealed text names them by id, a reference row
   per personal value (`agent_vault_personal_value_references`, a deferred foreign key), the delete takes the variable
   row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. Used By on a variable reads
@@ -302,8 +308,9 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   Reads ride along: the bundle read puts the caller's status on each service (`personalValues`, null when nothing
   is member-provided), and the bundle list gives `servicesRequiringSetup` (`{ id, name }`) per bundle plus a
   `requiresSetup` filter for the sidebar and banners (`false` is the rest of what the caller reaches). Both count
-  only the bundles granted to the caller, so an admin isn't nagged about bundles they reach only by role; the
-  bundle read still shows them.
+  every bundle the caller reaches, because an admin can start a session on one they were never granted. Each
+  list item also carries `isGranted`, and the sidebar warns only about granted bundles, so an admin isn't nagged
+  in the nav about bundles they reach only by role.
 
 ## Credentials at rest
 

@@ -227,7 +227,7 @@ export const useVariableAutocomplete = ({
 type TAutocomplete = ReturnType<typeof useVariableAutocomplete>;
 
 const usedByLabel = (count: number) => {
-  if (count === 0) return "Not used yet";
+  if (count === 0) return "Unused";
   return `Used by ${count} service${count === 1 ? "" : "s"}`;
 };
 

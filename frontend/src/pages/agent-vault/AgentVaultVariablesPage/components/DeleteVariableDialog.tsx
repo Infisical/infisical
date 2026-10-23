@@ -46,7 +46,7 @@ export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
           <AlertDialogTitle>Delete &quot;{variable?.key}&quot;</AlertDialogTitle>
           <AlertDialogDescription>
             {isInUse && isPersonal
-              ? `${usedByServices.length === 1 ? "Your personal values for a service use" : `Your personal values for ${usedByServices.length} services use`} this variable. Change ${usedByServices.length === 1 ? "them" : "those values"} before you delete it.`
+              ? `${usedByServices.length === 1 ? "Your personal values for a service use" : `Your personal values for ${usedByServices.length} services use`} this variable. Remove it from ${usedByServices.length === 1 ? "the service" : "those services"} before you delete it.`
               : null}
             {isInUse && !isPersonal
               ? `${usedByServices.length === 1 ? "A service uses" : `${usedByServices.length} services use`} this variable. Remove the reference from ${usedByServices.length === 1 ? "it" : "them"} before you delete it.`

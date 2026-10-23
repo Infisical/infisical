@@ -249,9 +249,9 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
               </AlertTitle>
               <AlertDescription>
                 <p>
-                  Until you set {needsSetup.length === 1 ? "it" : "them"} up,{" "}
-                  {needsSetup.length === 1 ? "it rejects" : "they reject"} requests from this
-                  session.
+                  {needsSetup.length === 1
+                    ? "Until you set it up, this session can't reach it."
+                    : "Until you set them up, this session can't reach them."}
                 </p>
                 <ul className="mt-2 w-full divide-y divide-warning/15 rounded-md border border-warning/20">
                   {shownNeedsSetup.map((service) => (

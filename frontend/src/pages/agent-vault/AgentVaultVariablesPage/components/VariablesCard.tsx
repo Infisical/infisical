@@ -358,8 +358,8 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 {isPersonal
-                  ? `You can keep at most ${maxVariables} variables in Agent Vault. Delete one that none of your values use first.`
-                  : `Agent Vault can hold at most ${maxVariables} variables. Delete one that no service uses first.`}
+                  ? `You can keep at most ${maxVariables} personal variables. Delete an unused one first.`
+                  : `Agent Vault can hold at most ${maxVariables} global variables. Delete an unused one first.`}
               </TooltipContent>
             </Tooltip>
           ) : (

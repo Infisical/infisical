@@ -6648,6 +6648,8 @@ interface AgentVaultPersonalValuesSetEvent {
     accessBundleName: string;
     serviceId: string;
     serviceName: string;
+    // Which credential the fields belong to: credential-value is a token for bearer and a password for basic.
+    credentialType: string;
     // The fields this update set. A field it left out kept its saved value.
     fields: string[];
     variableKeys: string[];
@@ -6661,6 +6663,7 @@ interface AgentVaultPersonalValuesDeleteEvent {
     accessBundleName: string;
     serviceId: string;
     serviceName: string;
+    credentialType: string;
   };
 }
 

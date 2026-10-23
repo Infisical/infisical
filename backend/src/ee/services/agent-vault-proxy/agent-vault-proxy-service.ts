@@ -803,7 +803,7 @@ export const agentVaultProxyServiceFactory = ({
     const sessionLogs = $sessionLogs();
 
     logger.info(
-      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}]`
+      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}] [personalValuesMissing=${services.filter((service) => service.personalValuesMissing).length}]`
     );
 
     return {

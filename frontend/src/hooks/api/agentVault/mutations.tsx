@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -492,7 +493,13 @@ export const useSetAgentVaultPersonalValues = () => {
       return data.personalValues;
     },
     onSuccess: (_, { accessBundleId }) =>
-      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId)
+      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId),
+    // The service changed under the dialog, so its copy is stale: reload it before the member saves again.
+    onError: (error, { accessBundleId }) => {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId).catch(() => undefined);
+      }
+    }
   });
 };
 

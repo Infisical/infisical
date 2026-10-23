@@ -207,7 +207,8 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
   serviceCount: number;
   memberCount: number;
   hostPatterns: string[];
-  // Counted over the bundles granted to the caller, so empty on one an admin reaches only by role.
+  // False on a bundle an admin reaches only by role.
+  isGranted: boolean;
   servicesRequiringSetup: { id: string; name: string }[];
 };
 
@@ -475,6 +476,8 @@ export type TSetAgentVaultPersonalValuesDTO = {
   accessBundleId: string;
   serviceId: string;
   values: { field: TAgentVaultMemberProvidedField; value: string }[];
+  /** The type the dialog shows. If an admin changed it since, the save fails with a 409 instead of mislabeling a value. */
+  credentialType: AgentVaultCredentialType;
 };
 
 export type TDeleteAgentVaultPersonalValuesDTO = { accessBundleId: string; serviceId: string };

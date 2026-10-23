@@ -94,8 +94,8 @@ export const variableReferenceError = (
   const missing = refs.find((ref) => missingKeys?.has(ref));
   if (missing) {
     return isPersonal
-      ? `You have no personal variable named '${missing}'. Add it under Variables, or correct the name.`
-      : `Agent Vault has no variable named '${missing}'. Add it under Variables, or correct the name.`;
+      ? `You have no personal variable named '${missing}'. Add it as a personal variable, or correct the name.`
+      : `There's no global variable named '${missing}'. Add it under Variables, or correct the name.`;
   }
 
   return null;

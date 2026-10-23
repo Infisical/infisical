@@ -1851,7 +1851,7 @@ describe("Agent Vault V1 Router", async () => {
       return new Map(accessBundle.services.map((service) => [service.id, service.personalValues]));
     };
 
-    // The bundles granted to the caller that still require their values, with the services that do.
+    // The bundles the caller reaches that still require their values, with the services that do.
     const pendingOf = async (as: (method: "GET", url: string) => ReturnType<typeof inject>) => {
       const res = await as("GET", "/api/v1/agent-vault/access-bundles?requiresSetup=true&limit=100");
       expect(res.statusCode).toBe(200);
@@ -2458,22 +2458,202 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("an admin is asked for values only on the bundles granted to them", async () => {
+    test("deleting a bundle while a member is being removed from Agent Vault doesn't deadlock", async () => {
+      const bundle = await createAccessBundle("mp-delete-vs-remove");
+      const service = await createService(bundle.id, {
+        name: "linear",
+        hostPattern: "linear-deadlock.example.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+
+      const member = await createMemberIdentity(`mp-delete-vs-remove-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        expect((await setValues(member.as, bundle.id, service.id, { "credential-value": "mine" })).statusCode).toBe(
+          200
+        );
+
+        // What a removal does: delete the member's grants, then their saved values, in one transaction.
+        const trx = await testDb.transaction();
+        let pending: ReturnType<typeof inject> | undefined;
+        try {
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          await trx("memberships").where({ scopeResourceId: bundle.id, actorIdentityId: member.id }).delete();
+
+          pending = inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+          await waitUntilBlockedBy(rows[0].pid);
+          await trx("agent_vault_personal_values").where({ identityId: member.id }).delete();
+          await trx.commit();
+
+          expect((await pending).statusCode).toBe(200);
+        } catch (err) {
+          if (!trx.isCompleted()) await trx.rollback();
+          await pending?.catch(() => undefined);
+          throw err;
+        }
+        expect(await testDb("agent_vault_access_bundles").where({ id: bundle.id })).toHaveLength(0);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("until a member sets up their half, resolve sends no credential, not the admin's half", async () => {
+      const bundle = await createAccessBundle("mp-half");
+      await createService(bundle.id, {
+        name: "jira",
+        hostPattern: "jira-half.example.com",
+        credential: { type: "basic", password: "admin-password", memberProvidedFields: ["credential-username"] }
+      });
+
+      const member = await createMemberIdentity(`mp-half-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        const resolve = await enrollProxy("mp-half");
+        const unset = await resolve(await mintSession(member.as, bundle.name), "jira");
+        expect(unset.personalValuesMissing).toBe(true);
+        expect(unset.credential).toEqual({ type: "passthrough" });
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("taking every field back from members on the same type deletes their values", async () => {
+      const bundle = await createAccessBundle("mp-take-all");
+      const service = await createService(bundle.id, {
+        name: "confluence",
+        hostPattern: "confluence-all.example.com",
+        credential: { type: "basic", memberProvidedFields: ["credential-username", "credential-value"] }
+      });
+
+      const member = await createMemberIdentity(`mp-take-all-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        expect(
+          (await setValues(member.as, bundle.id, service.id, { "credential-username": "u", "credential-value": "p" }))
+            .statusCode
+        ).toBe(200);
+
+        const takeBack = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+          credential: { type: "basic", username: "admin-u", password: "admin-p", memberProvidedFields: [] }
+        });
+        expect(takeBack.statusCode).toBe(200);
+        expect((await statusesOf(member.as, bundle.id)).get(service.id)).toBeNull();
+        expect(await testDb("agent_vault_personal_values").where({ serviceId: service.id })).toHaveLength(0);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("a user loses their values with a direct revoke, and a group member with the group's", async () => {
+      const bundle = await createAccessBundle("mp-users");
+      const service = await createService(bundle.id, {
+        name: "notion",
+        hostPattern: "notion-users.example.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      const group = await createProjectGroup(await getProjectId(), "mp-users-group", ProjectMembershipRole.Member);
+      const direct = await createUser("mp-direct");
+      const viaGroup = await createUser("mp-via-group");
+      try {
+        const asUser = async (userId: string) => {
+          await addUserMembership({ userId, orgId: seedData1.organization.id, role: OrgMembershipRole.Member });
+          expect(
+            (await inject("POST", "/api/v1/agent-vault/members", { userIds: [userId], role: "member" })).statusCode
+          ).toBe(200);
+          const token = await createUserAccessToken({ userId, orgId: seedData1.organization.id });
+          return (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
+            testServer.inject({
+              method,
+              url,
+              headers: { authorization: `Bearer ${token}` },
+              ...(body ? { body } : {})
+            });
+        };
+        const directAs = await asUser(direct.userId);
+        const groupAs = await asUser(viaGroup.userId);
+        await testDb("user_group_membership").insert({ groupId: group.id, userId: viaGroup.userId });
+
+        expect((await inject("POST", membersUrl(bundle.id), { userIds: [direct.userId] })).statusCode).toBe(200);
+        expect((await inject("POST", membersUrl(bundle.id), { groupIds: [group.id] })).statusCode).toBe(200);
+        expect((await setValues(directAs, bundle.id, service.id, { "credential-value": "a" })).statusCode).toBe(200);
+        expect((await setValues(groupAs, bundle.id, service.id, { "credential-value": "b" })).statusCode).toBe(200);
+
+        expect((await inject("DELETE", membersUrl(bundle.id), { userIds: [direct.userId] })).statusCode).toBe(200);
+        expect(await testDb("agent_vault_personal_values").where({ userId: direct.userId })).toHaveLength(0);
+        expect(await testDb("agent_vault_personal_values").where({ userId: viaGroup.userId })).toHaveLength(1);
+
+        expect((await inject("DELETE", membersUrl(bundle.id), { groupIds: [group.id] })).statusCode).toBe(200);
+        expect(await testDb("agent_vault_personal_values").where({ userId: viaGroup.userId })).toHaveLength(0);
+      } finally {
+        await testDb("user_group_membership").where({ groupId: group.id }).delete();
+        await group.cleanup();
+        await deleteUsers([direct.userId, viaGroup.userId]);
+      }
+    });
+
+    test("a save made against a stale credential type is refused, not stored under the new type", async () => {
+      const bundle = await createAccessBundle("mp-stale-type");
+      const service = await createService(bundle.id, {
+        name: "bitbucket",
+        hostPattern: "bitbucket-stale.example.com",
+        credential: { type: "basic", username: "admin-u", memberProvidedFields: ["credential-value"] }
+      });
+
+      const member = await createMemberIdentity(`mp-stale-type-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        // The member's page still shows basic, but an admin has since switched the service to bearer.
+        expect(
+          (
+            await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+              credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+            })
+          ).statusCode
+        ).toBe(200);
+        const stale = await member.as("PATCH", personalValuesUrl(bundle.id, service.id), {
+          values: [{ field: "credential-value", value: "my-password" }],
+          credentialType: "basic"
+        });
+        expect(stale.statusCode).toBe(409);
+        expect(await testDb("agent_vault_personal_values").where({ identityId: member.id })).toHaveLength(0);
+
+        const current = await member.as("PATCH", personalValuesUrl(bundle.id, service.id), {
+          values: [{ field: "credential-value", value: "my-token" }],
+          credentialType: "bearer"
+        });
+        expect(current.statusCode).toBe(200);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("an admin is asked for values on a bundle they reach only by role, flagged as not granted", async () => {
       const ungranted = await createAccessBundle("mp-mine-ungranted");
       const service = await createService(ungranted.id, {
         name: "openai",
         hostPattern: "api.openai.com",
         credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
       });
+      const granted = await createAccessBundle("mp-mine-granted");
       expect((await inject("DELETE", membersUrl(ungranted.id), { userIds: [seedData1.id] })).statusCode).toBe(200);
 
       const listed = await inject("GET", "/api/v1/agent-vault/access-bundles?search=mp-mine&limit=100");
-      expect(JSON.parse(listed.payload).accessBundles).toEqual([
-        expect.objectContaining({ id: ungranted.id, servicesRequiringSetup: [] })
-      ]);
-      expect((await pendingOf(inject)).has(ungranted.id)).toBe(false);
+      expect(JSON.parse(listed.payload).accessBundles).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: ungranted.id,
+            isGranted: false,
+            servicesRequiringSetup: [{ id: service.id, name: "openai" }]
+          }),
+          expect.objectContaining({ id: granted.id, isGranted: true, servicesRequiringSetup: [] })
+        ])
+      );
+      expect((await pendingOf(inject)).get(ungranted.id)).toEqual(["openai"]);
+      const setUp = await inject("GET", "/api/v1/agent-vault/access-bundles?requiresSetup=false&search=mp-mine");
+      expect(
+        (JSON.parse(setUp.payload) as { accessBundles: { id: string }[] }).accessBundles.map((bundle) => bundle.id)
+      ).toEqual([granted.id]);
       expect((await inject("GET", "/api/v1/agent-vault/access-bundles?requiresSetup=maybe")).statusCode).toBe(422);
-      // Opening the bundle still shows what a session from it would need.
       expect((await statusesOf(inject, ungranted.id)).get(service.id)?.isConfigured).toBe(false);
     });
 

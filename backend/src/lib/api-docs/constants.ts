@@ -4484,9 +4484,11 @@ export const AGENT_VAULT = {
     offset: "How many access bundles to skip.",
     hostPatterns: "Every host pattern the access bundle's services cover.",
     requiresSetup:
-      "true lists only the access bundles granted to you, directly or through a group, that have services still requiring your personal values. false lists the rest of the access bundles you can reach. Omit to list them all.",
+      "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
+    isGranted:
+      "Whether the access bundle is granted to you, directly or through a group. false for one you reach only as an admin.",
     servicesRequiringSetup:
-      "The services in this access bundle that still require your personal values. Counted only for access bundles granted to you, so empty for one you reach only as an admin.",
+      "The services in this access bundle that still require your personal values.",
     servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
     servicesRequiringSetupName: "The name of the service."
   },
@@ -4543,6 +4545,8 @@ export const AGENT_VAULT = {
       "The credential fields each member sets for themselves: credential-value (a bearer token or a basic password) and credential-username. Empty when the admin sets the whole credential."
   },
   PERSONAL_VALUE: {
+    credentialType:
+      "The credential type you expect the service to have. If it no longer matches, the request fails with a 409.",
     personalValues:
       "Your personal values for the service, or null if the service leaves no fields to its members. Only you can see these, and a stored value never comes back.",
     isConfigured:

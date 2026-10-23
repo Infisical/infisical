@@ -60,7 +60,7 @@ const fieldName = (credentialType: string, field: TAgentVaultMemberProvidedField
 };
 
 const SERVICE_CHANGED_DURING_SAVE_MESSAGE =
-  "An admin changed which values this service takes from you while you were saving. Reload the service and save again.";
+  "An admin changed this service's credential while you were setting up your values. Reload the service and save again.";
 
 const VARIABLE_DELETED_DURING_SAVE_MESSAGE =
   "A variable one of your values uses was deleted while it was being saved. Check its variable references and save again.";
@@ -159,7 +159,7 @@ export const agentVaultPersonalValueServiceFactory = ({
   const findStatusesForOwner = (args: {
     projectId: string;
     owner: TAgentVaultOwner;
-    accessBundleIds: string[];
+    accessBundleIds: string[] | null;
     withVariableReferences?: boolean;
   }) => loadServices(args);
 
@@ -178,8 +178,11 @@ export const agentVaultPersonalValueServiceFactory = ({
     return { ...caller, service };
   };
 
-  const setPersonalValues = async ({ values, ...dto }: TSetPersonalValuesDTO) => {
+  const setPersonalValues = async ({ values, credentialType, ...dto }: TSetPersonalValuesDTO) => {
     const { owner, service, isAdmin } = await findReachableService(dto);
+    if (credentialType && credentialType !== service.credentialType) {
+      throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
+    }
 
     const memberProvidedFields = (service.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
     if (!memberProvidedFields.length) {
@@ -210,7 +213,7 @@ export const agentVaultPersonalValueServiceFactory = ({
       const unknown = findVariableKeys(value).find((key) => !idOfKey.has(key));
       if (unknown) {
         throw new BadRequestError({
-          message: `Your ${name(field)} uses ${toVariableReference(unknown)}, but you have no personal variable named '${unknown}'. Add it under Variables, or correct the name.`
+          message: `Your ${name(field)} uses ${toVariableReference(unknown)}, but you have no personal variable named '${unknown}'. Add it as a personal variable, or correct the name.`
         });
       }
     });

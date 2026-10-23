@@ -3,7 +3,7 @@ title: "Variables"
 description: "Values you store once and use in any service in Agent Vault."
 ---
 
-A variable is a value that you can use in any [service](/documentation/platform/agent-vault/services) in Agent Vault, whichever [access bundle](/documentation/platform/agent-vault/access-bundles) the service is in. You define the variable once and give it a key, such as `GITHUB_TOKEN`. Then, any service can use the variable by referencing the key within double braces: `{{GITHUB_TOKEN}}`.
+A global variable is a value that you can use in any [service](/documentation/platform/agent-vault/services) in Agent Vault, whichever [access bundle](/documentation/platform/agent-vault/access-bundles) the service is in. You define the variable once and give it a key, such as `GITHUB_TOKEN`. Then, any service can use the variable by referencing the key within double braces: `{{GITHUB_TOKEN}}`.
 
 When an agent sends a request, the [proxy](/documentation/platform/agent-vault/proxies) replaces each reference with the variable's value.
 
@@ -17,7 +17,7 @@ To add a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables** > **Global Variables**.
+    In Agent Vault, go to **Variables** and select the **Global Variables** tab.
 
     <Frame>
       <img src="/images/platform/agent-vault/variables-empty.png" alt="The Variables page with no variables and an Add Variable button" />

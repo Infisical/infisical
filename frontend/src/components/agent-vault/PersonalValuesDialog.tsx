@@ -38,6 +38,7 @@ import {
   AgentVaultVariableScope,
   TAgentVaultMemberProvidedField,
   useDeleteAgentVaultPersonalValues,
+  useGetAgentVaultAccessBundle,
   useListAgentVaultVariables,
   useSetAgentVaultPersonalValues
 } from "@app/hooks/api/agentVault";
@@ -135,7 +136,14 @@ type Props = {
  */
 export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
   const isOpen = Boolean(target);
-  const service = target?.service;
+  // Read from the bundle query rather than the copy the dialog opened with, so a refetch after an admin changes the
+  // service (a save answered 409) shows the service as it is now.
+  const { data: liveBundle } = useGetAgentVaultAccessBundle(
+    isOpen ? (target?.service.accessBundleId ?? "") : ""
+  );
+  const service =
+    liveBundle?.services.find((candidate) => candidate.id === target?.service.id) ??
+    target?.service;
   const personalValues = service?.personalValues;
   const setValues = useSetAgentVaultPersonalValues();
   const deleteValues = useDeleteAgentVaultPersonalValues();
@@ -182,9 +190,10 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     formState: { isSubmitting }
   } = formMethods;
 
+  // A new type gives the same fields a different meaning (a password becomes a token), so what was typed goes.
   useEffect(() => {
     if (isOpen) reset({ secret: "", username: "" });
-  }, [isOpen, service?.id, reset]);
+  }, [isOpen, service?.id, service?.credential.type, reset]);
 
   // One dialog for every field, settled once it has closed, as in the service sheet.
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
@@ -242,6 +251,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
       await setValues.mutateAsync({
         accessBundleId: service.accessBundleId,
         serviceId: service.id,
+        credentialType: service.credential.type,
         // A blank field keeps its saved value, so only the ones typed are sent.
         values: fields
           .map((field) => ({
@@ -280,7 +290,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent isPending={isSubmitting}>
         <DialogHeader>
           <DialogTitle>
             {personalValues?.isConfigured ? "Update" : "Set Up"} Personal Values for {service?.name}
@@ -356,7 +366,12 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
                   <span />
                 )}
                 <div className="flex gap-2">
-                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    isDisabled={isSubmitting}
+                    onClick={() => onOpenChange(false)}
+                  >
                     Cancel
                   </Button>
                   <Button
@@ -382,7 +397,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
             <AlertDialogHeader>
               <AlertDialogTitle>Remove your personal {service?.name} values?</AlertDialogTitle>
               <AlertDialogDescription>
-                Until you set it up again, {service?.name} rejects requests from your sessions. Your
+                Until you set them up again, your sessions can&apos;t reach {service?.name}. Your
                 variables are kept.
               </AlertDialogDescription>
             </AlertDialogHeader>

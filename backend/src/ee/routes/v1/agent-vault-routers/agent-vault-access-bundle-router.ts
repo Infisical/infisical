@@ -89,6 +89,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
+            isGranted: z.boolean().describe(AGENT_VAULT.ACCESS_BUNDLE.isGranted),
             servicesRequiringSetup: z
               .object({
                 id: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupId),
@@ -542,7 +543,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
       body: z.object({
-        values: AgentVaultPersonalValueInputSchema.array().min(1).max(2).describe(AGENT_VAULT.PERSONAL_VALUE.values)
+        values: AgentVaultPersonalValueInputSchema.array().min(1).max(2).describe(AGENT_VAULT.PERSONAL_VALUE.values),
+        credentialType: z
+          .nativeEnum(AgentVaultCredentialType)
+          .optional()
+          .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
       }),
       response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
     },
@@ -553,7 +558,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         serviceId: req.params.serviceId,
-        values: req.body.values
+        values: req.body.values,
+        credentialType: req.body.credentialType
       });
 
       await server.services.auditLog.createAuditLog({
@@ -567,6 +573,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName: personalValues.accessBundleName,
             serviceId: personalValues.serviceId,
             serviceName: personalValues.serviceName,
+            credentialType: personalValues.credentialType,
             fields: req.body.values.map((value) => value.field),
             variableKeys: [
               ...new Set(
@@ -618,7 +625,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleId: personalValues.accessBundleId,
             accessBundleName: personalValues.accessBundleName,
             serviceId: personalValues.serviceId,
-            serviceName: personalValues.serviceName
+            serviceName: personalValues.serviceName,
+            credentialType: personalValues.credentialType
           }
         }
       });

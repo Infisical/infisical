@@ -213,8 +213,8 @@ export const agentVaultVariableServiceFactory = ({
       .join(", ");
     if (owner) {
       return services.length === 1
-        ? `The variable '${key}' is used by your personal values for the service ${names}. Change those values before deleting it.`
-        : `The variable '${key}' is used by your personal values for the services ${names}. Change those values before deleting it.`;
+        ? `The variable '${key}' is used by your personal values for the service ${names}. Remove it from the service before you delete it.`
+        : `The variable '${key}' is used by your personal values for the services ${names}. Remove it from those services before you delete it.`;
     }
     return services.length === 1
       ? `The variable '${key}' is used by the service ${names}. Remove it from that service before deleting it.`
@@ -276,8 +276,8 @@ export const agentVaultVariableServiceFactory = ({
         if (existing.length >= cap) {
           throw new BadRequestError({
             message: owner
-              ? `You can keep at most ${cap} variables in Agent Vault. Delete one that none of your values use first.`
-              : `Agent Vault can hold at most ${cap} global variables. Delete one that no service uses first.`
+              ? `You can keep at most ${cap} personal variables. Delete an unused one first.`
+              : `Agent Vault can hold at most ${cap} global variables. Delete an unused one first.`
           });
         }
 
@@ -383,7 +383,7 @@ export const agentVaultVariableServiceFactory = ({
       if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
         throw new ConflictError({
           message: scope.owner
-            ? "One of your values still uses this variable. Change every value that uses it, then delete it."
+            ? "One of your personal values still uses this variable. Remove it from every service that uses it, then delete it."
             : "This variable is still used by a service. Remove it from every service that uses it, then delete it."
         });
       }

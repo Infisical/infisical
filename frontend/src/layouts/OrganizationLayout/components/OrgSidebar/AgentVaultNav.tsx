@@ -30,7 +30,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
   const { subscription } = useSubscription();
   const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup();
-  const needsSetup = Boolean(requiringSetup?.totalCount);
+  // An admin can use any bundle, but the nav only nags about the ones granted to them.
+  const needsSetup = Boolean(requiringSetup?.accessBundles.some((bundle) => bundle.isGranted));
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },

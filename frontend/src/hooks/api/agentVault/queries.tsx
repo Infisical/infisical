@@ -220,7 +220,7 @@ export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBund
 };
 
 // The sidebar and the access bundle list ask the same question, so they share one cached answer. One page holds them
-// all in practice: it is only the bundles granted to the caller that still require their values.
+// all in practice: it is only the bundles the caller reaches that still require their values.
 export const useListAgentVaultAccessBundlesRequiringSetup = () =>
   useListAgentVaultAccessBundles({ requiresSetup: true, limit: 100 });
 

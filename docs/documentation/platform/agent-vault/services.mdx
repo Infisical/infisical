@@ -72,7 +72,7 @@ For **Bearer** and **Basic** services, if the agent's request already carries a 
 
 ## Member-provided values
 
-By default, you set the whole credential and every session uses it. If each member should call the API with their own token or login, such as a personal API key, you can make that part of the credential member provided. Each member then sets a personal value, and a session uses the personal value of the member who created the session.
+By default, you set the whole credential and every session uses it. If each member should call the API with their own token or login, such as a personal API key, you can make that part of the credential member provided. Each member then [sets a personal value](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), and a session uses the personal value of the member who created the session.
 
 You can make these credential fields member provided:
 
@@ -97,7 +97,7 @@ To make a field member provided:
 If you change the credential type, each member has to set up their personal values for the service again.
 </Warning>
 
-Until a member [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), the proxy refuses their sessions' requests to the service with a `403` response. Requests to the bundle's other services still go through.
+Until a member sets up their personal values, the proxy refuses their sessions' requests to the service with a `403` response. Requests to the bundle's other services still go through.
 
 ## Host patterns
 

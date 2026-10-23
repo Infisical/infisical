@@ -15,8 +15,9 @@ export type TAgentVaultVariable = Omit<TAgentVaultVariables, "accessBundleId">;
 
 export type TAgentVaultVariableOrderBy = "key" | "serviceCount";
 
-// `owner: null` is the global variables; an owner is that user's or identity's personal ones. Every read and lock
-// names one, so a global lookup never matches a personal key and the other way round.
+// `owner: null` is the global variables; an owner is that user's or identity's personal ones. Every read and lock by
+// key or for a list names one, so a global lookup never matches a personal key and the other way round. The by-id
+// reads take any owner, and the service checks it.
 export type TAgentVaultVariableOwnerScope = { projectId: string; owner: TAgentVaultOwner | null };
 
 // Each owner is one scope to list, null the global one: a list can span both for an admin.

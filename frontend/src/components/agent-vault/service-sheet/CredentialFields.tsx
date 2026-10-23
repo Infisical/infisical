@@ -389,6 +389,23 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
     if (valid.length !== memberProvidedFields.length) setValue("memberProvidedFields", valid);
   }, [credentialType, memberProvidedFields, setValue]);
 
+  // Switching away and back to the stored type changes nothing, so the stored values and toggles come back as they
+  // were rather than staying cleared by the switch.
+  const previousType = useRef(credentialType);
+  useEffect(() => {
+    const wasType = previousType.current;
+    previousType.current = credentialType;
+    if (!storedType || wasType === credentialType || credentialType !== storedType) return;
+    setValue("memberProvidedFields", storedMemberFields);
+    if (!storedMemberFields.includes(secretCredentialField)) setValue("secret", UNCHANGED_SECRET);
+    if (
+      credentialType === AgentVaultCredentialType.Basic &&
+      !storedMemberFields.includes(AgentVaultVariableReferenceField.CredentialUsername)
+    ) {
+      setValue("username", UNCHANGED_SECRET);
+    }
+  }, [credentialType, storedType, storedMemberFields, secretCredentialField, setValue]);
+
   // Handing a field to members drops what was typed for it. Taking it back restores what is stored, if anything.
   const setMemberProvided = (field: TAgentVaultMemberProvidedField, isOn: boolean) => {
     const formField = FORM_FIELD_OF_CREDENTIAL_FIELD[field];
